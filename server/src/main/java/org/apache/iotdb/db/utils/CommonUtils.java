@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.utils.Binary;
+
 import com.google.common.base.Throwables;
 import io.airlift.airline.Cli;
 import io.airlift.airline.Help;
@@ -28,6 +34,7 @@ import io.airlift.airline.ParseCommandUnrecognizedException;
 import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,6 +43,7 @@ import java.nio.file.Paths;
 import java.util.Queue;
 import java.util.List;
 import java.util.stream.Stream;
+<<<<<<< HEAD
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -44,19 +52,18 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.Binary;
+=======
+>>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
 
   private static final int CPUS = Runtime.getRuntime().availableProcessors();
 
-  /**
-   * Default executor pool maximum size.
-   */
+  /** Default executor pool maximum size. */
   public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
 
-  private CommonUtils() {
-  }
+  private CommonUtils() {}
 
   /**
    * get JDK version.
@@ -91,13 +98,15 @@ public class CommonUtils {
   public static long getOccupiedSpace(String folderPath) throws IOException {
     Path folder = Paths.get(folderPath);
     try (Stream<Path> s = Files.walk(folder)) {
-      return s.filter(p -> p.toFile().isFile())
-              .mapToLong(p -> p.toFile().length()).sum();
+      return s.filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length()).sum();
     }
   }
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
+      if ("null".equals(value) || "NULL".equals(value)) {
+        return null;
+      }
       switch (dataType) {
         case BOOLEAN:
           return parseBoolean(value);
@@ -155,8 +164,7 @@ public class CommonUtils {
 
   private static boolean parseBoolean(String value) throws QueryProcessException {
     value = value.toLowerCase();
-    if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEAN_FALSE
-        .equals(value)) {
+    if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEAN_FALSE.equals(value)) {
       return false;
     }
     if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEAN_TRUE.equals(value)) {
@@ -193,13 +201,14 @@ public class CommonUtils {
     return MAX_EXECUTOR_POOL_SIZE;
   }
 
-  public static int runCli(List<Class<? extends Runnable>> commands, String[] args,
-      String cliName, String cliDescription) {
+  public static int runCli(
+      List<Class<? extends Runnable>> commands,
+      String[] args,
+      String cliName,
+      String cliDescription) {
     Cli.CliBuilder<Runnable> builder = Cli.builder(cliName);
 
-    builder.withDescription(cliDescription)
-        .withDefaultCommand(Help.class)
-        .withCommands(commands);
+    builder.withDescription(cliDescription).withDefaultCommand(Help.class).withCommands(commands);
 
     Cli<Runnable> parser = builder.build();
 
@@ -207,15 +216,15 @@ public class CommonUtils {
     try {
       Runnable parse = parser.parse(args);
       parse.run();
-    } catch (IllegalArgumentException |
-        IllegalStateException |
-        ParseArgumentsMissingException |
-        ParseArgumentsUnexpectedException |
-        ParseOptionConversionException |
-        ParseOptionMissingException |
-        ParseOptionMissingValueException |
-        ParseCommandMissingException |
-        ParseCommandUnrecognizedException e) {
+    } catch (IllegalArgumentException
+        | IllegalStateException
+        | ParseArgumentsMissingException
+        | ParseArgumentsUnexpectedException
+        | ParseOptionConversionException
+        | ParseOptionMissingException
+        | ParseOptionMissingValueException
+        | ParseCommandMissingException
+        | ParseCommandUnrecognizedException e) {
       badUse(e);
       status = 1;
     } catch (Exception e) {
@@ -226,8 +235,8 @@ public class CommonUtils {
   }
 
   private static void badUse(Exception e) {
-    System.out.println("memory-tool: " + e.getMessage());
-    System.out.println("See 'memory-tool help' or 'memory-tool help <command>'.");
+    System.out.println("node-tool: " + e.getMessage());
+    System.out.println("See 'node-tool help' or 'node-tool help <command>'.");
   }
 
   private static void err(Throwable e) {

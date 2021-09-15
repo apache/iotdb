@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -34,8 +30,14 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 public class MergeGroupByExecutor implements GroupByExecutor {
 
@@ -53,9 +55,14 @@ public class MergeGroupByExecutor implements GroupByExecutor {
 
   private List<GroupByExecutor> groupByExecutors;
 
-  MergeGroupByExecutor(PartialPath path, Set<String> deviceMeasurements, TSDataType dataType,
-      QueryContext context, Filter timeFilter,
-      MetaGroupMember metaGroupMember, boolean ascending) {
+  MergeGroupByExecutor(
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      TSDataType dataType,
+      QueryContext context,
+      Filter timeFilter,
+      MetaGroupMember metaGroupMember,
+      boolean ascending) {
     this.path = path;
     this.deviceMeasurements = deviceMeasurements;
     this.dataType = dataType;
@@ -85,14 +92,13 @@ public class MergeGroupByExecutor implements GroupByExecutor {
     }
     resetAggregateResults();
     for (GroupByExecutor groupByExecutor : groupByExecutors) {
-      List<AggregateResult> subResults = groupByExecutor
-          .calcResult(curStartTime, curEndTime);
+      List<AggregateResult> subResults = groupByExecutor.calcResult(curStartTime, curEndTime);
       for (int i = 0; i < subResults.size(); i++) {
         results.get(i).merge(subResults.get(i));
       }
     }
-    logger.debug("Aggregation result of {}@[{}, {}] is {}", path, curStartTime, curEndTime,
-        results);
+    logger.debug(
+        "Aggregation result of {}@[{}, {}] is {}", path, curStartTime, curEndTime, results);
     return results;
   }
 
@@ -109,8 +115,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
 
     Pair<Long, Object> result = null;
     for (GroupByExecutor groupByExecutor : groupByExecutors) {
-      Pair<Long, Object> pair = groupByExecutor
-          .peekNextNotNullValue(nextStartTime, nextEndTime);
+      Pair<Long, Object> pair = groupByExecutor.peekNextNotNullValue(nextStartTime, nextEndTime);
       if (pair == null) {
         continue;
       }
@@ -118,15 +123,20 @@ public class MergeGroupByExecutor implements GroupByExecutor {
         result = pair;
       }
     }
-    logger.debug("peekNextNotNullValue result of {}@[{}, {}] is {}", path, nextStartTime, nextEndTime,
+    logger.debug(
+        "peekNextNotNullValue result of {}@[{}, {}] is {}",
+        path,
+        nextStartTime,
+        nextEndTime,
         results);
     return result;
   }
 
   private void initExecutors() throws QueryProcessException {
     try {
-      groupByExecutors = readerFactory.getGroupByExecutors(path, deviceMeasurements, dataType,
-          context, timeFilter, aggregationTypes, ascending);
+      groupByExecutors =
+          readerFactory.getGroupByExecutors(
+              path, deviceMeasurements, dataType, context, timeFilter, aggregationTypes, ascending);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }

@@ -71,8 +71,7 @@ In addition, each custom MergeTask needs to inherit the Callable \<void\> interf
 
 ### selector
 
-Under limited memory and time, first select the unseq file in turn, and each time directly select the seq file that overlaps with the unseq file according to the time range
-
+Under limited memory and time, first select the unseq file in turn, Select the SEQ files that overlap each time directly based on the unseq file's time range.
 ### merge
 
 First select all series that need to be merged according to storageGroupName, then create a chunkMetaHeap for each seq file selected in the selector, and merge them into multiple sub-threads according to the mergeChunkSubThreadNum in the configuration.
@@ -87,7 +86,7 @@ Under the limited memory and time, first select the unseq file in turn, each tim
 
 Basically similar to the inplace strategy, first select all series that need to be merged according to storageGroupName, then create a chunkMetaHeap for each seq file selected in the selector, and merge into multiple child threads according to the mergeChunkSubThreadNum in the configuration to merge
 
-## Recovery after merge interruption
+## Recoverying after merge interruption
 
 The merge may be forcibly interrupted when the system shuts down or fails suddenly. At this time, the system records the interrupted merge and scans the merge.log file when the next StorageGroupProcessor is created, and re-merges according to the configuration.  There are the following states, among which the recovery process is to give up the merge strategy first
 
@@ -95,9 +94,7 @@ The merge may be forcibly interrupted when the system shuts down or fails sudden
 Basically did nothing, delete the corresponding merge log directly during recovery, and wait for the next manual or automatic merge
 
 ### MERGE_START
-Files to be merged and timeseries have been selected
-Delete the corresponding merge file during recovery, empty the selected file, and clear all other merge related public resources
-
+When the files to be merged and the TimeSeries have been selected, delete the corresponding merge file, empty the selected file, and empty the other merge related public resources.
 ### ALL_TS_MERGED
 All timeseries have been merged
 Perform cleanUp directly on recovery and execute the callback operation completed by merge

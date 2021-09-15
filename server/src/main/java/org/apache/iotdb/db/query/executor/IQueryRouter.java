@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.executor;
 
-
-import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -28,47 +26,43 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import java.io.IOException;
+
 public interface IQueryRouter {
 
-  /**
-   * Execute physical plan.
-   */
+  /** Execute physical plan. */
   QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException;
 
-  /**
-   * Execute aggregation query.
-   */
+  /** Execute aggregation query. */
   QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, IOException, QueryProcessException;
+      throws QueryFilterOptimizationException, StorageEngineException, IOException,
+          QueryProcessException;
 
-  /**
-   * Execute groupBy query.
-   */
+  /** Execute groupBy query. */
   QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException,
-      QueryProcessException, IOException;
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
+          IOException;
 
-  /**
-   * Execute fill query.
-   */
+  /** Execute fill query. */
   QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException;
 
-  /**
-   * Execute group by fill query
-   */
+  /** Execute group by fill query */
   QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException,
-      QueryProcessException, IOException;
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
+          IOException;
 
-  /**
-   * Execute last query
-   */
+  /** Execute last query */
   QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException;
+
+  /** Execute UDTF query */
+  QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException;
 }

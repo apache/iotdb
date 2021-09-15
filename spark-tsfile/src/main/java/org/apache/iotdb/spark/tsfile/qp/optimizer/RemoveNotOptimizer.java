@@ -18,20 +18,19 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.optimizer;
 
+import org.apache.iotdb.spark.tsfile.qp.common.BasicOperator;
+import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
+import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
+import org.apache.iotdb.spark.tsfile.qp.exception.RemoveNotException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_AND;
 import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_NOT;
 import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_OR;
-
-import java.util.List;
-import org.apache.iotdb.spark.tsfile.qp.common.BasicOperator;
-import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
-import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
-import org.apache.iotdb.spark.tsfile.qp.exception.BasicOperatorException;
-import org.apache.iotdb.spark.tsfile.qp.exception.RemoveNotException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 public class RemoveNotOptimizer implements IFilterOptimizer {
 
@@ -64,29 +63,17 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
         children.set(1, removeNot(children.get(1)));
         return filter;
       case KW_NOT:
-        try {
-          return reverseFilter(filter.getChildren().get(0));
-        } catch (BasicOperatorException e) {
-          LOG.error("reverse Filter failed.");
-        }
+        return reverseFilter(filter.getChildren().get(0));
       default:
-        throw new RemoveNotException("Unknown token in removeNot: " + tokenInt + ","
-            + SQLConstant.tokenNames.get(tokenInt));
+        throw new RemoveNotException(
+            "Unknown token in removeNot: " + tokenInt + "," + SQLConstant.tokenNames.get(tokenInt));
     }
   }
 
-
-  private FilterOperator reverseFilter(FilterOperator filter)
-      throws RemoveNotException, BasicOperatorException {
+  private FilterOperator reverseFilter(FilterOperator filter) throws RemoveNotException {
     int tokenInt = filter.getTokenIntType();
     if (filter.isLeaf()) {
-      try {
-        ((BasicOperator) filter).setReversedTokenIntType();
-      } catch (BasicOperatorException e) {
-        throw new RemoveNotException(
-            "convert BasicFuntion to reserved meet failed: previous token:" + tokenInt
-                + "tokenSymbol:" + SQLConstant.tokenNames.get(tokenInt));
-      }
+      ((BasicOperator) filter).setReversedTokenIntType();
       return filter;
     }
     switch (tokenInt) {
@@ -100,9 +87,11 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       case KW_NOT:
         return removeNot(filter.getChildren().get(0));
       default:
-        throw new RemoveNotException("Unknown token in reverseFilter: " + tokenInt + ","
-            + SQLConstant.tokenNames.get(tokenInt));
+        throw new RemoveNotException(
+            "Unknown token in reverseFilter: "
+                + tokenInt
+                + ","
+                + SQLConstant.tokenNames.get(tokenInt));
     }
   }
-
 }

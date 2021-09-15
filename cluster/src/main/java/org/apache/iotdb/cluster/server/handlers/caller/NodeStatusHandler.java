@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.nodetool.function.Status;
+
+import org.apache.thrift.async.AsyncMethodCallback;
+
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.thrift.async.AsyncMethodCallback;
 
 public class NodeStatusHandler implements AsyncMethodCallback<Node> {
 
-
-  private Map<Node, Boolean> nodeStatusMap;
+  private Map<Node, Integer> nodeStatusMap;
 
   private AtomicInteger countResponse;
 
-  public NodeStatusHandler(Map<Node, Boolean> nodeStatusMap) {
+  public NodeStatusHandler(Map<Node, Integer> nodeStatusMap) {
     this.nodeStatusMap = nodeStatusMap;
     this.countResponse = new AtomicInteger();
   }
@@ -39,9 +41,12 @@ public class NodeStatusHandler implements AsyncMethodCallback<Node> {
   @Override
   public void onComplete(Node response) {
     synchronized (nodeStatusMap) {
-      nodeStatusMap.put(response, true);
+      if (response == null) {
+        return;
+      }
+      nodeStatusMap.put(response, Status.LIVE);
       // except for this node itself
-      if(countResponse.incrementAndGet() == nodeStatusMap.size() - 1){
+      if (countResponse.incrementAndGet() == nodeStatusMap.size() - 1) {
         nodeStatusMap.notifyAll();
       }
     }

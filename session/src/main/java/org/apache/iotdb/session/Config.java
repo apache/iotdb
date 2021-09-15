@@ -20,12 +20,22 @@ package org.apache.iotdb.session;
 
 public class Config {
 
+  public static final String DEFAULT_HOST = "localhost";
+  public static final int DEFAULT_PORT = 6667;
   public static final String DEFAULT_USER = "root";
   public static final String DEFAULT_PASSWORD = "root";
-  public static final int DEFAULT_FETCH_SIZE = 10000;
-  public static final int DEFAULT_TIMEOUT_MS = 0;
+  public static final int DEFAULT_FETCH_SIZE = 5000;
+  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
   public static final boolean DEFAULT_CACHE_LEADER_MODE = true;
 
   public static final int RETRY_NUM = 3;
   public static final long RETRY_INTERVAL_MS = 1000;
+
+  /** thrift init buffer size, 1KB by default */
+  public static final int DEFAULT_INITIAL_BUFFER_CAPACITY = 1024;
+
+  /** thrift max frame size (16384000 bytes by default), we change it to 64MB */
+  public static final int DEFAULT_MAX_FRAME_SIZE = 67108864;
+
+  public static final int DEFAULT_SESSION_POOL_MAX_SIZE = 5;
 }

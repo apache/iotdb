@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import com.google.common.util.concurrent.RateLimiter;
-import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
+
+import com.google.common.util.concurrent.RateLimiter;
 import org.junit.Test;
+
+import java.util.PriorityQueue;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class MergeManagerTest extends MergeTest {
 
@@ -40,7 +42,6 @@ public class MergeManagerTest extends MergeTest {
     MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 16 * 1024 * 1024L);
     assertTrue((System.currentTimeMillis() - startTime) >= 9000);
   }
-
 
   @Test
   public void testGenMergeReport() {
@@ -69,8 +70,7 @@ public class MergeManagerTest extends MergeTest {
 
     MergeManager.getINSTANCE().abortMerge("test");
     report = MergeManager.getINSTANCE().genMergeTaskReport();
-    assertEquals(String.format("Main tasks:%n"
-        + "Sub tasks:%n"), report);
+    assertEquals(String.format("Main tasks:%n" + "Sub tasks:%n"), report);
   }
 
   private void checkReport(String report) {
@@ -99,9 +99,7 @@ public class MergeManagerTest extends MergeTest {
     private String progress = "0";
 
     public FakedMainMergeTask(int serialNum) {
-      super(null, null, null, null, false,
-          0,
-          null);
+      super(null, null, null, null, false, 0, null);
       this.serialNum = serialNum;
     }
 
@@ -133,8 +131,7 @@ public class MergeManagerTest extends MergeTest {
   static class FakedMergeMultiChunkTask extends MergeMultiChunkTask {
 
     public FakedMergeMultiChunkTask() {
-      super(null, null, null, null, false, null,
-          0, null);
+      super(null, null, null, null, false, null, 0, null);
     }
 
     public MergeChunkHeapTask createSubTask(int serialNum) {
@@ -176,5 +173,4 @@ public class MergeManagerTest extends MergeTest {
       }
     }
   }
-
 }

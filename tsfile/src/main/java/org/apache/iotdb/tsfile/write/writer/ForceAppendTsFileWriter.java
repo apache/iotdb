@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * ForceAppendTsFileWriter opens a COMPLETE TsFile, reads and truncate its metadata to support
@@ -65,15 +66,10 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
       truncatePosition = tsFileMetadata.getMetaOffset();
 
       canWrite = true;
-      versionInfo = tsFileMetadata.getVersionInfo();
-      totalChunkNum = tsFileMetadata.getTotalChunkNum();
-      invalidChunkNum = tsFileMetadata.getInvalidChunkNum();
-      
       List<String> devices = reader.getAllDevices();
       for (String device : devices) {
         List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-        reader.readChunkMetadataInDevice(device).values()
-            .forEach(chunkMetadataList::addAll);          
+        reader.readChunkMetadataInDevice(device).values().forEach(chunkMetadataList::addAll);
         ChunkGroupMetadata chunkGroupMetadata = new ChunkGroupMetadata(device, chunkMetadataList);
         chunkGroupMetadataList.add(chunkGroupMetadata);
       }
@@ -87,5 +83,4 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
   public long getTruncatePosition() {
     return truncatePosition;
   }
-
 }

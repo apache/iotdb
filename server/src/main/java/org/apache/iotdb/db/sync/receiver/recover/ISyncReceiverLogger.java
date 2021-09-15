@@ -26,9 +26,7 @@ public interface ISyncReceiverLogger {
   String SYNC_DELETED_FILE_NAME_START = "sync deleted file names start";
   String SYNC_TSFILE_START = "sync tsfile start";
 
-  /**
-   * Start to sync deleted files name
-   */
+  /** Start to sync deleted files name */
   void startSyncDeletedFilesName() throws IOException;
 
   /**
@@ -38,9 +36,7 @@ public interface ISyncReceiverLogger {
    */
   void finishSyncDeletedFileName(File file) throws IOException;
 
-  /**
-   * Start to sync new tsfiles
-   */
+  /** Start to sync new tsfiles */
   void startSyncTsFiles() throws IOException;
 
   /**

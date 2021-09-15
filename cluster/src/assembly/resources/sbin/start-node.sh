@@ -27,35 +27,32 @@ if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi
 
-IOTDB_CONF=${IOTDB_HOME}/conf
-# IOTDB_LOGS=${IOTDB_HOME}/logs
+enable_printgc=false
+if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+  enable_printgc=true;
+  shift
+fi
+
+IOTDB_CONF=$1
+if [ -z "${IOTDB_CONF}" ]; then
+  export IOTDB_CONF=${IOTDB_HOME}/conf
+fi
 
 if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
-    if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+    if [ $enable_printgc == "true" ]; then
       . "$IOTDB_CONF/iotdb-env.sh" "printgc"
-      shift
     else
         . "$IOTDB_CONF/iotdb-env.sh"
+    fi
+elif [ -f "${IOTDB_HOME}/conf/iotdb-env.sh" ]; then
+    if [ $enable_printgc == "true" ]; then
+      . "${IOTDB_HOME}/conf/iotdb-env.sh" "printgc"
+    else
+      . "${IOTDB_HOME}/conf/iotdb-env.sh"
     fi
 else
     echo "can't find $IOTDB_CONF/iotdb-env.sh"
 fi
-
-is_conf_path=false
-for arg do
-    shift
-    if [ "$arg" == "-c" ]; then
-        is_conf_path=true
-        continue
-    fi
-
-    if [ $is_conf_path == true ]; then
-        IOTDB_CONF=$arg
-        is_conf_path=false
-        continue
-    fi
-    set -- "$@" "$arg"
-done
 
 CONF_PARAMS="-s "$*
 
@@ -88,9 +85,9 @@ launch_service()
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
-	iotdb_parms="$iotdb_parms -DCLUSTER_CONF=${IOTDB_CONF}"
+	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class" $CONF_PARAMS
+	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
 	return $?
 }
 

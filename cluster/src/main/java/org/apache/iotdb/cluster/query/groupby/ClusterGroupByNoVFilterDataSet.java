@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
-import java.util.ArrayList;
-import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -33,16 +31,21 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.ArrayList;
+import java.util.Set;
+
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDataSet {
 
   private MetaGroupMember metaGroupMember;
 
-  public ClusterGroupByNoVFilterDataSet(QueryContext context,
-      GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
+  public ClusterGroupByNoVFilterDataSet(
+      QueryContext context, GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
       throws StorageEngineException, QueryProcessException {
-    initQueryDataSetFields(new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
-        groupByPlan.getDeduplicatedDataTypes(), groupByPlan.isAscending());
+    initQueryDataSetFields(
+        new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
+        groupByPlan.getDeduplicatedDataTypes(),
+        groupByPlan.isAscending());
     initGroupByEngineDataSetFields(context, groupByPlan);
 
     this.metaGroupMember = metaGroupMember;
@@ -50,10 +53,15 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
   }
 
   @Override
-  protected GroupByExecutor getGroupByExecutor(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType, QueryContext context,
-      Filter timeFilter, TsFileFilter fileFilter, boolean ascending) {
-    return new MergeGroupByExecutor(path, deviceMeasurements, dataType, context, timeFilter,
-        metaGroupMember, ascending);
+  protected GroupByExecutor getGroupByExecutor(
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      TSDataType dataType,
+      QueryContext context,
+      Filter timeFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    return new MergeGroupByExecutor(
+        path, deviceMeasurements, dataType, context, timeFilter, metaGroupMember, ascending);
   }
 }

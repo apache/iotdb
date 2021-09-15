@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.read.common;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
 import org.junit.Test;
 
 import java.io.IOException;
@@ -29,7 +30,6 @@ import java.io.IOException;
 import static org.junit.Assert.*;
 
 public class BatchDataTest {
-
 
   @Test
   public void testInt() {
@@ -45,7 +45,7 @@ public class BatchDataTest {
     long time = 0;
     while (batchData.hasCurrent()) {
       assertEquals(time, batchData.currentTime());
-      assertEquals(res, (int)batchData.currentValue());
+      assertEquals(res, (int) batchData.currentValue());
       assertEquals(res, batchData.currentTsPrimitiveType().getInt());
       batchData.next();
       res++;
@@ -54,7 +54,7 @@ public class BatchDataTest {
     batchData.resetBatchData();
 
     IPointReader reader = batchData.getBatchDataIterator();
-    try{
+    try {
       res = 0;
       time = 0;
       while (reader.hasNextTimeValuePair()) {

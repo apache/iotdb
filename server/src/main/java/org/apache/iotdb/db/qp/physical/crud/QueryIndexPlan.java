@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+
+import java.util.Map;
+import java.util.Objects;
 
 public class QueryIndexPlan extends RawDataQueryPlan {
 
@@ -71,5 +72,10 @@ public class QueryIndexPlan extends RawDataQueryPlan {
   @Override
   public String toString() {
     return String.format("Query paths: %s, index type: %s, props: %s", paths, indexType, props);
+  }
+
+  @Override
+  public boolean isRawQuery() {
+    return false;
   }
 }

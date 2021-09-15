@@ -18,46 +18,54 @@
  */
 package org.apache.iotdb.db.utils;
 
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.concurrent.TimeUnit;
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerManagementException;
+import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.thrift.transport.TSocket;
+import org.apache.iotdb.rpc.TConfigurationConst;
+import org.apache.iotdb.rpc.TSocketWrapper;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * <p>
- * This class is used for cleaning test environment in unit test and integration test
- * </p>
- */
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.fail;
+
+/** This class is used for cleaning test environment in unit test and integration test */
 public class EnvironmentUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
@@ -68,22 +76,38 @@ public class EnvironmentUtils {
   public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  private static final long oldTsFileThreshold = config.getTsFileSizeThreshold();
+  private static final long oldSeqTsFileSize = config.getSeqTsFileSize();
+  private static final long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
 
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   private static IoTDB daemon;
 
-  public static boolean examinePorts = Boolean
-      .parseBoolean(System.getProperty("test.port.closed", "false"));
+  private static TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
+
+  public static boolean examinePorts =
+      Boolean.parseBoolean(System.getProperty("test.port.closed", "false"));
 
   public static void cleanEnv() throws IOException, StorageEngineException {
+    // wait all compaction finished
+    CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
+
+    // deregister all user defined classes
+    try {
+      UDFRegistrationService.getInstance().deregisterAll();
+      TriggerRegistrationService.getInstance().deregisterAll();
+      ContinuousQueryService.getInstance().deregisterAll();
+    } catch (UDFRegistrationException | TriggerManagementException | ContinuousQueryException e) {
+      fail(e.getMessage());
+    }
+
     logger.warn("EnvironmentUtil cleanEnv...");
     if (daemon != null) {
       daemon.stop();
       daemon = null;
     }
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
+
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -91,11 +115,11 @@ public class EnvironmentUtils {
       // TODO: this is just too slow, especially on Windows, consider a better way
       boolean closed = examinePorts();
       if (!closed) {
-        //sleep 10 seconds
+        // sleep 10 seconds
         try {
           TimeUnit.SECONDS.sleep(10);
         } catch (InterruptedException e) {
-          //do nothing
+          // do nothing
         }
 
         if (!examinePorts()) {
@@ -115,7 +139,6 @@ public class EnvironmentUtils {
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
-      ChunkMetadataCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
     }
     // close metadata
@@ -132,15 +155,18 @@ public class EnvironmentUtils {
     // clear system info
     SystemInfo.getInstance().close();
 
+    // clear memtable manager info
+    MemTableManager.getInstance().close();
+
     // delete all directory
     cleanAllDir();
-    config.setTsFileSizeThreshold(oldTsFileThreshold);
+    config.setSeqTsFileSize(oldSeqTsFileSize);
+    config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
-
   private static boolean examinePorts() {
-    TTransport transport = new TSocket("127.0.0.1", 6667, 100);
+    TTransport transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 6667, 100);
     if (!transport.isOpen()) {
       try {
         transport.open();
@@ -148,11 +174,11 @@ public class EnvironmentUtils {
         transport.close();
         return false;
       } catch (TTransportException e) {
-        //do nothing
+        // do nothing
       }
     }
-    //try sync service
-    transport = new TSocket("127.0.0.1", 5555, 100);
+    // try sync service
+    transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 5555, 100);
     if (!transport.isOpen()) {
       try {
         transport.open();
@@ -160,32 +186,30 @@ public class EnvironmentUtils {
         transport.close();
         return false;
       } catch (TTransportException e) {
-        //do nothing
+        // do nothing
       }
     }
-    //try jmx connection
+    // try jmx connection
     try {
-      JMXServiceURL url =
-          new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+      JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
       JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
       logger.error("stop JMX failed. 31999 can be connected now.");
       jmxConnector.close();
       return false;
     } catch (IOException e) {
-      //do nothing
+      // do nothing
     }
-    //try MetricService
+    // try MetricService
     try (Socket socket = new Socket()) {
       socket.connect(new InetSocketAddress("127.0.0.1", 8181), 100);
       logger.error("stop MetricService failed. 8181 can be connected now.");
       return false;
     } catch (Exception e) {
-      //do nothing
+      // do nothing
     }
-    //do nothing
+    // do nothing
     return true;
   }
-
 
   public static void cleanAllDir() throws IOException {
     // delete sequential files
@@ -204,6 +228,10 @@ public class EnvironmentUtils {
     cleanDir(config.getQueryDir());
     // delete tracing
     cleanDir(config.getTracingDir());
+    // delete ulog
+    cleanDir(config.getUdfDir());
+    // delete tlog
+    cleanDir(config.getTriggerDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -214,20 +242,16 @@ public class EnvironmentUtils {
     FileUtils.deleteDirectory(new File(dir));
   }
 
-  /**
-   * disable the system monitor</br> this function should be called before all code in the setup
-   */
+  /** disable the system monitor</br> this function should be called before all code in the setup */
   public static void closeStatMonitor() {
     config.setEnableStatMonitor(false);
   }
 
-  /**
-   * disable memory control</br> this function should be called before all code in the setup
-   */
+  /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() {
     logger.warn("EnvironmentUtil setup...");
-    IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
-    //we do not start 8181 port in test.
+    IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(60);
+    // we do not start 8181 port in test.
     IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     if (daemon == null) {
@@ -240,9 +264,7 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
-    // disable the system monitor
-    config.setEnableStatMonitor(false);
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
@@ -276,6 +298,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
+    IoTDB.metaManager.clear();
     reactiveDaemon();
   }
 
@@ -290,6 +313,9 @@ public class EnvironmentUtils {
     }
     // create storage group
     createDir(config.getSystemDir());
+    // create sg dir
+    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+    createDir(sgDir);
     // create wal
     createDir(config.getWalDir());
     // create query
@@ -299,7 +325,7 @@ public class EnvironmentUtils {
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
     }
-    //create user and roles folder
+    // create user and roles folder
     try {
       BasicAuthorizer.getInstance().reset();
     } catch (AuthException e) {

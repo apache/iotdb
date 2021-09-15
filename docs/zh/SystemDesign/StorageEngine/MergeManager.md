@@ -30,12 +30,12 @@
 ## 调用过程
 
 - 每一次 merge 会在用户 client 调用"merge"命令或根据配置中的 mergeIntervalSec 定时进行
-- merge 分为三个过程，包括选择文件(selector)，进行 merge ，以及 merge 过程中断后的恢复(recover)
+- merge 分为三个过程，包括选择文件 (selector)，进行 merge ，以及 merge 过程中断后的恢复 (recover)
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/24886743/75313978-6c64b000-5899-11ea-8565-40b012f9c8a2.png">
 
 ## 合并的例子
 
-在 squeeze 合并策略下，当一系列的 seq 以及 unseq 文件进行合并，且并未超过时间及内存限制时，所有文件都将合并为一个命名为{时间戳}-{版本}-{merge次数+1}.tsfile.merge.squeeze的文件
+在 squeeze 合并策略下，当一系列的 seq 以及 unseq 文件进行合并，且并未超过时间及内存限制时，所有文件都将合并为一个命名为{时间戳}-{版本}-{merge 次数+1}.tsfile.merge.squeeze 的文件
 ​    
 当超出了时间或内存限制，文件选择过程将被中断，当前已被选中的 seq 以及 unseq 文件则会进行如上合并形成一个文件
 
@@ -53,9 +53,9 @@
     
 * org.apache.iotdb.db.engine.merge.IRecoverMergeTask
   
-    recover 过程的接口类，规定了 recoverMerge 接口，所有自定义的merge恢复策略均需继承此类
+    recover 过程的接口类，规定了 recoverMerge 接口，所有自定义的 merge 恢复策略均需继承此类
 
-此外，每一个自定义的MergeTask均需继承Callable\<void\>接口，以保证可以被回调
+此外，每一个自定义的 MergeTask 均需继承 Callable\<void\>接口，以保证可以被回调
 
 * org.apache.iotdb.db.engine.merge.manage.MergeContext
 
@@ -69,7 +69,7 @@
 
     Merge 过程中的资源类，负责管理 merge 过程中的 files,readers,writers,measurementSchemas,modifications 等资源
 
-## inplace策略
+## inplace 策略
 
 ### selector
 
@@ -77,19 +77,19 @@
 
 ### merge
 
-首先根据 storageGroupName 选出所有需要 merge 的 series ，然后针对 selector 中选出的每一个 seq 文件建立 chunkMetaHeap ,并根据配置中的 mergeChunkSubThreadNum 分多个子线程进行合并
+首先根据 storageGroupName 选出所有需要 merge 的 series ，然后针对 selector 中选出的每一个 seq 文件建立 chunkMetaHeap , 并根据配置中的 mergeChunkSubThreadNum 分多个子线程进行合并
 
-## squeeze策略
+## squeeze 策略
 
 ### selector
 
-在受限的内存和时间下，先依次选择 unseq 文件，每次根据 unseq 文件的时间范围选择与之重叠的seq文件，然后按次序重试每一个 seq 文件，尽可能在内存和时间受限的情况下多取一些 seq 文件
+在受限的内存和时间下，先依次选择 unseq 文件，每次根据 unseq 文件的时间范围选择与之重叠的 seq 文件，然后按次序重试每一个 seq 文件，尽可能在内存和时间受限的情况下多取一些 seq 文件
 
 ### merge
 
-基本与 inplace 策略类似，首先根据 storageGroupName 选出所有需要 merge 的 series ，然后针对 selector 中选出的每一个 seq 文件建立 chunkMetaHeap ,并根据配置中的 mergeChunkSubThreadNum 分多个子线程进行合并
+基本与 inplace 策略类似，首先根据 storageGroupName 选出所有需要 merge 的 series ，然后针对 selector 中选出的每一个 seq 文件建立 chunkMetaHeap , 并根据配置中的 mergeChunkSubThreadNum 分多个子线程进行合并
 
-## merge中断后的恢复
+## merge 中断后的恢复
 
 merge 在系统突然关闭或者出现故障时，可能会被强行中断，此时系统会记录下被中断的 merge 并在下一次 StorageGroupProcessor 被创建时扫描 merge.log 文件，根据配置进行重新 merge，也就是 recover 过程
 
@@ -108,5 +108,5 @@ merge 会有以下几个状态，其中恢复过程均为优先放弃合并策�
 恢复时直接进行 cleanUp ，并执行 merge 完成的回调操作
 
 ### MERGE_END
-表面所有的文件已经被合并，此次merge已经完成
+表面所有的文件已经被合并，此次 merge 已经完成
 原则上不会在 merge log 中出现此状态

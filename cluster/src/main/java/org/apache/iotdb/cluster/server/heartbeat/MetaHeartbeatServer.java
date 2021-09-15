@@ -17,38 +17,37 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import java.net.InetSocketAddress;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Processor;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
 
 public class MetaHeartbeatServer extends HeartbeatServer {
+  private static Logger logger = LoggerFactory.getLogger(MetaHeartbeatServer.class);
 
   private MetaClusterServer metaClusterServer;
 
-
-  /**
-   * Do not use this method for initialization
-   */
-  private MetaHeartbeatServer() {
-  }
+  /** Do not use this method for initialization */
+  private MetaHeartbeatServer() {}
 
   public MetaHeartbeatServer(Node thisNode, MetaClusterServer metaClusterServer) {
     super(thisNode);
     this.metaClusterServer = metaClusterServer;
   }
-
 
   @Override
   TProcessor getProcessor() {
@@ -61,13 +60,22 @@ public class MetaHeartbeatServer extends HeartbeatServer {
 
   @Override
   TServerTransport getHeartbeatServerSocket() throws TTransportException {
+    logger.info(
+        "[{}] Cluster node will listen {}:{}",
+        getServerClientName(),
+        config.getInternalIp(),
+        config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
-          config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET),
+      return new TNonblockingServerSocket(
+          new InetSocketAddress(
+              config.getInternalIp(),
+              config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET),
           getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
-          config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET));
+      return new TServerSocket(
+          new InetSocketAddress(
+              config.getInternalIp(),
+              config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET));
     }
   }
 

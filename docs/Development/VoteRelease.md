@@ -88,11 +88,11 @@ mvn -B apache-rat:check
 * Verify signatures and hashes
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-source-release.zip.asc apache-iotdb-0.9.0-incubating-source-release.zip
+gpg2 --verify apache-iotdb-0.12.0-source-release.zip.asc apache-iotdb-0.12.0-source-release.zip
 
 appear Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-source-release.zip
+shasum -a512 apache-iotdb-0.12.0-source-release.zip
 
 Compared with the corresponding .sha512, the same is fine.
 ```
@@ -114,11 +114,11 @@ Should end up all SUCCESS
 * Verify signatures and hashes
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-bin.zip.asc apache-iotdb-0.9.0-incubating-bin.zip
+gpg2 --verify apache-iotdb-0.12.0-bin.zip.asc apache-iotdb-0.12.0-bin.zip
 
 appear Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-bin.zip
+shasum -a512 apache-iotdb-0.12.0-bin.zip
 
 Compared with the corresponding .sha512, the same is fine.
 ```

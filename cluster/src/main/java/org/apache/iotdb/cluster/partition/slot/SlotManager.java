@@ -1,8 +1,31 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.  See the NOTICE file distributed with this work for additional information regarding copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at      http://www.apache.org/licenses/LICENSE-2.0  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.cluster.partition.slot;
+
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+import org.apache.iotdb.db.exception.StorageEngineException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -15,34 +38,30 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.utils.SerializeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * SlotManager manages the status of the slots involved during a data transfer (data slot
- * ownership changes caused by node removals or additions) of a data group member.
+ * SlotManager manages the status of the slots involved during a data transfer (data slot ownership
+ * changes caused by node removals or additions) of a data group member.
  */
 public class SlotManager {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotManager.class);
   private static final long SLOT_WAIT_INTERVAL_MS = 10;
+  private static final long SLOT_WAIT_THRESHOLD_MS = 2000;
   private static final String SLOT_FILE_NAME = "SLOT_STATUS";
 
   private String slotFilePath;
 
-  /**
-   * the serial number of a slot -> the status and source of a slot
-   */
+  /** the serial number of a slot -> the status and source of a slot */
   private Map<Integer, SlotDescriptor> idSlotMap;
 
-  public SlotManager(long totalSlotNumber, String memberDir) {
+  private String memberName;
+
+  public SlotManager(long totalSlotNumber, String memberDir, String memberName) {
     if (memberDir != null) {
       this.slotFilePath = memberDir + File.separator + SLOT_FILE_NAME;
     }
+    this.memberName = memberName;
     if (!load()) {
       init(totalSlotNumber);
     }
@@ -57,10 +76,12 @@ public class SlotManager {
 
   /**
    * Wait until the status of the slot becomes NULL
+   *
    * @param slotId
    */
   public void waitSlot(int slotId) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    long startTime = System.currentTimeMillis();
     while (true) {
       synchronized (slotDescriptor) {
         if (slotDescriptor.slotStatus == SlotStatus.PULLING
@@ -72,6 +93,10 @@ public class SlotManager {
             logger.error("Unexpected interruption when waiting for slot {}", slotId, e);
           }
         } else {
+          long cost = System.currentTimeMillis() - startTime;
+          if (cost > SLOT_WAIT_THRESHOLD_MS) {
+            logger.info("Wait slot {} cost {}ms", slotId, cost);
+          }
           return;
         }
       }
@@ -80,20 +105,20 @@ public class SlotManager {
 
   /**
    * Wait until the status of the slot becomes NULL or PULLING_WRITABLE
+   *
    * @param slotId
    */
   public void waitSlotForWrite(int slotId) throws StorageEngineException {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    long startTime = System.currentTimeMillis();
     while (true) {
       synchronized (slotDescriptor) {
-        if (slotDescriptor.slotStatus == SlotStatus.SENDING
-            || slotDescriptor.slotStatus == SlotStatus.SENT) {
-          throw new StorageEngineException(String.format("Slot %d no longer belongs to the node",
-              slotId));
-        }
-        if (slotDescriptor.slotStatus != SlotStatus.NULL &&
-            slotDescriptor.slotStatus != SlotStatus.PULLING_WRITABLE) {
+        if (slotDescriptor.slotStatus == SlotStatus.PULLING) {
           try {
+            if ((System.currentTimeMillis() - startTime) >= SLOT_WAIT_THRESHOLD_MS) {
+              throw new StorageEngineException(
+                  String.format("The status of slot %d is still PULLING after 5s.", slotId));
+            }
             slotDescriptor.wait(SLOT_WAIT_INTERVAL_MS);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -106,8 +131,19 @@ public class SlotManager {
     }
   }
 
+  /** If a slot in the status of PULLING or PULLING_WRITABLE, reads of it should merge the source */
+  public boolean checkSlotInDataMigrationStatus(int slotId) {
+    SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    return slotDescriptor.slotStatus == SlotStatus.PULLING
+        || slotDescriptor.slotStatus == SlotStatus.PULLING_WRITABLE;
+  }
+
+  public boolean checkSlotInMetaMigrationStatus(int slotId) {
+    SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    return slotDescriptor.slotStatus == SlotStatus.PULLING;
+  }
+
   /**
-   *
    * @param slotId
    * @return the SlotStatus of a slot
    */
@@ -116,7 +152,6 @@ public class SlotManager {
   }
 
   /**
-   *
    * @param slotId
    * @return the source of a slot if it is being pulled, or null if it is not being pulled
    */
@@ -126,45 +161,71 @@ public class SlotManager {
 
   /**
    * Set the status of slot "slotId" to PULLING and its source to "source".
+   *
    * @param slotId
    * @param source
    */
   public void setToPulling(int slotId, Node source) {
+    setToPulling(slotId, source, true);
+  }
+
+  public void setToPulling(int slotId, Node source, boolean needSave) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
     synchronized (slotDescriptor) {
       slotDescriptor.slotStatus = SlotStatus.PULLING;
       slotDescriptor.source = source;
     }
+    if (needSave) {
+      save();
+    }
   }
 
   /**
    * Set the status of slot "slotId" to PULLING_WRITABLE.
+   *
    * @param slotId
    */
   public void setToPullingWritable(int slotId) {
+    setToPullingWritable(slotId, true);
+  }
+
+  public void setToPullingWritable(int slotId, boolean needSave) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
     synchronized (slotDescriptor) {
       slotDescriptor.slotStatus = SlotStatus.PULLING_WRITABLE;
       slotDescriptor.notifyAll();
     }
-    save();
+    if (needSave) {
+      save();
+    }
   }
 
   /**
    * Set the status of slot "slotId" to NULL.
+   *
    * @param slotId
    */
   public void setToNull(int slotId) {
+    setToNull(slotId, true);
+  }
+
+  public void setToNull(int slotId, boolean needSave) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
     synchronized (slotDescriptor) {
       slotDescriptor.slotStatus = SlotStatus.NULL;
       slotDescriptor.source = null;
       slotDescriptor.notifyAll();
     }
-    save();
+    if (needSave) {
+      save();
+    }
   }
 
   public void setToSending(int slotId) {
+    setToSending(slotId, true);
+  }
+
+  public void setToSending(int slotId, boolean needSave) {
     // only NULL slots can be set to SENDING
     waitSlot(slotId);
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
@@ -172,7 +233,9 @@ public class SlotManager {
       slotDescriptor.slotStatus = SlotStatus.SENDING;
       slotDescriptor.snapshotReceivedCount = 0;
     }
-    save();
+    if (needSave) {
+      save();
+    }
   }
 
   private void setToSent(int slotId) {
@@ -180,24 +243,30 @@ public class SlotManager {
     synchronized (slotDescriptor) {
       slotDescriptor.slotStatus = SlotStatus.SENT;
     }
-    save();
   }
 
   /**
    * If a slot is in LOSING status and one member of the remote group has pulled snapshot, the
    * method should be called so eventually we can clear data of the slot.
+   *
    * @param slotId
    * @return how many members in the remote group has received the snapshot (including this
-   * invocation).
+   *     invocation).
    */
   public int sentOneReplication(int slotId) {
+    return sentOneReplication(slotId, true);
+  }
+
+  public int sentOneReplication(int slotId, boolean needSave) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
     synchronized (slotDescriptor) {
       int sentReplicaNum = ++slotDescriptor.snapshotReceivedCount;
       if (sentReplicaNum >= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
         setToSent(slotId);
       }
-      save();
+      if (needSave) {
+        save();
+      }
       return sentReplicaNum;
     }
   }
@@ -216,8 +285,10 @@ public class SlotManager {
       byte[] bytes = new byte[(int) slotFile.length()];
       int read = bufferedInputStream.read(bytes);
       if (read != slotFile.length() && logger.isWarnEnabled()) {
-        logger.warn("SlotManager in {} read size does not equal to file size: {}/{}",
-            slotFilePath, read,
+        logger.warn(
+            "SlotManager in {} read size does not equal to file size: {}/{}",
+            slotFilePath,
+            read,
             slotFile.length());
       }
       deserialize(ByteBuffer.wrap(bytes));
@@ -228,7 +299,7 @@ public class SlotManager {
     }
   }
 
-  private synchronized void save() {
+  public synchronized void save() {
     if (slotFilePath == null) {
       return;
     }
@@ -243,6 +314,23 @@ public class SlotManager {
     } catch (IOException e) {
       logger.warn("SlotManager in {} cannot be saved", slotFilePath, e);
     }
+  }
+
+  public int getSloNumInDataMigration() {
+    int res = 0;
+    for (Entry<Integer, SlotDescriptor> entry : idSlotMap.entrySet()) {
+      SlotDescriptor descriptor = entry.getValue();
+      if (descriptor.slotStatus == SlotStatus.PULLING
+          || descriptor.slotStatus == SlotStatus.PULLING_WRITABLE) {
+        logger.info(
+            "{}: slot {} is in data migration, status is {}",
+            memberName,
+            entry.getKey(),
+            descriptor.slotStatus);
+        res++;
+      }
+    }
+    return res;
   }
 
   private void serialize(DataOutputStream outputStream) throws IOException {
@@ -263,7 +351,6 @@ public class SlotManager {
     }
   }
 
-
   public enum SlotStatus {
     // the slot has pulled data or does not belong to this member
     NULL,
@@ -279,13 +366,12 @@ public class SlotManager {
   }
 
   private static class SlotDescriptor {
-    private SlotStatus slotStatus;
+    private volatile SlotStatus slotStatus;
     private Node source;
     // in LOSING status, how many members in the new owner have pulled data
     private volatile int snapshotReceivedCount;
 
-    SlotDescriptor() {
-    }
+    SlotDescriptor() {}
 
     SlotDescriptor(SlotStatus slotStatus) {
       this.slotStatus = slotStatus;
@@ -294,7 +380,7 @@ public class SlotManager {
     private void serialize(DataOutputStream outputStream) throws IOException {
       outputStream.writeInt(slotStatus.ordinal());
       if (slotStatus == SlotStatus.PULLING || slotStatus == SlotStatus.PULLING_WRITABLE) {
-        SerializeUtils.serialize(source, outputStream);
+        NodeSerializeUtils.serialize(source, outputStream);
       } else if (slotStatus == SlotStatus.SENDING) {
         outputStream.writeInt(snapshotReceivedCount);
       }
@@ -303,9 +389,10 @@ public class SlotManager {
     private static SlotDescriptor deserialize(ByteBuffer buffer) {
       SlotDescriptor descriptor = new SlotDescriptor();
       descriptor.slotStatus = SlotStatus.values()[buffer.getInt()];
-      if (descriptor.slotStatus == SlotStatus.PULLING || descriptor.slotStatus == SlotStatus.PULLING_WRITABLE) {
+      if (descriptor.slotStatus == SlotStatus.PULLING
+          || descriptor.slotStatus == SlotStatus.PULLING_WRITABLE) {
         descriptor.source = new Node();
-        SerializeUtils.deserialize(descriptor.source, buffer);
+        NodeSerializeUtils.deserialize(descriptor.source, buffer);
       } else if (descriptor.slotStatus == SlotStatus.SENDING) {
         descriptor.snapshotReceivedCount = buffer.getInt();
       }

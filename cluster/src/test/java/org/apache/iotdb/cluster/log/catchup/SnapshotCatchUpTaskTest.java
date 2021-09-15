@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.log.catchup;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -39,73 +31,94 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 public class SnapshotCatchUpTaskTest {
 
   private List<Log> receivedLogs = new ArrayList<>();
   private Snapshot receivedSnapshot;
-  private Node header = new Node();
+  private RaftNode header = new RaftNode(new Node(), 0);
   private boolean testLeadershipFlag;
   private boolean prevUseAsyncServer;
   private boolean noConnection = false;
 
-  private RaftMember sender = new TestMetaGroupMember() {
-    @Override
-    public AsyncClient getAsyncClient(Node node) {
-      if (noConnection) {
-        return null;
-      }
-      return new TestAsyncClient() {
+  private RaftMember sender =
+      new TestMetaGroupMember() {
+
         @Override
-        public void appendEntry(AppendEntryRequest request,
-            AsyncMethodCallback<Long> resultHandler) {
-          new Thread(() -> resultHandler.onComplete(dummyAppendEntry(request))).start();
+        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+          return getAsyncClient(node);
         }
 
         @Override
-        public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-          new Thread(() -> {
-            dummySendSnapshot(request);
-            resultHandler.onComplete(null);
-          }).start();
+        public AsyncClient getAsyncClient(Node node) {
+          if (noConnection) {
+            return null;
+          }
+          return new TestAsyncClient() {
+            @Override
+            public void appendEntry(
+                AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+              new Thread(() -> resultHandler.onComplete(dummyAppendEntry(request))).start();
+            }
+
+            @Override
+            public void sendSnapshot(
+                SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+              new Thread(
+                      () -> {
+                        dummySendSnapshot(request);
+                        resultHandler.onComplete(null);
+                      })
+                  .start();
+            }
+          };
+        }
+
+        @Override
+        public Client getSyncClient(Node node) {
+          if (noConnection) {
+            return null;
+          }
+          return new TestSyncClient() {
+            @Override
+            public long appendEntry(AppendEntryRequest request) {
+              return dummyAppendEntry(request);
+            }
+
+            @Override
+            public void sendSnapshot(SendSnapshotRequest request) {
+              dummySendSnapshot(request);
+            }
+          };
+        }
+
+        @Override
+        public RaftNode getHeader() {
+          return header;
         }
       };
-    }
-
-    @Override
-    public Client getSyncClient(Node node) {
-      if (noConnection) {
-        return null;
-      }
-      return new TestSyncClient() {
-        @Override
-        public long appendEntry(AppendEntryRequest request) {
-          return dummyAppendEntry(request);
-        }
-
-        @Override
-        public void sendSnapshot(SendSnapshotRequest request) {
-          dummySendSnapshot(request);
-        }
-      };
-    }
-
-    @Override
-    public Node getHeader() {
-      return header;
-    }
-  };
 
   private long dummyAppendEntry(AppendEntryRequest request) {
     TestLog testLog = new TestLog();
@@ -152,7 +165,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     task.call();
 
     assertEquals(logList, receivedLogs);
@@ -172,7 +185,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     task.call();
 
     assertTrue(receivedLogs.isEmpty());
@@ -195,7 +208,7 @@ public class SnapshotCatchUpTaskTest {
       Snapshot snapshot = new TestSnapshot(9989);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+      SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
       task.call();
 
       assertEquals(logList, receivedLogs);
@@ -213,24 +226,26 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     try {
       task.call();
       fail("Expected LeaderUnknownException");
     } catch (TException | InterruptedException e) {
       fail(e.getMessage());
     } catch (LeaderUnknownException e) {
-      assertEquals("The leader is unknown in this group [Node(ip:192.168.0.0, metaPort:9003, "
-          + "nodeIdentifier:0, dataPort:40010, clientPort:0), Node(ip:192.168.0.1, metaPort:9003, "
-          + "nodeIdentifier:1, dataPort:40010, clientPort:0), Node(ip:192.168.0.2, metaPort:9003, "
-          + "nodeIdentifier:2, dataPort:40010, clientPort:0), Node(ip:192.168.0.3, metaPort:9003, "
-          + "nodeIdentifier:3, dataPort:40010, clientPort:0), Node(ip:192.168.0.4, metaPort:9003, "
-          + "nodeIdentifier:4, dataPort:40010, clientPort:0), Node(ip:192.168.0.5, metaPort:9003, "
-          + "nodeIdentifier:5, dataPort:40010, clientPort:0), Node(ip:192.168.0.6, metaPort:9003, "
-          + "nodeIdentifier:6, dataPort:40010, clientPort:0), Node(ip:192.168.0.7, metaPort:9003, "
-          + "nodeIdentifier:7, dataPort:40010, clientPort:0), Node(ip:192.168.0.8, metaPort:9003, "
-          + "nodeIdentifier:8, dataPort:40010, clientPort:0), Node(ip:192.168.0.9, metaPort:9003, "
-          + "nodeIdentifier:9, dataPort:40010, clientPort:0)]", e.getMessage());
+      assertEquals(
+          "The leader is unknown in this group [Node(internalIp:192.168.0.0, metaPort:9003, "
+              + "nodeIdentifier:0, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.1, metaPort:9003, "
+              + "nodeIdentifier:1, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.2, metaPort:9003, "
+              + "nodeIdentifier:2, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.3, metaPort:9003, "
+              + "nodeIdentifier:3, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.4, metaPort:9003, "
+              + "nodeIdentifier:4, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.5, metaPort:9003, "
+              + "nodeIdentifier:5, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.6, metaPort:9003, "
+              + "nodeIdentifier:6, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.7, metaPort:9003, "
+              + "nodeIdentifier:7, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.8, metaPort:9003, "
+              + "nodeIdentifier:8, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.9, metaPort:9003, "
+              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)]",
+          e.getMessage());
     }
 
     assertEquals(snapshot, receivedSnapshot);
@@ -244,24 +259,26 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.ELECTOR);
-    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     try {
       task.call();
       fail("Expected LeaderUnknownException");
     } catch (TException | InterruptedException e) {
       fail(e.getMessage());
     } catch (LeaderUnknownException e) {
-      assertEquals("The leader is unknown in this group [Node(ip:192.168.0.0, metaPort:9003, "
-          + "nodeIdentifier:0, dataPort:40010, clientPort:0), Node(ip:192.168.0.1, metaPort:9003, "
-          + "nodeIdentifier:1, dataPort:40010, clientPort:0), Node(ip:192.168.0.2, metaPort:9003, "
-          + "nodeIdentifier:2, dataPort:40010, clientPort:0), Node(ip:192.168.0.3, metaPort:9003, "
-          + "nodeIdentifier:3, dataPort:40010, clientPort:0), Node(ip:192.168.0.4, metaPort:9003, "
-          + "nodeIdentifier:4, dataPort:40010, clientPort:0), Node(ip:192.168.0.5, metaPort:9003, "
-          + "nodeIdentifier:5, dataPort:40010, clientPort:0), Node(ip:192.168.0.6, metaPort:9003, "
-          + "nodeIdentifier:6, dataPort:40010, clientPort:0), Node(ip:192.168.0.7, metaPort:9003, "
-          + "nodeIdentifier:7, dataPort:40010, clientPort:0), Node(ip:192.168.0.8, metaPort:9003, "
-          + "nodeIdentifier:8, dataPort:40010, clientPort:0), Node(ip:192.168.0.9, metaPort:9003, "
-          + "nodeIdentifier:9, dataPort:40010, clientPort:0)]", e.getMessage());
+      assertEquals(
+          "The leader is unknown in this group [Node(internalIp:192.168.0.0, metaPort:9003, "
+              + "nodeIdentifier:0, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.1, metaPort:9003, "
+              + "nodeIdentifier:1, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.2, metaPort:9003, "
+              + "nodeIdentifier:2, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.3, metaPort:9003, "
+              + "nodeIdentifier:3, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.4, metaPort:9003, "
+              + "nodeIdentifier:4, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.5, metaPort:9003, "
+              + "nodeIdentifier:5, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.6, metaPort:9003, "
+              + "nodeIdentifier:6, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.7, metaPort:9003, "
+              + "nodeIdentifier:7, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.8, metaPort:9003, "
+              + "nodeIdentifier:8, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.9, metaPort:9003, "
+              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)]",
+          e.getMessage());
     }
 
     assertNull(receivedSnapshot);

@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -32,24 +28,33 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
-import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -67,8 +72,11 @@ public class QueryRouter implements IQueryRouter {
 
     IExpression optimizedExpression;
     try {
-      optimizedExpression = expression == null ? null : ExpressionOptimizer.getInstance()
-          .optimize(expression, new ArrayList<>(deduplicatedPaths));
+      optimizedExpression =
+          expression == null
+              ? null
+              : ExpressionOptimizer.getInstance()
+                  .optimize(expression, new ArrayList<>(deduplicatedPaths));
     } catch (QueryFilterOptimizationException e) {
       throw new StorageEngineException(e.getMessage());
     }
@@ -83,8 +91,18 @@ public class QueryRouter implements IQueryRouter {
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
       return rawDataQueryExecutor.executeWithValueFilter(context);
-
+    } else if (optimizedExpression != null
+        && optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+      Filter timeFilter = ((GlobalTimeExpression) queryPlan.getExpression()).getFilter();
+      TimeValuePairUtils.Intervals intervals = TimeValuePairUtils.extractTimeInterval(timeFilter);
+      if (intervals.isEmpty()) {
+        logger.warn("The interval of the filter {} is empty.", timeFilter);
+        return new EmptyDataSet();
+      }
     }
+
+    // Currently, we only group the vector partial paths for raw query without value filter
+    queryPlan.transformToVector();
     return rawDataQueryExecutor.executeWithoutValueFilter(context);
   }
 
@@ -95,13 +113,18 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-      IOException {
+          IOException {
 
     if (logger.isDebugEnabled()) {
-      logger.debug("paths:" + aggregationPlan.getPaths()
-          + " level:" + aggregationPlan.getLevel()
-          + " duplicatePaths:" + aggregationPlan.getDeduplicatedPaths()
-          + " deduplicatePaths:" + aggregationPlan.getDeduplicatedAggregations());
+      logger.debug(
+          "paths:"
+              + aggregationPlan.getPaths()
+              + " level:"
+              + aggregationPlan.getLevel()
+              + " duplicatePaths:"
+              + aggregationPlan.getDeduplicatedPaths()
+              + " deduplicatePaths:"
+              + aggregationPlan.getDeduplicatedAggregations());
     }
 
     IExpression expression = aggregationPlan.getExpression();
@@ -109,8 +132,10 @@ public class QueryRouter implements IQueryRouter {
 
     // optimize expression to an executable one
     IExpression optimizedExpression =
-        expression == null ? null :
-            ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(deduplicatedPaths));
+        expression == null
+            ? null
+            : ExpressionOptimizer.getInstance()
+                .optimize(expression, new ArrayList<>(deduplicatedPaths));
 
     aggregationPlan.setExpression(optimizedExpression);
 
@@ -120,7 +145,7 @@ public class QueryRouter implements IQueryRouter {
 
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
-      dataSet =  engineExecutor.executeWithValueFilter(context, aggregationPlan);
+      dataSet = engineExecutor.executeWithValueFilter(context, aggregationPlan);
     } else {
       dataSet = engineExecutor.executeWithoutValueFilter(context, aggregationPlan);
     }
@@ -134,23 +159,17 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
+          IOException {
 
     if (logger.isDebugEnabled()) {
       logger.debug("paths:" + groupByTimePlan.getPaths() + " level:" + groupByTimePlan.getLevel());
     }
 
     GroupByEngineDataSet dataSet = null;
-    long unit = groupByTimePlan.getInterval();
-    long slidingStep = groupByTimePlan.getSlidingStep();
-    long startTime = groupByTimePlan.getStartTime();
-    long endTime = groupByTimePlan.getEndTime();
-
     IExpression expression = groupByTimePlan.getExpression();
     List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
-
-    GlobalTimeExpression timeExpression = new GlobalTimeExpression(
-        new GroupByFilter(unit, slidingStep, startTime, endTime));
+    GlobalTimeExpression timeExpression = getTimeExpression(groupByTimePlan);
 
     if (expression == null) {
       expression = timeExpression;
@@ -159,8 +178,8 @@ public class QueryRouter implements IQueryRouter {
     }
 
     // optimize expression to an executable one
-    IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-        .optimize(expression, new ArrayList<>(selectedSeries));
+    IExpression optimizedExpression =
+        ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(selectedSeries));
     groupByTimePlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
@@ -178,18 +197,42 @@ public class QueryRouter implements IQueryRouter {
     return dataSet;
   }
 
-  protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan plan)
+  private GlobalTimeExpression getTimeExpression(GroupByTimePlan plan)
+      throws QueryProcessException {
+    if (plan.isSlidingStepByMonth() || plan.isIntervalByMonth()) {
+      if (!plan.isAscending()) {
+        throw new QueryProcessException("Group by month doesn't support order by time desc now.");
+      }
+      return new GlobalTimeExpression(
+          (new GroupByMonthFilter(
+              plan.getInterval(),
+              plan.getSlidingStep(),
+              plan.getStartTime(),
+              plan.getEndTime(),
+              plan.isSlidingStepByMonth(),
+              plan.isIntervalByMonth(),
+              SessionManager.getInstance().getCurrSessionTimeZone())));
+    } else {
+      return new GlobalTimeExpression(
+          new GroupByFilter(
+              plan.getInterval(), plan.getSlidingStep(), plan.getStartTime(), plan.getEndTime()));
+    }
+  }
+
+  protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
+      QueryContext context, GroupByTimePlan plan)
       throws StorageEngineException, QueryProcessException {
     return new GroupByWithoutValueFilterDataSet(context, plan);
   }
 
-  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context, GroupByTimePlan plan)
+  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(
+      QueryContext context, GroupByTimePlan plan)
       throws StorageEngineException, QueryProcessException {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
-  protected GroupByTimeDataSet groupByLevelWithoutTimeIntervalDataSet(QueryContext context, GroupByTimePlan plan,
-      GroupByEngineDataSet dataSet)
+  protected GroupByTimeDataSet groupByLevelWithoutTimeIntervalDataSet(
+      QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
       throws QueryProcessException, IOException {
     return new GroupByTimeDataSet(context, plan, dataSet);
   }
@@ -197,29 +240,27 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
-    List<PartialPath> fillPaths = fillQueryPlan.getDeduplicatedPaths();
-    List<TSDataType> dataTypes = fillQueryPlan.getDeduplicatedDataTypes();
-    long queryTime = fillQueryPlan.getQueryTime();
-    Map<TSDataType, IFill> fillType = fillQueryPlan.getFillType();
-
-    FillQueryExecutor fillQueryExecutor = getFillExecutor(fillPaths, dataTypes, queryTime,
-        fillType);
-    return fillQueryExecutor.execute(context, fillQueryPlan);
+    FillQueryExecutor fillQueryExecutor = getFillExecutor(fillQueryPlan);
+    return fillQueryExecutor.execute(context);
   }
 
-  protected FillQueryExecutor getFillExecutor(
-      List<PartialPath> fillPaths,
-      List<TSDataType> dataTypes, long queryTime,
-      Map<TSDataType, IFill> fillType) {
-    return new FillQueryExecutor(fillPaths, dataTypes, queryTime, fillType);
+  protected FillQueryExecutor getFillExecutor(FillQueryPlan plan) {
+    return new FillQueryExecutor(plan);
   }
 
   @Override
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
-    GroupByEngineDataSet groupByEngineDataSet = (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
-    return new GroupByFillDataSet(groupByFillPlan.getDeduplicatedPaths(), groupByFillPlan.getDeduplicatedDataTypes(),
-        groupByEngineDataSet, groupByFillPlan.getFillType(), context, groupByFillPlan);
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
+          IOException {
+    GroupByEngineDataSet groupByEngineDataSet =
+        (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
+    return new GroupByFillDataSet(
+        groupByFillPlan.getDeduplicatedPaths(),
+        groupByFillPlan.getDeduplicatedDataTypes(),
+        groupByEngineDataSet,
+        groupByFillPlan.getFillType(),
+        context,
+        groupByFillPlan);
   }
 
   @Override
@@ -233,4 +274,34 @@ public class QueryRouter implements IQueryRouter {
     return new LastQueryExecutor(lastQueryPlan);
   }
 
+  @Override
+  public QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
+    IExpression expression = udtfPlan.getExpression();
+    IExpression optimizedExpression;
+    try {
+      optimizedExpression =
+          expression == null
+              ? null
+              : ExpressionOptimizer.getInstance()
+                  .optimize(expression, new ArrayList<>(udtfPlan.getDeduplicatedPaths()));
+    } catch (QueryFilterOptimizationException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+    udtfPlan.setExpression(optimizedExpression);
+
+    boolean withValueFilter =
+        optimizedExpression != null && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME;
+    UDTFQueryExecutor udtfQueryExecutor = new UDTFQueryExecutor(udtfPlan);
+
+    if (udtfPlan.isAlignByTime()) {
+      return withValueFilter
+          ? udtfQueryExecutor.executeWithValueFilterAlignByTime(context)
+          : udtfQueryExecutor.executeWithoutValueFilterAlignByTime(context);
+    } else {
+      return withValueFilter
+          ? udtfQueryExecutor.executeWithValueFilterNonAlign(context)
+          : udtfQueryExecutor.executeWithoutValueFilterNonAlign(context);
+    }
+  }
 }

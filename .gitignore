@@ -100,3 +100,11 @@ classes/
 *.cmake
 Makefile
 **/CMakeFiles/
+
+### cluster test data
+node1/
+node2/
+node3/
+
+# Exclude copied license
+/client-py/LICENSE

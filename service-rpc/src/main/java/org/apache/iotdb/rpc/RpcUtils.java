@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -27,34 +33,39 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class RpcUtils {
 
+  /** How big should the default read and write buffers be? Defaults to 1KB */
+  public static final int THRIFT_DEFAULT_BUF_CAPACITY = 1024;
   /**
-   * How big should the default read and write buffers be?
+   * It is used to prevent the size of the parsing package from being too large and allocating the
+   * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
+   * reading. Thrift max frame size (16384000 bytes by default), we change it to 512MB.
    */
-  public static final int DEFAULT_BUF_CAPACITY = 64 * 1024;
+  public static final int THRIFT_FRAME_MAX_SIZE = 536870912;
+
   /**
-   * How big is the largest allowable frame? Defaults to 16MB.
+   * if resizeIfNecessary is called continuously with a small size for more than
+   * MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space.
    */
-  public static final int DEFAULT_MAX_LENGTH = 16384000;
+  public static final int MAX_BUFFER_OVERSIZE_TIME = 5;
+
+  public static final long MIN_SHRINK_INTERVAL = 60_000L;
 
   private RpcUtils() {
     // util class
   }
 
-  public static final TSStatus SUCCESS_STATUS = new TSStatus(
-      TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public static final TSStatus SUCCESS_STATUS =
+      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
   public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
-    return (TSIService.Iface) Proxy.newProxyInstance(RpcUtils.class.getClassLoader(),
-        new Class[]{TSIService.Iface.class}, new SynchronizedHandler(client));
+    return (TSIService.Iface)
+        Proxy.newProxyInstance(
+            RpcUtils.class.getClassLoader(),
+            new Class[] {TSIService.Iface.class},
+            new SynchronizedHandler(client));
   }
 
   /**
@@ -62,8 +73,7 @@ public class RpcUtils {
    *
    * @param status -status
    */
-  public static void verifySuccess(TSStatus status)
-      throws StatementExecutionException {
+  public static void verifySuccess(TSStatus status) throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       verifySuccess(status.getSubStatus());
       return;
@@ -84,9 +94,8 @@ public class RpcUtils {
     }
   }
 
-  public static void verifySuccessWithRedirectionForInsertTablets(TSStatus status,
-      TSInsertTabletsReq req)
-      throws StatementExecutionException, RedirectException {
+  public static void verifySuccessWithRedirectionForMultiDevices(
+      TSStatus status, List<String> devices) throws StatementExecutionException, RedirectException {
     verifySuccess(status);
     if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
@@ -94,7 +103,7 @@ public class RpcUtils {
       for (int i = 0; i < statusSubStatus.size(); i++) {
         TSStatus subStatus = statusSubStatus.get(i);
         if (subStatus.isSetRedirectNode()) {
-          deviceEndPointMap.put(req.getDeviceIds().get(i), subStatus.getRedirectNode());
+          deviceEndPointMap.put(devices.get(i), subStatus.getRedirectNode());
         }
       }
       throw new RedirectException(deviceEndPointMap);
@@ -114,9 +123,7 @@ public class RpcUtils {
     }
   }
 
-  /**
-   * convert from TSStatusCode to TSStatus according to status code and status message
-   */
+  /** convert from TSStatusCode to TSStatus according to status code and status message */
   public static TSStatus getStatus(TSStatusCode tsStatusCode) {
     return new TSStatus(tsStatusCode.getStatusCode());
   }
@@ -131,7 +138,7 @@ public class RpcUtils {
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
    * @param tsStatusCode status type
-   * @param message      appending message
+   * @param message appending message
    */
   public static TSStatus getStatus(TSStatusCode tsStatusCode, String message) {
     TSStatus status = new TSStatus(tsStatusCode.getStatusCode());
@@ -150,8 +157,8 @@ public class RpcUtils {
     return getTSExecuteStatementResp(status);
   }
 
-  public static TSExecuteStatementResp getTSExecuteStatementResp(TSStatusCode tsStatusCode,
-      String message) {
+  public static TSExecuteStatementResp getTSExecuteStatementResp(
+      TSStatusCode tsStatusCode, String message) {
     TSStatus status = getStatus(tsStatusCode, message);
     return getTSExecuteStatementResp(status);
   }
@@ -168,8 +175,8 @@ public class RpcUtils {
     return getTSFetchResultsResp(status);
   }
 
-  public static TSFetchResultsResp getTSFetchResultsResp(TSStatusCode tsStatusCode,
-      String appendMessage) {
+  public static TSFetchResultsResp getTSFetchResultsResp(
+      TSStatusCode tsStatusCode, String appendMessage) {
     TSStatus status = getStatus(tsStatusCode, appendMessage);
     return getTSFetchResultsResp(status);
   }
@@ -189,8 +196,6 @@ public class RpcUtils {
     switch (newTimeFormat.trim().toLowerCase()) {
       case "long":
       case "number":
-        timeFormat = newTimeFormat.trim().toLowerCase();
-        break;
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
         timeFormat = newTimeFormat.trim().toLowerCase();
@@ -205,8 +210,8 @@ public class RpcUtils {
     return timeFormat;
   }
 
-  public static String formatDatetime(String timeFormat, String timePrecision, long timestamp,
-      ZoneId zoneId) {
+  public static String formatDatetime(
+      String timeFormat, String timePrecision, long timestamp, ZoneId zoneId) {
     ZonedDateTime dateTime;
     switch (timeFormat) {
       case "long":
@@ -223,13 +228,13 @@ public class RpcUtils {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
-      long timestamp, ZoneId zoneid, String timestampPrecision) {
+  public static String parseLongToDateWithPrecision(
+      DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
     if (timestampPrecision.equals("ms")) {
       long integerofDate = timestamp / 1000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      ZonedDateTime dateTime =
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 3) {
@@ -241,8 +246,8 @@ public class RpcUtils {
     } else if (timestampPrecision.equals("us")) {
       long integerofDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      ZonedDateTime dateTime =
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 6) {
@@ -254,8 +259,8 @@ public class RpcUtils {
     } else {
       long integerofDate = timestamp / 1000_000_000L;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      ZonedDateTime dateTime =
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 9) {

@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.cluster.log.manage.serializable;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Properties;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -33,8 +25,18 @@ import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Properties;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
 public class SyncLogDequeSerializerTest extends IoTDBTest {
 
@@ -53,49 +55,59 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       ByteBuffer buffer = ByteBuffer.allocate(oneLogSize + 10);
       syncLogDequeSerializer.setLogDataBuffer(buffer);
 
-      //file1: 0-8
+      // file1: 0-8
       syncLogDequeSerializer.append(testLogs1.subList(0, 10), 0);
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
       Assert.assertEquals(2, syncLogDequeSerializer.getLogDataFileList().size());
-      File file = syncLogDequeSerializer.getLogDataFileList()
-          .get(syncLogDequeSerializer.getLogDataFileList().size() - 2);
+      File file =
+          syncLogDequeSerializer
+              .getLogDataFileList()
+              .get(syncLogDequeSerializer.getLogDataFileList().size() - 2);
       String[] splits = file.getName().split(FILE_NAME_SEPARATOR);
       Assert.assertEquals(0, Long.parseLong(splits[0]));
       Assert.assertEquals(8, Long.parseLong(splits[1]));
 
-      //file2: 9-17
+      // file2: 9-17
       syncLogDequeSerializer.append(testLogs1.subList(10, 20), 0);
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
       Assert.assertEquals(3, syncLogDequeSerializer.getLogDataFileList().size());
-      file = syncLogDequeSerializer.getLogDataFileList()
-          .get(syncLogDequeSerializer.getLogDataFileList().size() - 2);
+      file =
+          syncLogDequeSerializer
+              .getLogDataFileList()
+              .get(syncLogDequeSerializer.getLogDataFileList().size() - 2);
       splits = file.getName().split(FILE_NAME_SEPARATOR);
       Assert.assertEquals(9, Long.parseLong(splits[0]));
       Assert.assertEquals(17, Long.parseLong(splits[1]));
 
-      //file3: 18-26
+      // file3: 18-26
       syncLogDequeSerializer.append(testLogs1.subList(20, 30), 0);
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
       Assert.assertEquals(4, syncLogDequeSerializer.getLogDataFileList().size());
-      file = syncLogDequeSerializer.getLogDataFileList()
-          .get(syncLogDequeSerializer.getLogDataFileList().size() - 2);
+      file =
+          syncLogDequeSerializer
+              .getLogDataFileList()
+              .get(syncLogDequeSerializer.getLogDataFileList().size() - 2);
       splits = file.getName().split(FILE_NAME_SEPARATOR);
       Assert.assertEquals(18, Long.parseLong(splits[0]));
       Assert.assertEquals(26, Long.parseLong(splits[1]));
 
-      //file4:  27-35
+      // file4:  27-35
       syncLogDequeSerializer.append(testLogs1.subList(30, 40), 0);
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
       Assert.assertEquals(5, syncLogDequeSerializer.getLogDataFileList().size());
-      file = syncLogDequeSerializer.getLogDataFileList()
-          .get(syncLogDequeSerializer.getLogDataFileList().size() - 2);
+      file =
+          syncLogDequeSerializer
+              .getLogDataFileList()
+              .get(syncLogDequeSerializer.getLogDataFileList().size() - 2);
       splits = file.getName().split(FILE_NAME_SEPARATOR);
       Assert.assertEquals(27, Long.parseLong(splits[0]));
       Assert.assertEquals(35, Long.parseLong(splits[1]));
 
-      //file5:36-Long.MAX_VALUE. check the last one log file
-      file = syncLogDequeSerializer.getLogDataFileList()
-          .get(syncLogDequeSerializer.getLogDataFileList().size() - 1);
+      // file5:36-Long.MAX_VALUE. check the last one log file
+      file =
+          syncLogDequeSerializer
+              .getLogDataFileList()
+              .get(syncLogDequeSerializer.getLogDataFileList().size() - 1);
       splits = file.getName().split(FILE_NAME_SEPARATOR);
       Assert.assertEquals(36, Long.parseLong(splits[0]));
       Assert.assertEquals(Long.MAX_VALUE, Long.parseLong(splits[1]));
@@ -113,9 +125,8 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       // check the max log file number, the first one will be removed
       syncLogDequeSerializer.checkDeletePersistRaftLog();
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
-      Assert
-          .assertEquals(maxPersistLogFileNumber,
-              syncLogDequeSerializer.getLogDataFileList().size());
+      Assert.assertEquals(
+          maxPersistLogFileNumber, syncLogDequeSerializer.getLogDataFileList().size());
       File file = syncLogDequeSerializer.getLogDataFileList().get(0);
       String[] splits = file.getName().split(FILE_NAME_SEPARATOR);
       // after delete log file, the first log data file is file3
@@ -127,14 +138,15 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   private void testLogDataAndLogIndexEqual(SyncLogDequeSerializer syncLogDequeSerializer) {
-    Assert.assertEquals(syncLogDequeSerializer.getLogDataFileList().size(),
+    Assert.assertEquals(
+        syncLogDequeSerializer.getLogDataFileList().size(),
         syncLogDequeSerializer.getLogIndexFileList().size());
 
     for (int i = 0; i < syncLogDequeSerializer.getLogDataFileList().size(); i++) {
-      String[] logDataSplits = syncLogDequeSerializer.getLogDataFileList().get(i).getName()
-          .split(FILE_NAME_SEPARATOR);
-      String[] logIndexSplits = syncLogDequeSerializer.getLogIndexFileList().get(i).getName()
-          .split(FILE_NAME_SEPARATOR);
+      String[] logDataSplits =
+          syncLogDequeSerializer.getLogDataFileList().get(i).getName().split(FILE_NAME_SEPARATOR);
+      String[] logIndexSplits =
+          syncLogDequeSerializer.getLogIndexFileList().get(i).getName().split(FILE_NAME_SEPARATOR);
 
       Assert.assertEquals(logDataSplits.length, logIndexSplits.length);
 
@@ -206,18 +218,16 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       Pair<File, Pair<Long, Long>> fileStartAndEndIndex;
       for (int i = 0; i < 9; i++) {
         fileStartAndEndIndex = syncLogDequeSerializer.getLogIndexFile(i);
-        Assert
-            .assertEquals(syncLogDequeSerializer.getLogIndexFileList().get(0),
-                fileStartAndEndIndex.left);
+        Assert.assertEquals(
+            syncLogDequeSerializer.getLogIndexFileList().get(0), fileStartAndEndIndex.left);
         Assert.assertEquals(0L, fileStartAndEndIndex.right.left.longValue());
         Assert.assertEquals(8L, fileStartAndEndIndex.right.right.longValue());
       }
 
       for (int i = 9; i < 18; i++) {
         fileStartAndEndIndex = syncLogDequeSerializer.getLogIndexFile(i);
-        Assert
-            .assertEquals(syncLogDequeSerializer.getLogIndexFileList().get(1),
-                fileStartAndEndIndex.left);
+        Assert.assertEquals(
+            syncLogDequeSerializer.getLogIndexFileList().get(1), fileStartAndEndIndex.left);
         Assert.assertEquals(9L, fileStartAndEndIndex.right.left.longValue());
         Assert.assertEquals(17L, fileStartAndEndIndex.right.right.longValue());
       }
@@ -225,9 +235,9 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       for (int i = 36; i < 40; i++) {
         fileStartAndEndIndex = syncLogDequeSerializer.getLogIndexFile(i);
         int lastLogFile = syncLogDequeSerializer.getLogIndexFileList().size() - 1;
-        Assert
-            .assertEquals(syncLogDequeSerializer.getLogIndexFileList().get(lastLogFile),
-                fileStartAndEndIndex.left);
+        Assert.assertEquals(
+            syncLogDequeSerializer.getLogIndexFileList().get(lastLogFile),
+            fileStartAndEndIndex.left);
         Assert.assertEquals(36L, fileStartAndEndIndex.right.left.longValue());
         Assert.assertEquals(Long.MAX_VALUE, fileStartAndEndIndex.right.right.longValue());
       }
@@ -236,7 +246,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       syncLogDequeSerializer.close();
     }
   }
-
 
   @Test
   public void testGetLogDataFile() {
@@ -247,18 +256,16 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       Pair<File, Pair<Long, Long>> fileStartAndEndIndex;
       for (int i = 0; i < 9; i++) {
         fileStartAndEndIndex = syncLogDequeSerializer.getLogDataFile(i);
-        Assert
-            .assertEquals(syncLogDequeSerializer.getLogDataFileList().get(0),
-                fileStartAndEndIndex.left);
+        Assert.assertEquals(
+            syncLogDequeSerializer.getLogDataFileList().get(0), fileStartAndEndIndex.left);
         Assert.assertEquals(0L, fileStartAndEndIndex.right.left.longValue());
         Assert.assertEquals(8L, fileStartAndEndIndex.right.right.longValue());
       }
 
       for (int i = 9; i < 18; i++) {
         fileStartAndEndIndex = syncLogDequeSerializer.getLogDataFile(i);
-        Assert
-            .assertEquals(syncLogDequeSerializer.getLogDataFileList().get(1),
-                fileStartAndEndIndex.left);
+        Assert.assertEquals(
+            syncLogDequeSerializer.getLogDataFileList().get(1), fileStartAndEndIndex.left);
         Assert.assertEquals(9L, fileStartAndEndIndex.right.left.longValue());
         Assert.assertEquals(17L, fileStartAndEndIndex.right.right.longValue());
       }
@@ -266,9 +273,9 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       for (int i = 36; i < 40; i++) {
         fileStartAndEndIndex = syncLogDequeSerializer.getLogDataFile(i);
         int lastLogFile = syncLogDequeSerializer.getLogDataFileList().size() - 1;
-        Assert
-            .assertEquals(syncLogDequeSerializer.getLogDataFileList().get(lastLogFile),
-                fileStartAndEndIndex.left);
+        Assert.assertEquals(
+            syncLogDequeSerializer.getLogDataFileList().get(lastLogFile),
+            fileStartAndEndIndex.left);
         Assert.assertEquals(36L, fileStartAndEndIndex.right.left.longValue());
         Assert.assertEquals(Long.MAX_VALUE, fileStartAndEndIndex.right.right.longValue());
       }
@@ -315,7 +322,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     }
   }
 
-
   @Test
   public void testRecoveryForClose() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
@@ -339,7 +345,8 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     try {
       List<Log> logDeque = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       int expectSize =
-          (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex() - maxHaveAppliedCommitIndex
+          (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex()
+              - maxHaveAppliedCommitIndex
               + 1;
       Assert.assertEquals(expectSize, logDeque.size());
       for (int i = maxHaveAppliedCommitIndex; i < logNum; i++) {
@@ -351,12 +358,12 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     }
   }
 
-
   @Test
   public void testRecoveryForNotClose() {
     Properties pop = System.getProperties();
     String osName = pop.getProperty("os.name");
-    // for window os, skip the test because windows do not support reopen a file which is already opened.
+    // for window os, skip the test because windows do not support reopen a file which is already
+    // opened.
     if (osName.contains("Windows")) {
       return;
     }
@@ -380,7 +387,8 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     try {
       List<Log> logDeque = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       int expectSize =
-          (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex() - maxHaveAppliedCommitIndex
+          (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex()
+              - maxHaveAppliedCommitIndex
               + 1;
       Assert.assertEquals(expectSize, logDeque.size());
       for (int i = maxHaveAppliedCommitIndex; i < logNum; i++) {
@@ -397,7 +405,8 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // TODO-Cluster: do it more elegantly
     Properties pop = System.getProperties();
     String osName = pop.getProperty("os.name");
-    // for window os, skip the test because windows do not support reopen a file which is already opened.
+    // for window os, skip the test because windows do not support reopen a file which is already
+    // opened.
     if (osName.contains("Windows")) {
       return;
     }
@@ -431,11 +440,19 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       Assert.assertEquals(1, syncLogDequeSerializer.getLogDataFileList().size());
       Assert.assertEquals(1, syncLogDequeSerializer.getLogIndexFileList().size());
 
-      Assert.assertEquals(0, syncLogDequeSerializer.getLogDataFileList()
-          .get(syncLogDequeSerializer.getLogDataFileList().size() - 1).length());
+      Assert.assertEquals(
+          0,
+          syncLogDequeSerializer
+              .getLogDataFileList()
+              .get(syncLogDequeSerializer.getLogDataFileList().size() - 1)
+              .length());
 
-      Assert.assertEquals(0, syncLogDequeSerializer.getLogIndexFileList()
-          .get(syncLogDequeSerializer.getLogIndexFileList().size() - 1).length());
+      Assert.assertEquals(
+          0,
+          syncLogDequeSerializer
+              .getLogIndexFileList()
+              .get(syncLogDequeSerializer.getLogIndexFileList().size() - 1)
+              .length());
     } finally {
       syncLogDequeSerializer.close();
     }
@@ -460,17 +477,16 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // recovery
     try {
       syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-      Assert.assertEquals(testLogs1.get(testLogs1.size() - 1).getCurrLogIndex(),
+      Assert.assertEquals(
+          testLogs1.get(testLogs1.size() - 1).getCurrLogIndex(),
           syncLogDequeSerializer.getMeta().getCommitLogIndex());
-      Assert.assertEquals(maxHaveAppliedCommitIndex,
+      Assert.assertEquals(
+          maxHaveAppliedCommitIndex,
           syncLogDequeSerializer.getMeta().getMaxHaveAppliedCommitIndex());
-      Assert.assertEquals(hardState,
-          syncLogDequeSerializer.getHardState());
+      Assert.assertEquals(hardState, syncLogDequeSerializer.getHardState());
     } finally {
       syncLogDequeSerializer.close();
     }
-
-
   }
 
   @Test
@@ -579,7 +595,8 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       metaFile.createNewFile();
       List<Log> logDeque = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       int expectSize =
-          (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex() - maxHaveAppliedCommitIndex
+          (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex()
+              - maxHaveAppliedCommitIndex
               + 1;
       Assert.assertEquals(expectSize, logDeque.size());
       for (int i = maxHaveAppliedCommitIndex; i < logNum; i++) {

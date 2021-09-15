@@ -19,35 +19,51 @@
 
 package org.apache.iotdb.rpc;
 
-import java.net.SocketException;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportFactory;
 
-public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFramedTransport implements TimeoutChangeableTransport {
+import java.net.SocketException;
+
+public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFramedTransport
+    implements TimeoutChangeableTransport {
 
   private TSocket underlyingSocket;
 
-  public TimeoutChangeableTSnappyFramedTransport(TSocket underlying) {
-    super(underlying);
+  public TimeoutChangeableTSnappyFramedTransport(
+      TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
     this.underlyingSocket = underlying;
   }
 
+  @Override
   public void setTimeout(int timeout) {
     underlyingSocket.setTimeout(timeout);
   }
 
+  @Override
   public int getTimeOut() throws SocketException {
     return underlyingSocket.getSocket().getSoTimeout();
   }
 
   public static class Factory extends TTransportFactory {
+
+    private final int thriftDefaultBufferSize;
+    protected final int thriftMaxFrameSize;
+
+    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+      this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+    }
+
     @Override
     public TTransport getTransport(TTransport trans) {
       if (trans instanceof TSocket) {
-        return new TimeoutChangeableTSnappyFramedTransport((TSocket) trans);
+        return new TimeoutChangeableTSnappyFramedTransport(
+            (TSocket) trans, thriftDefaultBufferSize, thriftMaxFrameSize);
       } else {
-        return new TSnappyElasticFramedTransport(trans);
+        return new TSnappyElasticFramedTransport(
+            trans, thriftDefaultBufferSize, thriftMaxFrameSize);
       }
     }
   }

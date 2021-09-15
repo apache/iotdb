@@ -18,28 +18,31 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class MManagerImproveTest {
 
@@ -58,13 +61,15 @@ public class MManagerImproveTest {
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         String p = "root.t1.v2.d" + j + ".s" + i;
-        mManager.createTimeseries(new PartialPath(p), TSDataType.TEXT, TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
+        mManager.createTimeseries(
+            new PartialPath(p),
+            TSDataType.TEXT,
+            TSEncoding.PLAIN,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
       }
     }
-
   }
-
 
   @Test
   public void checkSetUp() throws IllegalPathException {
@@ -132,12 +137,16 @@ public class MManagerImproveTest {
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
-    MNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
-    for (String s : measurementList) {
-      assertTrue(node.hasChild(s));
-      MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
-      TSDataType dataType = measurementNode.getSchema().getType();
-      assertEquals(TSDataType.TEXT, dataType);
+    try {
+      IMNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
+      for (String s : measurementList) {
+        assertTrue(node.hasChild(s));
+        IMeasurementMNode measurementNode = (IMeasurementMNode) node.getChild(s);
+        TSDataType dataType = measurementNode.getSchema().getType();
+        assertEquals(TSDataType.TEXT, dataType);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
 
@@ -180,5 +189,4 @@ public class MManagerImproveTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
-
 }

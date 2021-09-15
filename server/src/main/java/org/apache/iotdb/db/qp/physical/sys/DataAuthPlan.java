@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class DataAuthPlan extends PhysicalPlan {
 
@@ -92,7 +93,7 @@ public class DataAuthPlan extends PhysicalPlan {
     } else if (operatorType == OperatorType.REVOKE_WATERMARK_EMBEDDING) {
       type = PhysicalPlanType.REVOKE_WATERMARK_EMBEDDING.ordinal();
     } else {
-      throw new IllegalArgumentException("Unknown operator: " + operatorType.toString());
+      throw new IllegalArgumentException("Unknown operator: " + operatorType);
     }
     return type;
   }

@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.nio.ByteBuffer;
-
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 
 public abstract class Decoder {
 
@@ -50,14 +49,15 @@ public abstract class Decoder {
   public static Decoder getDecoderByType(TSEncoding encoding, TSDataType dataType) {
     switch (encoding) {
       case PLAIN:
-        return new PlainDecoder(EndianType.BIG_ENDIAN);
+        return new PlainDecoder();
       case RLE:
         switch (dataType) {
           case BOOLEAN:
           case INT32:
-            return new IntRleDecoder(EndianType.BIG_ENDIAN);
+            return new IntRleDecoder();
           case INT64:
-            return new LongRleDecoder(EndianType.BIG_ENDIAN);
+          case VECTOR:
+            return new LongRleDecoder();
           case FLOAT:
           case DOUBLE:
             return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
@@ -69,6 +69,7 @@ public abstract class Decoder {
           case INT32:
             return new DeltaBinaryDecoder.IntDeltaDecoder();
           case INT64:
+          case VECTOR:
             return new DeltaBinaryDecoder.LongDeltaDecoder();
           case FLOAT:
           case DOUBLE:
@@ -90,6 +91,7 @@ public abstract class Decoder {
           case INT32:
             return new RegularDataDecoder.IntRegularDecoder();
           case INT64:
+          case VECTOR:
             return new RegularDataDecoder.LongRegularDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
@@ -103,10 +105,13 @@ public abstract class Decoder {
           case INT32:
             return new IntGorillaDecoder();
           case INT64:
+          case VECTOR:
             return new LongGorillaDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
+      case DICTIONARY:
+        return new DictionaryDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

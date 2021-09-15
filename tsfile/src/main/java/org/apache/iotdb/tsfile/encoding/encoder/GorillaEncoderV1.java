@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import java.io.ByteArrayOutputStream;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import java.io.ByteArrayOutputStream;
 
 /**
  * Gorilla encoding. For more information about how it works, please see

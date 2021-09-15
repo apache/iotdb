@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
-import static org.junit.Assert.assertFalse;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -36,7 +31,16 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertFalse;
 
 public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
 
@@ -44,40 +48,46 @@ public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
   public void test()
       throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
-    GroupByTimePlan groupByPlan = new GroupByTimePlan();
-    List<PartialPath> pathList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    List<String> aggregations = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
-      dataTypes.add(TSDataType.DOUBLE);
-      aggregations.add(SQLConstant.COUNT);
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    try {
+      GroupByTimePlan groupByPlan = new GroupByTimePlan();
+      List<PartialPath> pathList = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      List<String> aggregations = new ArrayList<>();
+      for (int i = 0; i < 10; i++) {
+        pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
+        dataTypes.add(TSDataType.DOUBLE);
+        aggregations.add(SQLConstant.COUNT);
+      }
+      groupByPlan.setPaths(pathList);
+      groupByPlan.setDeduplicatedPathsAndUpdate(pathList);
+      groupByPlan.setDataTypes(dataTypes);
+      groupByPlan.setDeduplicatedDataTypes(dataTypes);
+      groupByPlan.setAggregations(aggregations);
+      groupByPlan.setDeduplicatedAggregations(aggregations);
+
+      groupByPlan.setStartTime(0);
+      groupByPlan.setEndTime(20);
+      groupByPlan.setSlidingStep(5);
+      groupByPlan.setInterval(5);
+      groupByPlan.setExpression(new GlobalTimeExpression(new GroupByFilter(5, 5, 0, 20)));
+
+      ClusterGroupByNoVFilterDataSet dataSet =
+          new ClusterGroupByNoVFilterDataSet(queryContext, groupByPlan, testMetaMember);
+
+      Object[][] answers =
+          new Object[][] {
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+          };
+      for (Object[] answer : answers) {
+        checkDoubleDataset(dataSet, answer);
+      }
+      assertFalse(dataSet.hasNext());
+    } finally {
+      QueryResourceManager.getInstance().endQuery(queryContext.getQueryId());
     }
-    groupByPlan.setPaths(pathList);
-    groupByPlan.setDeduplicatedPaths(pathList);
-    groupByPlan.setDataTypes(dataTypes);
-    groupByPlan.setDeduplicatedDataTypes(dataTypes);
-    groupByPlan.setAggregations(aggregations);
-    groupByPlan.setDeduplicatedAggregations(aggregations);
-
-    groupByPlan.setStartTime(0);
-    groupByPlan.setEndTime(20);
-    groupByPlan.setSlidingStep(5);
-    groupByPlan.setInterval(5);
-
-    ClusterGroupByNoVFilterDataSet dataSet = new ClusterGroupByNoVFilterDataSet(queryContext,
-        groupByPlan, testMetaMember);
-
-    Object[][] answers = new Object[][] {
-        new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-        new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-        new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-        new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-    };
-    for (Object[] answer : answers) {
-      checkDoubleDataset(dataSet, answer);
-    }
-    assertFalse(dataSet.hasNext());
   }
 }

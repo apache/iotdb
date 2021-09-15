@@ -22,6 +22,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.jvm.BufferPoolMetricSet;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+
 import java.lang.management.ManagementFactory;
 
 public class JvmSource implements Source {
@@ -34,9 +35,11 @@ public class JvmSource implements Source {
   }
 
   public void registerInfo() {
-    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "gc"), new GarbageCollectorMetricSet());
+    metricRegistry.register(
+        MetricRegistry.name(SOURCE_NAME, "gc"), new GarbageCollectorMetricSet());
     metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "memory"), new MemoryUsageGaugeSet());
-    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "buffer-pool"),
+    metricRegistry.register(
+        MetricRegistry.name(SOURCE_NAME, "buffer-pool"),
         new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
   }
 
@@ -44,7 +47,4 @@ public class JvmSource implements Source {
   public String sourceName() {
     return JvmSource.SOURCE_NAME;
   }
-
-
-
 }

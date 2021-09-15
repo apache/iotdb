@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.writelog.manager;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -31,26 +25,44 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.writelog.node.DifferentialWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 /**
- * MultiFileLogNodeManager manages all ExclusiveWriteLogNodes, each manages WALs of a TsFile
- * (either seq or unseq).
+ * MultiFileLogNodeManager manages all ExclusiveWriteLogNodes, each manages WALs of a TsFile (either
+ * seq or unseq).
  */
 public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
-  private Map<String, WriteLogNode> nodeMap;
+  private final Map<String, WriteLogNode> nodeMap;
 
   private ScheduledExecutorService executorService;
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  // For fixing too many warn logs when system changes to read-only mode
+  private boolean firstReadOnly = true;
 
   private void forceTask() {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      logger.warn("system mode is read-only, the force flush WAL task is stopped");
+      if (firstReadOnly) {
+        logger.warn("system mode is read-only, the force flush WAL task is stopped");
+        firstReadOnly = false;
+      }
       return;
     }
+    firstReadOnly = true;
     if (Thread.interrupted()) {
       logger.info("WAL force thread exits.");
       return;
@@ -73,25 +85,26 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     return InstanceHolder.instance;
   }
 
-
   @Override
-  public WriteLogNode getNode(String identifier) {
+  public WriteLogNode getNode(String identifier, Supplier<ByteBuffer[]> supplier) {
     WriteLogNode node = nodeMap.get(identifier);
     if (node == null) {
       node = new DifferentialWriteLogNode(identifier);
       WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
       if (oldNode != null) {
         return oldNode;
+      } else {
+        node.initBuffer(supplier.get());
       }
     }
     return node;
   }
 
   @Override
-  public void deleteNode(String identifier) throws IOException {
+  public void deleteNode(String identifier, Consumer<ByteBuffer[]> consumer) throws IOException {
     WriteLogNode node = nodeMap.remove(identifier);
     if (node != null) {
-      node.delete();
+      consumer.accept(node.delete());
     }
   }
 
@@ -117,8 +130,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       }
       if (config.getForceWalPeriodInMs() > 0) {
         executorService = Executors.newSingleThreadScheduledExecutor();
-        executorService.scheduleWithFixedDelay(this::forceTask, config.getForceWalPeriodInMs(),
-            config.getForceWalPeriodInMs(), TimeUnit.MILLISECONDS);
+        executorService.scheduleWithFixedDelay(
+            this::forceTask,
+            config.getForceWalPeriodInMs(),
+            config.getForceWalPeriodInMs(),
+            TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -148,9 +164,9 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   }
 
   private static class InstanceHolder {
-    private InstanceHolder(){}
 
-    private static MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
+    private InstanceHolder() {}
+
+    private static final MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
   }
-
 }

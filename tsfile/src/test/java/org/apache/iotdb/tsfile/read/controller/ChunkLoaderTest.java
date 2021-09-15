@@ -18,20 +18,21 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import java.io.IOException;
-import java.util.List;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+import java.io.IOException;
+import java.util.List;
 
 public class ChunkLoaderTest {
 
@@ -53,11 +54,12 @@ public class ChunkLoaderTest {
   public void test() throws IOException {
     fileReader = new TsFileSequenceReader(FILE_PATH);
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
-    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d2", "s1"));
+    List<IChunkMetadata> chunkMetadataList =
+        metadataQuerierByFile.getChunkMetaDataList(new Path("d2", "s1"));
 
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
-    for (ChunkMetadata chunkMetaData : chunkMetadataList) {
-      Chunk chunk = seriesChunkLoader.loadChunk(chunkMetaData);
+    for (IChunkMetadata chunkMetaData : chunkMetadataList) {
+      Chunk chunk = seriesChunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
       ChunkHeader chunkHeader = chunk.getHeader();
       Assert.assertEquals(chunkHeader.getDataSize(), chunk.getData().remaining());
     }

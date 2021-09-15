@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -45,9 +38,18 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.junit.Assert.assertEquals;
 
 public class DeletionQueryTest {
 
@@ -73,8 +75,12 @@ public class DeletionQueryTest {
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.createTimeseries(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]), dataType,
-          encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
+      IoTDB.metaManager.createTimeseries(
+          new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]),
+          dataType,
+          encoding,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
     }
   }
 
@@ -91,8 +97,8 @@ public class DeletionQueryTest {
   }
 
   @Test
-  public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+  public void testDeleteInBufferWriteCache()
+      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -102,10 +108,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
@@ -118,7 +128,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
@@ -141,9 +151,12 @@ public class DeletionQueryTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 40, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 30, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 40, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
@@ -157,7 +170,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
@@ -190,10 +203,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
@@ -206,7 +223,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
@@ -240,9 +257,12 @@ public class DeletionQueryTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 40, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 30, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 40, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
@@ -256,7 +276,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
@@ -278,10 +298,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -293,10 +317,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 250, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 250, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 230, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 230, 250, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 250, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 250, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 230, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 230, 250, -1, null);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -308,10 +336,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -326,7 +358,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;

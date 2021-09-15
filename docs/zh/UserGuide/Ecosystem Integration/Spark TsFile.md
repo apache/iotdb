@@ -19,57 +19,59 @@
 
 -->
 
-# TsFile的Spark连接器
+## Spark-TsFile
 
-## 1. About TsFile-Spark-Connector
+### About TsFile-Spark-Connector
 
-TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 这使用户可以通过Spark读取，写入和查询Tsfile。
+TsFile-Spark-Connector 对 Tsfile 类型的外部数据源实现 Spark 的支持。 这使用户可以通过 Spark 读取，写入和查询 Tsfile。
 
 使用此连接器，您可以
 
-- 从本地文件系统或hdfs加载单个TsFile到Spark
-- 将本地文件系统或hdfs中特定目录中的所有文件加载到Spark中
-- 将数据从Spark写入TsFile
+- 从本地文件系统或 hdfs 加载单个 TsFile 到 Spark
+- 将本地文件系统或 hdfs 中特定目录中的所有文件加载到 Spark 中
+- 将数据从 Spark 写入 TsFile
 
-## 2. System Requirements
+### System Requirements
 
 | Spark Version | Scala Version | Java Version | TsFile   |
 | ------------- | ------------- | ------------ | -------- |
-| `2.4.3`       | `2.11.8`      | `1.8`        | `0.10.0` |
+| `2.4.3`       | `2.11.8`      | `1.8`        | `0.13.0-SNAPSHOT` |
 
-> 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/iotdb/tree/master/tsfile
+> 注意：有关如何下载和使用 TsFile 的更多信息，请参见以下链接：https://github.com/apache/iotdb/tree/master/tsfile
+> 注意：spark 版本目前仅支持 2.4.3, 其他版本可能存在不适配的问题，目前已知 2.4.7 的版本存在不适配的问题
 
-## 3. 快速开始
+### 快速开始
 
-### 本地模式
+#### 本地模式
 
-在本地模式下使用TsFile-Spark-Connector启动Spark：
-
-```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.10.0-jar-with-dependencies.jar
-```
-
-- \<spark-shell-path\>是您的spark-shell的真实路径。
-- 多个jar包用逗号分隔，没有任何空格。
-- 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
-
-### 分布式模式
-
-在分布式模式下使用TsFile-Spark-Connector启动Spark（即，Spark集群通过spark-shell连接）：
+在本地模式下使用 TsFile-Spark-Connector 启动 Spark：
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar,hadoop-tsfile-{version}-jar-with-dependencies.jar
+```
+
+- \<spark-shell-path\>是您的 spark-shell 的真实路径。
+- 多个 jar 包用逗号分隔，没有任何空格。
+- 有关如何获取 TsFile 的信息，请参见 https://github.com/apache/iotdb/tree/master/tsfile。
+- 获取到 dependency 包：```mvn clean package -DskipTests -P get-jar-with-dependencies```
+
+#### 分布式模式
+
+在分布式模式下使用 TsFile-Spark-Connector 启动 Spark（即，Spark 集群通过 spark-shell 连接）：
+
+```
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar,hadoop-tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 注意：
 
-- \<spark-shell-path\>是您的spark-shell的真实路径。
-- 多个jar包用逗号分隔，没有任何空格。
-- 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
+- \<spark-shell-path\>是您的 spark-shell 的真实路径。
+- 多个 jar 包用逗号分隔，没有任何空格。
+- 有关如何获取 TsFile 的信息，请参见 https://github.com/apache/iotdb/tree/master/tsfile。
 
-## 4. 数据类型对应
+### 数据类型对应
 
-| TsFile数据类型 | SparkSQL数据类型 |
+| TsFile 数据类型 | SparkSQL 数据类型 |
 | -------------- | ---------------- |
 | BOOLEAN        | BooleanType      |
 | INT32          | IntegerType      |
@@ -78,33 +80,28 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 | DOUBLE         | DoubleType       |
 | TEXT           | StringType       |
 
-## 5. 模式推断
+### 模式推断
 
-显示TsFile的方式取决于架构。 以以下TsFile结构为例：TsFile模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
+显示 TsFile 的方式取决于架构。 以以下 TsFile 结构为例：TsFile 模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">名称</th><th colspan="2">类型</th><th colspan="2">编码</th></tr>
-	<tr><td colspan="2">状态</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">温度</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">硬件</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-</center>
+|名称 | 类型 | 编码 |
+| ---- | ---- | ---- | 
+|状态 | Boolean|PLAIN|
+|温度 | Float|RLE|
+|硬件|Text|PLAIN|
 
-TsFile中的现有数据如下：
+TsFile 中的现有数据如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-</table>
-</center>
+ * d1:root.ln.wf01.wt01
+ * d2:root.ln.wf02.wt02
 
-相应的SparkSQL表如下：
+time|d1.status|time|d1.temperature |time	| d2.hardware	|time|d2.status
+---- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
+1|True	|1|2.2|2|"aaa"|1|True
+3|True	|2|2.2|4|"bbb"|2|False
+5|False|3	|2.1|6	|"ccc"|4|True
+
+相应的 SparkSQL 表如下：
 
 | time | root.ln.wf02.wt02.temperature | root.ln.wf02.wt02.status | root.ln.wf02.wt02.hardware | root.ln.wf01.wt01.temperature | root.ln.wf01.wt01.status | root.ln.wf01.wt01.hardware |
 | ---- | ----------------------------- | ------------------------ | -------------------------- | ----------------------------- | ------------------------ | -------------------------- |
@@ -115,7 +112,7 @@ TsFile中的现有数据如下：
 | 5    | null                          | null                     | null                       | null                          | false                    | null                       |
 | 6    | null                          | null                     | ccc                        | null                          | null                     | null                       |
 
-您还可以使用如下所示的窄表形式：（您可以参阅第6部分，了解如何使用窄表形式）
+您还可以使用如下所示的窄表形式：（您可以参阅第 6 部分，了解如何使用窄表形式）
 
 | time | device_name       | status | hardware | temperature |
 | ---- | ----------------- | ------ | -------- | ----------- |
@@ -128,13 +125,11 @@ TsFile中的现有数据如下：
 | 5    | root.ln.wf02.wt01 | false  | null     | null        |
 | 6    | root.ln.wf02.wt02 | null   | ccc      | null        |
 
-
-
-## 6. Scala API
+### Scala API
 
 注意：请记住预先分配必要的读写权限。
 
-### 示例1：从本地文件系统读取
+ * 示例 1：从本地文件系统读取
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -145,7 +140,7 @@ val narrow_df = spark.read.tsfile("test.tsfile", true)
 narrow_df.show
 ```
 
-### 示例2：从hadoop文件系统读取
+ * 示例 2：从 hadoop 文件系统读取
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -156,7 +151,7 @@ val narrow_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true)
 narrow_df.show
 ```
 
-### 示例3：从特定目录读取
+ * 示例 3：从特定目录读取
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -164,11 +159,11 @@ val df = spark.read.tsfile("hdfs://localhost:9000/usr/hadoop")
 df.show
 ```
 
-注1：现在不支持目录中所有TsFile的全局时间排序。
+注 1：现在不支持目录中所有 TsFile 的全局时间排序。
 
-注2：具有相同名称的度量应具有相同的架构。
+注 2：具有相同名称的度量应具有相同的架构。
 
-### 示例4：广泛形式的查询
+ * 示例 4：广泛形式的查询
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -186,7 +181,7 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### 示例5：缩小形式的查询
+ * 示例 5：缩小形式的查询
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -204,7 +199,7 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### 例6：写宽格式
+ * 例 6：写宽格式
 
 ```scala
 // we only support wide_form table to write
@@ -218,7 +213,7 @@ val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
 newDf.show
 ```
 
-## 例6：写窄格式
+ * 例 7：写窄格式
 
 ```scala
 // we only support wide_form table to write
@@ -232,113 +227,94 @@ val newDf = spark.read.tsfile("hdfs://localhost:9000/output", true)
 newDf.show
 ```
 
-## 附录A：模式推断的旧设计
+附录 A：模式推断的旧设计
 
-显示TsFile的方式与TsFile Schema有关。 以以下TsFile结构为例：TsFile架构中有三个度量：状态，温度和硬件。 这三个度量的基本信息如下：
+显示 TsFile 的方式与 TsFile Schema 有关。 以以下 TsFile 结构为例：TsFile 架构中有三个度量：状态，温度和硬件。 这三个度量的基本信息如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">名称</th><th colspan="2">类型</th><th colspan="2">编码</th></tr>
-	<tr><td colspan="2">状态</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">温度</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">硬件</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-<span>测量的基本信息</span>
-</center>
+|名称 | 类型 | 编码 |
+| ---- | ---- | ---- | 
+|状态 | Boolean|PLAIN|
+|温度 | Float|RLE|
+|硬件|Text|PLAIN|
 
 文件中的现有数据如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">delta\_object:root.ln.wf01.wt01</th><th colspan="4">delta\_object:root.ln.wf02.wt02</th><th colspan="4">delta\_object:root.sgcc.wf03.wt01</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th><th colspan="2">status</th><th colspan="2">temperature</th></tr>
-	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td><td>2</td><td>True</td><td>3</td><td>3.3</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td><td>3</td><td>True</td><td>6</td><td>6.6</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td><td>4</td><td>True</td><td>8</td><td>8.8</td></tr>
-	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td><td>6</td><td>True</td><td>9</td><td>9.9</td></tr>
-</table>
-<span>一组时间序列数据</span>
-</center>
+ * delta_object1: root.ln.wf01.wt01
+ * delta_object2: root.ln.wf02.wt02
+ * delta_object3: :root.sgcc.wf03.wt01
+
+time|delta_object1.status|time|delta_object1.temperature |time	| delta_object2.hardware	|time|delta_object2.status |time|delta_object3.status|time|delta_object3.temperature 
+---- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
+1|True	|1|2.2|2|"aaa"|1|True|2|True|3|3.3
+3|True	|2|2.2|4|"bbb"|2|False|3|True|6|6.6
+5|False|3	|2.1|6	|"ccc"|4|True|4|True|8|8.8
+7|True|4|2.0|8|"ddd"|5|False|6|True|9|9.9
 
 有两种显示方法：
 
-#### 默认方式
+ * 默认方式
 
-将创建两列来存储设备的完整路径：time（LongType）和delta_object（StringType）。
+将创建两列来存储设备的完整路径：time（LongType）和 delta_object（StringType）。
 
 - `time`：时间戳记，LongType
 - `delta_object`：Delta_object ID，StringType
 
-接下来，为每个度量创建一列以存储特定数据。 SparkSQL表结构如下：
+接下来，为每个度量创建一列以存储特定数据。 SparkSQL 表结构如下：
 
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> delta\_object(StringType)</th><th>status(BooleanType)</th><th>temperature(FloatType)</th><th>hardware(StringType)</th></tr>
-	<tr><td>1</td><td> root.ln.wf01.wt01 </td><td>True</td><td>2.2</td><td>null</td></tr>
-	<tr><td>1</td><td> root.ln.wf02.wt02 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>2</td><td> root.ln.wf01.wt01 </td><td>null</td><td>2.2</td><td>null</td></tr>
-	<tr><td>2</td><td> root.ln.wf02.wt02 </td><td>False</td><td>null</td><td>"aaa"</td></tr>
-	<tr><td>2</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>3</td><td> root.ln.wf01.wt01 </td><td>True</td><td>2.1</td><td>null</td></tr>
-	<tr><td>3</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>3.3</td><td>null</td></tr>
-	<tr><td>4</td><td> root.ln.wf01.wt01 </td><td>null</td><td>2.0</td><td>null</td></tr>
-	<tr><td>4</td><td> root.ln.wf02.wt02 </td><td>True</td><td>null</td><td>"bbb"</td></tr>
-	<tr><td>4</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.ln.wf01.wt01 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.ln.wf02.wt02 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> root.ln.wf02.wt02 </td><td>null</td><td>null</td><td>"ccc"</td></tr>
-	<tr><td>6</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>6.6</td><td>null</td></tr>
-	<tr><td>7</td><td> root.ln.wf01.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> root.ln.wf02.wt02 </td><td>null</td><td>null</td><td>"ddd"</td></tr>
-	<tr><td>8</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
-	<tr><td>9</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
-	</table>
-</center>
+|time(LongType)|delta\_object(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|--- |--- |--- |--- |--- |
+|1|root.ln.wf01.wt01|True|2.2|null|
+|1|root.ln.wf02.wt02|True|null|null|
+|2|root.ln.wf01.wt01|null|2.2|null|
+|2|root.ln.wf02.wt02|False|null|"aaa"|
+|2|root.sgcc.wf03.wt01|True|null|null|
+|3|root.ln.wf01.wt01|True|2.1|null|
+|3|root.sgcc.wf03.wt01|True|3.3|null|
+|4|root.ln.wf01.wt01|null|2.0|null|
+|4|root.ln.wf02.wt02|True|null|"bbb"|
+|4|root.sgcc.wf03.wt01|True|null|null|
+|5|root.ln.wf01.wt01|False|null|null|
+|5|root.ln.wf02.wt02|False|null|null|
+|5|root.sgcc.wf03.wt01|True|null|null|
+|6|root.ln.wf02.wt02|null|null|"ccc"|
+|6|root.sgcc.wf03.wt01|null|6.6|null|
+|7|root.ln.wf01.wt01|True|null|null|
+|8|root.ln.wf02.wt02|null|null|"ddd"|
+|8|root.sgcc.wf03.wt01|null|8.8|null|
+|9|root.sgcc.wf03.wt01|null|9.9|null|
 
+ * 展开 delta_object 列
 
+通过“。”将设备列展开为多个列，忽略根目录“root”。方便进行更丰富的聚合操作。如果用户想使用这种显示方式，需要在表创建语句中设置参数“delta\_object\_name”（参考本手册 5.1 节中的示例 5)，在本例中，将参数“delta\_object\_name”设置为“root.device.turbine”。路径层的数量必须是一对一的。此时，除了“根”层之外，为设备路径的每一层创建一列。列名是参数中的名称，值是设备相应层的名称。接下来，将为每个度量创建一个列来存储特定的数据。
 
-#### 展开delta_object列
+那么 SparkSQL 表结构如下：
 
-通过“。”将设备列展开为多个列，忽略根目录“root”。方便进行更丰富的聚合操作。如果用户想使用这种显示方式，需要在表创建语句中设置参数“delta\_object\_name”(参考本手册5.1节中的示例5)，在本例中，将参数“delta\_object\_name”设置为“root.device.turbine”。路径层的数量必须是一对一的。此时，除了“根”层之外，为设备路径的每一层创建一列。列名是参数中的名称，值是设备相应层的名称。接下来，将为每个度量创建一个列来存储特定的数据。
+|time(LongType)|group(StringType)|field(StringType)|device(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|--- |--- |--- |--- |--- |--- |--- |
+|1|ln|wf01|wt01|True|2.2|null|
+|1|ln|wf02|wt02|True|null|null|
+|2|ln|wf01|wt01|null|2.2|null|
+|2|ln|wf02|wt02|False|null|"aaa"|
+|2|sgcc|wf03|wt01|True|null|null|
+|3|ln|wf01|wt01|True|2.1|null|
+|3|sgcc|wf03|wt01|True|3.3|null|
+|4|ln|wf01|wt01|null|2.0|null|
+|4|ln|wf02|wt02|True|null|"bbb"|
+|4|sgcc|wf03|wt01|True|null|null|
+|5|ln|wf01|wt01|False|null|null|
+|5|ln|wf02|wt02|False|null|null|
+|5|sgcc|wf03|wt01|True|null|null|
+|6|ln|wf02|wt02|null|null|"ccc"|
+|6|sgcc|wf03|wt01|null|6.6|null|
+|7|ln|wf01|wt01|True|null|null|
+|8|ln|wf02|wt02|null|null|"ddd"|
+|8|sgcc|wf03|wt01|null|8.8|null|
+|9|sgcc|wf03|wt01|null|9.9|null|
 
+TsFile-Spark-Connector 可以通过 SparkSQL 在 SparkSQL 中以表的形式显示一个或多个 tsfile。它还允许用户指定一个目录或使用通配符来匹配多个目录。如果有多个 tsfile，那么所有 tsfile 中的度量值的并集将保留在表中，并且具有相同名称的度量值在默认情况下具有相同的数据类型。注意，如果存在名称相同但数据类型不同的情况，TsFile-Spark-Connector 将不能保证结果的正确性。
 
+写入过程是将数据 aframe 写入一个或多个 tsfile。默认情况下，需要包含两个列：time 和 delta_object。其余的列用作测量。如果用户希望将第二个表结构写回 TsFile，可以设置“delta\_object\_name”参数（请参阅本手册 5.1 节的 5.1 节）。
 
-那么SparkSQL表结构如下:
+附录 B：旧注
 
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> group(StringType)</th><th> field(StringType)</th><th> device(StringType)</th><th>status(BooleanType)</th><th>temperature(FloatType)</th><th>hardware(StringType)</th></tr>
-	<tr><td>1</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>2.2</td><td>null</td></tr>
-	<tr><td>1</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>2</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>null</td><td>2.2</td><td>null</td></tr>
-	<tr><td>2</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>False</td><td>null</td><td>"aaa"</td></tr>
-	<tr><td>2</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>3</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>2.1</td><td>null</td></tr>
-	<tr><td>3</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>3.3</td><td>null</td></tr>
-	<tr><td>4</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>null</td><td>2.0</td><td>null</td></tr>
-	<tr><td>4</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>True</td><td>null</td><td>"bbb"</td></tr>
-	<tr><td>4</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>null</td><td>null</td><td>"ccc"</td></tr>
-	<tr><td>6</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>6.6</td><td>null</td></tr>
-	<tr><td>7</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>null</td><td>null</td><td>"ddd"</td></tr>
-	<tr><td>8</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
-	<tr><td>9</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
-	</table>
-
-</center>
-
-TsFile-Spark-Connector可以通过SparkSQL在SparkSQL中以表的形式显示一个或多个tsfile。它还允许用户指定一个目录或使用通配符来匹配多个目录。如果有多个tsfile，那么所有tsfile中的度量值的并集将保留在表中，并且具有相同名称的度量值在默认情况下具有相同的数据类型。注意，如果存在名称相同但数据类型不同的情况，TsFile-Spark-Connector将不能保证结果的正确性。
-
-
-
-写入过程是将数据aframe写入一个或多个tsfile。默认情况下，需要包含两个列:time和delta_object。其余的列用作测量。如果用户希望将第二个表结构写回TsFile，可以设置“delta\_object\_name”参数(请参阅本手册5.1节的5.1节)。
-
-## 附录B：旧注
-
-注意：检查Spark根目录中的jar软件包，并将libthrift-0.9.2.jar和libfb303-0.9.2.jar分别替换为libthrift-0.9.1.jar和libfb303-0.9.1.jar。
+注意：检查 Spark 根目录中的 jar 软件包，并将 libthrift-0.9.2.jar 和 libfb303-0.9.2.jar 分别替换为 libthrift-0.9.1.jar 和 libfb303-0.9.1.jar。

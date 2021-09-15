@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -30,9 +27,13 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+
 public class LastValueAggrResult extends AggregateResult {
 
-  //timestamp of current value
+  // timestamp of current value
   protected long timestamp = Long.MIN_VALUE;
 
   public LastValueAggrResult(TSDataType dataType) {
@@ -82,20 +83,26 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        time = timestamps[i];
-        lastVal = value;
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        timestamp = timestamps[i];
+        setValue(values[i]);
+        return;
       }
     }
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
+  }
+
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        timestamp = timestamps[i];
+        setValue(values[i]);
+        return;
+      }
     }
   }
 

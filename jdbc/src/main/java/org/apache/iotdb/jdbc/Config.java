@@ -20,38 +20,37 @@ package org.apache.iotdb.jdbc;
 
 public class Config {
 
-  private Config(){}
+  private Config() {}
 
-  /**
-   * The required prefix for the connection URL.
-   */
+  /** The required prefix for the connection URL. */
   public static final String IOTDB_URL_PREFIX = "jdbc:iotdb://";
 
   static final String IOTDB_DEFAULT_HOST = "localhost";
-  /**
-   * If host is provided, without a port.
-   */
+  /** If host is provided, without a port. */
   static final int IOTDB_DEFAULT_PORT = 6667;
 
-  /**
-   * tsfile's default series name.
-   */
+  /** tsfile's default series name. */
   static final String DEFAULT_SERIES_NAME = "default";
 
   static final String AUTH_USER = "user";
   static final String DEFAULT_USER = "user";
 
   static final String AUTH_PASSWORD = "password";
-  static final String DEFALUT_PASSWORD = "password";
+  static final String DEFAULT_PASSWORD = "password";
 
   static final int RETRY_NUM = 3;
   static final long RETRY_INTERVAL_MS = 1000;
 
-  static int fetchSize = 10000;
-  static int connectionTimeoutInMs = 0;
+  public static final int DEFAULT_FETCH_SIZE = 5000;
+  static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
   public static boolean rpcThriftCompressionEnable = false;
 
+  /** key of thrift default buffer size */
+  public static final String DEFAULT_BUFFER_CAPACITY = "thrift_default_buffer_capacity";
+
+  /** key of thrift max frame size */
+  public static final String THRIFT_FRAME_MAX_SIZE = "thrift_max_frame_size";
 }

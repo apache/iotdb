@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.log.catchup;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestSyncClient;
@@ -39,6 +31,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -46,77 +39,98 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 public class LogCatchUpTaskTest {
 
   private List<Log> receivedLogs = new ArrayList<>();
-  private Node header = new Node();
+  private RaftNode header = new RaftNode(new Node(), 0);
   private boolean testLeadershipFlag;
   private boolean prevUseAsyncServer;
 
-  private RaftMember sender = new TestMetaGroupMember() {
-    @Override
-    public AsyncClient getAsyncClient(Node node) {
-      return new TestAsyncClient() {
+  private RaftMember sender =
+      new TestMetaGroupMember() {
+
         @Override
-        public void appendEntry(AppendEntryRequest request,
-            AsyncMethodCallback<Long> resultHandler) {
-          new Thread(() -> {
-            try {
-              resultHandler.onComplete(dummyAppendEntry(request));
-            } catch (UnknownLogTypeException e) {
-              fail(e.getMessage());
-            }
-          }).start();
+        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+          return getAsyncClient(node);
         }
 
         @Override
-        public void appendEntries(AppendEntriesRequest request,
-            AsyncMethodCallback<Long> resultHandler) {
-          new Thread(() -> {
-            try {
-              resultHandler.onComplete(dummyAppendEntries(request));
-            } catch (UnknownLogTypeException e) {
-              fail(e.getMessage());
+        public AsyncClient getAsyncClient(Node node) {
+          return new TestAsyncClient() {
+            @Override
+            public void appendEntry(
+                AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+              new Thread(
+                      () -> {
+                        try {
+                          resultHandler.onComplete(dummyAppendEntry(request));
+                        } catch (UnknownLogTypeException e) {
+                          fail(e.getMessage());
+                        }
+                      })
+                  .start();
             }
-          }).start();
+
+            @Override
+            public void appendEntries(
+                AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
+              new Thread(
+                      () -> {
+                        try {
+                          resultHandler.onComplete(dummyAppendEntries(request));
+                        } catch (UnknownLogTypeException e) {
+                          fail(e.getMessage());
+                        }
+                      })
+                  .start();
+            }
+          };
+        }
+
+        @Override
+        public Client getSyncClient(Node node) {
+          return new TestSyncClient() {
+            @Override
+            public long appendEntry(AppendEntryRequest request) throws TException {
+              try {
+                return dummyAppendEntry(request);
+              } catch (UnknownLogTypeException e) {
+                throw new TException(e);
+              }
+            }
+
+            @Override
+            public long appendEntries(AppendEntriesRequest request) throws TException {
+              try {
+                return dummyAppendEntries(request);
+              } catch (UnknownLogTypeException e) {
+                throw new TException(e);
+              }
+            }
+          };
+        }
+
+        @Override
+        public RaftNode getHeader() {
+          return header;
         }
       };
-    }
-
-    @Override
-    public Client getSyncClient(Node node) {
-      return new TestSyncClient() {
-        @Override
-        public long appendEntry(AppendEntryRequest request) throws TException {
-          try {
-            return dummyAppendEntry(request);
-          } catch (UnknownLogTypeException e) {
-            throw new TException(e);
-          }
-        }
-
-        @Override
-        public long appendEntries(AppendEntriesRequest request) throws TException {
-          try {
-            return dummyAppendEntries(request);
-          } catch (UnknownLogTypeException e) {
-            throw new TException(e);
-          }
-        }
-      };
-    }
-
-    @Override
-    public Node getHeader() {
-      return header;
-    }
-  };
 
   private long dummyAppendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
     LogParser parser = LogParser.getINSTANCE();
@@ -179,7 +193,7 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(logSize);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, useBatch);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, useBatch);
     task.call();
 
     assertEquals(logList, receivedLogs);
@@ -194,7 +208,7 @@ public class LogCatchUpTaskTest {
       List<Log> logList = TestUtils.prepareTestLogs(10);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, false);
       task.call();
 
       assertEquals(logList, receivedLogs);
@@ -210,7 +224,7 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, false);
     task.setUseBatch(false);
     try {
       task.call();
@@ -218,17 +232,19 @@ public class LogCatchUpTaskTest {
     } catch (TException | InterruptedException e) {
       fail(e.getMessage());
     } catch (LeaderUnknownException e) {
-      assertEquals("The leader is unknown in this group [Node(ip:192.168.0.0, metaPort:9003, "
-          + "nodeIdentifier:0, dataPort:40010, clientPort:0), Node(ip:192.168.0.1, metaPort:9003, "
-          + "nodeIdentifier:1, dataPort:40010, clientPort:0), Node(ip:192.168.0.2, metaPort:9003, "
-          + "nodeIdentifier:2, dataPort:40010, clientPort:0), Node(ip:192.168.0.3, metaPort:9003, "
-          + "nodeIdentifier:3, dataPort:40010, clientPort:0), Node(ip:192.168.0.4, metaPort:9003, "
-          + "nodeIdentifier:4, dataPort:40010, clientPort:0), Node(ip:192.168.0.5, metaPort:9003, "
-          + "nodeIdentifier:5, dataPort:40010, clientPort:0), Node(ip:192.168.0.6, metaPort:9003, "
-          + "nodeIdentifier:6, dataPort:40010, clientPort:0), Node(ip:192.168.0.7, metaPort:9003, "
-          + "nodeIdentifier:7, dataPort:40010, clientPort:0), Node(ip:192.168.0.8, metaPort:9003, "
-          + "nodeIdentifier:8, dataPort:40010, clientPort:0), Node(ip:192.168.0.9, metaPort:9003, "
-          + "nodeIdentifier:9, dataPort:40010, clientPort:0)]", e.getMessage());
+      assertEquals(
+          "The leader is unknown in this group [Node(internalIp:192.168.0.0, metaPort:9003, "
+              + "nodeIdentifier:0, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.1, metaPort:9003, "
+              + "nodeIdentifier:1, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.2, metaPort:9003, "
+              + "nodeIdentifier:2, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.3, metaPort:9003, "
+              + "nodeIdentifier:3, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.4, metaPort:9003, "
+              + "nodeIdentifier:4, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.5, metaPort:9003, "
+              + "nodeIdentifier:5, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.6, metaPort:9003, "
+              + "nodeIdentifier:6, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.7, metaPort:9003, "
+              + "nodeIdentifier:7, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.8, metaPort:9003, "
+              + "nodeIdentifier:8, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.9, metaPort:9003, "
+              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)]",
+          e.getMessage());
     }
 
     assertEquals(logList.subList(0, 5), receivedLogs);
@@ -242,7 +258,7 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(1030);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, true);
     task.call();
 
     assertEquals(logList.subList(0, 1024), receivedLogs);
@@ -255,11 +271,12 @@ public class LogCatchUpTaskTest {
       // thrift frame size is small so the logs must be sent in more than one batch
       List<Log> logList = TestUtils.prepareTestLogs(500);
       int singleLogSize = logList.get(0).serialize().limit();
-      IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(100 * singleLogSize
-          + IoTDBConstant.LEFT_SIZE_IN_REQUEST);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setThriftMaxFrameSize(100 * singleLogSize + IoTDBConstant.LEFT_SIZE_IN_REQUEST);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, true);
       task.call();
 
       assertEquals(logList, receivedLogs);
@@ -269,8 +286,8 @@ public class LogCatchUpTaskTest {
   }
 
   @Test
-  public void testVerySmallFrameSize() throws InterruptedException, TException,
-      LeaderUnknownException {
+  public void testVerySmallFrameSize()
+      throws InterruptedException, TException, LeaderUnknownException {
     int preFrameSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
     try {
       // thrift frame size is too small so no logs can be sent successfully
@@ -278,7 +295,7 @@ public class LogCatchUpTaskTest {
       IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(0);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, true);
       task.call();
 
       assertTrue(receivedLogs.isEmpty());

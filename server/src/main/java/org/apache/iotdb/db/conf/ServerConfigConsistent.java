@@ -24,14 +24,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Configurations using this annotation should be the same across all nodes in a cluster.
- */
+/** Configurations using this annotation should be the same across all nodes in a cluster. */
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.SOURCE)
 public @interface ServerConfigConsistent {
-  //TODO#IOTDB-436: the restarted server should check the
+  // TODO#IOTDB-436: the restarted server should check the
   // configuration consistency as before.
 
 }
-

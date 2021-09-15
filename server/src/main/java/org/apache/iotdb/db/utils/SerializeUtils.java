@@ -19,8 +19,17 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchData.BatchDataType;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,15 +37,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class SerializeUtils {
@@ -82,7 +82,7 @@ public class SerializeUtils {
     return result;
   }
 
-  public static void serialize(List<Integer> ints, DataOutputStream dataOutputStream) {
+  public static void serializeIntList(List<Integer> ints, DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeInt(ints.size());
       for (Integer anInt : ints) {
@@ -93,14 +93,14 @@ public class SerializeUtils {
     }
   }
 
-  public static void deserialize(List<Integer> ints, ByteBuffer buffer) {
+  public static void deserializeIntList(List<Integer> ints, ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       ints.add(buffer.getInt());
     }
   }
 
-  public static void serialize(Set<Integer> ints, DataOutputStream dataOutputStream) {
+  public static void serializeIntSet(Set<Integer> ints, DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeInt(ints.size());
       for (Integer anInt : ints) {
@@ -111,60 +111,21 @@ public class SerializeUtils {
     }
   }
 
-  public static void deserialize(Set<Integer> ints, ByteBuffer buffer) {
+  public static void deserializeIntSet(Set<Integer> ints, ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       ints.add(buffer.getInt());
     }
   }
 
-  public static void serialize(Node node, DataOutputStream dataOutputStream) {
-    try {
-      byte[] ipBytes = node.ip.getBytes();
-      dataOutputStream.writeInt(ipBytes.length);
-      dataOutputStream.write(ipBytes);
-      dataOutputStream.writeInt(node.metaPort);
-      dataOutputStream.writeInt(node.nodeIdentifier);
-      dataOutputStream.writeInt(node.dataPort);
-      dataOutputStream.writeInt(node.clientPort);
-    } catch (IOException e) {
-      // unreachable
-    }
-  }
-
-  public static void deserialize(Node node, ByteBuffer buffer) {
-    int ipLength = buffer.getInt();
-    byte[] ipBytes = new byte[ipLength];
-    buffer.get(ipBytes);
-    node.setIp(new String(ipBytes));
-    node.setMetaPort(buffer.getInt());
-    node.setNodeIdentifier(buffer.getInt());
-    node.setDataPort(buffer.getInt());
-    node.setClientPort(buffer.getInt());
-  }
-
-  public static void deserialize(Node node, DataInputStream stream) throws IOException {
-    int ipLength = stream.readInt();
-    byte[] ipBytes = new byte[ipLength];
-    int readSize = stream.read(ipBytes);
-    if (readSize != ipLength) {
-      throw new IOException(String.format("No sufficient bytes read when deserializing the ip of "
-          + "a "
-          + "node: %d/%d", readSize, ipLength));
-    }
-    node.setIp(new String(ipBytes));
-    node.setMetaPort(stream.readInt());
-    node.setNodeIdentifier(stream.readInt());
-    node.setDataPort(stream.readInt());
-    node.setClientPort(stream.readInt());
-  }
-
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void serializeBatchData(BatchData batchData, DataOutputStream outputStream) {
     try {
       int length = batchData.length();
       TSDataType dataType = batchData.getDataType();
       outputStream.writeInt(length);
       outputStream.write(dataType.ordinal());
+      outputStream.write(batchData.getBatchDataType().ordinal());
       switch (dataType) {
         case BOOLEAN:
           for (int i = 0; i < length; i++) {
@@ -204,12 +165,49 @@ public class SerializeUtils {
             outputStream.writeInt(batchData.getIntByIndex(i));
           }
           break;
+        case VECTOR:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            TsPrimitiveType[] values = batchData.getVectorByIndex(i);
+            outputStream.writeInt(values.length);
+            for (TsPrimitiveType value : values) {
+              if (value == null) {
+                outputStream.write(0);
+              } else {
+                outputStream.write(1);
+                outputStream.write(value.getDataType().serialize());
+                switch (value.getDataType()) {
+                  case BOOLEAN:
+                    outputStream.writeBoolean(value.getBoolean());
+                    break;
+                  case DOUBLE:
+                    outputStream.writeDouble(value.getDouble());
+                    break;
+                  case FLOAT:
+                    outputStream.writeFloat(value.getFloat());
+                    break;
+                  case TEXT:
+                    Binary binary = value.getBinary();
+                    outputStream.writeInt(binary.getLength());
+                    outputStream.write(binary.getValues());
+                    break;
+                  case INT64:
+                    outputStream.writeLong(value.getLong());
+                    break;
+                  case INT32:
+                    outputStream.writeInt(value.getInt());
+                    break;
+                }
+              }
+            }
+          }
       }
     } catch (IOException ignored) {
       // ignored
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static BatchData deserializeBatchData(ByteBuffer buffer) {
     if (buffer == null || (buffer.limit() - buffer.position()) == 0) {
       return null;
@@ -217,7 +215,7 @@ public class SerializeUtils {
 
     int length = buffer.getInt();
     TSDataType dataType = TSDataType.values()[buffer.get()];
-    BatchData batchData = new BatchData(dataType);
+    BatchData batchData = BatchDataType.deserialize(buffer.get(), dataType);
     switch (dataType) {
       case INT32:
         for (int i = 0; i < length; i++) {
@@ -253,12 +251,49 @@ public class SerializeUtils {
           batchData.putBoolean(buffer.getLong(), buffer.get() == 1);
         }
         break;
+      case VECTOR:
+        for (int i = 0; i < length; i++) {
+          long time = buffer.getLong();
+          int valuesLength = buffer.getInt();
+          TsPrimitiveType[] values = new TsPrimitiveType[valuesLength];
+          for (int j = 0; j < valuesLength; j++) {
+            boolean notNull = (buffer.get() == 1);
+            if (notNull) {
+              switch (TSDataType.values()[buffer.get()]) {
+                case BOOLEAN:
+                  values[j] = new TsPrimitiveType.TsBoolean(buffer.get() == 1);
+                  break;
+                case DOUBLE:
+                  values[j] = new TsPrimitiveType.TsDouble(buffer.getDouble());
+                  break;
+                case FLOAT:
+                  values[j] = new TsPrimitiveType.TsFloat(buffer.getFloat());
+                  break;
+                case TEXT:
+                  int len = buffer.getInt();
+                  byte[] bytes = new byte[len];
+                  buffer.get(bytes);
+                  values[j] = new TsPrimitiveType.TsBinary(new Binary(bytes));
+                  break;
+                case INT64:
+                  values[j] = new TsPrimitiveType.TsLong(buffer.getLong());
+                  break;
+                case INT32:
+                  values[j] = new TsPrimitiveType.TsInt(buffer.getInt());
+                  break;
+              }
+            }
+          }
+          batchData.putVector(time, values);
+        }
+        break;
     }
+    batchData.resetBatchData();
     return batchData;
   }
 
-  private static void serializeTextTVPairs(List<TimeValuePair> timeValuePairs,
-      DataOutputStream dataOutputStream) throws IOException {
+  private static void serializeTextTVPairs(
+      List<TimeValuePair> timeValuePairs, DataOutputStream dataOutputStream) throws IOException {
     for (TimeValuePair timeValuePair : timeValuePairs) {
       dataOutputStream.writeLong(timeValuePair.getTimestamp());
       if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -268,8 +303,8 @@ public class SerializeUtils {
     }
   }
 
-  private static void serializeBooleanTVPairs(List<TimeValuePair> timeValuePairs,
-      DataOutputStream dataOutputStream) throws IOException {
+  private static void serializeBooleanTVPairs(
+      List<TimeValuePair> timeValuePairs, DataOutputStream dataOutputStream) throws IOException {
     for (TimeValuePair timeValuePair : timeValuePairs) {
       dataOutputStream.writeLong(timeValuePair.getTimestamp());
       if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -278,8 +313,8 @@ public class SerializeUtils {
     }
   }
 
-  private static void serializeIntTVPairs(List<TimeValuePair> timeValuePairs,
-      DataOutputStream dataOutputStream) throws IOException {
+  private static void serializeIntTVPairs(
+      List<TimeValuePair> timeValuePairs, DataOutputStream dataOutputStream) throws IOException {
     for (TimeValuePair timeValuePair : timeValuePairs) {
       dataOutputStream.writeLong(timeValuePair.getTimestamp());
       if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -288,8 +323,8 @@ public class SerializeUtils {
     }
   }
 
-  private static void serializeLongTVPairs(List<TimeValuePair> timeValuePairs,
-      DataOutputStream dataOutputStream) throws IOException {
+  private static void serializeLongTVPairs(
+      List<TimeValuePair> timeValuePairs, DataOutputStream dataOutputStream) throws IOException {
     for (TimeValuePair timeValuePair : timeValuePairs) {
       dataOutputStream.writeLong(timeValuePair.getTimestamp());
       if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -298,8 +333,8 @@ public class SerializeUtils {
     }
   }
 
-  private static void serializeFloatTVPairs(List<TimeValuePair> timeValuePairs,
-      DataOutputStream dataOutputStream) throws IOException {
+  private static void serializeFloatTVPairs(
+      List<TimeValuePair> timeValuePairs, DataOutputStream dataOutputStream) throws IOException {
     for (TimeValuePair timeValuePair : timeValuePairs) {
       dataOutputStream.writeLong(timeValuePair.getTimestamp());
       if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -308,8 +343,8 @@ public class SerializeUtils {
     }
   }
 
-  private static void serializeDoubleTVPairs(List<TimeValuePair> timeValuePairs,
-      DataOutputStream dataOutputStream) throws IOException {
+  private static void serializeDoubleTVPairs(
+      List<TimeValuePair> timeValuePairs, DataOutputStream dataOutputStream) throws IOException {
     for (TimeValuePair timeValuePair : timeValuePairs) {
       dataOutputStream.writeLong(timeValuePair.getTimestamp());
       if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -318,9 +353,11 @@ public class SerializeUtils {
     }
   }
 
-  public static void serializeTVPairs(List<TimeValuePair> timeValuePairs,
-      DataOutputStream dataOutputStream) {
+  public static void serializeTVPairs(
+      List<TimeValuePair> timeValuePairs, DataOutputStream dataOutputStream) {
     try {
+      TSDataType dataType = timeValuePairs.get(0).getValue().getDataType();
+      dataOutputStream.write(dataType.ordinal());
       dataOutputStream.writeInt(timeValuePairs.size());
       switch (timeValuePairs.get(0).getValue().getDataType()) {
         case TEXT:
@@ -346,8 +383,8 @@ public class SerializeUtils {
     }
   }
 
-  public static void serializeTVPair(TimeValuePair timeValuePair,
-      DataOutputStream dataOutputStream) {
+  public static void serializeTVPair(
+      TimeValuePair timeValuePair, DataOutputStream dataOutputStream) {
     if (timeValuePair.getValue() == null) {
       return;
     }
@@ -397,63 +434,68 @@ public class SerializeUtils {
     }
   }
 
-  private static void deserializeDoubleTVPairs(ByteBuffer buffer, List<TimeValuePair> ret,
-      int size, TSDataType dataType) {
+  private static void deserializeDoubleTVPairs(
+      ByteBuffer buffer, List<TimeValuePair> ret, int size, TSDataType dataType) {
     for (int i = 0; i < size; i++) {
       long time = buffer.getLong();
-      TimeValuePair pair = time != Long.MIN_VALUE ? new TimeValuePair(time,
-          TsPrimitiveType.getByType(dataType, buffer.getDouble())) : new TimeValuePair(time,
-          null);
+      TimeValuePair pair =
+          time != Long.MIN_VALUE
+              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getDouble()))
+              : new TimeValuePair(time, null);
       ret.add(pair);
     }
   }
 
-  private static void deserializeFloatTVPairs(ByteBuffer buffer, List<TimeValuePair> ret,
-      int size, TSDataType dataType) {
+  private static void deserializeFloatTVPairs(
+      ByteBuffer buffer, List<TimeValuePair> ret, int size, TSDataType dataType) {
     for (int i = 0; i < size; i++) {
       long time = buffer.getLong();
-      TimeValuePair pair = time != Long.MIN_VALUE ? new TimeValuePair(time,
-          TsPrimitiveType.getByType(dataType, buffer.getFloat())) : new TimeValuePair(time,
-          null);
+      TimeValuePair pair =
+          time != Long.MIN_VALUE
+              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getFloat()))
+              : new TimeValuePair(time, null);
       ret.add(pair);
     }
   }
 
-  private static void deserializeIntTVPairs(ByteBuffer buffer, List<TimeValuePair> ret,
-      int size, TSDataType dataType) {
+  private static void deserializeIntTVPairs(
+      ByteBuffer buffer, List<TimeValuePair> ret, int size, TSDataType dataType) {
     for (int i = 0; i < size; i++) {
       long time = buffer.getLong();
-      TimeValuePair pair = time != Long.MIN_VALUE ? new TimeValuePair(time,
-          TsPrimitiveType.getByType(dataType, buffer.getInt())) : new TimeValuePair(time,
-          null);
+      TimeValuePair pair =
+          time != Long.MIN_VALUE
+              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getInt()))
+              : new TimeValuePair(time, null);
       ret.add(pair);
     }
   }
 
-  private static void deserializeLongTVPairs(ByteBuffer buffer, List<TimeValuePair> ret,
-      int size, TSDataType dataType) {
+  private static void deserializeLongTVPairs(
+      ByteBuffer buffer, List<TimeValuePair> ret, int size, TSDataType dataType) {
     for (int i = 0; i < size; i++) {
       long time = buffer.getLong();
-      TimeValuePair pair = time != Long.MIN_VALUE ? new TimeValuePair(time,
-          TsPrimitiveType.getByType(dataType, buffer.getLong())) : new TimeValuePair(time,
-          null);
+      TimeValuePair pair =
+          time != Long.MIN_VALUE
+              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getLong()))
+              : new TimeValuePair(time, null);
       ret.add(pair);
     }
   }
 
-  private static void deserializeBooleanTVPairs(ByteBuffer buffer, List<TimeValuePair> ret,
-      int size, TSDataType dataType) {
+  private static void deserializeBooleanTVPairs(
+      ByteBuffer buffer, List<TimeValuePair> ret, int size, TSDataType dataType) {
     for (int i = 0; i < size; i++) {
       long time = buffer.getLong();
-      TimeValuePair pair = time != Long.MIN_VALUE ? new TimeValuePair(time,
-          TsPrimitiveType.getByType(dataType, buffer.get() == 1)) : new TimeValuePair(time,
-          null);
+      TimeValuePair pair =
+          time != Long.MIN_VALUE
+              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.get() == 1))
+              : new TimeValuePair(time, null);
       ret.add(pair);
     }
   }
 
-  private static void deserializeTextTVPairs(ByteBuffer buffer, List<TimeValuePair> ret,
-      int size, TSDataType dataType) {
+  private static void deserializeTextTVPairs(
+      ByteBuffer buffer, List<TimeValuePair> ret, int size, TSDataType dataType) {
     for (int i = 0; i < size; i++) {
       long time = buffer.getLong();
       TimeValuePair pair;
@@ -461,7 +503,7 @@ public class SerializeUtils {
         int bytesLen = buffer.getInt();
         byte[] bytes = new byte[bytesLen];
         buffer.get(bytes);
-        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, bytes);
+        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, new Binary(bytes));
         pair = new TimeValuePair(time, primitiveType);
       } else {
         pair = new TimeValuePair(time, null);
@@ -511,20 +553,15 @@ public class SerializeUtils {
     }
     switch (dataType) {
       case DOUBLE:
-        return new TimeValuePair(time,
-            TsPrimitiveType.getByType(dataType, buffer.getDouble()));
+        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getDouble()));
       case FLOAT:
-        return new TimeValuePair(time,
-            TsPrimitiveType.getByType(dataType, buffer.getFloat()));
+        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getFloat()));
       case INT32:
-        return new TimeValuePair(time,
-            TsPrimitiveType.getByType(dataType, buffer.getInt()));
+        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getInt()));
       case INT64:
-        return new TimeValuePair(time,
-            TsPrimitiveType.getByType(dataType, buffer.getLong()));
+        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getLong()));
       case BOOLEAN:
-        return new TimeValuePair(time,
-            TsPrimitiveType.getByType(dataType, buffer.get() == 1));
+        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.get() == 1));
       case TEXT:
         int bytesLen = buffer.getInt();
         byte[] bytes = new byte[bytesLen];
@@ -577,7 +614,7 @@ public class SerializeUtils {
   }
 
   public static ByteBuffer serializeLongs(long[] longs) {
-    //TODO-Cluster: replace with a no-copy method
+    // TODO-Cluster: replace with a no-copy method
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {

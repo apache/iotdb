@@ -4,36 +4,40 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.net.ServerSocket;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.rpc.TSocketWrapper;
+
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TSocket;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.ServerSocket;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SyncMetaClientTest {
 
   @Test
   public void test() throws IOException, InterruptedException {
     Node node = new Node();
-    node.setMetaPort(9003).setIp("localhost");
+    node.setMetaPort(9003).setInternalIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getMetaPort());
-    Thread listenThread = new Thread(() -> {
-      while (!Thread.interrupted()) {
-        try {
-          serverSocket.accept();
-        } catch (IOException e) {
-          return;
-        }
-      }
-    });
+    Thread listenThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  serverSocket.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
     listenThread.start();
 
     try {
@@ -48,11 +52,59 @@ public class SyncMetaClientTest {
       assertEquals(client, newClient);
       assertTrue(client.getInputProtocol().getTransport().isOpen());
 
-      client = new SyncMetaClient(new TBinaryProtocol(new TSocket(node.getIp(),
-          node.getDataPort())));
+      client =
+          new SyncMetaClient(
+              new TBinaryProtocol(TSocketWrapper.wrap(node.getInternalIp(), node.getDataPort())));
       // client without a belong pool will be closed after putBack()
       client.putBack();
       assertFalse(client.getInputProtocol().getTransport().isOpen());
+    } finally {
+      serverSocket.close();
+      listenThread.interrupt();
+      listenThread.join();
+    }
+  }
+
+  @Test
+  public void testTryClose() throws IOException, InterruptedException {
+    Node node = new Node();
+    node.setMetaPort(9003).setInternalIp("localhost").setClientIp("localhost");
+    ServerSocket serverSocket = new ServerSocket(node.getMetaPort());
+    Thread listenThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  serverSocket.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
+    listenThread.start();
+
+    try {
+      SyncClientPool syncClientPool = new SyncClientPool(new FactorySync(new Factory()));
+      SyncMetaClient clientOut;
+      try (SyncMetaClient clientIn = (SyncMetaClient) syncClientPool.getClient(node); ) {
+        assertEquals(node, clientIn.getNode());
+        clientOut = clientIn;
+      }
+
+      try (SyncMetaClient newClientIn = (SyncMetaClient) syncClientPool.getClient(node)) {
+        assertEquals(node, newClientIn.getNode());
+        assertEquals(clientOut, newClientIn);
+      }
+      assertTrue(clientOut.getInputProtocol().getTransport().isOpen());
+
+      try (SyncMetaClient clientIn =
+          new SyncMetaClient(
+              new TBinaryProtocol(TSocketWrapper.wrap(node.getInternalIp(), node.getDataPort())))) {
+        clientOut = clientIn;
+      }
+
+      // client without a belong pool will be closed after putBack()
+      assertFalse(clientOut.getInputProtocol().getTransport().isOpen());
     } finally {
       serverSocket.close();
       listenThread.interrupt();

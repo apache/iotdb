@@ -19,22 +19,23 @@
 
 package org.apache.iotdb.tsfile.encoding;
 
-import static org.junit.Assert.assertEquals;
-import java.io.IOException;
 import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
+
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class SDTEncoderTest {
 
   @Test
-  public void testIntSingleValue() throws IOException {
+  public void testIntSingleValue() {
     SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
     int count = 0;
     for (long time = 0; time < 100; time++) {
-      //generate data in sine wave pattern
+      // generate data in sine wave pattern
       int value = (int) (10 * Math.sin(degree++ * 3.141592653589793D / 180.0D));
       if (encoder.encodeInt(time, value)) {
         count++;
@@ -44,14 +45,14 @@ public class SDTEncoderTest {
   }
 
   @Test
-  public void testDoubleSingleValue() throws IOException {
+  public void testDoubleSingleValue() {
     SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
     int count = 0;
     for (long time = 0; time < 100; time++) {
-      //generate data in sine wave pattern
+      // generate data in sine wave pattern
       double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
       if (encoder.encodeDouble(time, value)) {
         count++;
@@ -61,14 +62,14 @@ public class SDTEncoderTest {
   }
 
   @Test
-  public void testLongSingleValue() throws IOException {
+  public void testLongSingleValue() {
     SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
     int count = 0;
     for (long time = 0; time < 100; time++) {
-      //generate data in sine wave pattern
+      // generate data in sine wave pattern
       long value = (long) (10 * Math.sin(degree++ * 3.141592653589793D / 180.0D));
       if (encoder.encodeLong(time, value)) {
         count++;
@@ -78,14 +79,14 @@ public class SDTEncoderTest {
   }
 
   @Test
-  public void testFloatSingleValue() throws IOException {
+  public void testFloatSingleValue() {
     SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
     int count = 0;
     for (long time = 0; time < 100; time++) {
-      //generate data in sine wave pattern
+      // generate data in sine wave pattern
       float value = (float) (10 * Math.sin(degree++ * 3.141592653589793D / 180.0D));
       if (encoder.encodeFloat(time, value)) {
         count++;
@@ -104,7 +105,7 @@ public class SDTEncoderTest {
     int[] values = new int[100];
 
     for (int time = 0; time < 100; time++) {
-      //generate data in sine wave pattern
+      // generate data in sine wave pattern
       int value = (int) (10 * Math.sin(degree++ * 3.141592653589793D / 180.0D));
       timestamps[time] = time;
       values[time] = value;
@@ -115,7 +116,7 @@ public class SDTEncoderTest {
   }
 
   @Test
-  public void testDoubleValueArray() throws IOException {
+  public void testDoubleValueArray() {
     SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
@@ -124,7 +125,7 @@ public class SDTEncoderTest {
     double[] values = new double[100];
 
     for (int time = 0; time < 100; time++) {
-      //generate data in sine wave pattern
+      // generate data in sine wave pattern
       double value = (10 * Math.sin(degree++ * 3.141592653589793D / 180.0D));
       timestamps[time] = time;
       values[time] = value;
@@ -144,7 +145,7 @@ public class SDTEncoderTest {
     long[] values = new long[100];
 
     for (int time = 0; time < 100; time++) {
-      //generate data in sine wave pattern
+      // generate data in sine wave pattern
       long value = (long) (10 * Math.sin(degree++ * 3.141592653589793D / 180.0D));
       timestamps[time] = time;
       values[time] = value;
@@ -164,7 +165,7 @@ public class SDTEncoderTest {
     float[] values = new float[100];
 
     for (int time = 0; time < 100; time++) {
-      //generate data in sine wave pattern
+      // generate data in sine wave pattern
       float value = (float) (10 * Math.sin(degree++ * 3.141592653589793D / 180.0D));
       timestamps[time] = time;
       values[time] = value;

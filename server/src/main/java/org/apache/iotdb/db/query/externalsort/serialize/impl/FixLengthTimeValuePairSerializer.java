@@ -18,25 +18,26 @@
  */
 package org.apache.iotdb.db.query.externalsort.serialize.impl;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
 /**
  * IMPORTANT: One instance of this class should used with same type of TimeValuePair.
- * <p>
- * FileFormat: [Header][Body]
- * <p>
- * [Header] = [DataTypeLength] + [DataTypeInStringBytes]
- * <p>
- * [DataTypeLength] = 4 bytes
+ *
+ * <p>FileFormat: [Header][Body]
+ *
+ * <p>[Header] = [DataTypeLength] + [DataTypeInStringBytes]
+ *
+ * <p>[DataTypeLength] = 4 bytes
  */
 public class FixLengthTimeValuePairSerializer implements IExternalSortFileSerializer {
 
@@ -100,8 +101,8 @@ public class FixLengthTimeValuePairSerializer implements IExternalSortFileSerial
         this.writer = new TimeValuePairWriter.BinaryWriter();
         break;
       default:
-        throw new RuntimeException("Unknown TSDataType in FixLengthTimeValuePairSerializer:"
-            + type);
+        throw new RuntimeException(
+            "Unknown TSDataType in FixLengthTimeValuePairSerializer:" + type);
     }
   }
 
@@ -160,8 +161,8 @@ public class FixLengthTimeValuePairSerializer implements IExternalSortFileSerial
       public void write(TimeValuePair tvPair, OutputStream outputStream) throws IOException {
         outputStream.write(BytesUtils.longToBytes(tvPair.getTimestamp()));
         outputStream.write(BytesUtils.intToBytes(tvPair.getValue().getBinary().getLength()));
-        outputStream.write(BytesUtils.stringToBytes(tvPair.getValue()
-            .getBinary().getStringValue()));
+        outputStream.write(
+            BytesUtils.stringToBytes(tvPair.getValue().getBinary().getStringValue()));
       }
     }
   }

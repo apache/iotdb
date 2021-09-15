@@ -21,9 +21,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransport;
 
-/**
- * A TTransport that does not require open/close.
- */
+/** A TTransport that does not require open/close. */
 public abstract class NonOpenTransport extends TTransport {
 
   protected boolean isOpen;
@@ -34,7 +32,9 @@ public abstract class NonOpenTransport extends TTransport {
   }
 
   @Override
-  public boolean isOpen() { return isOpen; }
+  public boolean isOpen() {
+    return isOpen;
+  }
 
   @Override
   public void open() {

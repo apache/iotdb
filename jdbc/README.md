@@ -24,7 +24,7 @@
 ## Dependencies
 
 * JDK >= 1.8
-* Maven >= 3.1
+* Maven >= 3.6
 
 ## How to package only jdbc project
 
@@ -47,7 +47,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-jdbc</artifactId>
-      <version>0.10.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -255,7 +255,7 @@ Put the iotdb-jdbc jars into your maven repository:
 `mvn install -DskipTests -pl iotdb-jdbc -am`
 
 In your Karaf client shell:
-feature:repo-add mvn:org.apache.iotdb/iotdb-jdbc/0.10.0-SNPASHOT/xml/features
+feature:repo-add mvn:org.apache.iotdb/iotdb-jdbc/0.13.0-SNAPSHOT/xml/features
 
 NOTE: that you must install JDBC first and then iotdb-feature
 

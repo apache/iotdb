@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.BaseManagedSeriesReader;
@@ -33,12 +31,17 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-/**
- * A placeholder when the remote node does not contain satisfying data of a series.
- */
-public class EmptyReader extends BaseManagedSeriesReader implements ManagedSeriesReader, IAggregateReader,
-    IPointReader,
-    GroupByExecutor, IReaderByTimestamp {
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/** A placeholder when the remote node does not contain satisfying data of a series. */
+public class EmptyReader extends BaseManagedSeriesReader
+    implements ManagedSeriesReader,
+        IAggregateReader,
+        IPointReader,
+        GroupByExecutor,
+        IReaderByTimestamp {
 
   private List<AggregateResult> aggregationResults = new ArrayList<>();
 
@@ -147,14 +150,13 @@ public class EmptyReader extends BaseManagedSeriesReader implements ManagedSerie
     aggregationResults.add(aggrResult);
   }
 
-
   @Override
   public List<AggregateResult> calcResult(long curStartTime, long curEndTime) {
     return aggregationResults;
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) {
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
     return null;
   }
 

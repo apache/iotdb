@@ -19,26 +19,26 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 
 public class MergedReaderByTime implements IReaderByTimestamp {
 
   private List<IReaderByTimestamp> innerReaders;
 
-  public MergedReaderByTime(
-      List<IReaderByTimestamp> innerReaders) {
+  public MergedReaderByTime(List<IReaderByTimestamp> innerReaders) {
     this.innerReaders = innerReaders;
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
     for (IReaderByTimestamp innerReader : innerReaders) {
       if (innerReader != null) {
-        Object valueInTimestamp = innerReader.getValueInTimestamp(timestamp);
-        if (valueInTimestamp != null) {
-          return valueInTimestamp;
+        Object[] results = innerReader.getValuesInTimestamps(timestamps, length);
+        if (results != null) {
+          return results;
         }
       }
     }

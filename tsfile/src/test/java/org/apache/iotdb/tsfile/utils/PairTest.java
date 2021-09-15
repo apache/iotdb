@@ -18,16 +18,14 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.utils.Pair;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class PairTest {
 
@@ -71,5 +69,4 @@ public class PairTest {
     Pair<Float, Double> p2 = new Pair<Float, Double>(32.5f, 123.123d);
     assertEquals("<32.5,123.123>", p2.toString());
   }
-
 }

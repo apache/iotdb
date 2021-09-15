@@ -29,7 +29,7 @@ public class GroupByTimePlan extends AggregationPlan {
   private long interval;
   // sliding step
   private long slidingStep;
-  //if group by query is by natural month
+  // if group by query is by natural month
   private boolean isIntervalByMonth;
   private boolean isSlidingStepByMonth;
 
@@ -38,7 +38,7 @@ public class GroupByTimePlan extends AggregationPlan {
 
   public GroupByTimePlan() {
     super();
-    setOperatorType(Operator.OperatorType.GROUPBYTIME);
+    setOperatorType(Operator.OperatorType.GROUP_BY_TIME);
   }
 
   public long getStartTime() {
@@ -96,5 +96,4 @@ public class GroupByTimePlan extends AggregationPlan {
   public void setLeftCRightO(boolean leftCRightO) {
     this.leftCRightO = leftCRightO;
   }
-
 }

@@ -19,17 +19,20 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_LEADER_STILL_ONLINE;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+
+import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_LEADER_STILL_ONLINE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
 
 /**
  * ElectionHandler checks the result from a voter and decides whether the election goes on, succeeds
@@ -49,8 +52,14 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   private AtomicBoolean electionValid;
   private AtomicInteger failingVoteCounter;
 
-  public ElectionHandler(RaftMember raftMember, Node voter, long currTerm, AtomicInteger requiredVoteNum,
-      AtomicBoolean terminated, AtomicBoolean electionValid, AtomicInteger failingVoteCounter) {
+  public ElectionHandler(
+      RaftMember raftMember,
+      Node voter,
+      long currTerm,
+      AtomicInteger requiredVoteNum,
+      AtomicBoolean terminated,
+      AtomicBoolean electionValid,
+      AtomicInteger failingVoteCounter) {
     this.raftMember = raftMember;
     this.voter = voter;
     this.currTerm = currTerm;
@@ -68,15 +77,21 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
         // this node is not able to be the leader
-        logger.info("{}: Terminated election received a election response {} from {}", memberName,
-            voterResp, voter);
+        logger.info(
+            "{}: Terminated election received a election response {} from {}",
+            memberName,
+            voterResp,
+            voter);
         return;
       }
 
       if (voterResp == RESPONSE_AGREE) {
         long remaining = requiredVoteNum.decrementAndGet();
-        logger.info("{}: Received a grant vote from {}, remaining votes to succeed: {}",
-            memberName, voter, remaining);
+        logger.info(
+            "{}: Received a grant vote from {}, remaining votes to succeed: {}",
+            memberName,
+            voter,
+            remaining);
         if (remaining == 0) {
           // the election is valid
           electionValid.set(true);
@@ -91,11 +106,17 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           // the rejection from a node with a smaller term means the log of this node falls behind
           logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterResp);
           onFail();
+        } else if (voterResp == RESPONSE_NODE_IS_NOT_IN_GROUP) {
+          logger.info("{}: This node has removed from the group", memberName);
+          onFail();
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
-          logger
-              .info("{}: Election {} rejected from {}: The term of this node is no bigger than {}",
-                  memberName, currTerm, voter, voterResp);
+          logger.info(
+              "{}: Election {} rejected from {}: The term of this node is no bigger than {}",
+              memberName,
+              currTerm,
+              voter,
+              voterResp);
           raftMember.stepDown(voterResp, false);
           // the election is rejected
           terminated.set(true);

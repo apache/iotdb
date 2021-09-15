@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.client;
 
-import java.io.IOException;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
@@ -27,14 +26,21 @@ import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 
+import java.io.IOException;
+
 public class DataClientProvider {
+
   /**
    * dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
    * nodes
    */
   private AsyncClientPool dataAsyncClientPool;
+
   private SyncClientPool dataSyncClientPool;
 
   public DataClientProvider(TProtocolFactory factory) {
@@ -45,11 +51,11 @@ public class DataClientProvider {
     }
   }
 
-  private AsyncClientPool getDataAsyncClientPool() {
+  AsyncClientPool getDataAsyncClientPool() {
     return dataAsyncClientPool;
   }
 
-  private SyncClientPool getDataSyncClientPool() {
+  SyncClientPool getDataSyncClientPool() {
     return dataSyncClientPool;
   }
 
@@ -61,18 +67,28 @@ public class DataClientProvider {
    */
   public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
     AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClient(node);
+    if (client == null) {
+      throw new IOException("can not get client for node=" + node);
+    }
     client.setTimeout(timeout);
     return client;
   }
 
   /**
-   * Get a thrift client that will connect to "node" using the data port.
+   * IMPORTANT!!! After calling this function, the caller should make sure to call {@link
+   * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
+   * into the client pool, otherwise there is a risk of client leakage.
+   *
+   * <p>Get a thrift client that will connect to "node" using the data port.
    *
    * @param node the node to be connected
    * @param timeout timeout threshold of connection
    */
-  public SyncDataClient getSyncDataClient(Node node, int timeout) {
+  public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
     SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
+    if (client == null) {
+      throw new TException("can not get client for node=" + node);
+    }
     client.setTimeout(timeout);
     return client;
   }

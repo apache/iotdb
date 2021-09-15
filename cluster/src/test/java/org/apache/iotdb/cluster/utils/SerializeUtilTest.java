@@ -19,7 +19,24 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -29,26 +46,27 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
-import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 public class SerializeUtilTest {
+
+  @Test
+  public void testSlotPartitionTable() {
+    List<Node> nodes = new ArrayList<>();
+    nodes.add(TestUtils.getNode(0));
+    nodes.add(TestUtils.getNode(1));
+    nodes.add(TestUtils.getNode(2));
+    SlotPartitionTable slotPartitionTable1 = new SlotPartitionTable(nodes, TestUtils.getNode(0));
+    SlotPartitionTable slotPartitionTable2 = new SlotPartitionTable(nodes, TestUtils.getNode(0));
+    SlotPartitionTable slotPartitionTable3 = new SlotPartitionTable(nodes, TestUtils.getNode(0));
+    slotPartitionTable1.removeNode(TestUtils.getNode(0));
+    slotPartitionTable2.deserialize(slotPartitionTable1.serialize());
+    assertEquals(slotPartitionTable2, slotPartitionTable1);
+    slotPartitionTable1.addNode(TestUtils.getNode(0));
+    slotPartitionTable3.deserialize(slotPartitionTable1.serialize());
+    assertEquals(slotPartitionTable3, slotPartitionTable1);
+  }
 
   @Test
   public void testStrToNode() {
@@ -63,7 +81,7 @@ public class SerializeUtilTest {
   @Test
   public void testInsertTabletPlanLog()
       throws UnknownLogTypeException, IOException, IllegalPathException {
-    long[] times = new long[]{110L, 111L, 112L, 113L};
+    long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
     dataTypes.add(TSDataType.FLOAT.ordinal());
@@ -89,8 +107,11 @@ public class SerializeUtilTest {
       ((Binary[]) columns[5])[r] = new Binary("hh" + r);
     }
 
-    InsertTabletPlan tabletPlan = new InsertTabletPlan(new PartialPath("root.test"),
-        new String[]{"s1", "s2", "s3", "s4", "s5", "s6"}, dataTypes);
+    InsertTabletPlan tabletPlan =
+        new InsertTabletPlan(
+            new PartialPath("root.test"),
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
@@ -175,5 +196,17 @@ public class SerializeUtilTest {
 
     Log parsed = LogParser.getINSTANCE().parse(serialized);
     assertEquals(log, parsed);
+  }
+
+  @Test
+  public void serdesNodeTest() {
+    Node node = new Node("127.0.0.1", 6667, 1, 6535, 4678, "127.0.0.1");
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream outputStream = new DataOutputStream(baos);
+    NodeSerializeUtils.serialize(node, outputStream);
+    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+    Node anotherNode = new Node("127.0.0.1", 6667, 1, 6535, 4678, "127.0.0.1");
+    NodeSerializeUtils.deserialize(anotherNode, buffer);
+    Assert.assertEquals(node, anotherNode);
   }
 }

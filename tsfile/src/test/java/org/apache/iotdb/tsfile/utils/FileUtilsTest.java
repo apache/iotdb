@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
+import static org.junit.Assert.assertEquals;
 
 public class FileUtilsTest {
 
@@ -32,7 +32,8 @@ public class FileUtilsTest {
     long kb = 3 * 1024;
     long mb = kb * 1024;
     long gb = mb * 1024;
-    Assert.assertEquals(3.0 * 1024, FileUtils.transformUnit(kb, FileUtils.Unit.B), TestConstant.double_min_delta);
+    Assert.assertEquals(
+        3.0 * 1024, FileUtils.transformUnit(kb, FileUtils.Unit.B), TestConstant.double_min_delta);
     assertEquals(3, FileUtils.transformUnit(kb, FileUtils.Unit.KB), TestConstant.double_min_delta);
 
     assertEquals(3, FileUtils.transformUnit(mb, FileUtils.Unit.MB), TestConstant.double_min_delta);
@@ -44,7 +45,7 @@ public class FileUtilsTest {
     assertEquals(3l, (long) FileUtils.transformUnitToByte(3, FileUtils.Unit.B));
     assertEquals(3l * 1024, (long) FileUtils.transformUnitToByte(3, FileUtils.Unit.KB));
     assertEquals(3l * 1024 * 1024, (long) FileUtils.transformUnitToByte(3, FileUtils.Unit.MB));
-    assertEquals(3l * 1024 * 1024 * 1024, (long) FileUtils.transformUnitToByte(3, FileUtils.Unit.GB));
+    assertEquals(
+        3l * 1024 * 1024 * 1024, (long) FileUtils.transformUnitToByte(3, FileUtils.Unit.GB));
   }
-
 }

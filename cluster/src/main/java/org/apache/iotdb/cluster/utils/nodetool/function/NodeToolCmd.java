@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool.function;
 
-import static java.lang.String.format;
-import static org.apache.iotdb.cluster.utils.nodetool.Printer.errPrintln;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
 import com.google.common.base.Throwables;
 import io.airlift.airline.Option;
 import io.airlift.airline.OptionType;
-import java.io.IOException;
+
 import javax.management.JMX;
 import javax.management.MBeanServerConnection;
 import javax.management.MalformedObjectNameException;
@@ -32,32 +35,58 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
-import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+
+import static java.lang.String.format;
+import static org.apache.iotdb.cluster.utils.nodetool.Printer.errPrintln;
+
+@SuppressWarnings("squid:S2068")
 public abstract class NodeToolCmd implements Runnable {
 
-  @Option(type = OptionType.GLOBAL, name = {"-h",
-      "--host"}, description = "Node hostname or ip address")
+  @Option(
+      type = OptionType.GLOBAL,
+      name = {"-h", "--host"},
+      description = "Node hostname or ip address")
   private String host = "127.0.0.1";
 
-  @Option(type = OptionType.GLOBAL, name = {"-p",
-      "--port"}, description = "Remote jmx agent port number")
+  @Option(
+      type = OptionType.GLOBAL,
+      name = {"-p", "--port"},
+      description = "Remote jmx agent port number")
   private String port = "31999";
+
+  @Option(
+      type = OptionType.GLOBAL,
+      name = {"-u", "--user"},
+      description = "The username to access the remote jmx")
+  private String user = "root";
+
+  @Option(
+      type = OptionType.GLOBAL,
+      name = {"-pw", "--password"},
+      description = "The password to access the remote jmx")
+  private String password = "passw!d";
 
   private static final String JMX_URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%s/jmxrmi";
 
-  static final String BUILDING_CLUSTER_INFO = "The cluster is being created.";
+  public static final String BUILDING_CLUSTER_INFO = "The cluster is being created.";
+
+  public static final String META_LEADER_UNKNOWN_INFO =
+      "Meta group leader is unknown, please try again later.";
+
+  static final String FAIL_TO_GET_ALL_SLOT_STATUS_INFO =
+      "Fail to get all slot status, please check node status and try again later.";
 
   @Override
   public void run() {
     try {
       MBeanServerConnection mbsc = connect();
       ObjectName name = new ObjectName(ClusterMonitor.INSTANCE.getMbeanName());
-      ClusterMonitorMBean clusterMonitorProxy = JMX
-          .newMBeanProxy(mbsc, name, ClusterMonitorMBean.class);
+      ClusterMonitorMBean clusterMonitorProxy =
+          JMX.newMBeanProxy(mbsc, name, ClusterMonitorMBean.class);
       execute(clusterMonitorProxy);
     } catch (MalformedObjectNameException e) {
       errPrintln(e.getMessage());
@@ -72,23 +101,37 @@ public abstract class NodeToolCmd implements Runnable {
     try {
       String jmxURL = String.format(JMX_URL_FORMAT, host, port);
       JMXServiceURL serviceURL = new JMXServiceURL(jmxURL);
-      JMXConnector connector = JMXConnectorFactory.connect(serviceURL);
+      Map<String, Object> environment =
+          Collections.singletonMap(JMXConnector.CREDENTIALS, new String[] {user, password});
+      JMXConnector connector = JMXConnectorFactory.connect(serviceURL, environment);
       mbsc = connector.getMBeanServerConnection();
     } catch (IOException e) {
       Throwable rootCause = Throwables.getRootCause(e);
-      errPrintln(format("nodetool: Failed to connect to '%s:%s' - %s: '%s'.", host, port,
-          rootCause.getClass().getSimpleName(), rootCause.getMessage()));
+      errPrintln(
+          format(
+              "nodetool: Failed to connect to '%s:%s' - %s: '%s'.",
+              host, port, rootCause.getClass().getSimpleName(), rootCause.getMessage()));
       System.exit(1);
     }
 
     return mbsc;
   }
 
-  String nodeToString(Node node){
-    return String.format("%s:%d:%d", node.getIp(), node.getMetaPort(), node.getDataPort());
+  public static String nodeCharacterToString(Node node, NodeCharacter character) {
+    return String.format("%s (%s)", nodeToString(node), character);
   }
 
-  String partitionGroupToString(PartitionGroup group) {
+  public static String nodeToString(Node node) {
+    return String.format(
+        "%s:%d:%d:%d",
+        node.getInternalIp(), node.getMetaPort(), node.getDataPort(), node.getClientPort());
+  }
+
+  public static String redirectToQueryMetaLeader(Node node) {
+    return String.format("Please redirect to query meta group leader %s", nodeToString(node));
+  }
+
+  public static String partitionGroupToString(PartitionGroup group) {
     StringBuilder stringBuilder = new StringBuilder("[");
     if (!group.isEmpty()) {
       stringBuilder.append(nodeToString(group.get(0)));

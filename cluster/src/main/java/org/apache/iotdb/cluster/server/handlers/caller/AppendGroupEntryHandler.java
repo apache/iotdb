@@ -19,18 +19,20 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
 /**
  * AppendGroupEntryHandler checks if the log is successfully appended by the quorum or some node has
@@ -62,8 +64,13 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
 
   private AtomicInteger erroredNodeNum = new AtomicInteger(0);
 
-  public AppendGroupEntryHandler(int[] groupReceivedCounter, int receiverNodeIndex,
-      Node receiverNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm,
+  public AppendGroupEntryHandler(
+      int[] groupReceivedCounter,
+      int receiverNodeIndex,
+      Node receiverNode,
+      AtomicBoolean leaderShipStale,
+      Log log,
+      AtomicLong newLeaderTerm,
       RaftMember member) {
     this.groupReceivedCounter = groupReceivedCounter;
     this.receiverNodeIndex = receiverNodeIndex;
@@ -134,12 +141,15 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception exception) {
-    logger.error("{}: Cannot send the add node request to node {}", member.getName(), receiverNode,
+    logger.error(
+        "{}: Cannot send the add node request to node {}",
+        member.getName(),
+        receiverNode,
         exception);
     if (erroredNodeNum.incrementAndGet() >= replicationNum / 2) {
       synchronized (groupReceivedCounter) {
-        logger
-            .error("{}: Over half of the nodes failed, the request is rejected", member.getName());
+        logger.error(
+            "{}: Over half of the nodes failed, the request is rejected", member.getName());
         groupReceivedCounter.notifyAll();
       }
     }

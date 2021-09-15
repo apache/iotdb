@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.cluster.server;
 
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class HardLinkCleaner implements Runnable {
 
@@ -76,14 +78,13 @@ public class HardLinkCleaner implements Runnable {
       try {
         Files.delete(file.toPath());
       } catch (IOException e) {
-        logger.debug("Hardlink {} cannot be removed, leave it to the next try: {}", file,
-            e.getMessage());
+        logger.debug(
+            "Hardlink {} cannot be removed, leave it to the next try: {}", file, e.getMessage());
       }
     }
   }
 
   /**
-   *
    * @param file
    * @return -1 if the file is not a hardlink or its created time
    */

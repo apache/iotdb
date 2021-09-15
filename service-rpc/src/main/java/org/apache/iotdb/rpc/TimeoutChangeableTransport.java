@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.rpc;
 
 import java.net.SocketException;
@@ -25,7 +24,5 @@ import java.net.SocketException;
 public interface TimeoutChangeableTransport {
   void setTimeout(int timeout);
 
-
   int getTimeOut() throws SocketException;
-
 }

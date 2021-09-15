@@ -20,9 +20,7 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import java.util.List;
 
-/**
- * Only maintained when writing, not serialized to TsFile
- */
+/** Only maintained when writing, not serialized to TsFile */
 public class ChunkGroupMetadata {
 
   private String device;

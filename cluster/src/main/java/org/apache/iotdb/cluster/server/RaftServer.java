@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -35,6 +29,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -47,6 +42,14 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ConcurrentModificationException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * RaftServer works as a broker (network and protocol layer) that sends the requests to the proper
  * RaftMembers to process.
@@ -54,6 +57,13 @@ import org.slf4j.LoggerFactory;
 public abstract class RaftServer implements RaftService.AsyncIface, RaftService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftServer.class);
+
+  // Heartbeat client connection timeout should not be larger than heartbeat interval, otherwise
+  // the thread pool of sending heartbeats or requesting votes may be used up by waiting for
+  // establishing connection with some slow or dead nodes.
+  private static final int heartbeatClientConnTimeoutMs =
+      Math.min((int) RaftServer.getHeartbeatIntervalMs(), RaftServer.getConnectionTimeoutInMS());
+
   private static int connectionTimeoutInMS =
       ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
   private static int readOperationTimeoutMS =
@@ -61,7 +71,10 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
   private static int writeOperationTimeoutMS =
       ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS();
   private static int syncLeaderMaxWaitMs = 20 * 1000;
-  private static long heartBeatIntervalMs = 1000L;
+  private static long heartbeatIntervalMs =
+      ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs();
+  private static long electionTimeoutMs =
+      ClusterDescriptor.getInstance().getConfig().getElectionTimeoutMs();
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the socket poolServer will listen to
@@ -70,18 +83,23 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
   private TServer poolServer;
   Node thisNode;
 
-  TProtocolFactory protocolFactory = config.isRpcThriftCompressionEnabled() ?
-      new TCompactProtocol.Factory() : new TBinaryProtocol.Factory();
+  TProtocolFactory protocolFactory =
+      config.isRpcThriftCompressionEnabled()
+          ? new TCompactProtocol.Factory()
+          : new TBinaryProtocol.Factory();
 
   // this thread pool is to run the thrift server (poolServer above)
   private ExecutorService clientService;
 
   RaftServer() {
     thisNode = new Node();
-    thisNode.setIp(config.getClusterRpcIp());
+    // set internal rpc ip and ports
+    thisNode.setInternalIp(config.getInternalIp());
     thisNode.setMetaPort(config.getInternalMetaPort());
     thisNode.setDataPort(config.getInternalDataPort());
+    // set client rpc ip and ports
     thisNode.setClientPort(config.getClusterRpcPort());
+    thisNode.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
   }
 
   RaftServer(Node thisNode) {
@@ -112,12 +130,24 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     RaftServer.syncLeaderMaxWaitMs = syncLeaderMaxWaitMs;
   }
 
-  public static long getHeartBeatIntervalMs() {
-    return heartBeatIntervalMs;
+  public static long getHeartbeatIntervalMs() {
+    return heartbeatIntervalMs;
   }
 
-  public static void setHeartBeatIntervalMs(long heartBeatIntervalMs) {
-    RaftServer.heartBeatIntervalMs = heartBeatIntervalMs;
+  public static void setHeartbeatIntervalMs(long heartbeatIntervalMs) {
+    RaftServer.heartbeatIntervalMs = heartbeatIntervalMs;
+  }
+
+  public static long getElectionTimeoutMs() {
+    return electionTimeoutMs;
+  }
+
+  public static void setElectionTimeoutMs(long electionTimeoutMs) {
+    RaftServer.electionTimeoutMs = electionTimeoutMs;
+  }
+
+  public static int getHeartbeatClientConnTimeoutMs() {
+    return heartbeatClientConnTimeoutMs;
   }
 
   /**
@@ -144,7 +174,11 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
       return;
     }
 
-    poolServer.stop();
+    try {
+      poolServer.stop();
+    } catch (ConcurrentModificationException e) {
+      // ignore
+    }
     socket.close();
     clientService.shutdownNow();
     socket = null;
@@ -153,13 +187,13 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
 
   /**
    * @return An AsyncProcessor that contains the extended interfaces of a non-abstract subclass of
-   * RaftService (DataService or MetaService).
+   *     RaftService (DataService or MetaService).
    */
   abstract TProcessor getProcessor();
 
   /**
    * @return A socket that will be used to establish a thrift server to listen to RPC requests.
-   * DataServer and MetaServer use different port, so this is to be determined.
+   *     DataServer and MetaServer use different port, so this is to be determined.
    * @throws TTransportException
    */
   abstract TServerTransport getServerSocket() throws TTransportException;
@@ -185,20 +219,25 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     socket = getServerSocket();
     TThreadedSelectorServer.Args poolArgs =
         new TThreadedSelectorServer.Args((TNonblockingServerTransport) socket);
-    poolArgs.maxReadBufferBytes =  IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    poolArgs.maxReadBufferBytes = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
     poolArgs.selectorThreads(CommonUtils.getCpuCores());
-    int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
-        config.getMaxConcurrentClientNum());
-    poolArgs.executorService(new ThreadPoolExecutor(CommonUtils.getCpuCores(),
-        maxConcurrentClientNum, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
-        new SynchronousQueue<>(), new ThreadFactory() {
-      private AtomicLong threadIndex = new AtomicLong(0);
+    int maxConcurrentClientNum =
+        Math.max(CommonUtils.getCpuCores(), config.getMaxConcurrentClientNum());
+    poolArgs.executorService(
+        new ThreadPoolExecutor(
+            CommonUtils.getCpuCores(),
+            maxConcurrentClientNum,
+            poolArgs.getStopTimeoutVal(),
+            poolArgs.getStopTimeoutUnit(),
+            new SynchronousQueue<>(),
+            new ThreadFactory() {
+              private AtomicLong threadIndex = new AtomicLong(0);
 
-      @Override
-      public Thread newThread(Runnable r) {
-        return new Thread(r, getClientThreadPrefix() + threadIndex.incrementAndGet());
-      }
-    }));
+              @Override
+              public Thread newThread(Runnable r) {
+                return new Thread(r, getClientThreadPrefix() + threadIndex.incrementAndGet());
+              }
+            }));
     poolArgs.processor(getProcessor());
     poolArgs.protocolFactory(protocolFactory);
     // async service requires FramedTransport
@@ -210,12 +249,16 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
 
   private TServer createSyncServer() throws TTransportException {
     socket = getServerSocket();
-    return ClusterUtils.createTThreadPoolServer(socket, getClientThreadPrefix(), getProcessor(),
-        protocolFactory);
+    return ClusterUtils.createTThreadPoolServer(
+        socket, getClientThreadPrefix(), getProcessor(), protocolFactory);
   }
 
   private void establishServer() throws TTransportException {
-    logger.info("Cluster node {} begins to set up", thisNode);
+    logger.info(
+        "[{}] Cluster node {} begins to set up with {} mode",
+        getServerClientName(),
+        thisNode,
+        ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() ? "Async" : "Sync");
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       poolServer = createAsyncServer();
@@ -224,9 +267,10 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     }
 
     clientService = Executors.newSingleThreadExecutor(r -> new Thread(r, getServerClientName()));
+
     clientService.submit(() -> poolServer.serve());
 
-    logger.info("Cluster node {} is up", thisNode);
+    logger.info("[{}] Cluster node {} is up", getServerClientName(), thisNode);
   }
 
   @TestOnly

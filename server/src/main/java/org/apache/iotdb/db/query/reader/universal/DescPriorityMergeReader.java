@@ -19,28 +19,35 @@
 
 package org.apache.iotdb.db.query.reader.universal;
 
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
 import java.io.IOException;
 import java.util.PriorityQueue;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 public class DescPriorityMergeReader extends PriorityMergeReader {
 
   public DescPriorityMergeReader() {
-    super.heap = new PriorityQueue<>((o1, o2) -> {
-      int timeCompare = Long.compare(o2.timeValuePair.getTimestamp(),
-          o1.timeValuePair.getTimestamp());
-      return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
-    });
+    super.heap =
+        new PriorityQueue<>(
+            (o1, o2) -> {
+              int timeCompare =
+                  Long.compare(o2.currPair().getTimestamp(), o1.currPair().getTimestamp());
+              return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
+            });
   }
 
   /**
    * @param reader
    * @param priority
    * @param endTime
+   * @param queryContext
    * @throws IOException
    */
   @Override
-  public void addReader(IPointReader reader, long priority, long endTime) throws IOException {
+  public void addReader(
+      IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext queryContext)
+      throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
       super.currentReadStopTime = Math.min(currentReadStopTime, endTime);

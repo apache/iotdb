@@ -38,9 +38,7 @@ public class GtEq<T extends Comparable<T>> extends UnaryFilter<T> {
     super(value, filterType);
   }
 
-  public GtEq() {
-
-  }
+  public GtEq() {}
 
   @Override
   public boolean satisfy(Statistics statistics) {

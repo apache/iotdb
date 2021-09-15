@@ -23,6 +23,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TConfigurationConst;
+
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -36,14 +38,18 @@ public class SyncDataHeartbeatClient extends SyncDataClient {
   private SyncDataHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
     // the difference of the two clients lies in the port
-    super(protocolFactory.getProtocol(RpcTransportFactory.INSTANCE.getTransport(
-        new TSocket(node.getIp(), node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-            RaftServer.getConnectionTimeoutInMS()))));
+    super(
+        protocolFactory.getProtocol(
+            RpcTransportFactory.INSTANCE.getTransport(
+                new TSocket(
+                    TConfigurationConst.defaultTConfiguration,
+                    node.getInternalIp(),
+                    node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
+                    RaftServer.getHeartbeatClientConnTimeoutMs()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
   }
-
 
   public static class FactorySync implements SyncClientFactory {
 
@@ -62,10 +68,12 @@ public class SyncDataHeartbeatClient extends SyncDataClient {
 
   @Override
   public String toString() {
-    return "SyncHeartbeatDataClient{" +
-        "node=" + super.getNode() + "," +
-        "dataHeartbeatPort=" + (super.getNode().getDataPort()
-        + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET) +
-        '}';
+    return "SyncHeartbeatDataClient{"
+        + "node="
+        + super.getNode()
+        + ","
+        + "dataHeartbeatPort="
+        + (super.getNode().getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET)
+        + '}';
   }
 }

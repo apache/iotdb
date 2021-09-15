@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.engine.merge.selector;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import java.io.IOException;
 
 @FunctionalInterface
 /**
  * Estimate how much memory a file may occupy when being queried during merge.
+ *
  * @param resource
  * @return
  * @throws IOException

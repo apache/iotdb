@@ -19,28 +19,27 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotManager;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 
+import java.util.Collections;
+
 public class TestDataGroupMember extends DataGroupMember {
 
   public TestDataGroupMember() {
-    super();
+    super(new PartitionGroup(Collections.singletonList(TestUtils.getNode(0))));
     setQueryManager(new ClusterQueryManager());
-    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
-    this.allNodes = Collections.singletonList(TestUtils.getNode(0));
+    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null, "");
   }
 
-  public TestDataGroupMember(Node thisNode, List<Node> allNodes) {
-    super();
+  public TestDataGroupMember(Node thisNode, PartitionGroup allNodes) {
+    super(allNodes);
     this.thisNode = thisNode;
-    this.allNodes = allNodes;
-    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
+    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null, "");
     setQueryManager(new ClusterQueryManager());
   }
 }

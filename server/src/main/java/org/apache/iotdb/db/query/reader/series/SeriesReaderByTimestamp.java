@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.io.IOException;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -30,19 +28,36 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 
+import java.io.IOException;
+import java.util.Set;
+
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private SeriesReader seriesReader;
   private BatchData batchData;
   private boolean ascending;
 
-  public SeriesReaderByTimestamp(PartialPath seriesPath, Set<String> allSensors,
-      TSDataType dataType, QueryContext context, QueryDataSource dataSource,
-      TsFileFilter fileFilter, boolean ascending) {
+  public SeriesReaderByTimestamp(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      TsFileFilter fileFilter,
+      boolean ascending) {
     UnaryFilter timeFilter =
         ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
-    seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        dataSource, timeFilter, null, fileFilter, ascending);
+    this.seriesReader =
+        new SeriesReader(
+            seriesPath,
+            allSensors,
+            dataType,
+            context,
+            dataSource,
+            timeFilter,
+            null,
+            fileFilter,
+            ascending);
     this.ascending = ascending;
   }
 
@@ -52,13 +67,22 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || !hasAvailableData(batchData, timestamp)) && !hasNext(timestamp)) {
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
+    if (length <= 0) {
       return null;
     }
+    Object[] results = new Object[length];
+    seriesReader.setTimeFilter(timestamps[0]);
+    for (int i = 0; i < length; i++) {
+      if ((batchData == null || !hasAvailableData(batchData, timestamps[i]))
+          && !hasNext(timestamps[i])) {
+        // there is no more data
+        break;
+      }
+      results[i] = batchData.getValueInTimestamp(timestamps[i]);
+    }
 
-    return batchData.getValueInTimestamp(timestamp);
+    return results;
   }
 
   @Override

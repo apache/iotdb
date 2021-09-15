@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.IOException;
-
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
-public class StorageGroupMNode extends MNode {
+import java.io.IOException;
+
+public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -33,17 +33,24 @@ public class StorageGroupMNode extends MNode {
    */
   private long dataTTL;
 
-  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
+  public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
   }
 
+  @Override
   public long getDataTTL() {
     return dataTTL;
   }
 
+  @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  @Override
+  public boolean isStorageGroup() {
+    return true;
   }
 
   @Override
@@ -58,6 +65,6 @@ public class StorageGroupMNode extends MNode {
   }
 
   public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
-    return new StorageGroupMNode(null, nodeInfo[1], Long.valueOf(nodeInfo[2]));
+    return new StorageGroupMNode(null, nodeInfo[1], Long.parseLong(nodeInfo[2]));
   }
 }

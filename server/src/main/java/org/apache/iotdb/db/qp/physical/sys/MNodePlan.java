@@ -106,8 +106,7 @@ public class MNodePlan extends PhysicalPlan {
       return false;
     }
     MNodePlan that = (MNodePlan) o;
-    return Objects.equals(name, that.name)
-      && Objects.equals(childSize, that.childSize);
+    return Objects.equals(name, that.name) && Objects.equals(childSize, that.childSize);
   }
 
   @Override

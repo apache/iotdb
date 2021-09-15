@@ -18,8 +18,10 @@
  */
 
 package org.apache.iotdb.db.qp.physical.sys;
+
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
@@ -30,7 +32,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class MeasurementMNodePlan extends MNodePlan {
-  private MeasurementSchema schema;
+  private IMeasurementSchema schema;
   private String alias;
   private long offset;
 
@@ -38,8 +40,8 @@ public class MeasurementMNodePlan extends MNodePlan {
     super(false, Operator.OperatorType.MEASUREMENT_MNODE);
   }
 
-  public MeasurementMNodePlan(String name, String alias,
-                              long offset, int childSize, MeasurementSchema schema) {
+  public MeasurementMNodePlan(
+      String name, String alias, long offset, int childSize, IMeasurementSchema schema) {
     super(false, Operator.OperatorType.MEASUREMENT_MNODE);
     this.name = name;
     this.alias = alias;
@@ -90,11 +92,11 @@ public class MeasurementMNodePlan extends MNodePlan {
     index = buffer.getLong();
   }
 
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
-  public void setSchema(MeasurementSchema schema) {
+  public void setSchema(IMeasurementSchema schema) {
     this.schema = schema;
   }
 
@@ -116,8 +118,17 @@ public class MeasurementMNodePlan extends MNodePlan {
 
   @Override
   public String toString() {
-    return "MeasurementMNode{" + name + "," + alias+ "," +
-      schema + "," + offset + "," + childSize + "}";
+    return "MeasurementMNode{"
+        + name
+        + ","
+        + alias
+        + ","
+        + schema
+        + ","
+        + offset
+        + ","
+        + childSize
+        + "}";
   }
 
   @Override
@@ -130,10 +141,10 @@ public class MeasurementMNodePlan extends MNodePlan {
     }
     MeasurementMNodePlan that = (MeasurementMNodePlan) o;
     return Objects.equals(name, that.name)
-      && Objects.equals(alias, that.alias)
-      && Objects.equals(schema, that.schema)
-      && Objects.equals(offset, that.offset)
-      && Objects.equals(childSize, that.childSize);
+        && Objects.equals(alias, that.alias)
+        && Objects.equals(schema, that.schema)
+        && Objects.equals(offset, that.offset)
+        && Objects.equals(childSize, that.childSize);
   }
 
   @Override

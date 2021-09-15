@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -27,17 +36,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * SimpleSnapshot keeps the committed logs in a memory list.
- */
+/** SimpleSnapshot keeps the committed logs in a memory list. */
 public class SimpleSnapshot extends Snapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(SimpleSnapshot.class);
@@ -120,12 +120,12 @@ public class SimpleSnapshot extends Snapshot {
   public static final SnapshotInstaller<SimpleSnapshot> DEFAULT_INSTALLER =
       new SnapshotInstaller<SimpleSnapshot>() {
         @Override
-        public void install(SimpleSnapshot snapshot, int slot) {
+        public void install(SimpleSnapshot snapshot, int slot, boolean isDataMigration) {
           // default installer does nothing
         }
 
         @Override
-        public void install(Map<Integer, SimpleSnapshot> snapshotMap) {
+        public void install(Map<Integer, SimpleSnapshot> snapshotMap, boolean isDataMigration) {
           // default installer does nothing
         }
       };

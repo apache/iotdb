@@ -24,5 +24,4 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 public interface FileInputFactory {
 
   TsFileInput getTsFileInput(String filePath);
-
 }

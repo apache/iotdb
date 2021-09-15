@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.exception;
 
-public class SnapshotInstallationException extends Exception{
+public class SnapshotInstallationException extends Exception {
 
   public SnapshotInstallationException(String message) {
     super(message);
@@ -29,8 +29,7 @@ public class SnapshotInstallationException extends Exception{
     super(message, cause);
   }
 
-  public SnapshotInstallationException() {
-  }
+  public SnapshotInstallationException() {}
 
   public SnapshotInstallationException(Throwable cause) {
     super(cause);

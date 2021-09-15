@@ -23,23 +23,26 @@ import org.apache.iotdb.db.exception.StartupException;
 
 public interface IService {
 
-  /**
-   * Start current service.
-   */
+  /** Start current service. */
   void start() throws StartupException;
 
   /**
-   * Stop current service. If current service uses thread or thread pool,
-   * current service should guarantee to putBack thread or thread pool.
+   * Stop current service. If current service uses thread or thread pool, current service should
+   * guarantee to putBack thread or thread pool.
    */
   void stop();
 
-  default void waitAndStop(long milliseconds) {stop();}
+  default void waitAndStop(long milliseconds) {
+    stop();
+  }
 
-  default void shutdown(long milliseconds) throws ShutdownException {waitAndStop(milliseconds);}
+  default void shutdown(long milliseconds) throws ShutdownException {
+    waitAndStop(milliseconds);
+  }
 
   /**
    * Get the name of the the service.
+   *
    * @return current service name
    */
   ServiceType getID();

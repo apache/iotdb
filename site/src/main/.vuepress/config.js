@@ -23,19 +23,26 @@ var config = {
         ["meta", {name: "Keywords", content: "TSDB, time series, time series database, IoTDB, IoT database, IoT data management,时序数据库, 时间序列管理, IoTDB, 物联网数据库, 实时数据库, 物联网数据管理, 物联网数据"}],
         ["meta", {name: "baidu-site-verification", content: "wfKETzB3OT"}],
         ["meta", {name: "google-site-verification", content: "mZWAoRY0yj_HAr-s47zHCGHzx5Ju-RVm5wDbPnwQYFo"}],
+		["script", {async: true, src: "https://www.googletagmanager.com/gtag/js?id=G-5MM3J6X84E"}],
+		['script', {}, `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-5MM3J6X84E');`
+		],
       ],
 
     // 静态网站部署的目录
     base: '',
-  
+
     // 网站标题
     title: 'IoTDB Website',
-  
+
     // <meta name="description" content="...">
-    description: 'Apache IoTDB', 
-  
+    description: 'Apache IoTDB',
+
     markdown: {
-      
+
       // 显示代码行号
       lineNumbers: true
     },
@@ -43,18 +50,18 @@ var config = {
 
         // 项目的 github 地址
         repo: 'https://github.com/apache/iotdb.git',
-    
+
         // github 地址的链接名
-        repoLabel: 'gitHub',
-		
+        repoLabel: 'GitHub',
+
 		logo: '/img/logo.png',
-		
+
 		searchMaxSuggestions:10,
 
 		displayAllHeaders: true,
-		
+
 		sidebarDepth: 0,
-    
+
 		locales: {
 		  '/': {
 			selectText: 'Languages',
@@ -70,17 +77,18 @@ var config = {
 			algolia: {},
 			nav: [
 				 {
-					text: 'Document',
+					text: 'Documentation',
 					items: [
-						{ text: 'In progress', link: '/UserGuide/Master/Get Started/QuickStart' },
-						{ text: 'V0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
-						{ text: 'V0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
-						{ text: 'V0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
-						{ text: 'V0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
+						{ text: 'latest', link: '/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
+						{ text: 'v0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
+						{ text: 'v0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
+						{ text: 'v0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
+						{ text: 'v0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  {
-					text: 'System design',
+					text: 'Design',
 					link: '/SystemDesign/Architecture/Architecture'
 				  },
 				  {
@@ -108,13 +116,13 @@ var config = {
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
 				  },
-				{
-					text: 'Blog',
-					items: [
-						{ text: 'Overview', link: '/Blog/Index'},
-						{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
-					]
-				},
+				// {
+				// 	text: 'Blog',
+				// 	items: [
+				// 		{ text: 'Overview', link: '/Blog/Index'},
+				// 		{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
+				// 	]
+				// },
 				  {
 					text: 'ASF',
 					items: [
@@ -494,97 +502,283 @@ var config = {
 						]
 					}
 				],
-				'/UserGuide/Master/': [
+				'/UserGuide/V0.12.x/': [
 					{
-						title:'IoTDB User Guide (In progress)',
+						title:'IoTDB User Guide (V0.12.x)',
 						collapsable: false,
 					},
 					{
-						title: 'Get Started',
+						title: 'IoTDB Introduction',
 						children: [
-							['Get Started/QuickStart','QuickStart'],
-							['Get Started/Frequently asked questions','Frequently asked questions'],
-							['Get Started/Publication','Research Papers']
+							['IoTDB-Introduction/What-is-IoTDB','What is IoTDB'],
+							['IoTDB-Introduction/Architecture','Architecture'],
+							['IoTDB-Introduction/Scenario','Scenario'],
+							['IoTDB-Introduction/Features','Features'],
+							['IoTDB-Introduction/Publication','Publication']
 						]
 					},
 					{
-						title: 'Overview',
+						title: 'Quick Start',
 						children: [
-							['Overview/What is IoTDB','What is IoTDB'],
-							['Overview/Architecture','Architecture'],
-							['Overview/Scenario','Scenario'],
-							['Overview/Features','Features']
+							['QuickStart/QuickStart','QuickStart'],
+							['QuickStart/Files','Storage Path Setting'],
+							['QuickStart/WayToGetIoTDB','Get IoTDB Binary files']
 						]
 					},
 					{
-						title: 'Concept',
+						title: 'Data Concept',
 						children: [
-							['Concept/Data Model and Terminology','Data Model and Terminology'],
-							['Concept/Data Type','Data Type'],
-							['Concept/Encoding','Encoding'],
-							['Concept/Compression','Compression'],
-							['Concept/SDT','SDT']
+							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
+							['Data-Concept/Data-Type','Data Type'],
+							['Data-Concept/Encoding','Encoding'],
+							['Data-Concept/Compression','Compression'],
+							['Data-Concept/SDT','SDT']
 						]
 					},
 					{
-						title: 'Server',
+						title: 'CLI',
 						children: [
-							['Server/Download','Download'],
-							['Server/Single Node Setup','Single Node Setup'],
-							['Server/Cluster Setup','Cluster Setup'],
-							['Server/Config Manual','Config Manual'],
-							['Server/Docker Image','Docker Image']
+							['CLI/Command-Line-Interface','Command Line Interface']
 						]
 					},
 					{
-						title: 'Client',
+						title: 'Administration Management',
 						children: [
-							['Client/Command Line Interface','Command Line Interface'],
-							['Client/Programming - Native API','Native API'],
-							['Client/Programming - JDBC','JDBC'],
-							['Client/Programming - Other Languages','Other Languages'],
-							['Client/Programming - TsFile API','TsFile API'],
-							['Client/Programming - MQTT','MQTT'],
-							['Client/Status Codes','Status Codes']
+							['Administration-Management/Administration','Administration']
 						]
 					},
 					{
-						title: 'Operation Manual',
+						title: 'IoTDB-SQL Language',
 						children: [
-							['Operation Manual/DDL Data Definition Language','DDL (Data Definition Language)'],
-							['Operation Manual/DML Data Manipulation Language','DML (Data Manipulation Language)'],
-							['Operation Manual/Administration','Administration'],
-							['Operation Manual/SQL Reference','SQL Reference']
+							['IoTDB-SQL-Language/DDL-Data-Definition-Language','DDL (Data Definition Language)'],
+							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','DML (Data Manipulation Language)'],
+							['IoTDB-SQL-Language/Maintenance-Command','Maintenance Command']
+						]
+					},
+					{
+						title: 'API',
+						children: [
+							['API/Programming-Native-API','Native API'],
+							['API/Programming-Other-Languages','Other Languages'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)']
+						]
+					},
+					{
+						title: 'UDF',
+						children: [
+							['UDF/UDF-User-Defined-Function','UDF (User Defined Function)']
+						]
+					},
+					{
+						title: 'Communication Service Protocol',
+						children: [
+							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
+							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
 						]
 					},
 					{
 						title: 'System Tools',
 						children: [
-							['System Tools/Sync Tool','Sync Tool'],
-							['System Tools/JMX Tool','JMX Tool'],
-							['System Tools/Watermark Tool','Watermark Tool'],
-							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
-							['System Tools/Monitor and Log Tools','Monitor and Log Tools'],
-							['System Tools/Load External Tsfile','Load External Tsfile'],
-							['System Tools/Performance Tracing Tool','Performance Tracing Tool']
+							['System-Tools/Load-External-Tsfile','Load External Tsfile'],
+							['System-Tools/Performance-Tracing-Tool','Performance Tracing Tool'],
+							['System-Tools/CSV-Tool','CSV Tool'],
+							['System-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['System-Tools/JMX-Tool','JMX Tool'],
+							['System-Tools/MLogParser-Tool','MLogParser Tool'],
+							['System-Tools/NodeTool','Node Tool'],
+							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
+							['System-Tools/Watermark-Tool','Watermark Tool']
+						]
+					},
+					{
+						title: 'Collaboration of Edge and Cloud',
+						children: [
+							['Collaboration-of-Edge-and-Cloud/Sync-Tool','Sync Tool']
 						]
 					},
 					{
 						title: 'Ecosystem Integration',
 						children: [
 							['Ecosystem Integration/Grafana','Grafana'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
+							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
 						]
 					},
 					{
-						title: 'Architecture',
+						title: 'Cluster Setup',
 						children: [
-							['Architecture/Files','Files'],
-							['Architecture/Writing Data on HDFS','Writing Data on HDFS'],
-							['Architecture/Shared Nothing Cluster','Shared Nothing Cluster']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							//['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+						]
+					},
+					{
+						title: 'FAQ',
+						children: [
+							['FAQ/Frequently-asked-questions','Frequently asked questions']
+						]
+					},
+					{
+						title: 'Appendix',
+						children: [
+							['Appendix/Config-Manual','Config Manual'],
+							['Appendix/SQL-Reference','SQL Reference'],
+							['Appendix/Status-Codes','Status Codes']
+						]
+					},
+					{
+						title: 'Comparison with TSDBs',
+						children: [
+							['Comparison/TSDB-Comparison','Comparison']
+						]
+					}
+				],
+				'/UserGuide/Master/': [
+					{
+						title:'IoTDB User Guide (latest)',
+						collapsable: false,
+					},
+					{
+						title: 'IoTDB Introduction',
+						children: [
+							['IoTDB-Introduction/What-is-IoTDB','What is IoTDB'],
+							['IoTDB-Introduction/Architecture','Architecture'],
+							['IoTDB-Introduction/Scenario','Scenario'],
+							['IoTDB-Introduction/Features','Features'],
+							['IoTDB-Introduction/Publication','Publication']
+						]
+					},
+					{
+						title: 'Quick Start',
+						children: [
+							['QuickStart/QuickStart','QuickStart'],
+							['QuickStart/Files','Storage Path Setting'],
+							['QuickStart/WayToGetIoTDB','Get IoTDB Binary files']
+						]
+					},
+					{
+						title: 'Data Concept',
+						children: [
+							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
+							['Data-Concept/Data-Type','Data Type'],
+							['Data-Concept/Encoding','Encoding'],
+							['Data-Concept/Compression','Compression'],
+							['Data-Concept/SDT','SDT'],
+							['Data-Concept/Auto-Create-MetaData','Auto Create Metadata'],
+							['Data-Concept/Time-Partition','Time Partition']
+						]
+					},
+					{
+						title: 'CLI',
+						children: [
+							['CLI/Command-Line-Interface','Command Line Interface']
+						]
+					},
+					{
+						title: 'Administration Management',
+						children: [
+							['Administration-Management/Administration','Administration']
+						]
+					},
+					{
+						title: 'IoTDB-SQL Language',
+						sidebarDepth: 1,
+						children: [
+							['IoTDB-SQL-Language/DDL-Data-Definition-Language','DDL (Data Definition Language)'],
+							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','DML (Data Manipulation Language)'],
+							['IoTDB-SQL-Language/Maintenance-Command','Maintenance Command']
+						]
+					},
+					{
+						title: 'API',
+						children: [
+							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)'],
+							['API/Programming-Python-Native-API','Python Native API'],
+							['API/Programming-Cpp-Native-API','C++ Native API'],
+							['API/Programming-Go-Native-API','Go Native API'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Time-zone','Time zone']
+						]
+					},
+					{
+						title: 'Advanced Features',
+						children: [
+							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
+							// The trigger module has not been implemented yet,
+							// so the website should not show users how to use it to avoid misleading.
+							// ['Advanced-Features/Triggers','Trigger'],
+              ['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
+              ['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
+						]
+					},
+					{
+						title: 'Communication Service Protocol',
+						children: [
+							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
+							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
+						]
+					},
+					{
+						title: 'System Tools',
+						children: [
+							['System-Tools/Load-External-Tsfile','Load External Tsfile'],
+							['System-Tools/Performance-Tracing-Tool','Performance Tracing Tool'],
+							['System-Tools/CSV-Tool','CSV Tool'],
+							['System-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['System-Tools/JMX-Tool','JMX Tool'],
+							['System-Tools/MLogParser-Tool','MLogParser Tool'],
+							['System-Tools/NodeTool','Node Tool'],
+							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
+							['System-Tools/Watermark-Tool','Watermark Tool']
+						]
+					},
+					{
+						title: 'Collaboration of Edge and Cloud',
+						children: [
+							['Collaboration-of-Edge-and-Cloud/Sync-Tool','Sync Tool']
+						]
+					},
+					{
+						title: 'Ecosystem Integration',
+						children: [
+							['Ecosystem Integration/Grafana','Grafana'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
+							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
+							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+						]
+					},
+					{
+						title: 'Cluster Setup',
+						children: [
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+						]
+					},
+					{
+						title: 'FAQ',
+						children: [
+							['FAQ/Frequently-asked-questions','Frequently asked questions']
+						]
+					},
+					{
+						title: 'Appendix',
+						children: [
+							['Appendix/Config-Manual','Config Manual'],
+							['Appendix/SQL-Reference','SQL Reference'],
+							['Appendix/Status-Codes','Status Codes']
 						]
 					},
 					{
@@ -653,7 +847,7 @@ var config = {
 							['DataQuery/LastQuery','LastQuery'],
 							['DataQuery/AlignByDeviceQuery','AlignByDeviceQuery'],
 							['DataQuery/FillFunction','FillFunction'],
-	                        ['DataQuery/GroupByFillQuery', 'GroupByFillQuery']
+							['DataQuery/GroupByFillQuery', 'GroupByFillQuery']
 						]
 					},
 					{
@@ -700,11 +894,12 @@ var config = {
 				 {
 					text: '文档',
 					items: [
-						{ text: 'In progress', link: '/zh/UserGuide/Master/Get Started/QuickStart' },
-						{ text: 'V0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
-						{ text: 'V0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
-					  { text: 'V0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
-					  { text: 'V0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
+						{ text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
+						{ text: 'v0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
+						{ text: 'v0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
+					  { text: 'v0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
+					  { text: 'v0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  	{
@@ -721,7 +916,7 @@ var config = {
 						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-							{ text: '活动与报告', link: '/zh/Community/Materials'},
+							{ text: '活动与报告', link: '/Community/Materials'},
 							{ text: '交流与反馈', link: '/zh/Community/Feedback'},
 					]
 				  },
@@ -758,7 +953,7 @@ var config = {
 						title: '0-开始使用',
 						children: [
 							['0-Get Started/1-QuickStart','快速入门'],
-							['0-Get Started/2-Frequently asked questions','经常问的问题'],
+							['0-Get Started/2-Frequently asked questions','常见问题'],
 							['0-Get Started/3-Publication','调查报告']
 						]
 					},
@@ -830,7 +1025,7 @@ var config = {
 							['8-System Tools/1-Sync','同步工具'],
 							['8-System Tools/2-Memory Estimation Tool','内存预估工具']
 						]
-					},		   
+					},
 				],
 				'/zh/UserGuide/V0.9.x/': [
 					{
@@ -932,7 +1127,7 @@ var config = {
 						title: '开始',
 						children: [
 							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Frequently asked questions','常见问题'],
 							['Get Started/Publication','调查报告']
 						]
 					},
@@ -1025,7 +1220,7 @@ var config = {
 						title: '开始',
 						children: [
 							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Frequently asked questions','常见问题'],
 							['Get Started/Publication','调查报告']
 						]
 					},
@@ -1109,97 +1304,283 @@ var config = {
 						]
 					}
 				],
+				'/zh/UserGuide/V0.12.x/': [
+					{
+						title: 'IoTDB用户手册 (V0.12.x)',
+						collapsable: false,
+					},
+					{
+						title: 'IoTDB简介',
+						children: [
+							['IoTDB-Introduction/What-is-IoTDB','IoTDB简介'],
+							['IoTDB-Introduction/Features','主要功能特点'],
+							['IoTDB-Introduction/Architecture','系统架构'],
+							['IoTDB-Introduction/Scenario','应用场景'],
+							['IoTDB-Introduction/Publication','研究论文']
+						]
+					},
+					{
+						title: '快速上手',
+						children: [
+							['QuickStart/QuickStart','快速上手'],
+							['QuickStart/Files','存储路径设置'],
+							['QuickStart/WayToGetIoTDB','获取IoTDB二进制文件途径']
+						]
+					},
+					{
+						title: '数据模式与概念',
+						children: [
+							['Data-Concept/Data-Model-and-Terminology','数据模型'],
+							['Data-Concept/Data-Type','数据类型'],
+							['Data-Concept/Encoding','编码方式'],
+							['Data-Concept/Compression','压缩方式'],
+							['Data-Concept/SDT','旋转门压缩']
+						]
+					},
+					{
+						title: 'SQL命令行终端(CLI)',
+						children: [
+							['CLI/Command-Line-Interface','SQL命令行终端(CLI)']
+						]
+					},
+					{
+						title: '权限管理',
+						children: [
+							['Administration-Management/Administration','权限管理']
+						]
+					},
+					{
+						title: 'IoTDB-SQL 语言',
+						children: [
+							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
+							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
+							['IoTDB-SQL-Language/Maintenance-Command','运维命令']
+						]
+					},
+					{
+						title: '应用编程接口',
+						children: [
+							['API/Programming-Native-API','Java 原生接口'],
+							['API/Programming-Other-Languages','其他语言原生接口'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (不推荐)']
+						]
+					},
+					{
+						title: '用户定义函数(UDF)',
+						children: [
+							['UDF/UDF-User-Defined-Function','用户定义函数(UDF)']
+						]
+					},
+					{
+						title: '通信服务协议',
+						children: [
+							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
+							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
+						]
+					},
+					{
+						title: '系统工具',
+						children: [
+							['System-Tools/Load-External-Tsfile','加载 TsFile'],
+							['System-Tools/Performance-Tracing-Tool','查询性能追踪'],
+							['System-Tools/CSV-Tool','导入导出 CSV'],
+							['System-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['System-Tools/JMX-Tool','JMX 工具'],
+							['System-Tools/MLogParser-Tool','Mlog解析工具'],
+							['System-Tools/NodeTool','节点工具'],
+							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
+							['System-Tools/Watermark-Tool','水印工具'],
+						]
+					},
+					{
+						title: '端云协同',
+						children: [
+							['Collaboration-of-Edge-and-Cloud/Sync-Tool','TsFile 同步工具']
+						]
+					},
+					{
+						title: '系统集成',
+						children: [
+							['Ecosystem Integration/Grafana','Grafana-IoTDB'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
+							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
+							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
+							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
+							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+						]
+					},
+					{
+						title: '集群搭建',
+						children: [
+							['Cluster/Cluster-Setup','集群搭建'],
+							//['Cluster/Cluster-Setup-Example','集群搭建示例']
+						]
+					},
+					{
+						title: '常见问题',
+						children: [
+							['FAQ/Frequently-asked-questions','常见问题']
+						]
+					},
+					{
+						title: '附录',
+						children: [
+							['Appendix/Config-Manual','附录1: 配置参数'],
+							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
+							['Appendix/Status-Codes','附录3: 状态码']
+						]
+					}
+				],
 				'/zh/UserGuide/Master/': [
 					{
 						title: 'IoTDB用户手册 (In progress)',
 						collapsable: false,
 					},
 					{
-						title: '开始',
+						title: 'IoTDB简介',
 						children: [
-							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
-							['Get Started/Publication','调查报告']
+							['IoTDB-Introduction/What-is-IoTDB','IoTDB简介'],
+							['IoTDB-Introduction/Features','主要功能特点'],
+							['IoTDB-Introduction/Architecture','系统架构'],
+							['IoTDB-Introduction/Scenario','应用场景'],
+							['IoTDB-Introduction/Publication','研究论文']
 						]
 					},
 					{
-						title: '概述',
+						title: '快速上手',
 						children: [
-							['Overview/What is IoTDB','什么是IoTDB'],
-							['Overview/Architecture','架构'],
-							['Overview/Scenario','场景'],
-							['Overview/Features','特征']
+							['QuickStart/QuickStart','快速上手'],
+							['QuickStart/Files','存储路径设置'],
+							['QuickStart/WayToGetIoTDB','获取IoTDB二进制文件途径']
 						]
 					},
 					{
-						title: '概念',
+						title: '数据模式与概念',
 						children: [
-							['Concept/Data Model and Terminology','数据模型与技术'],
-							['Concept/Data Type','数据类型'],
-							['Concept/Encoding','编码方式'],
-							['Concept/Compression','压缩方式'],
-							['Concept/SDT','旋转门压缩']
+							['Data-Concept/Data-Model-and-Terminology','数据模型'],
+							['Data-Concept/Data-Type','数据类型'],
+							['Data-Concept/Encoding','编码方式'],
+							['Data-Concept/Compression','压缩方式'],
+							['Data-Concept/SDT','旋转门压缩'],
+							['Data-Concept/Auto-Create-MetaData','自动创建元数据'],
+							['Data-Concept/Time-Partition','时间分区']
 						]
 					},
 					{
-						title: '服务器端',
+						title: 'SQL命令行终端(CLI)',
 						children: [
-							['Server/Download','下载'],
-							['Server/Single Node Setup','单节点安装'],
-							['Server/Cluster Setup','集群设置'],
-							['Server/Config Manual','配置手册'],
-							['Server/Docker Image','Docker镜像']
+							['CLI/Command-Line-Interface','SQL命令行终端(CLI)']
 						]
 					},
 					{
-						title: '客户端',
+						title: '权限管理',
 						children: [
-							['Client/Command Line Interface','命令行接口(CLI)'],
-							['Client/Programming - Native API','原生接口'],
-							['Client/Programming - JDBC','JDBC'],
-							['Client/Programming - Other Languages','其他语言'],
-							['Client/Programming - TsFile API','TsFile API'],
-							['Client/Programming - MQTT','MQTT'],
-							['Client/Status Codes','状态码']
+							['Administration-Management/Administration','权限管理']
 						]
 					},
 					{
-						title: '操作指南',
+						title: 'IoTDB-SQL 语言',
+						sidebarDepth: 1,
 						children: [
-							['Operation Manual/DDL Data Definition Language','DDL (数据定义语言)'],
-							['Operation Manual/DML Data Manipulation Language','DML (数据操作语言)'],
-							['Operation Manual/Administration','权限管理语句'],
-							['Operation Manual/SQL Reference','SQL 参考文档']
+							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
+							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
+							['IoTDB-SQL-Language/Maintenance-Command','运维命令']
+						]
+					},
+					{
+						title: '应用编程接口',
+						children: [
+							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-JDBC','JDBC (不推荐)'],
+							['API/Programming-Python-Native-API','Python 原生接口'],
+							['API/Programming-Cpp-Native-API','C++ 原生接口'],
+							['API/Programming-Go-Native-API','Go 原生接口'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Time-zone','时区']
+						]
+					},
+					{
+						title: '高级功能',
+						children: [
+							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
+						  // The trigger module has not been implemented yet,
+						  // so the website should not show users how to use it to avoid misleading.
+						  // ['Advanced-Features/Triggers','触发器'],
+              ['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
+              ['Advanced-Features/Continuous-Query','连续查询(CQ)'],
+						]
+					},
+					{
+						title: '通信服务协议',
+						children: [
+							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
+							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
 						]
 					},
 					{
 						title: '系统工具',
 						children: [
-							['System Tools/Sync Tool','同步工具'],
-							['System Tools/JMX Tool','JMX工具'],
-							['System Tools/Watermark Tool','水印工具'],
-							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
-							['System Tools/Monitor and Log Tools','监控与日志工具'],
-							['System Tools/Load External Tsfile','加载外部tsfile文件'],
-							['System Tools/Performance Tracing Tool','性能追踪工具']
+							['System-Tools/Load-External-Tsfile','加载 TsFile'],
+							['System-Tools/Performance-Tracing-Tool','查询性能追踪'],
+							['System-Tools/CSV-Tool','导入导出 CSV'],
+							['System-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['System-Tools/JMX-Tool','JMX 工具'],
+							['System-Tools/MLogParser-Tool','Mlog解析工具'],
+							['System-Tools/NodeTool','节点工具'],
+							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
+							['System-Tools/Watermark-Tool','水印工具'],
 						]
 					},
 					{
-						title: '生态集成',
+						title: '端云协同',
 						children: [
-							['Ecosystem Integration/Grafana','Grafana'],
-							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
+							['Collaboration-of-Edge-and-Cloud/Sync-Tool','TsFile 同步工具']
+						]
+					},
+					{
+						title: '系统集成',
+						children: [
+							['Ecosystem Integration/Grafana','Grafana-IoTDB'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
-							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
+							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
+							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
+							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
 						]
 					},
 					{
-						title: '系统设计',
+						title: '集群搭建',
 						children: [
-							['Architecture/Files','文件'],
-							['Architecture/Writing Data on HDFS','使用HDFS存储数据'],
-							['Architecture/Shared Nothing Cluster','Shared-nothing 架构']
+							['Cluster/Cluster-Setup','集群搭建'],
+							['Cluster/Cluster-Setup-Example','集群搭建示例']
+						]
+					},
+					{
+						title: '常见问题',
+						children: [
+							['FAQ/Frequently-asked-questions','常见问题']
+						]
+					},
+					{
+						title: '附录',
+						children: [
+							['Appendix/Config-Manual','附录1: 配置参数'],
+							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
+							['Appendix/Status-Codes','附录3: 状态码']
+						]
+					},
+					{
+						title: '时间序列数据库比较',
+						children: [
+							['Comparison/TSDB-Comparison','比较']
 						]
 					}
 				],
@@ -1249,6 +1630,7 @@ var config = {
 							['StorageEngine/DataPartition','数据分区'],
 							['StorageEngine/DataManipulation','数据增删改'],
 							['StorageEngine/Recover','重启恢复'],
+							['StorageEngine/Compaction','文件合并']
 						]
 					},
 					{
@@ -1263,7 +1645,7 @@ var config = {
 							['DataQuery/LastQuery','最近时间戳 Last 查询'],
 							['DataQuery/AlignByDeviceQuery','按设备对齐查询'],
 							['DataQuery/FillFunction','空值填充'],
-		                                        ['DataQuery/GroupByFillQuery', '降采样补空值查询'],
+							['DataQuery/GroupByFillQuery', '降采样补空值查询'],
 							['DataQuery/OrderByTimeQuery', '按时间倒序查询']
 						]
 					},
@@ -1294,7 +1676,7 @@ var config = {
       },
 	locales: {
 		'/': {
-		  lang: 'en-US', 
+		  lang: 'en-US',
 		  title: ' ',
 		  description: ' '
 		},
@@ -1305,6 +1687,6 @@ var config = {
 		}
 	  },
   }
-  
+
   module.exports = config
   

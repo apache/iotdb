@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.jdbc;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.sql.SQLException;
 import java.sql.Types;
@@ -28,25 +28,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBResultMetadataTest {
 
   private IoTDBResultMetadata metadata;
 
   @Before
-  public void setUp() throws Exception {
-  }
+  public void setUp() {}
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() {}
 
   @Test
   public void testGetColumnCount() {
-    metadata = new IoTDBResultMetadata(null, null, false);
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", null, null, false);
     boolean flag = false;
     try {
       metadata.getColumnCount();
@@ -57,7 +56,8 @@ public class IoTDBResultMetadataTest {
 
     flag = false;
     try {
-      metadata = new IoTDBResultMetadata(Collections.emptyList(), null, false);
+      metadata =
+          new IoTDBResultMetadata(false, null, "QUERY", Collections.emptyList(), null, false);
       metadata.getColumnCount();
     } catch (Exception e) {
       flag = true;
@@ -66,13 +66,13 @@ public class IoTDBResultMetadataTest {
 
     List<String> columnInfoList = new ArrayList<>();
     columnInfoList.add("root.a.b.c");
-    metadata = new IoTDBResultMetadata(columnInfoList, null, false);
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", columnInfoList, null, false);
     assertEquals(1, metadata.getColumnCount());
   }
 
   @Test
   public void testGetColumnName() throws SQLException {
-    metadata = new IoTDBResultMetadata(null, null, false);
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", null, null, false);
     boolean flag = false;
     try {
       metadata.getColumnName(1);
@@ -82,7 +82,7 @@ public class IoTDBResultMetadataTest {
     assertTrue(flag);
 
     List<String> columnInfoList = new ArrayList<>();
-    metadata = new IoTDBResultMetadata(columnInfoList, null, false);
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", columnInfoList, null, false);
     flag = false;
     try {
       metadata.getColumnName(1);
@@ -92,7 +92,7 @@ public class IoTDBResultMetadataTest {
     assertTrue(flag);
 
     String[] colums = {"root.a.b.c1", "root.a.b.c2", "root.a.b.c3"};
-    metadata = new IoTDBResultMetadata(Arrays.asList(colums), null, false);
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", Arrays.asList(colums), null, false);
     flag = false;
     try {
       metadata.getColumnName(colums.length + 1);
@@ -112,12 +112,11 @@ public class IoTDBResultMetadataTest {
     for (int i = 1; i <= colums.length; i++) {
       assertEquals(metadata.getColumnLabel(i), colums[i - 1]);
     }
-
   }
 
   @Test
   public void testGetColumnType() throws SQLException {
-    metadata = new IoTDBResultMetadata(null, null, false);
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", null, null, false);
     boolean flag = false;
     try {
       metadata.getColumnType(1);
@@ -127,7 +126,7 @@ public class IoTDBResultMetadataTest {
     assertTrue(flag);
 
     List<String> columnInfoList = new ArrayList<>();
-    metadata = new IoTDBResultMetadata(columnInfoList, null, false);
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", columnInfoList, null, false);
     flag = false;
     try {
       metadata.getColumnType(1);
@@ -136,13 +135,22 @@ public class IoTDBResultMetadataTest {
     }
     assertTrue(flag);
 
-    String[] columns = {"timestamp", "root.a.b.boolean", "root.a.b.int32", "root.a.b.int64",
-        "root.a.b.float",
-        "root.a.b.double", "root.a.b.text"};
-    String[] typesString = {"BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
-    int[] types = {Types.BOOLEAN, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.DOUBLE,
-        Types.VARCHAR};
-    metadata = new IoTDBResultMetadata(Arrays.asList(columns), Arrays.asList(typesString), false);
+    String[] columns = {
+      "timestamp",
+      "root.a.b.boolean",
+      "root.a.b.int32",
+      "root.a.b.int64",
+      "root.a.b.float",
+      "root.a.b.double",
+      "root.a.b.text"
+    };
+    String[] typesString = {"TIMESTAMP", "BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
+    int[] types = {
+      Types.BOOLEAN, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.DOUBLE, Types.VARCHAR
+    };
+    metadata =
+        new IoTDBResultMetadata(
+            false, null, "QUERY", Arrays.asList(columns), Arrays.asList(typesString), false);
     flag = false;
     try {
       metadata.getColumnType(columns.length + 1);

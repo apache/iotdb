@@ -36,4 +36,3 @@ public interface StatMonitorMBean {
 
   boolean getEnableStatMonitor();
 }
-

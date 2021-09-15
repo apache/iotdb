@@ -4,15 +4,17 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.CommonUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.CommonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PlanSerializer {
 
@@ -33,7 +35,13 @@ public class PlanSerializer {
   }
 
   public byte[] serialize(PhysicalPlan plan) throws IOException {
-    ByteArrayOutputStream poll = baosBlockingDeque.poll();
+    ByteArrayOutputStream poll;
+    try {
+      poll = baosBlockingDeque.take();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException("take byte array output stream interrupted", e);
+    }
     poll.reset();
 
     try (DataOutputStream dataOutputStream = new DataOutputStream(poll)) {

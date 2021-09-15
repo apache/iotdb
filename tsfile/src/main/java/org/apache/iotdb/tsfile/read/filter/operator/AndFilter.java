@@ -23,15 +23,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
-/**
- * Both the left and right operators of AndExpression must satisfy the condition.
- */
+/** Both the left and right operators of AndExpression must satisfy the condition. */
 public class AndFilter extends BinaryFilter {
 
   private static final long serialVersionUID = -8212850098906044102L;
 
-  public AndFilter() {
-  }
+  public AndFilter() {}
 
   public AndFilter(Filter left, Filter right) {
     super(left, right);
@@ -49,14 +46,14 @@ public class AndFilter extends BinaryFilter {
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    return left.satisfyStartEndTime(startTime, endTime) && right
-        .satisfyStartEndTime(startTime, endTime);
+    return left.satisfyStartEndTime(startTime, endTime)
+        && right.satisfyStartEndTime(startTime, endTime);
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    return left.containStartEndTime(startTime, endTime) && right
-        .containStartEndTime(startTime, endTime);
+    return left.containStartEndTime(startTime, endTime)
+        && right.containStartEndTime(startTime, endTime);
   }
 
   @Override

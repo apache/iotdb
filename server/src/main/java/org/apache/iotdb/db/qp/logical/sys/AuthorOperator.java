@@ -18,13 +18,18 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
  */
-public class AuthorOperator extends RootOperator {
+public class AuthorOperator extends Operator {
 
   private final AuthorType authorType;
   private String userName;
@@ -110,10 +115,35 @@ public class AuthorOperator extends RootOperator {
     this.nodeName = nodePath;
   }
 
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    try {
+      return new AuthorPlan(
+          authorType, userName, roleName, password, newPassword, privilegeList, nodeName);
+    } catch (AuthException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
+  }
+
   public enum AuthorType {
-    CREATE_USER, CREATE_ROLE, DROP_USER, DROP_ROLE, GRANT_ROLE, GRANT_USER, GRANT_ROLE_TO_USER,
-    REVOKE_USER, REVOKE_ROLE, REVOKE_ROLE_FROM_USER, UPDATE_USER, LIST_USER, LIST_ROLE,
-    LIST_USER_PRIVILEGE, LIST_ROLE_PRIVILEGE, LIST_USER_ROLES, LIST_ROLE_USERS;
+    CREATE_USER,
+    CREATE_ROLE,
+    DROP_USER,
+    DROP_ROLE,
+    GRANT_ROLE,
+    GRANT_USER,
+    GRANT_ROLE_TO_USER,
+    REVOKE_USER,
+    REVOKE_ROLE,
+    REVOKE_ROLE_FROM_USER,
+    UPDATE_USER,
+    LIST_USER,
+    LIST_ROLE,
+    LIST_USER_PRIVILEGE,
+    LIST_ROLE_PRIVILEGE,
+    LIST_USER_ROLES,
+    LIST_ROLE_USERS;
 
     /**
      * deserialize short number.

@@ -33,20 +33,15 @@ public interface ISyncSenderLogAnalyzer {
    */
   void recover() throws IOException;
 
-  /**
-   * Load last local files from last local info file.
-   */
+  /** Load last local files from last local info file. */
   void loadLastLocalFiles(Set<String> lastLocalFiles);
 
   /**
-   * Load the sync log, which indicates the progress of the last synchronization task.
-   * Deleted files and new tsfiles can be obtained by log analysis.
+   * Load the sync log, which indicates the progress of the last synchronization task. Deleted files
+   * and new tsfiles can be obtained by log analysis.
    */
   void loadLogger(Set<String> deletedFiles, Set<String> newFiles);
 
-  /**
-   * Update the last local info file based on the log information of the last task
-   */
+  /** Update the last local info file based on the log information of the last task */
   void updateLastLocalFile(Set<String> currentLocalFiles) throws IOException;
-
 }

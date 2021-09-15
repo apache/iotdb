@@ -18,25 +18,28 @@
  */
 package org.apache.iotdb.cli;
 
-import java.io.Console;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.util.Scanner;
+import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.RpcUtils;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.thrift.TException;
 
-/**
- * args[]: -h 127.0.0.1 -p 6667 -u root -pw root
- */
+import java.io.Console;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Scanner;
+
+import static org.apache.iotdb.cli.utils.IoTPrinter.print;
+import static org.apache.iotdb.cli.utils.IoTPrinter.println;
+
+/** args[]: -h 127.0.0.1 -p 6667 -u root -pw root */
 public class WinCli extends AbstractCli {
 
   private static CommandLine commandLine;
@@ -96,12 +99,7 @@ public class WinCli extends AbstractCli {
         timeFormat = RpcUtils.setTimeFormat("long");
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
-        maxPrintRowCount = Integer.parseInt(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
-        if (maxPrintRowCount <= 0) {
-          println(
-              IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number greater than 0");
-          return false;
-        }
+        setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
       }
     } catch (ParseException e) {
       println("Require more params input, please check the following hint.");
@@ -109,7 +107,8 @@ public class WinCli extends AbstractCli {
       return false;
     } catch (NumberFormatException e) {
       println(
-          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number");
+          IOTDB_CLI_PREFIX
+              + "> error format of max print row count, it should be an integer number");
       return false;
     }
     return true;
@@ -125,9 +124,12 @@ public class WinCli extends AbstractCli {
         password = readPassword();
       }
       if (hasExecuteSQL) {
-        try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+        try (IoTDBConnection connection =
+            (IoTDBConnection)
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
           properties = connection.getServerProperties();
+          timestampPrecision = properties.getTimestampPrecision();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
           processCommand(execute, connection);
           return;
@@ -145,8 +147,10 @@ public class WinCli extends AbstractCli {
   }
 
   private static void receiveCommands(Scanner scanner) throws TException {
-    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+    try (IoTDBConnection connection =
+        (IoTDBConnection)
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       timestampPrecision = properties.getTimestampPrecision();
@@ -163,8 +167,9 @@ public class WinCli extends AbstractCli {
         }
       }
     } catch (SQLException e) {
-      println(String
-          .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
+      println(
+          String.format(
+              "%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
     }
   }
 }

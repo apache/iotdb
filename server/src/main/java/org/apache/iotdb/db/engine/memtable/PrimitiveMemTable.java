@@ -19,25 +19,32 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.rescon.TVListAllocator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.db.rescon.TVListAllocator;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class PrimitiveMemTable extends AbstractMemTable {
 
-  public PrimitiveMemTable() {
-  }
+  public PrimitiveMemTable() {}
 
   public PrimitiveMemTable(boolean enableMemControl) {
     this.disableMemControl = !enableMemControl;
   }
+
   public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
     super(memTableMap);
   }
 
   @Override
-  protected IWritableMemChunk genMemSeries(MeasurementSchema schema) {
+  protected IWritableMemChunk genMemSeries(IMeasurementSchema schema) {
+    if (schema.getType() == TSDataType.VECTOR) {
+      return new WritableMemChunk(
+          schema,
+          TVListAllocator.getInstance().allocate(schema.getSubMeasurementsTSDataTypeList()));
+    }
     return new WritableMemChunk(schema, TVListAllocator.getInstance().allocate(schema.getType()));
   }
 
@@ -54,15 +61,7 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  public int hashCode() {return (int) getVersion();}
-
-  @Override
-  public boolean equals(Object obj) {
-    return this == obj;
-  }
-
-  @Override
   public String toString() {
-    return "PrimitiveMemTable{planIndex=[" + getMinPlanIndex() +"," + getMaxPlanIndex() + "]}";
+    return "PrimitiveMemTable{planIndex=[" + getMinPlanIndex() + "," + getMaxPlanIndex() + "]}";
   }
 }

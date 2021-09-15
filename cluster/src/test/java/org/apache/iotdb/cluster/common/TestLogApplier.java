@@ -44,9 +44,11 @@ public class TestLogApplier implements LogApplier {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         try {
           StorageEngine.getInstance()
-              .closeStorageGroupProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
+              .closeStorageGroupProcessor(
+                  new PartialPath(closeFileLog.getStorageGroupName()),
                   closeFileLog.getPartitionId(),
-                  closeFileLog.isSeq(), false);
+                  closeFileLog.isSeq(),
+                  false);
         } catch (StorageGroupNotSetException | IllegalPathException e) {
           throw new QueryProcessException(e);
         }
@@ -56,7 +58,6 @@ public class TestLogApplier implements LogApplier {
     } finally {
       log.setApplied(true);
     }
-
   }
 
   public PlanExecutor getPlanExecutor() throws QueryProcessException {

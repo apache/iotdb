@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.auth.user;
 
+import org.apache.iotdb.db.auth.entity.PathPrivilege;
+import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.IOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -32,25 +41,18 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.utils.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class loads a user's information from the corresponding file.The user file is a sequential
- * file. User file schema: Int32 username bytes size Utf-8 username bytes Int32 Password bytes
- * size Utf-8 password bytes Int32 seriesPath privilege number n Int32 seriesPath[1] size Utf-8
+ * file. User file schema: Int32 username bytes size Utf-8 username bytes Int32 Password bytes size
+ * Utf-8 password bytes Int32 seriesPath privilege number n Int32 seriesPath[1] size Utf-8
  * seriesPath[1] bytes Int32 privilege num k1 Int32 privilege[1][1] Int32 privilege[1][2] ... Int32
- * privilege[1][k1] Int32 seriesPath[2] size Utf-8 seriesPath[2] bytes Int32 privilege num k2
- * Int32 privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n]
- * size Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32
- * privilege[n][2] ... Int32 privilege[n][kn] Int32 user name number m Int32 user name[1] size
- * Utf-8 user name[1] bytes Int32 user name[2] size Utf-8 user name[2] bytes ... Int32 user
- * name[m] size Utf-8 user name[m] bytes
+ * privilege[1][k1] Int32 seriesPath[2] size Utf-8 seriesPath[2] bytes Int32 privilege num k2 Int32
+ * privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n] size
+ * Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32 privilege[n][2] ...
+ * Int32 privilege[n][kn] Int32 user name number m Int32 user name[1] size Utf-8 user name[1] bytes
+ * Int32 user name[2] size Utf-8 user name[2] bytes ... Int32 user name[m] size Utf-8 user name[m]
+ * bytes
  */
 public class LocalFileUserAccessor implements IUserAccessor {
 
@@ -64,6 +66,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
    * ThreadLocal for thread safety.
    */
   private ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
+
   private ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   public LocalFileUserAccessor(String userDirPath) {
@@ -78,12 +81,14 @@ public class LocalFileUserAccessor implements IUserAccessor {
    */
   @Override
   public User loadUser(String username) throws IOException {
-    File userProfile = SystemFileFactory.INSTANCE.getFile(
-        userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
+    File userProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
     if (!userProfile.exists() || !userProfile.isFile()) {
       // System may crush before a newer file is renamed.
-      File newProfile = SystemFileFactory.INSTANCE.getFile(
-          userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+      File newProfile =
+          SystemFileFactory.INSTANCE.getFile(
+              userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (newProfile.exists() && newProfile.isFile()) {
         if (!newProfile.renameTo(userProfile)) {
           logger.error("New profile renaming not succeed.");
@@ -94,16 +99,16 @@ public class LocalFileUserAccessor implements IUserAccessor {
       }
     }
     FileInputStream inputStream = new FileInputStream(userProfile);
-    try (DataInputStream dataInputStream = new DataInputStream(
-        new BufferedInputStream(inputStream))) {
+    try (DataInputStream dataInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
       User user = new User();
       user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       int privilegeNum = dataInputStream.readInt();
       List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
       for (int i = 0; i < privilegeNum; i++) {
-        pathPrivilegeList
-            .add(IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
+        pathPrivilegeList.add(
+            IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
       user.setPrivilegeList(pathPrivilegeList);
       int roleNum = dataInputStream.readInt();
@@ -140,10 +145,15 @@ public class LocalFileUserAccessor implements IUserAccessor {
    */
   @Override
   public void saveUser(User user) throws IOException {
-    File userProfile = SystemFileFactory.INSTANCE.getFile(
-        userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-    try (BufferedOutputStream outputStream = new BufferedOutputStream(
-        new FileOutputStream(userProfile))) {
+    File userProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath
+                + File.separator
+                + user.getName()
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
+    try (BufferedOutputStream outputStream =
+        new BufferedOutputStream(new FileOutputStream(userProfile))) {
       try {
         IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
         IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
@@ -153,17 +163,15 @@ public class LocalFileUserAccessor implements IUserAccessor {
         IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
         for (int i = 0; i < privilegeNum; i++) {
           PathPrivilege pathPrivilege = user.getPrivilegeList().get(i);
-          IOUtils
-              .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING,
-                  encodingBufferLocal);
+          IOUtils.writePathPrivilege(
+              outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
         }
 
         int userNum = user.getRoleList().size();
         IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
         for (int i = 0; i < userNum; i++) {
-          IOUtils
-              .writeString(outputStream, user.getRoleList().get(i), STRING_ENCODING,
-                  encodingBufferLocal);
+          IOUtils.writeString(
+              outputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
         }
         IOUtils.writeInt(outputStream, user.isUseWaterMark() ? 1 : 0, encodingBufferLocal);
         outputStream.flush();
@@ -175,8 +183,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
       encodingBufferLocal.remove();
     }
 
-    File oldFile = SystemFileFactory.INSTANCE.getFile(
-        userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
+    File oldFile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(userProfile, oldFile);
   }
 
@@ -189,15 +198,17 @@ public class LocalFileUserAccessor implements IUserAccessor {
    */
   @Override
   public boolean deleteUser(String username) throws IOException {
-    File userProfile = SystemFileFactory.INSTANCE.getFile(
-        userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
-    File backFile = SystemFileFactory.INSTANCE.getFile(
-        userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+    File userProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
+    File backFile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
     if (!userProfile.exists() && !backFile.exists()) {
       return false;
     }
-    if ((userProfile.exists() && !userProfile.delete()) || (backFile.exists() && !backFile
-        .delete())) {
+    if ((userProfile.exists() && !userProfile.delete())
+        || (backFile.exists() && !backFile.delete())) {
       throw new IOException(String.format("Cannot delete user file of %s", username));
     }
     return true;
@@ -206,9 +217,10 @@ public class LocalFileUserAccessor implements IUserAccessor {
   @Override
   public List<String> listAllUsers() {
     File userDir = SystemFileFactory.INSTANCE.getFile(userDirPath);
-    String[] names = userDir
-        .list((dir, name) -> name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name
-            .endsWith(TEMP_SUFFIX));
+    String[] names =
+        userDir.list(
+            (dir, name) ->
+                name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
     List<String> retList = new ArrayList<>();
     if (names != null) {
       // in very rare situations, normal file and backup file may exist at the same time

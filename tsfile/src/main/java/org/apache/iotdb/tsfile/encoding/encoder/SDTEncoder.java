@@ -22,61 +22,60 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 public class SDTEncoder {
 
   /**
-   * the last read time and value
-   * if upperDoor >= lowerDoor meaning out of compDeviation range, will store lastReadPair
+   * the last read time and value if upperDoor >= lowerDoor meaning out of compDeviation range, will
+   * store lastReadPair
    */
   private long lastReadTimestamp;
+
   private long lastReadLong;
   private double lastReadDouble;
   private int lastReadInt;
   private float lastReadFloat;
 
-  /**
-   * the last stored time and vlaue
-   * we compare current point against lastStoredPair
-   */
+  /** the last stored time and vlaue we compare current point against lastStoredPair */
   private long lastStoredTimestamp;
+
   private long lastStoredLong;
   private double lastStoredDouble;
   private int lastStoredInt;
   private float lastStoredFloat;
 
   /**
-   * the maximum curUpperSlope between the lastStoredPoint to the current point
-   * upperDoor can only open up
+   * the maximum curUpperSlope between the lastStoredPoint to the current point upperDoor can only
+   * open up
    */
   private double upperDoor;
 
   /**
-   * the minimum curLowerSlope between the lastStoredPoint to the current point
-   * lowerDoor can only open downard
+   * the minimum curLowerSlope between the lastStoredPoint to the current point lowerDoor can only
+   * open downard
    */
   private double lowerDoor;
 
   /**
-   * the maximum absolute difference the user set
-   * if the data's value is within compDeviation, it will be compressed and discarded
-   * after compression, it will only store out of range <time, data></> to form the trend
+   * the maximum absolute difference the user set if the data's value is within compDeviation, it
+   * will be compressed and discarded after compression, it will only store out of range <time,
+   * data></> to form the trend
    */
   private double compDeviation;
 
   /**
-   * the minimum time distance between two stored data points
-   * if current point time to the last stored point time distance <= compMin,
-   * current point will NOT be stored regardless of compression deviation
+   * the minimum time distance between two stored data points if current point time to the last
+   * stored point time distance <= compMinTime, current point will NOT be stored regardless of
+   * compression deviation
    */
-  private double compMin;
+  private long compMinTime;
 
   /**
-   * the maximum time distance between two stored data points
-   * if current point time to the last stored point time distance >= compMax,
-   * current point will be stored regardless of compression deviation
+   * the maximum time distance between two stored data points if current point time to the last
+   * stored point time distance >= compMaxTime, current point will be stored regardless of
+   * compression deviation
    */
-  private double compMax;
+  private long compMaxTime;
 
   /**
    * isFirstValue is true when the encoder takes the first point or reset() when cur point's
-   * distance to the last stored point's distance exceeds compMax
+   * distance to the last stored point's distance exceeds compMaxTime
    */
   private boolean isFirstValue;
 
@@ -84,11 +83,10 @@ public class SDTEncoder {
     upperDoor = Integer.MIN_VALUE;
     lowerDoor = Integer.MAX_VALUE;
     compDeviation = -1;
-    compMin = Integer.MIN_VALUE;
-    compMax = Integer.MAX_VALUE;
+    compMinTime = 0;
+    compMaxTime = Long.MAX_VALUE;
     isFirstValue = true;
   }
-
 
   public boolean encodeFloat(long time, float value) {
     // store the first time and value pair
@@ -96,15 +94,15 @@ public class SDTEncoder {
       return true;
     }
 
-    // if current point to the last stored point's time distance is within compMin,
-    // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredTimestamp <= compMin) {
+    // if current point to the last stored point's time distance is within compMinTime,
+    // will not check two doors nor store any point within the compMinTime time range
+    if (time - lastStoredTimestamp <= compMinTime) {
       return false;
     }
 
-    // if current point to the last stored point's time distance is larger than compMax,
+    // if current point to the last stored point's time distance is larger than compMaxTime,
     // will reset two doors, and store current point;
-    if (time - lastStoredTimestamp >= compMax) {
+    if (time - lastStoredTimestamp >= compMaxTime) {
       reset(time, value);
       return true;
     }
@@ -119,7 +117,8 @@ public class SDTEncoder {
       lowerDoor = curLowerSlope;
     }
 
-    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and
+    // update two doors
     if (upperDoor >= lowerDoor) {
       lastStoredTimestamp = lastReadTimestamp;
       lastStoredFloat = lastReadFloat;
@@ -141,15 +140,15 @@ public class SDTEncoder {
       return true;
     }
 
-    // if current point to the last stored point's time distance is within compMin,
-    // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredTimestamp <= compMin) {
+    // if current point to the last stored point's time distance is within compMinTime,
+    // will not check two doors nor store any point within the compMinTime time range
+    if (time - lastStoredTimestamp <= compMinTime) {
       return false;
     }
 
-    // if current point to the last stored point's time distance is larger than compMax,
+    // if current point to the last stored point's time distance is larger than compMaxTime,
     // will reset two doors, and store current point;
-    if (time - lastStoredTimestamp >= compMax) {
+    if (time - lastStoredTimestamp >= compMaxTime) {
       reset(time, value);
       return true;
     }
@@ -164,7 +163,8 @@ public class SDTEncoder {
       lowerDoor = curLowerSlope;
     }
 
-    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and
+    // update two doors
     if (upperDoor >= lowerDoor) {
       lastStoredLong = lastReadLong;
       lastStoredTimestamp = lastReadTimestamp;
@@ -186,15 +186,15 @@ public class SDTEncoder {
       return true;
     }
 
-    // if current point to the last stored point's time distance is within compMin,
-    // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredTimestamp <= compMin) {
+    // if current point to the last stored point's time distance is within compMinTime,
+    // will not check two doors nor store any point within the compMinTime time range
+    if (time - lastStoredTimestamp <= compMinTime) {
       return false;
     }
 
-    // if current point to the last stored point's time distance is larger than compMax,
+    // if current point to the last stored point's time distance is larger than compMaxTime,
     // will reset two doors, and store current point;
-    if (time - lastStoredTimestamp >= compMax) {
+    if (time - lastStoredTimestamp >= compMaxTime) {
       reset(time, value);
       return true;
     }
@@ -209,7 +209,8 @@ public class SDTEncoder {
       lowerDoor = curLowerSlope;
     }
 
-    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and
+    // update two doors
     if (upperDoor >= lowerDoor) {
       lastStoredTimestamp = lastReadTimestamp;
       lastStoredInt = lastReadInt;
@@ -231,30 +232,33 @@ public class SDTEncoder {
       return true;
     }
 
-    // if current point to the last stored point's time distance is within compMin,
-    // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredTimestamp <= compMin) {
+    // if current point to the last stored point's time distance is within compMinTime,
+    // will not check two doors nor store any point within the compMinTime time range
+    if (time - lastStoredTimestamp <= compMinTime) {
       return false;
     }
 
-    // if current point to the last stored point's time distance is larger than compMax,
+    // if current point to the last stored point's time distance is larger than compMaxTime,
     // will reset two doors, and store current point;
-    if (time - lastStoredTimestamp >= compMax) {
+    if (time - lastStoredTimestamp >= compMaxTime) {
       reset(time, value);
       return true;
     }
 
-    double curUpperSlope = (value - lastStoredDouble - compDeviation) / (time - lastStoredTimestamp);
+    double curUpperSlope =
+        (value - lastStoredDouble - compDeviation) / (time - lastStoredTimestamp);
     if (curUpperSlope > upperDoor) {
       upperDoor = curUpperSlope;
     }
 
-    double curLowerSlope = (value - lastStoredDouble + compDeviation) / (time - lastStoredTimestamp);
+    double curLowerSlope =
+        (value - lastStoredDouble + compDeviation) / (time - lastStoredTimestamp);
     if (curLowerSlope < lowerDoor) {
       lowerDoor = curLowerSlope;
     }
 
-    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and
+    // update two doors
     if (upperDoor >= lowerDoor) {
       lastStoredTimestamp = lastReadTimestamp;
       lastStoredDouble = lastReadDouble;
@@ -269,7 +273,6 @@ public class SDTEncoder {
     lastReadTimestamp = time;
     return false;
   }
-
 
   public int encode(long[] timestamps, double[] values, int batchSize) {
     int index = 0;
@@ -373,8 +376,9 @@ public class SDTEncoder {
   }
 
   /**
-   * if current point to the last stored point's time distance >= compMax, will store current point
-   * and reset upperDoor and lowerDoor
+   * if current point to the last stored point's time distance >= compMaxTime, will store current
+   * point and reset upperDoor and lowerDoor
+   *
    * @param time current time
    * @param value current value
    */
@@ -410,20 +414,20 @@ public class SDTEncoder {
     return compDeviation;
   }
 
-  public void setCompMin(double compMin) {
-    this.compMin = compMin;
+  public void setCompMinTime(long compMinTime) {
+    this.compMinTime = compMinTime;
   }
 
-  public double getCompMin() {
-    return compMin;
+  public long getCompMinTime() {
+    return compMinTime;
   }
 
-  public void setCompMax(double compMax) {
-    this.compMax = compMax;
+  public void setCompMaxTime(long compMaxTime) {
+    this.compMaxTime = compMaxTime;
   }
 
-  public double getCompMax() {
-    return compMax;
+  public long getCompMaxTime() {
+    return compMaxTime;
   }
 
   public long getTime() {

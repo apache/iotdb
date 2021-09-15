@@ -19,20 +19,21 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * PullSnapshotTaskDescriptor describes a pull-snapshot-task with the slots to pull, the previous
- * owners and does this pulling require the provider to become read-only. So the task can be
- * resumed when system crashes.
+ * owners and does this pulling require the provider to become read-only. So the task can be resumed
+ * when system crashes.
  */
 public class PullSnapshotTaskDescriptor {
   private PartitionGroup previousHolders;
@@ -43,11 +44,10 @@ public class PullSnapshotTaskDescriptor {
   // replicas can pull the same snapshot.
   private boolean requireReadOnly;
 
-  public PullSnapshotTaskDescriptor() {
-  }
+  public PullSnapshotTaskDescriptor() {}
 
-  public PullSnapshotTaskDescriptor(PartitionGroup previousOwners,
-      List<Integer> slots, boolean requireReadOnly) {
+  public PullSnapshotTaskDescriptor(
+      PartitionGroup previousOwners, List<Integer> slots, boolean requireReadOnly) {
     this.previousHolders = previousOwners;
     this.slots = slots;
     this.requireReadOnly = requireReadOnly;
@@ -75,9 +75,10 @@ public class PullSnapshotTaskDescriptor {
       dataOutputStream.writeInt(slot);
     }
 
+    dataOutputStream.writeInt(previousHolders.getId());
     dataOutputStream.writeInt(previousHolders.size());
     for (Node previousHolder : previousHolders) {
-      SerializeUtils.serialize(previousHolder, dataOutputStream);
+      NodeSerializeUtils.serialize(previousHolder, dataOutputStream);
     }
 
     dataOutputStream.writeBoolean(requireReadOnly);
@@ -90,11 +91,11 @@ public class PullSnapshotTaskDescriptor {
       slots.add(dataInputStream.readInt());
     }
 
+    previousHolders = new PartitionGroup(dataInputStream.readInt());
     int holderSize = dataInputStream.readInt();
-    previousHolders = new PartitionGroup();
     for (int i = 0; i < holderSize; i++) {
       Node node = new Node();
-      SerializeUtils.deserialize(node, dataInputStream);
+      NodeSerializeUtils.deserialize(node, dataInputStream);
       previousHolders.add(node);
     }
 
@@ -110,9 +111,21 @@ public class PullSnapshotTaskDescriptor {
       return false;
     }
     PullSnapshotTaskDescriptor that = (PullSnapshotTaskDescriptor) o;
-    return requireReadOnly == that.requireReadOnly &&
-        Objects.equals(previousHolders, that.previousHolders) &&
-        Objects.equals(slots, that.slots);
+    return requireReadOnly == that.requireReadOnly
+        && Objects.equals(previousHolders, that.previousHolders)
+        && Objects.equals(slots, that.slots);
+  }
+
+  @Override
+  public String toString() {
+    return "PullSnapshotTaskDescriptor{"
+        + " previousHolders="
+        + previousHolders
+        + ", slots="
+        + slots
+        + ", requireReadOnly="
+        + requireReadOnly
+        + "}";
   }
 
   @Override

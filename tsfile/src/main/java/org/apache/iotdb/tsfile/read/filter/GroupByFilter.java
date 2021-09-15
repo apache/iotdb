@@ -18,22 +18,23 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 public class GroupByFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = -1211805021419281440L;
-  private long interval;
-  private long slidingStep;
-  private long startTime;
-  private long endTime;
+  protected long interval;
+  protected long slidingStep;
+  protected long startTime;
+  protected long endTime;
 
   public GroupByFilter(long interval, long slidingStep, long startTime, long endTime) {
     this.interval = interval;
@@ -42,9 +43,7 @@ public class GroupByFilter implements Filter, Serializable {
     this.endTime = endTime;
   }
 
-  public GroupByFilter() {
-
-  }
+  public GroupByFilter() {}
 
   @Override
   public boolean satisfy(Statistics statistics) {
@@ -53,30 +52,22 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public boolean satisfy(long time, Object value) {
-    if (time < startTime || time >= endTime)
-      return false;
-    else
-      return (time - startTime) % slidingStep < interval;
+    if (time < startTime || time >= endTime) return false;
+    else return (time - startTime) % slidingStep < interval;
   }
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    if (endTime < this.startTime)
-      return false;
-    else if (startTime <= this.startTime)
-      return true;
-    else if (startTime >= this.endTime)
-      return false;
+    if (endTime < this.startTime || startTime >= this.endTime) return false;
+    else if (startTime <= this.startTime) return true;
     else {
       long minTime = startTime - this.startTime;
       long count = minTime / slidingStep;
-      if (minTime <= interval + count * slidingStep)
-        return true;
+      if (minTime <= interval + count * slidingStep) return true;
       else {
         if (this.endTime <= (count + 1) * slidingStep + this.startTime) {
           return false;
-        }
-        else {
+        } else {
           return endTime >= (count + 1) * slidingStep + this.startTime;
         }
       }

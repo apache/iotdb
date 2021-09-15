@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -29,6 +26,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class FirstValueAggrResult extends AggregateResult {
 
@@ -88,16 +89,36 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     if (hasFinalResult()) {
       return;
     }
+    int currentPos = 0;
+    long[] timesForFirstValue = new long[TIME_LENGTH_FOR_FIRST_VALUE];
+    while (currentPos < length) {
+      int timeLength = Math.min(length - currentPos, TIME_LENGTH_FOR_FIRST_VALUE);
+      System.arraycopy(timestamps, currentPos, timesForFirstValue, 0, timeLength);
+      Object[] values = dataReader.getValuesInTimestamps(timesForFirstValue, timeLength);
+      for (int i = 0; i < timeLength; i++) {
+        if (values[i] != null) {
+          setValue(values[i]);
+          timestamp = timesForFirstValue[i];
+          return;
+        }
+      }
+      currentPos += timeLength;
+    }
+  }
 
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    if (hasFinalResult()) {
+      return;
+    }
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        setValue(value);
+      if (values[i] != null) {
+        setValue(values[i]);
         timestamp = timestamps[i];
         break;
       }

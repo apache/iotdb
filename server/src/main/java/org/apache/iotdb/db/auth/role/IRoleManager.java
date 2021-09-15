@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.db.auth.role;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 
-/**
- * This interface maintains roles in memory and is responsible for their modifications.
- */
+import java.util.List;
+import java.util.Map;
+
+/** This interface maintains roles in memory and is responsible for their modifications. */
 public interface IRoleManager {
 
   /**
@@ -58,34 +57,30 @@ public interface IRoleManager {
   /**
    * Grant a privilege on a seriesPath to a role.
    *
-   * @param rolename    The rolename of the role to which the privilege should be added.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege, this should be "root".
+   * @param rolename The rolename of the role to which the privilege should be added.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @return True if the permission is successfully added, false if the permission already exists.
-   * @throws AuthException If the role does not exist or the privilege or the seriesPath is
-   *                       illegal.
+   * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
   boolean grantPrivilegeToRole(String rolename, String path, int privilegeId) throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a role.
    *
-   * @param rolename    The rolename of the role from which the privilege should be removed.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege like 'CREATE_USER', this should be "root".
+   * @param rolename The rolename of the role from which the privilege should be removed.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege like 'CREATE_USER', this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @return True if the permission is successfully revoked, false if the permission does not
-   * exists.
-   * @throws AuthException If the role does not exist or the privilege or the seriesPath is
-   *                       illegal.
+   *     exists.
+   * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean revokePrivilegeFromRole(String rolename, String path,
-      int privilegeId) throws AuthException;
+  boolean revokePrivilegeFromRole(String rolename, String path, int privilegeId)
+      throws AuthException;
 
-  /**
-   * Re-initialize this object.
-   */
+  /** Re-initialize this object. */
   void reset();
 
   /**
@@ -96,9 +91,8 @@ public interface IRoleManager {
   List<String> listAllRoles();
 
   /**
-   * clear all old roles info, replace the old roles with the new one. The caller should
-   * guarantee that no other methods of this interface are invoked concurrently when this method
-   * is called.
+   * clear all old roles info, replace the old roles with the new one. The caller should guarantee
+   * that no other methods of this interface are invoked concurrently when this method is called.
    *
    * @param roles new roles info
    * @throws AuthException

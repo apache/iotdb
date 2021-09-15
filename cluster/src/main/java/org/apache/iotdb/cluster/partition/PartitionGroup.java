@@ -19,47 +19,87 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import java.util.Collection;
+import java.util.Objects;
 
 /**
  * PartitionGroup contains all the nodes that will form a data group with a certain node, which are
- * the REPLICATION_NUM - 1 different physical nodes after this node.
- * The first element of the list is called header, which is also the identifier of the data group.
+ * the REPLICATION_NUM - 1 different physical nodes after this node. The first element of the list
+ * is called header, which is also the identifier of the data group.
  */
 public class PartitionGroup extends ArrayList<Node> {
 
-  private Node thisNode;
+  private int id;
 
-  public PartitionGroup() {
+  public PartitionGroup() {}
+
+  public PartitionGroup(Collection<Node> nodes) {
+    this.addAll(nodes);
   }
 
-  public PartitionGroup(Node... nodes) {
+  public PartitionGroup(int id, Node... nodes) {
     this.addAll(Arrays.asList(nodes));
+    this.id = id;
   }
 
   public PartitionGroup(PartitionGroup other) {
     super(other);
-    this.thisNode = other.thisNode;
+    this.id = other.getId();
   }
 
   @Override
   public boolean equals(Object o) {
-    return super.equals(o);
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PartitionGroup group = (PartitionGroup) o;
+    return Objects.equals(id, group.getId()) && super.equals(group);
+  }
+
+  public void serialize(DataOutputStream dataOutputStream) throws IOException {
+    dataOutputStream.writeInt(getId());
+    dataOutputStream.writeInt(size());
+    for (Node node : this) {
+      NodeSerializeUtils.serialize(node, dataOutputStream);
+    }
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    id = buffer.getInt();
+    int nodeNum = buffer.getInt();
+    for (int i2 = 0; i2 < nodeNum; i2++) {
+      Node node = new Node();
+      NodeSerializeUtils.deserialize(node, buffer);
+      add(node);
+    }
   }
 
   @Override
   public int hashCode() {
-    return super.hashCode();
+    return Objects.hash(id, super.hashCode());
   }
 
-  public Node getHeader() {
-    return get(0);
+  public RaftNode getHeader() {
+    return new RaftNode(get(0), getId());
   }
 
-  public void setThisNode(Node thisNode) {
-    this.thisNode = thisNode;
+  public int getId() {
+    return id;
   }
 
+  public void setId(int id) {
+    this.id = id;
+  }
 }

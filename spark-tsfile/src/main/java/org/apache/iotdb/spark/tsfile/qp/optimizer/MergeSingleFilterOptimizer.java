@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.optimizer;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.spark.tsfile.qp.common.BasicOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.exception.MergeFilterException;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
 

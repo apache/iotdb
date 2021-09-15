@@ -19,110 +19,76 @@
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum CompressionType {
-  /**
-   * Do not comprocess
-   */
-  UNCOMPRESSED("", 0),
+  /** Do not comprocess */
+  UNCOMPRESSED("", (byte) 0),
 
-  /**
-   * SNAPPY
-   */
-  SNAPPY(".snappy", 1),
+  /** SNAPPY */
+  SNAPPY(".snappy", (byte) 1),
 
-  /**
-   * GZIP
-   */
-  GZIP(".gzip", 2),
+  /** GZIP */
+  GZIP(".gzip", (byte) 2),
 
-  /**
-   * LZO
-   */
-  LZO(".lzo", 3),
+  /** LZO */
+  LZO(".lzo", (byte) 3),
 
-  /**
-   * SDT
-   */
-  SDT(".sdt", 4),
+  /** SDT */
+  SDT(".sdt", (byte) 4),
 
-  /**
-   * PAA
-   */
-  PAA(".paa", 5),
+  /** PAA */
+  PAA(".paa", (byte) 5),
 
-  /**
-   * PLA
-   */
-  PLA(".pla", 6),
+  /** PLA */
+  PLA(".pla", (byte) 6),
 
-  /**
-   * LZ4
-   */
-  LZ4(".lz4", 7);
+  /** LZ4 */
+  LZ4(".lz4", (byte) 7);
 
   private final String extensionName;
-  private final int index;
+  private final byte index;
 
-  CompressionType(String extensionName, int index) {
+  CompressionType(String extensionName, byte index) {
     this.extensionName = extensionName;
     this.index = index;
   }
 
   /**
-   * deserialize short number.
-   *
-   * @param compressor short number
-   * @return CompressionType
-   */
-  public static CompressionType deserialize(short compressor) {
-    return getCompressionType(compressor);
-  }
-
-  public static byte deserializeToByte(short compressor) {
-    //check compressor is valid
-    getCompressionType(compressor);
-    return (byte) compressor;
-  }
-
-
-  private static CompressionType getCompressionType(short compressor) {
-    for (CompressionType compressionType : CompressionType.values()) {
-      if (compressor == compressionType.index) {
-        return compressionType;
-      }
-    }
-
-    throw new IllegalArgumentException("Invalid input: " + compressor);
-  }
-
-  /**
-   * give an byte to return a compression type.
+   * deserialize byte number.
    *
    * @param compressor byte number
    * @return CompressionType
    */
-  public static CompressionType byteToEnum(byte compressor) {
-    return getCompressionType(compressor);
+  public static CompressionType deserialize(byte compressor) {
+    switch (compressor) {
+      case 0:
+        return CompressionType.UNCOMPRESSED;
+      case 1:
+        return CompressionType.SNAPPY;
+      case 2:
+        return CompressionType.GZIP;
+      case 3:
+        return CompressionType.LZO;
+      case 4:
+        return CompressionType.SDT;
+      case 5:
+        return CompressionType.PAA;
+      case 6:
+        return CompressionType.PLA;
+      case 7:
+        return CompressionType.LZ4;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + compressor);
+    }
   }
 
   public static int getSerializedSize() {
-    return Short.BYTES;
+    return Byte.BYTES;
   }
 
-  /**
-   * serialize.
-   *
-   * @return short number
-   */
-  public short serialize() {
-    return enumToByte();
+  /** @return byte number */
+  public byte serialize() {
+    return this.index;
   }
 
-  /**
-   * @return byte number
-   */
-  public byte enumToByte() {
-    return (byte) index;
-  }
   /**
    * get extension.
    *
@@ -131,5 +97,4 @@ public enum CompressionType {
   public String getExtension() {
     return extensionName;
   }
-
 }

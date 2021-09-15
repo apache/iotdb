@@ -18,19 +18,32 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.StatusUtils;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   private List<PartialPath> deletePathList;
+  private Map<Integer, TSStatus> results = new TreeMap<>();
+  /**
+   * This deletion only affects those time partitions that evaluate true by the filter. If the
+   * filter is null, all partitions are processed. This is to avoid redundant data deletions when
+   * one timeseries deletion is split and executed into different replication groups.
+   */
+  private TimePartitionFilter partitionFilter;
 
   public DeleteTimeSeriesPlan(List<PartialPath> deletePathList) {
     super(false, Operator.OperatorType.DELETE_TIMESERIES);
@@ -48,6 +61,14 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   public void setDeletePathList(List<PartialPath> deletePathList) {
     this.deletePathList = deletePathList;
+  }
+
+  public TimePartitionFilter getPartitionFilter() {
+    return partitionFilter;
+  }
+
+  public void setPartitionFilter(TimePartitionFilter partitionFilter) {
+    this.partitionFilter = partitionFilter;
   }
 
   @Override
@@ -88,5 +109,13 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void setPaths(List<PartialPath> fullPaths) {
     this.deletePathList = fullPaths;
+  }
+
+  public Map<Integer, TSStatus> getResults() {
+    return results;
+  }
+
+  public TSStatus[] getFailingStatus() {
+    return StatusUtils.getFailingStatus(results, deletePathList.size());
   }
 }

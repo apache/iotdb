@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.cli;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+
+import static org.junit.Assert.assertEquals;
 
 public abstract class AbstractScript {
 
@@ -39,8 +39,9 @@ public abstract class AbstractScript {
         break;
       } else {
         // remove thing after "connection refused", only for test
-        if(line.contains("Connection refused")) {
-          line = line.substring(0, line.indexOf("Connection refused") + "Connection refused".length());
+        if (line.contains("Connection refused")) {
+          line =
+              line.substring(0, line.indexOf("Connection refused") + "Connection refused".length());
         }
         outputList.add(line);
       }
@@ -62,7 +63,7 @@ public abstract class AbstractScript {
     // This is usually always set by the JVM
 
     File userDir = new File(System.getProperty("user.dir"));
-    if(!userDir.exists()) {
+    if (!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
     File target = new File(userDir, "target/maven-archiver/pom.properties");
@@ -72,7 +73,12 @@ public abstract class AbstractScript {
     } catch (IOException e) {
       return "target/iotdb-cli-";
     }
-    return new File(userDir, String.format("target/%s-%s", properties.getProperty("artifactId"), properties.getProperty("version"))).getAbsolutePath();
+    return new File(
+            userDir,
+            String.format(
+                "target/%s-%s",
+                properties.getProperty("artifactId"), properties.getProperty("version")))
+        .getAbsolutePath();
   }
 
   protected abstract void testOnWindows() throws IOException;

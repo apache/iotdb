@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,12 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class CreateIndexPlan extends PhysicalPlan {
 
@@ -39,13 +40,13 @@ public class CreateIndexPlan extends PhysicalPlan {
   private long time;
   private IndexType indexType;
 
-  public CreateIndexPlan(){
+  public CreateIndexPlan() {
     super(false, OperatorType.CREATE_INDEX);
     canBeSplit = false;
   }
 
-  public CreateIndexPlan(List<PartialPath> paths, Map<String, String> props, long startTime,
-      IndexType indexType) {
+  public CreateIndexPlan(
+      List<PartialPath> paths, Map<String, String> props, long startTime, IndexType indexType) {
     super(false, OperatorType.CREATE_INDEX);
     this.paths = paths;
     this.props = props;
@@ -87,7 +88,6 @@ public class CreateIndexPlan extends PhysicalPlan {
   public List<PartialPath> getPaths() {
     return paths;
   }
-
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
@@ -152,7 +152,6 @@ public class CreateIndexPlan extends PhysicalPlan {
     this.index = buffer.getLong();
   }
 
-
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -175,8 +174,7 @@ public class CreateIndexPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return String.format("paths: %s, index type: %s, start time: %s, props: %s",
-        paths, indexType, time, props);
+    return String.format(
+        "paths: %s, index type: %s, start time: %s, props: %s", paths, indexType, time, props);
   }
-
 }

@@ -19,16 +19,7 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.auth.AuthException;
@@ -37,19 +28,26 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * MetaSimpleSnapshot also records all storage groups.
- */
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
+/** MetaSimpleSnapshot also records all storage groups. */
 public class MetaSimpleSnapshot extends Snapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaSimpleSnapshot.class);
@@ -134,8 +132,8 @@ public class MetaSimpleSnapshot extends Snapshot {
     storageGroupTTLMap = new HashMap<>(storageGroupTTLMapSize);
     for (int i = 0; i < storageGroupTTLMapSize; i++) {
       try {
-        storageGroupTTLMap.put(new PartialPath(SerializeUtils.deserializeString(buffer)),
-            buffer.getLong());
+        storageGroupTTLMap.put(
+            new PartialPath(SerializeUtils.deserializeString(buffer)), buffer.getLong());
       } catch (IllegalPathException e) {
         // ignore
       }
@@ -180,12 +178,12 @@ public class MetaSimpleSnapshot extends Snapshot {
     }
 
     @Override
-    public void install(MetaSimpleSnapshot snapshot, int slot) {
+    public void install(MetaSimpleSnapshot snapshot, int slot, boolean isDataMigration) {
       installSnapshot(snapshot);
     }
 
     @Override
-    public void install(Map<Integer, MetaSimpleSnapshot> snapshotMap) {
+    public void install(Map<Integer, MetaSimpleSnapshot> snapshotMap, boolean isDataMigration) {
       throw new UnsupportedOperationException("Method unimplemented");
     }
 
@@ -203,20 +201,23 @@ public class MetaSimpleSnapshot extends Snapshot {
           } catch (StorageGroupAlreadySetException e) {
             // ignore
           } catch (MetadataException e) {
-            logger.error("{}: Cannot add storage group {} in snapshot, errMessage:{}",
+            logger.error(
+                "{}: Cannot add storage group {} in snapshot, errMessage:{}",
                 metaGroupMember.getName(),
-                entry.getKey(), e.getMessage());
+                entry.getKey(),
+                e.getMessage());
           }
 
           // 2. register ttl in the snapshot
           try {
             IoTDB.metaManager.setTTL(sgPath, entry.getValue());
             StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
-          } catch (MetadataException | StorageEngineException | IOException e) {
-            logger
-                .error("{}: Cannot set ttl in storage group {} , errMessage: {}",
-                    metaGroupMember.getName(),
-                    entry.getKey(), e.getMessage());
+          } catch (MetadataException | IOException e) {
+            logger.error(
+                "{}: Cannot set ttl in storage group {} , errMessage: {}",
+                metaGroupMember.getName(),
+                entry.getKey(),
+                e.getMessage());
           }
         }
 
@@ -226,8 +227,8 @@ public class MetaSimpleSnapshot extends Snapshot {
           installSnapshotUsers(authorizer, snapshot);
           installSnapshotRoles(authorizer, snapshot);
         } catch (AuthException e) {
-          logger.error("{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(),
-              e);
+          logger.error(
+              "{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(), e);
         }
 
         // 4. accept partition table
@@ -265,10 +266,10 @@ public class MetaSimpleSnapshot extends Snapshot {
       return false;
     }
     MetaSimpleSnapshot that = (MetaSimpleSnapshot) o;
-    return Objects.equals(storageGroupTTLMap, that.storageGroupTTLMap) &&
-        Objects.equals(userMap, that.userMap) &&
-        Objects.equals(roleMap, that.roleMap) &&
-        Objects.equals(partitionTableBuffer, that.partitionTableBuffer);
+    return Objects.equals(storageGroupTTLMap, that.storageGroupTTLMap)
+        && Objects.equals(userMap, that.userMap)
+        && Objects.equals(roleMap, that.roleMap)
+        && Objects.equals(partitionTableBuffer, that.partitionTableBuffer);
   }
 
   @Override

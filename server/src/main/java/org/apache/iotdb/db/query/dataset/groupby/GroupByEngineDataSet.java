@@ -18,17 +18,18 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Calendar;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Calendar;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
@@ -50,21 +51,21 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected int intervalTimes;
   private static final long MS_TO_MONTH = 30 * 86400_000L;
 
-  public GroupByEngineDataSet() {
-  }
+  public GroupByEngineDataSet() {}
 
-  /**
-   * groupBy query.
-   */
+  /** groupBy query. */
   public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
-    super(new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
-        groupByTimePlan.getDeduplicatedDataTypes(), groupByTimePlan.isAscending());
+    super(
+        new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
+        groupByTimePlan.getDeduplicatedDataTypes(),
+        groupByTimePlan.isAscending());
 
     // find the startTime of the first aggregation interval
     initGroupByEngineDataSetFields(context, groupByTimePlan);
   }
 
-  protected void initGroupByEngineDataSetFields(QueryContext context, GroupByTimePlan groupByTimePlan) {
+  protected void initGroupByEngineDataSetFields(
+      QueryContext context, GroupByTimePlan groupByTimePlan) {
     this.queryId = context.getQueryId();
     this.interval = groupByTimePlan.getInterval();
     this.slidingStep = groupByTimePlan.getSlidingStep();
@@ -99,8 +100,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     }
 
     if (isIntervalByMonth) {
-      //calculate interval length by natural month based on curStartTime
-      //ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
+      // calculate interval length by natural month based on curStartTime
+      // ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
       curEndTime = Math.min(calcIntervalByMonth(interval + slidingStep * intervalTimes), endTime);
     } else {
       curEndTime = Math.min(curStartTime + interval, endTime);
@@ -110,14 +111,14 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNextWithoutConstraint() {
     long curSlidingStep = slidingStep;
     long curInterval = interval;
     // has cached
     if (hasCachedTimeInterval) {
       return true;
     }
-    
+
     // for group by natural months addition
     intervalTimes += ascending ? 1 : -1;
 
@@ -127,7 +128,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       } else {
         curStartTime += curSlidingStep;
       }
-      //This is an open interval , [0-100)
+      // This is an open interval , [0-100)
       if (curStartTime >= endTime) {
         return false;
       }
@@ -153,18 +154,20 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   /**
    * add natural months based on the first starttime to avoid edge cases, ie 2/28
+   *
    * @param numMonths numMonths is updated in hasNextWithoutConstraint()
    * @return curStartTime
    */
   public long calcIntervalByMonth(long numMonths) {
     Calendar calendar = Calendar.getInstance();
+    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
     calendar.setTimeInMillis(startTime);
     calendar.add(Calendar.MONTH, (int) (numMonths));
     return calendar.getTimeInMillis();
   }
 
   @Override
-  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+  public abstract RowRecord nextWithoutConstraint() throws IOException;
 
   public long getStartTime() {
     return startTime;

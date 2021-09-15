@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.rpc.IoTDBJDBCDataSet;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+
+import org.apache.thrift.TException;
+
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -39,32 +45,86 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import org.apache.iotdb.rpc.IoTDBRpcDataSet;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.thrift.TException;
 
 public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   protected Statement statement;
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
-  protected IoTDBRpcDataSet ioTDBRpcDataSet;
+  protected IoTDBJDBCDataSet ioTDBRpcDataSet;
+  private boolean isRpcFetchResult = true;
+  private List<String> sgColumns;
+  private BitSet aliasColumnMap;
 
-  public AbstractIoTDBJDBCResultSet(Statement statement, List<String> columnNameList,
-      List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
+  public AbstractIoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
       TSIService.Iface client,
-      String sql, long queryId, long sessionId)
+      String sql,
+      long queryId,
+      long sessionId,
+      long timeout,
+      List<String> sgColumns,
+      BitSet aliasColumnMap)
       throws SQLException {
-    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
-        columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, null,
-        statement.getFetchSize());
+    this.ioTDBRpcDataSet =
+        new IoTDBJDBCDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            ((IoTDBStatement) statement).getStmtId(),
+            client,
+            sessionId,
+            null,
+            statement.getFetchSize(),
+            timeout,
+            sgColumns,
+            aliasColumnMap);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
+    this.aliasColumnMap = aliasColumnMap;
+  }
+
+  public AbstractIoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      TSIService.Iface client,
+      String sql,
+      long queryId,
+      long sessionId,
+      long timeout,
+      boolean isRpcFetchResult)
+      throws SQLException {
+    this.ioTDBRpcDataSet =
+        new IoTDBJDBCDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            ((IoTDBStatement) statement).getStmtId(),
+            client,
+            sessionId,
+            null,
+            statement.getFetchSize(),
+            timeout);
+    this.statement = statement;
+    this.columnTypeList = columnTypeList;
+    this.isRpcFetchResult = isRpcFetchResult;
   }
 
   @Override
@@ -112,7 +172,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       throw new SQLException("Error occurs when connecting to server for close operation ", e);
     }
   }
-
 
   @Override
   public void deleteRow() throws SQLException {
@@ -380,7 +439,26 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
-    return new IoTDBResultMetadata(ioTDBRpcDataSet.columnNameList, columnTypeList,
+    String operationType = "";
+    boolean nonAlign = false;
+    try {
+      if (statement.getResultSet() instanceof IoTDBJDBCResultSet) {
+        operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
+        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
+      } else if (statement.getResultSet() instanceof IoTDBNonAlignJDBCResultSet) {
+        operationType = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getOperationType();
+        this.sgColumns = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getSgColumns();
+        nonAlign = true;
+      }
+    } catch (SQLException throwables) {
+      throwables.printStackTrace();
+    }
+    return new IoTDBResultMetadata(
+        nonAlign,
+        sgColumns,
+        operationType,
+        ioTDBRpcDataSet.columnNameList,
+        ioTDBRpcDataSet.columnTypeList,
         ioTDBRpcDataSet.ignoreTimeStamp);
   }
 
@@ -425,7 +503,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Object getObject(String columnName) throws SQLException {
-    return getValueByName(columnName);
+    return getObjectByName(columnName);
   }
 
   @Override
@@ -636,17 +714,14 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
     if (ioTDBRpcDataSet.emptyResultSet) {
       return false;
     }
-    if (fetchResults()) {
+    if (isRpcFetchResult && fetchResults()) {
       constructOneRow();
       return true;
     }
     return false;
   }
 
-
-  /**
-   * @return true means has results
-   */
+  /** @return true means has results */
   abstract boolean fetchResults() throws SQLException;
 
   abstract boolean hasCachedResults();
@@ -876,7 +951,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   @Override
   public void updateClob(int arg0, Reader arg1, long arg2) throws SQLException {
     throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
-
   }
 
   @Override
@@ -1108,4 +1182,5 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   abstract String getValueByName(String columnName) throws SQLException;
 
+  abstract Object getObjectByName(String columnName) throws SQLException;
 }

@@ -19,21 +19,21 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.util.ArrayList;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 
 public class TestMetaGroupMember extends MetaGroupMember {
 
   public TestMetaGroupMember() {
     super();
-    allNodes = new ArrayList<>();
+    allNodes = new PartitionGroup();
     thisNode = TestUtils.getNode(0);
     for (int i = 0; i < 10; i++) {
       allNodes.add(TestUtils.getNode(i));
     }
-    MetaSingleSnapshotLogManager manager = new MetaSingleSnapshotLogManager(new TestLogApplier(), this);
+    MetaSingleSnapshotLogManager manager =
+        new MetaSingleSnapshotLogManager(new TestLogApplier(), this);
     setLogManager(manager);
   }
-
 }

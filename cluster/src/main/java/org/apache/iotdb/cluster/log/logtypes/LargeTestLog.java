@@ -31,6 +31,7 @@ import static org.apache.iotdb.cluster.log.Log.Types.TEST_LARGE_CONTENT;
 
 public class LargeTestLog extends Log {
   private ByteBuffer data;
+
   public LargeTestLog() {
     data = ByteBuffer.wrap(new byte[8192]);
   }
@@ -62,8 +63,7 @@ public class LargeTestLog extends Log {
       return false;
     }
     LargeTestLog obj1 = (LargeTestLog) obj;
-    return getCurrLogIndex() == obj1.getCurrLogIndex() &&
-      getCurrLogTerm() == obj1.getCurrLogTerm();
+    return getCurrLogIndex() == obj1.getCurrLogIndex() && getCurrLogTerm() == obj1.getCurrLogTerm();
   }
 
   @Override

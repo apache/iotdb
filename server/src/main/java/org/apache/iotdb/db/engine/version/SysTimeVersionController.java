@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.db.engine.version;
 
-/**
- * SysTimeVersionController uses system timestamp as the version number.
- */
+/** SysTimeVersionController uses system timestamp as the version number. */
 public class SysTimeVersionController implements VersionController {
 
   public static final SysTimeVersionController INSTANCE = new SysTimeVersionController();
 
-  private SysTimeVersionController() {
-
-  }
+  private SysTimeVersionController() {}
 
   @Override
   public long nextVersion() {

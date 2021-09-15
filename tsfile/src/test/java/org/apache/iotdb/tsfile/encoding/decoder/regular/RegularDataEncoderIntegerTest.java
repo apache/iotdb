@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder.regular;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.decoder.RegularDataDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.RegularDataEncoder;
+
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.junit.Before;
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.encoding.decoder.RegularDataDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.RegularDataEncoder;
+import static org.junit.Assert.assertEquals;
 
 public class RegularDataEncoderIntegerTest {
 
@@ -98,6 +98,19 @@ public class RegularDataEncoderIntegerTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
+  @Test
+  public void testMissingPointsDataSize() throws IOException {
+    int[] originalData = new int[] {1000, 1100, 1200, 1300, 1500, 2000};
+    out = new ByteArrayOutputStream();
+    writeData(originalData, 6);
+    byte[] page = out.toByteArray();
+    buffer = ByteBuffer.wrap(page);
+    int i = 0;
+    while (regularDataDecoder.hasNext(buffer)) {
+      assertEquals(originalData[i++], regularDataDecoder.readInt(buffer));
+    }
+  }
+
   private int[] getMissingPointData(int dataSize, int missingPointInterval) {
     ROW_NUM = dataSize;
 
@@ -124,7 +137,7 @@ public class RegularDataEncoderIntegerTest {
     return data;
   }
 
-  private void writeData(int[] data, int length) throws IOException {
+  private void writeData(int[] data, int length) {
     for (int i = 0; i < length; i++) {
       regularDataEncoder.encode(data[i], out);
     }
@@ -132,11 +145,9 @@ public class RegularDataEncoderIntegerTest {
   }
 
   private void shouldReadAndWrite(int[] data, int length) throws IOException {
-    System.out.println("source data size:" + 8 * length + " byte");
     out = new ByteArrayOutputStream();
     writeData(data, length);
     byte[] page = out.toByteArray();
-    System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
     int i = 0;
     while (regularDataDecoder.hasNext(buffer)) {

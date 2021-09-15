@@ -4,32 +4,44 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.common.TestSyncClient;
 import org.apache.iotdb.cluster.common.TestSyncClientFactory;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 public class SyncClientPoolTest {
 
-  @Mock
-  private SyncClientFactory testSyncClientFactory;
+  @Mock private SyncClientFactory testSyncClientFactory;
+
+  @Before
+  public void setUp() {
+    testSyncClientFactory = new TestSyncClientFactory();
+  }
+
+  @After
+  public void tearDown() {
+    testSyncClientFactory = null;
+  }
 
   @Test
   public void testTestClient() {
-    testSyncClientFactory = new TestSyncClientFactory();
     getClient();
     putClient();
   }
@@ -64,7 +76,6 @@ public class SyncClientPoolTest {
 
   @Test
   public void testPutBadClient() {
-    testSyncClientFactory = new TestSyncClientFactory();
     SyncClientPool syncClientPool = new SyncClientPool(testSyncClientFactory);
     Client client = syncClientPool.getClient(TestUtils.getNode(0));
     client.getInputProtocol().getTransport().close();
@@ -77,7 +88,6 @@ public class SyncClientPoolTest {
   public void testMaxClient() {
     int maxClientNum = ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(5);
-    testSyncClientFactory = new TestSyncClientFactory();
     SyncClientPool syncClientPool = new SyncClientPool(testSyncClientFactory);
 
     for (int i = 0; i < 5; i++) {
@@ -93,11 +103,10 @@ public class SyncClientPoolTest {
 
   @Test
   public void testWaitClient() {
-    int maxClientPerNodePerMember = ClusterDescriptor.getInstance().getConfig()
-        .getMaxClientPerNodePerMember();
+    int maxClientPerNodePerMember =
+        ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     try {
       ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(10);
-      testSyncClientFactory = new TestSyncClientFactory();
       SyncClientPool syncClientPool = new SyncClientPool(testSyncClientFactory);
 
       Node node = TestUtils.getNode(0);
@@ -107,16 +116,18 @@ public class SyncClientPoolTest {
       }
 
       AtomicBoolean waitStart = new AtomicBoolean(false);
-      new Thread(() -> {
-        while (!waitStart.get()) {
-         // wait until we start to for wait for a client
-        }
-        synchronized (syncClientPool) {
-          for (Client client : clients) {
-            syncClientPool.putClient(node, client);
-          }
-        }
-      }).start();
+      new Thread(
+              () -> {
+                while (!waitStart.get()) {
+                  // wait until we start to for wait for a client
+                }
+                synchronized (syncClientPool) {
+                  for (Client client : clients) {
+                    syncClientPool.putClient(node, client);
+                  }
+                }
+              })
+          .start();
 
       Client client;
       synchronized (syncClientPool) {
@@ -126,17 +137,18 @@ public class SyncClientPoolTest {
       }
       assertNotNull(client);
     } finally {
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(maxClientPerNodePerMember);
+      ClusterDescriptor.getInstance()
+          .getConfig()
+          .setMaxClientPerNodePerMember(maxClientPerNodePerMember);
     }
   }
 
   @Test
   public void testWaitClientTimeOut() {
-    int maxClientPerNodePerMember = ClusterDescriptor.getInstance().getConfig()
-        .getMaxClientPerNodePerMember();
+    int maxClientPerNodePerMember =
+        ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     try {
       ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(1);
-      testSyncClientFactory = new TestSyncClientFactory();
       SyncClientPool syncClientPool = new SyncClientPool(testSyncClientFactory);
 
       Node node = TestUtils.getNode(0);
@@ -147,7 +159,9 @@ public class SyncClientPoolTest {
 
       assertNotEquals(clients.get(0), clients.get(1));
     } finally {
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(maxClientPerNodePerMember);
+      ClusterDescriptor.getInstance()
+          .getConfig()
+          .setMaxClientPerNodePerMember(maxClientPerNodePerMember);
     }
   }
 }

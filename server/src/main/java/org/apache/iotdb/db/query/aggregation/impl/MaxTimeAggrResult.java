@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class MaxTimeAggrResult extends AggregateResult {
 
@@ -63,18 +64,24 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
-    long time = -1;
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        time = timestamps[i];
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        updateMaxTimeResult(timestamps[i]);
+        return;
       }
     }
+  }
 
-    if (time != -1) {
-      updateMaxTimeResult(time);
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        updateMaxTimeResult(timestamps[i]);
+        return;
+      }
     }
   }
 
@@ -92,14 +99,10 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void deserializeSpecificFields(ByteBuffer buffer) {
-
-  }
+  protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) {
-
-  }
+  protected void serializeSpecificFields(OutputStream outputStream) {}
 
   protected void updateMaxTimeResult(long value) {
     if (!hasCandidateResult() || value >= getLongValue()) {

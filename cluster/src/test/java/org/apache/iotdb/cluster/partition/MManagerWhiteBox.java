@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.cluster.partition;
 
+import org.apache.iotdb.db.metadata.MManager;
+
+import org.mockito.internal.util.reflection.Whitebox;
+
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.mockito.internal.util.reflection.Whitebox;
 
 public class MManagerWhiteBox {
 
@@ -33,8 +35,8 @@ public class MManagerWhiteBox {
       MManager manager = constructor.newInstance();
       new File(logFilePath).getParentFile().mkdirs();
       Whitebox.setInternalState(manager, "logFilePath", logFilePath);
-      manager.init();
-      return  manager;
+      manager.initForMultiMManagerTest();
+      return manager;
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
       e.printStackTrace();
     }
@@ -42,12 +44,11 @@ public class MManagerWhiteBox {
   }
 
   private static Constructor<MManager> getMManagerConstructor() {
-      try {
-        return MManager.class.getDeclaredConstructor();
-      } catch (NoSuchMethodException e) {
-        e.printStackTrace();
-      }
+    try {
+      return MManager.class.getDeclaredConstructor();
+    } catch (NoSuchMethodException e) {
+      e.printStackTrace();
+    }
     return null;
   }
-
 }

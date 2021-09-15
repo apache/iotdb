@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metrics.sink;
 
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
+
 import java.util.concurrent.TimeUnit;
 
 public class ConsoleSink implements Sink {
@@ -29,8 +30,11 @@ public class ConsoleSink implements Sink {
 
   public ConsoleSink(MetricRegistry registry) {
     this.registry = registry;
-    this.reporter = ConsoleReporter.forRegistry(registry).convertDurationsTo(TimeUnit.MILLISECONDS)
-        .convertRatesTo(TimeUnit.SECONDS).build();
+    this.reporter =
+        ConsoleReporter.forRegistry(registry)
+            .convertDurationsTo(TimeUnit.MILLISECONDS)
+            .convertRatesTo(TimeUnit.SECONDS)
+            .build();
   }
 
   @Override

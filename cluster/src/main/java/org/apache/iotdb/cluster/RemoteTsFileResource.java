@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.cluster;
 
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.utils.SerializeUtils;
+
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
 public class RemoteTsFileResource extends TsFileResource {
 
@@ -39,18 +40,14 @@ public class RemoteTsFileResource extends TsFileResource {
   /**
    * Whether the plan range ([minPlanIndex, maxPlanIndex]) overlaps with another TsFile in the same
    * time partition. If not (unique = true), we shall have confidence that the file has all data
-   * whose plan indexes are within [minPlanIndex, maxPlanIndex], so we can remove other local
-   * files that overlaps with it.
+   * whose plan indexes are within [minPlanIndex, maxPlanIndex], so we can remove other local files
+   * that overlaps with it.
    */
   private boolean isPlanRangeUnique = false;
 
   public RemoteTsFileResource() {
     setClosed(true);
-    this.deviceToIndex = new ConcurrentHashMap<>();
-    this.startTimes = new long[INIT_ARRAY_SIZE];
-    this.endTimes = new long[INIT_ARRAY_SIZE];
-    initTimes(startTimes, Long.MAX_VALUE);
-    initTimes(endTimes, Long.MIN_VALUE);
+    this.timeIndex = IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
   }
 
   private RemoteTsFileResource(TsFileResource other) throws IOException {
@@ -86,26 +83,13 @@ public class RemoteTsFileResource extends TsFileResource {
   }
 
   public void serialize(DataOutputStream dataOutputStream) {
-    SerializeUtils.serialize(source, dataOutputStream);
+    NodeSerializeUtils.serialize(source, dataOutputStream);
     try {
       // the path here is only for the remote node to get a download link, so it does not matter
       // if it is absolute
       SerializeUtils.serialize(getTsFile().getPath(), dataOutputStream);
 
-      int deviceNum = deviceToIndex.size();
-      dataOutputStream.writeInt(deviceNum);
-      for (int i = 0; i < deviceNum; i++) {
-        dataOutputStream.writeLong(startTimes[i]);
-        dataOutputStream.writeLong(endTimes[i]);
-      }
-
-      for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
-        String deviceName = stringIntegerEntry.getKey();
-        int index = stringIntegerEntry.getValue();
-        SerializeUtils.serialize(deviceName, dataOutputStream);
-        dataOutputStream.writeInt(index);
-      }
-
+      timeIndex.serialize(dataOutputStream);
       dataOutputStream.writeBoolean(withModification);
 
       dataOutputStream.writeLong(maxPlanIndex);
@@ -119,24 +103,15 @@ public class RemoteTsFileResource extends TsFileResource {
 
   public void deserialize(ByteBuffer buffer) {
     source = new Node();
-    SerializeUtils.deserialize(source, buffer);
+    NodeSerializeUtils.deserialize(source, buffer);
     setFile(new File(SerializeUtils.deserializeString(buffer)));
 
-    int deviceNum = buffer.getInt();
-    startTimes = new long[deviceNum];
-    endTimes = new long[deviceNum];
-    deviceToIndex = new ConcurrentHashMap<>(deviceNum);
-
-    for (int i = 0; i < deviceNum; i++) {
-      startTimes[i] = buffer.getLong();
-      endTimes[i] = buffer.getLong();
-    }
-
-    for (int i = 0; i < deviceNum; i++) {
-      String deviceName = SerializeUtils.deserializeString(buffer);
-      int index = buffer.getInt();
-      deviceToIndex.put(deviceName, index);
-    }
+    timeIndex =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getTimeIndexLevel()
+            .getTimeIndex()
+            .deserialize(buffer);
 
     withModification = buffer.get() == 1;
 

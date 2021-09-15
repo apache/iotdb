@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.List;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class DataAuthOperator extends RootOperator {
+import java.util.List;
+
+public class DataAuthOperator extends Operator {
 
   private final List<String> users;
 
@@ -40,4 +44,8 @@ public class DataAuthOperator extends RootOperator {
     return users;
   }
 
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
+    return new DataAuthPlan(getType(), users);
+  }
 }

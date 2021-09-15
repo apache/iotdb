@@ -18,26 +18,31 @@
  */
 package org.apache.iotdb.db.metadata.logfile;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -45,6 +50,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,14 +68,15 @@ import java.util.Map;
 public class MLogWriter implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
-  private File logFile;
+  private final File logFile;
   private LogWriter logWriter;
   private int logNum;
   private static final String DELETE_FAILED_FORMAT = "Deleting %s failed with exception %s";
-  private final ByteBuffer mlogBuffer = ByteBuffer.allocate(
-    IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
+  private final ByteBuffer mlogBuffer =
+      ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
 
-  private static final String LOG_TOO_LARGE_INFO = "Log cannot fit into buffer, please increase mlog_buffer_size";
+  private static final String LOG_TOO_LARGE_INFO =
+      "Log cannot fit into buffer, please increase mlog_buffer_size";
 
   public MLogWriter(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
@@ -98,142 +106,127 @@ public class MLogWriter implements AutoCloseable {
     try {
       logWriter.write(mlogBuffer);
     } catch (IOException e) {
-      logger.error("MLog {} sync failed, change system mode to read-only", logFile.getAbsoluteFile(), e);
+      logger.error(
+          "MLog {} sync failed, change system mode to read-only", logFile.getAbsoluteFile(), e);
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
     }
     mlogBuffer.clear();
   }
 
-  private void putLog(PhysicalPlan plan) {
+  private synchronized void putLog(PhysicalPlan plan) throws IOException {
     try {
       plan.serialize(mlogBuffer);
       sync();
-      logNum ++;
+      logNum++;
     } catch (BufferOverflowException e) {
-      logger.warn("MLog {} BufferOverflow !", plan.getOperatorType(), e);
+      throw new IOException(LOG_TOO_LARGE_INFO, e);
     }
   }
 
   public void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
-    try {
-      putLog(createTimeSeriesPlan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    putLog(createTimeSeriesPlan);
+  }
+
+  public void createAlignedTimeseries(CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan)
+      throws IOException {
+    putLog(createAlignedTimeSeriesPlan);
   }
 
   public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
-    try {
-      putLog(deleteTimeSeriesPlan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    putLog(deleteTimeSeriesPlan);
+  }
+
+  public void createContinuousQuery(CreateContinuousQueryPlan createContinuousQueryPlan)
+      throws IOException {
+    putLog(createContinuousQueryPlan);
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan dropContinuousQueryPlan)
+      throws IOException {
+    putLog(dropContinuousQueryPlan);
   }
 
   public void setStorageGroup(PartialPath storageGroup) throws IOException {
-    try {
-      SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroup);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroup);
+    putLog(plan);
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws IOException {
-    try {
-      DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(Collections.singletonList(storageGroup));
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    DeleteStorageGroupPlan plan =
+        new DeleteStorageGroupPlan(Collections.singletonList(storageGroup));
+    putLog(plan);
   }
 
   public void setTTL(PartialPath storageGroup, long ttl) throws IOException {
-    try {
-      SetTTLPlan plan = new SetTTLPlan(storageGroup, ttl);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    SetTTLPlan plan = new SetTTLPlan(storageGroup, ttl);
+    putLog(plan);
   }
 
   public void changeOffset(PartialPath path, long offset) throws IOException {
-    try {
-      ChangeTagOffsetPlan plan = new ChangeTagOffsetPlan(path, offset);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    ChangeTagOffsetPlan plan = new ChangeTagOffsetPlan(path, offset);
+    putLog(plan);
   }
 
   public void changeAlias(PartialPath path, String alias) throws IOException {
-    try {
-      ChangeAliasPlan plan = new ChangeAliasPlan(path, alias);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    ChangeAliasPlan plan = new ChangeAliasPlan(path, alias);
+    putLog(plan);
   }
 
-  public void serializeMNode(MNode node) throws IOException {
-    try {
-      int childSize = 0;
-      if (node.getChildren() != null) {
-        childSize = node.getChildren().size();
-      }
-      MNodePlan plan = new MNodePlan(node.getName(), childSize);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+  public void createSchemaTemplate(CreateTemplatePlan plan) throws IOException {
+    putLog(plan);
   }
 
-  public void serializeMeasurementMNode(MeasurementMNode node) throws IOException {
-    try {
-      int childSize = 0;
-      if (node.getChildren() != null) {
-        childSize = node.getChildren().size();
-      }
-      MeasurementMNodePlan plan = new MeasurementMNodePlan(node.getName(), node.getAlias(),
-        node.getOffset(), childSize, node.getSchema());
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+  public void setSchemaTemplate(SetSchemaTemplatePlan plan) throws IOException {
+    putLog(plan);
   }
 
-  public void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
-    try {
-      int childSize = 0;
-      if (node.getChildren() != null) {
-        childSize = node.getChildren().size();
-      }
-      StorageGroupMNodePlan plan = new StorageGroupMNodePlan(node.getName(), node.getDataTTL(), childSize);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void serializeMNode(IMNode node) throws IOException {
+    int childSize = 0;
+    if (node.getChildren() != null) {
+      childSize = node.getChildren().size();
     }
+    MNodePlan plan = new MNodePlan(node.getName(), childSize);
+    putLog(plan);
+  }
+
+  public void serializeMeasurementMNode(IMeasurementMNode node) throws IOException {
+    int childSize = 0;
+    if (node.getChildren() != null) {
+      childSize = node.getChildren().size();
+    }
+    MeasurementMNodePlan plan =
+        new MeasurementMNodePlan(
+            node.getName(), node.getAlias(), node.getOffset(), childSize, node.getSchema());
+    putLog(plan);
+  }
+
+  public void serializeStorageGroupMNode(IStorageGroupMNode node) throws IOException {
+    int childSize = 0;
+    if (node.getChildren() != null) {
+      childSize = node.getChildren().size();
+    }
+    StorageGroupMNodePlan plan =
+        new StorageGroupMNodePlan(node.getName(), node.getDataTTL(), childSize);
+    putLog(plan);
+  }
+
+  public void setUsingSchemaTemplate(PartialPath path) throws IOException {
+    SetUsingSchemaTemplatePlan plan = new SetUsingSchemaTemplatePlan(path);
+    putLog(plan);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static void upgradeTxtToBin(String schemaDir, String oldFileName,
-                                     String newFileName, boolean isSnapshot) throws IOException {
+  public static void upgradeTxtToBin(
+      String schemaDir, String oldFileName, String newFileName, boolean isSnapshot)
+      throws IOException {
     File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + newFileName);
     File tmpLogFile = SystemFileFactory.INSTANCE.getFile(logFile.getAbsolutePath() + ".tmp");
-    File oldLogFile = SystemFileFactory.INSTANCE.getFile(
-      schemaDir + File.separator + oldFileName);
-    File tmpOldLogFile = SystemFileFactory.INSTANCE.getFile(oldLogFile.getAbsolutePath()
-      + ".tmp");
+    File oldLogFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + oldFileName);
+    File tmpOldLogFile = SystemFileFactory.INSTANCE.getFile(oldLogFile.getAbsolutePath() + ".tmp");
 
     if (oldLogFile.exists() || tmpOldLogFile.exists()) {
 
@@ -242,16 +235,23 @@ public class MLogWriter implements AutoCloseable {
       }
 
       try (MLogWriter mLogWriter = new MLogWriter(schemaDir, newFileName + ".tmp");
-           MLogTxtReader mLogTxtReader = new MLogTxtReader(schemaDir, oldFileName)) {
+          MLogTxtReader mLogTxtReader = new MLogTxtReader(schemaDir, oldFileName)) {
         // upgrade from old character log file to new binary mlog
         while (mLogTxtReader.hasNext()) {
           String cmd = mLogTxtReader.next();
+          if (cmd == null) {
+            // no more cmd
+            break;
+          }
           try {
             mLogWriter.operation(cmd, isSnapshot);
           } catch (MetadataException e) {
             logger.error("failed to upgrade cmd {}.", cmd, e);
           }
         }
+
+        // rename .bin.tmp to .bin
+        FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
       }
     } else if (!logFile.exists() && !tmpLogFile.exists()) {
       // if both .bin and .bin.tmp do not exist, nothing to do
@@ -284,18 +284,17 @@ public class MLogWriter implements AutoCloseable {
         throw new IOException(String.format(DELETE_FAILED_FORMAT, tmpOldLogFile, e.getMessage()));
       }
     }
-
-    // rename .bin.tmp to .bin
-    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
   }
 
-  public static void upgradeMLog() throws IOException {
+  public static synchronized void upgradeMLog() throws IOException {
     String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
-    upgradeTxtToBin(schemaDir, MetadataConstant.METADATA_TXT_LOG, MetadataConstant.METADATA_LOG, false);
-    upgradeTxtToBin(schemaDir, MetadataConstant.MTREE_TXT_SNAPSHOT, MetadataConstant.MTREE_SNAPSHOT, true);
+    upgradeTxtToBin(
+        schemaDir, MetadataConstant.METADATA_TXT_LOG, MetadataConstant.METADATA_LOG, false);
+    upgradeTxtToBin(
+        schemaDir, MetadataConstant.MTREE_TXT_SNAPSHOT, MetadataConstant.MTREE_SNAPSHOT, true);
   }
 
-  public void clear() throws IOException {
+  public synchronized void clear() throws IOException {
     sync();
     logWriter.close();
     mlogBuffer.clear();
@@ -306,41 +305,36 @@ public class MLogWriter implements AutoCloseable {
     logWriter = new LogWriter(logFile, false);
   }
 
-  public int getLogNum() {
+  public synchronized int getLogNum() {
     return logNum;
   }
 
-  /**
-   * only used for initialize a mlog file writer.
-   */
-  public void setLogNum(int number) {
+  /** only used for initialize a mlog file writer. */
+  public synchronized void setLogNum(int number) {
     logNum = number;
   }
 
-  public void operation(String cmd, boolean isSnapshot) throws IOException, MetadataException {
+  public synchronized void operation(String cmd, boolean isSnapshot)
+      throws IOException, MetadataException {
     if (!isSnapshot) {
       operation(cmd);
     } else {
       PhysicalPlan plan = convertFromString(cmd);
-      try {
-        if (plan != null) {
-          putLog(plan);
-        }
-      } catch (BufferOverflowException e) {
-        throw new IOException(
-          LOG_TOO_LARGE_INFO, e);
+      if (plan != null) {
+        putLog(plan);
       }
     }
   }
 
   /**
    * upgrade from mlog.txt to mlog.bin
-   * @param cmd, the old meta operation
+   *
+   * @param cmd the old meta operation
    * @throws IOException
    * @throws MetadataException
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void operation(String cmd) throws IOException, MetadataException {
+  public synchronized void operation(String cmd) throws IOException, MetadataException {
     // see createTimeseries() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
@@ -379,14 +373,23 @@ public class MLogWriter implements AutoCloseable {
           offset = Long.parseLong(args[7]);
         }
 
-        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(args[1]),
-          TSDataType.deserialize(Short.parseShort(args[2])),
-          TSEncoding.deserialize(Short.parseShort(args[3])),
-          CompressionType.deserialize(Short.parseShort(args[4])), props, null, null, alias);
+        CreateTimeSeriesPlan plan =
+            new CreateTimeSeriesPlan(
+                new PartialPath(args[1]),
+                TSDataType.deserialize((byte) Short.parseShort(args[2])),
+                TSEncoding.deserialize((byte) Short.parseShort(args[3])),
+                CompressionType.deserialize((byte) Short.parseShort(args[4])),
+                props,
+                null,
+                null,
+                alias);
 
         plan.setTagOffset(offset);
         createTimeseries(plan);
         break;
+      case MetadataOperationType.CREATE_ALIGNED_TIMESERIES:
+      case MetadataOperationType.AUTO_CREATE_DEVICE_MNODE:
+        throw new MetadataException("Impossible operation!");
       case MetadataOperationType.DELETE_TIMESERIES:
         if (args.length > 2) {
           StringBuilder tmp = new StringBuilder();
@@ -396,7 +399,8 @@ public class MLogWriter implements AutoCloseable {
           tmp.append(args[args.length - 1]);
           args[1] = tmp.toString();
         }
-        deleteTimeseries(new DeleteTimeSeriesPlan(Collections.singletonList(new PartialPath(args[1]))));
+        deleteTimeseries(
+            new DeleteTimeSeriesPlan(Collections.singletonList(new PartialPath(args[1]))));
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
         try {
@@ -404,7 +408,7 @@ public class MLogWriter implements AutoCloseable {
         }
         // two time series may set one storage group concurrently,
         // that's normal in our concurrency control protocol
-        catch (MetadataException e){
+        catch (MetadataException e) {
           logger.info("concurrently operate set storage group cmd {} twice", cmd);
         }
         break;
@@ -425,21 +429,27 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void force() throws IOException {
+  public synchronized void force() throws IOException {
     logWriter.force();
   }
 
-  public static PhysicalPlan convertFromString(String str) {
+  public static synchronized PhysicalPlan convertFromString(String str) {
     String[] words = str.split(",");
     switch (words[0]) {
       case "2":
-        return new MeasurementMNodePlan(words[1], words[2].equals("") ? null :  words[2], Long.parseLong(words[words.length - 2]),
-          Integer.parseInt(words[words.length - 1]),
-          new MeasurementSchema(words[1], TSDataType.values()[Integer.parseInt(words[3])],
-            TSEncoding.values()[Integer.parseInt(words[4])], CompressionType.values()[Integer.parseInt(words[5])]
-          ));
+        return new MeasurementMNodePlan(
+            words[1],
+            words[2].equals("") ? null : words[2],
+            Long.parseLong(words[words.length - 2]),
+            Integer.parseInt(words[words.length - 1]),
+            new MeasurementSchema(
+                words[1],
+                TSDataType.values()[Integer.parseInt(words[3])],
+                TSEncoding.values()[Integer.parseInt(words[4])],
+                CompressionType.values()[Integer.parseInt(words[5])]));
       case "1":
-        return new StorageGroupMNodePlan(words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));
+        return new StorageGroupMNodePlan(
+            words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));
       case "0":
         return new MNodePlan(words[1], Integer.parseInt(words[2]));
       default:

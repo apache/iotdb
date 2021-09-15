@@ -18,29 +18,24 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.util.*;
-
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 
+import java.util.*;
+
 /**
  * interval [min,max] of long data type
  *
- * Reference:
- * http://www.java2s.com/Code/Java/Collections-Data-Structure/Anumericalinterval.htm
+ * <p>Reference: http://www.java2s.com/Code/Java/Collections-Data-Structure/Anumericalinterval.htm
  */
 public class TimeRange implements Comparable<TimeRange> {
 
-  /**
-   * The lower value
-   */
+  /** The lower value */
   private long min = 0;
 
-  /**
-   * The upper value
-   */
+  /** The upper value */
   private long max = 0;
 
   /**
@@ -89,9 +84,7 @@ public class TimeRange implements Comparable<TimeRange> {
     this.max = max;
   }
 
-  /**
-   * @return true if the given range lies in this range, inclusively
-   */
+  /** @return true if the given range lies in this range, inclusively */
   public boolean contains(TimeRange r) {
     return min <= r.min && max >= r.max;
   }
@@ -118,16 +111,12 @@ public class TimeRange implements Comparable<TimeRange> {
     this.max = max;
   }
 
-  /**
-   * @return The lower range boundary
-   */
+  /** @return The lower range boundary */
   public long getMin() {
     return min;
   }
 
-  /**
-   * @return The upper range boundary
-   */
+  /** @return The upper range boundary */
   public long getMax() {
     return max;
   }
@@ -135,20 +124,21 @@ public class TimeRange implements Comparable<TimeRange> {
   /**
    * Here are some examples.
    *
-   * [1,3] does not intersect with (4,5].
+   * <p>[1,3] does not intersect with (4,5].
    *
-   * [1,3) does not intersect with (3,5].
+   * <p>[1,3) does not intersect with (3,5].
    *
-   * [1,3] does not intersect with [5,6].
+   * <p>[1,3] does not intersect with [5,6].
    *
-   * [1,3] intersects with [2,5].
+   * <p>[1,3] intersects with [2,5].
    *
-   * [1,3] intersects with (3,5].
+   * <p>[1,3] intersects with (3,5].
    *
-   * [1,3) intersects with (2,5].
+   * <p>[1,3) intersects with (2,5].
    *
-   * Note: this method treats [1,3] and [4,5] as two "intersected" interval
-   * even if they are not truly intersected.
+   * <p>Note: this method treats [1,3] and [4,5] as two "intersected" interval even if they are not
+   * truly intersected.
+   *
    * @param r the given time range
    * @return true if the current time range "intersects" with the given time range r
    */
@@ -194,6 +184,7 @@ public class TimeRange implements Comparable<TimeRange> {
 
   /**
    * Check if two TimeRanges overlap
+   *
    * @param rhs the given time range
    * @return true if the current time range overlaps with the given time range rhs
    */
@@ -282,7 +273,8 @@ public class TimeRange implements Comparable<TimeRange> {
     while (iterator.hasNext()) {
       TimeRange rangeNext = iterator.next();
       if (rangeCurr.intersects(rangeNext)) {
-        rangeCurr.set(Math.min(rangeCurr.getMin(), rangeNext.getMin()),
+        rangeCurr.set(
+            Math.min(rangeCurr.getMin(), rangeNext.getMin()),
             Math.max(rangeCurr.getMax(), rangeNext.getMax()));
       } else {
         unionResult.add(rangeCurr);
@@ -294,11 +286,10 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * Get the remaining time ranges in the current ranges but not in
-   * timeRangesPrev.
+   * Get the remaining time ranges in the current ranges but not in timeRangesPrev.
    *
-   * NOTE the primitive timeRange is always a closed interval [min,max] and only
-   * in this function are leftClose and rightClose changed.
+   * <p>NOTE the primitive timeRange is always a closed interval [min,max] and only in this function
+   * are leftClose and rightClose changed.
    *
    * @param timeRangesPrev time ranges union in ascending order of the start time
    * @return the remaining time ranges

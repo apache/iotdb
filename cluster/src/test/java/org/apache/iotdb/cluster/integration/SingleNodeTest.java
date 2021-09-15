@@ -19,20 +19,27 @@
 
 package org.apache.iotdb.cluster.integration;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import java.util.Arrays;
-import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 public class SingleNodeTest extends BaseSingleNodeTest {
 
@@ -49,31 +56,34 @@ public class SingleNodeTest extends BaseSingleNodeTest {
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    session.close();
+    if (session != null) {
+      session.close();
+    }
   }
 
   @Test
-  public void testInsertRecordsWithIllegalPath() throws StatementExecutionException,
-      IoTDBConnectionException {
+  public void testInsertRecordsWithIllegalPath()
+      throws StatementExecutionException, IoTDBConnectionException {
     List<String> deviceIds = Arrays.asList("root..ln1", "root.sg.ln1", "root..ln1", "root.sg3.ln1");
     List<Long> timestamps = Arrays.asList(3L, 3L, 3L, 3L);
     List<String> measurements = Arrays.asList("dev1", "dev2", "dev3");
-    List<List<String>> allMeasurements = Arrays.asList(measurements, measurements, measurements,
-        measurements);
+    List<List<String>> allMeasurements =
+        Arrays.asList(measurements, measurements, measurements, measurements);
     List<String> values = Arrays.asList("123", "333", "444");
-    List<List<String>> allValues = Arrays.asList(values, values, values,
-        values);
+    List<List<String>> allValues = Arrays.asList(values, values, values, values);
     try {
       session.insertRecords(deviceIds, timestamps, allMeasurements, allValues);
       fail("Exception expected");
     } catch (StatementExecutionException e) {
-      assertEquals("root..ln1 is not a legal path;root..ln1 is not a legal path;", e.getMessage());
+      assertTrue(e.getMessage().contains("root..ln1 is not a legal path"));
     }
 
     List<String> legalDevices = Arrays.asList("root.sg.ln1", "root.sg3.ln1");
     for (String legalDevice : legalDevices) {
       for (String measurement : measurements) {
-        assertTrue(session.checkTimeseriesExists(legalDevice + IoTDBConstant.PATH_SEPARATOR + measurement));
+        assertTrue(
+            session.checkTimeseriesExists(
+                legalDevice + IoTDBConstant.PATH_SEPARATOR + measurement));
       }
     }
   }
@@ -81,8 +91,8 @@ public class SingleNodeTest extends BaseSingleNodeTest {
   @Test
   public void testDeleteNonExistTimeSeries()
       throws StatementExecutionException, IoTDBConnectionException {
-    session.insertRecord("root.sg1.d1", 0, Arrays.asList("t1", "t2", "t3"), Arrays.asList("123",
-        "333", "444"));
+    session.insertRecord(
+        "root.sg1.d1", 0, Arrays.asList("t1", "t2", "t3"), Arrays.asList("123", "333", "444"));
     session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
 
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
@@ -90,4 +100,32 @@ public class SingleNodeTest extends BaseSingleNodeTest {
     assertFalse(session.checkTimeseriesExists("root.sg1.d1.t3"));
   }
 
+  @Test
+  public void testUserPrivilege() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create user user1 \"1234\"");
+      try (Connection connection1 =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "user1", "1234");
+          Statement userStatement = connection1.createStatement()) {
+        userStatement.addBatch("create timeseries root.sg1.d1.s1 with datatype=int32");
+        userStatement.addBatch("create timeseries root.sg2.d1.s1 with datatype=int32");
+        userStatement.executeBatch();
+      } catch (Exception e) {
+        assertEquals(
+            System.lineSeparator()
+                + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg1.d1.s1 with datatype=int32\""
+                + System.lineSeparator()
+                + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg2.d1.s1 with datatype=int32\""
+                + System.lineSeparator(),
+            e.getMessage());
+      }
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
 }

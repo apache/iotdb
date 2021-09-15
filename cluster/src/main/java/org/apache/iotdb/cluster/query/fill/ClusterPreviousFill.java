@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.query.fill;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -40,17 +32,27 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
-import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class ClusterPreviousFill extends PreviousFill {
 
@@ -63,19 +65,23 @@ public class ClusterPreviousFill extends PreviousFill {
     this.metaGroupMember = metaGroupMember;
   }
 
-  ClusterPreviousFill(TSDataType dataType, long queryTime, long beforeRange,
-      MetaGroupMember metaGroupMember) {
+  ClusterPreviousFill(
+      TSDataType dataType, long queryTime, long beforeRange, MetaGroupMember metaGroupMember) {
     super(dataType, queryTime, beforeRange);
     this.metaGroupMember = metaGroupMember;
   }
 
   @Override
-  public void configureFill(PartialPath path, TSDataType dataType, long queryTime,
+  public void configureFill(
+      PartialPath path,
+      TSDataType dataType,
+      long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context)  {
+      QueryContext context) {
     try {
-      fillResult = performPreviousFill(path, dataType, queryTime, getBeforeRange(),
-          deviceMeasurements, context);
+      fillResult =
+          performPreviousFill(
+              path, dataType, queryTime, getBeforeRange(), deviceMeasurements, context);
     } catch (StorageEngineException e) {
       logger.error("Failed to configure previous fill for Path {}", path, e);
     }
@@ -86,8 +92,13 @@ public class ClusterPreviousFill extends PreviousFill {
     return fillResult;
   }
 
-  private TimeValuePair performPreviousFill(PartialPath path, TSDataType dataType, long queryTime,
-      long beforeRange, Set<String> deviceMeasurements, QueryContext context)
+  private TimeValuePair performPreviousFill(
+      PartialPath path,
+      TSDataType dataType,
+      long queryTime,
+      long beforeRange,
+      Set<String> deviceMeasurements,
+      QueryContext context)
       throws StorageEngineException {
     // make sure the partition table is new
     try {
@@ -101,19 +112,21 @@ public class ClusterPreviousFill extends PreviousFill {
     intervals.addInterval(lowerBound, queryTime);
     List<PartitionGroup> partitionGroups = metaGroupMember.routeIntervals(intervals, path);
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Sending data query of {} to {} groups", metaGroupMember.getName(), path,
+      logger.debug(
+          "{}: Sending data query of {} to {} groups",
+          metaGroupMember.getName(),
+          path,
           partitionGroups.size());
     }
     CountDownLatch latch = new CountDownLatch(partitionGroups.size());
     PreviousFillHandler handler = new PreviousFillHandler(latch);
 
     ExecutorService fillService = Executors.newFixedThreadPool(partitionGroups.size());
-    PreviousFillArguments arguments = new PreviousFillArguments(path, dataType, queryTime,
-        beforeRange, deviceMeasurements);
+    PreviousFillArguments arguments =
+        new PreviousFillArguments(path, dataType, queryTime, beforeRange, deviceMeasurements);
 
     for (PartitionGroup partitionGroup : partitionGroups) {
-      fillService.submit(() -> performPreviousFill(arguments, context,
-          partitionGroup, handler));
+      fillService.submit(() -> performPreviousFill(arguments, context, partitionGroup, handler));
     }
     fillService.shutdown();
     try {
@@ -125,7 +138,9 @@ public class ClusterPreviousFill extends PreviousFill {
     return handler.getResult();
   }
 
-  private void performPreviousFill(PreviousFillArguments arguments, QueryContext context,
+  private void performPreviousFill(
+      PreviousFillArguments arguments,
+      QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
     if (group.contains(metaGroupMember.getThisNode())) {
@@ -135,31 +150,44 @@ public class ClusterPreviousFill extends PreviousFill {
     }
   }
 
-  private void localPreviousFill(PreviousFillArguments arguments, QueryContext context,
+  private void localPreviousFill(
+      PreviousFillArguments arguments,
+      QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     try {
-      fillHandler
-          .onComplete(
-              localDataMember.getLocalQueryExecutor().localPreviousFill(arguments.getPath(),
+      fillHandler.onComplete(
+          localDataMember
+              .getLocalQueryExecutor()
+              .localPreviousFill(
+                  arguments.getPath(),
                   arguments.getDataType(),
-                  arguments.getQueryTime(), arguments.getBeforeRange(),
-                  arguments.getDeviceMeasurements(), context));
+                  arguments.getQueryTime(),
+                  arguments.getBeforeRange(),
+                  arguments.getDeviceMeasurements(),
+                  context));
     } catch (QueryProcessException | StorageEngineException | IOException e) {
       fillHandler.onError(e);
     }
   }
 
-  private void remotePreviousFill(PreviousFillArguments arguments, QueryContext context,
+  private void remotePreviousFill(
+      PreviousFillArguments arguments,
+      QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
-    PreviousFillRequest request = new PreviousFillRequest(arguments.getPath().getFullPath(),
-        arguments.getQueryTime(),
-        arguments.getBeforeRange(), context.getQueryId(), metaGroupMember.getThisNode(),
-        group.getHeader(),
-        arguments.getDataType().ordinal(),
-        arguments.getDeviceMeasurements());
+    PreviousFillRequest request =
+        new PreviousFillRequest(
+            arguments.getPath().getFullPath(),
+            arguments.getQueryTime(),
+            arguments.getBeforeRange(),
+            context.getQueryId(),
+            metaGroupMember.getThisNode(),
+            group.getHeader(),
+            arguments.getDataType().ordinal(),
+            arguments.getDeviceMeasurements());
 
     for (Node node : group) {
       ByteBuffer byteBuffer;
@@ -175,17 +203,24 @@ public class ClusterPreviousFill extends PreviousFill {
       }
     }
 
-    fillHandler.onError(new QueryTimeOutException(String.format("PreviousFill %s@%d range: %d",
-        arguments.getPath().getFullPath(), arguments.getQueryTime(), arguments.getBeforeRange())));
+    fillHandler.onError(
+        new QueryTimeOutException(
+            String.format(
+                "PreviousFill %s@%d range: %d",
+                arguments.getPath().getFullPath(),
+                arguments.getQueryTime(),
+                arguments.getBeforeRange())));
   }
 
-  private ByteBuffer remoteAsyncPreviousFill(Node node, PreviousFillRequest request,
-      PreviousFillArguments arguments) {
+  private ByteBuffer remoteAsyncPreviousFill(
+      Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
     AsyncDataClient asyncDataClient;
     try {
-      asyncDataClient = metaGroupMember.getClientProvider().getAsyncDataClient(node,
-          RaftServer.getReadOperationTimeoutMS());
+      asyncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
     } catch (IOException e) {
       logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
       return null;
@@ -194,28 +229,37 @@ public class ClusterPreviousFill extends PreviousFill {
     try {
       byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
     } catch (Exception e) {
-      logger
-          .error("{}: Cannot perform previous fill of {} to {}", metaGroupMember, arguments.getPath(), node,
-              e);
+      logger.error(
+          "{}: Cannot perform previous fill of {} to {}",
+          metaGroupMember,
+          arguments.getPath(),
+          node,
+          e);
     }
     return byteBuffer;
   }
 
-  private ByteBuffer remoteSyncPreviousFill(Node node, PreviousFillRequest request,
-      PreviousFillArguments arguments) {
+  private ByteBuffer remoteSyncPreviousFill(
+      Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    SyncDataClient syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
-        RaftServer.getReadOperationTimeoutMS());
-
-    try {
-      byteBuffer = syncDataClient.previousFill(request);
+    try (SyncDataClient syncDataClient =
+        metaGroupMember
+            .getClientProvider()
+            .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+      try {
+        byteBuffer = syncDataClient.previousFill(request);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.getInputProtocol().getTransport().close();
+        throw e;
+      }
     } catch (Exception e) {
-      logger
-          .error("{}: Cannot perform previous fill of {} to {}", metaGroupMember.getName(),
-              arguments.getPath(), node,
-              e);
-    } finally {
-      ClientUtils.putBackSyncClient(syncDataClient);
+      logger.error(
+          "{}: Cannot perform previous fill of {} to {}",
+          metaGroupMember.getName(),
+          arguments.getPath(),
+          node,
+          e);
     }
     return byteBuffer;
   }

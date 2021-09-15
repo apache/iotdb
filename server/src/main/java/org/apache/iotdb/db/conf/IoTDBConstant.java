@@ -20,16 +20,17 @@ package org.apache.iotdb.db.conf;
 
 public class IoTDBConstant {
 
-  private IoTDBConstant() {
-  }
+  private IoTDBConstant() {}
 
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
-  //when running the program in IDE, we can not get the version info using getImplementationVersion()
+  // when running the program in IDE, we can not get the version info using
+  // getImplementationVersion()
   public static final String VERSION =
-      IoTDBConstant.class.getPackage().getImplementationVersion() != null ? IoTDBConstant.class
-          .getPackage().getImplementationVersion() : "UNKNOWN";
+      IoTDBConstant.class.getPackage().getImplementationVersion() != null
+          ? IoTDBConstant.class.getPackage().getImplementationVersion()
+          : "UNKNOWN";
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
 
@@ -49,8 +50,6 @@ public class IoTDBConstant {
 
   public static final String PATH_ROOT = "root";
   public static final char PATH_SEPARATOR = '.';
-  public static final String ADMIN_NAME = "root";
-  public static final String ADMIN_PW = "root";
   public static final String PROFILE_SUFFIX = ".profile";
   public static final String MAX_TIME = "max_time";
   public static final String MIN_TIME = "min_time";
@@ -67,17 +66,21 @@ public class IoTDBConstant {
   public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
   public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
   public static final String COLUMN_CHILD_PATHS = "child paths";
+  public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
+  public static final String QUERY_ID = "queryId";
+  public static final String STATEMENT = "statement";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
   public static final String COLUMN_PRIVILEGE = "privilege";
 
   public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_LOCK_INFO = "lock holder";
   public static final String COLUMN_TTL = "ttl";
 
   public static final String COLUMN_TASK_NAME = "task name";
@@ -86,8 +89,41 @@ public class IoTDBConstant {
   public static final String COLUMN_CANCELLED = "cancelled";
   public static final String COLUMN_DONE = "done";
 
+  public static final String COLUMN_FUNCTION_NAME = "function name";
+  public static final String COLUMN_FUNCTION_TYPE = "function type";
+  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
+  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
+  public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
+  public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
+
+  public static final String FUNCTION_TYPE_NATIVE = "native";
+  public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
+  public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
+  public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
+  public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
+
+  public static final String COLUMN_TRIGGER_NAME = "trigger name";
+  public static final String COLUMN_TRIGGER_STATUS = "status";
+  public static final String COLUMN_TRIGGER_EVENT = "event";
+  public static final String COLUMN_TRIGGER_PATH = "path";
+  public static final String COLUMN_TRIGGER_CLASS = "class name";
+  public static final String COLUMN_TRIGGER_ATTRIBUTES = "attributes";
+
+  public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
+  public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
+
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
+
+  // sdt parameters
+  public static final String LOSS = "loss";
+  public static final String SDT = "sdt";
+  public static final String SDT_COMP_DEV = "compdev";
+  public static final String SDT_COMP_MIN_TIME = "compmintime";
+  public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
@@ -102,8 +138,11 @@ public class IoTDBConstant {
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String TRACING_FOLDER_NAME = "tracing";
   public static final String TRACING_LOG = "tracing.txt";
+  public static final String EXT_FOLDER_NAME = "ext";
+  public static final String UDF_FOLDER_NAME = "udf";
+  public static final String TRIGGER_FOLDER_NAME = "trigger";
 
-  // mqtt  
+  // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
   public static final String MQTT_HOST_NAME = "mqtt_host";
   public static final String MQTT_PORT_NAME = "mqtt_port";
@@ -113,4 +152,12 @@ public class IoTDBConstant {
 
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
+
+  // change tsFile name
+  public static final int FILE_NAME_SUFFIX_INDEX = 0;
+  public static final int FILE_NAME_SUFFIX_TIME_INDEX = 0;
+  public static final int FILE_NAME_SUFFIX_VERSION_INDEX = 1;
+  public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
+  public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
+  public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 }

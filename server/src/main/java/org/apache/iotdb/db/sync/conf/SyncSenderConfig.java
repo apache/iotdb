@@ -36,23 +36,20 @@ public class SyncSenderConfig {
 
   private String snapshotPath;
 
-  /**
-   * The maximum number of retry when syncing a file to receiver fails.
-   */
+  /** The maximum number of retry when syncing a file to receiver fails. */
   private int maxNumOfSyncFileRetry = 5;
 
-  /**
-   * Storage groups which participate in sync process
-   */
+  /** Storage groups which participate in sync process */
   private List<String> storageGroupList = new ArrayList<>();
 
-  /**
-   * Update paths based on data directory
-   */
+  /** Update paths based on data directory */
   public void update(String dataDirectory) {
     senderFolderPath =
-        dataDirectory + File.separatorChar + SyncConstant.SYNC_SENDER + File.separatorChar +
-            getSyncReceiverName();
+        dataDirectory
+            + File.separatorChar
+            + SyncConstant.SYNC_SENDER
+            + File.separatorChar
+            + getSyncReceiverName();
     lastFileInfoPath = senderFolderPath + File.separatorChar + SyncConstant.LAST_LOCAL_FILE_NAME;
     snapshotPath = senderFolderPath + File.separatorChar + SyncConstant.DATA_SNAPSHOT_NAME;
     if (!new File(snapshotPath).exists()) {

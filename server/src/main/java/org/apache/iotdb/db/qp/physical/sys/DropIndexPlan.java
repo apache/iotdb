@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class DropIndexPlan extends PhysicalPlan {
 
@@ -44,7 +45,6 @@ public class DropIndexPlan extends PhysicalPlan {
     super(false, OperatorType.DROP_INDEX);
     this.paths = paths;
     this.indexType = indexType;
-
   }
 
   @Override
@@ -64,7 +64,6 @@ public class DropIndexPlan extends PhysicalPlan {
   public void setIndexType(IndexType indexType) {
     this.indexType = indexType;
   }
-
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
@@ -115,8 +114,7 @@ public class DropIndexPlan extends PhysicalPlan {
       return false;
     }
     DropIndexPlan that = (DropIndexPlan) o;
-    return Objects.equals(paths, that.paths)
-        && Objects.equals(indexType, that.indexType);
+    return Objects.equals(paths, that.paths) && Objects.equals(indexType, that.indexType);
   }
 
   @Override
@@ -126,7 +124,6 @@ public class DropIndexPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return String.format("paths: %s, index type: %s",
-        paths, indexType);
+    return String.format("paths: %s, index type: %s", paths, indexType);
   }
 }

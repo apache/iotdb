@@ -19,6 +19,23 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
+
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -33,20 +50,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.Callable;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
-import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
-import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
-import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * When a new node joins the cluster, a new data group is formed and some partitions are assigned to
@@ -71,24 +74,32 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
    * @param descriptor
    * @param newMember
    * @param snapshotFactory
-   * @param snapshotSave    if the task is resumed from a disk file, this should that file,
-   *                        otherwise it should bu null
+   * @param snapshotSave if the task is resumed from a disk file, this should that file, otherwise
+   *     it should bu null
    */
-  public PullSnapshotTask(PullSnapshotTaskDescriptor descriptor,
-      DataGroupMember newMember, SnapshotFactory<T> snapshotFactory, File snapshotSave) {
+  public PullSnapshotTask(
+      PullSnapshotTaskDescriptor descriptor,
+      DataGroupMember newMember,
+      SnapshotFactory<T> snapshotFactory,
+      File snapshotSave) {
     this.descriptor = descriptor;
     this.newMember = newMember;
     this.snapshotFactory = snapshotFactory;
     this.snapshotSave = snapshotSave;
+    persistTask();
   }
 
   @SuppressWarnings("java:S3740") // type cannot be known ahead
-  private boolean pullSnapshot(int nodeIndex)
-      throws InterruptedException, TException {
+  private boolean pullSnapshot(int nodeIndex) throws InterruptedException, TException {
     Node node = descriptor.getPreviousHolders().get(nodeIndex);
     if (logger.isDebugEnabled()) {
-      logger.debug("Pulling {} snapshots from {} of {}", descriptor.getSlots().size(), node,
-          descriptor.getPreviousHolders().getHeader());
+      logger.debug(
+          "Pulling slot {} and other {} snapshots from {} of {} for {}",
+          descriptor.getSlots().get(0),
+          descriptor.getSlots().size() - 1,
+          node,
+          descriptor.getPreviousHolders().getHeader(),
+          newMember.getName());
     }
 
     Map<Integer, T> result = pullSnapshot(node);
@@ -98,23 +109,32 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       List<Integer> noSnapshotSlots = new ArrayList<>();
       for (Integer slot : descriptor.getSlots()) {
         if (!result.containsKey(slot)) {
-          newMember.getSlotManager().setToNull(slot);
+          newMember.getSlotManager().setToNull(slot, false);
           noSnapshotSlots.add(slot);
         }
       }
+      newMember.getSlotManager().save();
       if (!noSnapshotSlots.isEmpty() && logger.isInfoEnabled()) {
-        logger.info("{}: {} and other {} slots do not have snapshot", newMember.getName(),
-            noSnapshotSlots.get(0), noSnapshotSlots.size() - 1);
+        logger.info(
+            "{}: {} and other {} slots do not have snapshot",
+            newMember.getName(),
+            noSnapshotSlots.get(0),
+            noSnapshotSlots.size() - 1);
       }
 
       if (logger.isInfoEnabled()) {
-        logger.info("Received a snapshot {} from {}", result,
+        logger.info(
+            "{}: Received a snapshot {} from {}",
+            newMember.getName(),
+            result,
             descriptor.getPreviousHolders().get(nodeIndex));
       }
       try {
-        Snapshot snapshot = result.values().iterator().next();
-        SnapshotInstaller installer = snapshot.getDefaultInstaller(newMember);
-        installer.install(result);
+        if (result.size() > 0) {
+          Snapshot snapshot = result.values().iterator().next();
+          SnapshotInstaller installer = snapshot.getDefaultInstaller(newMember);
+          installer.install(result, true);
+        }
         // inform the previous holders that one member has successfully pulled snapshot
         newMember.registerPullSnapshotHint(descriptor);
         return true;
@@ -128,13 +148,12 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
   private Map<Integer, T> pullSnapshot(Node node) throws TException, InterruptedException {
     Map<Integer, T> result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client =
-          (AsyncDataClient) newMember.getAsyncClient(node);
+      AsyncDataClient client = (AsyncDataClient) newMember.getAsyncClient(node);
       if (client == null) {
         return null;
       }
-      result = SyncClientAdaptor.pullSnapshot(client, request,
-          descriptor.getSlots(), snapshotFactory);
+      result =
+          SyncClientAdaptor.pullSnapshot(client, request, descriptor.getSlots(), snapshotFactory);
     } else {
       SyncDataClient client = (SyncDataClient) newMember.getSyncClient(node);
       if (client == null) {
@@ -150,8 +169,8 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
         ClientUtils.putBackSyncClient(client);
       }
       result = new HashMap<>();
-      for (Entry<Integer, ByteBuffer> integerByteBufferEntry : pullSnapshotResp.snapshotBytes
-          .entrySet()) {
+      for (Entry<Integer, ByteBuffer> integerByteBufferEntry :
+          pullSnapshotResp.snapshotBytes.entrySet()) {
         T snapshot = snapshotFactory.create();
         snapshot.deserialize(integerByteBufferEntry.getValue());
         result.put(integerByteBufferEntry.getKey(), snapshot);
@@ -162,30 +181,47 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
 
   @Override
   public Void call() {
-    persistTask();
     request = new PullSnapshotRequest();
     request.setHeader(descriptor.getPreviousHolders().getHeader());
     request.setRequiredSlots(descriptor.getSlots());
     request.setRequireReadOnly(descriptor.isRequireReadOnly());
 
+    logger.info("{}: data migration starts.", newMember.getName());
     boolean finished = false;
-    int nodeIndex = -1;
+    int nodeIndex = ((PartitionGroup) newMember.getAllNodes()).indexOf(newMember.getThisNode()) - 1;
     while (!finished) {
       try {
         // sequentially pick up a node that may have this slot
         nodeIndex = (nodeIndex + 1) % descriptor.getPreviousHolders().size();
+        long startTime = System.currentTimeMillis();
         finished = pullSnapshot(nodeIndex);
         if (!finished) {
-          Thread
-              .sleep(ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "Cannot pull slot {} from {}, retry",
+                descriptor.getSlots(),
+                descriptor.getPreviousHolders().get(nodeIndex));
+          }
+          Thread.sleep(
+              ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
+        } else {
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "{}: Data migration ends, cost {}ms",
+                newMember,
+                (System.currentTimeMillis() - startTime));
+          }
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         finished = true;
       } catch (TException e) {
         if (logger.isDebugEnabled()) {
-          logger.debug("Cannot pull slot {} from {}, retry", descriptor.getSlots(),
-              descriptor.getPreviousHolders().get(nodeIndex), e);
+          logger.debug(
+              "Cannot pull slot {} from {}, retry",
+              descriptor.getSlots(),
+              descriptor.getPreviousHolders().get(nodeIndex),
+              e);
         }
       }
     }
@@ -212,8 +248,11 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
         new DataOutputStream(new BufferedOutputStream(new FileOutputStream(snapshotSave)))) {
       descriptor.serialize(dataOutputStream);
     } catch (IOException e) {
-      logger.error("Cannot save the pulling task: pull {} from {}", descriptor.getSlots(),
-          descriptor.getPreviousHolders(), e);
+      logger.error(
+          "Cannot save the pulling task: pull {} from {}",
+          descriptor.getSlots(),
+          descriptor.getPreviousHolders(),
+          e);
     }
   }
 

@@ -19,29 +19,28 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
-import static org.apache.iotdb.cluster.log.Log.Types.PHYSICAL_PLAN;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * PhysicalPlanLog contains a non-partitioned physical plan like set storage group.
- */
+import static org.apache.iotdb.cluster.log.Log.Types.PHYSICAL_PLAN;
+
+/** PhysicalPlanLog contains a non-partitioned physical plan like set storage group. */
 public class PhysicalPlanLog extends Log {
 
   private static final Logger logger = LoggerFactory.getLogger(PhysicalPlanLog.class);
   private PhysicalPlan plan;
 
-  public PhysicalPlanLog() {
-  }
+  public PhysicalPlanLog() {}
 
   public PhysicalPlanLog(PhysicalPlan plan) {
     this.plan = plan;
@@ -72,8 +71,12 @@ public class PhysicalPlanLog extends Log {
     try {
       plan = PhysicalPlan.Factory.create(buffer);
     } catch (IOException | IllegalPathException e) {
-      logger.error("Cannot parse a physical {}:{} plan {}", getCurrLogIndex(), getCurrLogTerm(),
-          buffer.array().length, e);
+      logger.error(
+          "Cannot parse a physical {}:{} plan {}",
+          getCurrLogIndex(),
+          getCurrLogTerm(),
+          buffer.array().length,
+          e);
     }
   }
 
@@ -87,7 +90,7 @@ public class PhysicalPlanLog extends Log {
 
   @Override
   public String toString() {
-    return plan.toString() + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
+    return plan + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
   }
 
   @Override
