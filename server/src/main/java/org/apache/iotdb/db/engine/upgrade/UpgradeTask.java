@@ -92,7 +92,7 @@ public class UpgradeTask extends WrappedRunnable {
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } finally {
-      upgradeResource.readUnlock();
+      upgradeResource.readUnlock("UpgradeTask.generateUpgradedFiles");
     }
     return upgradedResources;
   }
@@ -122,7 +122,7 @@ public class UpgradeTask extends WrappedRunnable {
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } finally {
-      upgradeResource.readUnlock();
+      upgradeResource.readUnlock("UpgradeTask.findUpgradedFiles");
     }
     return upgradedResources;
   }

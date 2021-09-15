@@ -534,7 +534,7 @@ public class InnerSpaceCompactionUtils {
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
     } finally {
-      seqFile.writeUnlock();
+      seqFile.writeUnlock("InnerSpaceCompactionUtils.deleteTsFile");
     }
   }
 

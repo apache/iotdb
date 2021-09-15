@@ -111,7 +111,7 @@ public class TsFileResource {
 
   private Random random = new Random();
 
-  private String lockHolder = "";
+  private Map<String, Integer> holderMap = new HashMap<>();
 
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
@@ -508,22 +508,21 @@ public class TsFileResource {
   }
 
   public void writeLock(String lockHolder) {
-    this.lockHolder = lockHolder;
-    logger.info("{} trying to get write lock of {}", lockHolder, file);
+    logger.info(
+        "{} trying to get write lock of {}, current lock map is {}", lockHolder, file, holderMap);
     if (originTsFileResource == null) {
       tsFileLock.writeLock();
     } else {
       originTsFileResource.writeLock("TsFileResource.writeLock");
     }
+    logger.info("{} get the write lock of {}", lockHolder, file);
   }
 
-  public void writeUnlock() {
-    logger.info("{} release the write lock of {}", lockHolder, file);
-    lockHolder = "";
+  public void writeUnlock(String lockHolder) {
     if (originTsFileResource == null) {
       tsFileLock.writeUnlock();
     } else {
-      originTsFileResource.writeUnlock();
+      originTsFileResource.writeUnlock("TsFileResource.writeLock");
     }
   }
 
@@ -532,21 +531,23 @@ public class TsFileResource {
    * before construct the current TsFileResource
    */
   public void readLock(String lockHolder) {
-    this.lockHolder = lockHolder;
     logger.info("{} trying to get read lock of {}", lockHolder, file);
     if (originTsFileResource == null) {
       tsFileLock.readLock();
     } else {
-      originTsFileResource.readLock("TsFileResource.readLock");
+      originTsFileResource.readLock(lockHolder);
     }
+    logger.info("{} get the read lock of {}", lockHolder, file);
+    holderMap.put(lockHolder, holderMap.getOrDefault(lockHolder, 0) + 1);
   }
 
-  public void readUnlock() {
+  public void readUnlock(String lockHolder) {
+    holderMap.put(lockHolder, holderMap.get(lockHolder) - 1);
     logger.info("{} release the read lock of {}", lockHolder, file);
     if (originTsFileResource == null) {
       tsFileLock.readUnlock();
     } else {
-      originTsFileResource.readUnlock();
+      originTsFileResource.readUnlock(lockHolder);
     }
   }
 

@@ -223,7 +223,7 @@ public class MergeFileTask {
       restoreOldFile(seqFile);
       throw e;
     } finally {
-      seqFile.writeUnlock();
+      seqFile.writeUnlock("MergeFileTask.moveMergedToOld");
     }
   }
 
@@ -379,7 +379,7 @@ public class MergeFileTask {
         ChunkCache.getInstance().clear();
         TimeSeriesMetadataCache.getInstance().clear();
       }
-      seqFile.writeUnlock();
+      seqFile.writeUnlock("MergeFileTask.moveUnmergedToNew");
     }
   }
 

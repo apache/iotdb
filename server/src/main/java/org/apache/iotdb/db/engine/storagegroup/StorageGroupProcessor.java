@@ -1546,7 +1546,7 @@ public class StorageGroupProcessor {
           }
           tsFileResourceManager.remove(resource, isSeq);
         } finally {
-          resource.writeUnlock();
+          resource.writeUnlock("checkFileTTL");
         }
       }
     } finally {
@@ -2269,7 +2269,7 @@ public class StorageGroupProcessor {
       } catch (IOException e) {
         logger.error("Unable to load {}, caused by ", resource, e);
       } finally {
-        resource.writeUnlock();
+        resource.writeUnlock("StorageGroupProcessor.loadUpgradedResources");
       }
     }
     // delete upgrade folder when it is empty
@@ -2596,7 +2596,7 @@ public class StorageGroupProcessor {
               existingTsFile.getTsFile().getAbsolutePath(),
               e);
         } finally {
-          existingTsFile.writeUnlock();
+          existingTsFile.writeUnlock("StorageGroupProcessor.removeFullyOverlapFiles");
         }
       }
     }
@@ -2906,7 +2906,7 @@ public class StorageGroupProcessor {
       tsFileResourceToBeDeleted.remove();
       logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getTsFile());
     } finally {
-      tsFileResourceToBeDeleted.writeUnlock();
+      tsFileResourceToBeDeleted.writeUnlock("StorageGroupProcessor.deleteTsFile");
     }
     return true;
   }
@@ -2968,7 +2968,7 @@ public class StorageGroupProcessor {
           tsFileResourceToBeMoved.getTsFile(),
           targetDir.getPath());
     } finally {
-      tsFileResourceToBeMoved.writeUnlock();
+      tsFileResourceToBeMoved.writeUnlock("StorageGroupProcessor.moveTsFile");
     }
     return true;
   }

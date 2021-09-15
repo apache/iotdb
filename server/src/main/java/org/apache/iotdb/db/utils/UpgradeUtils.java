@@ -69,7 +69,7 @@ public class UpgradeUtils {
         return false;
       }
     } finally {
-      tsFileResource.readUnlock();
+      tsFileResource.readUnlock("UpgradeUtils.isNeedUpgrade");
     }
     tsFileResource.readLock("UpgradeUtils.isNeedUpgrade");
     try (TsFileSequenceReaderForV2 tsFileSequenceReader =
@@ -85,7 +85,7 @@ public class UpgradeUtils {
           tsFileResource.getTsFile().getAbsolutePath(),
           e);
     } finally {
-      tsFileResource.readUnlock();
+      tsFileResource.readUnlock("UpgradeUtils.isNeedUpgrade");
     }
     return false;
   }

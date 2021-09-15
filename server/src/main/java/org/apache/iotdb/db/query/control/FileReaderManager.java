@@ -218,7 +218,7 @@ public class FileReaderManager implements IService {
         closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
       }
     }
-    tsFile.readUnlock();
+    tsFile.readUnlock("FileReaderManager.decreaseFileReaderReference");
   }
 
   /**
