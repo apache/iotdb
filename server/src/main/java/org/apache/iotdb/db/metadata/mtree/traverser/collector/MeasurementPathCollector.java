@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import java.util.LinkedList;
 import java.util.List;
 
+// This class implements the measurement path collection function.
 public class MeasurementPathCollector extends MeasurementCollector<List<PartialPath>> {
 
   public MeasurementPathCollector(IMNode startNode, PartialPath path) throws MetadataException {

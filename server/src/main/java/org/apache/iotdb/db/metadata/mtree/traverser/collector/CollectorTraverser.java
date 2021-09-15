@@ -23,9 +23,11 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
+// This class defines the generic resultSet as traversal result and add more restrictions on MTree
+// traversal.
 public abstract class CollectorTraverser<T> extends Traverser {
 
-  protected boolean needLast = false;
+  // used for implement slimit and offset function in DDL
   protected int limit;
   protected int offset;
 
@@ -67,10 +69,6 @@ public abstract class CollectorTraverser<T> extends Traverser {
 
   public int getCurOffset() {
     return curOffset;
-  }
-
-  public void setNeedLast(boolean needLast) {
-    this.needLast = needLast;
   }
 
   public void setLimit(int limit) {

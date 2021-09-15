@@ -31,6 +31,9 @@ import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
 
+// This method implements the measurement count function.
+// TODO distinguish timeseries count and measurement count, an aligned timeseries stands for one
+// timeseries but several measurement
 public class MeasurementCounter extends CounterTraverser {
 
   public MeasurementCounter(IMNode startNode, PartialPath path) throws MetadataException {

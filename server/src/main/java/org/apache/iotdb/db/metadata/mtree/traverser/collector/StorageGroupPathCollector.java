@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import java.util.LinkedList;
 import java.util.List;
 
+// This class implements storage group path collection function.
 public class StorageGroupPathCollector extends StorageGroupCollector<List<PartialPath>> {
 
   public StorageGroupPathCollector(IMNode startNode, PartialPath path) throws MetadataException {

@@ -36,7 +36,10 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
 public class MeasurementSchemaCollector
     extends MeasurementCollector<List<Pair<PartialPath, String[]>>> {
 
-  QueryContext queryContext;
+  // whether show timeseries with last value
+  protected boolean needLast = false;
+  // queryContext helps get last value
+  protected QueryContext queryContext;
 
   public MeasurementSchemaCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
@@ -47,6 +50,10 @@ public class MeasurementSchemaCollector
       throws MetadataException {
     super(startNode, path, limit, offset);
     this.resultSet = new LinkedList<>();
+  }
+
+  public void setNeedLast(boolean needLast) {
+    this.needLast = needLast;
   }
 
   public void setQueryContext(QueryContext queryContext) {

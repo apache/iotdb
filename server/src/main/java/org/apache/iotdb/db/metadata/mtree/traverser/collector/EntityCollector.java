@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+// This class defines EntityMNode as target node.
 public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
   public EntityCollector(IMNode startNode, PartialPath path) throws MetadataException {

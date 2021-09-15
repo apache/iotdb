@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import java.util.Set;
 import java.util.TreeSet;
 
+// This class implements the EntityMNode path collection function.
 public class EntityPathCollector extends EntityCollector<Set<PartialPath>> {
 
   public EntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {

@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+// This node implements node count function.
 public class MNodeLevelCounter extends CounterTraverser {
 
   public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)

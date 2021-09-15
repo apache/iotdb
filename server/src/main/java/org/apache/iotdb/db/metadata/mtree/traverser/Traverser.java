@@ -32,6 +32,8 @@ import java.util.regex.Pattern;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ONE_LEVEL_WILDCARD;
 
+// This class defines the main traversal framework and declares some methods for result process
+// extension.
 public abstract class Traverser {
 
   protected IMNode startNode;
@@ -64,6 +66,15 @@ public abstract class Traverser {
     traverse(startNode, 0, false, 0);
   }
 
+  /**
+   * The recursive method for MTree traversal.
+   *
+   * @param node current node that match the targetName in given path
+   * @param idx the index of targetName in given path
+   * @param multiLevelWildcard whether the current targetName is **
+   * @param level the level of current node in MTree
+   * @throws MetadataException some result process may throw MetadataException
+   */
   protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level)
       throws MetadataException {
 
@@ -114,10 +125,32 @@ public abstract class Traverser {
     }
   }
 
+  /**
+   * Check whether the node is desired target. Different case could have different implementation.
+   *
+   * @param node current node
+   * @return whether the node is desired target
+   */
   protected abstract boolean isValid(IMNode node);
 
+  /**
+   * Process the desired node to get result. Different case could have different implementation.
+   *
+   * @param node current node
+   * @param idx the index of targetName that current node matches in given path
+   */
   protected abstract void processValidNode(IMNode node, int idx) throws MetadataException;
 
+  /**
+   * Process the desired internal node to get result. The return boolean value means whether the
+   * recursion should return. For example, suppose the case to collect related storage group for
+   * timeseries. After process the storageGroupMNode, there's no need to process the nodes in
+   * subtree, thus return tree. Different case could have different implementation.
+   *
+   * @param node current node
+   * @param idx the index of targetName that current node matches in given path
+   * @return whether the recursion should return.
+   */
   protected abstract boolean processInternalValid(IMNode node, int idx) throws MetadataException;
 
   protected void processMultiLevelWildcard(IMNode node, int idx, int level)

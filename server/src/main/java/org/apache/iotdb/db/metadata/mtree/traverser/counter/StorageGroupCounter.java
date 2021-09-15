@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+// This class implements storage group count function.
 public class StorageGroupCounter extends CounterTraverser {
 
   public StorageGroupCounter(IMNode startNode, PartialPath path) throws MetadataException {

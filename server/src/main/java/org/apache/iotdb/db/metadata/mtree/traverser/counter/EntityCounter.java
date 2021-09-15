@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+// This class implements the entity count function.
 public class EntityCounter extends CounterTraverser {
 
   public EntityCounter(IMNode startNode, PartialPath path) throws MetadataException {

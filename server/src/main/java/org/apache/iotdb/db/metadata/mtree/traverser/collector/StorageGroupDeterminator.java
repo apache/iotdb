@@ -28,6 +28,31 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
 
+/**
+ * This class implements the storage group determination function as following description.
+ *
+ * <p>For a path, infer all storage groups it may belong to. The path can have wildcards.
+ *
+ * <p>Consider the path into two parts: (1) the sub path which can not contain a storage group name
+ * and (2) the sub path which is substring that begin after the storage group name.
+ *
+ * <p>(1) Suppose the part of the path can not contain a storage group name (e.g.,
+ * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will be
+ * inferred and the wildcard will be removed. For each multi level wildcard **, then the inference
+ * will go on until the storage groups are found and the wildcard will be kept. (2) Suppose the part
+ * of the path is a substring that begin after the storage group name. (e.g., For
+ * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*"). For this
+ * part, keep what it is.
+ *
+ * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
+ * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")
+ * ("root.area1.group3", "root.area1.group3.**") Eg2: for input "root.*.s1", returns ("root.group1",
+ * "root.group1.s1"), ("root.group2", "root.group2.s1")
+ *
+ * <p>Eg3: for input "root.area1.**", returns ("root.area1.group3", "root.area1.group3.**")
+ *
+ * <p>ResultSet: StorageGroupName-FullPath pairs
+ */
 public class StorageGroupDeterminator extends StorageGroupCollector<Map<String, String>> {
 
   public StorageGroupDeterminator(IMNode startNode, PartialPath path) throws MetadataException {

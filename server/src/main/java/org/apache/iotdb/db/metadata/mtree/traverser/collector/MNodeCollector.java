@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+// This class defines any node in MTree as potential target node.
 public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
   public MNodeCollector(IMNode startNode, PartialPath path) throws MetadataException {
