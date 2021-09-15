@@ -39,6 +39,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.time.ZoneId;
@@ -68,6 +69,8 @@ public class FunctionExpression extends Expression {
    * <p>3 expressions [root.sg.d.a, root.sg.d.b, udf(root.sg.d.c)] will be in this field.
    */
   private List<Expression> expressions;
+
+  private List<TSDataType> inputExpressionTypes;
 
   private List<PartialPath> paths;
 
@@ -187,6 +190,7 @@ public class FunctionExpression extends Expression {
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
@@ -198,9 +202,12 @@ public class FunctionExpression extends Expression {
               udtfPlan,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
+              expressionDataTypeMap,
               memoryAssigner);
       Transformer transformer =
-          constructUdfTransformer(udtfPlan, memoryAssigner, udfInputIntermediateLayer);
+          constructUdfTransformer(
+              queryId, udtfPlan, expressionDataTypeMap, memoryAssigner, udfInputIntermediateLayer);
+      expressionDataTypeMap.put(this, transformer.getDataType());
 
       expressionIntermediateLayerMap.put(
           this,
@@ -219,6 +226,7 @@ public class FunctionExpression extends Expression {
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException {
     List<IntermediateLayer> intermediateLayers = new ArrayList<>();
@@ -229,6 +237,7 @@ public class FunctionExpression extends Expression {
               udtfPlan,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
+              expressionDataTypeMap,
               memoryAssigner));
     }
     return intermediateLayers.size() == 1
@@ -243,11 +252,16 @@ public class FunctionExpression extends Expression {
   }
 
   private UDFQueryTransformer constructUdfTransformer(
+      long queryId,
       UDTFPlan udtfPlan,
+      Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner,
       IntermediateLayer udfInputIntermediateLayer)
       throws QueryProcessException, IOException {
     UDTFExecutor executor = udtfPlan.getExecutorByFunctionExpression(this);
+
+    executor.beforeStart(queryId, memoryAssigner.assign(), expressionDataTypeMap);
+
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
       case ROW_BY_ROW:

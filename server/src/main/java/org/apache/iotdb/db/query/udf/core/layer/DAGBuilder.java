@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -46,6 +47,7 @@ public class DAGBuilder {
   // sub-expressions, but they can share the same point reader. we cache the point reader here to
   // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
+  private final Map<Expression, TSDataType> expressionDataTypeMap;
 
   public DAGBuilder(
       long queryId, UDTFPlan udtfPlan, RawQueryInputLayer inputLayer, float memoryBudgetInMB) {
@@ -63,6 +65,7 @@ public class DAGBuilder {
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
     expressionIntermediateLayerMap = new HashMap<>();
+    expressionDataTypeMap = new HashMap<>();
   }
 
   public DAGBuilder buildLayerMemoryAssigner() {
@@ -82,6 +85,7 @@ public class DAGBuilder {
                   udtfPlan,
                   rawTimeSeriesInputLayer,
                   expressionIntermediateLayerMap,
+                  expressionDataTypeMap,
                   memoryAssigner)
               .constructPointReader();
     }

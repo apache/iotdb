@@ -29,6 +29,8 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.core.layer.DAGBuilder;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -74,7 +76,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
             timestampGenerator,
             readersOfSelectedSeries,
             cached);
-    udtfPlan.initializeUdfExecutors(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
+
     initTransformers();
   }
 
@@ -96,16 +98,28 @@ public abstract class UDTFDataSet extends QueryDataSet {
             deduplicatedPaths,
             deduplicatedDataTypes,
             readersOfSelectedSeries);
-    udtfPlan.initializeUdfExecutors(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
+
     initTransformers();
   }
 
   protected void initTransformers() throws QueryProcessException, IOException {
-    transformers =
-        new DAGBuilder(queryId, udtfPlan, rawQueryInputLayer, UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB)
-            .buildLayerMemoryAssigner()
-            .buildResultColumnPointReaders()
-            .getResultColumnPointReaders();
+    UDFRegistrationService.getInstance().acquireRegistrationLock();
+    // This statement must be surrounded by the registration lock.
+    UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
+    try {
+      // UDF executors will be initialized at the same time
+      transformers =
+          new DAGBuilder(
+                  queryId,
+                  udtfPlan,
+                  rawQueryInputLayer,
+                  UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB + UDF_COLLECTOR_MEMORY_BUDGET_IN_MB)
+              .buildLayerMemoryAssigner()
+              .buildResultColumnPointReaders()
+              .getResultColumnPointReaders();
+    } finally {
+      UDFRegistrationService.getInstance().releaseRegistrationLock();
+    }
   }
 
   public void finalizeUDFs(long queryId) {

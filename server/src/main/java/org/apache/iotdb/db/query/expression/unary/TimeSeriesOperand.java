@@ -42,7 +42,6 @@ import java.util.Set;
 public class TimeSeriesOperand extends Expression {
 
   protected PartialPath path;
-  protected TSDataType dataType;
 
   public TimeSeriesOperand(PartialPath path) {
     this.path = path;
@@ -93,6 +92,7 @@ public class TimeSeriesOperand extends Expression {
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
@@ -100,6 +100,7 @@ public class TimeSeriesOperand extends Expression {
 
       LayerPointReader parentLayerPointReader =
           rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path.getFullPath()));
+      expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
       expressionIntermediateLayerMap.put(
           this,

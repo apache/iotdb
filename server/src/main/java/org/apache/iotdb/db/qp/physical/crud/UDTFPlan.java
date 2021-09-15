@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -32,14 +31,12 @@ import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -119,24 +116,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
         originalOutputColumnIndex2Executor.put(
             i, expressionName2Executor.get(expression.toString()));
       }
-    }
-  }
-
-  @Override
-  public void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMB)
-      throws QueryProcessException {
-    Collection<UDTFExecutor> executors = expressionName2Executor.values();
-    collectorMemoryBudgetInMB /= executors.size();
-
-    UDFRegistrationService.getInstance().acquireRegistrationLock();
-    // This statement must be surrounded by the registration lock.
-    UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
-    try {
-      for (UDTFExecutor executor : executors) {
-        executor.beforeStart(queryId, collectorMemoryBudgetInMB);
-      }
-    } finally {
-      UDFRegistrationService.getInstance().releaseRegistrationLock();
     }
   }
 

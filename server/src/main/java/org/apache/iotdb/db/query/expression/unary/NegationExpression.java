@@ -33,6 +33,7 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceI
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.time.ZoneId;
@@ -100,6 +101,7 @@ public class NegationExpression extends Expression {
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
@@ -111,9 +113,11 @@ public class NegationExpression extends Expression {
               udtfPlan,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
+              expressionDataTypeMap,
               memoryAssigner);
       Transformer transformer =
           new ArithmeticNegationTransformer(parentLayerPointReader.constructPointReader());
+      expressionDataTypeMap.put(this, transformer.getDataType());
 
       expressionIntermediateLayerMap.put(
           this,

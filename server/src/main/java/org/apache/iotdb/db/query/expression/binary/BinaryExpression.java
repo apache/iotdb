@@ -34,6 +34,7 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReference
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.time.ZoneId;
@@ -136,6 +137,7 @@ public abstract class BinaryExpression extends Expression {
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
@@ -147,6 +149,7 @@ public abstract class BinaryExpression extends Expression {
               udtfPlan,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
+              expressionDataTypeMap,
               memoryAssigner);
       IntermediateLayer rightParentIntermediateLayer =
           rightExpression.constructIntermediateLayer(
@@ -154,11 +157,13 @@ public abstract class BinaryExpression extends Expression {
               udtfPlan,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
+              expressionDataTypeMap,
               memoryAssigner);
       Transformer transformer =
           constructTransformer(
               leftParentIntermediateLayer.constructPointReader(),
               rightParentIntermediateLayer.constructPointReader());
+      expressionDataTypeMap.put(this, transformer.getDataType());
 
       expressionIntermediateLayerMap.put(
           this,
@@ -174,14 +179,6 @@ public abstract class BinaryExpression extends Expression {
 
   protected abstract ArithmeticBinaryTransformer constructTransformer(
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
-
-  public Expression getLeftExpression() {
-    return leftExpression;
-  }
-
-  public Expression getRightExpression() {
-    return rightExpression;
-  }
 
   @Override
   public final String toString() {
