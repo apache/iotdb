@@ -40,6 +40,8 @@ public abstract class TVList {
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+  // list of timestamp array, add 1 when expanded -> data point timestamp array
+  // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
   protected int size;
 

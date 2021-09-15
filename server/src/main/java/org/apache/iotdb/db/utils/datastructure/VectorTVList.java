@@ -34,12 +34,21 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class VectorTVList extends TVList {
 
+  // data types of this vector
   private List<TSDataType> dataTypes;
 
+  // data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
+  // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   private List<List<Object>> values;
 
+  // list of index array, add 1 when expanded -> data point index array
+  // index relation: arrayIndex -> elementIndex
+  // used in sort method, sort only changes indices
   private List<int[]> indices;
 
+  // data type list -> list of BitMap, add 1 when expanded -> BitMap(maybe null), marked means the
+  // value is null
+  // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   private List<List<BitMap>> bitMaps;
 
   private int[][] sortedIndices;
