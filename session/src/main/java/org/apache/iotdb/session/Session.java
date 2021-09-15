@@ -1612,12 +1612,12 @@ public class Session {
       request.setIsAligned(true);
       IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
       request.addToPrefixPaths(tablet.prefixPath);
-      int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
+      int measurementsSize = measurementSchema.getSubMeasurementsList().size();
       List<String> measurements = new ArrayList<>();
       List<Integer> dataTypes = new ArrayList<>();
       for (int i = 0; i < measurementsSize; i++) {
-        measurements.add(measurementSchema.getValueMeasurementIdList().get(i));
-        dataTypes.add(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
+        measurements.add(measurementSchema.getSubMeasurementsList().get(i));
+        dataTypes.add(measurementSchema.getSubMeasurementsTSDataTypeList().get(i).ordinal());
       }
       request.addToMeasurementsList(measurements);
       request.addToTypesList(dataTypes);
