@@ -305,6 +305,8 @@ int main() {
     deleteTimeseries();
 
     session->close();
-    
+
+    delete session;
+
     return 0;
 }

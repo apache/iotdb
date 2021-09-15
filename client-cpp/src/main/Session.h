@@ -649,6 +649,8 @@ public:
         this->zoneId = "UTC+08:00";
     }
 
+    ~Session();
+
     void open();
 
     void open(bool enableRPCCompression);
