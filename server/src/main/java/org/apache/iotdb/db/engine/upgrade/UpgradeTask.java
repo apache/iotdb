@@ -82,7 +82,7 @@ public class UpgradeTask extends WrappedRunnable {
   }
 
   private List<TsFileResource> generateUpgradedFiles() throws IOException, WriteProcessException {
-    upgradeResource.readLock();
+    upgradeResource.readLock("UpgradeTask.generateUpgradedFiles");
     String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
     List<TsFileResource> upgradedResources = new ArrayList<>();
     UpgradeLog.writeUpgradeLogFile(
@@ -98,7 +98,7 @@ public class UpgradeTask extends WrappedRunnable {
   }
 
   private List<TsFileResource> findUpgradedFiles() throws IOException {
-    upgradeResource.readLock();
+    upgradeResource.readLock("UpgradeTask.findUpgradedFiles");
     List<TsFileResource> upgradedResources = new ArrayList<>();
     String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
     UpgradeLog.writeUpgradeLogFile(

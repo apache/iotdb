@@ -2254,7 +2254,7 @@ public class StorageGroupProcessor {
       return;
     }
     for (TsFileResource resource : resources) {
-      resource.writeLock();
+      resource.writeLock("StorageGroupProcessor.loadUpgradedResources");
       try {
         UpgradeUtils.moveUpgradedFiles(resource);
         tsFileResourceManager.addAll(resource.getUpgradedResources(), isseq);
@@ -2901,7 +2901,7 @@ public class StorageGroupProcessor {
     if (tsFileResourceToBeDeleted == null) {
       return false;
     }
-    tsFileResourceToBeDeleted.writeLock();
+    tsFileResourceToBeDeleted.writeLock("StorageGroupProcessor.deleteTsFile");
     try {
       tsFileResourceToBeDeleted.remove();
       logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getTsFile());
@@ -2960,7 +2960,7 @@ public class StorageGroupProcessor {
     if (tsFileResourceToBeMoved == null) {
       return false;
     }
-    tsFileResourceToBeMoved.writeLock();
+    tsFileResourceToBeMoved.writeLock("StorageGroupProcessor.moveTsFile");
     try {
       tsFileResourceToBeMoved.moveTo(targetDir);
       logger.info(

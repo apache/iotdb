@@ -163,7 +163,7 @@ public class MergeFileTask {
       return;
     }
 
-    seqFile.writeLock();
+    seqFile.writeLock("MergeFileTask.moveMergedToOld");
     try {
       if (Thread.currentThread().isInterrupted()) {
         return;
@@ -349,7 +349,7 @@ public class MergeFileTask {
 
     updatePlanIndexes(seqFile);
 
-    seqFile.writeLock();
+    seqFile.writeLock("MergeFileTask.moveUnmergedToNew");
     try {
       if (Thread.currentThread().isInterrupted()) {
         return;

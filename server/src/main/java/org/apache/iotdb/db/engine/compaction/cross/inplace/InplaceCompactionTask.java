@@ -152,7 +152,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.writeLock();
+      unseqFile.writeLock("InplaceCompaction.removeUnseqFiles");
       try {
         unseqFile.remove();
       } finally {

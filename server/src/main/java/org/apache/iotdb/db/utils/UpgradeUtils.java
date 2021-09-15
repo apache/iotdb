@@ -62,7 +62,7 @@ public class UpgradeUtils {
 
   /** judge whether a tsfile needs to be upgraded */
   public static boolean isNeedUpgrade(TsFileResource tsFileResource) {
-    tsFileResource.readLock();
+    tsFileResource.readLock("UpgradeUtils.isNeedUpgrade");
     // case the TsFile's length is equal to 0, the TsFile does not need to be upgraded
     try {
       if (tsFileResource.getTsFile().length() == 0) {
@@ -71,7 +71,7 @@ public class UpgradeUtils {
     } finally {
       tsFileResource.readUnlock();
     }
-    tsFileResource.readLock();
+    tsFileResource.readLock("UpgradeUtils.isNeedUpgrade");
     try (TsFileSequenceReaderForV2 tsFileSequenceReader =
         new TsFileSequenceReaderForV2(tsFileResource.getTsFile().getAbsolutePath())) {
       String versionNumber = tsFileSequenceReader.readVersionNumberV2();

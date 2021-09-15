@@ -111,6 +111,8 @@ public class TsFileResource {
 
   private Random random = new Random();
 
+  private String lockHolder = "";
+
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
@@ -505,15 +507,19 @@ public class TsFileResource {
     return processor;
   }
 
-  public void writeLock() {
+  public void writeLock(String lockHolder) {
+    this.lockHolder = lockHolder;
+    logger.info("{} trying to get write lock of {}", lockHolder, file);
     if (originTsFileResource == null) {
       tsFileLock.writeLock();
     } else {
-      originTsFileResource.writeLock();
+      originTsFileResource.writeLock("TsFileResource.writeLock");
     }
   }
 
   public void writeUnlock() {
+    logger.info("{} release the write lock of {}", lockHolder, file);
+    lockHolder = "";
     if (originTsFileResource == null) {
       tsFileLock.writeUnlock();
     } else {
@@ -525,15 +531,18 @@ public class TsFileResource {
    * If originTsFileResource is not null, we should acquire the read lock of originTsFileResource
    * before construct the current TsFileResource
    */
-  public void readLock() {
+  public void readLock(String lockHolder) {
+    this.lockHolder = lockHolder;
+    logger.info("{} trying to get read lock of {}", lockHolder, file);
     if (originTsFileResource == null) {
       tsFileLock.readLock();
     } else {
-      originTsFileResource.readLock();
+      originTsFileResource.readLock("TsFileResource.readLock");
     }
   }
 
   public void readUnlock() {
+    logger.info("{} release the read lock of {}", lockHolder, file);
     if (originTsFileResource == null) {
       tsFileLock.readUnlock();
     } else {

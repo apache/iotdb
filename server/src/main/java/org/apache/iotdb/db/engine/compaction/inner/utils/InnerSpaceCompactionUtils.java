@@ -524,7 +524,7 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void deleteTsFile(TsFileResource seqFile) {
-    seqFile.writeLock();
+    seqFile.writeLock("InnerSpaceCompactionUtils.deleteTsFile");
     try {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
