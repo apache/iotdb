@@ -59,6 +59,8 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -152,6 +154,9 @@ public class StorageEngine implements IService {
     }
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
+
+    //recover settle process
+    SettleService.recoverSettle();
 
     recover();
   }
@@ -780,6 +785,14 @@ public class StorageEngine implements IService {
     return totalUpgradeFileNum;
   }
 
+  public int countSettleFiles() {
+    int totalSettleFileNum = 0;
+    for(VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      totalSettleFileNum+=virtualStorageGroupManager.countSettleFiles();
+    }
+    return totalSettleFileNum;
+  }
+
   /**
    * upgrade all storage groups.
    *
@@ -792,6 +805,16 @@ public class StorageEngine implements IService {
     }
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
       virtualStorageGroupManager.upgradeAll();
+    }
+  }
+
+  public void settleAll() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException(
+          "Current system mode is read only, does not support file settle");
+    }
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      virtualStorageGroupManager.settleAll();
     }
   }
 

@@ -325,11 +325,29 @@ public class VirtualStorageGroupManager {
     return totalUpgradeFileNum;
   }
 
+  public int countSettleFiles(){
+    int totalSettleFileNum=0;
+    for(StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        totalSettleFileNum += storageGroupProcessor.countSettleFiles();
+      }
+    }
+    return totalSettleFileNum;
+  }
+
   /** push upgradeAll operation down to all virtual storage group processors */
   public void upgradeAll() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         storageGroupProcessor.upgrade();
+      }
+    }
+  }
+
+  public void settleAll(){
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.settle();
       }
     }
   }

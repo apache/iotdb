@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -68,6 +69,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class TsFileRewriteTool implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileRewriteTool.class);
+
+  //TsFileName -> modifications, holds the TsFile currently being rewritten and the deletion operations added to this TsFile during the rewritting process
+  public static Map<String,List<Modification>> oldFileModificationListMap = new HashMap<>();
 
   protected TsFileSequenceReader reader;
   protected File oldTsFile;
@@ -131,51 +135,67 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
   }
 
-  public static void main(String[] args) {
-    File[] tsFiles = checkArgs(args);
-    List<TsFileResource> oldTsFileResources = new ArrayList<>();
-    for (File file : tsFiles) {
-      oldTsFileResources.add(new TsFileResource(file));
-    }
-    try {
-      List<TsFileResource> newTsfileResources = settleTsFilesAndMods(oldTsFileResources);
-    } catch (IOException e) {
-      e.printStackTrace();
-    } catch (WriteProcessException e) {
-      e.printStackTrace();
-    }
-  }
-
-  public static File[] checkArgs(String[] args) { // 根据路径名获得其下存在的所有TsFile文件
-    List<String> filePaths = new ArrayList<>();
-    String filePath = "test.tsfile";
-    if (args.length == 1) {
-      filePath = args[0];
-    } else {
-      logger.error("Uncorrect args");
-      return null;
-    }
-    return FSFactoryProducer.getFSFactory().listFilesBySuffix(filePath, TSFILE_SUFFIX);
-  }
 
   /**
-   * This method is used to settle tsFiles and mods files, so that each old TsFile corresponds to a
-   * new TsFile
-   *
-   * @return Each old TsFile corresponds to the TsFileResource of the new TsFile
+   * this method is used to move a new TsFile and its corresponding resource file to the correct folder
+   * @param oldTsFileResource
+   * @param newTsFileResource
    */
-  public static List<TsFileResource> settleTsFilesAndMods(
-      List<TsFileResource> resourcesToBeRewritten) throws IOException, WriteProcessException {
-    List<TsFileResource> rewrittenResources = new ArrayList<>();
-    List<TsFileResource> newTsFileResources = new ArrayList<>();
-    for (TsFileResource resourceToBeModified : resourcesToBeRewritten) {
-      rewrittenResources.clear();
-      try (TsFileRewriteTool rewriteTool = new TsFileRewriteTool(resourceToBeModified)) {
-        rewriteTool.parseAndRewriteFile(rewrittenResources);
-        newTsFileResources.add(rewrittenResources.get(0));
+  public static void moveNewTsFile(TsFileResource oldTsFileResource,
+      TsFileResource newTsFileResource){
+    FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+    File newPartionDir=null;
+    if(newTsFileResource==null){
+      return;
+    }
+    File oldTsFile=oldTsFileResource.getTsFile();
+    File newTsFile=newTsFileResource.getTsFile();
+    newPartionDir=newTsFile.getParentFile();
+    oldTsFile.delete();
+    fsFactory.moveFile(newTsFile,oldTsFile);
+    newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
+    newTsFileResource.setClosed(true);
+    try {
+      newTsFileResource.serialize();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    File tmpResourceFile=fsFactory.getFile(newPartionDir,newTsFile.getName()+TsFileResource.RESOURCE_SUFFIX);
+    if(tmpResourceFile.exists()){
+      tmpResourceFile.delete();
+    }
+    newPartionDir.delete(); //if the folder is empty, then it will be deleted
+  }
+
+  public static void moveNewTsFiles(List<TsFileResource> oldTsFileResources, List<TsFileResource> newTsFileResources){
+    FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+    File newPartionDir=null;
+    for(int i=0;i<oldTsFileResources.size();i++){
+      if(newTsFileResources.get(i)==null){
+        continue;
+      }
+      File oldTsFile=oldTsFileResources.get(i).getTsFile();
+      File newTsFile=newTsFileResources.get(i).getTsFile();
+      newPartionDir=newTsFile.getParentFile();
+      oldTsFile.delete();
+      fsFactory.moveFile(newTsFile,oldTsFile);
+      newTsFileResources.get(i).setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
+      newTsFileResources.get(i).setClosed(true);
+      try {
+        newTsFileResources.get(i).serialize();
+      } catch (IOException e) {
+        e.printStackTrace();
       }
     }
-    return newTsFileResources;
+    if(newPartionDir.exists()) {
+      String[] childrenFiles = newPartionDir.list();
+      for (String file : childrenFiles) {
+        File f = new File(newPartionDir, file);
+        f.delete();
+      }
+      newPartionDir.delete();
+    }
   }
 
   /**
@@ -306,11 +326,38 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
   }
 
+  /**
+   * this method is used to delete the old modification file after finishing rewriting.
+   * @throws IOException
+   */
   protected void deleteOldModificationFile() throws IOException {
+    //Files.deleteIfExists()
+    //oldTsFileResource.removeModFile();
+
     ModificationFile oldModificationFile = oldTsFileResource.getModFile();
+
     if (oldModificationFile.exists()) {
       logger.debug("delete old modification file {}", oldModificationFile);
       oldModificationFile.remove();
+    }
+  }
+
+  /**
+   * this method is used to write the modifications produced during the rewritting process to the corresponding modification file of the new TsFile.
+   *
+   * @param newTsfileResource
+   * @param oldTsFileResource
+   * @throws IOException
+   */
+  public static void writeNewModification(TsFileResource oldTsFileResource,TsFileResource newTsfileResource)
+      throws IOException {
+    List<Modification> newMods=oldFileModificationListMap.get(oldTsFileResource.getTsFile().getName());
+    if(newMods.size()==0){
+      return;
+    }
+    for(Modification mod:newMods){
+      mod.setFileOffset(oldTsFileResource.getTsFileSize());
+      newTsfileResource.getModFile().write(mod);
     }
   }
 
