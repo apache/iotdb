@@ -88,7 +88,7 @@ public class InsertRowPlan extends InsertPlan {
     this.time = insertTime;
     this.prefixPath = prefixPath;
     this.measurements = measurementList;
-    this.dataTypes = new TSDataType[insertValues.length];
+    this.dataTypes = new TSDataType[measurements.length];
     // We need to create an Object[] for the data type casting, because we can not set Float, Long
     // to String[i]
     if (insertValues != null) {
