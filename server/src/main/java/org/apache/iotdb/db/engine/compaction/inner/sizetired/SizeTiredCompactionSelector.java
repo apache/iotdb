@@ -133,7 +133,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
                 "Selected file list is clear because current file is {}",
                 currentFile.isMerging() ? "merging" : "not closed");
           }
-          if (selectedFileList.size() > 0) {
+          if (selectedFileList.size() > 1) {
             notFullCompactionQueue.add(
                 new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
           }
@@ -163,7 +163,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           selectedFileSize = 0L;
         }
       }
-      if (selectedFileList.size() != 0) {
+      if (selectedFileList.size() > 1) {
         notFullCompactionQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
       }
       if (config.isEnableNotFullCompaction()) {
