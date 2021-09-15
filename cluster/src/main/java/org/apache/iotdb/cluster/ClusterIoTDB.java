@@ -123,7 +123,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private boolean allowReport = true;
 
-  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
+  /**
+   * hardLinkCleaner will periodically clean expired hardlinks created during snapshots
+   */
   private ScheduledExecutorService hardLinkCleanerThread;
 
   // currently, dataClientProvider is only used for those instances who do not belong to any
@@ -490,7 +492,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
-  /** Developers may perform pre-start customizations here for debugging or experiments. */
+  /**
+   * Developers may perform pre-start customizations here for debugging or experiments.
+   */
   @SuppressWarnings("java:S125") // leaving examples
   private void preStartCustomize() {
     // customize data distribution

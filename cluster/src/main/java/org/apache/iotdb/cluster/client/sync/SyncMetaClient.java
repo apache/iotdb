@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.IClientPool;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -43,7 +43,7 @@ import java.net.SocketException;
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
  * should not cache it anywhere else.
  */
-public class SyncMetaClient extends Client {
+public class SyncMetaClient extends TSMetaService.Client {
 
   private Node node;
   private ClientCategory category;
@@ -116,12 +116,14 @@ public class SyncMetaClient extends Client {
 
     @Override
     public void activateObject(Node node, PooledObject<SyncMetaClient> pooledObject)
-        throws Exception {}
+        throws Exception {
+      pooledObject.getObject().setTimeout(ClusterConstant.getConnectionTimeoutInMS());
+    }
 
     @Override
     public void destroyObject(Node node, PooledObject<SyncMetaClient> pooledObject)
         throws Exception {
-      pooledObject.getObject().getInputProtocol().getTransport().close();
+      pooledObject.getObject().close();
     }
 
     @Override

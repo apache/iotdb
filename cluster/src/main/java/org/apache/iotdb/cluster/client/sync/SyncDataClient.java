@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.IClientPool;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
+import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -46,7 +46,7 @@ import java.net.SocketException;
  */
 // TODO: Refine the interfaces of TSDataService. TSDataService interfaces doesn't need extends
 // TODO: RaftService interfaces
-public class SyncDataClient extends Client {
+public class SyncDataClient extends TSDataService.Client {
 
   private Node node;
   private ClientCategory category;
@@ -123,14 +123,6 @@ public class SyncDataClient extends Client {
       this.protocolFactory = protocolFactory;
       this.category = category;
     }
-
-    //  public String nodeInfo(Node node) {
-    //    return String.format(
-    //        "MetaNode (listenIp = %s, HB port = %d, id = %d)",
-    //        node.getInternalIp(),
-    //        node.getMetaPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-    //        node.getNodeIdentifier());
-    //  }
 
     @Override
     public void activateObject(Node node, PooledObject<SyncDataClient> pooledObject)

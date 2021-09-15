@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.IClientPool;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
@@ -41,7 +41,7 @@ import java.io.IOException;
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
  * should not cache it anywhere else.
  */
-public class AsyncMetaClient extends AsyncClient {
+public class AsyncMetaClient extends TSMetaService.AsyncClient {
 
   private Node node;
   private ClientCategory category;

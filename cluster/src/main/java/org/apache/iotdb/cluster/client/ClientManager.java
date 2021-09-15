@@ -82,6 +82,7 @@ public class ClientManager implements IClientPool {
             ClientPoolFactory.getInstance().createSingleManagerAsyncDataPool());
         break;
       default:
+        logger.warn("unsupported ClientManager type: {}", type);
         break;
     }
   }
@@ -110,6 +111,7 @@ public class ClientManager implements IClientPool {
             ClientPoolFactory.getInstance().createSyncDataPool(ClientCategory.DATA_HEARTBEAT));
         break;
       default:
+        logger.warn("unsupported ClientManager type: {}", type);
         break;
     }
   }

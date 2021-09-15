@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.cluster.query.reader.mult;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientPool;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -25,6 +30,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -37,6 +44,8 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -174,103 +183,128 @@ public class RemoteMultSeriesReaderTest {
   }
 
   private void setAsyncDataClient() {
-    //    ClusterIoTDB.getInstance()
-    //        .setClientProvider(
-    //            new DataClientProvider(new Factory()) {
-    //              @Override
-    //              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws
-    // IOException {
-    //                return new AsyncDataClient(null, null, node, null) {
-    //                  @Override
-    //                  public void fetchMultSeries(
-    //                      RaftNode header,
-    //                      long readerId,
-    //                      List<String> paths,
-    //                      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
-    //                      throws TException {
-    //                    if (failedNodes.contains(node)) {
-    //                      throw new TException("Node down.");
-    //                    }
-    //
-    //                    new Thread(
-    //                            () -> {
-    //                              Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
-    //                              if (batchUsed) {
-    //                                paths.forEach(
-    //                                    path -> {
-    //                                      stringByteBufferMap.put(path, ByteBuffer.allocate(0));
-    //                                    });
-    //                              } else {
-    //                                batchUsed = true;
-    //
-    //                                for (int i = 0; i < batchData.size(); i++) {
-    //                                  stringByteBufferMap.put(
-    //                                      paths.get(i), generateByteBuffer(batchData.get(i)));
-    //                                }
-    //
-    //                                resultHandler.onComplete(stringByteBufferMap);
-    //                              }
-    //                            })
-    //                        .start();
-    //                  }
-    //
-    //                  @Override
-    //                  public void queryMultSeries(
-    //                      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
-    //                      throws TException {
-    //                    if (failedNodes.contains(node)) {
-    //                      throw new TException("Node down.");
-    //                    }
-    //
-    //                    new Thread(() -> resultHandler.onComplete(1L)).start();
-    //                  }
-    //                };
-    //              }
-    //            });
+    ClusterIoTDB.getInstance()
+        .setClientManager(
+            new IClientPool() {
+              @Override
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
+                return new AsyncDataClient(null, null, node, null) {
+                  @Override
+                  public void fetchMultSeries(
+                      RaftNode header,
+                      long readerId,
+                      List<String> paths,
+                      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(
+                            () -> {
+                              Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
+                              if (batchUsed) {
+                                paths.forEach(
+                                    path -> {
+                                      stringByteBufferMap.put(path, ByteBuffer.allocate(0));
+                                    });
+                              } else {
+                                batchUsed = true;
+
+                                for (int i = 0; i < batchData.size(); i++) {
+                                  stringByteBufferMap.put(
+                                      paths.get(i), generateByteBuffer(batchData.get(i)));
+                                }
+
+                                resultHandler.onComplete(stringByteBufferMap);
+                              }
+                            })
+                        .start();
+                  }
+
+                  @Override
+                  public void queryMultSeries(
+                      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(() -> resultHandler.onComplete(1L)).start();
+                  }
+                };
+              }
+
+              @Override
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+                return null;
+              }
+
+              @Override
+              public void returnAsyncClient(
+                  RaftService.AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
+            });
   }
 
   private void setSyncDataClient() {
-    //    ClusterIoTDB.getInstance()
-    //        .setClientProvider(
-    //            new DataClientProvider(new Factory()) {
-    //              @Override
-    //              public SyncDataClient getSyncDataClient(Node node, int timeout) {
-    //                return new SyncDataClient(null) {
-    //                  @Override
-    //                  public Map<String, ByteBuffer> fetchMultSeries(
-    //                      RaftNode header, long readerId, List<String> paths) throws TException {
-    //                    if (failedNodes.contains(node)) {
-    //                      throw new TException("Node down.");
-    //                    }
-    //
-    //                    Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
-    //                    if (batchUsed) {
-    //                      paths.forEach(
-    //                          path -> {
-    //                            stringByteBufferMap.put(path, ByteBuffer.allocate(0));
-    //                          });
-    //                    } else {
-    //                      batchUsed = true;
-    //                      for (int i = 0; i < batchData.size(); i++) {
-    //                        stringByteBufferMap.put(paths.get(i),
-    // generateByteBuffer(batchData.get(i)));
-    //                      }
-    //                    }
-    //                    return stringByteBufferMap;
-    //                  }
-    //
-    //                  @Override
-    //                  public long queryMultSeries(MultSeriesQueryRequest request) throws
-    // TException {
-    //                    if (failedNodes.contains(node)) {
-    //                      throw new TException("Node down.");
-    //                    }
-    //
-    //                    return 1L;
-    //                  }
-    //                };
-    //              }
-    //            });
+    ClusterIoTDB.getInstance()
+        .setClientManager(
+            new IClientPool() {
+              @Override
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
+                return null;
+              }
+
+              @Override
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+                return new SyncDataClient(null) {
+                  @Override
+                  public Map<String, ByteBuffer> fetchMultSeries(
+                      RaftNode header, long readerId, List<String> paths) throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
+                    if (batchUsed) {
+                      paths.forEach(
+                          path -> {
+                            stringByteBufferMap.put(path, ByteBuffer.allocate(0));
+                          });
+                    } else {
+                      batchUsed = true;
+                      for (int i = 0; i < batchData.size(); i++) {
+                        stringByteBufferMap.put(paths.get(i), generateByteBuffer(batchData.get(i)));
+                      }
+                    }
+                    return stringByteBufferMap;
+                  }
+
+                  @Override
+                  public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    return 1L;
+                  }
+                };
+              }
+
+              @Override
+              public void returnAsyncClient(
+                  RaftService.AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
+            });
   }
 
   private ByteBuffer generateByteBuffer(BatchData batchData) {

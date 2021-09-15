@@ -33,17 +33,25 @@ public class ClientUtils {
 
   public static int getPort(Node node, ClientCategory category) {
     int port = -1;
-    if (category == ClientCategory.DATA) {
-      port = node.getDataPort();
-    } else if (ClientCategory.DATA_HEARTBEAT == category) {
-      port = node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET;
-    } else if (ClientCategory.META == category) {
-      port = node.getMetaPort();
-    } else if (ClientCategory.META_HEARTBEAT == category) {
-      port = node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET;
-    } else if (ClientCategory.SINGLE_MASTER == category) {
-      // special data port type
-      port = node.getMetaPort();
+    switch (category) {
+      case DATA:
+        port = node.getDataPort();
+        break;
+      case DATA_HEARTBEAT:
+        port = node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET;
+        break;
+      case META:
+        port = node.getMetaPort();
+        break;
+      case META_HEARTBEAT:
+        port = node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET;
+        break;
+      case SINGLE_MASTER:
+        // special data client type
+        port = node.getDataPort();
+        break;
+      default:
+        break;
     }
     return port;
   }
