@@ -1457,7 +1457,16 @@ public class PlanExecutor implements IPlanExecutor {
           || insertMultiTabletPlan.isExecuted(i)) {
         continue;
       }
-      insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
+      try {
+        insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
+      } catch (QueryProcessException e) {
+        insertMultiTabletPlan
+            .getResults()
+            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+    }
+    if (!insertMultiTabletPlan.getResults().isEmpty()) {
+      throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
     }
   }
 
