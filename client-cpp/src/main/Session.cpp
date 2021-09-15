@@ -345,6 +345,12 @@ void SessionDataSet::closeOperationHandle() {
     }
 }
 
+/**
+ * When delete variable, make sure release all resource.
+ */
+Session::~Session() {
+    close();
+}
 
 /**
    * check whether the batch has been sorted
