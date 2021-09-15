@@ -154,7 +154,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
     }
     // get write lock for TsFileResource list with timeout
     try {
-      tsFileResourceManager.writeLockWithTimeout("size-tired compaction", 20000);
+      tsFileResourceManager.writeLockWithTimeout("size-tired compaction", 60_000);
     } catch (WriteLockFailedException e) {
       // if current compaction thread couldn't get writelock
       // a WriteLockFailException will be thrown, then terminate the thread itself
@@ -176,22 +176,21 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       for (TsFileResource resource : selectedTsFileResourceList) {
         tsFileResourceList.remove(resource);
       }
-      // delete the old files
-      InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-          selectedTsFileResourceList, fullStorageGroupName);
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
-          fullStorageGroupName);
-      combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}",
-          fullStorageGroupName,
-          targetFileName);
-      if (logFile.exists()) {
-        logFile.delete();
-      }
     } finally {
       tsFileResourceManager.writeUnlock();
+    }
+    // delete the old files
+    InnerSpaceCompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
+    LOGGER.info(
+        "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
+        fullStorageGroupName);
+    combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
+    LOGGER.info(
+        "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}",
+        fullStorageGroupName,
+        targetFileName);
+    if (logFile.exists()) {
+      logFile.delete();
     }
   }
 }
