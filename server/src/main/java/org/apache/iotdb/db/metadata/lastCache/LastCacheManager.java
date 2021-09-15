@@ -71,7 +71,7 @@ public class LastCacheManager {
         IMeasurementSchema schema = node.getSchema();
         if (schema instanceof VectorMeasurementSchema) {
           return lastCacheContainer.getCachedLast(
-              schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()));
+              schema.getSubMeasurementIndex(seriesPath.getMeasurement()));
         }
         return null;
       }
@@ -111,10 +111,10 @@ public class LastCacheManager {
         IMeasurementSchema schema = node.getSchema();
         if (schema instanceof VectorMeasurementSchema) {
           if (lastCacheContainer.isEmpty()) {
-            lastCacheContainer.init(schema.getMeasurementCount());
+            lastCacheContainer.init(schema.getSubMeasurementsCount());
           }
           lastCacheContainer.updateCachedLast(
-              schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()),
+              schema.getSubMeasurementIndex(seriesPath.getMeasurement()),
               timeValuePair,
               highPriorityUpdate,
               latestFlushedTime);
@@ -148,10 +148,10 @@ public class LastCacheManager {
         IMeasurementSchema schema = node.getSchema();
         if (schema instanceof VectorMeasurementSchema) {
           if (lastCacheContainer.isEmpty()) {
-            lastCacheContainer.init(schema.getMeasurementCount());
+            lastCacheContainer.init(schema.getSubMeasurementsCount());
           }
           lastCacheContainer.resetLastCache(
-              schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()));
+              schema.getSubMeasurementIndex(seriesPath.getMeasurement()));
         }
       }
     }
@@ -170,7 +170,7 @@ public class LastCacheManager {
       ILastCacheContainer lastCacheContainer = entityMNode.getLastCacheContainer(measurement);
       IMeasurementSchema schema = node.getSchema();
       if (lastCacheContainer.isEmpty() && (schema instanceof VectorMeasurementSchema)) {
-        lastCacheContainer.init(schema.getMeasurementCount());
+        lastCacheContainer.init(schema.getSubMeasurementsCount());
       }
       node.setLastCacheContainer(lastCacheContainer);
     }
@@ -261,8 +261,8 @@ public class LastCacheManager {
     TimeValuePair lastPair;
     if (schema instanceof VectorMeasurementSchema) {
       int index;
-      for (String measurement : schema.getValueMeasurementIdList()) {
-        index = schema.getMeasurementIdColumnIndex(measurement);
+      for (String measurement : schema.getSubMeasurementsList()) {
+        index = schema.getSubMeasurementIndex(measurement);
         lastPair = lastCacheContainer.getCachedLast(index);
         if (lastPair != null
             && startTime <= lastPair.getTimestamp()

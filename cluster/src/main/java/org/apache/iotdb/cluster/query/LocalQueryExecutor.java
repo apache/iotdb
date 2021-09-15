@@ -307,11 +307,11 @@ public class LocalQueryExecutor {
               try {
                 if (fullPath.contains("$#$")) {
                   String[] array = fullPath.split(":");
-                  List<PartialPath> subSensorsPathList = new ArrayList<>();
+                  List<String> subSensorsList = new ArrayList<>();
                   for (int i = 1; i < array.length; i++) {
-                    subSensorsPathList.add(new PartialPath(array[i]));
+                    subSensorsList.add(array[i]);
                   }
-                  paths.add(new VectorPartialPath(array[0], subSensorsPathList));
+                  paths.add(new VectorPartialPath(array[0], subSensorsList));
                 } else {
                   paths.add(new PartialPath(fullPath));
                 }

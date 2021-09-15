@@ -243,7 +243,7 @@ public class InsertRowPlan extends InsertPlan {
           continue;
         }
         if (isAligned) {
-          dataTypes[i] = measurementMNodes[i].getSchema().getValueTSDataTypeList().get(i);
+          dataTypes[i] = measurementMNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i);
         } else {
           dataTypes[i] = measurementMNodes[i].getSchema().getType();
         }

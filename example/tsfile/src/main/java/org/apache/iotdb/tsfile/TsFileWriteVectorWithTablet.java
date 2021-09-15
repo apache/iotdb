@@ -93,7 +93,7 @@ public class TsFileWriteVectorWithTablet {
           for (int i = 0; i < measurementSchemas.size(); i++) {
             IMeasurementSchema measurementSchema = measurementSchemas.get(i);
             if (measurementSchema instanceof VectorMeasurementSchema) {
-              for (String valueName : measurementSchema.getValueMeasurementIdList()) {
+              for (String valueName : measurementSchema.getSubMeasurementsList()) {
                 tablet.addValue(valueName, row, value);
               }
             }

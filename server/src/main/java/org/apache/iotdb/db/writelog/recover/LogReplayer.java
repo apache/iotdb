@@ -209,15 +209,15 @@ public class LogReplayer {
             new DataTypeMismatchException(
                 mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
       } else if (tPlan.isAligned()
-          && mNodes[i].getSchema().getValueTSDataTypeList().get(i) != tPlan.getDataTypes()[i]) {
+          && mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i) != tPlan.getDataTypes()[i]) {
         tPlan.markFailedMeasurementInsertion(
             i,
             new DataTypeMismatchException(
                 mNodes[i].getName()
                     + "."
-                    + mNodes[i].getSchema().getValueMeasurementIdList().get(i),
+                    + mNodes[i].getSchema().getSubMeasurementsList().get(i),
                 tPlan.getDataTypes()[i],
-                mNodes[i].getSchema().getValueTSDataTypeList().get(i)));
+                mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)));
       }
     }
   }
