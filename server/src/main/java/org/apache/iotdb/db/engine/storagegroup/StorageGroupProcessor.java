@@ -1546,7 +1546,7 @@ public class StorageGroupProcessor {
           }
           tsFileResourceManager.remove(resource, isSeq);
         } finally {
-          resource.writeUnlock("checkFileTTL");
+          resource.writeUnlock();
         }
       }
     } finally {
@@ -2254,7 +2254,7 @@ public class StorageGroupProcessor {
       return;
     }
     for (TsFileResource resource : resources) {
-      resource.writeLock("StorageGroupProcessor.loadUpgradedResources");
+      resource.writeLock();
       try {
         UpgradeUtils.moveUpgradedFiles(resource);
         tsFileResourceManager.addAll(resource.getUpgradedResources(), isseq);
@@ -2269,7 +2269,7 @@ public class StorageGroupProcessor {
       } catch (IOException e) {
         logger.error("Unable to load {}, caused by ", resource, e);
       } finally {
-        resource.writeUnlock("StorageGroupProcessor.loadUpgradedResources");
+        resource.writeUnlock();
       }
     }
     // delete upgrade folder when it is empty
@@ -2596,7 +2596,7 @@ public class StorageGroupProcessor {
               existingTsFile.getTsFile().getAbsolutePath(),
               e);
         } finally {
-          existingTsFile.writeUnlock("StorageGroupProcessor.removeFullyOverlapFiles");
+          existingTsFile.writeUnlock();
         }
       }
     }
@@ -2901,12 +2901,12 @@ public class StorageGroupProcessor {
     if (tsFileResourceToBeDeleted == null) {
       return false;
     }
-    tsFileResourceToBeDeleted.writeLock("StorageGroupProcessor.deleteTsFile");
+    tsFileResourceToBeDeleted.writeLock();
     try {
       tsFileResourceToBeDeleted.remove();
       logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getTsFile());
     } finally {
-      tsFileResourceToBeDeleted.writeUnlock("StorageGroupProcessor.deleteTsFile");
+      tsFileResourceToBeDeleted.writeUnlock();
     }
     return true;
   }
@@ -2960,7 +2960,7 @@ public class StorageGroupProcessor {
     if (tsFileResourceToBeMoved == null) {
       return false;
     }
-    tsFileResourceToBeMoved.writeLock("StorageGroupProcessor.moveTsFile");
+    tsFileResourceToBeMoved.writeLock();
     try {
       tsFileResourceToBeMoved.moveTo(targetDir);
       logger.info(
@@ -2968,7 +2968,7 @@ public class StorageGroupProcessor {
           tsFileResourceToBeMoved.getTsFile(),
           targetDir.getPath());
     } finally {
-      tsFileResourceToBeMoved.writeUnlock("StorageGroupProcessor.moveTsFile");
+      tsFileResourceToBeMoved.writeUnlock();
     }
     return true;
   }

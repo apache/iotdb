@@ -43,7 +43,8 @@ import java.util.PriorityQueue;
  * selected files are always continuous. When the total size of consecutively selected files exceeds
  * the threshold or the number exceeds the threshold, these files are submitted to the inner space
  * compaction task. If a file that is being compacted or not closed is encountered when the
- * threshold is not reached, a compaction task will also be submitted.
+ * threshold is not reached, the selected files will be put into a queue. If the system is idle, the
+ * candidate task in queue will be submitted.
  */
 public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionSelector.class);
@@ -83,11 +84,13 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     tsFileResources.readLock();
     LOGGER.info(
         "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
-            + "target file num is {}, current task num is {}, total task num is {}",
+            + "target file num is {}, current task num is {}, total task num is {}, "
+            + "max task num is {}",
         logicalStorageGroupName + "-" + virtualStorageGroupName,
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize(),
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum(),
         CompactionTaskManager.currentTaskNum.get(),
+        CompactionTaskManager.getInstance().getTaskCount(),
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     int submitTaskNum = 0;
     try {
@@ -220,7 +223,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       if (o1.left.size() != o2.left.size()) {
         return o1.left.size() - o2.left.size();
       } else {
-        return ((int) (o1.right - o2.right));
+        return ((int) (o2.right - o1.right));
       }
     }
   }

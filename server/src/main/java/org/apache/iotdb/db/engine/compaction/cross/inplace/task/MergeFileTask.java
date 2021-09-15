@@ -163,7 +163,7 @@ public class MergeFileTask {
       return;
     }
 
-    seqFile.writeLock("MergeFileTask.moveMergedToOld");
+    seqFile.writeLock();
     try {
       if (Thread.currentThread().isInterrupted()) {
         return;
@@ -223,7 +223,7 @@ public class MergeFileTask {
       restoreOldFile(seqFile);
       throw e;
     } finally {
-      seqFile.writeUnlock("MergeFileTask.moveMergedToOld");
+      seqFile.writeUnlock();
     }
   }
 
@@ -349,7 +349,7 @@ public class MergeFileTask {
 
     updatePlanIndexes(seqFile);
 
-    seqFile.writeLock("MergeFileTask.moveUnmergedToNew");
+    seqFile.writeLock();
     try {
       if (Thread.currentThread().isInterrupted()) {
         return;
@@ -379,7 +379,7 @@ public class MergeFileTask {
         ChunkCache.getInstance().clear();
         TimeSeriesMetadataCache.getInstance().clear();
       }
-      seqFile.writeUnlock("MergeFileTask.moveUnmergedToNew");
+      seqFile.writeUnlock();
     }
   }
 

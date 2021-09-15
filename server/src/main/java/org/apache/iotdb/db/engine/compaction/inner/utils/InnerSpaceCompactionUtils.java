@@ -277,11 +277,13 @@ public class InnerSpaceCompactionUtils {
           continue;
         }
         writer.startChunkGroup(device);
+        // tsfile -> measurement -> List<ChunkMetadata>
         Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge =
             new TreeMap<>(
                 (o1, o2) ->
                     TsFileResourceManager.compareFileName(
                         new File(o1.getFileName()), new File(o2.getFileName())));
+        // tsfile -> iterator to get next Map<Measurement, List<ChunkMetadata>>
         Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
             chunkMetadataListIteratorCache =
                 new TreeMap<>(
@@ -524,7 +526,7 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void deleteTsFile(TsFileResource seqFile) {
-    seqFile.writeLock("InnerSpaceCompactionUtils.deleteTsFile");
+    seqFile.writeLock();
     try {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
@@ -534,7 +536,7 @@ public class InnerSpaceCompactionUtils {
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
     } finally {
-      seqFile.writeUnlock("InnerSpaceCompactionUtils.deleteTsFile");
+      seqFile.writeUnlock();
     }
   }
 

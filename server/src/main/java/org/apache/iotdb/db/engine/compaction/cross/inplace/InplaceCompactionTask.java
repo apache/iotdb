@@ -152,11 +152,11 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.writeLock("InplaceCompaction.removeUnseqFiles");
+      unseqFile.writeLock();
       try {
         unseqFile.remove();
       } finally {
-        unseqFile.writeUnlock("InplaceCompactionTask.removeUnseqFiles");
+        unseqFile.writeUnlock();
       }
     }
   }
@@ -177,7 +177,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
           seqTsFileResourceList.writeUnlock();
         }
         if (fileLockGot) {
-          seqFile.writeUnlock("InplaceCompactionTask.doubleWriteLock");
+          seqFile.writeUnlock();
         }
       }
     }
@@ -185,7 +185,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
   private void doubleWriteUnlock(TsFileResource seqFile) {
     seqTsFileResourceList.writeUnlock();
-    seqFile.writeUnlock("InplaceCompactionTask.doubleWriteUnlock");
+    seqFile.writeUnlock();
   }
 
   private void updateMergeModification(TsFileResource seqFile, List<TsFileResource> unseqFiles) {

@@ -507,22 +507,19 @@ public class TsFileResource {
     return processor;
   }
 
-  public void writeLock(String lockHolder) {
-    logger.info(
-        "{} trying to get write lock of {}, current lock map is {}", lockHolder, file, holderMap);
+  public void writeLock() {
     if (originTsFileResource == null) {
       tsFileLock.writeLock();
     } else {
-      originTsFileResource.writeLock("TsFileResource.writeLock");
+      originTsFileResource.writeLock();
     }
-    logger.info("{} get the write lock of {}", lockHolder, file);
   }
 
-  public void writeUnlock(String lockHolder) {
+  public void writeUnlock() {
     if (originTsFileResource == null) {
       tsFileLock.writeUnlock();
     } else {
-      originTsFileResource.writeUnlock("TsFileResource.writeLock");
+      originTsFileResource.writeUnlock();
     }
   }
 
@@ -530,24 +527,19 @@ public class TsFileResource {
    * If originTsFileResource is not null, we should acquire the read lock of originTsFileResource
    * before construct the current TsFileResource
    */
-  public void readLock(String lockHolder) {
-    logger.info("{} trying to get read lock of {}", lockHolder, file);
+  public void readLock() {
     if (originTsFileResource == null) {
       tsFileLock.readLock();
     } else {
-      originTsFileResource.readLock(lockHolder);
+      originTsFileResource.readLock();
     }
-    logger.info("{} get the read lock of {}", lockHolder, file);
-    holderMap.put(lockHolder, holderMap.getOrDefault(lockHolder, 0) + 1);
   }
 
-  public void readUnlock(String lockHolder) {
-    holderMap.put(lockHolder, holderMap.get(lockHolder) - 1);
-    logger.info("{} release the read lock of {}", lockHolder, file);
+  public void readUnlock() {
     if (originTsFileResource == null) {
       tsFileLock.readUnlock();
     } else {
-      originTsFileResource.readUnlock(lockHolder);
+      originTsFileResource.readUnlock();
     }
   }
 
