@@ -159,10 +159,12 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       // if current compaction thread couldn't get writelock
       // a WriteLockFailException will be thrown, then terminate the thread itself
       LOGGER.warn(
-          "{} [SizeTiredCompactionTask] failed to get write lock, abort the task and delete the target file",
+          "{} [SizeTiredCompactionTask] failed to get write lock, abort the task and delete the target file {}",
           fullStorageGroupName,
+          targetTsFileResource.getTsFile(),
           e);
       targetTsFileResource.getTsFile().delete();
+      logFile.delete();
       throw new InterruptedException(
           String.format(
               "%s [Compaction] compaction abort because cannot acquire write lock",
