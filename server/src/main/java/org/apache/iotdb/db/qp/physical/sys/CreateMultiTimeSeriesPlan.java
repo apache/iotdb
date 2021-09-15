@@ -34,12 +34,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * create multiple timeSeries, could be split to several sub Plans to execute in different DataGroup
@@ -142,6 +137,11 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
 
   public Map<Integer, TSStatus> getResults() {
     return results;
+  }
+
+  @Override
+  public List<PartialPath> getPrefixPaths() {
+    return Collections.emptyList();
   }
 
   public TSStatus[] getFailingStatus() {

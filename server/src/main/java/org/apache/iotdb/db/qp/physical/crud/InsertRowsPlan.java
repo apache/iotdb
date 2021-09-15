@@ -29,11 +29,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class InsertRowsPlan extends InsertPlan implements BatchPlan {
 
@@ -81,6 +77,15 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
       result.addAll(insertRowPlan.getPaths());
     }
     return result;
+  }
+
+  @Override
+  public List<PartialPath> getPrefixPaths() {
+    Set<PartialPath> result = new HashSet<>();
+    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      result.add(insertRowPlan.getDeviceId());
+    }
+    return new ArrayList<>(result);
   }
 
   @Override
