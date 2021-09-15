@@ -170,7 +170,7 @@ public class LastPointReader {
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
     List<IPageReader> pageReaders = FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
-    Iterator it = pageReaders.descendingIterator();
+    Iterator it = ((LinkedList<IPageReader>) pageReaders).descendingIterator();
     while (it.hasNext()) {
       IPageReader pageReader = (IPageReader) it.next();
       Statistics pageStatistics = pageReader.getStatistics();
