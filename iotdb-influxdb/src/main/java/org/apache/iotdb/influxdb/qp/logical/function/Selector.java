@@ -25,35 +25,32 @@ import java.util.List;
 
 public abstract class Selector extends Function {
 
+  // 值对应的时间戳
+  private Long timestamp;
 
-    //值对应的时间戳
-    private Long timestamp;
+  private List<Object> relatedValues;
 
-    private List<Object> relatedValues;
+  public Selector() {}
 
-    public Selector() {
+  public Selector(List<Expression> expressionList) {
+    super(expressionList);
+  }
 
-    }
+  public abstract void updateValueAndRelate(FunctionValue functionValue, List<Object> values);
 
-    public Selector(List<Expression> expressionList) {
-        super(expressionList);
-    }
+  public List<Object> getRelatedValues() {
+    return this.relatedValues;
+  }
 
-    public abstract void updateValueAndRelate(FunctionValue functionValue, List<Object> values);
+  public Long getTimestamp() {
+    return timestamp;
+  }
 
-    public List<Object> getRelatedValues() {
-        return this.relatedValues;
-    }
+  public void setTimestamp(Long timestamp) {
+    this.timestamp = timestamp;
+  }
 
-    public Long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(Long timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public void setRelatedValues(List<Object> relatedValues) {
-        this.relatedValues = relatedValues;
-    }
+  public void setRelatedValues(List<Object> relatedValues) {
+    this.relatedValues = relatedValues;
+  }
 }

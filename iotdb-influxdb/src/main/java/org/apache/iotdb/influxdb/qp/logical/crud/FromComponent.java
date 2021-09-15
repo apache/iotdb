@@ -24,17 +24,15 @@ import java.util.List;
 
 public class FromComponent {
 
+  private List<String> nameList = new ArrayList<>();
 
-    private List<String> nameList = new ArrayList<>();
+  public FromComponent() {}
 
-    public FromComponent() {
-    }
+  public void addNodeName(String name) {
+    nameList.add(name);
+  }
 
-    public void addNodeName(String name) {
-        nameList.add(name);
-    }
-
-    public List<String> getNodeName() {
-        return nameList;
-    }
+  public List<String> getNodeName() {
+    return nameList;
+  }
 }

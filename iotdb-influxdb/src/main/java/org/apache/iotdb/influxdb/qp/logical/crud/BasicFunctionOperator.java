@@ -22,19 +22,19 @@ package org.apache.iotdb.influxdb.qp.logical.crud;
 import org.apache.iotdb.influxdb.qp.constant.FilterConstant;
 
 public class BasicFunctionOperator extends FunctionOperator {
-    public String getValue() {
-        return value;
-    }
+  public String getValue() {
+    return value;
+  }
 
-    public void setValue(String value) {
-        this.value = value;
-    }
+  public void setValue(String value) {
+    this.value = value;
+  }
 
-    protected String value;
+  protected String value;
 
-    public BasicFunctionOperator(FilterConstant.FilterType filterType, String keyName, String value) {
-        super(filterType);
-        this.keyName = keyName;
-        this.value = value;
-    }
+  public BasicFunctionOperator(FilterConstant.FilterType filterType, String keyName, String value) {
+    super(filterType);
+    this.keyName = keyName;
+    this.value = value;
+  }
 }

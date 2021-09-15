@@ -24,31 +24,28 @@ import org.apache.iotdb.influxdb.query.expression.Expression;
 import java.util.List;
 
 public class FirstFunction extends Selector {
-    private Object value;
+  private Object value;
 
-    public FirstFunction(List<Expression> expressionList) {
-        super(expressionList);
-        this.setTimestamp(Long.MAX_VALUE);
+  public FirstFunction(List<Expression> expressionList) {
+    super(expressionList);
+    this.setTimestamp(Long.MAX_VALUE);
+  }
+
+  @Override
+  public void updateValueAndRelate(FunctionValue functionValue, List<Object> values) {
+    Object value = functionValue.getValue();
+    Long timestamp = functionValue.getTimestamp();
+    if (timestamp <= this.getTimestamp()) {
+      this.value = value;
+      this.setTimestamp(timestamp);
+      this.setRelatedValues(values);
     }
+  }
 
-    @Override
-    public void updateValueAndRelate(FunctionValue functionValue, List<Object> values) {
-        Object value = functionValue.getValue();
-        Long timestamp = functionValue.getTimestamp();
-        if (timestamp <= this.getTimestamp()) {
-            this.value = value;
-            this.setTimestamp(timestamp);
-            this.setRelatedValues(values);
-        }
-    }
+  public FirstFunction() {}
 
-    public FirstFunction() {
-    }
-
-
-    @Override
-    public FunctionValue calculate() {
-        return new FunctionValue(value, this.getTimestamp());
-    }
-
+  @Override
+  public FunctionValue calculate() {
+    return new FunctionValue(value, this.getTimestamp());
+  }
 }

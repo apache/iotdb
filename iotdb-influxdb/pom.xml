@@ -38,12 +38,12 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
-            <version>0.12.0</version>
+            <version>LATEST</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
-            <version>0.12.0</version>
+            <version>LATEST</version>
         </dependency>
         <dependency>
             <groupId>org.influxdb</groupId>

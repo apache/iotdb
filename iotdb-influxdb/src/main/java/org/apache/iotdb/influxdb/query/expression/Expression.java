@@ -19,7 +19,4 @@
 
 package org.apache.iotdb.influxdb.query.expression;
 
-public interface Expression {
-
-
-}
+public interface Expression {}

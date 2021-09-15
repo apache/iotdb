@@ -21,9 +21,9 @@ package org.apache.iotdb.influxdb.qp.logical.crud;
 
 import org.apache.iotdb.influxdb.qp.constant.FilterConstant;
 
-public class FunctionOperator extends FilterOperator{
+public class FunctionOperator extends FilterOperator {
 
-    public FunctionOperator(FilterConstant.FilterType filterType) {
-        super(filterType);
-    }
+  public FunctionOperator(FilterConstant.FilterType filterType) {
+    super(filterType);
+  }
 }

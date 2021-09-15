@@ -24,23 +24,21 @@ import org.apache.iotdb.influxdb.query.expression.Expression;
 import java.util.List;
 
 public class CountFunction extends Aggregate {
-    public int countNum = 0;
+  public int countNum = 0;
 
-    public CountFunction(List<Expression> expressionList) {
-        super(expressionList);
-    }
+  public CountFunction(List<Expression> expressionList) {
+    super(expressionList);
+  }
 
-    @Override
-    public void updateValue(FunctionValue functionValue) {
-        this.countNum++;
-    }
+  @Override
+  public void updateValue(FunctionValue functionValue) {
+    this.countNum++;
+  }
 
-    public CountFunction() {
-    }
+  public CountFunction() {}
 
-    @Override
-    public FunctionValue calculate() {
-        return new FunctionValue(String.valueOf(this.countNum), 0L);
-
-    }
+  @Override
+  public FunctionValue calculate() {
+    return new FunctionValue(String.valueOf(this.countNum), 0L);
+  }
 }

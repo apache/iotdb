@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.influxdb.query.expression;
 
-
 public class ResultColumn {
 
   private final Expression expression;
@@ -34,8 +33,6 @@ public class ResultColumn {
     this.expression = expression;
     alias = null;
   }
-
-
 
   public Expression getExpression() {
     return expression;

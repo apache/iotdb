@@ -24,14 +24,11 @@ import org.apache.iotdb.influxdb.query.expression.Expression;
 import java.util.List;
 
 public abstract class Aggregate extends Function {
-    public Aggregate() {
+  public Aggregate() {}
 
-    }
+  public Aggregate(List<Expression> expressionList) {
+    super(expressionList);
+  }
 
-    public Aggregate(List<Expression> expressionList) {
-        super(expressionList);
-    }
-
-    public abstract void updateValue(FunctionValue functionValue);
-
+  public abstract void updateValue(FunctionValue functionValue);
 }

@@ -27,30 +27,27 @@ import java.util.List;
 
 public class SumFunction extends Aggregate {
 
-    private List<Double> numbers = new ArrayList<>();
+  private List<Double> numbers = new ArrayList<>();
 
-    public SumFunction(List<Expression> expressionList) {
-        super(expressionList);
+  public SumFunction(List<Expression> expressionList) {
+    super(expressionList);
+  }
+
+  public SumFunction() {}
+
+  @Override
+  public void updateValue(FunctionValue functionValue) {
+    Object value = functionValue.getValue();
+    if (!(value instanceof Number)) {
+      throw new IllegalArgumentException("not support this type");
     }
 
-    public SumFunction() {
-    }
+    double tmpValue = ((Number) value).doubleValue();
+    numbers.add(tmpValue);
+  }
 
-    @Override
-    public void updateValue(FunctionValue functionValue) {
-        Object value = functionValue.getValue();
-        if (!(value instanceof Number)) {
-            throw new IllegalArgumentException("not support this type");
-        }
-
-        double tmpValue = ((Number) value).doubleValue();
-        numbers.add(tmpValue);
-    }
-
-    @Override
-    public FunctionValue calculate() {
-        return new FunctionValue(
-                numbers.size() == 0 ? numbers : MathUtil.Sum(numbers)
-                , 0L);
-    }
+  @Override
+  public FunctionValue calculate() {
+    return new FunctionValue(numbers.size() == 0 ? numbers : MathUtil.Sum(numbers), 0L);
+  }
 }

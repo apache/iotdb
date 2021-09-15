@@ -20,7 +20,7 @@
 package org.apache.iotdb.influxdb.qp.utils;
 
 public class TypeUtil {
-    public static boolean checkDecimal(Object object) {
-        return object instanceof Number;
-    }
+  public static boolean checkDecimal(Object object) {
+    return object instanceof Number;
+  }
 }

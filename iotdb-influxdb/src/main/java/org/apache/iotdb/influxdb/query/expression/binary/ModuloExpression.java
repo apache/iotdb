@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.influxdb.query.expression.binary;
 
-import  org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.influxdb.query.expression.Expression;
 
 public class ModuloExpression extends BinaryExpression {
 

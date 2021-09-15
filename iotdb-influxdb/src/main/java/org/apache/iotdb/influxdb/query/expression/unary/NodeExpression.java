@@ -22,17 +22,17 @@ package org.apache.iotdb.influxdb.query.expression.unary;
 import org.apache.iotdb.influxdb.query.expression.Expression;
 
 public class NodeExpression implements Expression {
-    protected String name;
+  protected String name;
 
-    public NodeExpression(String name) {
-        this.name = name;
-    }
+  public NodeExpression(String name) {
+    this.name = name;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 }
