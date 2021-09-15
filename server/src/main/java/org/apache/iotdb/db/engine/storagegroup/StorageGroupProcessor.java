@@ -503,6 +503,12 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
+      logger.info(
+          "{} - {} a RecoverMergeTask {} ends after {}ms",
+          logicalStorageGroupName,
+          virtualStorageGroupId,
+          taskName,
+          System.currentTimeMillis() - innerStart);
       recoverCompaction();
       for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
@@ -549,11 +555,11 @@ public class StorageGroupProcessor {
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       }
     }
-
     logger.info(
-        String.format(
-            "the virtual storage group %s[%s] is recovered successfully",
-            logicalStorageGroupName, virtualStorageGroupId));
+        "the virtual storage group {}[{}] is recovered successfully after {}ms",
+        logicalStorageGroupName,
+        virtualStorageGroupId,
+        System.currentTimeMillis() - recoverStart);
   }
 
   private void recoverCompaction() {

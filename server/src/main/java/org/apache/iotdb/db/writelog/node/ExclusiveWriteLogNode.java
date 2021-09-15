@@ -54,27 +54,27 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private final String identifier;
 
-  final String logDirectory;
+  protected final String logDirectory;
 
   private ILogWriter currentFileWriter;
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  volatile ByteBuffer logBufferWorking;
-  volatile ByteBuffer logBufferIdle;
-  volatile ByteBuffer logBufferFlushing;
+  protected volatile ByteBuffer logBufferWorking;
+  protected volatile ByteBuffer logBufferIdle;
+  protected volatile ByteBuffer logBufferFlushing;
 
   // used for the convenience of deletion
   private volatile ByteBuffer[] bufferArray;
 
   private final Object switchBufferCondition = new Object();
-  final ReentrantLock lock = new ReentrantLock();
+  protected final ReentrantLock lock = new ReentrantLock();
   private final ExecutorService FLUSH_BUFFER_THREAD_POOL;
 
   private long fileId = 0;
   private long lastFlushedId = 0;
 
-  int bufferedLogNum = 0;
+  protected int bufferedLogNum = 0;
 
   private final AtomicBoolean deleted = new AtomicBoolean(false);
 

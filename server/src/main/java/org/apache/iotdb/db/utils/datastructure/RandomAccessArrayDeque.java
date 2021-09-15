@@ -81,8 +81,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       initialCapacity |= (initialCapacity >>> 16);
       initialCapacity++;
 
-      if (initialCapacity < 0) // Too many elements, must back off
-      initialCapacity >>>= 1; // Good luck allocating 2 ^ 30 elements
+      if (initialCapacity < 0) { // Too many elements, must back off
+        initialCapacity >>>= 1; // Good luck allocating 2 ^ 30 elements
+      }
     }
     return initialCapacity;
   }
@@ -106,7 +107,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     int n = elements.length;
     int r = n - p; // number of elements to the right of p
     int newCapacity = n << 1;
-    if (newCapacity < 0) throw new IllegalStateException("Sorry, deque too big");
+    if (newCapacity < 0) {
+      throw new IllegalStateException("Sorry, deque too big");
+    }
     Object[] a = new Object[newCapacity];
     System.arraycopy(elements, p, a, 0, r);
     System.arraycopy(elements, 0, a, r, p);
@@ -164,10 +167,14 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    */
   @Override
   public void addFirst(E e) {
-    if (e == null) throw new NullPointerException();
+    if (e == null) {
+      throw new NullPointerException();
+    }
     head = (head - 1) & (elements.length - 1);
     elements[head] = e;
-    if (head == tail) doubleCapacity();
+    if (head == tail) {
+      doubleCapacity();
+    }
   }
 
   /**
@@ -180,9 +187,13 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    */
   @Override
   public void addLast(E e) {
-    if (e == null) throw new NullPointerException();
+    if (e == null) {
+      throw new NullPointerException();
+    }
     elements[tail] = e;
-    if ((tail = (tail + 1) & (elements.length - 1)) == head) doubleCapacity();
+    if ((tail = (tail + 1) & (elements.length - 1)) == head) {
+      doubleCapacity();
+    }
   }
 
   /**
@@ -215,7 +226,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   @Override
   public E removeFirst() {
     E x = pollFirst();
-    if (x == null) throw new NoSuchElementException();
+    if (x == null) {
+      throw new NoSuchElementException();
+    }
     return x;
   }
 
@@ -223,7 +236,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   @Override
   public E removeLast() {
     E x = pollLast();
-    if (x == null) throw new NoSuchElementException();
+    if (x == null) {
+      throw new NoSuchElementException();
+    }
     return x;
   }
 
@@ -232,7 +247,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     int h = head;
     E result = (E) elements[h];
     // Element is null if deque empty
-    if (result == null) return null;
+    if (result == null) {
+      return null;
+    }
     elements[h] = null; // Must null out slot
     head = (h + 1) & (elements.length - 1);
     return result;
@@ -242,7 +259,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   public E pollLast() {
     int t = (tail - 1) & (elements.length - 1);
     E result = (E) elements[t];
-    if (result == null) return null;
+    if (result == null) {
+      return null;
+    }
     elements[t] = null;
     tail = t;
     return result;
@@ -252,7 +271,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   @Override
   public E getFirst() {
     E result = (E) elements[head];
-    if (result == null) throw new NoSuchElementException();
+    if (result == null) {
+      throw new NoSuchElementException();
+    }
     return result;
   }
 
@@ -260,7 +281,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   @Override
   public E getLast() {
     E result = (E) elements[(tail - 1) & (elements.length - 1)];
-    if (result == null) throw new NoSuchElementException();
+    if (result == null) {
+      throw new NoSuchElementException();
+    }
     return result;
   }
 
@@ -287,7 +310,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    */
   @Override
   public boolean removeFirstOccurrence(Object o) {
-    if (o == null) return false;
+    if (o == null) {
+      return false;
+    }
     int mask = elements.length - 1;
     int i = head;
     Object x;
@@ -313,7 +338,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    */
   @Override
   public boolean removeLastOccurrence(Object o) {
-    if (o == null) return false;
+    if (o == null) {
+      return false;
+    }
     int mask = elements.length - 1;
     int i = (tail - 1) & mask;
     Object x;
@@ -471,7 +498,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     final int back = (t - i) & mask;
 
     // Invariant: head <= i < tail mod circularity
-    if (front >= ((t - h) & mask)) throw new ConcurrentModificationException();
+    if (front >= ((t - h) & mask)) {
+      throw new ConcurrentModificationException();
+    }
 
     // Optimize for least element motion
     if (front < back) {
@@ -561,11 +590,15 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
 
     @Override
     public E next() {
-      if (cursor == fence) throw new NoSuchElementException();
+      if (cursor == fence) {
+        throw new NoSuchElementException();
+      }
       E result = (E) elements[cursor];
       // This check doesn't catch all possible comodifications,
       // but does catch the ones that corrupt traversal
-      if (tail != fence || result == null) throw new ConcurrentModificationException();
+      if (tail != fence || result == null) {
+        throw new ConcurrentModificationException();
+      }
       lastRet = cursor;
       cursor = (cursor + 1) & (elements.length - 1);
       return result;
@@ -573,7 +606,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
 
     @Override
     public void remove() {
-      if (lastRet < 0) throw new IllegalStateException();
+      if (lastRet < 0) {
+        throw new IllegalStateException();
+      }
       if (delete(lastRet)) { // if left-shifted, undo increment in next()
         cursor = (cursor - 1) & (elements.length - 1);
         fence = tail;
@@ -592,7 +627,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       while (i != f) {
         E e = (E) a[i];
         i = (i + 1) & m;
-        if (e == null) throw new ConcurrentModificationException();
+        if (e == null) {
+          throw new ConcurrentModificationException();
+        }
         action.accept(e);
       }
     }
@@ -615,17 +652,23 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
 
     @Override
     public E next() {
-      if (cursor == fence) throw new NoSuchElementException();
+      if (cursor == fence) {
+        throw new NoSuchElementException();
+      }
       cursor = (cursor - 1) & (elements.length - 1);
       E result = (E) elements[cursor];
-      if (head != fence || result == null) throw new ConcurrentModificationException();
+      if (head != fence || result == null) {
+        throw new ConcurrentModificationException();
+      }
       lastRet = cursor;
       return result;
     }
 
     @Override
     public void remove() {
-      if (lastRet < 0) throw new IllegalStateException();
+      if (lastRet < 0) {
+        throw new IllegalStateException();
+      }
       if (!delete(lastRet)) {
         cursor = (cursor + 1) & (elements.length - 1);
         fence = head;
@@ -644,12 +687,16 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    */
   @Override
   public boolean contains(Object o) {
-    if (o == null) return false;
+    if (o == null) {
+      return false;
+    }
     int mask = elements.length - 1;
     int i = head;
     Object x;
     while ((x = elements[i]) != null) {
-      if (o.equals(x)) return true;
+      if (o.equals(x)) {
+        return true;
+      }
       i = (i + 1) & mask;
     }
     return false;
@@ -738,10 +785,13 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   @Override
   public <T> T[] toArray(T[] a) {
     int size = size();
-    if (a.length < size)
+    if (a.length < size) {
       a = (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
+    }
     copyElements(a);
-    if (a.length > size) a[size] = null;
+    if (a.length > size) {
+      a[size] = null;
+    }
     return a;
   }
 
@@ -790,7 +840,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       int h = index;
       int n = deq.elements.length;
       if (h != t && ((h + 1) & (n - 1)) != t) {
-        if (h > t) t += n;
+        if (h > t) {
+          t += n;
+        }
         index = ((h + t) >>> 1) & (n - 1);
         return new DeqSpliterator<>(deq, h, index);
       }
@@ -799,7 +851,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
 
     @Override
     public void forEachRemaining(Consumer<? super E> consumer) {
-      if (consumer == null) throw new NullPointerException();
+      if (consumer == null) {
+        throw new NullPointerException();
+      }
       Object[] a = deq.elements;
       int m = a.length - 1;
       int f = getFence();
@@ -808,14 +862,18 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       while (i != f) {
         E e = (E) a[i];
         i = (i + 1) & m;
-        if (e == null) throw new ConcurrentModificationException();
+        if (e == null) {
+          throw new ConcurrentModificationException();
+        }
         consumer.accept(e);
       }
     }
 
     @Override
     public boolean tryAdvance(Consumer<? super E> consumer) {
-      if (consumer == null) throw new NullPointerException();
+      if (consumer == null) {
+        throw new NullPointerException();
+      }
       Object[] a = deq.elements;
       int m = a.length - 1;
       getFence();
@@ -823,7 +881,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       if (i != fence) {
         E e = (E) a[i];
         index = (i + 1) & m;
-        if (e == null) throw new ConcurrentModificationException();
+        if (e == null) {
+          throw new ConcurrentModificationException();
+        }
         consumer.accept(e);
         return true;
       }
@@ -833,7 +893,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     @Override
     public long estimateSize() {
       int n = getFence() - index;
-      if (n < 0) n += deq.elements.length;
+      if (n < 0) {
+        n += deq.elements.length;
+      }
       return n;
     }
 
