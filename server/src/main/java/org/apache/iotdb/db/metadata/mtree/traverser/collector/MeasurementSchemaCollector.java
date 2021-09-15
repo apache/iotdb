@@ -33,6 +33,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
+// This class implements the measurement collection function.
 public class MeasurementSchemaCollector
     extends MeasurementCollector<List<Pair<PartialPath, String[]>>> {
 
