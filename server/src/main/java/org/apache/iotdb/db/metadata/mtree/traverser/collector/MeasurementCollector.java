@@ -64,7 +64,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
         count += 1;
       }
     } else if (schema instanceof VectorMeasurementSchema) {
-      if (idx == nodes.length
+      if (idx >= nodes.length - 1
           && !nodes[nodes.length - 1].equals(PATH_MULTI_LEVEL_WILDCARD)
           && !isPrefixMatch) {
         return;
@@ -88,13 +88,13 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
   @Override
   protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
-    if (idx == nodes.length - 1) {
+    if (idx == nodes.length - 2) {
       IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
       if (schema instanceof VectorMeasurementSchema) {
         List<String> measurements = schema.getSubMeasurementsList();
-        String regex = nodes[idx].replace("*", ".*");
+        String targetNameRegex = nodes[idx + 1].replace("*", ".*");
         for (int i = 0; i < measurements.size(); i++) {
-          if (!Pattern.matches(regex, measurements.get(i))) {
+          if (!Pattern.matches(targetNameRegex, measurements.get(i))) {
             continue;
           }
           if (hasLimit) {

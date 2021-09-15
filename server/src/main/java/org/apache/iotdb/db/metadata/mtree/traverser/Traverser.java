@@ -61,7 +61,7 @@ public abstract class Traverser {
   }
 
   public void traverse() throws MetadataException {
-    traverse(startNode, 1, false, 0);
+    traverse(startNode, 0, false, 0);
   }
 
   protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level)
@@ -77,7 +77,7 @@ public abstract class Traverser {
       return;
     }
 
-    if (idx >= nodes.length) {
+    if (idx >= nodes.length - 1) {
       if (isValid(node)) {
         if (isLevelTraverser) {
           if (targetLevel == level) {
@@ -104,10 +104,10 @@ public abstract class Traverser {
       }
     }
 
-    String nodeName = nodes[idx];
-    if (PATH_MULTI_LEVEL_WILDCARD.equals(nodeName)) {
+    String targetName = nodes[idx + 1];
+    if (PATH_MULTI_LEVEL_WILDCARD.equals(targetName)) {
       processMultiLevelWildcard(node, idx, level);
-    } else if (nodeName.contains(PATH_ONE_LEVEL_WILDCARD)) {
+    } else if (targetName.contains(PATH_ONE_LEVEL_WILDCARD)) {
       processOneLevelWildcard(node, idx, multiLevelWildcard, level);
     } else {
       processNameMatch(node, idx, multiLevelWildcard, level);
@@ -142,9 +142,9 @@ public abstract class Traverser {
 
   protected void processOneLevelWildcard(
       IMNode node, int idx, boolean multiLevelWildcard, int level) throws MetadataException {
-    String regex = nodes[idx].replace("*", ".*");
+    String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     for (IMNode child : node.getChildren().values()) {
-      if (!Pattern.matches(regex, child.getName())) {
+      if (!Pattern.matches(targetNameRegex, child.getName())) {
         continue;
       }
       traverse(child, idx + 1, false, level + 1);
@@ -161,7 +161,7 @@ public abstract class Traverser {
 
     Template upperTemplate = node.getUpperTemplate();
     for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
-      if (!Pattern.matches(regex, schema.getMeasurementId())) {
+      if (!Pattern.matches(targetNameRegex, schema.getMeasurementId())) {
         continue;
       }
       traverse(
@@ -183,7 +183,8 @@ public abstract class Traverser {
 
   protected void processNameMatch(IMNode node, int idx, boolean multiLevelWildcard, int level)
       throws MetadataException {
-    IMNode next = node.getChild(nodes[idx]);
+    String targetName = nodes[idx + 1];
+    IMNode next = node.getChild(targetName);
     if (next != null) {
       traverse(next, idx + 1, false, level + 1);
     }
@@ -198,7 +199,7 @@ public abstract class Traverser {
     }
 
     Template upperTemplate = node.getUpperTemplate();
-    IMeasurementSchema targetSchema = upperTemplate.getSchemaMap().get(nodes[idx]);
+    IMeasurementSchema targetSchema = upperTemplate.getSchemaMap().get(targetName);
     if (targetSchema != null) {
       traverse(
           new MeasurementMNode(node, targetSchema.getMeasurementId(), targetSchema, null),

@@ -49,7 +49,7 @@ public class MeasurementCounter extends CounterTraverser {
     if (schema instanceof MeasurementSchema) {
       count++;
     } else if (schema instanceof VectorMeasurementSchema) {
-      if (idx == nodes.length && !nodes[nodes.length - 1].equals(PATH_MULTI_LEVEL_WILDCARD)) {
+      if (idx >= nodes.length - 1 && !nodes[nodes.length - 1].equals(PATH_MULTI_LEVEL_WILDCARD)) {
         return;
       }
       // only when idx > nodes.length or nodes ends with **
@@ -59,11 +59,11 @@ public class MeasurementCounter extends CounterTraverser {
 
   @Override
   protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
-    if (idx == nodes.length - 1) {
+    if (idx == nodes.length - 2) {
       IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
       if (schema instanceof VectorMeasurementSchema) {
         List<String> measurements = schema.getSubMeasurementsList();
-        String regex = nodes[idx].replace("*", ".*");
+        String regex = nodes[idx + 1].replace("*", ".*");
         for (String measurement : measurements) {
           if (Pattern.matches(regex, measurement)) {
             count++;

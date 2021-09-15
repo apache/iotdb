@@ -42,10 +42,10 @@ public class StorageGroupDeterminator extends StorageGroupCollector<Map<String, 
     String sgName = node.getFullPath();
     // concat the remaining path with the storage group name
     StringBuilder pathWithKnownSG = new StringBuilder(sgName);
-    for (int i = idx; i < nodes.length; i++) {
+    for (int i = idx + 1; i < nodes.length; i++) {
       pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(nodes[i]);
     }
-    if (idx >= nodes.length && nodes[nodes.length - 1].equals(PATH_MULTI_LEVEL_WILDCARD)) {
+    if (idx >= nodes.length - 1 && nodes[nodes.length - 1].equals(PATH_MULTI_LEVEL_WILDCARD)) {
       // the we find the sg match the last node and the last node is a wildcard (find "root
       // .group1", for "root.**"), also append the wildcard (to make "root.group1.**")
       pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(PATH_MULTI_LEVEL_WILDCARD);
