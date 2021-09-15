@@ -436,15 +436,11 @@ public class StorageGroupProcessor {
 
   /** recover from file */
   private void recover() throws StorageGroupProcessorException {
-<<<<<<< HEAD
     long recoverStart = System.currentTimeMillis();
-    logger.info("recovering Storage Group {}", storageGroupName);
-=======
     logger.info(
         String.format(
             "start recovering virtual storage group %s[%s]",
             logicalStorageGroupName, virtualStorageGroupId));
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
@@ -465,18 +461,11 @@ public class StorageGroupProcessor {
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
-<<<<<<< HEAD
-      Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles = splitResourcesByPartition(
-          tmpSeqTsFiles);
-      Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles = splitResourcesByPartition(
-          tmpUnseqTsFiles);
-      long innerStart = System.currentTimeMillis();
-=======
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
           splitResourcesByPartition(tmpUnseqTsFiles);
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
+      long innerStart = System.currentTimeMillis();
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
         recoverTsFiles(value, true);
       }
@@ -494,25 +483,6 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         this.tsFileManagement.mergingModification = new ModificationFile(mergingMods.getPath());
       }
-<<<<<<< HEAD
-      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(
-          new ArrayList<>(tsFileManagement.getTsFileList(true)),
-          tsFileManagement.getTsFileList(false), storageGroupSysDir.getPath(),
-          tsFileManagement::mergeEndAction,
-          taskName,
-          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
-
-      innerStart = System.currentTimeMillis();
-      logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
-      recoverMergeTask
-          .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-      if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
-        mergingMods.delete();
-      }
-      logger.info("{} a RecoverMergeTask {} ends after {}ms", storageGroupName, taskName,
-          System.currentTimeMillis() - innerStart);
-      tsFileManagement.recover();
-=======
       RecoverMergeTask recoverMergeTask =
           new RecoverMergeTask(
               new ArrayList<>(tsFileManagement.getTsFileList(true)),
@@ -522,6 +492,7 @@ public class StorageGroupProcessor {
               taskName,
               IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
               logicalStorageGroupName);
+      innerStart = System.currentTimeMillis();
       logger.info(
           "{} - {} a RecoverMergeTask {} starts...",
           logicalStorageGroupName,
@@ -549,7 +520,6 @@ public class StorageGroupProcessor {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
       updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
@@ -571,11 +541,6 @@ public class StorageGroupProcessor {
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
-<<<<<<< HEAD
-    logger.info("recovered Storage Group {} after {}ms", storageGroupName,
-        System.currentTimeMillis() - recoverStart);
-  }
-=======
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()
         && seqTsFileResources.size() > 0) {
@@ -584,7 +549,6 @@ public class StorageGroupProcessor {
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       }
     }
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 
     logger.info(
         String.format(
@@ -811,7 +775,9 @@ public class StorageGroupProcessor {
           writer =
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
-        logger.debug("Recovery of {} costs {}ms", tsFileResource.getTsFile(),
+        logger.debug(
+            "Recovery of {} costs {}ms",
+            tsFileResource.getTsFile(),
             System.currentTimeMillis() - start);
       } catch (StorageGroupProcessorException e) {
         logger.warn(

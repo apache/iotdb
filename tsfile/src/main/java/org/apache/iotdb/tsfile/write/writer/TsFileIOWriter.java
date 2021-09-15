@@ -143,14 +143,8 @@ public class TsFileIOWriter {
 
   public void startChunkGroup(String deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
-<<<<<<< HEAD
-    currentChunkGroupStartOffset = out.getPosition();
-    if (logger.isTraceEnabled()) {
-      logger.trace("start chunk group:{}, file position {}", deviceId, out.getPosition());
-=======
     if (logger.isDebugEnabled()) {
       logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
     }
     chunkMetadataList = new ArrayList<>();
     ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);

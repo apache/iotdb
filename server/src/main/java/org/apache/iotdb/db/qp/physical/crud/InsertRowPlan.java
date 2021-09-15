@@ -88,20 +88,13 @@ public class InsertRowPlan extends InsertPlan {
     this.time = insertTime;
     this.prefixPath = prefixPath;
     this.measurements = measurementList;
-<<<<<<< HEAD
-    this.dataTypes = new TSDataType[measurements.length];
-    // We need to create an Object[] for the data type casting, because we can not set Float, Long to String[i]
+    this.dataTypes = new TSDataType[insertValues.length];
+    // We need to create an Object[] for the data type casting, because we can not set Float, Long
+    // to String[i]
     if (insertValues != null) {
       this.values = new Object[measurements.length];
       System.arraycopy(insertValues, 0, values, 0, measurements.length);
     }
-=======
-    this.dataTypes = new TSDataType[insertValues.length];
-    // We need to create an Object[] for the data type casting, because we can not set Float, Long
-    // to String[i]
-    this.values = new Object[insertValues.length];
-    System.arraycopy(insertValues, 0, values, 0, insertValues.length);
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
     isNeedInferType = true;
   }
 
@@ -651,7 +644,7 @@ public class InsertRowPlan extends InsertPlan {
     InsertRowPlan baseInsertRowPlan = (InsertRowPlan) base;
 
     this.time = getDiffTime(buffer, baseInsertRowPlan.getTime());
-    this.deviceId = baseInsertRowPlan.deviceId;
+    this.prefixPath = baseInsertRowPlan.prefixPath;
 
     this.measurements = baseInsertRowPlan.measurements;
     this.dataTypes = baseInsertRowPlan.dataTypes;

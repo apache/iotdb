@@ -43,9 +43,7 @@ public class BatchLogReader implements ILogReader {
 
   boolean fileCorrupted = false;
 
-  BatchLogReader() {
-
-  }
+  BatchLogReader() {}
 
   BatchLogReader(ByteBuffer buffer) {
     List<PhysicalPlan> logs = readLogs(buffer);

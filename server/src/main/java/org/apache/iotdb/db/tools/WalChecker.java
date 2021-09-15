@@ -18,21 +18,15 @@
  */
 package org.apache.iotdb.db.tools;
 
-<<<<<<< HEAD
-import static org.apache.iotdb.db.writelog.node.DifferentialWriteLogNode.WINDOW_LENGTH;
-import static org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode.WAL_FILE_NAME;
-=======
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

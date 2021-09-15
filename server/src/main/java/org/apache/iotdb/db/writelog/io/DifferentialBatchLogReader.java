@@ -17,29 +17,31 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.db.writelog.io;
 
-import static org.apache.iotdb.db.writelog.node.DifferentialWriteLogNode.WINDOW_LENGTH;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.Factory;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.datastructure.RandomAccessArrayDeque;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.writelog.node.DifferentialWriteLogNode.WINDOW_LENGTH;
 
 public class DifferentialBatchLogReader extends BatchLogReader {
 
   private static final Logger logger = LoggerFactory.getLogger(DifferentialBatchLogReader.class);
   private RandomAccessArrayDeque<PhysicalPlan> planWindow;
 
-  public DifferentialBatchLogReader(ByteBuffer buffer, RandomAccessArrayDeque<PhysicalPlan> planWindow) {
+  public DifferentialBatchLogReader(
+      ByteBuffer buffer, RandomAccessArrayDeque<PhysicalPlan> planWindow) {
     this.planWindow = planWindow;
     List<PhysicalPlan> logs = readLogs(buffer);
     this.planIterator = logs.iterator();

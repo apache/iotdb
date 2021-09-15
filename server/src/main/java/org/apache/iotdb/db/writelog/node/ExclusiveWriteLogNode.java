@@ -28,12 +28,9 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.db.writelog.io.MultiFileLogReader;
-<<<<<<< HEAD
 import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
-=======
 
 import org.apache.commons.io.FileUtils;
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,44 +52,24 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
 
-<<<<<<< HEAD
-  String identifier;
-
-  String logDirectory;
-=======
   private final String identifier;
 
-  private final String logDirectory;
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
+  final String logDirectory;
 
   private ILogWriter currentFileWriter;
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private volatile ByteBuffer logBufferWorking;
-  private volatile ByteBuffer logBufferIdle;
-  private volatile ByteBuffer logBufferFlushing;
+  volatile ByteBuffer logBufferWorking;
+  volatile ByteBuffer logBufferIdle;
+  volatile ByteBuffer logBufferFlushing;
 
-<<<<<<< HEAD
-  ByteBuffer logBufferWorking = ByteBuffer
-      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-  ByteBuffer logBufferIdle = ByteBuffer
-      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-  ByteBuffer logBufferFlushing;
-
-  private final Object switchBufferCondition = new Object();
-  ReentrantLock lock = new ReentrantLock();
-  private static final ExecutorService FLUSH_BUFFER_THREAD_POOL =
-      Executors.newCachedThreadPool(
-          new ThreadFactoryBuilder().setNameFormat("Flush-WAL-Thread-%d").setDaemon(true).build());
-=======
   // used for the convenience of deletion
   private volatile ByteBuffer[] bufferArray;
 
   private final Object switchBufferCondition = new Object();
-  private final ReentrantLock lock = new ReentrantLock();
+  final ReentrantLock lock = new ReentrantLock();
   private final ExecutorService FLUSH_BUFFER_THREAD_POOL;
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 
   private long fileId = 0;
   private long lastFlushedId = 0;

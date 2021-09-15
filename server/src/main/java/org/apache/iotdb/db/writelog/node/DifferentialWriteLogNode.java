@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.writelog.node;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.nio.BufferOverflowException;
-import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -33,15 +28,22 @@ import org.apache.iotdb.db.writelog.io.DifferentialSingleFileLogReader;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.MultiFileLogReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.BufferOverflowException;
+import java.util.Arrays;
+import java.util.Comparator;
+
 /**
- * DifferentialWriteLogNode maintains a reduced plan window (reduced means the plans do not
- * contain unnecessary fields for differentiation, e.g., values and timestamps in InsertPlan).
- * When a plan is to be serialized, if a similar log can be found with in the window, identical
- * fields (like deviceId, measurementIds, dataTypes) will be referenced from the similar log and
- * remove the necessity of serializing them more than once.
+ * DifferentialWriteLogNode maintains a reduced plan window (reduced means the plans do not contain
+ * unnecessary fields for differentiation, e.g., values and timestamps in InsertPlan). When a plan
+ * is to be serialized, if a similar log can be found with in the window, identical fields (like
+ * deviceId, measurementIds, dataTypes) will be referenced from the similar log and remove the
+ * necessity of serializing them more than once.
  */
 public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
 
@@ -72,7 +74,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
       sync();
       serialize(plan, similarPlanIndex);
     }
-    bufferedLogNum ++;
+    bufferedLogNum++;
     CommonUtils.updatePlanWindow(plan, WINDOW_LENGTH, planWindow);
   }
 
@@ -101,11 +103,11 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
     plan.serialize(logBufferWorking);
   }
 
-  private void serializeDifferentially(PhysicalPlan plan,
-      Pair<PhysicalPlan, Short> similarPlanIndex) {
+  private void serializeDifferentially(
+      PhysicalPlan plan, Pair<PhysicalPlan, Short> similarPlanIndex) {
     if (plan instanceof InsertPlan) {
-      serializeDifferentially(((InsertPlan) plan), ((InsertPlan) similarPlanIndex.left),
-          similarPlanIndex.right);
+      serializeDifferentially(
+          ((InsertPlan) plan), ((InsertPlan) similarPlanIndex.left), similarPlanIndex.right);
     } else {
       serializeNonDifferentially(plan);
     }
@@ -140,15 +142,16 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   private boolean isPlanSimilarEnough(InsertPlan planA, InsertPlan planB) {
     // data types are also compared because the timeseries may be deleted and recreated with
     // different types between two insertions
-    return planA.getDeviceId().equals(planB.getDeviceId()) &&
-        Arrays.equals(planA.getMeasurements(), planB.getMeasurements()) &&
-        Arrays.equals(planA.getDataTypes(), planB.getDataTypes());
+    return planA.getPrefixPath().equals(planB.getPrefixPath())
+        && Arrays.equals(planA.getMeasurements(), planB.getMeasurements())
+        && Arrays.equals(planA.getDataTypes(), planB.getDataTypes());
   }
 
   @Override
   public ILogReader getLogReader() {
     File[] logFiles = SystemFileFactory.INSTANCE.getFile(logDirectory).listFiles();
-    Arrays.sort(logFiles,
+    Arrays.sort(
+        logFiles,
         Comparator.comparingInt(f -> Integer.parseInt(f.getName().replace(WAL_FILE_NAME, ""))));
     return new MultiFileLogReader(logFiles, DifferentialSingleFileLogReader::new);
   }

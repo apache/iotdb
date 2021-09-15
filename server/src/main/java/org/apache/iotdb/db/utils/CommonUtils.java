@@ -20,6 +20,9 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -40,20 +43,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Queue;
 import java.util.List;
+import java.util.Queue;
 import java.util.stream.Stream;
-<<<<<<< HEAD
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.utils.Binary;
-=======
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
@@ -173,21 +165,27 @@ public class CommonUtils {
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
   }
 
-  public static void updatePlanWindow(PhysicalPlan plan, int windowLength,
-      Queue<PhysicalPlan> planWindow) {
+  public static void updatePlanWindow(
+      PhysicalPlan plan, int windowLength, Queue<PhysicalPlan> planWindow) {
     if (planWindow.size() >= windowLength) {
       planWindow.poll();
     }
     // remove unnecessary fields as bases to reduce memory footprint
     if (plan instanceof InsertRowPlan) {
       InsertRowPlan insertRowPlan = (InsertRowPlan) plan;
-      plan = new InsertRowPlan(insertRowPlan.getDeviceId(),
-          insertRowPlan.getTime(), insertRowPlan.getMeasurements(), null);
+      String[] insertValues = null;
+      plan =
+          new InsertRowPlan(
+              insertRowPlan.getPrefixPath(),
+              insertRowPlan.getTime(),
+              insertRowPlan.getMeasurements(),
+              insertValues);
       ((InsertRowPlan) plan).setDataTypes(insertRowPlan.getDataTypes());
     } else if (plan instanceof InsertTabletPlan) {
       InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
-      plan = new InsertTabletPlan(insertTabletPlan.getDeviceId(),
-          insertTabletPlan.getMeasurements());
+      plan =
+          new InsertTabletPlan(
+              insertTabletPlan.getPrefixPath(), insertTabletPlan.getMeasurements());
       ((InsertTabletPlan) plan).setDataTypes(insertTabletPlan.getDataTypes());
     }
     planWindow.add(plan);

@@ -4,13 +4,14 @@
 
 package org.apache.iotdb.db.writelog.io;
 
-import static org.apache.iotdb.db.writelog.node.DifferentialWriteLogNode.WINDOW_LENGTH;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.datastructure.RandomAccessArrayDeque;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.datastructure.RandomAccessArrayDeque;
+
+import static org.apache.iotdb.db.writelog.node.DifferentialWriteLogNode.WINDOW_LENGTH;
 
 public class DifferentialSingleFileLogReader extends SingleFileLogReader {
 

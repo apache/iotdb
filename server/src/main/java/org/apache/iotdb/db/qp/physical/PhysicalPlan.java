@@ -25,24 +25,16 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-<<<<<<< HEAD
-=======
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-<<<<<<< HEAD
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-=======
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
@@ -51,10 +43,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-<<<<<<< HEAD
-=======
 import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -459,9 +448,9 @@ public abstract class PhysicalPlan {
       return plan;
     }
 
-    public static PhysicalPlan create(ByteBuffer buffer,
-        RandomAccessArrayDeque<PhysicalPlan> planWindow) throws IOException,
-        IllegalPathException {
+    public static PhysicalPlan create(
+        ByteBuffer buffer, RandomAccessArrayDeque<PhysicalPlan> planWindow)
+        throws IOException, IllegalPathException {
       short baseIndex = buffer.getShort();
       int typeNum = buffer.get();
       if (typeNum >= PhysicalPlanType.values().length) {
@@ -484,8 +473,8 @@ public abstract class PhysicalPlan {
           if (baseIndex < 0) {
             plan.deserialize(buffer);
           } else {
-            InsertTabletPlan baseInsertTabletPlan = (InsertTabletPlan) getPlan(planWindow,
-                baseIndex);
+            InsertTabletPlan baseInsertTabletPlan =
+                (InsertTabletPlan) getPlan(planWindow, baseIndex);
             plan.deserialize(buffer, baseInsertTabletPlan);
           }
           break;
@@ -495,8 +484,8 @@ public abstract class PhysicalPlan {
       return plan;
     }
 
-    private static PhysicalPlan getPlan(RandomAccessArrayDeque<PhysicalPlan> planWindow,
-        int index) {
+    private static PhysicalPlan getPlan(
+        RandomAccessArrayDeque<PhysicalPlan> planWindow, int index) {
       return planWindow.get(index);
     }
   }
@@ -608,7 +597,10 @@ public abstract class PhysicalPlan {
   }
 
   public enum TimeDiffType {
-    BYTE, SHORT, INT, LONG;
+    BYTE,
+    SHORT,
+    INT,
+    LONG;
 
     public static TimeDiffType fromDiff(long timeDiff) {
       if (Byte.MIN_VALUE <= timeDiff && timeDiff <= Byte.MAX_VALUE) {

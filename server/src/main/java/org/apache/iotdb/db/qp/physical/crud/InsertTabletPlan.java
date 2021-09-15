@@ -160,13 +160,8 @@ public class InsertTabletPlan extends InsertPlan {
     subSerialize(stream);
   }
 
-<<<<<<< HEAD
-    putString(stream, deviceId.getFullPath());
-
-=======
   public void subSerialize(DataOutputStream stream) throws IOException {
     putString(stream, prefixPath.getFullPath());
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -345,7 +340,7 @@ public class InsertTabletPlan extends InsertPlan {
   public void deserialize(ByteBuffer buffer, PhysicalPlan base) {
     InsertTabletPlan baseInsertTabletPlan = (InsertTabletPlan) base;
 
-    this.deviceId = baseInsertTabletPlan.deviceId;
+    this.prefixPath = baseInsertTabletPlan.prefixPath;
 
     this.measurements = baseInsertTabletPlan.getMeasurements();
 
@@ -390,16 +385,11 @@ public class InsertTabletPlan extends InsertPlan {
     }
   }
 
-
   private void serializeValues(DataOutputStream outputStream) throws IOException {
-<<<<<<< HEAD
-    for (int i = 0; i < measurements.length; i++) {
-=======
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;
       }
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
       serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
     }
   }
@@ -537,12 +527,7 @@ public class InsertTabletPlan extends InsertPlan {
     int rows = buffer.getInt();
     rowCount = rows;
     this.times = new long[rows];
-<<<<<<< HEAD
-    deserializeTimes(buffer, rows);
-    updateTimesCache();
-=======
     times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
->>>>>>> 255bc619e650b3123989138e00ff6e985c8287df
 
     boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
     if (hasBitMaps) {

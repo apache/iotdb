@@ -278,7 +278,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       long currentPageSize = pageWriter.estimateMaxMemSize();
       if (currentPageSize > pageSizeThreshold) { // memory size exceeds threshold
         // we will write the current page
-        logger.trace(
+        logger.debug(
             "enough size, write page {}, pageSizeThreshold:{}, currentPateSize:{}, valueCountInOnePage:{}",
             measurementSchema.getMeasurementId(),
             pageSizeThreshold,

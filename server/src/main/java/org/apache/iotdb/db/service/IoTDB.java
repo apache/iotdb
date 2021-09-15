@@ -102,7 +102,9 @@ public class IoTDB implements IoTDBMBean {
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
-    logger.info("{} has started after {}ms.", IoTDBConstant.GLOBAL_DB_NAME,
+    logger.info(
+        "{} has started after {}ms.",
+        IoTDBConstant.GLOBAL_DB_NAME,
         System.currentTimeMillis() - startTime);
   }
 
