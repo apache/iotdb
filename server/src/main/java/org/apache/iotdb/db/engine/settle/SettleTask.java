@@ -66,6 +66,7 @@ public class SettleTask extends WrappedRunnable {
 
     if (SettleService.getFilesToBeSettledCount().get()
         == 0) {  //delete settle log when finishing settling all files
+      SettleLog.closeLogWriter();
       fsFactory.getFile(SettleLog.getSettleLogPath()).delete();
       SettleService.getINSTANCE().stop();
       logger.info("All files settled successfully! ");

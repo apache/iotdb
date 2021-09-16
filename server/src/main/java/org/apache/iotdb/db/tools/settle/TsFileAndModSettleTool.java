@@ -116,11 +116,12 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
               new FileReader(
                   FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath())))) {
         String line = null;
-        while ((line = settleLogReader.readLine()) != null) {
+        while ((line = settleLogReader.readLine()) != null && !line.equals("")) {
           String oldFilePath = line.split(SettleLog.COMMA_SEPERATOR)[0];
           Integer settleCheckStatus = Integer.parseInt(line.split(SettleLog.COMMA_SEPERATOR)[1]);
           //String oldFileName = new File(oldFilePath).getName();
           if(settleCheckStatus== SettleCheckStatus.SETTLE_SUCCESS.getCheckStatus()){ //settle success
+            recoverSettleFileMap.remove(oldFilePath);
             continue;
           }
           recoverSettleFileMap.put(oldFilePath,settleCheckStatus);  //in recoverSettleFileMap, each crashed file's settleCheckStatus maybe 1 or 2
@@ -139,7 +140,7 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
             SettleLog.getSettleLogPath(),
             e);
       } finally {
-        FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath()).delete();
+        //FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath()).delete();
       }
     }
   }
