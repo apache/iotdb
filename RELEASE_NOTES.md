@@ -27,6 +27,7 @@
 * [IOTDB-1287] Fix C++ class Session has 2 useless sort()
 * [IOTDB-1289] fix CPP mem-leak in SessionExample.cpp insertRecords()
 * [IOTDB-1619] Fix an error msg when restart iotdb-cluster
+* [IOTDB-1629] fix the NPE when using value fill in cluster mode
 * [IOTDB-1632] Fix Value fill function fills even when the data exists
 * [IOTDB-1659] Fix Windows CLI cannot set maxPRC less than or equal to 0
 * [IOTDB-1670] Fix cli -e mode didn't fetch timestamp_precision from server
@@ -35,6 +36,9 @@
 * [IOTDB-1678] Fix client-cpp session bug: can cause connection leak.
 * [IOTDB-1679] client-cpp: Session descontruction need release server resource
 * [IOTDB-1690] Fix align by device type cast error
+* [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
+* fix IoTDB restart does not truncate broken ChunkGroup bug
+* fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
 
 
