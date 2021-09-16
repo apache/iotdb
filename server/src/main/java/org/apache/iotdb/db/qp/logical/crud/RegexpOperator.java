@@ -121,4 +121,8 @@ public class RegexpOperator extends FunctionOperator {
   public String toString() {
     return "[" + singlePath.getFullPath() + value + "]";
   }
+
+  public String getValue() {
+    return value;
+  }
 }

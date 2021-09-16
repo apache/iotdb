@@ -83,7 +83,14 @@ public abstract class ClusterIT extends Cases {
               "jdbc:iotdb://" + readIps[i] + ":" + readPorts[i], "root", "root");
       readStatements[i] = readConnections[i].createStatement();
     }
-    session = new Session(getWriteRpcIp(), getWriteRpcPort());
+    session =
+        new Session.Builder()
+            .host(getWriteRpcIp())
+            .port(getWriteRpcPort())
+            .username("root")
+            .password("root")
+            .enableCacheLeader(false)
+            .build();
     session.open();
     TimeUnit.MILLISECONDS.sleep(3000);
   }

@@ -79,22 +79,22 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
-  public List<String> getValueMeasurementIdList() {
+  public List<String> getSubMeasurementsList() {
     return Arrays.asList("s1", "s2", "s3");
   }
 
   @Override
-  public List<TSDataType> getValueTSDataTypeList() {
+  public List<TSDataType> getSubMeasurementsTSDataTypeList() {
     return Arrays.asList(TSDataType.FLOAT, TSDataType.INT32, TSDataType.DOUBLE);
   }
 
   @Override
-  public List<TSEncoding> getValueTSEncodingList() {
+  public List<TSEncoding> getSubMeasurementsTSEncodingList() {
     return Arrays.asList(TSEncoding.PLAIN, TSEncoding.PLAIN, TSEncoding.PLAIN);
   }
 
   @Override
-  public List<Encoder> getValueEncoderList() {
+  public List<Encoder> getSubMeasurementsEncoderList() {
     return Arrays.asList(
         new PlainEncoder(TSDataType.FLOAT, 0),
         new PlainEncoder(TSDataType.INT32, 0),
@@ -122,17 +122,17 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
-  public int getMeasurementIdColumnIndex(String measurementId) {
+  public int getSubMeasurementIndex(String measurementId) {
     return 0;
   }
 
   @Override
-  public int getMeasurementCount() {
+  public int getSubMeasurementsCount() {
     return 0;
   }
 
   @Override
-  public boolean isCompatible(String measurementId) {
+  public boolean containsSubMeasurement(String measurementId) {
     return false;
   }
 }

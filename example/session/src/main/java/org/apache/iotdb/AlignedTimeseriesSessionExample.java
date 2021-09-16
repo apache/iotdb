@@ -67,7 +67,7 @@ public class AlignedTimeseriesSessionExample {
 
     selectWithAggregationTest();
 
-    // selectWithAlignByDeviceTest();
+    selectWithAlignByDeviceTest();
 
     session.close();
   }
@@ -255,11 +255,11 @@ public class AlignedTimeseriesSessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(0),
+          schemaList.get(0).getSubMeasurementsList().get(0),
           rowIndex,
           new SecureRandom().nextLong());
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(1),
+          schemaList.get(0).getSubMeasurementsList().get(1),
           rowIndex,
           new SecureRandom().nextInt());
 
