@@ -20,6 +20,23 @@
 
 -->
 
+# Apache IoTDB 0.12.3
+
+## Bug Fixes
+* [IOTDB-1275] Fix backgroup exec for cli -e function causes an infinite loop
+* [IOTDB-1287] Fix C++ class Session has 2 useless sort()
+* [IOTDB-1289] fix CPP mem-leak in SessionExample.cpp insertRecords()
+* [IOTDB-1619] Fix an error msg when restart iotdb-cluster
+* [IOTDB-1632] Fix Value fill function fills even when the data exists
+* [IOTDB-1659] Fix Windows CLI cannot set maxPRC less than or equal to 0
+* [IOTDB-1670] Fix cli -e mode didn't fetch timestamp_precision from server
+* [IOTDB-1674] Fix command interpret error causing somaxconn warning failed
+* [IOTDB-1677] Fix not generate file apache-iotdb-0.x.x-client-cpp-linux-x86_64-bin.zip.sha512
+* [IOTDB-1678] Fix client-cpp session bug: can cause connection leak.
+* [IOTDB-1679] client-cpp: Session descontruction need release server resource
+* change sync version check to major version
+
+
 # Apache IoTDB 0.12.2
 
 ## New Features
