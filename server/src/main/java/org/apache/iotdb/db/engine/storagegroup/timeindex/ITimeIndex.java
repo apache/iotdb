@@ -170,4 +170,6 @@ public interface ITimeIndex {
    * @return true if the priority of this timeIndex is higher than the argument
    */
   int compareDegradePriority(ITimeIndex timeIndex);
+
+  long[] getParts();
 }

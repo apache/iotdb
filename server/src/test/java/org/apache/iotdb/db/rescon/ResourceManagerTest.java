@@ -42,7 +42,6 @@ public class ResourceManagerTest {
 
   static final String RESOURCE_MANAGER_TEST_SG = "root.resourceManagerTest";
   private int seqFileNum = 10;
-  int unseqFileNum = 0;
   private int measurementNum = 10;
   int deviceNum = 10;
   long ptNum = 100;
@@ -75,10 +74,8 @@ public class ResourceManagerTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setTimeIndexMemoryProportion(timeIndexMemoryProportion);
-    IoTDBDescriptor.getInstance().getConfig().setTimeIndexLevel(String.valueOf(timeIndexLevel));
+    CONFIG.setTimeIndexMemoryProportion(timeIndexMemoryProportion);
+    CONFIG.setTimeIndexLevel(String.valueOf(timeIndexLevel));
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
@@ -186,7 +183,7 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
-    long reducedMemory = tsFileResource.releaseMemory();
+    long reducedMemory = tsFileResource.degradeTimeIndex();
     assertEquals(previousRamSize - tsFileResource.calculateRamSize(), reducedMemory);
     assertEquals(
         TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
@@ -195,11 +192,6 @@ public class ResourceManagerTest {
   @Test
   public void testDegradeToFileTimeIndex() throws IOException, WriteProcessException {
     double smallMemoryProportion = Math.pow(10, -6);
-    //    IoTDBDescriptor.getInstance()
-    //        .getConfig()
-    //        .setTimeIndexMemoryProportion(smallMemoryProportion);
-
-    double realMemoryThreshold = allocateMemoryForRead * smallMemoryProportion;
     File file =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
@@ -214,18 +206,11 @@ public class ResourceManagerTest {
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.updatePlanIndexes((long) 0);
-    //    System.out.println("memory for time index before prepare file " +
-    // tsFileResource.calculateRamSize());
     prepareFile(tsFileResource, 0, ptNum, 0);
-    //    long previousRamSize = tsFileResource.calculateRamSize();
-    //    System.out.println("memory for time index " + realMemoryThreshold + " " +
-    // previousRamSize);
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     tsFileResourceManager.setTimeIndexMemoryThreshold(smallMemoryProportion);
-    //    System.out.println("real memory for time index " +
-    // tsFileResourceManager.getTimeIndexMemoryThreshold());
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     assertEquals(
         TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
@@ -234,7 +219,6 @@ public class ResourceManagerTest {
   @Test
   public void testNotDegradeToFileTimeIndex() throws IOException, WriteProcessException {
     double largeMemoryProportion = Math.pow(10, -5);
-    double realMemoryThreshold = allocateMemoryForRead * largeMemoryProportion;
     File file =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
@@ -357,10 +341,7 @@ public class ResourceManagerTest {
   public void testAllFileTimeIndexDegrade() throws IOException, WriteProcessException {
     double timeIndexMemoryProportion = Math.pow(10, -6);
     long reducedMemory = 0;
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setTimeIndexLevel(String.valueOf(TimeIndexLevel.FILE_TIME_INDEX));
-    double realMemoryThreshold = allocateMemoryForRead * timeIndexMemoryProportion;
+    CONFIG.setTimeIndexLevel(String.valueOf(TimeIndexLevel.FILE_TIME_INDEX));
     tsFileResourceManager.setTimeIndexMemoryThreshold(timeIndexMemoryProportion);
     try {
       for (int i = 0; i < seqFileNum; i++) {
@@ -397,6 +378,4 @@ public class ResourceManagerTest {
     }
   }
 
-  @Test
-  public void removeTsFileResource() {}
 }

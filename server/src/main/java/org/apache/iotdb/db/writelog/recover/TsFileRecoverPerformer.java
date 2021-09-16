@@ -242,6 +242,7 @@ public class TsFileRecoverPerformer {
       }
 
       restorableTsFileIOWriter.endFile();
+      tsFileResource.close();
       tsFileResource.serialize();
 
       // otherwise this file is not closed before crush, do nothing so we can continue writing

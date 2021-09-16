@@ -186,6 +186,15 @@ public class DeviceTimeIndex implements ITimeIndex {
         + RamUsageEstimator.sizeOf(endTimes);
   }
 
+  public long[] getParts() {
+    for (long k : deviceToIndex.values()) {
+      System.out.println("devices " + k);
+    }
+
+    long a[] = {RamUsageEstimator.sizeOf(deviceToIndex), RamUsageEstimator.sizeOf(startTimes), RamUsageEstimator.sizeOf(startTimes)};
+    return  a;
+  }
+
   private int getDeviceIndex(String deviceId) {
     int index;
     if (deviceToIndex.containsKey(deviceId)) {

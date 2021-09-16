@@ -493,10 +493,9 @@ public class TsFileResource {
     }
     processor = null;
     chunkMetadataList = null;
-    //    System.out.println("close before " + calculateRamSize());
+//    System.out.println("before " + calculateRamSize());
     timeIndex.close();
-    //    System.out.println("close after " + calculateRamSize());
-    //    tsFileResourceManager.registerSealedTsFileResource(this);
+//    System.out.println("after " + calculateRamSize());
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
@@ -863,21 +862,32 @@ public class TsFileResource {
     return timeIndex.compareDegradePriority(tsFileResource.timeIndex);
   }
 
-  public long releaseMemory() {
+  /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
+  public long degradeTimeIndex() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
+    // if current timeIndex is FileTimeIndex, nno need to degrade
     if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
     long previousMemory = calculateRamSize();
+    // get the minimum startTime
     long startTime = timeIndex.getMinStartTime();
     long endTime = Long.MIN_VALUE;
+    // get the maximum endTime
     for (String devicesId : timeIndex.getDevices(file.getPath())) {
       endTime = Math.max(endTime, timeIndex.getEndTime(devicesId));
     }
+    // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
     timeIndexType = 0;
+//    System.out.println("release " + previousMemory + " " + timeIndex.calculateRamSize());
     return previousMemory - timeIndex.calculateRamSize();
   }
-  // change tsFile name
 
+  public void output() {
+    long[] a = timeIndex.getParts();
+    System.out.println("release " + a[0] + " " + a[1] + " " + a[2]);
+
+  }
+  // change tsFile name
   public static String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
     return time
         + FILE_NAME_SEPARATOR

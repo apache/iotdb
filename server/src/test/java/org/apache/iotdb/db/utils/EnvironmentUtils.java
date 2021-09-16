@@ -299,6 +299,7 @@ public class EnvironmentUtils {
     shutdownDaemon();
     stopDaemon();
     IoTDB.metaManager.clear();
+    TsFileResourceManager.getInstance().clear();
     reactiveDaemon();
   }
 
