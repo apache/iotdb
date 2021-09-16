@@ -587,7 +587,7 @@ private:
     std::string password;
     TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
     std::shared_ptr <TSIServiceIf> client;
-    std::shared_ptr <apache::thrift::transport::TSocket> transport;
+    std::shared_ptr <TTransport> transport;
     bool isClosed = true;
     int64_t sessionId;
     int64_t statementId;

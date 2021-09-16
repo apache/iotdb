@@ -496,7 +496,7 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         return;
     }
     shared_ptr <TSocket> socket(new TSocket(host, rpcPort));
-    shared_ptr <TTransport> transport(new TFramedTransport(socket));
+    transport = std::make_shared<TFramedTransport> (socket);
     socket->setConnTimeout(connectionTimeoutInMs);
     if (!transport->isOpen()) {
         try {
@@ -562,7 +562,7 @@ void Session::close() {
                 string("Error occurs when closing session at server. Maybe server is down. ") + e.what());
     }
     isClosed = true;
-    if (transport != NULL) {
+    if (transport != nullptr) {
         transport->close();
     }
 }
