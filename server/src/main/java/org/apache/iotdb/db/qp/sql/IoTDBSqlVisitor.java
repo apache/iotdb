@@ -325,13 +325,14 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     createTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
     if (ctx.alias() != null) {
-      if (ctx.alias().ID()!=null){
-        createTimeSeriesOperator.setAlias(ctx.alias().ID().getText());
+      String alias;
+      if (ctx.alias().ID() != null) {
+        alias = ctx.alias().ID().getText();
+      } else {
+        alias = ctx.alias().DOUBLE_QUOTE_STRING_LITERAL().getText();
+        alias = alias.substring(1, alias.length() - 1);
       }
-      else {
-        createTimeSeriesOperator.setAlias(ctx.alias().DOUBLE_QUOTE_STRING_LITERAL().getText());
-      }
-
+      createTimeSeriesOperator.setAlias(alias);
     }
     if (ctx.attributeClauses() != null) {
       parseAttributeClauses(ctx.attributeClauses(), createTimeSeriesOperator);
