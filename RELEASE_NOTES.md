@@ -34,6 +34,7 @@
 * [IOTDB-1677] Fix not generate file apache-iotdb-0.x.x-client-cpp-linux-x86_64-bin.zip.sha512
 * [IOTDB-1678] Fix client-cpp session bug: can cause connection leak.
 * [IOTDB-1679] client-cpp: Session descontruction need release server resource
+* [IOTDB-1690] Fix align by device type cast error
 * change sync version check to major version
 
 
