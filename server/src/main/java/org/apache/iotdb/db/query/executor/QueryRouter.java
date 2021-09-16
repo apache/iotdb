@@ -139,22 +139,23 @@ public class QueryRouter implements IQueryRouter {
 
     aggregationPlan.setExpression(optimizedExpression);
 
-    AggregationExecutor engineExecutor = getAggregationExecutor(aggregationPlan);
+    AggregationExecutor engineExecutor = getAggregationExecutor(context, aggregationPlan);
 
     QueryDataSet dataSet = null;
 
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
-      dataSet = engineExecutor.executeWithValueFilter(context, aggregationPlan);
+      dataSet = engineExecutor.executeWithValueFilter(aggregationPlan);
     } else {
-      dataSet = engineExecutor.executeWithoutValueFilter(context, aggregationPlan);
+      dataSet = engineExecutor.executeWithoutValueFilter(aggregationPlan);
     }
 
     return dataSet;
   }
 
-  protected AggregationExecutor getAggregationExecutor(AggregationPlan aggregationPlan) {
-    return new AggregationExecutor(aggregationPlan);
+  protected AggregationExecutor getAggregationExecutor(
+      QueryContext context, AggregationPlan aggregationPlan) {
+    return new AggregationExecutor(context, aggregationPlan);
   }
 
   @Override

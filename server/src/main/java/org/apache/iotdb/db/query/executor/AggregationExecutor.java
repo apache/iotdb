@@ -73,26 +73,25 @@ public class AggregationExecutor {
   protected List<String> aggregations;
   protected IExpression expression;
   protected boolean ascending;
+  protected QueryContext context;
+  protected AggregateResult[] aggregateResultList;
 
   /** aggregation batch calculation size. */
   private int aggregateFetchSize;
 
-  protected AggregationExecutor(AggregationPlan aggregationPlan) {
+  protected AggregationExecutor(QueryContext context, AggregationPlan aggregationPlan) {
     this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
     this.expression = aggregationPlan.getExpression();
     this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     this.ascending = aggregationPlan.isAscending();
+    this.context = context;
+    this.aggregateResultList = new AggregateResult[selectedSeries.size()];
   }
 
-  /**
-   * execute aggregate function with only time filter or no filter.
-   *
-   * @param context query context
-   */
-  public QueryDataSet executeWithoutValueFilter(
-      QueryContext context, AggregationPlan aggregationPlan)
+  /** execute aggregate function with only time filter or no filter. */
+  public QueryDataSet executeWithoutValueFilter(AggregationPlan aggregationPlan)
       throws StorageEngineException, IOException, QueryProcessException {
 
     Filter timeFilter = null;
@@ -103,22 +102,30 @@ public class AggregationExecutor {
     // TODO use multi-thread
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
         groupAggregationsBySeries(selectedSeries);
-    // Attention: this method will REMOVE vector path from pathToAggrIndexesMap
-    Map<PartialPath, Map<String, List<Integer>>> vectorPathIndexesMap =
-        groupVectorSeries(pathToAggrIndexesMap);
-    AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
-
     // TODO-Cluster: group the paths by storage group to reduce communications
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
+
+    // Attention: this method will REMOVE vector path from pathToAggrIndexesMap
+    Map<PartialPath, Map<String, List<Integer>>> vectorPathIndexesMap =
+        groupVectorSeries(pathToAggrIndexesMap);
     try {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+        PartialPath seriesPath = entry.getKey();
         aggregateOneSeries(
-            entry,
-            aggregateResultList,
-            aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()),
-            timeFilter,
-            context);
+            seriesPath,
+            entry.getValue(),
+            aggregationPlan.getAllMeasurementsInDevice(seriesPath.getDevice()),
+            timeFilter);
+      }
+      for (Map.Entry<PartialPath, Map<String, List<Integer>>> entry :
+          vectorPathIndexesMap.entrySet()) {
+        VectorPartialPath vectorSeries = (VectorPartialPath) entry.getKey();
+        aggregateOneVectorSeries(
+            vectorSeries,
+            entry.getValue(),
+            aggregationPlan.getAllMeasurementsInDevice(vectorSeries.getDevice()),
+            timeFilter);
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
@@ -130,25 +137,21 @@ public class AggregationExecutor {
   /**
    * get aggregation result for one series
    *
-   * @param pathToAggrIndexes entry of path to aggregation indexes map
    * @param timeFilter time filter
-   * @param context query context
    */
   protected void aggregateOneSeries(
-      Map.Entry<PartialPath, List<Integer>> pathToAggrIndexes,
-      AggregateResult[] aggregateResultList,
-      Set<String> measurements,
-      Filter timeFilter,
-      QueryContext context)
+      PartialPath seriesPath,
+      List<Integer> indexes,
+      Set<String> allMeasurementsInDevice,
+      Filter timeFilter)
       throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> ascAggregateResultList = new ArrayList<>();
     List<AggregateResult> descAggregateResultList = new ArrayList<>();
     boolean[] isAsc = new boolean[aggregateResultList.length];
 
-    PartialPath seriesPath = pathToAggrIndexes.getKey();
-    TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
+    TSDataType tsDataType = dataTypes.get(indexes.get(0));
 
-    for (int i : pathToAggrIndexes.getValue()) {
+    for (int i : indexes) {
       // construct AggregateResult
       AggregateResult aggregateResult =
           AggregateResultFactory.getAggrResultByName(aggregations.get(i), tsDataType);
@@ -161,7 +164,7 @@ public class AggregationExecutor {
     }
     aggregateOneSeries(
         seriesPath,
-        measurements,
+        allMeasurementsInDevice,
         context,
         timeFilter,
         tsDataType,
@@ -171,13 +174,20 @@ public class AggregationExecutor {
 
     int ascIndex = 0;
     int descIndex = 0;
-    for (int i : pathToAggrIndexes.getValue()) {
+    for (int i : indexes) {
       aggregateResultList[i] =
           isAsc[i]
               ? ascAggregateResultList.get(ascIndex++)
               : descAggregateResultList.get(descIndex++);
     }
   }
+
+  protected void aggregateOneVectorSeries(
+      PartialPath seriesPath,
+      Map<String, List<Integer>> subIndexes,
+      Set<String> allMeasurementsInDevice,
+      Filter timeFilter)
+      throws IOException, QueryProcessException, StorageEngineException {}
 
   @SuppressWarnings("squid:S107")
   public static void aggregateOneSeries(
@@ -338,12 +348,8 @@ public class AggregationExecutor {
     return remainingToCalculate;
   }
 
-  /**
-   * execute aggregate function with value filter.
-   *
-   * @param context query context.
-   */
-  public QueryDataSet executeWithValueFilter(QueryContext context, AggregationPlan queryPlan)
+  /** execute aggregate function with value filter. */
+  public QueryDataSet executeWithValueFilter(AggregationPlan queryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
     optimizeLastElementFunc(queryPlan);
 
@@ -367,15 +373,13 @@ public class AggregationExecutor {
       StorageEngine.getInstance().mergeUnLock(list);
     }
 
-    List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
-      AggregateResult result =
+      aggregateResultList[i] =
           AggregateResultFactory.getAggrResultByName(
               aggregations.get(i), dataTypes.get(i), ascending);
-      aggregateResults.add(result);
     }
-    aggregateWithValueFilter(aggregateResults, timestampGenerator, readerToAggrIndexesMap);
-    return constructDataSet(aggregateResults, queryPlan);
+    aggregateWithValueFilter(timestampGenerator, readerToAggrIndexesMap);
+    return constructDataSet(Arrays.asList(aggregateResultList), queryPlan);
   }
 
   private void optimizeLastElementFunc(QueryPlan queryPlan) {
@@ -413,7 +417,6 @@ public class AggregationExecutor {
 
   /** calculate aggregation result with value filter. */
   private void aggregateWithValueFilter(
-      List<AggregateResult> aggregateResults,
       TimeGenerator timestampGenerator,
       Map<IReaderByTimestamp, List<Integer>> readerToAggrIndexesMap)
       throws IOException {
@@ -440,17 +443,16 @@ public class AggregationExecutor {
         if (cached.get(pathId)) {
           Object[] values = timestampGenerator.getValues(selectedSeries.get(pathId));
           for (Integer i : entry.getValue()) {
-            aggregateResults.get(i).updateResultUsingValues(timeArray, timeArrayLength, values);
+            aggregateResultList[i].updateResultUsingValues(timeArray, timeArrayLength, values);
           }
         } else {
           if (entry.getValue().size() == 1) {
-            aggregateResults
-                .get(entry.getValue().get(0))
-                .updateResultUsingTimestamps(timeArray, timeArrayLength, entry.getKey());
+            aggregateResultList[entry.getValue().get(0)].updateResultUsingTimestamps(
+                timeArray, timeArrayLength, entry.getKey());
           } else {
             Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
             for (Integer i : entry.getValue()) {
-              aggregateResults.get(i).updateResultUsingValues(timeArray, timeArrayLength, values);
+              aggregateResultList[i].updateResultUsingValues(timeArray, timeArrayLength, values);
             }
           }
         }
