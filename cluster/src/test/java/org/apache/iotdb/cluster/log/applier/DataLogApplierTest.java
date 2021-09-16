@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.ClientCategory;
-import org.apache.iotdb.cluster.client.IClientPool;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.*;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
@@ -168,10 +168,10 @@ public class DataLogApplierTest extends IoTDBTest {
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
 
-    // TODO fixme : 恢复正常的provider
+    // TODO fixme: restore normal provider
     ClusterIoTDB.getInstance()
         .setClientManager(
-            new IClientPool() {
+            new IClientManager() {
               @Override
               public AsyncClient borrowAsyncClient(Node node, ClientCategory category) {
                 try {

@@ -18,18 +18,42 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 public class ClientPoolFactoryTest {
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
-  private int maxClientPerNodePerMember;
-  private long waitClientTimeoutMS;
+
+  private long mockMaxWaitTimeoutMs = 10 * 1000L;
+  private int mockMaxClientPerMember = 10;
+
+  private int maxClientPerNodePerMember = clusterConfig.getMaxClientPerNodePerMember();
+  private long waitClientTimeoutMS = clusterConfig.getWaitClientTimeoutMS();
+
+  private ClientPoolFactory clientPoolFactory;
+  private MockClientManager mockClientManager;
 
   @Before
   public void setUp() {
-    maxClientPerNodePerMember = clusterConfig.getMaxClientPerNodePerMember();
-    waitClientTimeoutMS = clusterConfig.getWaitClientTimeoutMS();
-    clusterConfig.setMaxClientPerNodePerMember(2);
-    clusterConfig.setWaitClientTimeoutMS(10L);
+    clusterConfig.setMaxClientPerNodePerMember(mockMaxClientPerMember);
+    clusterConfig.setWaitClientTimeoutMS(mockMaxWaitTimeoutMs);
+    clientPoolFactory = new ClientPoolFactory();
+    mockClientManager =
+        new MockClientManager() {
+          @Override
+          public void returnAsyncClient(
+              RaftService.AsyncClient client, Node node, ClientCategory category) {
+            assert (client == asyncClient);
+          }
+
+          @Override
+          public void returnSyncClient(
+              RaftService.Client client, Node node, ClientCategory category) {
+            Assert.assertTrue(client == syncClient);
+          }
+        };
+    clientPoolFactory.setClientManager(mockClientManager);
   }
 
   @After
@@ -39,19 +63,64 @@ public class ClientPoolFactoryTest {
   }
 
   @Test
-  public void createAsyncDataClientTest() throws Exception {
+  public void poolConfigTest() throws Exception {
     GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
-        ClientPoolFactory.getInstance().createAsyncDataPool(ClientCategory.DATA);
+        clientPoolFactory.createAsyncDataPool(ClientCategory.DATA);
+    Node node = constructDefaultNode();
 
-    Assert.assertEquals(pool.getMaxTotalPerKey(), 2);
-    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), 10 * 1000000);
+    for (int i = 0; i < mockMaxClientPerMember; i++) {
+      RaftService.AsyncClient client = pool.borrowObject(node);
+      Assert.assertNotNull(client);
+    }
+
+    long timeStart = System.currentTimeMillis();
+    try {
+      pool.borrowObject(node);
+    } catch (Exception e) {
+      Assert.assertTrue(e instanceof NoSuchElementException);
+    } finally {
+      Assert.assertTrue(System.currentTimeMillis() - timeStart + 10 > mockMaxWaitTimeoutMs);
+    }
+  }
+
+  @Test
+  public void poolRecycleTest() throws Exception {
+    GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
+        clientPoolFactory.createAsyncDataPool(ClientCategory.DATA);
 
     Node node = constructDefaultNode();
+    List<RaftService.AsyncClient> clientList = new ArrayList<>();
+    for (int i = 0; i < pool.getMaxIdlePerKey(); i++) {
+      RaftService.AsyncClient client = pool.borrowObject(node);
+      Assert.assertNotNull(client);
+      clientList.add(client);
+    }
+
+    for (RaftService.AsyncClient client : clientList) {
+      pool.returnObject(node, client);
+    }
+
+    for (int i = 0; i < pool.getMaxIdlePerKey(); i++) {
+      RaftService.AsyncClient client = pool.borrowObject(node);
+      Assert.assertNotNull(client);
+      Assert.assertTrue(clientList.contains(client));
+    }
+  }
+
+  @Test
+  public void createAsyncDataClientTest() throws Exception {
+    GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
+        clientPoolFactory.createAsyncDataPool(ClientCategory.DATA);
+
+    Assert.assertEquals(pool.getMaxTotalPerKey(), mockMaxClientPerMember);
+    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
 
     RaftService.AsyncClient asyncClient = null;
     try {
-      asyncClient = pool.borrowObject(node);
+      Node node = constructDefaultNode();
 
+      asyncClient = pool.borrowObject(node);
+      mockClientManager.setAsyncClient(asyncClient);
       Assert.assertNotNull(asyncClient);
       Assert.assertTrue(asyncClient instanceof AsyncDataClient);
 
@@ -63,17 +132,17 @@ public class ClientPoolFactoryTest {
   @Test
   public void createAsyncMetaClientTest() throws Exception {
     GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
-        ClientPoolFactory.getInstance().createAsyncDataPool(ClientCategory.META);
+        clientPoolFactory.createAsyncDataPool(ClientCategory.META);
 
-    Assert.assertEquals(pool.getMaxTotalPerKey(), 2);
-    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), 10 * 1000000);
+    Assert.assertEquals(pool.getMaxTotalPerKey(), mockMaxClientPerMember);
+    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
 
     Node node = constructDefaultNode();
 
     RaftService.AsyncClient asyncClient = null;
     try {
       asyncClient = pool.borrowObject(node);
-
+      mockClientManager.setAsyncClient(asyncClient);
       Assert.assertNotNull(asyncClient);
       Assert.assertTrue(asyncClient instanceof AsyncMetaClient);
 
@@ -85,10 +154,10 @@ public class ClientPoolFactoryTest {
   @Test
   public void createSyncDataClientTest() throws Exception {
     GenericKeyedObjectPool<Node, RaftService.Client> pool =
-        ClientPoolFactory.getInstance().createSyncDataPool(ClientCategory.DATA_HEARTBEAT);
+        clientPoolFactory.createSyncDataPool(ClientCategory.DATA_HEARTBEAT);
 
-    Assert.assertEquals(pool.getMaxTotalPerKey(), 2);
-    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), 10 * 1000000);
+    Assert.assertEquals(pool.getMaxTotalPerKey(), mockMaxClientPerMember);
+    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
 
     Node node = constructDefaultNode();
 
@@ -111,7 +180,7 @@ public class ClientPoolFactoryTest {
       listenThread.start();
 
       client = pool.borrowObject(node);
-
+      mockClientManager.setSyncClient(client);
       Assert.assertNotNull(client);
       Assert.assertTrue(client instanceof SyncDataClient);
 
@@ -130,10 +199,10 @@ public class ClientPoolFactoryTest {
   @Test
   public void createSyncMetaClientTest() throws Exception {
     GenericKeyedObjectPool<Node, RaftService.Client> pool =
-        ClientPoolFactory.getInstance().createSyncMetaPool(ClientCategory.META_HEARTBEAT);
+        clientPoolFactory.createSyncMetaPool(ClientCategory.META_HEARTBEAT);
 
-    Assert.assertEquals(pool.getMaxTotalPerKey(), 2);
-    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), 10 * 1000000);
+    Assert.assertEquals(pool.getMaxTotalPerKey(), mockMaxClientPerMember);
+    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
 
     Node node = constructDefaultNode();
 
@@ -156,7 +225,7 @@ public class ClientPoolFactoryTest {
       listenThread.start();
 
       client = pool.borrowObject(node);
-
+      mockClientManager.setSyncClient(client);
       Assert.assertNotNull(client);
       Assert.assertTrue(client instanceof SyncMetaClient);
 

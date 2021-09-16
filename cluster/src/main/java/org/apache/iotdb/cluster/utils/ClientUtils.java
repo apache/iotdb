@@ -20,6 +20,8 @@
 package org.apache.iotdb.cluster.utils;
 
 import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -62,7 +64,17 @@ public class ClientUtils {
     } else if (client instanceof SyncDataClient) {
       ((SyncDataClient) client).returnSelf();
     } else {
-      // TODO: throw exception or record log?
+      throw new UnsupportedOperationException("the client type is not supported: " + client);
+    }
+  }
+
+  public static void putBackAsyncClient(RaftService.AsyncClient client) {
+    if (client instanceof AsyncMetaClient) {
+      ((AsyncMetaClient) client).returnSelf();
+    } else if (client instanceof AsyncDataClient) {
+      ((AsyncDataClient) client).returnSelf();
+    } else {
+      throw new UnsupportedOperationException("the client type is not supported: " + client);
     }
   }
 }

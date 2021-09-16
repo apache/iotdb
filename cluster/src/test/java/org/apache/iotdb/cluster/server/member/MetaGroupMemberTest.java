@@ -540,7 +540,7 @@ public class MetaGroupMemberTest extends BaseMember {
     metaGroupMember.setAllNodes(allNodes);
     metaGroupMember.setCharacter(NodeCharacter.LEADER);
     metaGroupMember.setAppendLogThreadPool(testThreadPool);
-    // TODO fixme : 恢复正常的provider
+    // TODO fixme : restore normal provider
     ClusterIoTDB.getInstance()
         .setClientManager(
             new ClientManager(

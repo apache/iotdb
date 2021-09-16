@@ -23,8 +23,9 @@ public class ClientPoolFactory {
   protected int maxConnectionForEachNode;
   private TProtocolFactory protocolFactory;
   private GenericKeyedObjectPoolConfig poolConfig;
+  private IClientManager clientManager;
 
-  ClientPoolFactory() {
+  public ClientPoolFactory() {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     this.waitClientTimeoutMS = config.getWaitClientTimeoutMS();
     this.maxConnectionForEachNode = config.getMaxClientPerNodePerMember();
@@ -37,42 +38,40 @@ public class ClientPoolFactory {
     poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMS));
   }
 
-  public static ClientPoolFactory getInstance() {
-    return ClientPoolProviderHolder.INSTANCE;
+  public void setClientManager(IClientManager clientManager) {
+    this.clientManager = clientManager;
   }
 
   public GenericKeyedObjectPool<Node, RaftService.Client> createSyncDataPool(
       ClientCategory category) {
     return new GenericKeyedObjectPool<>(
-        new SyncDataClient.SyncDataClientFactory(protocolFactory, category), poolConfig);
+        new SyncDataClient.SyncDataClientFactory(protocolFactory, category, clientManager),
+        poolConfig);
   }
 
   public GenericKeyedObjectPool<Node, RaftService.Client> createSyncMetaPool(
       ClientCategory category) {
     return new GenericKeyedObjectPool<>(
-        new SyncMetaClient.SyncMetaClientFactory(protocolFactory, category), poolConfig);
+        new SyncMetaClient.SyncMetaClientFactory(protocolFactory, category, clientManager),
+        poolConfig);
   }
 
   public GenericKeyedObjectPool<Node, RaftService.AsyncClient> createAsyncDataPool(
       ClientCategory category) {
     return new GenericKeyedObjectPool<>(
-        new AsyncDataClient.AsyncDataClientFactory(protocolFactory, category), poolConfig);
+        new AsyncDataClient.AsyncDataClientFactory(protocolFactory, category, clientManager),
+        poolConfig);
   }
 
   public GenericKeyedObjectPool<Node, RaftService.AsyncClient> createAsyncMetaPool(
       ClientCategory category) {
     return new GenericKeyedObjectPool<>(
-        new AsyncMetaClient.AsyncMetaClientFactory(protocolFactory, category), poolConfig);
+        new AsyncMetaClient.AsyncMetaClientFactory(protocolFactory, category, clientManager),
+        poolConfig);
   }
 
   public GenericKeyedObjectPool<Node, RaftService.AsyncClient> createSingleManagerAsyncDataPool() {
     return new GenericKeyedObjectPool<>(
-        new AsyncDataClient.SingleManagerFactory(protocolFactory), poolConfig);
-  }
-
-  private static class ClientPoolProviderHolder {
-    private static final ClientPoolFactory INSTANCE = new ClientPoolFactory();
-
-    private ClientPoolProviderHolder() {}
+        new AsyncDataClient.SingleManagerFactory(protocolFactory, clientManager), poolConfig);
   }
 }

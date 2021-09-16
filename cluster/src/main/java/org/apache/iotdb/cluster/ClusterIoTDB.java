@@ -20,7 +20,7 @@ package org.apache.iotdb.cluster;
 
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
-import org.apache.iotdb.cluster.client.IClientPool;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -123,15 +123,13 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private boolean allowReport = true;
 
-  /**
-   * hardLinkCleaner will periodically clean expired hardlinks created during snapshots
-   */
+  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread;
 
   // currently, dataClientProvider is only used for those instances who do not belong to any
   // DataGroup..
   // TODO: however, why not let all dataGroupMembers getting clients from dataClientProvider
-  private IClientPool clientManager;
+  private IClientManager clientManager;
 
   private ClusterIoTDB() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -492,9 +490,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
-  /**
-   * Developers may perform pre-start customizations here for debugging or experiments.
-   */
+  /** Developers may perform pre-start customizations here for debugging or experiments. */
   @SuppressWarnings("java:S125") // leaving examples
   private void preStartCustomize() {
     // customize data distribution
@@ -578,7 +574,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   @TestOnly
-  public void setClientManager(IClientPool clientManager) {
+  public void setClientManager(IClientManager clientManager) {
     this.clientManager = clientManager;
   }
 
@@ -650,12 +646,17 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   public AsyncDataClient getAsyncDataClient(Node node, int readOperationTimeoutMS) {
-    AsyncDataClient dataClient =
-        (AsyncDataClient) clientManager.borrowAsyncClient(node, ClientCategory.DATA);
-    if (dataClient != null) {
-      dataClient.setTimeout(readOperationTimeoutMS);
+    try {
+      AsyncDataClient dataClient =
+          (AsyncDataClient) clientManager.borrowAsyncClient(node, ClientCategory.DATA);
+      if (dataClient != null) {
+        dataClient.setTimeout(readOperationTimeoutMS);
+      }
+      return dataClient;
+    } catch (IOException e) {
+      logger.warn("error when get async client", e);
     }
-    return dataClient;
+    return null;
   }
 
   private static class ClusterIoTDBHolder {

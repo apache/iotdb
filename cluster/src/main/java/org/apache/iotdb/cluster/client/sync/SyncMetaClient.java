@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import org.apache.iotdb.cluster.client.BaseFactory;
 import org.apache.iotdb.cluster.client.ClientCategory;
-import org.apache.iotdb.cluster.client.IClientPool;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
@@ -30,7 +31,6 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
-import org.apache.commons.pool2.KeyedPooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -47,7 +47,7 @@ public class SyncMetaClient extends TSMetaService.Client {
 
   private Node node;
   private ClientCategory category;
-  private IClientPool clientPool;
+  private IClientManager clientManager;
 
   public SyncMetaClient(TProtocolFactory protocolFactory, Node node, ClientCategory category)
       throws TTransportException {
@@ -64,12 +64,15 @@ public class SyncMetaClient extends TSMetaService.Client {
     getInputProtocol().getTransport().open();
   }
 
-  public void setClientPool(IClientPool clientPool) {
-    this.clientPool = clientPool;
+  public SyncMetaClient(
+      TProtocolFactory protocolFactory, Node node, ClientCategory category, IClientManager manager)
+      throws TTransportException {
+    this(protocolFactory, node, category);
+    this.clientManager = manager;
   }
 
   public void returnSelf() {
-    if (clientPool != null) clientPool.returnSyncClient(this, node, category);
+    if (clientManager != null) clientManager.returnSyncClient(this, node, category);
   }
 
   public void setTimeout(int timeout) {
@@ -103,37 +106,31 @@ public class SyncMetaClient extends TSMetaService.Client {
         + '}';
   }
 
-  public static class SyncMetaClientFactory
-      implements KeyedPooledObjectFactory<Node, SyncMetaClient> {
-
-    private TProtocolFactory protocolFactory;
-    private ClientCategory category;
+  public static class SyncMetaClientFactory extends BaseFactory<Node, SyncMetaClient> {
 
     public SyncMetaClientFactory(TProtocolFactory protocolFactory, ClientCategory category) {
-      this.protocolFactory = protocolFactory;
-      this.category = category;
+      super(protocolFactory, category);
+    }
+
+    public SyncMetaClientFactory(
+        TProtocolFactory protocolFactory, ClientCategory category, IClientManager clientManager) {
+      super(protocolFactory, category, clientManager);
     }
 
     @Override
-    public void activateObject(Node node, PooledObject<SyncMetaClient> pooledObject)
-        throws Exception {
+    public void activateObject(Node node, PooledObject<SyncMetaClient> pooledObject) {
       pooledObject.getObject().setTimeout(ClusterConstant.getConnectionTimeoutInMS());
     }
 
     @Override
-    public void destroyObject(Node node, PooledObject<SyncMetaClient> pooledObject)
-        throws Exception {
+    public void destroyObject(Node node, PooledObject<SyncMetaClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
     public PooledObject<SyncMetaClient> makeObject(Node node) throws Exception {
-      return new DefaultPooledObject<>(new SyncMetaClient(protocolFactory, node, category));
+      return new DefaultPooledObject<>(new SyncMetaClient(protocolFactory, node, category, clientPoolManager));
     }
-
-    @Override
-    public void passivateObject(Node node, PooledObject<SyncMetaClient> pooledObject)
-        throws Exception {}
 
     @Override
     public boolean validateObject(Node node, PooledObject<SyncMetaClient> pooledObject) {

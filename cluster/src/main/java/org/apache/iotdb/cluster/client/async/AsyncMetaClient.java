@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.client.async;
 
 import org.apache.iotdb.cluster.client.ClientCategory;
-import org.apache.iotdb.cluster.client.IClientPool;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
@@ -45,7 +45,7 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
 
   private Node node;
   private ClientCategory category;
-  private IClientPool clientPool;
+  private IClientManager clientManager;
 
   public AsyncMetaClient(
       TProtocolFactory protocolFactory,
@@ -72,12 +72,19 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
     this.category = category;
   }
 
-  public void setClientPool(IClientPool clientPool) {
-    this.clientPool = clientPool;
+  public AsyncMetaClient(
+      TProtocolFactory protocolFactory,
+      TAsyncClientManager clientManager,
+      Node node,
+      ClientCategory category,
+      IClientManager manager)
+      throws IOException {
+    this(protocolFactory, clientManager, node, category);
+    this.clientManager = manager;
   }
 
   public void returnSelf() {
-    if (clientPool != null) clientPool.returnAsyncClient(this, node, category);
+    if (clientManager != null) clientManager.returnAsyncClient(this, node, category);
   }
 
   @Override
@@ -134,9 +141,15 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
       super(protocolFactory, category);
     }
 
+    public AsyncMetaClientFactory(
+        TProtocolFactory protocolFactory, ClientCategory category, IClientManager clientManager) {
+      super(protocolFactory, category, clientManager);
+    }
+
     @Override
-    public void activateObject(Node node, PooledObject<AsyncMetaClient> pooledObject)
-        throws Exception {}
+    public void activateObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {
+      pooledObject.getObject().setTimeout(ClusterConstant.getConnectionTimeoutInMS());
+    }
 
     @Override
     public void destroyObject(Node node, PooledObject<AsyncMetaClient> pooledObject)
@@ -149,7 +162,7 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
       manager = manager == null ? new TAsyncClientManager() : manager;
       return new DefaultPooledObject<>(
-          new AsyncMetaClient(protocolFactory, manager, node, category));
+          new AsyncMetaClient(protocolFactory, manager, node, category, clientPoolManager));
     }
 
     @Override

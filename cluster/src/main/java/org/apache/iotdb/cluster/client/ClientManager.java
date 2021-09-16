@@ -1,10 +1,6 @@
 package org.apache.iotdb.cluster.client;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
@@ -32,12 +28,13 @@ import java.util.Map;
  *
  * <p>TODO: We can refine the client structure by reorg the interfaces defined in cluster-thrift.
  */
-public class ClientManager implements IClientPool {
+public class ClientManager implements IClientManager {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterIoTDB.class);
 
   private Map<ClientCategory, KeyedObjectPool<Node, RaftService.AsyncClient>> asyncClientPoolMap;
   private Map<ClientCategory, KeyedObjectPool<Node, RaftService.Client>> syncClientPoolMap;
+  private ClientPoolFactory clientPoolFactory;
 
   public enum Type {
     ClusterClient,
@@ -46,6 +43,8 @@ public class ClientManager implements IClientPool {
   }
 
   public ClientManager(boolean isAsyncMode, Type type) {
+    clientPoolFactory = new ClientPoolFactory();
+    clientPoolFactory.setClientManager(this);
     if (isAsyncMode) {
       asyncClientPoolMap = Maps.newHashMap();
       constructAsyncClientMap(type);
@@ -59,27 +58,24 @@ public class ClientManager implements IClientPool {
     switch (type) {
       case ClusterClient:
         asyncClientPoolMap.put(
-            ClientCategory.DATA,
-            ClientPoolFactory.getInstance().createAsyncDataPool(ClientCategory.DATA));
+            ClientCategory.DATA, clientPoolFactory.createAsyncDataPool(ClientCategory.DATA));
         break;
       case MetaGroupClient:
         asyncClientPoolMap.put(
             ClientCategory.META,
-            ClientPoolFactory.getInstance().createAsyncMetaPool(ClientCategory.META));
+            clientPoolFactory.createAsyncMetaPool(ClientCategory.META));
         asyncClientPoolMap.put(
             ClientCategory.META_HEARTBEAT,
-            ClientPoolFactory.getInstance().createAsyncMetaPool(ClientCategory.META_HEARTBEAT));
+            clientPoolFactory.createAsyncMetaPool(ClientCategory.META_HEARTBEAT));
         break;
       case DataGroupClient:
         asyncClientPoolMap.put(
-            ClientCategory.DATA,
-            ClientPoolFactory.getInstance().createAsyncDataPool(ClientCategory.DATA));
+            ClientCategory.DATA, clientPoolFactory.createAsyncDataPool(ClientCategory.DATA));
         asyncClientPoolMap.put(
             ClientCategory.DATA_HEARTBEAT,
-            ClientPoolFactory.getInstance().createAsyncDataPool(ClientCategory.DATA_HEARTBEAT));
+            clientPoolFactory.createAsyncDataPool(ClientCategory.DATA_HEARTBEAT));
         asyncClientPoolMap.put(
-            ClientCategory.SINGLE_MASTER,
-            ClientPoolFactory.getInstance().createSingleManagerAsyncDataPool());
+            ClientCategory.SINGLE_MASTER, clientPoolFactory.createSingleManagerAsyncDataPool());
         break;
       default:
         logger.warn("unsupported ClientManager type: {}", type);
@@ -91,24 +87,21 @@ public class ClientManager implements IClientPool {
     switch (type) {
       case ClusterClient:
         syncClientPoolMap.put(
-            ClientCategory.DATA,
-            ClientPoolFactory.getInstance().createSyncDataPool(ClientCategory.DATA));
+            ClientCategory.DATA, clientPoolFactory.createSyncDataPool(ClientCategory.DATA));
         break;
       case MetaGroupClient:
         syncClientPoolMap.put(
-            ClientCategory.META,
-            ClientPoolFactory.getInstance().createSyncMetaPool(ClientCategory.META));
+            ClientCategory.META, clientPoolFactory.createSyncMetaPool(ClientCategory.META));
         syncClientPoolMap.put(
             ClientCategory.META_HEARTBEAT,
-            ClientPoolFactory.getInstance().createSyncMetaPool(ClientCategory.META_HEARTBEAT));
+            clientPoolFactory.createSyncMetaPool(ClientCategory.META_HEARTBEAT));
         break;
       case DataGroupClient:
         syncClientPoolMap.put(
-            ClientCategory.DATA,
-            ClientPoolFactory.getInstance().createSyncDataPool(ClientCategory.DATA));
+            ClientCategory.DATA, clientPoolFactory.createSyncDataPool(ClientCategory.DATA));
         syncClientPoolMap.put(
             ClientCategory.DATA_HEARTBEAT,
-            ClientPoolFactory.getInstance().createSyncDataPool(ClientCategory.DATA_HEARTBEAT));
+            clientPoolFactory.createSyncDataPool(ClientCategory.DATA_HEARTBEAT));
         break;
       default:
         logger.warn("unsupported ClientManager type: {}", type);
@@ -127,15 +120,7 @@ public class ClientManager implements IClientPool {
   @Override
   public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category) {
     try {
-      RaftService.AsyncClient client = asyncClientPoolMap.get(category).borrowObject(node);
-      if (ClientCategory.DATA == category
-          || ClientCategory.DATA_HEARTBEAT == category
-          || ClientCategory.SINGLE_MASTER == category) {
-        ((AsyncDataClient) client).setClientPool(this);
-      } else {
-        ((AsyncMetaClient) client).setClientPool(this);
-      }
-      return client;
+      return asyncClientPoolMap.get(category).borrowObject(node);
     } catch (NullPointerException e) {
       logger.error("No AsyncClient pool found for {}", category, e);
     } catch (TException e) {
@@ -157,15 +142,7 @@ public class ClientManager implements IClientPool {
   @Override
   public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
     try {
-      RaftService.Client client = syncClientPoolMap.get(category).borrowObject(node);
-      if (ClientCategory.DATA == category || ClientCategory.DATA_HEARTBEAT == category) {
-        ((SyncDataClient) client).setClientPool(this);
-      } else if (ClientCategory.META == category || ClientCategory.META_HEARTBEAT == category) {
-        ((SyncMetaClient) client).setClientPool(this);
-      } else {
-        throw new UnsupportedOperationException("SINGLE_MASTER type can't be sync");
-      }
-      return client;
+      return syncClientPoolMap.get(category).borrowObject(node);
     } catch (NullPointerException e) {
       logger.error("No SyncClient pool found for {}", category, e);
     } catch (TException e) {

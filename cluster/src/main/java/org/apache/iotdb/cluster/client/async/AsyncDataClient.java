@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.cluster.client.async;
 
+import org.apache.iotdb.cluster.client.BaseFactory;
 import org.apache.iotdb.cluster.client.ClientCategory;
-import org.apache.iotdb.cluster.client.IClientPool;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -28,7 +29,6 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
-import org.apache.commons.pool2.KeyedPooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -50,7 +50,7 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
 
   private Node node;
   private ClientCategory category;
-  private IClientPool clientPool;
+  private IClientManager clientManager;
 
   @TestOnly
   public AsyncDataClient(
@@ -62,20 +62,31 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
 
   public AsyncDataClient(
       TProtocolFactory protocolFactory,
-      TAsyncClientManager clientManager,
+      TAsyncClientManager tClientManager,
       Node node,
       ClientCategory category)
       throws IOException {
     // the difference of the two clients lies in the port
     super(
         protocolFactory,
-        clientManager,
+        tClientManager,
         TNonblockingSocketWrapper.wrap(
             node.getInternalIp(),
             ClientUtils.getPort(node, category),
             ClusterConstant.getConnectionTimeoutInMS()));
     this.node = node;
     this.category = category;
+  }
+
+  public AsyncDataClient(
+      TProtocolFactory protocolFactory,
+      TAsyncClientManager tClientManager,
+      Node node,
+      ClientCategory category,
+      IClientManager manager)
+      throws IOException {
+    this(protocolFactory, tClientManager, node, category);
+    this.clientManager = manager;
   }
 
   public void close() {
@@ -87,13 +98,9 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
     return ___transport != null;
   }
 
-  public void setClientPool(IClientPool clientPool) {
-    this.clientPool = clientPool;
-  }
-
   /** return self if clientPool is not null */
   public void returnSelf() {
-    if (clientPool != null) clientPool.returnAsyncClient(this, node, category);
+    if (clientManager != null) clientManager.returnAsyncClient(this, node, category);
   }
 
   @Override
@@ -140,6 +147,11 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
       super(protocolFactory, category);
     }
 
+    public AsyncDataClientFactory(
+        TProtocolFactory protocolFactory, ClientCategory category, IClientManager clientManager) {
+      super(protocolFactory, category, clientManager);
+    }
+
     @Override
     public void destroyObject(Node node, PooledObject<AsyncDataClient> pooledObject)
         throws Exception {
@@ -151,7 +163,7 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
       manager = manager == null ? new TAsyncClientManager() : manager;
       return new DefaultPooledObject<>(
-          new AsyncDataClient(protocolFactory, manager, node, category));
+          new AsyncDataClient(protocolFactory, manager, node, category, clientPoolManager));
     }
 
     @Override
@@ -160,19 +172,21 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
     }
   }
 
-  public static class SingleManagerFactory
-      implements KeyedPooledObjectFactory<Node, AsyncDataClient> {
-
-    private TAsyncClientManager manager;
-    private TProtocolFactory protocolFactory;
+  public static class SingleManagerFactory extends BaseFactory<Node, AsyncDataClient> {
 
     public SingleManagerFactory(TProtocolFactory protocolFactory) {
-      this.protocolFactory = protocolFactory;
+      super(protocolFactory, ClientCategory.DATA);
+      managers = new TAsyncClientManager[1];
       try {
-        manager = new TAsyncClientManager();
+        managers[0] = new TAsyncClientManager();
       } catch (IOException e) {
-        logger.error("Cannot init manager of SingleThreadFactoryAsync", e);
+        logger.error("Cannot create data heartbeat client manager for factory", e);
       }
+    }
+
+    public SingleManagerFactory(TProtocolFactory protocolFactory, IClientManager clientManager) {
+      this(protocolFactory);
+      this.clientPoolManager = clientManager;
     }
 
     @Override
@@ -188,7 +202,8 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
     @Override
     public PooledObject<AsyncDataClient> makeObject(Node node) throws Exception {
       return new DefaultPooledObject<>(
-          new AsyncDataClient(protocolFactory, manager, node, ClientCategory.DATA));
+          new AsyncDataClient(
+              protocolFactory, managers[0], node, ClientCategory.DATA, clientPoolManager));
     }
 
     @Override

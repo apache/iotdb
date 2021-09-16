@@ -308,7 +308,7 @@ public class BaseMember {
     ret.setLeader(node);
     ret.setCharacter(NodeCharacter.LEADER);
     ret.setAppendLogThreadPool(testThreadPool);
-    // TODO fixme : 恢复正常的provider
+    // TODO fixme : restore normal provider
     ClusterIoTDB.getInstance()
         .setClientManager(
             new ClientManager(

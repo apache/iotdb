@@ -1457,11 +1457,11 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return an asynchronous thrift client or null if the caller tries to connect the local node.
    */
   public AsyncClient getAsyncHeartbeatClient(Node node) {
-    if (ClientCategory.META == getClientCategory()) {
-      return clientManager.borrowAsyncClient(node, ClientCategory.META_HEARTBEAT);
-    } else {
-      return clientManager.borrowAsyncClient(node, ClientCategory.DATA_HEARTBEAT);
-    }
+    ClientCategory category =
+        ClientCategory.META == getClientCategory()
+            ? ClientCategory.META_HEARTBEAT
+            : ClientCategory.DATA_HEARTBEAT;
+    return clientManager.borrowAsyncClient(node, category);
   }
 
   /**
@@ -1470,11 +1470,11 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return the heartbeat client for the node
    */
   public Client getSyncHeartbeatClient(Node node) {
-    if (ClientCategory.META == getClientCategory()) {
-      return clientManager.borrowSyncClient(node, ClientCategory.META_HEARTBEAT);
-    } else {
-      return clientManager.borrowSyncClient(node, ClientCategory.DATA_HEARTBEAT);
-    }
+    ClientCategory category =
+        ClientCategory.META == getClientCategory()
+            ? ClientCategory.META_HEARTBEAT
+            : ClientCategory.DATA_HEARTBEAT;
+    return clientManager.borrowSyncClient(node, category);
   }
 
   public void returnSyncClient(Client client) {
