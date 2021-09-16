@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -168,6 +169,10 @@ public class BatchData {
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
   }
 
   public BatchDataType getBatchDataType() {
@@ -656,6 +661,73 @@ public class BatchData {
 
   public int getReadCurArrayIndex() {
     return readCurArrayIndex;
+  }
+
+  public BatchData[] generateSubBatchData() throws IOException {
+    if (this.vectorRet == null) {
+      throw new IOException("SubBatchData can only be generated from VectorBatchData");
+    }
+    int subSensorSize = this.vectorRet.get(0)[0].length;
+    BatchData[] subBatchData;
+    switch (batchDataType) {
+      case Ordinary:
+        subBatchData = new BatchData[subSensorSize];
+        break;
+      case DescRead:
+        subBatchData = new DescReadBatchData[subSensorSize];
+        break;
+      case DescReadWrite:
+        subBatchData = new DescReadWriteBatchData[subSensorSize];
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("BatchData type %s is not supported.", batchDataType));
+    }
+
+    // set data type for each subBatchData
+    TsPrimitiveType[] firstValues = getVector();
+    for (int i = 0; i < subSensorSize; i++) {
+      TsPrimitiveType primitiveVal = firstValues[i];
+      subBatchData[i].setDataType(primitiveVal.getDataType());
+    }
+
+    while (hasCurrent()) {
+      long currentTime = currentTime();
+      TsPrimitiveType[] currentValues = getVector();
+      for (int i = 0; i < currentValues.length; i++) {
+        TsPrimitiveType primitiveVal = currentValues[i];
+        switch (primitiveVal.getDataType()) {
+          case INT32:
+            subBatchData[i].putInt(currentTime, primitiveVal.getInt());
+            break;
+          case INT64:
+            subBatchData[i].putLong(currentTime, primitiveVal.getLong());
+            break;
+          case FLOAT:
+            subBatchData[i].putFloat(currentTime, primitiveVal.getFloat());
+            break;
+          case DOUBLE:
+            subBatchData[i].putDouble(currentTime, primitiveVal.getDouble());
+            break;
+          case BOOLEAN:
+            subBatchData[i].putBoolean(currentTime, primitiveVal.getBoolean());
+            break;
+          case TEXT:
+            subBatchData[i].putBinary(currentTime, primitiveVal.getBinary());
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", primitiveVal.getDataType()));
+        }
+      }
+      next();
+    }
+
+    resetBatchData();
+    for (int i = 0; i < subSensorSize; i++) {
+      subBatchData[i].flip();
+    }
+    return subBatchData;
   }
 
   /**

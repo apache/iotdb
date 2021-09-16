@@ -434,10 +434,7 @@ public class AggregationExecutor {
 
         remainingToCalculate =
             aggregateVectorPages(
-                seriesReader,
-                aggregateResultList.get(seriesReader.getCurIndex()),
-                isCalculatedArray.get(seriesReader.getCurIndex()),
-                remainingToCalculate);
+                seriesReader, aggregateResultList, isCalculatedArray, remainingToCalculate);
         if (remainingToCalculate == 0) {
           return;
         }
@@ -490,19 +487,11 @@ public class AggregationExecutor {
         continue;
       }
       BatchData nextOverlappedPageData = seriesReader.nextPage();
-      for (int i = 0; i < aggregateResultList.size(); i++) {
-        if (!isCalculatedArray[i]) {
-          AggregateResult aggregateResult = aggregateResultList.get(i);
-          aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-          nextOverlappedPageData.resetBatchData();
-          if (aggregateResult.hasFinalResult()) {
-            isCalculatedArray[i] = true;
-            remainingToCalculate--;
-            if (remainingToCalculate == 0) {
-              return 0;
-            }
-          }
-        }
+      remainingToCalculate =
+          aggregateBatchData(
+              aggregateResultList, isCalculatedArray, remainingToCalculate, nextOverlappedPageData);
+      if (remainingToCalculate == 0) {
+        return 0;
       }
     }
     return remainingToCalculate;
@@ -510,8 +499,8 @@ public class AggregationExecutor {
 
   private static int aggregateVectorPages(
       VectorSeriesAggregateReader seriesReader,
-      List<AggregateResult> aggregateResultList,
-      boolean[] isCalculatedArray,
+      List<List<AggregateResult>> aggregateResultList,
+      List<boolean[]> isCalculatedArray,
       int remainingToCalculate)
       throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
@@ -521,7 +510,10 @@ public class AggregationExecutor {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           remainingToCalculate =
               aggregateStatistics(
-                  aggregateResultList, isCalculatedArray, remainingToCalculate, pageStatistic);
+                  aggregateResultList.get(seriesReader.getCurIndex()),
+                  isCalculatedArray.get(seriesReader.getCurIndex()),
+                  remainingToCalculate,
+                  pageStatistic);
           if (remainingToCalculate == 0) {
             seriesReader.resetIndex();
             return 0;
@@ -531,23 +523,48 @@ public class AggregationExecutor {
         seriesReader.skipCurrentPage();
         continue;
       }
+
       BatchData nextOverlappedPageData = seriesReader.nextPage();
-      for (int i = 0; i < aggregateResultList.size(); i++) {
-        if (!isCalculatedArray[i]) {
-          AggregateResult aggregateResult = aggregateResultList.get(i);
-          aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-          nextOverlappedPageData.resetBatchData();
-          if (aggregateResult.hasFinalResult()) {
-            isCalculatedArray[i] = true;
-            remainingToCalculate--;
-            if (remainingToCalculate == 0) {
-              return 0;
-            }
+      BatchData[] subBatchData = nextOverlappedPageData.generateSubBatchData();
+      while (seriesReader.getCurIndex() < seriesReader.getSubSensorSize()) {
+        remainingToCalculate =
+            aggregateBatchData(
+                aggregateResultList.get(seriesReader.getCurIndex()),
+                isCalculatedArray.get(seriesReader.getCurIndex()),
+                remainingToCalculate,
+                subBatchData[seriesReader.getCurIndex()]);
+        if (remainingToCalculate == 0) {
+          seriesReader.resetIndex();
+          return 0;
+        }
+        seriesReader.nextIndex();
+      }
+    }
+    return remainingToCalculate;
+  }
+
+  private static int aggregateBatchData(
+      List<AggregateResult> aggregateResultList,
+      boolean[] isCalculatedArray,
+      int remainingToCalculate,
+      BatchData batchData)
+      throws QueryProcessException, IOException {
+    int newRemainingToCalculate = remainingToCalculate;
+    for (int i = 0; i < aggregateResultList.size(); i++) {
+      if (!isCalculatedArray[i]) {
+        AggregateResult aggregateResult = aggregateResultList.get(i);
+        aggregateResult.updateResultFromPageData(batchData);
+        batchData.resetBatchData();
+        if (aggregateResult.hasFinalResult()) {
+          isCalculatedArray[i] = true;
+          remainingToCalculate--;
+          if (remainingToCalculate == 0) {
+            return newRemainingToCalculate;
           }
         }
       }
     }
-    return remainingToCalculate;
+    return newRemainingToCalculate;
   }
 
   /** execute aggregate function with value filter. */
