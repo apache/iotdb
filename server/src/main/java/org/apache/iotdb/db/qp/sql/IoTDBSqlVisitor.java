@@ -1332,39 +1332,54 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @SuppressWarnings("squid:S3776")
   private Expression parseExpression(ExpressionContext context) {
-    // unary
+    // LR_BRACKET unaryInBracket=expression RR_BRACKET
+    if (context.unaryInBracket != null) {
+      return parseExpression(context.unaryInBracket);
+    }
+
+    // (PLUS | MINUS) unaryAfterSign=expression
+    if (context.unaryAfterSign != null) {
+      return context.MINUS() != null
+          ? new NegationExpression(parseExpression(context.unaryAfterSign))
+          : parseExpression(context.unaryAfterSign);
+    }
+
+    // leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
+    // leftExpression=expression (PLUS | MINUS) rightExpression=expression
+    if (context.leftExpression != null && context.rightExpression != null) {
+      Expression leftExpression = parseExpression(context.leftExpression);
+      Expression rightExpression = parseExpression(context.rightExpression);
+      if (context.STAR() != null) {
+        return new MultiplicationExpression(leftExpression, rightExpression);
+      }
+      if (context.DIV() != null) {
+        return new DivisionExpression(leftExpression, rightExpression);
+      }
+      if (context.MOD() != null) {
+        return new ModuloExpression(leftExpression, rightExpression);
+      }
+      if (context.PLUS() != null) {
+        return new AdditionExpression(leftExpression, rightExpression);
+      }
+      if (context.MINUS() != null) {
+        return new SubtractionExpression(leftExpression, rightExpression);
+      }
+    }
+
+    // functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute*
+    // RR_BRACKET
     if (context.functionName != null) {
       return parseFunctionExpression(context);
     }
+
+    // suffixPath
     if (context.suffixPath() != null) {
       return new TimeSeriesOperand(parseSuffixPath(context.suffixPath()));
     }
+
+    // literal=SINGLE_QUOTE_STRING_LITERAL
     if (context.literal != null) {
       return new TimeSeriesOperand(new PartialPath(new String[] {context.literal.getText()}));
-    }
-    if (context.unary != null) {
-      return context.MINUS() != null
-          ? new NegationExpression(parseExpression(context.expression(0)))
-          : parseExpression(context.expression(0));
-    }
-
-    // binary
-    Expression leftExpression = parseExpression(context.leftExpression);
-    Expression rightExpression = parseExpression(context.rightExpression);
-    if (context.STAR() != null) {
-      return new MultiplicationExpression(leftExpression, rightExpression);
-    }
-    if (context.DIV() != null) {
-      return new DivisionExpression(leftExpression, rightExpression);
-    }
-    if (context.MOD() != null) {
-      return new ModuloExpression(leftExpression, rightExpression);
-    }
-    if (context.PLUS() != null) {
-      return new AdditionExpression(leftExpression, rightExpression);
-    }
-    if (context.MINUS() != null) {
-      return new SubtractionExpression(leftExpression, rightExpression);
     }
 
     throw new UnsupportedOperationException();
