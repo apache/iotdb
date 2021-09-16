@@ -207,7 +207,7 @@ IoTDB supports the 'order by time' statement since 0.11, it's used to display re
 For example, the SQL statement is:
 
 ```sql
-select * from root.ln.* where time > 1 order by time desc limit 10;
+select * from root.ln.** where time > 1 order by time desc limit 10;
 ```
 The execution result of this SQL statement is as follows:
 
@@ -1467,13 +1467,13 @@ It costs 0.009s
 * IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
 
 ```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
 
 ```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 ### Use Alias
@@ -1501,7 +1501,7 @@ The 'align by device' indicates that the deviceId is considered as a column. The
 The SQL statement is:
 
 ```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 align by device
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device
 ```
 
 The result shows below:
@@ -1529,7 +1529,7 @@ The 'disable align' indicates that there are 2 columns for each time series in t
 The SQL statement is:
 
 ```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 disable align
+select * from root.ln.** where time <= 2017-11-01T00:01:00 disable align
 ```
 
 The result shows below:

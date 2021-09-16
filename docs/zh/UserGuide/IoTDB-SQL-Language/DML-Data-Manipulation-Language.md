@@ -214,7 +214,7 @@ It costs 0.014s
  * 根据时间降序返回
 IoTDB 在 0.11 版本开始支持 'order by time' 语句，用于对结果按照时间进行降序展示。例如，SQL 语句为：
 ```sql
-select * from root.ln.* where time > 1 order by time desc limit 10;
+select * from root.ln.** where time > 1 order by time desc limit 10;
 ```
 语句执行的结果为：
 
@@ -244,7 +244,7 @@ It costs 0.016s
 'align by device' 对齐方式下，设备 ID 会单独作为一列出现。在 select 子句中写了多少列，最终结果就会有该列数+2 （时间列和设备名字列）。SQL 形如：
 
 ```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 align by device
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device
 ```
 结果如下：
 
@@ -268,7 +268,7 @@ It costs 0.012s
 SQL 形如：
 
 ```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 disable align
+select * from root.ln.** where time <= 2017-11-01T00:01:00 disable align
 ```
 
 结果如下：
@@ -293,13 +293,13 @@ It costs 0.018s
 * 如果结果集中，任意一列为 null，则过滤掉该行；即获得的结果集不包含任何空值
 
 ```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * 在降采样查询中，如果结果集的某一行所有列都为 null，则过滤掉该行；即获得的结果集不包含所有值都为 null 的行
 
 ```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 ### 聚合函数
