@@ -329,7 +329,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       if (ctx.alias().ID() != null) {
         alias = ctx.alias().ID().getText();
       } else {
-        alias = ctx.alias().DOUBLE_QUOTE_STRING_LITERAL().getText();
+        alias = ctx.alias().DOUBLE_QUOTATION_ID().getText();
         alias = alias.substring(1, alias.length() - 1);
       }
       createTimeSeriesOperator.setAlias(alias);
