@@ -90,6 +90,10 @@ public class Utils {
     String paramURL = subURL.substring(subURL.indexOf('?') + 1);
     String[] params = paramURL.split("&");
     for (String tmpParam : params) {
+      String[] paramSplit = tmpParam.split("=");
+      if (paramSplit.length != 2) {
+        return false;
+      }
       String key = tmpParam.split("=")[0];
       String value = tmpParam.split("=")[1];
       switch (key) {
