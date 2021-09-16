@@ -122,7 +122,7 @@ public class MemUtils {
           memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
         }
       } else {
-        memSize += (long)(end - start) * valueType.getDataTypeSize();
+        memSize += (long) (end - start) * valueType.getDataTypeSize();
       }
     }
     // time and index column memSize for vector
