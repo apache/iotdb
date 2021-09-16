@@ -187,27 +187,6 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
             }
             break;
           case MetaMarker.VERSION:
-            long version = ((TsFileSequenceReaderForV2) reader).readVersion();
-            // convert old Modification to new
-            if (oldModification != null && modsIterator.hasNext()) {
-              if (currentMod == null) {
-                currentMod = (Deletion) modsIterator.next();
-              }
-              if (currentMod.getFileOffset() <= version) {
-                for (Entry<TsFileIOWriter, ModificationFile> entry :
-                    fileModificationMap.entrySet()) {
-                  TsFileIOWriter tsFileIOWriter = entry.getKey();
-                  ModificationFile newMods = entry.getValue();
-                  newMods.write(
-                      new Deletion(
-                          currentMod.getPath(),
-                          tsFileIOWriter.getFile().length(),
-                          currentMod.getStartTime(),
-                          currentMod.getEndTime()));
-                }
-                currentMod = null;
-              }
-            }
             // write plan indices for ending memtable
             for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
               tsFileIOWriter.writePlanIndices();
@@ -223,25 +202,9 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
         upgradedResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
-      // write the remain modification for new file
-      if (oldModification != null) {
-        while (currentMod != null || modsIterator.hasNext()) {
-          if (currentMod == null) {
-            currentMod = (Deletion) modsIterator.next();
-          }
-          for (Entry<TsFileIOWriter, ModificationFile> entry : fileModificationMap.entrySet()) {
-            TsFileIOWriter tsFileIOWriter = entry.getKey();
-            ModificationFile newMods = entry.getValue();
-            newMods.write(
-                new Deletion(
-                    currentMod.getPath(),
-                    tsFileIOWriter.getFile().length(),
-                    currentMod.getStartTime(),
-                    currentMod.getEndTime()));
-          }
-          currentMod = null;
-        }
-      }
+
+      deleteOldModificationFile();
+
     } catch (Exception e2) {
       throw new IOException(
           "TsFile upgrade process cannot proceed at position "

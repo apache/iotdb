@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.service;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,8 +43,10 @@ public class SettleService implements IService  {
     int settleThreadNum= IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
     settleThreadPool =
         Executors.newFixedThreadPool(
-            settleThreadNum, r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement())); //创建整理线程池
-    countSettleFiles(false);
+            settleThreadNum,
+            r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement())); //创建整理线程池
+    TsFileAndModSettleTool.findFilesToBeRecovered();
+    countSettleFiles();
     if(!SettleLog.createSettleLog()||filesToBeSettledCount.get()==0){
       stop();
       return;
@@ -81,29 +84,28 @@ public class SettleService implements IService  {
     return filesToBeSettledCount;
   }
 
-  private static void countSettleFiles(boolean isRecover){  //Todo:bug
-    if(isRecover){
-      filesToBeSettledCount.addAndGet(TsFileAndModSettleTool.recoverSettleFileMap.size());
-    }
-    else{
-      filesToBeSettledCount.addAndGet(StorageEngine.getInstance().countSettleFiles());
-    }
+  private static void countSettleFiles( ){
+    filesToBeSettledCount.addAndGet(TsFileAndModSettleTool.recoverSettleFileMap.size());
+    filesToBeSettledCount.addAndGet(StorageEngine.getInstance().countSettleFiles());
   }
 
   public void submitSettleTask(SettleTask settleTask) {  //往该“整理TSFile文件”服务的线程池里提交该整理线程settleTask
     settleThreadPool.submit(settleTask);
   }
 
-  public static void recoverSettle(){
-    TsFileAndModSettleTool.findFilesToBeRecovered();
+  public static void recoverSettle() {
     if(TsFileAndModSettleTool.recoverSettleFileMap.size()==0){
       return;
     }
-    countSettleFiles(true);
     for(Map.Entry<String,Integer> entry :TsFileAndModSettleTool.recoverSettleFileMap.entrySet()){
       String oldFilePath = entry.getKey();
       File oldFile = new File(oldFilePath);
       TsFileResource oldResource=new TsFileResource(oldFile);
+      try {
+        oldResource.close();
+      } catch (IOException e) {
+        logger.error("meet errors when recovering settle files",e);
+      }
       getINSTANCE().submitSettleTask(new SettleTask(oldResource));
     }
     TsFileAndModSettleTool.clearRecoverSettleFileMap();

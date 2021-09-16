@@ -155,9 +155,6 @@ public class StorageEngine implements IService {
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
 
-    //recover settle process
-    SettleService.recoverSettle();
-
     recover();
   }
 

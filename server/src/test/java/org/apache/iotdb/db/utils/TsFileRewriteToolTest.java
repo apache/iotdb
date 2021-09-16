@@ -204,21 +204,12 @@ public class TsFileRewriteToolTest {
   @Test
   public void settleTsFilesAndModsTest() {
     try {
-      HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
-      List<String> sensors = new ArrayList<>();
-      sensors.add(SENSOR1);
-      deviceSensorsMap.put(DEVICE1, sensors);
-      createOneTsFile(deviceSensorsMap);
-
-      String timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR1;
-      createlModificationFile(timeseriesPath);
-      File tsFile = new File(path);
-      TsFileResource tsFileResource=new TsFileResource(tsFile);
-      tsFileResource.setModFile(new ModificationFile(tsFileResource.getTsFilePath()+ModificationFile.FILE_SUFFIX));
-      tsFileResource.serialize();
-      tsFileResource.close();
-
-      TsFileAndModSettleTool.settleOneTsFileAndMod(tsFileResource);
+      List<TsFileResource> resourcesToBeSettled =createFiles();
+      for(TsFileResource oldResource:resourcesToBeSettled){
+        try(TsFileAndModSettleTool tsFileAndModSettleTool=new TsFileAndModSettleTool(oldResource)) {
+          tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource);
+        }
+      }
     } catch (WriteProcessException | IOException e) {
       Assert.fail(e.getMessage());
     }
@@ -228,35 +219,40 @@ public class TsFileRewriteToolTest {
     List<TsFileResource> resourcesToBeSettled=new ArrayList<>();
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
     List<String> sensors = new ArrayList<>();
+
+    //first File
     sensors.add(SENSOR1);
     deviceSensorsMap.put(DEVICE1, sensors);
-    createOneTsFile(deviceSensorsMap);
     String timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR1;
+    createFile(resourcesToBeSettled,deviceSensorsMap,timeseriesPath);
+
+    //second file
+    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
+    sensors.add(SENSOR2);
+    deviceSensorsMap.put(DEVICE1, sensors);
+    timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR2;
+    createFile(resourcesToBeSettled,deviceSensorsMap,timeseriesPath);
+
+    //third file
+    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
+    createOneTsFile(deviceSensorsMap);
+    TsFileResource tsFileResource=new TsFileResource(new File(path));
+    tsFileResource.serialize();
+    tsFileResource.close();
+    resourcesToBeSettled.add(tsFileResource);
+
+    return resourcesToBeSettled;
+  }
+
+  private void createFile(List<TsFileResource> resourcesToBeSettled,HashMap<String, List<String>> deviceSensorsMap , String timeseriesPath)
+      throws IOException {
+    createOneTsFile(deviceSensorsMap);
     createlModificationFile(timeseriesPath);
     TsFileResource tsFileResource=new TsFileResource(new File(path));
     tsFileResource.setModFile(new ModificationFile(tsFileResource.getTsFilePath()+ModificationFile.FILE_SUFFIX));
     tsFileResource.serialize();
     tsFileResource.close();
     resourcesToBeSettled.add(tsFileResource);
-
-    //second file
-    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
-    sensors.add(SENSOR2);
-    deviceSensorsMap.put(DEVICE1, sensors);
-    createOneTsFile(deviceSensorsMap);
-    timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR2;
-    createlModificationFile(timeseriesPath);
-    tsFileResource=new TsFileResource(new File(path));
-
-
-    return resourcesToBeSettled;
-  }
-
-  public TsFileResource createOneTsFile(String tsFileName,HashMap<String, List<String>> deviceSensorsMap,String timeseriesPath){
-    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
-    createOneTsFile(deviceSensorsMap);
-
-    return null;
   }
 
   public void createlModificationFile(String timeseriesPath) {

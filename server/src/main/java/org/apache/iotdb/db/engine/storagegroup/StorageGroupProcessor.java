@@ -492,7 +492,6 @@ public class StorageGroupProcessor {
         upgradeFileCount.set(upgradeSeqFileList.size() + upgradeUnseqFileList.size());
       }
 
-
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
@@ -664,6 +663,61 @@ public class StorageGroupProcessor {
         }
       }
     }
+  }
+
+  private void addRecoverSettleFilesToList() {
+    for (Map.Entry<String, Integer> entry : TsFileAndModSettleTool.recoverSettleFileMap
+        .entrySet()) {
+      File fileToBeRecovered = new File(entry.getKey());
+      if (!fileToBeRecovered.exists()) {
+        logger.error(
+            "meet error when recovering to settle file : the file to be recovered may be deleted!");
+      }
+      String logicalName=fileToBeRecovered.getParentFile().getParentFile().getParentFile().getName();
+      String virtualName=fileToBeRecovered.getParentFile().getParentFile().getName();
+      if (logicalName
+          .equals(logicalStorageGroupName) && virtualName
+          .equals(virtualStorageGroupId)) {
+        TsFileResource resource = new TsFileResource(fileToBeRecovered);
+        resource.setClosed(true);
+        if(fileToBeRecovered.getParentFile().getParentFile().getParentFile().getParentFile().getName().equals("sequence")){
+          settleSeqFileList.add(resource);
+        }
+        else{
+          settleUnseqFileList.add(resource);
+        }
+      }
+    }
+    TsFileAndModSettleTool.clearRecoverSettleFileMap();
+    /*for (String baseDirPath : folders) {
+      File virtualStorageGroupDir = fsFactory.getFile(
+          baseDirPath + File.separator + logicalStorageGroupName, virtualStorageGroupId);
+      if (!virtualStorageGroupDir.exists()) {
+        continue;
+      }
+      File[] partionDirs = virtualStorageGroupDir.listFiles();
+      for (File partionDir : partionDirs) {
+        if (!partionDir.isDirectory()) {
+          continue;
+        }
+        File[] tsFiles = fsFactory.listFilesBySuffix(partionDir.getAbsolutePath(), TSFILE_SUFFIX);
+        for (File f : tsFiles) {
+          if (TsFileAndModSettleTool.recoverSettleFileMap.containsKey(f.getAbsolutePath())) {
+            TsFileResource resource = new TsFileResource(f);
+            resource.setClosed(true);
+            if (isSeq) {
+              settleSeqFileList.add(resource);
+            } else {
+              settleUnseqFileList.add(resource);
+            }
+          }
+        }
+      }
+    }*/
+  }
+
+  private void addSettleFilesToList(){
+    //Todo:
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -2074,10 +2128,10 @@ public class StorageGroupProcessor {
       }
 
       //if the Tsfile is rewritting, then add the deletion to the oldFileModificationMap
-      if (TsFileRewriteTool.oldFileModificationListMap
+      if (TsFileRewriteTool.tmpFileModificationMap
           .containsKey(tsFileResource.getTsFile().getName())) {
-        TsFileRewriteTool.oldFileModificationListMap.get(tsFileResource.getTsFile().getName())
-            .add(deletion);
+        TsFileRewriteTool.tmpFileModificationMap.get(tsFileResource.getTsFile().getName())
+            .write(deletion);
         continue;
       }
 
@@ -2309,8 +2363,8 @@ public class StorageGroupProcessor {
     return upgradeFileCount.get();
   }
 
-  public int countSettleFiles(){
-    return settleSeqFileList.size()+settleUnseqFileList.size();
+  public int countSettleFiles() {
+    return settleSeqFileList.size() + settleUnseqFileList.size();
   }
 
   /**
@@ -2373,6 +2427,8 @@ public class StorageGroupProcessor {
    * Settle All TsFiles and mods belonging to this storage group
    */
   public void settle() {
+    addRecoverSettleFilesToList();
+    addSettleFilesToList();
     for (TsFileResource seqTsFileResource : settleSeqFileList) {
       seqTsFileResource.readLock();
       seqTsFileResource.setSeq(true);
@@ -2387,6 +2443,8 @@ public class StorageGroupProcessor {
       unSeqTsFileResource.doSettle();
       unSeqTsFileResource.readUnlock();
     }
+    settleSeqFileList=null;
+    settleUnseqFileList=null;
   }
 
   /**
@@ -2399,15 +2457,15 @@ public class StorageGroupProcessor {
       TsFileResource newTsFileResource)
       throws IOException {
     writeLock("settleTsFileCallBack");
+    TsFileRewriteTool.writeNewModification(oldTsFileResource,newTsFileResource);
     TsFileRewriteTool.moveNewTsFile(oldTsFileResource, newTsFileResource);
-    TsFileRewriteTool.writeNewModification(oldTsFileResource, newTsFileResource);
-    TsFileAndModSettleTool.oldFileModificationListMap.remove(oldTsFileResource.getTsFile()
+    TsFileAndModSettleTool.tmpFileModificationMap.remove(oldTsFileResource.getTsFile()
         .getName());  //将当前TsFile从列表中移除，说明它已经settle完毕，这样下次对该TsFile进行的删除操作就直接写入其新mods文件就可以了
     //clear Cache , including chunk cache and timeseriesMetadata cache
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     //Todo: Update the relevant data of this tsfile in memory , eg: TsFileResource, TsFileProcessor，etc.
-    oldTsFileResource.close(); //清空旧TsFile的mods
+    //oldTsFileResource.close(); //清空旧TsFile的mods
 
     SettleService.getFilesToBeSettledCount().addAndGet(-1);
     writeUnlock();
@@ -2796,13 +2854,11 @@ public class StorageGroupProcessor {
    * list based on the file name and ensure the correctness of the order, so there are three cases.
    *
    * <p>1. The tsfile is to be inserted in the first place of the list. Timestamp can be set to
-   * half
-   * of the timestamp value in the file name of the first tsfile in the list , and the version
+   * half of the timestamp value in the file name of the first tsfile in the list , and the version
    * number will be updated to the largest number in this time partition.
    *
    * <p>2. The tsfile is to be inserted in the last place of the list. The file name is generated
-   * by
-   * the system according to the naming rules and returned.
+   * by the system according to the naming rules and returned.
    *
    * <p>3. This file is inserted between two files. The time stamp is the mean of the timestamps of
    * the two files, the version number will be updated to the largest number in this time
@@ -2849,6 +2905,7 @@ public class StorageGroupProcessor {
 
   /**
    * Update latest time in latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
+   *
    * @UsedBy sync module, load external tsfile module.
    */
   private void updateLatestTimeMap(TsFileResource newTsFileResource) {

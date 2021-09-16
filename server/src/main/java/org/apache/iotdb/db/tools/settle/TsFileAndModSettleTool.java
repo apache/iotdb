@@ -76,27 +76,35 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
       List<TsFileResource> resourcesToBeSettled) throws IOException, WriteProcessException {
     List<TsFileResource> newTsFileResources = new ArrayList<>();
     for (TsFileResource resourceToBeSettled : resourcesToBeSettled) {
-      newTsFileResources.add(settleOneTsFileAndMod(resourceToBeSettled));
+      TsFileResource newResource=null;
+      try(TsFileAndModSettleTool tsFileAndModSettleTool=new TsFileAndModSettleTool(resourceToBeSettled)) {
+        newResource = tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled);
+      }
+      newTsFileResources.add(newResource);
+      TsFileRewriteTool.writeNewModification(resourceToBeSettled,newResource);
+      TsFileRewriteTool.moveNewTsFile(resourceToBeSettled,newResource);
     }
     return newTsFileResources;
   }
 
-  public static TsFileResource settleOneTsFileAndMod(TsFileResource resourceToBeSettled)
+  public TsFileResource settleOneTsFileAndMod(TsFileResource resourceToBeSettled)
       throws WriteProcessException, IOException {
     if(!resourceToBeSettled.isClosed()){
       logger.warn("The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
       return null;
     }
-    if (!resourceToBeSettled.getModFile().exists()) { //若该文件没有删除操作，则跳过
+    addTmpModsOfCurrentTsFile(resourceToBeSettled.getTimePartition());
+    if (!resourceToBeSettled.getModFile().exists()) { //if no deletions to this tsfile, then return.
       return null;
     }
     List<TsFileResource> newResources=new ArrayList<>();
-    oldFileModificationListMap.put(resourceToBeSettled.getTsFile().getName(), new ArrayList<>());
     try (TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool(
         resourceToBeSettled)) {
       tsFileAndModSettleTool.parseAndRewriteFile(newResources);
-      TsFileRewriteTool.moveNewTsFile(resourceToBeSettled,newResources.get(0));
-      TsFileRewriteTool.writeNewModification(resourceToBeSettled,newResources.get(0));
+    }
+    if(newResources.size()==0){ //if all the data in this tsfile has been deleted, then it will be null!
+      dealWithEmptyFile();
+      return null;
     }
     return newResources.get(0);
   }
