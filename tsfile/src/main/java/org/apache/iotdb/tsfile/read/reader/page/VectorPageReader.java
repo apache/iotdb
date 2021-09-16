@@ -117,6 +117,10 @@ public class VectorPageReader implements IPageReader {
         : timePageReader.getStatistics();
   }
 
+  public Statistics getStatistics(int index) {
+    return valuePageReaderList.get(index).getStatistics();
+  }
+
   @Override
   public void setFilter(Filter filter) {
     this.filter = filter;

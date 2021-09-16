@@ -41,6 +41,7 @@ import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.VectorSeriesAggregateReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -107,7 +108,7 @@ public class AggregationExecutor {
         StorageEngine.getInstance().mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
 
     // Attention: this method will REMOVE vector path from pathToAggrIndexesMap
-    Map<PartialPath, Map<String, List<Integer>>> vectorPathIndexesMap =
+    Map<PartialPath, List<List<Integer>>> vectorPathIndexesMap =
         groupVectorSeries(pathToAggrIndexesMap);
     try {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
@@ -118,8 +119,7 @@ public class AggregationExecutor {
             aggregationPlan.getAllMeasurementsInDevice(seriesPath.getDevice()),
             timeFilter);
       }
-      for (Map.Entry<PartialPath, Map<String, List<Integer>>> entry :
-          vectorPathIndexesMap.entrySet()) {
+      for (Map.Entry<PartialPath, List<List<Integer>>> entry : vectorPathIndexesMap.entrySet()) {
         VectorPartialPath vectorSeries = (VectorPartialPath) entry.getKey();
         aggregateOneVectorSeries(
             vectorSeries,
@@ -150,7 +150,6 @@ public class AggregationExecutor {
     boolean[] isAsc = new boolean[aggregateResultList.length];
 
     TSDataType tsDataType = dataTypes.get(indexes.get(0));
-
     for (int i : indexes) {
       // construct AggregateResult
       AggregateResult aggregateResult =
@@ -183,11 +182,56 @@ public class AggregationExecutor {
   }
 
   protected void aggregateOneVectorSeries(
-      PartialPath seriesPath,
-      Map<String, List<Integer>> subIndexes,
+      VectorPartialPath seriesPath,
+      List<List<Integer>> subIndexes,
       Set<String> allMeasurementsInDevice,
       Filter timeFilter)
-      throws IOException, QueryProcessException, StorageEngineException {}
+      throws IOException, QueryProcessException, StorageEngineException {
+    List<List<AggregateResult>> ascAggregateResultList = new ArrayList<>();
+    List<List<AggregateResult>> descAggregateResultList = new ArrayList<>();
+    boolean[] isAsc = new boolean[aggregateResultList.length];
+
+    for (List<Integer> subIndex : subIndexes) {
+      TSDataType tsDataType = dataTypes.get(subIndex.get(0));
+      List<AggregateResult> subAscResultList = new ArrayList<>();
+      List<AggregateResult> subDescResultList = new ArrayList<>();
+      for (int i : subIndex) {
+        // construct AggregateResult
+        AggregateResult aggregateResult =
+            AggregateResultFactory.getAggrResultByName(aggregations.get(i), tsDataType);
+        if (aggregateResult.isAscending()) {
+          subAscResultList.add(aggregateResult);
+          isAsc[i] = true;
+        } else {
+          subDescResultList.add(aggregateResult);
+        }
+      }
+      ascAggregateResultList.add(subAscResultList);
+      descAggregateResultList.add(subDescResultList);
+    }
+
+    aggregateOneVectorSeries(
+        seriesPath,
+        allMeasurementsInDevice,
+        context,
+        timeFilter,
+        TSDataType.VECTOR,
+        ascAggregateResultList,
+        descAggregateResultList,
+        null);
+
+    for (int i = 0; i < subIndexes.size(); i++) {
+      List<Integer> subIndex = subIndexes.get(i);
+      List<AggregateResult> subAscResultList = ascAggregateResultList.get(i);
+      List<AggregateResult> subDescResultList = descAggregateResultList.get(i);
+      int ascIndex = 0;
+      int descIndex = 0;
+      for (int index : subIndex) {
+        aggregateResultList[index] =
+            isAsc[index] ? subAscResultList.get(ascIndex++) : subDescResultList.get(descIndex++);
+      }
+    }
+  }
 
   @SuppressWarnings("squid:S107")
   public static void aggregateOneSeries(
@@ -240,6 +284,56 @@ public class AggregationExecutor {
     }
   }
 
+  public static void aggregateOneVectorSeries(
+      VectorPartialPath seriesPath,
+      Set<String> measurements,
+      QueryContext context,
+      Filter timeFilter,
+      TSDataType tsDataType,
+      List<List<AggregateResult>> ascAggregateResultList,
+      List<List<AggregateResult>> descAggregateResultList,
+      TsFileFilter fileFilter)
+      throws StorageEngineException, IOException, QueryProcessException {
+
+    // construct series reader without value filter
+    QueryDataSource queryDataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
+    if (fileFilter != null) {
+      QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+    }
+    // update filter by TTL
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+
+    if (ascAggregateResultList != null && !ascAggregateResultList.isEmpty()) {
+      VectorSeriesAggregateReader seriesReader =
+          new VectorSeriesAggregateReader(
+              seriesPath,
+              measurements,
+              tsDataType,
+              context,
+              queryDataSource,
+              timeFilter,
+              null,
+              null,
+              true);
+      aggregateFromVectorReader(seriesReader, ascAggregateResultList);
+    }
+    if (descAggregateResultList != null && !descAggregateResultList.isEmpty()) {
+      VectorSeriesAggregateReader seriesReader =
+          new VectorSeriesAggregateReader(
+              seriesPath,
+              measurements,
+              tsDataType,
+              context,
+              queryDataSource,
+              timeFilter,
+              null,
+              null,
+              false);
+      aggregateFromVectorReader(seriesReader, descAggregateResultList);
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static void aggregateFromReader(
       IAggregateReader seriesReader, List<AggregateResult> aggregateResultList)
@@ -278,6 +372,72 @@ public class AggregationExecutor {
         remainingToCalculate =
             aggregatePages(
                 seriesReader, aggregateResultList, isCalculatedArray, remainingToCalculate);
+        if (remainingToCalculate == 0) {
+          return;
+        }
+      }
+    }
+  }
+
+  private static void aggregateFromVectorReader(
+      VectorSeriesAggregateReader seriesReader, List<List<AggregateResult>> aggregateResultList)
+      throws QueryProcessException, IOException {
+    int remainingToCalculate = 0;
+    List<boolean[]> isCalculatedArray = new ArrayList<>();
+    for (List<AggregateResult> subAggregateResults : aggregateResultList) {
+      remainingToCalculate += subAggregateResults.size();
+      boolean[] subCalculatedArray = new boolean[subAggregateResults.size()];
+      isCalculatedArray.add(subCalculatedArray);
+    }
+
+    while (seriesReader.hasNextFile()) {
+      // cal by file statistics
+      if (seriesReader.canUseCurrentFileStatistics()) {
+        while (seriesReader.getCurIndex() < seriesReader.getSubSensorSize()) {
+          Statistics fileStatistics = seriesReader.currentFileStatistics();
+          remainingToCalculate =
+              aggregateStatistics(
+                  aggregateResultList.get(seriesReader.getCurIndex()),
+                  isCalculatedArray.get(seriesReader.getCurIndex()),
+                  remainingToCalculate,
+                  fileStatistics);
+          if (remainingToCalculate == 0) {
+            seriesReader.resetIndex();
+            return;
+          }
+          seriesReader.nextIndex();
+        }
+        seriesReader.skipCurrentFile();
+        continue;
+      }
+
+      while (seriesReader.hasNextChunk()) {
+        // cal by chunk statistics
+        if (seriesReader.canUseCurrentChunkStatistics()) {
+          while (seriesReader.getCurIndex() < seriesReader.getSubSensorSize()) {
+            Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+            remainingToCalculate =
+                aggregateStatistics(
+                    aggregateResultList.get(seriesReader.getCurIndex()),
+                    isCalculatedArray.get(seriesReader.getCurIndex()),
+                    remainingToCalculate,
+                    chunkStatistics);
+            if (remainingToCalculate == 0) {
+              seriesReader.resetIndex();
+              return;
+            }
+            seriesReader.nextIndex();
+          }
+          seriesReader.skipCurrentChunk();
+          continue;
+        }
+
+        remainingToCalculate =
+            aggregateVectorPages(
+                seriesReader,
+                aggregateResultList.get(seriesReader.getCurIndex()),
+                isCalculatedArray.get(seriesReader.getCurIndex()),
+                remainingToCalculate);
         if (remainingToCalculate == 0) {
           return;
         }
@@ -325,6 +485,48 @@ public class AggregationExecutor {
                 aggregateResultList, isCalculatedArray, remainingToCalculate, pageStatistic);
         if (remainingToCalculate == 0) {
           return 0;
+        }
+        seriesReader.skipCurrentPage();
+        continue;
+      }
+      BatchData nextOverlappedPageData = seriesReader.nextPage();
+      for (int i = 0; i < aggregateResultList.size(); i++) {
+        if (!isCalculatedArray[i]) {
+          AggregateResult aggregateResult = aggregateResultList.get(i);
+          aggregateResult.updateResultFromPageData(nextOverlappedPageData);
+          nextOverlappedPageData.resetBatchData();
+          if (aggregateResult.hasFinalResult()) {
+            isCalculatedArray[i] = true;
+            remainingToCalculate--;
+            if (remainingToCalculate == 0) {
+              return 0;
+            }
+          }
+        }
+      }
+    }
+    return remainingToCalculate;
+  }
+
+  private static int aggregateVectorPages(
+      VectorSeriesAggregateReader seriesReader,
+      List<AggregateResult> aggregateResultList,
+      boolean[] isCalculatedArray,
+      int remainingToCalculate)
+      throws IOException, QueryProcessException {
+    while (seriesReader.hasNextPage()) {
+      // cal by page statistics
+      if (seriesReader.canUseCurrentPageStatistics()) {
+        while (seriesReader.getCurIndex() < seriesReader.getSubSensorSize()) {
+          Statistics pageStatistic = seriesReader.currentPageStatistics();
+          remainingToCalculate =
+              aggregateStatistics(
+                  aggregateResultList, isCalculatedArray, remainingToCalculate, pageStatistic);
+          if (remainingToCalculate == 0) {
+            seriesReader.resetIndex();
+            return 0;
+          }
+          seriesReader.nextIndex();
         }
         seriesReader.skipCurrentPage();
         continue;
@@ -521,19 +723,25 @@ public class AggregationExecutor {
 
   /**
    * Group all the subSensors of one vector into one VectorPartialPath and Remove vectorPartialPath
-   * from pathToAggrIndexesMap.
-   *
-   * @return e.g. vector[s1, s2], Map{s1 -> 1, s2 -> 2}
+   * from pathToAggrIndexesMap. For example, input map: vector1[s1] -> [1, 3], vector1[s2] -> [2,4],
+   * will return vector1[s1,s2], [[1,3], [2,4]]
    */
-  private Map<PartialPath, Map<String, List<Integer>>> groupVectorSeries(
+  private Map<PartialPath, List<List<Integer>>> groupVectorSeries(
       Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
-    Map<PartialPath, Map<String, List<Integer>>> result = new HashMap<>();
+    Map<PartialPath, List<List<Integer>>> result = new HashMap<>();
+    Map<String, VectorPartialPath> temp = new HashMap<>();
+
     for (PartialPath seriesPath : pathToAggrIndexesMap.keySet()) {
       if (seriesPath instanceof VectorPartialPath) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        result
-            .computeIfAbsent(seriesPath, key -> new HashMap<>())
-            .put(((VectorPartialPath) seriesPath).getSubSensor(0), indexes);
+        VectorPartialPath groupPath = temp.get(seriesPath.getFullPath());
+        if (groupPath == null) {
+          groupPath = (VectorPartialPath) seriesPath.copy();
+          temp.put(seriesPath.getFullPath(), groupPath);
+        } else {
+          groupPath.addSubSensor(((VectorPartialPath) seriesPath).getSubSensorsList());
+        }
+        result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
       }
     }
     return result;

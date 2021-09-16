@@ -49,6 +49,10 @@ public class VectorChunkMetadata implements IChunkMetadata {
         : timeChunkMetadata.getStatistics();
   }
 
+  public Statistics getStatistics(int index) {
+    return valueChunkMetadataList.get(index).getStatistics();
+  }
+
   @Override
   public boolean isModified() {
     return timeChunkMetadata.isModified();
