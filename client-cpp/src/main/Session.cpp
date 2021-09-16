@@ -387,7 +387,6 @@ void Session::sortTablet(Tablet &tablet) {
     }
 
     this->sortIndexByTimestamp(index, tablet.timestamps, tablet.rowSize);
-    sort(tablet.timestamps.begin(), tablet.timestamps.begin() + tablet.rowSize);
     for (int i = 0; i < tablet.schemas.size(); i++) {
         tablet.values[i] = sortList(tablet.values[i], index, tablet.rowSize);
     }
@@ -684,7 +683,6 @@ void Session::insertRecordsOfOneDevice(string deviceId, vector <int64_t> &times,
         }
 
         this->sortIndexByTimestamp(index, times, times.size());
-        sort(times.begin(), times.end());
         measurementsList = sortList(measurementsList, index, times.size());
         typesList = sortList(typesList, index, times.size());
         valuesList = sortList(valuesList, index, times.size());
