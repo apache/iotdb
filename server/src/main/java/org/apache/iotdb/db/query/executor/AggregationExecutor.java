@@ -731,17 +731,22 @@ public class AggregationExecutor {
     Map<PartialPath, List<List<Integer>>> result = new HashMap<>();
     Map<String, VectorPartialPath> temp = new HashMap<>();
 
-    for (PartialPath seriesPath : pathToAggrIndexesMap.keySet()) {
+    List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
+    for (PartialPath seriesPath : seriesPaths) {
       if (seriesPath instanceof VectorPartialPath) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
         VectorPartialPath groupPath = temp.get(seriesPath.getFullPath());
         if (groupPath == null) {
           groupPath = (VectorPartialPath) seriesPath.copy();
           temp.put(seriesPath.getFullPath(), groupPath);
+          result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
         } else {
+          // groupPath is changed here so we update it
+          List<List<Integer>> subIndexes = result.remove(groupPath);
+          subIndexes.add(indexes);
           groupPath.addSubSensor(((VectorPartialPath) seriesPath).getSubSensorsList());
+          result.put(groupPath, subIndexes);
         }
-        result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
       }
     }
     return result;
