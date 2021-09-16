@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -102,7 +103,11 @@ public class AggregationExecutor {
     // TODO use multi-thread
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
         groupAggregationsBySeries(selectedSeries);
+    // Attention: this method will REMOVE vector path from pathToAggrIndexesMap
+    Map<PartialPath, Map<String, List<Integer>>> vectorPathIndexesMap =
+        groupVectorSeries(pathToAggrIndexesMap);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
+
     // TODO-Cluster: group the paths by storage group to reduce communications
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
@@ -510,5 +515,25 @@ public class AggregationExecutor {
       pathToAggrIndexesMap.computeIfAbsent(series, key -> new ArrayList<>()).add(i);
     }
     return pathToAggrIndexesMap;
+  }
+
+  /**
+   * Group all the subSensors of one vector into one VectorPartialPath and Remove vectorPartialPath
+   * from pathToAggrIndexesMap.
+   *
+   * @return e.g. vector[s1, s2], Map{s1 -> 1, s2 -> 2}
+   */
+  private Map<PartialPath, Map<String, List<Integer>>> groupVectorSeries(
+      Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
+    Map<PartialPath, Map<String, List<Integer>>> result = new HashMap<>();
+    for (PartialPath seriesPath : pathToAggrIndexesMap.keySet()) {
+      if (seriesPath instanceof VectorPartialPath) {
+        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
+        result
+            .computeIfAbsent(seriesPath, key -> new HashMap<>())
+            .put(((VectorPartialPath) seriesPath).getSubSensor(0), indexes);
+      }
+    }
+    return result;
   }
 }
