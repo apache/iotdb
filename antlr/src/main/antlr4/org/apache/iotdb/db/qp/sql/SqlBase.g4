@@ -148,6 +148,7 @@ intoPath
 
 alias
     : LR_BRACKET ID RR_BRACKET
+    | LR_BRACKET DOUBLE_QUOTE_STRING_LITERAL RR_BRACKET
     ;
 
 alterClause
