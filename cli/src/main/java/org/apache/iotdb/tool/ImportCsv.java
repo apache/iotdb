@@ -27,21 +27,40 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import jline.console.ConsoleReader;
-import org.apache.commons.cli.*;
-import org.apache.commons.csv.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.annotation.Nullable;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.*;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
 public class ImportCsv extends AbstractCsvTool {
 
