@@ -1093,11 +1093,12 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
     }
-    Collections.sort(tsfiles, (o1, o2) -> {
-      if (establishTime[o1] == establishTime[o2])
-        return 0;
-      return establishTime[o1] < establishTime[o2] ? -1 : 1;
-    });
+    Collections.sort(
+        tsfiles,
+        (o1, o2) -> {
+          if (establishTime[o1] == establishTime[o2]) return 0;
+          return establishTime[o1] < establishTime[o2] ? -1 : 1;
+        });
     for (Integer i : tsfiles) {
       loadFile(files[i], plan);
     }

@@ -44,7 +44,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.xml.crypto.Data;
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
@@ -209,7 +208,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   }
 
   void writeDataWithDifferentDevice(TsFileWriter tsFileWriter, long timestamp, int counter)
-          throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException {
     int mod = (counter % 6);
     if (mod < 3) {
       TSRecord tsRecord = new TSRecord(timestamp, STORAGE_GROUP + DOT + devices[mod]);
@@ -282,8 +281,8 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   @Test
   public void loadTsFileWithDifferentDevice() {
     try (Connection connection =
-                 DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       prepareDataWithDifferentDevice();
 
       statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
@@ -291,11 +290,10 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
       String dataDir = config.getDataDirs()[0];
       // sequence/logical_sg/virtual_sg/time_partitions
       File f =
-              new File(
-                      dataDir,
-                      new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");
-      Assert.assertEquals(
-              (endTime - startTime) / (timePartition), f.list().length);
+          new File(
+              dataDir,
+              new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");
+      Assert.assertEquals((endTime - startTime) / (timePartition), f.list().length);
 
       int totalPartitionsNum = (int) ((endTime - startTime) / (timePartition));
       int[] splitTsFilePartitions = new int[totalPartitionsNum];
@@ -310,8 +308,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
       // each time partition folder should contain 2 files, the tsfile and the resource file
       for (int i = 0; i < (endTime - startTime) / (timePartition); i++) {
-        Assert.assertEquals(
-                2, new File(f.getAbsolutePath(), "" + i).list().length);
+        Assert.assertEquals(2, new File(f.getAbsolutePath(), "" + i).list().length);
       }
 
       for (int i = 0; i < devices.length; i++) {
@@ -321,7 +318,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
         set.next();
         long number = set.getLong(1);
         Assert.assertEquals(deviceDataPointNumber[i], number);
-        }
+      }
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
