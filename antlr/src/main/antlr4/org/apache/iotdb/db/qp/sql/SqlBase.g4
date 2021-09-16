@@ -109,8 +109,11 @@ statement
     fromClause
     whereClause?
     specialClause? #selectStatement
+    |SHOW timeClause #showNow
     ;
-
+timeClause
+    : NOW LR_BRACKET RR_BRACKET
+    ;
 selectElements
     : aggregationCall (COMMA aggregationCall)* #aggregationElement
     | tableCall (COMMA tableCall)* #tableElement

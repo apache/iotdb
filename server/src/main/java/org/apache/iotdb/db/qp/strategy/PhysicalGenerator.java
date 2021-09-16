@@ -117,6 +117,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
@@ -285,6 +286,8 @@ public class PhysicalGenerator {
         return generateLoadConfigurationPlan(type);
       case SHOW:
         switch (operator.getTokenIntType()) {
+          case SQLConstant.TOK_SHOW_NOW:
+            return new ShowNowPlan(ShowContentType.NOW);
           case SQLConstant.TOK_FLUSH_TASK_INFO:
             return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
           case SQLConstant.TOK_VERSION:
