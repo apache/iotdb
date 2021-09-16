@@ -1131,8 +1131,9 @@ public class MManager {
       }
 
       for (MNode mNode : mNodeTemplatePair.left.getChildren().values()) {
-        MeasurementMNode measurementMNode = (MeasurementMNode) mNode;
-        res.add(measurementMNode.getSchema());
+        if (mNode instanceof MeasurementMNode) {
+          res.add(((MeasurementMNode) mNode).getSchema());
+        }
       }
 
       // template
