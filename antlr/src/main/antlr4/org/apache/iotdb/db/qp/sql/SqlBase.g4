@@ -147,8 +147,8 @@ intoPath
     ;
 
 alias
-    : LR_BRACKET ID RR_BRACKET
-    | LR_BRACKET DOUBLE_QUOTE_STRING_LITERAL RR_BRACKET
+    : LR_BRACKET DOUBLE_QUOTATION_ID RR_BRACKET
+    | LR_BRACKET ID RR_BRACKET
     ;
 
 alterClause
@@ -1483,6 +1483,10 @@ FIRST_NAME_CHAR
 fragment CN_CHAR
   : '\u2E80'..'\u9FFF'
   ;
+
+DOUBLE_QUOTATION_ID
+    : '"' ID '"'
+    ;
 
 DOUBLE_QUOTE_STRING_LITERAL
     : '"' ('\\' . | ~'"' )*? '"'

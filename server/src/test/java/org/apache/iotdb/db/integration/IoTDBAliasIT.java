@@ -46,6 +46,7 @@ public class IoTDBAliasIT {
         "CREATE TIMESERIES root.sg.d2.s1(speed) WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.sg.d2.s2(temperature) WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.sg.d2.s3(power) WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg1.d3.s1(\"speed\") WITH DATATYPE=FLOAT, ENCODING=RLE",
         "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 10.1, 20.7)",
         "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(200, 15.2, 22.9)",
         "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(300, 30.3, 25.1)",
@@ -53,7 +54,8 @@ public class IoTDBAliasIT {
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(100, 11.1, 20.2, 80.0)",
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(200, 20.2, 21.8, 81.0)",
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(300, 45.3, 23.4, 82.0)",
-        "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(400, 73.4, 26.3, 83.0)"
+        "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(400, 73.4, 26.3, 83.0)",
+        "INSERT INTO root.sg1.d3(timestamp,speed) values(100, 10.1)",
       };
 
   private static final String TIMESTAMP_STR = "Time";
@@ -329,6 +331,31 @@ public class IoTDBAliasIT {
           cnt++;
         }
         assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void DoubleQuotationAliasTest() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResult = statement.execute("select speed from root.sg1.d3");
+      assertTrue(hasResult);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Time,root.sg1.d3.speed,", header.toString());
       }
     } catch (Exception e) {
       fail(e.getMessage());
