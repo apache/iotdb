@@ -5,6 +5,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
 import com.google.common.collect.Maps;
+import com.sun.istack.Nullable;
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -62,8 +63,7 @@ public class ClientManager implements IClientManager {
         break;
       case MetaGroupClient:
         asyncClientPoolMap.put(
-            ClientCategory.META,
-            clientPoolFactory.createAsyncMetaPool(ClientCategory.META));
+            ClientCategory.META, clientPoolFactory.createAsyncMetaPool(ClientCategory.META));
         asyncClientPoolMap.put(
             ClientCategory.META_HEARTBEAT,
             clientPoolFactory.createAsyncMetaPool(ClientCategory.META_HEARTBEAT));
@@ -118,6 +118,7 @@ public class ClientManager implements IClientManager {
    * @return RaftService.AsyncClient
    */
   @Override
+  @Nullable
   public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category) {
     try {
       return asyncClientPoolMap.get(category).borrowObject(node);
@@ -140,6 +141,7 @@ public class ClientManager implements IClientManager {
    * @return RaftService.Client
    */
   @Override
+  @Nullable
   public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
     try {
       return syncClientPoolMap.get(category).borrowObject(node);
@@ -153,7 +155,6 @@ public class ClientManager implements IClientManager {
     return null;
   }
 
-  // TODO: reset returned client's timeout property as it may be changed outside
   @Override
   public void returnAsyncClient(
       RaftService.AsyncClient client, Node node, ClientCategory category) {
@@ -166,7 +167,6 @@ public class ClientManager implements IClientManager {
     }
   }
 
-  // TODO: reset returned client's timeout property as it may be changed outside
   @Override
   public void returnSyncClient(RaftService.Client client, Node node, ClientCategory category) {
     if (client != null && node != null) {

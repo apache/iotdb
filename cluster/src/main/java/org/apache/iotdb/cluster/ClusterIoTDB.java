@@ -537,11 +537,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
         });
   }
 
-  //  @TestOnly
-  //  public void setMetaClusterServer(MetaGroupMember RaftTSMetaServiceImpl) {
-  //    metaServer = RaftTSMetaServiceImpl;
-  //  }
-
   public void stop() {
     deactivate();
   }

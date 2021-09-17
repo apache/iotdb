@@ -129,7 +129,8 @@ public class SyncMetaClient extends TSMetaService.Client {
 
     @Override
     public PooledObject<SyncMetaClient> makeObject(Node node) throws Exception {
-      return new DefaultPooledObject<>(new SyncMetaClient(protocolFactory, node, category, clientPoolManager));
+      return new DefaultPooledObject<>(
+          new SyncMetaClient(protocolFactory, node, category, clientPoolManager));
     }
 
     @Override

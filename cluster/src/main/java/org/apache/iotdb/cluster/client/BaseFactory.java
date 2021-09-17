@@ -9,8 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class BaseFactory<K, T>
-    implements KeyedPooledObjectFactory<K, T> {
+public abstract class BaseFactory<K, T> implements KeyedPooledObjectFactory<K, T> {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseFactory.class);
 

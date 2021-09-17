@@ -1401,11 +1401,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    *     the node cannot be reached.
    */
   public AsyncClient getAsyncClient(Node node) {
-    if (ClientCategory.META == getClientCategory()) {
-      return clientManager.borrowAsyncClient(node, ClientCategory.META);
-    } else {
-      return clientManager.borrowAsyncClient(node, ClientCategory.DATA);
-    }
+    return clientManager.borrowAsyncClient(node, getClientCategory());
   }
 
   public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
@@ -1432,11 +1428,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return the client if node is available, otherwise null
    */
   public Client getSyncClient(Node node) {
-    if (ClientCategory.META == getClientCategory()) {
-      return clientManager.borrowSyncClient(node, ClientCategory.META);
-    } else {
-      return clientManager.borrowSyncClient(node, ClientCategory.DATA);
-    }
+    return clientManager.borrowSyncClient(node, getClientCategory());
   }
 
   public Client getSyncClient(Node node, boolean activatedOnly) {

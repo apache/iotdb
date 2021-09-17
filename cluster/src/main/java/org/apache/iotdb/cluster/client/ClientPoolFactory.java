@@ -36,6 +36,8 @@ public class ClientPoolFactory {
     poolConfig = new GenericKeyedObjectPoolConfig();
     poolConfig.setMaxTotalPerKey(maxConnectionForEachNode);
     poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMS));
+    poolConfig.setTestOnReturn(true);
+    poolConfig.setTestOnBorrow(true);
   }
 
   public void setClientManager(IClientManager clientManager) {

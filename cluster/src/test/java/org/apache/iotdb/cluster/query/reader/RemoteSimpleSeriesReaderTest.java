@@ -78,7 +78,8 @@ public class RemoteSimpleSeriesReaderTest {
         .setClientManager(
             new IClientManager() {
               @Override
-              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category) throws IOException {
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
                 return new AsyncDataClient(null, null, node, null) {
                   @Override
                   public void fetchSingleSeries(
