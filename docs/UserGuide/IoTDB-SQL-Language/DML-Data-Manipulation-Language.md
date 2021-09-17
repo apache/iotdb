@@ -230,6 +230,48 @@ Total line number = 10
 It costs 0.016s
 ```
 
+### Arithmetic Query
+
+#### Unary Arithmetic Operators
+
+Supported operators: `+`, `-`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+
+Output data type: consistent with the input data type
+
+#### Binary Arithmetic Operators
+
+Supported operators: `+`, `-`, `*`, `/`, `%`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+
+Output data type: `DOUBLE`
+
+Note: Only when the left operand and the right operand under a certain timestamp are not  `null`, the binary arithmetic operation will have an output value.
+
+#### Example
+
+```sql
+select s1, - s1, s2, + s2, s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.sg.d1
+```
+
+Result:
+
+```
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+|                         Time|root.sg.d1.s1|-root.sg.d1.s1|root.sg.d1.s2|root.sg.d1.s2|root.sg.d1.s1 + root.sg.d1.s2|root.sg.d1.s1 - root.sg.d1.s2|root.sg.d1.s1 * root.sg.d1.s2|root.sg.d1.s1 / root.sg.d1.s2|root.sg.d1.s1 % root.sg.d1.s2|
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.001+08:00|          1.0|          -1.0|          1.0|          1.0|                          2.0|                          0.0|                          1.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.002+08:00|          2.0|          -2.0|          2.0|          2.0|                          4.0|                          0.0|                          4.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.003+08:00|          3.0|          -3.0|          3.0|          3.0|                          6.0|                          0.0|                          9.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.004+08:00|          4.0|          -4.0|          4.0|          4.0|                          8.0|                          0.0|                         16.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.005+08:00|          5.0|          -5.0|          5.0|          5.0|                         10.0|                          0.0|                         25.0|                          1.0|                          0.0|
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+Total line number = 5
+It costs 0.014s
+```
+
 ### Time Series Generating Functions
 
 The time series generating function takes several time series as input and outputs one time series. Unlike the aggregation function, the result set of the time series generating function has a timestamp column.
@@ -240,7 +282,7 @@ IoTDB supports hybrid queries of time series generating function queries and raw
 
 #### Mathematical Functions
 
-Currently IoTDB supports the following mathematical functions. The behavior of these mathematical functions is consistent with the behavior of these functions in the Java Math standard library.
+Currently, IoTDB supports the following mathematical functions. The behavior of these mathematical functions is consistent with the behavior of these functions in the Java Math standard library.
 
 | Function Name | Allowed Input Series Data Types | Output Series Data Type       | Corresponding Implementation in the Java Standard Library    |
 | ------------- | ------------------------------- | ----------------------------- | ------------------------------------------------------------ |
@@ -289,7 +331,7 @@ It costs 0.008s
 
 #### String Processing Functions
 
-Currently IoTDB supports the following string processing functions:
+Currently, IoTDB supports the following string processing functions:
 
 | Function Name   | Allowed Input Series Data Types | Required Attributes                                          | Output Series Data Type | Description                                            |
 | --------------- | ------------------------------- | ------------------------------------------------------------ | ----------------------- | ------------------------------------------------------ |
@@ -318,7 +360,7 @@ It costs 0.007s
 
 #### Selector Functions
 
-Currently IoTDB supports the following selector functions:
+Currently, IoTDB supports the following selector functions:
 
 | Function Name | Allowed Input Series Data Types       | Required Attributes                                          | Output Series Data Type       | Description                                                  |
 | ------------- | ------------------------------------- | ------------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------ |
@@ -349,7 +391,7 @@ It costs 0.006s
 
 #### Variation Trend Calculation Functions
 
-Currently IoTDB supports the following variation trend calculation functions:
+Currently, IoTDB supports the following variation trend calculation functions:
 
 | Function Name           | Allowed Input Series Data Types                 | Output Series Data Type       | Description                                                  |
 | ----------------------- | ----------------------------------------------- | ----------------------------- | ------------------------------------------------------------ |
@@ -384,48 +426,6 @@ It costs 0.014s
 #### User Defined Timeseries Generating Functions
 
 Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
-
-#### Arithmetic query
-
-##### Unary arithmetic operators
-
-Supported operators: `+`, `-`
-
-Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
-
-Output data type: consistent with the input data type
-
-##### Binary arithmetic operators
-
-Supported operators: `+`, `-`, `*`, `/`, `%`
-
-Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
-
-Output data type: `DOUBLE`
-
-Note: Only when the left operand and the right operand under a certain timestamp are not  `null`, the binary arithmetic operation will have an output value.
-
-##### Example
-
-```sql
-select s1, - s1, s2, + s2, s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.sg.d1
-```
-
-Result:
-
-```
-+-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
-|                         Time|root.sg.d1.s1|-root.sg.d1.s1|root.sg.d1.s2|root.sg.d1.s2|root.sg.d1.s1 + root.sg.d1.s2|root.sg.d1.s1 - root.sg.d1.s2|root.sg.d1.s1 * root.sg.d1.s2|root.sg.d1.s1 / root.sg.d1.s2|root.sg.d1.s1 % root.sg.d1.s2|
-+-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
-|1970-01-01T08:00:00.001+08:00|          1.0|          -1.0|          1.0|          1.0|                          2.0|                          0.0|                          1.0|                          1.0|                          0.0|
-|1970-01-01T08:00:00.002+08:00|          2.0|          -2.0|          2.0|          2.0|                          4.0|                          0.0|                          4.0|                          1.0|                          0.0|
-|1970-01-01T08:00:00.003+08:00|          3.0|          -3.0|          3.0|          3.0|                          6.0|                          0.0|                          9.0|                          1.0|                          0.0|
-|1970-01-01T08:00:00.004+08:00|          4.0|          -4.0|          4.0|          4.0|                          8.0|                          0.0|                         16.0|                          1.0|                          0.0|
-|1970-01-01T08:00:00.005+08:00|          5.0|          -5.0|          5.0|          5.0|                         10.0|                          0.0|                         25.0|                          1.0|                          0.0|
-+-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
-Total line number = 5
-It costs 0.014s
-```
 
 ### Aggregate Query
 
