@@ -48,9 +48,9 @@ public class IoTDBNestedQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(3);
-    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(3);
-    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(3);
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(1);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
