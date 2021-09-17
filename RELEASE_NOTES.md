@@ -36,6 +36,7 @@
 * [IOTDB-1678] Fix client-cpp session bug: can cause connection leak.
 * [IOTDB-1679] client-cpp: Session descontruction need release server resource
 * [IOTDB-1690] Fix align by device type cast error
+* [IOTDB-1703] Fix MManager slow recover with tag  
 * [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
 * fix IoTDB restart does not truncate broken ChunkGroup bug
 * fix merge ClassCastException: MeasurementMNode
