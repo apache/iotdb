@@ -45,6 +45,7 @@ import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRAT
 import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
 import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.WINDOW_SIZE_KEY;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 public class IoTDBNestedQueryIT {
@@ -89,6 +90,12 @@ public class IoTDBNestedQueryIT {
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.empty"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
   }
 
   private static void generateData() {
@@ -126,24 +133,10 @@ public class IoTDBNestedQueryIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    deregisterUDF();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(100);
     IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(100);
     IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(100);
-  }
-
-  private static void deregisterUDF() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("drop function adder");
-      statement.execute("drop function time_window_counter");
-      statement.execute("drop function size_window_counter");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
   }
 
   @Test
@@ -340,6 +333,53 @@ public class IoTDBNestedQueryIT {
         }
 
         assertEquals(ITERATION_TIMES / window + (ITERATION_TIMES % window == 0 ? 0 : 1), count);
+      } catch (SQLException throwable) {
+        fail(throwable.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testSelectEmptyColumns() {
+    final int[] windows =
+        new int[] {
+          1, 2, 3, 100, 499,
+        };
+
+    for (int window : windows) {
+      String sqlStr =
+          String.format(
+              "select time_window_counter(sin(empty), '%s'='%s', '%s'='%s'), "
+                  + "time_window_counter(sin(empty), cos(empty) / sin(empty), empty, '%s'='%s', '%s'='%s'), "
+                  + "size_window_counter(cos(empty - empty) + empty, '%s'='%s', '%s'='%s'), "
+                  + "size_window_counter(cos(empty), cos(empty), '%s'='%s', '%s'='%s'), "
+                  + "empty, sin(empty) - bottom_k(top_k(empty, 'k'='111'), 'k'='111'), "
+                  + "empty * empty / empty + empty %% empty - empty from root.vehicle",
+              ACCESS_STRATEGY_KEY,
+              ACCESS_STRATEGY_SLIDING_TIME,
+              TIME_INTERVAL_KEY,
+              window,
+              ACCESS_STRATEGY_KEY,
+              ACCESS_STRATEGY_SLIDING_TIME,
+              TIME_INTERVAL_KEY,
+              window,
+              ACCESS_STRATEGY_KEY,
+              ACCESS_STRATEGY_SLIDING_SIZE,
+              WINDOW_SIZE_KEY,
+              window,
+              ACCESS_STRATEGY_KEY,
+              ACCESS_STRATEGY_SLIDING_SIZE,
+              WINDOW_SIZE_KEY,
+              window);
+
+      try (Connection connection =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+          Statement statement = connection.createStatement()) {
+        ResultSet resultSet = statement.executeQuery(sqlStr);
+
+        assertEquals(1 + 7, resultSet.getMetaData().getColumnCount());
+        assertFalse(resultSet.next());
       } catch (SQLException throwable) {
         fail(throwable.getMessage());
       }

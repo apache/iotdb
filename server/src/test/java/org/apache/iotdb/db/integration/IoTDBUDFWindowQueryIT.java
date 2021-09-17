@@ -318,7 +318,7 @@ public class IoTDBUDFWindowQueryIT {
       int timeInterval, int slidingStep, int displayWindowBegin, int displayWindowEnd) {
     String sql =
         String.format(
-            "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+            "select accumulator(s1, s1, s1, \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
             ACCESS_STRATEGY_KEY,
             ACCESS_STRATEGY_SLIDING_TIME,
             TIME_INTERVAL_KEY,
