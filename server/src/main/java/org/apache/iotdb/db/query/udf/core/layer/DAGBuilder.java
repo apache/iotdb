@@ -90,11 +90,13 @@ public class DAGBuilder {
                   memoryAssigner)
               .constructPointReader();
     }
+    return this;
+  }
 
+  public DAGBuilder setDataSetResultColumnDataTypes() {
     for (ResultColumn resultColumn : udtfPlan.getResultColumns()) {
       resultColumn.setDataType(expressionDataTypeMap.get(resultColumn.getExpression()));
     }
-
     return this;
   }
 

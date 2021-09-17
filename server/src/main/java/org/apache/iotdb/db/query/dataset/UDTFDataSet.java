@@ -116,6 +116,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
                   UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB + UDF_COLLECTOR_MEMORY_BUDGET_IN_MB)
               .buildLayerMemoryAssigner()
               .buildResultColumnPointReaders()
+              .setDataSetResultColumnDataTypes()
               .getResultColumnPointReaders();
     } finally {
       UDFRegistrationService.getInstance().releaseRegistrationLock();
