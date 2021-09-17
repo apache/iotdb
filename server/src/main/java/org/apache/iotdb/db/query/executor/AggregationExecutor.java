@@ -393,7 +393,7 @@ public class AggregationExecutor {
     while (seriesReader.hasNextFile()) {
       // cal by file statistics
       if (seriesReader.canUseCurrentFileStatistics()) {
-        while (seriesReader.getCurIndex() < seriesReader.getSubSensorSize()) {
+        while (seriesReader.hasNextSubSeries()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
           remainingToCalculate =
               aggregateStatistics(
@@ -405,7 +405,7 @@ public class AggregationExecutor {
             seriesReader.resetIndex();
             return;
           }
-          seriesReader.nextIndex();
+          seriesReader.nextSeries();
         }
         seriesReader.skipCurrentFile();
         continue;
@@ -414,7 +414,7 @@ public class AggregationExecutor {
       while (seriesReader.hasNextChunk()) {
         // cal by chunk statistics
         if (seriesReader.canUseCurrentChunkStatistics()) {
-          while (seriesReader.getCurIndex() < seriesReader.getSubSensorSize()) {
+          while (seriesReader.hasNextSubSeries()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
             remainingToCalculate =
                 aggregateStatistics(
@@ -426,7 +426,7 @@ public class AggregationExecutor {
               seriesReader.resetIndex();
               return;
             }
-            seriesReader.nextIndex();
+            seriesReader.nextSeries();
           }
           seriesReader.skipCurrentChunk();
           continue;
@@ -506,7 +506,7 @@ public class AggregationExecutor {
     while (seriesReader.hasNextPage()) {
       // cal by page statistics
       if (seriesReader.canUseCurrentPageStatistics()) {
-        while (seriesReader.getCurIndex() < seriesReader.getSubSensorSize()) {
+        while (seriesReader.hasNextSubSeries()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           remainingToCalculate =
               aggregateStatistics(
@@ -518,7 +518,7 @@ public class AggregationExecutor {
             seriesReader.resetIndex();
             return 0;
           }
-          seriesReader.nextIndex();
+          seriesReader.nextSeries();
         }
         seriesReader.skipCurrentPage();
         continue;
@@ -526,7 +526,7 @@ public class AggregationExecutor {
 
       BatchData nextOverlappedPageData = seriesReader.nextPage();
       BatchData[] subBatchData = nextOverlappedPageData.generateSubBatchData();
-      while (seriesReader.getCurIndex() < seriesReader.getSubSensorSize()) {
+      while (seriesReader.hasNextSubSeries()) {
         remainingToCalculate =
             aggregateBatchData(
                 aggregateResultList.get(seriesReader.getCurIndex()),
@@ -537,7 +537,7 @@ public class AggregationExecutor {
           seriesReader.resetIndex();
           return 0;
         }
-        seriesReader.nextIndex();
+        seriesReader.nextSeries();
       }
     }
     return remainingToCalculate;

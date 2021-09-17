@@ -148,19 +148,21 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
         || timeFilter.containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
+  public boolean hasNextSubSeries() {
+    if (getCurIndex() < subSensorSize) {
+      return true;
+    } else {
+      resetIndex();
+      return false;
+    }
+  }
+
+  public void nextSeries() {
+    curIndex++;
+  }
+
   public int getCurIndex() {
     return curIndex;
-  }
-
-  public int getSubSensorSize() {
-    return subSensorSize;
-  }
-
-  public void nextIndex() {
-    curIndex++;
-    if (curIndex >= subSensorSize) {
-      resetIndex();
-    }
   }
 
   public void resetIndex() {
