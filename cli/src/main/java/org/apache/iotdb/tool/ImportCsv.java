@@ -26,7 +26,6 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -169,10 +168,8 @@ public class ImportCsv extends AbstractCsvTool {
       return;
     }
 
-    ConsoleReader reader = new ConsoleReader();
-    reader.setExpandEvents(false);
     try {
-      parseBasicParams(commandLine, reader);
+      parseBasicParams(commandLine);
       String filename = commandLine.getOptionValue(FILE_ARGS);
       if (filename == null) {
         hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
@@ -183,8 +180,6 @@ public class ImportCsv extends AbstractCsvTool {
       System.out.println("Args error: " + e.getMessage());
     } catch (Exception e) {
       System.out.println("Encounter an error, because: " + e.getMessage());
-    } finally {
-      reader.close();
     }
 
     importFromTargetPath(host, Integer.valueOf(port), username, password, targetPath, timeZoneID);

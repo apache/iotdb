@@ -23,7 +23,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
-import jline.console.ConsoleReader;
 import jline.internal.Nullable;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -131,16 +130,13 @@ public abstract class AbstractCsvTool {
     zoneId = ZoneId.of(session.getTimeZone());
   }
 
-  protected static void parseBasicParams(CommandLine commandLine, ConsoleReader reader)
+  protected static void parseBasicParams(CommandLine commandLine)
       throws ArgsErrorException, IOException {
     host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
     port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
     username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
 
     password = commandLine.getOptionValue(PASSWORD_ARGS);
-    if (password == null) {
-      password = reader.readLine("please input your password:", '\0');
-    }
   }
 
   protected static boolean checkTimeFormat() {
@@ -200,7 +196,7 @@ public abstract class AbstractCsvTool {
             .optionalArg(true)
             .argName(PASSWORD_NAME)
             .hasArg()
-            .desc("Password (optional)")
+            .desc("Password (required)")
             .build();
     options.addOption(opPassword);
     return options;

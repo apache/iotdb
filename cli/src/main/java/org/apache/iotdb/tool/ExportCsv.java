@@ -108,11 +108,8 @@ public class ExportCsv extends AbstractCsvTool {
       return;
     }
 
-    ConsoleReader reader = new ConsoleReader();
-    reader.setExpandEvents(false);
-
     try {
-      parseBasicParams(commandLine, reader);
+      parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
       if (!checkTimeFormat()) {
         return;
@@ -127,12 +124,15 @@ public class ExportCsv extends AbstractCsvTool {
         String sql;
 
         if (sqlFile == null) {
+          ConsoleReader reader = new ConsoleReader();
+          reader.setExpandEvents(false);
           sql = reader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
           System.out.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
             dumpResult(values[i], i);
           }
+          reader.close();
         } else {
           dumpFromSqlFile(sqlFile);
         }
@@ -147,7 +147,6 @@ public class ExportCsv extends AbstractCsvTool {
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Connect failed because " + e.getMessage());
     } finally {
-      reader.close();
       if (session != null) {
         try {
           session.close();
