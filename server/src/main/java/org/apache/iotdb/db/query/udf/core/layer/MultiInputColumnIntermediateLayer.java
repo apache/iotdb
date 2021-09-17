@@ -283,24 +283,17 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
       @Override
       public boolean next() throws IOException, QueryProcessException {
-        if (displayWindowEnd <= nextWindowTimeBegin) {
-          return false;
-        }
-        if (hasCached || !hasAtLeastOneRow) {
+        if (hasCached) {
           return true;
+        }
+        if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
+          return false;
         }
 
         long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
-        int oldTVListSize = rowRecordList.size();
         while (rowRecordList.getTime(rowRecordList.size() - 1) < nextWindowTimeEnd) {
           if (!LayerCacheUtils.cacheRow(udfInputDataSet, rowRecordList)) {
-            if (displayWindowEnd == Long.MAX_VALUE
-                // display window end == the max timestamp of the query result set
-                && oldTVListSize == rowRecordList.size()) {
-              return false;
-            } else {
-              break;
-            }
+            break;
           }
         }
 
@@ -323,8 +316,8 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         }
         window.seek(nextIndexBegin, nextIndexEnd);
 
-        hasCached = true;
-        return true;
+        hasCached = nextIndexBegin != nextIndexEnd;
+        return hasCached;
       }
 
       @Override

@@ -39,6 +39,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_SIZE;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_TIME;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.WINDOW_SIZE_KEY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -48,9 +53,9 @@ public class IoTDBNestedQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(1);
-    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(1);
-    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(5);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(5);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(5);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
@@ -110,6 +115,10 @@ public class IoTDBNestedQueryIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("create function adder as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute(
+          "create function time_window_counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+      statement.execute(
+          "create function size_window_counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -130,6 +139,8 @@ public class IoTDBNestedQueryIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("drop function adder");
+      statement.execute("drop function time_window_counter");
+      statement.execute("drop function size_window_counter");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -161,6 +172,7 @@ public class IoTDBNestedQueryIT {
         assertEquals(-count, Double.parseDouble(resultSet.getString(7)), 0);
         assertEquals(-count, Double.parseDouble(resultSet.getString(8)), 0);
       }
+
       assertEquals(ITERATION_TIMES, count);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -183,6 +195,7 @@ public class IoTDBNestedQueryIT {
       int count = 0;
       while (resultSet.next()) {
         ++count;
+
         assertEquals(count, Integer.parseInt(resultSet.getString(1)));
         assertEquals(count, Double.parseDouble(resultSet.getString(2)), 0);
         assertEquals(count, Double.parseDouble(resultSet.getString(3)), 0);
@@ -192,6 +205,7 @@ public class IoTDBNestedQueryIT {
             Double.parseDouble(resultSet.getString(5)),
             1e-5);
       }
+
       assertEquals(ITERATION_TIMES, count);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -214,12 +228,14 @@ public class IoTDBNestedQueryIT {
       int count = 0;
       while (resultSet.next()) {
         ++count;
+
         assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(1)), 1e-5);
         assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(2)), 1e-5);
         assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(3)), 1e-5);
         assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(4)), 1e-5);
         assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(5)), 1e-5);
       }
+
       assertEquals(1, count);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -242,6 +258,7 @@ public class IoTDBNestedQueryIT {
       int count = 0;
       while (resultSet.next()) {
         ++count;
+
         assertEquals(count, Double.parseDouble(resultSet.getString(1)), 1e-5);
         assertEquals(2 * count, Double.parseDouble(resultSet.getString(2)), 1e-5);
         assertEquals(-2 * count, Double.parseDouble(resultSet.getString(3)), 1e-5);
@@ -249,9 +266,83 @@ public class IoTDBNestedQueryIT {
         assertEquals(4 * count, Double.parseDouble(resultSet.getString(5)), 1e-5);
         assertEquals(0, Double.parseDouble(resultSet.getString(6)), 1e-5);
       }
+
       assertEquals(ITERATION_TIMES, count);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testNestedWindowingFunctionExpressions() {
+    final int[] windows =
+        new int[] {
+          1,
+          2,
+          3,
+          100,
+          499,
+          ITERATION_TIMES - 1,
+          ITERATION_TIMES,
+          ITERATION_TIMES + 1,
+          ITERATION_TIMES + 13
+        };
+
+    for (int window : windows) {
+      String sqlStr =
+          String.format(
+              "select time_window_counter(sin(d1.s1), '%s'='%s', '%s'='%s'), time_window_counter(sin(d1.s1), cos(d2.s2) / sin(d1.s1), d1.s2, '%s'='%s', '%s'='%s'), size_window_counter(cos(d2.s2), '%s'='%s', '%s'='%s'), size_window_counter(cos(d2.s2), cos(d2.s2), '%s'='%s', '%s'='%s') from root.vehicle",
+              ACCESS_STRATEGY_KEY,
+              ACCESS_STRATEGY_SLIDING_TIME,
+              TIME_INTERVAL_KEY,
+              window,
+              ACCESS_STRATEGY_KEY,
+              ACCESS_STRATEGY_SLIDING_TIME,
+              TIME_INTERVAL_KEY,
+              window,
+              ACCESS_STRATEGY_KEY,
+              ACCESS_STRATEGY_SLIDING_SIZE,
+              WINDOW_SIZE_KEY,
+              window,
+              ACCESS_STRATEGY_KEY,
+              ACCESS_STRATEGY_SLIDING_SIZE,
+              WINDOW_SIZE_KEY,
+              window);
+
+      try (Connection connection =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+          Statement statement = connection.createStatement()) {
+        ResultSet resultSet = statement.executeQuery(sqlStr);
+
+        assertEquals(1 + 4, resultSet.getMetaData().getColumnCount());
+
+        int count = 0;
+        while (resultSet.next()) {
+          assertEquals((long) count * window + 1, Long.parseLong(resultSet.getString(1)));
+
+          double c2 = Double.parseDouble(resultSet.getString(2));
+          double c3 = Double.parseDouble(resultSet.getString(3));
+          double c4 = Double.parseDouble(resultSet.getString(4));
+          double c5 = Double.parseDouble(resultSet.getString(5));
+
+          ++count;
+
+          assertEquals(
+              ((ITERATION_TIMES < count * window)
+                  ? window - (count * window - ITERATION_TIMES)
+                  : window),
+              c2,
+              0);
+          assertEquals(c2, c3, 0);
+          assertEquals(c2, c4, 0);
+          assertEquals(c2, c5, 0);
+        }
+
+        assertEquals(ITERATION_TIMES / window + (ITERATION_TIMES % window == 0 ? 0 : 1), count);
+      } catch (SQLException throwable) {
+        fail(throwable.getMessage());
+      }
     }
   }
 }

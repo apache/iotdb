@@ -193,24 +193,17 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
       @Override
       public boolean next() throws IOException, QueryProcessException {
-        if (displayWindowEnd <= nextWindowTimeBegin) {
-          return false;
-        }
-        if (hasCached || !hasAtLeastOneRow) {
+        if (hasCached) {
           return true;
+        }
+        if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
+          return false;
         }
 
         long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
-        int oldTVListSize = tvList.size();
         while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
           if (!LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList)) {
-            if (displayWindowEnd == Long.MAX_VALUE
-                // display window end == the max timestamp of the query result set
-                && oldTVListSize == tvList.size()) {
-              return false;
-            } else {
-              break;
-            }
+            break;
           }
         }
 
@@ -233,8 +226,8 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         }
         window.seek(nextIndexBegin, nextIndexEnd);
 
-        hasCached = true;
-        return true;
+        hasCached = nextIndexBegin != nextIndexEnd;
+        return hasCached;
       }
 
       @Override
