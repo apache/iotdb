@@ -139,39 +139,46 @@ public class TsFileRewriteTool implements AutoCloseable {
 
 
   /**
-   * this method is used to move a new TsFile and its corresponding resource file to the correct
-   * folder.
+   * This method is used to move a new TsFile and its corresponding resource file to the correct
+   *  folder.
+   * @param oldTsFileResource
+   * @param newTsFileResource if the old TsFile has not any deletions or all the data in which has been deleted , then this param will be null.
+   * @throws IOException
    */
   public static void moveNewTsFile(TsFileResource oldTsFileResource,
       TsFileResource newTsFileResource) throws IOException {
-    FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-    File newPartionDir = null;
-    if (newTsFileResource == null) {
-      return;
-    }
-    File oldTsFile = oldTsFileResource.getTsFile();
-    File newTsFile = newTsFileResource.getTsFile();
-    newPartionDir = newTsFile.getParentFile();
-
-    //move TsFile
-    oldTsFile.delete();
-    fsFactory.moveFile(newTsFile, oldTsFile);
-
-    //move .resource File
-    newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
-    newTsFileResource.setClosed(true);
+    File newPartionDir = new File(oldTsFileResource.getTsFile().getParent() + File.separator + oldTsFileResource.getTimePartition());
     try {
-      newTsFileResource.serialize();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    File tmpResourceFile = fsFactory
-        .getFile(newPartionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
-    if (tmpResourceFile.exists()) {
-      tmpResourceFile.delete();
+      FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+      if (newTsFileResource == null) {
+        return;
+      }
+      File oldTsFile = oldTsFileResource.getTsFile();
+      File newTsFile = newTsFileResource.getTsFile();
+      //newPartionDir = newTsFile.getParentFile();
+
+      //move TsFile
+      oldTsFile.delete();
+      fsFactory.moveFile(newTsFile, oldTsFile);
+
+      //move .resource File
+      newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
+      newTsFileResource.setClosed(true);
+      try {
+        newTsFileResource.serialize();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      File tmpResourceFile = fsFactory
+          .getFile(newPartionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
+      if (tmpResourceFile.exists()) {
+        tmpResourceFile.delete();
+      }
+    }finally {
+      if(newPartionDir.exists())
+        newPartionDir.delete(); //if the folder is empty, then it will be deleted
     }
 
-    newPartionDir.delete(); //if the folder is empty, then it will be deleted
   }
 
   public static void moveNewTsFiles(List<TsFileResource> oldTsFileResources,
@@ -230,6 +237,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     ModificationFile tmpModFile = tmpFileModificationMap
         .get(oldTsFileResource.getTsFile().getName());
     Collection<Modification> newMods = tmpModFile.getModifications();
+    tmpModFile.remove();
     if (newMods.size() == 0) {
       return;
     }
@@ -474,10 +482,14 @@ public class TsFileRewriteTool implements AutoCloseable {
         });
   }
 
-  protected void addTmpModsOfCurrentTsFile(long partition){
+  protected void addTmpModsOfCurrentTsFile(long partition) throws IOException {
     if (!tmpFileModificationMap.containsKey(oldTsFile.getName())) {
+      File f=new File(oldTsFile.getParent() + File.separator + partition+ File.separator+upgradeTsFileName(oldTsFile.getName())+ ModificationFile.FILE_SUFFIX);
+      if(!f.getParentFile().exists()){
+        f.getParentFile().mkdirs();
+      }
       tmpFileModificationMap.put(oldTsFile.getName(),
-          new ModificationFile(oldTsFile.getParent() + File.separator + partition+ File.separator+upgradeTsFileName(oldTsFile.getName())+ ModificationFile.FILE_SUFFIX));
+          new ModificationFile(f.getAbsolutePath()));
     }
   }
 

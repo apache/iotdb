@@ -2128,8 +2128,9 @@ public class StorageGroupProcessor {
       }
 
       //if the Tsfile is rewritting, then add the deletion to the oldFileModificationMap
+      String fName=tsFileResource.getTsFile().getName();
       if (TsFileRewriteTool.tmpFileModificationMap
-          .containsKey(tsFileResource.getTsFile().getName())) {
+          .containsKey(fName)) {
         TsFileRewriteTool.tmpFileModificationMap.get(tsFileResource.getTsFile().getName())
             .write(deletion);
         continue;

@@ -53,9 +53,6 @@ public class SettleTask extends WrappedRunnable {
           + SettleCheckStatus.AFTER_SETTLE_FILE);
     }
     resourceToBeSettled.getSettleTsFileCallBack().call(resourceToBeSettled, settledResource);
-    if(TsFileAndModSettleTool.recoverSettleFileMap.containsKey(resourceToBeSettled.getTsFilePath())) {
-      TsFileAndModSettleTool.recoverSettleFileMap.remove(resourceToBeSettled.getTsFilePath());
-    }
     //Write Settle Log, State 3
     SettleLog.writeSettleLog(resourceToBeSettled.getTsFilePath() + SettleLog.COMMA_SEPERATOR
         + SettleCheckStatus.SETTLE_SUCCESS);
