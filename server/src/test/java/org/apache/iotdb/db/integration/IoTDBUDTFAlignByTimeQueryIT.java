@@ -173,10 +173,26 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
+    deregisterUDF();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(100);
     IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(100);
     IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(100);
+  }
+
+  private static void deregisterUDF() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop function udf");
+      statement.execute("drop function multiplier");
+      statement.execute("drop function max");
+      statement.execute("drop function terminate");
+      statement.execute("drop function validate");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
   }
 
   @Test

@@ -23,16 +23,12 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
@@ -49,11 +45,8 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   protected final ZoneId zoneId;
 
   protected Map<String, UDTFExecutor> expressionName2Executor = new HashMap<>();
-  protected Map<Integer, UDTFExecutor> originalOutputColumnIndex2Executor = new HashMap<>();
-
   protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
-
-  protected Map<String, Integer> pathNameToReaderIndex;
+  protected Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
   public UDTFPlan(ZoneId zoneId) {
     super();
@@ -72,7 +65,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
-    pathNameToReaderIndex = new HashMap<>();
     Set<String> columnForReaderSet = new HashSet<>();
     Set<String> columnForDisplaySet = new HashSet<>();
 
@@ -109,13 +101,8 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   @Override
   public void constructUdfExecutors(List<ResultColumn> resultColumns) {
-    for (int i = 0; i < resultColumns.size(); ++i) {
-      Expression expression = resultColumns.get(i).getExpression();
-      expression.constructUdfExecutors(expressionName2Executor, zoneId);
-      if (expression instanceof FunctionExpression) {
-        originalOutputColumnIndex2Executor.put(
-            i, expressionName2Executor.get(expression.toString()));
-      }
+    for (ResultColumn resultColumn : resultColumns) {
+      resultColumn.getExpression().constructUdfExecutors(expressionName2Executor, zoneId);
     }
   }
 
@@ -128,31 +115,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     } finally {
       UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
     }
-  }
-
-  public TSDataType getOriginalOutputColumnDataType(int originalOutputColumn) {
-    Expression expression = resultColumns.get(originalOutputColumn).getExpression();
-    // UDF query
-    if (expression instanceof FunctionExpression) {
-      return getExecutorByOriginalOutputColumnIndex(originalOutputColumn)
-          .getConfigurations()
-          .getOutputDataType();
-    }
-    // arithmetic binary query
-    if (expression instanceof BinaryExpression) {
-      return TSDataType.DOUBLE;
-    }
-    // arithmetic negation query
-    if (expression instanceof NegationExpression) {
-      return getDeduplicatedDataTypes()
-          .get(getReaderIndex(((NegationExpression) expression).getExpression().toString()));
-    }
-    // raw query
-    return getDeduplicatedDataTypes().get(getReaderIndex(expression.toString()));
-  }
-
-  public UDTFExecutor getExecutorByOriginalOutputColumnIndex(int originalOutputColumn) {
-    return originalOutputColumnIndex2Executor.get(originalOutputColumn);
   }
 
   public ResultColumn getResultColumnByDatasetOutputIndex(int datasetOutputIndex) {

@@ -55,6 +55,7 @@ public class IoTDBNestedQueryIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
     generateData();
+    registerUDF();
   }
 
   private static void createTimeSeries() throws MetadataException {
@@ -103,12 +104,35 @@ public class IoTDBNestedQueryIT {
     }
   }
 
+  private static void registerUDF() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create function adder as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
   @AfterClass
   public static void tearDown() throws Exception {
+    deregisterUDF();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(100);
     IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(100);
     IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(100);
+  }
+
+  private static void deregisterUDF() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop function adder");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
   }
 
   @Test
@@ -197,6 +221,34 @@ public class IoTDBNestedQueryIT {
         assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(5)), 1e-5);
       }
       assertEquals(1, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testUDFWithMultiInputsInNestedExpressions() {
+    String sqlStr =
+        "select adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2), adder(adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2)), adder(adder(d1.s1, d1.s2), adder(d2.s1, d2.s2)) from root.vehicle";
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+
+      assertEquals(1 + 4, resultSet.getMetaData().getColumnCount());
+
+      int count = 0;
+      while (resultSet.next()) {
+        ++count;
+        assertEquals(count, Double.parseDouble(resultSet.getString(1)), 1e-5);
+        assertEquals(2 * count, Double.parseDouble(resultSet.getString(2)), 1e-5);
+        assertEquals(-2 * count, Double.parseDouble(resultSet.getString(3)), 1e-5);
+        assertEquals(0, Double.parseDouble(resultSet.getString(4)), 1e-5);
+        assertEquals(4 * count, Double.parseDouble(resultSet.getString(5)), 1e-5);
+      }
+      assertEquals(ITERATION_TIMES, count);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
