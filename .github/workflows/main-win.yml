@@ -14,7 +14,7 @@ on:
     branches:
       - master
       - 'rel/*'
-      - JDK17
+      - cluster_new
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
