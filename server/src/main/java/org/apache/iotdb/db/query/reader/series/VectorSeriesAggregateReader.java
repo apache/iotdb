@@ -158,7 +158,7 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
 
   public void nextIndex() {
     curIndex++;
-    if (curIndex > subSensorSize) {
+    if (curIndex >= subSensorSize) {
       resetIndex();
     }
   }
