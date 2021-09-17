@@ -22,16 +22,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Offline Settle tool, which is used to settle TsFile and its corresponding mods file to a new TsFile.
+ * Offline Settle tool, which is used to settle TsFile and its corresponding mods file to a new
+ * TsFile.
  */
 public class TsFileAndModSettleTool extends TsFileRewriteTool {
   private static final Logger logger = LoggerFactory.getLogger(TsFileAndModSettleTool.class);
-  private final static ReadWriteLock fileLock = new ReentrantReadWriteLock();
-  public static Map<String,Integer> recoverSettleFileMap = new HashMap<>();  //FilePath -> SettleCheckStatus
+  private static final ReadWriteLock fileLock = new ReentrantReadWriteLock();
+  public static Map<String, Integer> recoverSettleFileMap =
+      new HashMap<>(); // FilePath -> SettleCheckStatus
 
-
-  public TsFileAndModSettleTool(
-      TsFileResource resourceToBeRewritten) throws IOException {
+  public TsFileAndModSettleTool(TsFileResource resourceToBeRewritten) throws IOException {
     super(resourceToBeRewritten);
   }
 
@@ -72,45 +72,55 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
    *
    * @return Each old TsFile corresponds to a new TsFileResource of the new TsFile
    */
-  public static List<TsFileResource> settleTsFilesAndMods(
-      List<TsFileResource> resourcesToBeSettled) throws IOException, WriteProcessException {
+  public static List<TsFileResource> settleTsFilesAndMods(List<TsFileResource> resourcesToBeSettled)
+      throws IOException, WriteProcessException {
     List<TsFileResource> newTsFileResources = new ArrayList<>();
     for (TsFileResource resourceToBeSettled : resourcesToBeSettled) {
-      TsFileResource newResource=null;
-      try(TsFileAndModSettleTool tsFileAndModSettleTool=new TsFileAndModSettleTool(resourceToBeSettled)) {
+      TsFileResource newResource = null;
+      try (TsFileAndModSettleTool tsFileAndModSettleTool =
+          new TsFileAndModSettleTool(resourceToBeSettled)) {
         newResource = tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled);
       }
       newTsFileResources.add(newResource);
-      TsFileRewriteTool.writeNewModification(resourceToBeSettled,newResource);
-      TsFileRewriteTool.moveNewTsFile(resourceToBeSettled,newResource);
+      TsFileRewriteTool.writeNewModification(resourceToBeSettled, newResource);
+      TsFileRewriteTool.moveNewTsFile(resourceToBeSettled, newResource);
     }
     return newTsFileResources;
   }
 
   public TsFileResource settleOneTsFileAndMod(TsFileResource resourceToBeSettled)
       throws WriteProcessException, IOException {
-    addTmpModsOfCurrentTsFile(resourceToBeSettled.getTimePartition());
-    if(!resourceToBeSettled.isClosed()){
-      logger.warn("The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
+    if (!resourceToBeSettled.isClosed()) {
+      logger.warn(
+          "The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
       return null;
     }
-    if (!resourceToBeSettled.getModFile().exists()) { //if no deletions to this tsfile, then return.
+    if (!resourceToBeSettled
+        .getModFile()
+        .exists()) { // if no deletions to this tsfile, then return.
       return null;
     }
-    List<TsFileResource> newResources=new ArrayList<>();
-    try (TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool(
-        resourceToBeSettled)) {
+    List<TsFileResource> newResources = new ArrayList<>();
+    try (TsFileAndModSettleTool tsFileAndModSettleTool =
+        new TsFileAndModSettleTool(resourceToBeSettled)) {
       tsFileAndModSettleTool.parseAndRewriteFile(newResources);
     }
-    if(newResources.size()==0){ //if all the data in this tsfile has been deleted, then it will be null!
+    if (newResources.size()
+        == 0) { // if all the data in this tsfile has been deleted, then it will be null!
       dealWithEmptyFile();
       return null;
     }
     return newResources.get(0);
   }
 
-  public static void findFilesToBeRecovered(){
-    if (FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath()).exists()) {// if file "data/system/settle/settle.txt" exists
+  public void addSettleFileToList(TsFileResource resourceToBeSettled) throws IOException {
+    addTmpModsOfCurrentTsFile(resourceToBeSettled.getTimePartition());
+  }
+
+  public static void findFilesToBeRecovered() {
+    if (FSFactoryProducer.getFSFactory()
+        .getFile(SettleLog.getSettleLogPath())
+        .exists()) { // if file "data/system/settle/settle.txt" exists
       try (BufferedReader settleLogReader =
           new BufferedReader(
               new FileReader(
@@ -119,50 +129,49 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
         while ((line = settleLogReader.readLine()) != null && !line.equals("")) {
           String oldFilePath = line.split(SettleLog.COMMA_SEPERATOR)[0];
           Integer settleCheckStatus = Integer.parseInt(line.split(SettleLog.COMMA_SEPERATOR)[1]);
-          //String oldFileName = new File(oldFilePath).getName();
-          if(settleCheckStatus== SettleCheckStatus.SETTLE_SUCCESS.getCheckStatus()){ //settle success
+          if (settleCheckStatus
+              == SettleCheckStatus.SETTLE_SUCCESS.getCheckStatus()) { // settle success
             recoverSettleFileMap.remove(oldFilePath);
             continue;
           }
-          recoverSettleFileMap.put(oldFilePath,settleCheckStatus);  //in recoverSettleFileMap, each crashed file's settleCheckStatus maybe 1 or 2
+          recoverSettleFileMap.put(
+              oldFilePath,
+              settleCheckStatus); // in recoverSettleFileMap, each crashed file's settleCheckStatus
+                                  // maybe 1 or 2
 
-//          if(!recoverSettleFileMap.containsKey(oldFileName)){
-//            recoverSettleFileMap.put(oldFileName,settleCheckStatus);
-//          }
-//          else if(recoverSettleFileMap.get(oldFileName)<settleCheckStatus){
-//            recoverSettleFileMap.put(oldFileName,settleCheckStatus);
-//          }
+          //          if(!recoverSettleFileMap.containsKey(oldFileName)){
+          //            recoverSettleFileMap.put(oldFileName,settleCheckStatus);
+          //          }
+          //          else if(recoverSettleFileMap.get(oldFileName)<settleCheckStatus){
+          //            recoverSettleFileMap.put(oldFileName,settleCheckStatus);
+          //          }
         }
-      }
-      catch (IOException e) {
+      } catch (IOException e) {
         logger.error(
             "meet error when recover settle process, file path:{}",
             SettleLog.getSettleLogPath(),
             e);
-      } finally {
-        //FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath()).delete();
       }
     }
   }
 
-  public static void clearRecoverSettleFileMap(){
+  public static void clearRecoverSettleFileMap() {
     recoverSettleFileMap.clear();
   }
 
-  public static void writeLock(){
+  public static void writeLock() {
     fileLock.writeLock().lock();
   }
 
-  public static void writeUnLock(){
+  public static void writeUnLock() {
     fileLock.writeLock().unlock();
   }
 
-  public static void readLock(){
+  public static void readLock() {
     fileLock.readLock().lock();
   }
 
-  public static void readUnLock(){
+  public static void readUnLock() {
     fileLock.readLock().unlock();
   }
-
 }

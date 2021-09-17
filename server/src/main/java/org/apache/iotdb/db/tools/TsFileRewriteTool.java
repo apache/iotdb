@@ -236,7 +236,9 @@ public class TsFileRewriteTool implements AutoCloseable {
       throws IOException {
     ModificationFile tmpModFile = tmpFileModificationMap
         .get(oldTsFileResource.getTsFile().getName());
-    Collection<Modification> newMods = tmpModFile.getModifications();
+    Collection<Modification> newMods=null;
+    if(tmpModFile!=null)
+      newMods = tmpModFile.getModifications();
     tmpModFile.remove();
     if (newMods.size() == 0) {
       return;
