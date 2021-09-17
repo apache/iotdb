@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.tsfile.utils.BitMap;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -54,7 +56,7 @@ public class IntTVListTest {
   }
 
   @Test
-  public void testIntTVLists() {
+  public void testPutIntsWithoutBitMap() {
     IntTVList tvList = new IntTVList();
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
@@ -64,12 +66,69 @@ public class IntTVListTest {
     }
     tvList.putInts(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        null,
         ArrayUtils.toPrimitive(intList.toArray(new Integer[0])),
         0,
         1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getInt((int) i));
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+    }
+  }
+
+  @Test
+  public void testPutIntsWithBitMap() {
+    IntTVList tvList = new IntTVList();
+    List<Integer> intList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(1001);
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long) i);
+      intList.add(i);
+      if (i % 100 == 0) {
+        bitMap.mark(i);
+      }
+    }
+    tvList.putInts(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        bitMap,
+        ArrayUtils.toPrimitive(intList.toArray(new Integer[0])),
+        0,
+        1000);
+    tvList.sort();
+    for (long i = 0; i < tvList.size; i++) {
+      long value = i + 1;
+      Assert.assertEquals(value, tvList.getInt((int) i));
+      Assert.assertEquals(value, tvList.getTime((int) i));
+      Assert.assertEquals(value % 100 == 0, tvList.isValueMarked((int) i));
+    }
+  }
+
+  @Test
+  public void testClone() {
+    IntTVList tvList = new IntTVList();
+    List<Integer> intList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(1001);
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long) i);
+      intList.add(i);
+      if (i % 100 == 0) {
+        bitMap.mark(i);
+      }
+    }
+    tvList.putInts(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        bitMap,
+        ArrayUtils.toPrimitive(intList.toArray(new Integer[0])),
+        0,
+        1000);
+    tvList.sort();
+    IntTVList clonedTvList = tvList.clone();
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.getInt((int) i), clonedTvList.getInt((int) i));
+      Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
+      Assert.assertEquals(tvList.isValueMarked((int) i), clonedTvList.isValueMarked((int) i));
     }
   }
 }

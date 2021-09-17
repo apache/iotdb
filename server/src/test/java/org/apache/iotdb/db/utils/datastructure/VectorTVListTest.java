@@ -140,4 +140,40 @@ public class VectorTVListTest {
       }
     }
   }
+
+  @Test
+  public void testClone() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    BitMap[] bitMaps = new BitMap[5];
+    for (int i = 0; i < 5; i++) {
+      dataTypes.add(TSDataType.INT64);
+      bitMaps[i] = new BitMap(1001);
+    }
+    VectorTVList tvList = new VectorTVList(dataTypes);
+    long[][] vectorArray = new long[5][1001];
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long) i);
+      for (int j = 0; j < 5; j++) {
+        vectorArray[j][i] = (long) i;
+        if (i % 100 == 0) {
+          bitMaps[j].mark(i);
+        }
+      }
+    }
+
+    tvList.putVectors(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), bitMaps, vectorArray, 0, 1000);
+
+    VectorTVList clonedTvList = tvList.clone();
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
+      Assert.assertEquals(
+          tvList.getVector((int) i).toString(), clonedTvList.getVector((int) i).toString());
+      for (int column = 0; i < 5; i++) {
+        Assert.assertEquals(
+            tvList.isValueMarked((int) i, column), clonedTvList.isValueMarked((int) i, column));
+      }
+    }
+  }
 }
