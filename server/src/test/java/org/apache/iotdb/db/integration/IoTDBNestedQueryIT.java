@@ -229,7 +229,7 @@ public class IoTDBNestedQueryIT {
   @Test
   public void testUDFWithMultiInputsInNestedExpressions() {
     String sqlStr =
-        "select adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2), adder(adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2)), adder(adder(d1.s1, d1.s2), adder(d2.s1, d2.s2)) from root.vehicle";
+        "select adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2), adder(adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2)), adder(adder(d1.s1, d1.s2), adder(d2.s1, d2.s2)), adder(d1.s1, d1.s2) - adder(d1.s1, d1.s2) + adder(adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2)) from root.vehicle";
 
     try (Connection connection =
             DriverManager.getConnection(
@@ -237,7 +237,7 @@ public class IoTDBNestedQueryIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
-      assertEquals(1 + 4, resultSet.getMetaData().getColumnCount());
+      assertEquals(1 + 5, resultSet.getMetaData().getColumnCount());
 
       int count = 0;
       while (resultSet.next()) {
@@ -247,6 +247,7 @@ public class IoTDBNestedQueryIT {
         assertEquals(-2 * count, Double.parseDouble(resultSet.getString(3)), 1e-5);
         assertEquals(0, Double.parseDouble(resultSet.getString(4)), 1e-5);
         assertEquals(4 * count, Double.parseDouble(resultSet.getString(5)), 1e-5);
+        assertEquals(0, Double.parseDouble(resultSet.getString(6)), 1e-5);
       }
       assertEquals(ITERATION_TIMES, count);
     } catch (SQLException throwable) {
