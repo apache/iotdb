@@ -381,7 +381,7 @@ SHOW CHILD NODES prefixPath
 +------------+
 ```
 
-* 查询 root.vehicle的下一层 ：show child nodes root.ln
+* 查询 root.ln的下一层 ：show child nodes root.ln
 
 ```
 +------------+
