@@ -1368,7 +1368,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     // functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute*
     // RR_BRACKET
-    if (context.functionName != null) {
+    if (context.functionName() != null) {
       return parseFunctionExpression(context);
     }
 
@@ -1387,7 +1387,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   private Expression parseFunctionExpression(ExpressionContext functionClause) {
     FunctionExpression functionExpression =
-        new FunctionExpression(functionClause.functionName.getText());
+        new FunctionExpression(functionClause.functionName().getText());
 
     // expressions
     for (ExpressionContext expression : functionClause.expression()) {

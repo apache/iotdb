@@ -128,9 +128,14 @@ expression
     | (PLUS | MINUS) unaryAfterSign=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-    | functionName=ID LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPath
     | literal=SINGLE_QUOTE_STRING_LITERAL
+    ;
+
+functionName
+    : ID
+    | COUNT
     ;
 
 functionAttribute
