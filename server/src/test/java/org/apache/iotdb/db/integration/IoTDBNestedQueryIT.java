@@ -173,4 +173,32 @@ public class IoTDBNestedQueryIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void testUDFTerminateMethodInNestedExpressions() {
+    String sqlStr =
+        "select bottom_k(top_k(top_k(s1 + s1 / s1 - s2 / s1, 'k'='100'), 'k'='1'), 'k'='1'), top_k(top_k(s1 + s1 / s1 - s2 / s1, 'k'='100'), 'k'='1'), top_k(s1 + s1 / s1 - s2 / s1, 'k'='1'), top_k(s1, 'k'='1'), top_k(s2, 'k'='1') from root.vehicle.d2";
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+
+      assertEquals(1 + 5, resultSet.getMetaData().getColumnCount());
+
+      int count = 0;
+      while (resultSet.next()) {
+        ++count;
+        assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(1)), 1e-5);
+        assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(2)), 1e-5);
+        assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(3)), 1e-5);
+        assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(4)), 1e-5);
+        assertEquals(ITERATION_TIMES, Double.parseDouble(resultSet.getString(5)), 1e-5);
+      }
+      assertEquals(1, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
 }
