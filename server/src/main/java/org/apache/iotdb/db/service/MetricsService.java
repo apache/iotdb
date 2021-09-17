@@ -140,6 +140,9 @@ public class MetricsService implements MetricsServiceMBean, IService {
         }
         executorService = null;
       }
+    } catch (InterruptedException e) {
+      logger.warn("MetricsService can not be closed in {} ms", 3000);
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       logger.error(
           "{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);

@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -50,7 +51,7 @@ public class RpcTransportFactory extends TTransportFactory {
   }
 
   @Override
-  public TTransport getTransport(TTransport trans) {
+  public TTransport getTransport(TTransport trans) throws TTransportException {
     return inner.getTransport(trans);
   }
 

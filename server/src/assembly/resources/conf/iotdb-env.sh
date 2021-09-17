@@ -30,6 +30,33 @@ if [ $max_num -le 65535 ]; then
     fi
 fi
 
+# Set somaxconn to a better value to avoid meaningless connection reset issues when the system is under high load.
+# The original somaxconn will be set back when the system reboots.
+# For more detail, see: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=19f92a030ca6d772ab44b22ee6a01378a8cb32d4
+SOMAXCONN=65535
+case "$(uname)" in
+    Linux)
+        somaxconn=$(sysctl -n net.core.somaxconn)
+        if [ "$somaxconn" -lt $SOMAXCONN ]; then
+            echo "WARN:"
+            echo "WARN: the value of net.core.somaxconn (=$somaxconn) is too small, please set it to a larger value using the following command."
+            echo "WARN:     sudo sysctl -w net.core.somaxconn=$SOMAXCONN"
+            echo "WARN: The original net.core.somaxconn value will be set back when the os reboots."
+            echo "WARN:"
+        fi
+    ;;
+    FreeBSD | Darwin)
+        somaxconn=$(sysctl -n kern.ipc.somaxconn)
+        if [ "$somaxconn" -lt $SOMAXCONN ]; then
+            echo "WARN:"
+            echo "WARN: the value of kern.ipc.somaxconn (=$somaxconn) is too small, please set it to a larger value using the following command."
+            echo "WARN:     sudo sysctl -w kern.ipc.somaxconn=$SOMAXCONN"
+            echo "WARN: The original kern.ipc.somaxconn value will be set back when the os reboots."
+            echo "WARN:"
+        fi
+    ;;
+esac
+
 calculate_heap_sizes()
 {
     case "`uname`" in
@@ -137,7 +164,7 @@ fi
 
 version_arr=(${JVM_VERSION//./ })
 
-#GC log path has to be defined here because it needs to access CASSANDRA_HOME
+#GC log path has to be defined here because it needs to access IOTDB_HOME
 if [ "${version_arr[0]}" = "1" ] ; then
     # Java 8
     MAJOR_VERSION=${version_arr[1]}
@@ -183,6 +210,7 @@ MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
+#If you want to connect JMX Service by network in local machine, such as nodeTool.sh will try to connect 127.0.0.1:31999, please set JMX_LOCAL to false.
 JMX_LOCAL="true"
 
 JMX_PORT="31999"

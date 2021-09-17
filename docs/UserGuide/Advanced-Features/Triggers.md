@@ -588,7 +588,11 @@ AlertManagerEvent(String alertname, Map<String, String> extraLabels, Map<String,
 
 * `alertname` is a required parameter to identify an `alert`. The `alertname` field can be used for grouping and deduplication when the `AlertManager` sends an alert.
 * `extraLabels` is optional. In the backend, it is combined with `alertname` to form `labels` to identify an `alert`, which can be used for grouping and deduplication when `AlertManager` sends alarms.
-* `annotations` is optional, and its value can use Go style template `{{.<label_key>}}`. `{{.<label_key>}}` will be replaced with `labels[<label_key>]` when the message is finally generated.
+* `annotations` is optional, and its value can use Go style template 
+    ```
+    {{.<label_key>}}
+    ```
+    It will be replaced with `labels[<label_key>]` when the message is finally generated.
 * `labels` and `annotations` will be parsed into json string and sent to `AlertManager`:
 ```json
 {
@@ -695,12 +699,12 @@ package org.apache.iotdb.trigger;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
-import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
-import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
-import org.apache.iotdb.db.sink.local.LocalIoTDBConfiguration;
-import org.apache.iotdb.db.sink.local.LocalIoTDBEvent;
-import org.apache.iotdb.db.sink.local.LocalIoTDBHandler;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBEvent;
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -782,7 +786,7 @@ public class TriggerExample implements Trigger {
   private void openSinkHandlers() throws Exception {
     localIoTDBHandler.open(
         new LocalIoTDBConfiguration(
-            TARGET_DEVICE, new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
+            TARGET_DEVICE, new String[]{"local"}, new TSDataType[]{TSDataType.DOUBLE}));
     mqttHandler.open(
         new MQTTConfiguration(
             "127.0.0.1",
@@ -790,7 +794,7 @@ public class TriggerExample implements Trigger {
             "root",
             "root",
             new PartialPath(TARGET_DEVICE),
-            new String[] {"remote"}));
+            new String[]{"remote"}));
   }
 
   private void closeSinkHandlers() throws Exception {

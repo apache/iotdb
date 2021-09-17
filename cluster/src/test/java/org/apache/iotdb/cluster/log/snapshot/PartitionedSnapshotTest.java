@@ -96,7 +96,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
     for (int i = 0; i < 10; i++) {
       dataGroupMember.getSlotManager().setToPulling(i, TestUtils.getNode(0));
     }
-    defaultInstaller.install(snapshot, -1);
+    defaultInstaller.install(snapshot, -1, false);
     // after installation, the slot should be available again
     for (int i = 0; i < 10; i++) {
       assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(i));

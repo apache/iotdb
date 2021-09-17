@@ -86,7 +86,7 @@ abstract class MergeTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    removeFiles();
+    removeFiles(seqResources, unseqResources);
     seqResources.clear();
     unseqResources.clear();
     IoTDBDescriptor.getInstance()
@@ -186,12 +186,13 @@ abstract class MergeTest {
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
 
-  private void removeFiles() throws IOException {
-    for (TsFileResource tsFileResource : seqResources) {
+  void removeFiles(List<TsFileResource> seqResList, List<TsFileResource> unseqResList)
+      throws IOException {
+    for (TsFileResource tsFileResource : seqResList) {
       tsFileResource.remove();
       tsFileResource.getModFile().remove();
     }
-    for (TsFileResource tsFileResource : unseqResources) {
+    for (TsFileResource tsFileResource : unseqResList) {
       tsFileResource.remove();
       tsFileResource.getModFile().remove();
     }

@@ -104,25 +104,25 @@ Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is t
 Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
-* Create device template
+* Create schema template
 ```
-CREATE device template <TemplateName> WITH <AttributeClauses>
+CREATE schema template <TemplateName> WITH <AttributeClauses>
 attributeClauses
     : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
     (COMMA property)*)
     attributeClause
     ;
-Eg: create device template temp1(
+Eg: create schema template temp1(
         (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
         (s2 FLOAT with encoding=RLE, compression=SNAPPY)
        )  
 ```
 
-* Set device template
+* Set schema template
 ```
-set device template <TemplateName> to <STORAGE_GROUP_NAME>
-Eg: set device template temp1 to root.beijing
+set schema template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set schema template temp1 to root.beijing
 ```
 
 * Delete Timeseries Statement
@@ -324,8 +324,8 @@ CREATE SNAPSHOT FOR SCHEMA
 * Insert Record Statement
 
 ```
-INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <MeasurementName> [COMMA <MeasurementName>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
-MeasurementName : Identifier | LPAREN Identifier (COMMA Identifier)+ RPAREN
+INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <Sensor> [COMMA <Sensor>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
+Sensor : Identifier
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
@@ -658,12 +658,12 @@ Rules:
 3. The result set of last query will always be displayed in a fixed three column table format.
 For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result would be:
 
-| Time | Path         | Value |
-| ---  | ------------ | ----- |
-|  5   | root.sg.d1.s1| 100   |
-|  2   | root.sg.d1.s2| 400   |
-|  4   | root.sg.d2.s1| 250   |
-|  9   | root.sg.d2.s2| 600   |
+| Time | Path          | Value | dataType |
+| ---  | ------------- |------ | -------- |
+|  5   | root.sg.d1.s1 | 100   | INT32    |
+|  2   | root.sg.d1.s2 | 400   | INT32    |
+|  4   | root.sg.d2.s1 | 250   | INT32    |
+|  9   | root.sg.d2.s2 | 600   | INT32    |
 
 4. It is not supported to use "diable align" in LAST query. 
 
@@ -714,6 +714,47 @@ E.g. select * as temperature from root.sg.d1
 
 In this situation, it will throws an exception if * corresponds to multiple sensors.
 
+```
+
+* Regexp Statement
+
+Regexp Statement only supports regular expressions with Java standard library style on timeseries which is TEXT data type
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) REGEXP regularExpression
+regularExpression: Java standard regularexpression, like '^[a-z][0-9]$', [details](https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html)
+
+Eg. select s1 from root.sg.d1 where s1 regexp '^[0-9]*$'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$' and s2 regexp '^\d{15}|\d{18}$'
+Eg. select * from root.sg.d1 where s1 regexp '^[a-zA-Z]\w{5,17}$'
+Eg. select * from root.sg.d1 where s1 regexp '^\d{4}-\d{1,2}-\d{1,2}' and time > 100
+```
+
+* Like Statement
+
+The usage of LIKE Statement similar with mysql, but only support timeseries which is TEXT data type
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE likeExpression
+likeExpression : string that may contains "%" or "_", while "%value" means a string that ends with the value,  "value%" means a string starts with the value, "%value%" means string that contains values, and "_" represents any character.
+
+Eg. select s1 from root.sg.d1 where s1 like 'abc'
+Eg. select s1, s2 from root.sg.d1 where s1 like 'a%bc'
+Eg. select * from root.sg.d1 where s1 like 'abc_'
+Eg. select * from root.sg.d1 where s1 like 'abc\%' and time > 100
+In this situation, '\%' means '%' will be escaped
+The result set will be like:
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  200 | root.sg.d1.s1| abc%  |
 ```
 
 ## Database Management Statement
@@ -934,6 +975,17 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
+* EXTREME
+
+The EXTREME function returns the extreme value(lexicographically ordered) of the choosen timeseries (one or more).
+extreme value: The value that has the maximum absolute value.
+If the maximum absolute value of a positive value and a negative value is equal, return the positive value.
+```
+SELECT EXTREME (Path) (COMMA EXT (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT EXTREME(status), EXTREME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+```
+
 * AVG(Rename from `MEAN` at `V0.9.0`)
 
 The AVG function returns the arithmetic mean value of the choosen timeseries over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number.
@@ -1065,6 +1117,14 @@ E.g. KILL QUERY
 E.g. KILL QUERY 2
 ```
 
+## SET STSTEM TO READONLY / WRITABLE
+
+Set IoTDB system to read-only or writable mode.
+
+```
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
+```
 
 ## Identifiers
 

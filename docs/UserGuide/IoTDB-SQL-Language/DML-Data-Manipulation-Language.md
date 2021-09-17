@@ -76,13 +76,6 @@ Total line number = 4
 It costs 0.170s
 ```
 
-As for **aligned** timeseries，we could insert values into measurements by **explicit** declaration with parentheses. Empty values could be represented by `NULL` or `null`:
-
-```
-IoTDB > insert into root.sg.d1(timestamp,(s1,s2),(s3,s4)) values (1509466680000,(1.0,2),(null,4))
-IoTDB > insert into root.sg.d1(timestamp,(s1,s2)) values (1509466680001,(NULL,1))
-```
-
 ## SELECT
 
 ### Time Slice Query
@@ -257,6 +250,9 @@ Currently IoTDB supports the following mathematical functions. The behavior of t
 | ASIN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#asin(double)                                            |
 | ACOS          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#acos(double)                                            |
 | ATAN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#atan(double)                                            |
+| SINH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#sinh(double)                                            |
+| COSH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#cosh(double)                                            |
+| TANH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#tanh(double)                                            |
 | DEGREES       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#toDegrees(double)                                       |
 | RADIANS       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#toRadians(double)                                       |
 | ABS           | INT32 / INT64 / FLOAT / DOUBLE  | Same type as the input series | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
@@ -389,6 +385,48 @@ It costs 0.014s
 
 Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
 
+#### Arithmetic query
+
+##### Unary arithmetic operators
+
+Supported operators: `+`, `-`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+
+Output data type: consistent with the input data type
+
+##### Binary arithmetic operators
+
+Supported operators: `+`, `-`, `*`, `/`, `%`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+
+Output data type: `DOUBLE`
+
+Note: Only when the left operand and the right operand under a certain timestamp are not  `null`, the binary arithmetic operation will have an output value.
+
+##### Example
+
+```sql
+select s1, - s1, s2, + s2, s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.sg.d1
+```
+
+Result:
+
+```
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+|                         Time|root.sg.d1.s1|-root.sg.d1.s1|root.sg.d1.s2|root.sg.d1.s2|root.sg.d1.s1 + root.sg.d1.s2|root.sg.d1.s1 - root.sg.d1.s2|root.sg.d1.s1 * root.sg.d1.s2|root.sg.d1.s1 / root.sg.d1.s2|root.sg.d1.s1 % root.sg.d1.s2|
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.001+08:00|          1.0|          -1.0|          1.0|          1.0|                          2.0|                          0.0|                          1.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.002+08:00|          2.0|          -2.0|          2.0|          2.0|                          4.0|                          0.0|                          4.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.003+08:00|          3.0|          -3.0|          3.0|          3.0|                          6.0|                          0.0|                          9.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.004+08:00|          4.0|          -4.0|          4.0|          4.0|                          8.0|                          0.0|                         16.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.005+08:00|          5.0|          -5.0|          5.0|          5.0|                         10.0|                          0.0|                         25.0|                          1.0|                          0.0|
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+Total line number = 5
+It costs 0.014s
+```
+
 ### Aggregate Query
 
 This section mainly introduces the related examples of aggregate query.
@@ -471,8 +509,8 @@ Total line number = 1
 It costs 0.013s
 ```
 
-All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value.
-When using four aggregations: sum, avg, min_value and max_value, please make sure all the aggregated series have exactly the same data type.
+All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme.
+When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type.
 Otherwise, it will generate a syntax error.
 
 ### Down-Frequency Aggregate Query
@@ -852,21 +890,21 @@ which means: Query and return the last data points of timeseries prefixPath.path
 
 Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
 
-The result will be returned in a three column table format.
+The result will be returned in a four column table format.
 
 ```
-| Time | Path | Value |
+| Time | timeseries | value | dataType |
 ```
 
 Example 1: get the last point of root.ln.wf01.wt01.status:
 
 ```
 IoTDB> select last status from root.ln.wf01.wt01
-+-----------------------------+------------------------+-----+
-|                         Time|              timeseries|value|
-+-----------------------------+------------------------+-----+
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false|
-+-----------------------------+------------------------+-----+
++-----------------------------+------------------------+-----+--------+
+|                         Time|              timeseries|value|dataType|
++-----------------------------+------------------------+-----+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false| BOOLEAN|
++-----------------------------+------------------------+-----+--------+
 Total line number = 1
 It costs 0.000s
 ```
@@ -876,17 +914,91 @@ whose timestamp larger or equal to 2017-11-07T23:50:00。
 
 ```
 IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+---------+
-|                         Time|                   timeseries|    value|
-+-----------------------------+-----------------------------+---------+
-|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false|
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|
-+-----------------------------+-----------------------------+---------+
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
++-----------------------------+-----------------------------+---------+--------+
 Total line number = 2
 It costs 0.002s
 ```
 
+### Fuzzy query
 
+Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of TEXT type data.
+
+Like statement:
+
+Example 1: Query data containing `'cc'` in `value` under `root.sg.device`. 
+The percentage (`%`) wildcard matches any string of zero or more characters.
+
+
+```
+IoTDB> select * from root.sg.device where value like '%cc%'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.device`.
+The underscore (`_`) wildcard matches any single character.
+```
+IoTDB> select * from root.sg.device where value like '_b_'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|                 abc| 
++-----------------------------+--------------------+
+Total line number = 1
+It costs 0.002s
+```
+
+Regexp statement：
+
+The filter conditions that need to be passed in are regular expressions in the Java standard library style
+
+Example 1: Query a string composed of 26 English characters for the value under root.sg.device
+```
+IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Example 2: Query root.sg.device where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
+```
+IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Examples of common regular matching:
+
+```
+All characters with a length of 3-20: ^.{3,20}$
+Uppercase english characters: ^[A-Z]+$
+Numbers and English characters: ^[A-Za-z0-9]+$
+Beginning with a: ^a.*
+```
+
+For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
 ### Automated Fill
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
@@ -994,6 +1106,48 @@ Total line number = 1
 It costs 0.017s
 ```
 
+* Value Method
+
+When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+
+```
+select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
+```
+Detailed descriptions of all parameters are given in Table 3-6.
+
+<center>**Table 3-6 Specific value fill paramter list**
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
+|constant|represents given fill value|
+</center>
+
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the specific fill value.
+
+Here we give an example of filling null values using the value method. The SQL statement is as follows:
+
+```
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses given specific value 2.0 to fill
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                            2.0|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
+```
+
 #### Correspondence between Data Type and Fill Method
 
 Data types and the supported fill methods are shown in Table 3-6.
@@ -1002,11 +1156,11 @@ Data types and the supported fill methods are shown in Table 3-6.
 
 |Data Type|Supported Fill Methods|
 |:---|:---|
-|boolean|previous|
-|int32|previous, linear|
-|int64|previous, linear|
-|float|previous, linear|
-|double|previous, linear|
+|boolean|previous, value|
+|int32|previous, linear, value|
+|int64|previous, linear, value|
+|float|previous, linear, value|
+|double|previous, linear, value|
 |text|previous|
 </center>
 
@@ -1308,6 +1462,20 @@ Total line number = 10
 It costs 0.009s
 ```
 
+#### Null Value Control over Query Results
+
+* IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
+
+```
+select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+```
+
+* In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
+
+```
+select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+```
+
 ### Use Alias
 
 Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
@@ -1455,7 +1623,6 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or exceeds the number of sequences (2) that can actually be returned.
 ```
 
-
 ## DELETE
 
 Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Appendix/SQL-Reference.md). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data within a certain time interval.
@@ -1514,14 +1681,13 @@ or
 ```
 delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 ```
-It should be noted that when the deleted path does not exist, IoTDB will give the corresponding error prompt as shown below:
-
+It should be noted that when the deleted path does not exist, IoTDB will not prompt that the path does not exist, but that the execution is successful, because SQL is a declarative programming method. Unless it is a syntax error, insufficient permissions and so on, it is not considered an error, as shown below:
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: TimeSeries does not exist and its data cannot be deleted
+Msg: The statement is executed successfully.
 ```
 
-## Delete Time Partition (experimental)
+### Delete Time Partition (experimental)
 You may delete all data in a time partition of a storage group using the following grammar:
 
 ```

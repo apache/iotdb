@@ -50,7 +50,7 @@ Suppose Zeppelin is placed at `$Zeppelin_HOME`.
 
 ```
  cd $IoTDB_HOME
- mvn clean package -pl zeppelin-interpreter -am -DskipTests
+ mvn clean package -pl zeppelin-interpreter -am -DskipTests -P get-jar-with-dependencies
 ```
 
 The interpreter will be in the folder:
@@ -149,7 +149,7 @@ The screenshot is as follows:
 
 ![iotdb-note-snapshot2](https://user-images.githubusercontent.com/5548915/102752948-52a2d500-43a5-11eb-9156-0c55667eb4cd.png)
 
-You can also design more fantasy documents referring to [[1]](https://zeppelin.apache.org/docs/0.9.0-SNAPSHOT/usage/display_system/basic.html) and others.
+You can also design more fantasy documents referring to [[1]](https://zeppelin.apache.org/docs/0.9.0/usage/display_system/basic.html) and others.
 
 The above demo notebook can be found at  `$IoTDB_HOME/zeppelin-interpreter/Zeppelin-IoTDB-Demo.zpln`.
 

@@ -53,7 +53,7 @@ public enum ServiceType {
       "Flush ServerService", generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),
   CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor"),
   SYSTEMINFO_SERVICE("MemTable Monitor Service", "MemTable, Monitor"),
-
+  CONTINUOUS_QUERY_SERVICE("Continuous Query Service", "Continuous Query Service"),
   CLUSTER_INFO_SERVICE("Cluster Monitor Service (thrift-based)", "Cluster Monitor-Thrift"),
   ;
 

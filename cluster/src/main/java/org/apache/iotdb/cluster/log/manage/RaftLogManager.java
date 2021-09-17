@@ -80,9 +80,9 @@ public abstract class RaftLogManager {
    * The committed log whose index is larger than blockAppliedCommitIndex will be blocked. if
    * blockAppliedCommitIndex < 0(default is -1), will not block any operation.
    */
-  private volatile long blockAppliedCommitIndex;
+  protected volatile long blockAppliedCommitIndex;
 
-  private LogApplier logApplier;
+  protected LogApplier logApplier;
 
   /** to distinguish managers of different members */
   private String name;
@@ -110,7 +110,7 @@ public abstract class RaftLogManager {
    */
   private final Object[] logUpdateConditions = new Object[1024];
 
-  private List<Log> blockedUnappliedLogList;
+  protected List<Log> blockedUnappliedLogList;
 
   protected RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
@@ -585,71 +585,86 @@ public abstract class RaftLogManager {
           .subList(0, (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
           .clear();
     }
+
+    boolean needToCompactLog = false;
+    int numToReserveForNew = minNumOfLogsInMem;
+    if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+      needToCompactLog = true;
+      numToReserveForNew = maxNumOfLogsInMem - entries.size();
+    }
+
+    long newEntryMemSize = 0;
+    for (Log entry : entries) {
+      if (entry.getByteSize() == 0) {
+        logger.debug(
+            "{} should not go here, must be send to the follower, "
+                + "so the log has been serialized exclude single node mode",
+            entry);
+        entry.setByteSize((int) RamUsageEstimator.sizeOf(entry));
+      }
+      newEntryMemSize += entry.getByteSize();
+    }
+    int sizeToReserveForNew = minNumOfLogsInMem;
+    if (newEntryMemSize + committedEntryManager.getEntryTotalMemSize() > maxLogMemSize) {
+      needToCompactLog = true;
+      sizeToReserveForNew =
+          committedEntryManager.maxLogNumShouldReserve(maxLogMemSize - newEntryMemSize);
+    }
+
+    if (needToCompactLog) {
+      int numForNew = Math.min(numToReserveForNew, sizeToReserveForNew);
+      int sizeToReserveForConfig = minNumOfLogsInMem;
+      startTime = Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.getOperationStartTime();
+      synchronized (this) {
+        innerDeleteLog(Math.min(sizeToReserveForConfig, numForNew));
+      }
+      Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calOperationCostTimeFromStart(startTime);
+    }
+
+    startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
     try {
-      boolean needToCompactLog = false;
-      int numToReserveForNew = minNumOfLogsInMem;
-      if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
-        needToCompactLog = true;
-        numToReserveForNew = maxNumOfLogsInMem - entries.size();
-      }
-
-      long newEntryMemSize = 0;
-      for (Log entry : entries) {
-        if (entry.getByteSize() == 0) {
-          logger.debug(
-              "{} should not go here, must be send to the follower, "
-                  + "so the log has been serialized exclude single node mode",
-              entry);
-          entry.setByteSize((int) RamUsageEstimator.sizeOf(entry));
-        }
-        newEntryMemSize += entry.getByteSize();
-      }
-      int sizeToReserveForNew = minNumOfLogsInMem;
-      if (newEntryMemSize + committedEntryManager.getEntryTotalMemSize() > maxLogMemSize) {
-        needToCompactLog = true;
-        sizeToReserveForNew =
-            committedEntryManager.maxLogNumShouldReserve(maxLogMemSize - newEntryMemSize);
-      }
-
-      if (needToCompactLog) {
-        int numForNew = Math.min(numToReserveForNew, sizeToReserveForNew);
-        int sizeToReserveForConfig = minNumOfLogsInMem;
-        startTime = Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.getOperationStartTime();
-        synchronized (this) {
-          innerDeleteLog(Math.min(sizeToReserveForConfig, numForNew));
-        }
-        Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calOperationCostTimeFromStart(startTime);
-      }
-
-      startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
+      // Operations here are so simple that the execution could be thought
+      // success or fail together approximately.
+      // TODO: make it real atomic
       getCommittedEntryManager().append(entries);
-      if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-        getStableEntryManager().append(entries, maxHaveAppliedCommitIndex);
-      }
       Log lastLog = entries.get(entries.size() - 1);
       getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
-      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calOperationCostTimeFromStart(startTime);
-
       commitIndex = lastLog.getCurrLogIndex();
-      startTime = Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.getOperationStartTime();
-      applyEntries(entries);
-      Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.calOperationCostTimeFromStart(startTime);
 
-      long unappliedLogSize = commitLogIndex - maxHaveAppliedCommitIndex;
-      if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
-        logger.debug(
-            "There are too many unapplied logs [{}], wait for a while to avoid memory "
-                + "overflow",
-            unappliedLogSize);
-        Thread.sleep(
-            unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+      if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+        // Cluster could continue provide service when exception is thrown here
+        getStableEntryManager().append(entries, maxHaveAppliedCommitIndex);
       }
     } catch (TruncateCommittedEntryException e) {
+      // fatal error, node won't recover from the error anymore
+      // TODO: let node quit the raft group once encounter the error
       logger.error("{}: Unexpected error:", name, e);
     } catch (IOException e) {
+      // The exception will block the raft service continue accept log.
+      // TODO: Notify user that the persisted logs before these entries(include) are corrupted.
+      // TODO: An idea is that we can degrade the service by disable raft log persistent for
+      // TODO: the group. It needs fine-grained control for the config of Raft log persistence.
+      logger.error("{}: persistent raft log error:", name, e);
       throw new LogExecutionException(e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } finally {
+      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calOperationCostTimeFromStart(startTime);
+    }
+
+    startTime = Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.getOperationStartTime();
+    applyEntries(entries);
+    Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.calOperationCostTimeFromStart(startTime);
+
+    long unappliedLogSize = commitLogIndex - maxHaveAppliedCommitIndex;
+    if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
+      logger.debug(
+          "There are too many unapplied logs [{}], wait for a while to avoid memory overflow",
+          unappliedLogSize);
+      try {
+        Thread.sleep(
+            unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 
@@ -677,16 +692,26 @@ public abstract class RaftLogManager {
    */
   void applyEntries(List<Log> entries) {
     for (Log entry : entries) {
-      if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
-        blockedUnappliedLogList.add(entry);
-        continue;
-      }
-      try {
-        logApplier.apply(entry);
-      } catch (Exception e) {
-        entry.setException(e);
-        entry.setApplied(true);
-      }
+      applyEntry(entry);
+    }
+  }
+
+  public void applyEntry(Log entry) {
+    // For add/remove logs in data groups, this log will be applied immediately when it is
+    // appended to the raft log.
+    // In this case, it will apply a log that has been applied.
+    if (entry.isApplied()) {
+      return;
+    }
+    if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
+      blockedUnappliedLogList.add(entry);
+      return;
+    }
+    try {
+      logApplier.apply(entry);
+    } catch (Exception e) {
+      entry.setException(e);
+      entry.setApplied(true);
     }
   }
 
@@ -1013,5 +1038,9 @@ public abstract class RaftLogManager {
 
   public long getBlockAppliedCommitIndex() {
     return blockAppliedCommitIndex;
+  }
+
+  public RaftLogManager(LogApplier logApplier) {
+    this.logApplier = logApplier;
   }
 }

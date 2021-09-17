@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+
 public class ShowFunctionsOperator extends ShowOperator {
 
   private boolean showTemporary;
@@ -33,5 +38,11 @@ public class ShowFunctionsOperator extends ShowOperator {
 
   public boolean showTemporary() {
     return showTemporary;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new ShowFunctionsPlan(showTemporary);
   }
 }

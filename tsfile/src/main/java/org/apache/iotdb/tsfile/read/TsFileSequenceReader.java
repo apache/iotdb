@@ -647,7 +647,10 @@ public class TsFileSequenceReader implements AutoCloseable {
             .computeIfAbsent(deviceId, k -> new ArrayList<>())
             .addAll(timeseriesMetadataList);
       } else {
-        deviceId = metadataIndex.getName();
+        // deviceId should be determined by LEAF_DEVICE node
+        if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+          deviceId = metadataIndex.getName();
+        }
         MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         int metadataIndexListSize = metadataIndexNode.getChildren().size();
         for (int i = 0; i < metadataIndexListSize; i++) {
@@ -773,7 +776,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             metadataIndex.getChildIndexEntry(name, false);
         ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
         return getMetadataAndEndOffset(
-            MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, false);
+            MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, exactSearch);
       }
     } catch (BufferOverflowException e) {
       logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
@@ -886,6 +889,10 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public void skipPageData(PageHeader header) throws IOException {
     tsFileInput.position(tsFileInput.position() + header.getCompressedSize());
+  }
+
+  public ByteBuffer readCompressedPage(PageHeader header) throws IOException {
+    return readData(-1, header.getCompressedSize());
   }
 
   public ByteBuffer readPage(PageHeader header, CompressionType type) throws IOException {
@@ -1264,6 +1271,18 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
     }
     return res;
+  }
+
+  /**
+   * get metadata index node
+   *
+   * @param startOffset start read offset
+   * @param endOffset end read offset
+   * @return MetadataIndexNode
+   */
+  public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset)
+      throws IOException {
+    return MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
   }
 
   /**

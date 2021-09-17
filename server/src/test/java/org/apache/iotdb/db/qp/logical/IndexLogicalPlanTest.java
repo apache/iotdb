@@ -41,24 +41,19 @@ import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 
 public class IndexLogicalPlanTest {
 
-  private LogicalGenerator generator;
-
   @Before
-  public void before() {
-    generator = new LogicalGenerator();
-  }
+  public void before() {}
 
   @Test
   public void testParseCreateIndexWholeMatching() {
     String sqlStr =
         "CREATE INDEX ON root.Ery.*.Glu WHERE time > 50 WITH INDEX=RTREE_PAA, PAA_dim=8";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(CreateIndexOperator.class, op.getClass());
     CreateIndexOperator createOperator = (CreateIndexOperator) op;
     Assert.assertEquals(OperatorType.CREATE_INDEX, createOperator.getType());
-    Assert.assertNotNull(createOperator.getSelectedPaths());
-    Assert.assertEquals("root.Ery.*.Glu", createOperator.getSelectedPaths().get(0).toString());
-    Assert.assertNull(createOperator.getFromOperator());
+    Assert.assertNotNull(createOperator.getPaths());
+    Assert.assertEquals("root.Ery.*.Glu", createOperator.getPaths().get(0).toString());
     Assert.assertEquals(IndexType.RTREE_PAA, createOperator.getIndexType());
     Assert.assertEquals(50, createOperator.getTime());
     Assert.assertEquals(1, createOperator.getProps().size());
@@ -68,14 +63,12 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseCreateIndexSubMatching() {
     String sqlStr = "CREATE INDEX ON root.Wind.AZQ02.Speed WITH INDEX=ELB_INDEX, BLOCK_SIZE=5";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(CreateIndexOperator.class, op.getClass());
     CreateIndexOperator createOperator = (CreateIndexOperator) op;
     Assert.assertEquals(OperatorType.CREATE_INDEX, createOperator.getType());
-    Assert.assertNotNull(createOperator.getSelectedPaths());
-    Assert.assertEquals(
-        "root.Wind.AZQ02.Speed", createOperator.getSelectedPaths().get(0).toString());
-    Assert.assertNull(createOperator.getFromOperator());
+    Assert.assertNotNull(createOperator.getPaths());
+    Assert.assertEquals("root.Wind.AZQ02.Speed", createOperator.getPaths().get(0).toString());
     Assert.assertEquals(IndexType.ELB_INDEX, createOperator.getIndexType());
     Assert.assertEquals(1, createOperator.getProps().size());
     Assert.assertEquals("5", createOperator.getProps().get(BLOCK_SIZE));
@@ -84,27 +77,24 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseDropIndexWholeMatching() {
     String sqlStr = "DROP INDEX RTREE_PAA ON root.Ery.*.Glu";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DropIndexOperator.class, op.getClass());
     DropIndexOperator dropIndexOperator = (DropIndexOperator) op;
     Assert.assertEquals(OperatorType.DROP_INDEX, dropIndexOperator.getType());
-    Assert.assertNotNull(dropIndexOperator.getSelectedPaths());
-    Assert.assertEquals("root.Ery.*.Glu", dropIndexOperator.getSelectedPaths().get(0).toString());
-    Assert.assertNull(dropIndexOperator.getFromOperator());
+    Assert.assertNotNull(dropIndexOperator.getPaths());
+    Assert.assertEquals("root.Ery.*.Glu", dropIndexOperator.getPaths().get(0).toString());
     Assert.assertEquals(IndexType.RTREE_PAA, dropIndexOperator.getIndexType());
   }
 
   @Test
   public void testParseDropIndexSubMatching() {
     String sqlStr = "DROP INDEX ELB_INDEX ON root.Wind.AZQ02.Speed";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DropIndexOperator.class, op.getClass());
     DropIndexOperator dropIndexOperator = (DropIndexOperator) op;
     Assert.assertEquals(OperatorType.DROP_INDEX, dropIndexOperator.getType());
-    Assert.assertNotNull(dropIndexOperator.getSelectedPaths());
-    Assert.assertEquals(
-        "root.Wind.AZQ02.Speed", dropIndexOperator.getSelectedPaths().get(0).toString());
-    Assert.assertNull(dropIndexOperator.getFromOperator());
+    Assert.assertNotNull(dropIndexOperator.getPaths());
+    Assert.assertEquals("root.Wind.AZQ02.Speed", dropIndexOperator.getPaths().get(0).toString());
     Assert.assertEquals(IndexType.ELB_INDEX, dropIndexOperator.getIndexType());
   }
 
@@ -112,13 +102,18 @@ public class IndexLogicalPlanTest {
   public void testParseQueryIndexWholeMatching() {
     String sqlStr =
         "SELECT TOP 2 Glu FROM root.Ery.* WHERE Glu LIKE (0, 120, 20, 80, 120, 100, 80, 0)";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, op.getClass());
     QueryOperator queryOperator = (QueryOperator) op;
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
-    Assert.assertEquals("Glu", queryOperator.getSelectedPaths().get(0).getFullPath());
     Assert.assertEquals(
-        "root.Ery.*", queryOperator.getFromOperator().getPrefixPaths().get(0).getFullPath());
+        "Glu",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "Glu",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "root.Ery.*", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
     Assert.assertEquals(IndexType.RTREE_PAA, queryOperator.getIndexType());
     Assert.assertEquals(2, queryOperator.getProps().size());
     Assert.assertEquals(2, (int) queryOperator.getProps().get(TOP_K));
@@ -134,13 +129,18 @@ public class IndexLogicalPlanTest {
             + "CONTAIN (15, 14, 12, 12, 12, 11) WITH TOLERANCE 1 "
             + "CONCAT (10, 20, 25, 24, 14, 8) WITH TOLERANCE 2 "
             + "CONCAT  (8, 9, 10, 14, 15, 15) WITH TOLERANCE 1";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, op.getClass());
     QueryOperator queryOperator = (QueryOperator) op;
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
-    Assert.assertEquals("Speed", queryOperator.getSelectedPaths().get(0).getFullPath());
     Assert.assertEquals(
-        "root.Wind.AZQ02", queryOperator.getFromOperator().getPrefixPaths().get(0).getFullPath());
+        "Speed",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "Speed",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "root.Wind.AZQ02", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
     Assert.assertEquals(IndexType.ELB_INDEX, queryOperator.getIndexType());
     Assert.assertEquals(2, queryOperator.getProps().size());
     Assert.assertEquals("[1.0, 2.0, 1.0]", queryOperator.getProps().get(THRESHOLD).toString());

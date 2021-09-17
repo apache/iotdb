@@ -22,6 +22,7 @@ import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 
@@ -32,7 +33,7 @@ import java.util.List;
 
 public class AuthorityChecker {
 
-  private static final String SUPER_USER = IoTDBConstant.ADMIN_NAME;
+  private static final String SUPER_USER = IoTDBDescriptor.getInstance().getConfig().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
   private AuthorityChecker() {}
@@ -72,7 +73,6 @@ public class AuthorityChecker {
     } else {
       return checkOnePath(username, null, permission);
     }
-
     return true;
   }
 
@@ -123,9 +123,7 @@ public class AuthorityChecker {
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
       case QUERY:
-      case SELECT:
-      case FILTER:
-      case GROUPBYTIME:
+      case GROUP_BY_TIME:
       case QUERY_INDEX:
       case AGGREGATION:
       case UDAF:
@@ -133,10 +131,12 @@ public class AuthorityChecker {
       case LAST:
       case FILL:
       case GROUP_BY_FILL:
+      case SELECT_INTO:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case INSERT:
-      case LOADDATA:
+      case LOAD_DATA:
       case CREATE_INDEX:
+      case BATCH_INSERT:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:
@@ -158,6 +158,10 @@ public class AuthorityChecker {
         return PrivilegeType.START_TRIGGER.ordinal();
       case STOP_TRIGGER:
         return PrivilegeType.STOP_TRIGGER.ordinal();
+      case CREATE_CONTINUOUS_QUERY:
+        return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
+      case DROP_CONTINUOUS_QUERY:
+        return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

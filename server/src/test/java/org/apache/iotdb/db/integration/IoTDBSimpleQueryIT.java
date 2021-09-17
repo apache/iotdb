@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -38,6 +38,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -80,8 +81,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
     assertNull(mNode.getSchema().getProps());
   }
 
@@ -101,8 +102,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
 
     // check if SDT property is set
     assertEquals(2, mNode.getSchema().getProps().size());
@@ -126,8 +127,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
 
     // check if SDT property is set
     assertEquals(4, mNode.getSchema().getProps().size());
@@ -1278,6 +1279,44 @@ public class IoTDBSimpleQueryIT {
       }
     } catch (SQLException e) {
       fail();
+    }
+  }
+
+  @Test
+  public void testDisableAlign() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=BOOLEAN");
+      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1 disable align");
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BIGINT, Types.BOOLEAN};
+      int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        Assert.assertEquals(types[i], metaData.getColumnType(i + 1));
+      }
+    }
+  }
+
+  @Test
+  public void testEnableAlign() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=BOOLEAN");
+      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1");
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BOOLEAN};
+      int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        Assert.assertEquals(types[i], metaData.getColumnType(i + 1));
+      }
     }
   }
 }

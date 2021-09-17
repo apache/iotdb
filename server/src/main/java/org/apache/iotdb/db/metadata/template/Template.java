@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -37,15 +36,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class Template {
-  private static final AtomicLong increasingId = new AtomicLong();
+  private String name;
 
-  String name;
+  private Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
 
-  Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
-
+  /**
+   * build a template from a createTemplatePlan
+   *
+   * @param plan createTemplatePlan
+   */
   public Template(CreateTemplatePlan plan) {
     name = plan.getName();
 
@@ -67,7 +68,7 @@ public class Template {
 
         curSchema =
             new VectorMeasurementSchema(
-                IoTDBConstant.ALIGN_TIMESERIES_PREFIX + "#" + increasingId.getAndIncrement(),
+                plan.getSchemaNames().get(i),
                 measurementsArray,
                 typeArray,
                 encodingArray,
@@ -83,14 +84,13 @@ public class Template {
                 plan.getCompressors().get(i));
       }
 
-      for (String path : plan.getMeasurements().get(i)) {
-        if (schemaMap.containsKey(path)) {
-          throw new IllegalArgumentException(
-              "Duplicate measurement name in create template plan. Name is :" + path);
-        }
-
-        schemaMap.put(path, curSchema);
+      String path = plan.getSchemaNames().get(i);
+      if (schemaMap.containsKey(path)) {
+        throw new IllegalArgumentException(
+            "Duplicate measurement name in create template plan. Name is :" + path);
       }
+
+      schemaMap.put(path, curSchema);
     }
   }
 
@@ -110,22 +110,28 @@ public class Template {
     this.schemaMap = schemaMap;
   }
 
+  /**
+   * check whether a timeseries path is compatible with this template
+   *
+   * @param path timeseries path
+   * @return whether we can create this new timeseries (whether it's compatible with this template)
+   */
   public boolean isCompatible(PartialPath path) {
-    return !schemaMap.containsKey(path.getMeasurement());
+    return !(schemaMap.containsKey(path.getMeasurement())
+        || schemaMap.containsKey(path.getDevicePath().getMeasurement()));
   }
 
-  @TestOnly
-  public static void clear() {
-    increasingId.set(0);
+  public boolean hasSchema(String measurementId) {
+    return schemaMap.containsKey(measurementId);
   }
 
-  public List<MeasurementMNode> getMeasurementMNode() {
+  public List<IMeasurementMNode> getMeasurementMNode() {
     Set<IMeasurementSchema> deduplicateSchema = new HashSet<>();
-    List<MeasurementMNode> res = new ArrayList<>();
+    List<IMeasurementMNode> res = new ArrayList<>();
 
     for (IMeasurementSchema measurementSchema : schemaMap.values()) {
       if (deduplicateSchema.add(measurementSchema)) {
-        MeasurementMNode measurementMNode = null;
+        IMeasurementMNode measurementMNode = null;
         if (measurementSchema instanceof MeasurementSchema) {
           measurementMNode =
               new MeasurementMNode(
@@ -135,7 +141,7 @@ public class Template {
           measurementMNode =
               new MeasurementMNode(
                   null,
-                  getMeasurementNodeName(measurementSchema.getValueMeasurementIdList().get(0)),
+                  getMeasurementNodeName(measurementSchema.getMeasurementId()),
                   measurementSchema,
                   null);
         }
@@ -149,6 +155,26 @@ public class Template {
 
   public String getMeasurementNodeName(String measurementName) {
     return schemaMap.get(measurementName).getMeasurementId();
+  }
+
+  /**
+   * get all path in this template (to support aligned by device query)
+   *
+   * @return a hash map looks like below {vector -> [s1, s2, s3] normal_timeseries -> []}
+   */
+  public HashMap<String, List<String>> getAllPath() {
+    HashMap<String, List<String>> res = new HashMap<>();
+    for (Map.Entry<String, IMeasurementSchema> schemaEntry : schemaMap.entrySet()) {
+      if (schemaEntry.getValue() instanceof VectorMeasurementSchema) {
+        VectorMeasurementSchema vectorMeasurementSchema =
+            (VectorMeasurementSchema) schemaEntry.getValue();
+        res.put(schemaEntry.getKey(), vectorMeasurementSchema.getSubMeasurementsList());
+      } else {
+        res.put(schemaEntry.getKey(), new ArrayList<>());
+      }
+    }
+
+    return res;
   }
 
   @Override

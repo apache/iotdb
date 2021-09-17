@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -62,9 +61,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
    * @throws IOException If some I/O error occurs
    */
   public TsFileOnlineUpgradeTool(TsFileResource resourceToBeUpgraded) throws IOException {
-    super(resourceToBeUpgraded);
-    String file = oldTsFile.getAbsolutePath();
-    reader = new TsFileSequenceReaderForV2(file);
+    super(resourceToBeUpgraded, true);
   }
 
   /**
@@ -95,70 +92,99 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
         TSFileConfig.MAGIC_STRING.getBytes().length
             + TSFileConfig.VERSION_NUMBER_V2.getBytes().length;
     reader.position(headerLength);
-    List<List<PageHeader>> pageHeadersInChunkGroup = new ArrayList<>();
-    List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
-    List<List<Boolean>> needToDecodeInfoInChunkGroup = new ArrayList<>();
     byte marker;
-    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
+    long firstChunkPositionInChunkGroup = headerLength;
+    boolean firstChunkInChunkGroup = true;
+    String deviceId = null;
+    boolean skipReadingChunk = true;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
-            ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
-            IMeasurementSchema measurementSchema =
-                new MeasurementSchema(
-                    header.getMeasurementID(),
-                    header.getDataType(),
-                    header.getEncodingType(),
-                    header.getCompressionType());
-            measurementSchemaList.add(measurementSchema);
-            TSDataType dataType = header.getDataType();
-            TSEncoding encoding = header.getEncodingType();
-            List<PageHeader> pageHeadersInChunk = new ArrayList<>();
-            List<ByteBuffer> dataInChunk = new ArrayList<>();
-            List<Boolean> needToDecodeInfo = new ArrayList<>();
-            int dataSize = header.getDataSize();
-            while (dataSize > 0) {
-              // a new Page
-              PageHeader pageHeader = ((TsFileSequenceReaderForV2) reader).readPageHeader(dataType);
-              boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
-              needToDecodeInfo.add(needToDecode);
-              ByteBuffer pageData =
-                  !needToDecode
-                      ? ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader)
-                      : reader.readPage(pageHeader, header.getCompressionType());
-              pageHeadersInChunk.add(pageHeader);
-              dataInChunk.add(pageData);
-              dataSize -=
-                  (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
-                      // count, startTime, endTime bytes size in old statistics
-                      + 24
-                      // statistics bytes size
-                      // new boolean StatsSize is 8 bytes larger than old one
-                      + (pageHeader.getStatistics().getStatsSize()
-                          - (dataType == TSDataType.BOOLEAN ? 8 : 0))
-                      // page data bytes
-                      + pageHeader.getCompressedSize());
+            if (skipReadingChunk || deviceId == null) {
+              ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
+              int dataSize = header.getDataSize();
+              while (dataSize > 0) {
+                // a new Page
+                PageHeader pageHeader =
+                    ((TsFileSequenceReaderForV2) reader).readPageHeader(header.getDataType());
+                ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader);
+                dataSize -=
+                    (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
+                        // count, startTime, endTime bytes size in old statistics
+                        + 24
+                        // statistics bytes size
+                        // new boolean StatsSize is 8 bytes larger than old one
+                        + (pageHeader.getStatistics().getStatsSize()
+                            - (header.getDataType() == TSDataType.BOOLEAN ? 8 : 0))
+                        // page data bytes
+                        + pageHeader.getCompressedSize());
+              }
+            } else {
+              ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
+              MeasurementSchema measurementSchema =
+                  new MeasurementSchema(
+                      header.getMeasurementID(),
+                      header.getDataType(),
+                      header.getEncodingType(),
+                      header.getCompressionType());
+              TSDataType dataType = header.getDataType();
+              TSEncoding encoding = header.getEncodingType();
+              List<PageHeader> pageHeadersInChunk = new ArrayList<>();
+              List<ByteBuffer> dataInChunk = new ArrayList<>();
+              List<Boolean> needToDecodeInfo = new ArrayList<>();
+              int dataSize = header.getDataSize();
+              while (dataSize > 0) {
+                // a new Page
+                PageHeader pageHeader =
+                    ((TsFileSequenceReaderForV2) reader).readPageHeader(dataType);
+                boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
+                needToDecodeInfo.add(needToDecode);
+                ByteBuffer pageData =
+                    !needToDecode
+                        ? reader.readCompressedPage(pageHeader)
+                        : reader.readPage(pageHeader, header.getCompressionType());
+                pageHeadersInChunk.add(pageHeader);
+                dataInChunk.add(pageData);
+                dataSize -=
+                    (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
+                        // count, startTime, endTime bytes size in old statistics
+                        + 24
+                        // statistics bytes size
+                        // new boolean StatsSize is 8 bytes larger than old one
+                        + (pageHeader.getStatistics().getStatsSize()
+                            - (dataType == TSDataType.BOOLEAN ? 8 : 0))
+                        // page data bytes
+                        + pageHeader.getCompressedSize());
+              }
+              reWriteChunk(
+                  deviceId,
+                  firstChunkInChunkGroup,
+                  measurementSchema,
+                  pageHeadersInChunk,
+                  dataInChunk,
+                  needToDecodeInfo);
+              if (firstChunkInChunkGroup) {
+                firstChunkInChunkGroup = false;
+              }
             }
-            pageHeadersInChunkGroup.add(pageHeadersInChunk);
-            pageDataInChunkGroup.add(dataInChunk);
-            needToDecodeInfoInChunkGroup.add(needToDecodeInfo);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             // this is the footer of a ChunkGroup in TsFileV2.
-            ChunkGroupHeader chunkGroupFooter =
-                ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
-            String deviceID = chunkGroupFooter.getDeviceID();
-            rewrite(
-                deviceID,
-                measurementSchemaList,
-                pageHeadersInChunkGroup,
-                pageDataInChunkGroup,
-                needToDecodeInfoInChunkGroup);
-            pageHeadersInChunkGroup.clear();
-            pageDataInChunkGroup.clear();
-            measurementSchemaList.clear();
-            needToDecodeInfoInChunkGroup.clear();
+            if (skipReadingChunk) {
+              skipReadingChunk = false;
+              ChunkGroupHeader chunkGroupFooter =
+                  ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
+              deviceId = chunkGroupFooter.getDeviceID();
+              reader.position(firstChunkPositionInChunkGroup);
+            } else {
+              endChunkGroup();
+              skipReadingChunk = true;
+              ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
+              deviceId = null;
+              firstChunkPositionInChunkGroup = reader.position();
+              firstChunkInChunkGroup = true;
+            }
             break;
           case MetaMarker.VERSION:
             long version = ((TsFileSequenceReaderForV2) reader).readVersion();
@@ -186,6 +212,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
             for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
               tsFileIOWriter.writePlanIndices();
             }
+            firstChunkPositionInChunkGroup = reader.position();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
@@ -215,7 +242,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
           currentMod = null;
         }
       }
-    } catch (IOException e2) {
+    } catch (Exception e2) {
       throw new IOException(
           "TsFile upgrade process cannot proceed at position "
               + reader.position()
@@ -251,16 +278,16 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
   }
 
   @Override
-  protected void decodeAndWritePageInToFiles(
-      IMeasurementSchema schema,
+  protected void decodeAndWritePage(
+      MeasurementSchema schema,
       ByteBuffer pageData,
-      Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws IOException {
     valueDecoder.reset();
     PageReaderV2 pageReader =
         new PageReaderV2(pageData, schema.getType(), valueDecoder, defaultTimeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
-    rewritePageIntoFiles(batchData, schema, chunkWritersInChunkGroup);
+    rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
   }
 
   /** check if the file to be upgraded has correct magic strings and version number */

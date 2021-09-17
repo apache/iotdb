@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
@@ -80,6 +81,7 @@ public class SchemaUtils {
 
     Set<TSEncoding> textSet = new HashSet<>();
     textSet.add(TSEncoding.PLAIN);
+    textSet.add(TSEncoding.DICTIONARY);
     schemaChecker.put(TSDataType.TEXT, textSet);
   }
 
@@ -118,31 +120,13 @@ public class SchemaUtils {
     IMeasurementSchema measurementSchema =
         new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
 
-    MeasurementMNode measurementMNode =
+    IMeasurementMNode measurementMNode =
         new MeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
     IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths)
       throws MetadataException {
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (PartialPath path : paths) {
-      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
-    }
-    return dataTypes;
-  }
-
-  /**
-   * @param paths time series paths
-   * @param aggregation aggregation function, may be null
-   * @return The data type of aggregation or (data type of paths if aggregation is null)
-   */
-  public static List<TSDataType> getSeriesTypesByPaths(
-      Collection<PartialPath> paths, String aggregation) throws MetadataException {
-    TSDataType dataType = getAggregationType(aggregation);
-    if (dataType != null) {
-      return Collections.nCopies(paths.size(), dataType);
-    }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
       dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));

@@ -50,7 +50,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class FileLoaderUtils {
 
@@ -103,16 +102,12 @@ public class FileLoaderUtils {
     // deal with vector
     if (seriesPath instanceof VectorPartialPath) {
       return loadVectorTimeSeriesMetadata(
-          resource,
-          seriesPath,
-          ((VectorPartialPath) seriesPath).getSubSensorsPathList(),
-          context,
-          filter,
-          allSensors);
+          resource, (VectorPartialPath) seriesPath, context, filter, allSensors);
     }
 
     // common path
     ITimeSeriesMetadata timeSeriesMetadata;
+    // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
       if (!resource.getTsFile().exists()) {
         return null;
@@ -130,7 +125,7 @@ public class FileLoaderUtils {
         timeSeriesMetadata.setChunkMetadataLoader(
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
       }
-    } else {
+    } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
       timeSeriesMetadata = resource.getTimeSeriesMetadata();
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
@@ -156,58 +151,70 @@ public class FileLoaderUtils {
     return timeSeriesMetadata;
   }
 
+  /**
+   * Load VectorTimeSeriesMetadata for Vector
+   *
+   * @param resource corresponding TsFileResource
+   * @param vectorPath instance of VectorPartialPath, vector's full path, e.g. (root.sg1.d1.vector,
+   *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
+   * @param allSensors all sensors belonging to this device that appear in query
+   */
   private static VectorTimeSeriesMetadata loadVectorTimeSeriesMetadata(
       TsFileResource resource,
-      PartialPath seriesPath,
-      List<PartialPath> subSensorList,
+      VectorPartialPath vectorPath,
       QueryContext context,
       Filter filter,
       Set<String> allSensors)
       throws IOException {
     VectorTimeSeriesMetadata vectorTimeSeriesMetadata = null;
+    // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
       if (!resource.getTsFile().exists()) {
         return null;
       }
+      // load all the TimeseriesMetadata of vector, the first one is for time column and the
+      // remaining is for sub sensors
+      // the order of timeSeriesMetadata list is same as subSensorList's order
       List<TimeseriesMetadata> timeSeriesMetadata =
           TimeSeriesMetadataCache.getInstance()
               .get(
                   new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                       resource.getTsFilePath(),
-                      seriesPath.getDevice(),
-                      seriesPath.getMeasurement()),
-                  subSensorList.stream()
-                      .map(PartialPath::getMeasurement)
-                      .collect(Collectors.toList()),
+                      vectorPath.getDevice(),
+                      vectorPath.getMeasurement()),
+                  new ArrayList<>(vectorPath.getSubSensorsList()),
                   allSensors,
                   context.isDebug());
-      if (timeSeriesMetadata != null) {
+
+      // assemble VectorTimeSeriesMetadata
+      if (timeSeriesMetadata != null && !timeSeriesMetadata.isEmpty()) {
         timeSeriesMetadata
             .get(0)
             .setChunkMetadataLoader(
-                new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
+                new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
         for (int i = 1; i < timeSeriesMetadata.size(); i++) {
+          PartialPath subPath = vectorPath.getPathWithSubSensor(i - 1);
           timeSeriesMetadata
               .get(i)
               .setChunkMetadataLoader(
-                  new DiskChunkMetadataLoader(resource, subSensorList.get(i - 1), context, filter));
+                  new DiskChunkMetadataLoader(resource, subPath, context, filter));
         }
         vectorTimeSeriesMetadata =
             new VectorTimeSeriesMetadata(
                 timeSeriesMetadata.get(0),
                 timeSeriesMetadata.subList(1, timeSeriesMetadata.size()));
       }
-    } else {
+    } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
       vectorTimeSeriesMetadata = (VectorTimeSeriesMetadata) resource.getTimeSeriesMetadata();
       if (vectorTimeSeriesMetadata != null) {
         vectorTimeSeriesMetadata.setChunkMetadataLoader(
-            new MemChunkMetadataLoader(resource, seriesPath, context, filter));
+            new MemChunkMetadataLoader(resource, vectorPath, context, filter));
       }
     }
 
     if (vectorTimeSeriesMetadata != null) {
       List<Modification> pathModifications =
-          context.getPathModifications(resource.getModFile(), seriesPath);
+          context.getPathModifications(resource.getModFile(), vectorPath);
       vectorTimeSeriesMetadata.getTimeseriesMetadata().setModified(!pathModifications.isEmpty());
       if (vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
           > vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
@@ -223,7 +230,7 @@ public class FileLoaderUtils {
           vectorTimeSeriesMetadata.getValueTimeseriesMetadataList();
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
         pathModifications =
-            context.getPathModifications(resource.getModFile(), subSensorList.get(i));
+            context.getPathModifications(resource.getModFile(), vectorPath.getPathWithSubSensor(i));
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
       }
     }

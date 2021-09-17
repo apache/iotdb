@@ -351,12 +351,11 @@ public class IoTDBDisableAlignIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) disable align");
+      statement.execute(
+          "select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) disable align");
       fail("No exception thrown.");
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("FILL doesn't support disable align clause."));
+      Assert.assertTrue(e.getMessage().contains("doesn't support disable align clause."));
     }
   }
 
@@ -367,13 +366,10 @@ public class IoTDBDisableAlignIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(*) from root.vehicle GROUP BY ([2,50),20ms) disable align");
+      statement.execute("select count(*) from root.vehicle GROUP BY ([2,50),20ms) disable align");
       fail("No exception thrown.");
     } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage().contains("GROUPBYTIME doesn't support disable align clause."));
+      Assert.assertTrue(e.getMessage().contains("doesn't support disable align clause."));
     }
   }
 
@@ -384,11 +380,10 @@ public class IoTDBDisableAlignIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select count(*) from root disable align");
+      statement.execute("select count(*) from root disable align");
       fail("No exception thrown.");
     } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage().contains("AGGREGATION doesn't support disable align clause."));
+      Assert.assertTrue(e.getMessage().contains("doesn't support disable align clause."));
     }
   }
 
@@ -410,7 +405,7 @@ public class IoTDBDisableAlignIT {
       String columnName = resultSetMetaData.getColumnName(i);
       Integer typeIndex = expectedHeaderToTypeIndexMap.get(columnName);
       if (typeIndex != null) {
-        Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(1 + i / 2));
+        Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
       }
       actualIndexToExpectedIndexList.add(expectedHeaderToColumnIndexMap.get(columnName));
     }

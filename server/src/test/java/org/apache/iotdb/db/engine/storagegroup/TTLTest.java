@@ -34,8 +34,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -139,7 +140,7 @@ public class TTLTest {
 
     // normally set ttl
     IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
-    StorageGroupMNode mNode =
+    IStorageGroupMNode mNode =
         IoTDB.metaManager.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg1));
     assertEquals(ttl, mNode.getDataTTL());
 
@@ -153,15 +154,15 @@ public class TTLTest {
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setDeviceId(new PartialPath(sg1));
+    plan.setPrefixPath(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
     plan.setMeasurements(new String[] {"s1"});
     plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
     plan.setValues(new Object[] {1L});
     plan.setMeasurementMNodes(
-        new MeasurementMNode[] {
+        new IMeasurementMNode[] {
           new MeasurementMNode(
-              null, null, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
+              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
         });
     plan.transferType();
 
@@ -186,15 +187,15 @@ public class TTLTest {
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setDeviceId(new PartialPath(sg1));
+    plan.setPrefixPath(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
     plan.setMeasurements(new String[] {"s1"});
     plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
     plan.setValues(new Object[] {1L});
     plan.setMeasurementMNodes(
-        new MeasurementMNode[] {
+        new IMeasurementMNode[] {
           new MeasurementMNode(
-              null, null, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
+              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
         });
     plan.transferType();
 

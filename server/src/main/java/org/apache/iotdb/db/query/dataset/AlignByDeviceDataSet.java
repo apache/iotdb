@@ -23,13 +23,13 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
@@ -42,6 +42,9 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -50,6 +53,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /** This QueryDataSet is used for ALIGN_BY_DEVICE query result. */
@@ -63,9 +67,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private List<String> measurements;
   private List<PartialPath> devices;
   private Map<String, IExpression> deviceToFilterMap;
-  private Map<String, MeasurementType> measurementTypeMap;
-  // record the real type of the corresponding measurement
-  private Map<String, TSDataType> measurementDataTypeMap;
+  private Map<String, MeasurementInfo> measurementInfoMap;
 
   private GroupByTimePlan groupByTimePlan;
   private FillQueryPlan fillQueryPlan;
@@ -85,14 +87,13 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
     this.measurements = alignByDevicePlan.getMeasurements();
     this.devices = alignByDevicePlan.getDevices();
-    this.measurementDataTypeMap = alignByDevicePlan.getMeasurementDataTypeMap();
+    this.measurementInfoMap = alignByDevicePlan.getMeasurementInfoMap();
     this.queryRouter = queryRouter;
     this.context = context;
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
-    this.measurementTypeMap = alignByDevicePlan.getMeasurementTypeMap();
 
     switch (alignByDevicePlan.getOperatorType()) {
-      case GROUPBYTIME:
+      case GROUP_BY_TIME:
         this.dataSetType = DataSetType.GROUPBYTIME;
         this.groupByTimePlan = alignByDevicePlan.getGroupByTimePlan();
         this.groupByTimePlan.setAscending(alignByDevicePlan.isAscending());
@@ -135,7 +136,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     while (deviceIterator.hasNext()) {
       currentDevice = deviceIterator.next();
       // get all measurements of current device
-      Set<String> measurementOfGivenDevice = getDeviceMeasurements(currentDevice);
+      Set<String> measurementOfGivenDevice = getMeasurementsUnderGivenDevice(currentDevice);
 
       // extract paths and aggregations queried from all measurements
       // executeColumns is for calculating rowRecord
@@ -143,7 +144,11 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       List<PartialPath> executePaths = new ArrayList<>();
       List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
-      for (String column : measurementDataTypeMap.keySet()) {
+      for (Entry<String, MeasurementInfo> entry : measurementInfoMap.entrySet()) {
+        if (entry.getValue().getMeasurementType() != MeasurementType.Exist) {
+          continue;
+        }
+        String column = entry.getKey();
         String measurement = column;
         if (dataSetType == DataSetType.GROUPBYTIME || dataSetType == DataSetType.AGGREGATE) {
           measurement = column.substring(column.indexOf('(') + 1, column.indexOf(')'));
@@ -153,8 +158,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         }
         if (measurementOfGivenDevice.contains(measurement)) {
           executeColumns.add(column);
-          executePaths.add(currentDevice.concatNode(measurement));
-          tsDataTypes.add(measurementDataTypeMap.get(column));
+          executePaths.add(transformPath(currentDevice, measurement));
+          tsDataTypes.add(measurementInfoMap.get(column).getMeasurementDataType());
         }
       }
 
@@ -174,7 +179,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             groupByTimePlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
             groupByTimePlan.setExpression(expression);
-            groupByTimePlan.transformPaths(IoTDB.metaManager);
             currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
             break;
           case AGGREGATE:
@@ -182,20 +186,17 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             aggregationPlan.setDeduplicatedAggregations(executeAggregations);
             aggregationPlan.setDeduplicatedDataTypes(tsDataTypes);
             aggregationPlan.setExpression(expression);
-            aggregationPlan.transformPaths(IoTDB.metaManager);
             currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;
           case FILL:
             fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             fillQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
-            fillQueryPlan.transformPaths(IoTDB.metaManager);
             currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
             rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
             rawDataQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             rawDataQueryPlan.setExpression(expression);
-            rawDataQueryPlan.transformPaths(IoTDB.metaManager);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
             break;
           default:
@@ -203,8 +204,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         }
       } catch (QueryProcessException
           | QueryFilterOptimizationException
-          | StorageEngineException
-          | MetadataException e) {
+          | StorageEngineException e) {
         throw new IOException(e);
       }
 
@@ -224,16 +224,37 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     return false;
   }
 
-  protected Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
+  protected Set<String> getMeasurementsUnderGivenDevice(PartialPath device) throws IOException {
     try {
-      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
-      Set<String> res = new HashSet<>(deviceNode.getChildren().keySet());
-      Template template = deviceNode.getUpperTemplate();
-      if (template != null) {
-        res.addAll(template.getSchemaMap().keySet());
+      Set<String> res = new HashSet<>();
+      // TODO: Implement this method in Cluster MManager
+      List<IMeasurementSchema> measurementSchemas =
+          IoTDB.metaManager.getAllMeasurementByDevicePath(device);
+      for (IMeasurementSchema schema : measurementSchemas) {
+        if (schema instanceof VectorMeasurementSchema) {
+          for (String subMeasurement : schema.getSubMeasurementsList()) {
+            res.add(schema.getMeasurementId() + "." + subMeasurement);
+          }
+        } else {
+          res.add(schema.getMeasurementId());
+        }
       }
 
       return res;
+    } catch (MetadataException e) {
+      throw new IOException("Cannot get node from " + device, e);
+    }
+  }
+
+  private PartialPath transformPath(PartialPath device, String measurement) throws IOException {
+    try {
+      PartialPath fullPath = new PartialPath(device.getFullPath(), measurement);
+      IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
+      if (schema instanceof MeasurementSchema) {
+        return fullPath;
+      } else {
+        return new VectorPartialPath(fullPath.getDevice(), fullPath.getMeasurement());
+      }
     } catch (MetadataException e) {
       throw new IOException("Cannot get node from " + device, e);
     }
@@ -248,6 +269,9 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     Field deviceField = new Field(TSDataType.TEXT);
     deviceField.setBinaryV(new Binary(currentDevice.getFullPath()));
     rowRecord.addField(deviceField);
+    // device field should not be considered as a value field it should affect the WITHOUT NULL
+    // judgement
+    rowRecord.resetNullFlag();
 
     List<Field> measurementFields = originRowRecord.getFields();
     Map<String, Field> currentColumnMap = new HashMap<>();
@@ -256,7 +280,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     }
 
     for (String measurement : measurements) {
-      switch (measurementTypeMap.get(measurement)) {
+      MeasurementInfo measurementInfo = measurementInfoMap.get(measurement);
+      switch (measurementInfo.getMeasurementType()) {
         case Exist:
           if (currentColumnMap.get(measurement) != null) {
             rowRecord.addField(currentColumnMap.get(measurement));

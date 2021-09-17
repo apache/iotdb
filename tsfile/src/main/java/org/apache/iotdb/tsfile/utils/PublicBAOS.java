@@ -83,6 +83,7 @@ public class PublicBAOS extends ByteArrayOutputStream {
    * https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=173085039
    */
   @Override
+  @SuppressWarnings("squid:S3551")
   public int size() {
     return count;
   }

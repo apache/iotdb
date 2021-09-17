@@ -241,6 +241,62 @@ public class IoTDBEncodingIT {
     }
   }
 
+  @Test
+  public void testSetTimeEncoderRegularAndValueEncoderDictionary() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.db_0.tab0.city WITH DATATYPE=TEXT,ENCODING=DICTIONARY");
+      statement.execute("insert into root.db_0.tab0(time,city) values(1,\"Nanjing\")");
+      statement.execute("insert into root.db_0.tab0(time,city) values(2,\"Nanjing\")");
+      statement.execute("insert into root.db_0.tab0(time,city) values(3,\"Beijing\")");
+      statement.execute("insert into root.db_0.tab0(time,city) values(4,\"Shanghai\")");
+      statement.execute("flush");
+
+      String[] result = new String[] {"Nanjing", "Nanjing", "Beijing", "Shanghai"};
+      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+        int index = 0;
+        while (resultSet.next()) {
+          String city = resultSet.getString("root.db_0.tab0.city");
+          assertEquals(result[index], city);
+          index++;
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSetTimeEncoderRegularAndValueEncoderDictionaryOutOfOrder() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.db_0.tab0.city WITH DATATYPE=TEXT,ENCODING=DICTIONARY");
+      statement.execute("insert into root.db_0.tab0(time,city) values(1,\"Nanjing\")");
+      statement.execute("insert into root.db_0.tab0(time,city) values(2,\"Nanjing\")");
+      statement.execute("insert into root.db_0.tab0(time,city) values(4,\"Beijing\")");
+      statement.execute("insert into root.db_0.tab0(time,city) values(3,\"Shanghai\")");
+      statement.execute("flush");
+
+      String[] result = new String[] {"Nanjing", "Nanjing", "Shanghai", "Beijing"};
+      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+        int index = 0;
+        while (resultSet.next()) {
+          String city = resultSet.getString("root.db_0.tab0.city");
+          assertEquals(result[index], city);
+          index++;
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
   private static void insertData() throws ClassNotFoundException {
     List<String> sqls =
         new ArrayList<>(

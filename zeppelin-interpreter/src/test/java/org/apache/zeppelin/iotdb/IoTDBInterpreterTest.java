@@ -209,25 +209,34 @@ public class IoTDBInterpreterTest {
     actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
-    Assert.assertEquals(
-        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:13 missing ROOT at '<EOF>'",
-        actual.message().get(0).getData());
+    Assert.assertTrue(
+        actual
+            .message()
+            .get(0)
+            .getData()
+            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
 
     wrongSql = "select * from a";
     actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
-    Assert.assertEquals(
-        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
-        actual.message().get(0).getData());
+    Assert.assertTrue(
+        actual
+            .message()
+            .get(0)
+            .getData()
+            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
 
     wrongSql = "select * from root a";
     actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
-    Assert.assertEquals(
-        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:19 extraneous input 'a' expecting {<EOF>, ';'}",
-        actual.message().get(0).getData());
+    Assert.assertTrue(
+        actual
+            .message()
+            .get(0)
+            .getData()
+            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
   }
 
   @Test

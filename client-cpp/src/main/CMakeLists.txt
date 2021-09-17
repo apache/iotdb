@@ -38,7 +38,7 @@ ENDIF()
 # Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
 # Add Thrift include directory
-INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
+INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.14.1/lib/cpp/src)
 
 # Add ./generated-sources-cpp as a Cmake subdirectory
 AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)

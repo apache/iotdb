@@ -27,7 +27,6 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -36,23 +35,21 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
-import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -164,7 +161,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
    *     storage group added
    * @param level the max depth to match the pattern, -1 means matching the whole pattern
    * @return the number of paths that match the pattern at given level
-   * @throws MetadataException
    */
   private int getPathCount(Map<String, String> sgPathMap, int level)
       throws MetadataException, CheckConsistencyException {
@@ -181,7 +177,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader())
+            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
             .syncLeaderWithConsistencyCheck(false);
         int localResult = getLocalPathCount(pathUnderSG, level);
         logger.debug(
@@ -259,8 +255,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-            syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
-            count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+            try {
+              syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
+              count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+            } catch (TException e) {
+              // the connection may be broken, close it to avoid it being reused
+              syncDataClient.getInputProtocol().getTransport().close();
+              throw e;
+            }
           }
         }
         logger.debug(
@@ -329,15 +331,15 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private List<PartialPath> getLocalNodesList(
       PartitionGroup group, PartialPath schemaPattern, int level)
       throws CheckConsistencyException, MetadataException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getNodesList(
           schemaPattern,
           level,
           new SlotSgFilter(
-              ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header)));
+              ((SlotPartitionTable) metaGroupMember.getPartitionTable())
+                  .getNodeSlots(group.getHeader())));
     } catch (MetadataException e) {
       logger.error(
           "Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
@@ -363,8 +365,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-            paths =
-                syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
+            try {
+              paths =
+                  syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
+            } catch (TException e) {
+              // the connection may be broken, close it to avoid it being reused
+              syncDataClient.getInputProtocol().getTransport().close();
+              throw e;
+            }
           }
         }
         if (paths != null) {
@@ -421,8 +429,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   private Set<String> getLocalChildNodeInNextLevel(PartitionGroup group, PartialPath path)
       throws CheckConsistencyException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getChildNodeInNextLevel(path);
@@ -449,8 +457,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-            nextChildrenNodes =
-                syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
+            try {
+              nextChildrenNodes =
+                  syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
+            } catch (TException e) {
+              // the connection may be broken, close it to avoid it being reused
+              syncDataClient.getInputProtocol().getTransport().close();
+              throw e;
+            }
           }
         }
         if (nextChildrenNodes != null) {
@@ -531,8 +545,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   private Set<String> getLocalNextChildren(PartitionGroup group, PartialPath path)
       throws CheckConsistencyException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getChildNodePathInNextLevel(path);
@@ -558,8 +571,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-            nextChildren =
-                syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
+            try {
+              nextChildren =
+                  syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
+            } catch (TException e) {
+              // the connection may be broken, close it to avoid it being reused
+              syncDataClient.getInputProtocol().getTransport().close();
+              throw e;
+            }
           }
         }
         if (nextChildren != null) {
@@ -578,19 +597,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<StorageGroupMNode> getAllStorageGroupNodes() {
+  protected List<IStorageGroupMNode> getAllStorageGroupNodes() {
     try {
       metaGroupMember.syncLeader(null);
     } catch (CheckConsistencyException e) {
       logger.warn("Failed to check consistency.", e);
     }
     return IoTDB.metaManager.getAllStorageGroupNodes();
-  }
-
-  @Override
-  protected AlignByDeviceDataSet getAlignByDeviceDataSet(
-      AlignByDevicePlan plan, QueryContext context, IQueryRouter router) {
-    return new ClusterAlignByDeviceDataSet(plan, context, router);
   }
 
   @Override
@@ -623,15 +636,21 @@ public class ClusterPlanExecutor extends PlanExecutor {
           path,
           deletePlan.getDeleteStartTime(),
           deletePlan.getDeleteEndTime(),
-          deletePlan.getIndex());
+          deletePlan.getIndex(),
+          deletePlan.getPartitionFilter());
     }
   }
 
   @Override
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws QueryProcessException {
     try {
-      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
+      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex, timePartitionFilter);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }

@@ -27,7 +27,9 @@ import java.util.List;
 
 public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
 
+  // TimeSeriesMetadata for time column
   private final TimeseriesMetadata timeseriesMetadata;
+  // TimeSeriesMetadata for all subSensors in the vector
   private final List<TimeseriesMetadata> valueTimeseriesMetadataList;
 
   public VectorTimeSeriesMetadata(
@@ -36,6 +38,10 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
     this.valueTimeseriesMetadataList = valueTimeseriesMetadataList;
   }
 
+  /**
+   * If the vector contains only one sub sensor, just return the sub sensor's Statistics Otherwise,
+   * return the Statistics of the time column
+   */
   @Override
   public Statistics getStatistics() {
     return valueTimeseriesMetadataList.size() == 1
@@ -69,6 +75,14 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
     }
   }
 
+  /**
+   * If the chunkMetadataLoader is MemChunkMetadataLoader, the VectorChunkMetadata is already
+   * assembled while constructing the in-memory TsFileResource, so we just return the assembled
+   * VectorChunkMetadata list.
+   *
+   * <p>Otherwise, we need to assemble the ChunkMetadata of time column and the ChunkMetadata of all
+   * the subSensors to generate the VectorChunkMetadata
+   */
   @Override
   public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
     if (timeseriesMetadata.getChunkMetadataLoader().isMemChunkMetadataLoader()) {

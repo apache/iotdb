@@ -123,7 +123,7 @@
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.4</commons.collections4>
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
-        <thrift.version>0.13.0</thrift.version>
+        <thrift.version>0.14.1</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.11.0</jackson.version>
         <antlr4.version>4.8-1</antlr4.version>
@@ -140,6 +140,7 @@
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
         <felix.version>5.1.1</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
+        <netty.version>4.1.53.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -236,17 +237,17 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-all</artifactId>
-                <version>4.1.27.Final</version>
+                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-buffer</artifactId>
-                <version>4.1.27.Final</version>
+                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-common</artifactId>
-                <version>4.1.27.Final</version>
+                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>javax.annotation</groupId>
@@ -618,6 +619,8 @@
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
+                            <!-- Java SPI uses files in resources/META-INF/services-->
+                            <exclude>**/resources/META-INF/services/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -636,6 +639,7 @@
                             </importOrder>
                             <removeUnusedImports/>
                         </java>
+                        <lineEndings>UNIX</lineEndings>
                     </configuration>
                     <executions>
                         <execution>
@@ -702,6 +706,7 @@
                     <!-- Ensure we're not mixing dependency versions -->
                     <execution>
                         <id>enforce-version-convergence</id>
+                        <phase>validate</phase>
                         <configuration>
                             <rules>
                                 <dependencyConvergence/>
@@ -946,10 +951,12 @@
     </build>
     <profiles>
         <!-- spotless is too slow, so we put it into a profile to skip it if needed -->
+        <!-- currently spotless cannot run on jdk16, due to JEP 396: Strongly Encapsulate JDK Internals by Default-->
         <profile>
             <id>spotless</id>
             <activation>
                 <!-- activeByDefault does not take effect-->
+                <jdk>[1.8,16)</jdk>
                 <file>
                     <exists>.</exists>
                 </file>
@@ -993,8 +1000,8 @@
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
-                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
-                <thrift.executable>thrift_0.12.0_0.13.0_linux.exe</thrift.executable>
+                <thrift.download-url>https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-ubuntu</thrift.download-url>
+                <thrift.executable>thrift_0.14.1_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
@@ -1009,8 +1016,8 @@
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
-                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe</thrift.download-url>
-                <thrift.executable>thrift_0.12.0_0.13.0_mac.exe</thrift.executable>
+                <thrift.download-url>https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-MacOS</thrift.download-url>
+                <thrift.executable>thrift_0.14.1_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
@@ -1065,6 +1072,19 @@
                     <artifactId>jaxb-runtime</artifactId>
                 </dependency>
             </dependencies>
+        </profile>
+        <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
+          (https://openjdk.java.net/jeps/396) -->
+        <profile>
+            <id>java-16-and-above</id>
+            <activation>
+                <!-- This needs to be updated as soon as Java 20 is shipped -->
+                <jdk>[16,20)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+                <argLine>--illegal-access=permit --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
+            </properties>
         </profile>
         <!--
           Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.
@@ -1396,6 +1416,7 @@
                             <execution>
                                 <goals>
                                     <goal>integration-test</goal>
+                                    <goal>verify</goal>
                                 </goals>
                             </execution>
                         </executions>

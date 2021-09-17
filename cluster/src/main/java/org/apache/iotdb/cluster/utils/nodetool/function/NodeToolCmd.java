@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.utils.nodetool.function;
 
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
@@ -61,7 +62,7 @@ public abstract class NodeToolCmd implements Runnable {
       type = OptionType.GLOBAL,
       name = {"-u", "--user"},
       description = "The username to access the remote jmx")
-  private String user = "iotdb";
+  private String user = "root";
 
   @Option(
       type = OptionType.GLOBAL,
@@ -71,7 +72,13 @@ public abstract class NodeToolCmd implements Runnable {
 
   private static final String JMX_URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%s/jmxrmi";
 
-  static final String BUILDING_CLUSTER_INFO = "The cluster is being created.";
+  public static final String BUILDING_CLUSTER_INFO = "The cluster is being created.";
+
+  public static final String META_LEADER_UNKNOWN_INFO =
+      "Meta group leader is unknown, please try again later.";
+
+  static final String FAIL_TO_GET_ALL_SLOT_STATUS_INFO =
+      "Fail to get all slot status, please check node status and try again later.";
 
   @Override
   public void run() {
@@ -110,13 +117,21 @@ public abstract class NodeToolCmd implements Runnable {
     return mbsc;
   }
 
-  String nodeToString(Node node) {
+  public static String nodeCharacterToString(Node node, NodeCharacter character) {
+    return String.format("%s (%s)", nodeToString(node), character);
+  }
+
+  public static String nodeToString(Node node) {
     return String.format(
         "%s:%d:%d:%d",
         node.getInternalIp(), node.getMetaPort(), node.getDataPort(), node.getClientPort());
   }
 
-  String partitionGroupToString(PartitionGroup group) {
+  public static String redirectToQueryMetaLeader(Node node) {
+    return String.format("Please redirect to query meta group leader %s", nodeToString(node));
+  }
+
+  public static String partitionGroupToString(PartitionGroup group) {
     StringBuilder stringBuilder = new StringBuilder("[");
     if (!group.isEmpty()) {
       stringBuilder.append(nodeToString(group.get(0)));

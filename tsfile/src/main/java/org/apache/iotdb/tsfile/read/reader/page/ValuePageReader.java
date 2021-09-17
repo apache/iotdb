@@ -79,6 +79,10 @@ public class ValuePageReader {
     this.valueBuffer = pageData.slice();
   }
 
+  /**
+   * return a BatchData with the corresponding timeBatch, the BatchData's dataType is same as this
+   * sub sensor
+   */
   public BatchData nextBatch(long[] timeBatch, boolean ascending, Filter filter) {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
     for (int i = 0; i < timeBatch.length; i++) {
@@ -130,6 +134,10 @@ public class ValuePageReader {
     return pageData.flip();
   }
 
+  /**
+   * return the value array of the corresponding time, if this sub sensor don't have a value in a
+   * time, just fill it with null
+   */
   public TsPrimitiveType[] nextValueBatch(long[] timeBatch) {
     TsPrimitiveType[] valueBatch = new TsPrimitiveType[size];
     if (valueBuffer == null) {

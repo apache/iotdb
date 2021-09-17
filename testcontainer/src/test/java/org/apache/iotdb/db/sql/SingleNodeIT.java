@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.session.Session;
 
 import org.junit.*;
 import org.slf4j.Logger;
@@ -69,6 +70,8 @@ public class SingleNodeIT extends Cases {
         readConnections[0] =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:" + rpcPort, "root", "root");
     writeStatement = readStatements[0] = writeConnection.createStatement();
+    session = new Session("127.0.0.1", rpcPort);
+    session.open();
   }
 
   @After

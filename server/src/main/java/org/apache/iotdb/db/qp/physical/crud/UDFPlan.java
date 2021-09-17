@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
+import org.apache.iotdb.db.query.expression.ResultColumn;
 
 import java.util.List;
 
@@ -37,7 +37,7 @@ public interface UDFPlan {
    * Build the execution plan of the executors. This method will not create any UDF instances, nor
    * will it execute user-defined logic.
    */
-  void constructUdfExecutors(List<UDFContext> udfContexts);
+  void constructUdfExecutors(List<ResultColumn> resultColumns);
 
   /** Allocate computing resources, create UDF instances, and call UDF initialization methods. */
   void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMb)

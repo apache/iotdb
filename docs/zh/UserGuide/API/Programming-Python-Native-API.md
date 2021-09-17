@@ -23,11 +23,9 @@
 
 ### 依赖
 
-在使用Python原生接口包前，您需要安装 thrift (>=0.13) 依赖。
+在使用 Python 原生接口包前，您需要安装 thrift (>=0.13) 依赖。
 
-
-
-### 如何使用 (示例)
+### 如何使用 （示例）
 
 首先下载包：`pip3 install apache-iotdb`
 
@@ -50,13 +48,11 @@ zone = session.get_time_zone()
 session.close()
 ```
 
-
-
 ### IoTDB Testcontainer
 
-Python客户端对测试的支持是基于`testcontainers`库 (https://testcontainers-python.readthedocs.io/en/latest/index.html)的，如果您想使用该特性，就需要将其安装到您的项目中。
+Python 客户端对测试的支持是基于`testcontainers`库 (https://testcontainers-python.readthedocs.io/en/latest/index.html) 的，如果您想使用该特性，就需要将其安装到您的项目中。
 
-要在Docker容器中启动（和停止）一个IoTDB数据库，只需这样做:
+要在 Docker 容器中启动（和停止）一个 IoTDB 数据库，只需这样做：
 
 ```python
 class MyTestCase(unittest.TestCase):
@@ -70,15 +66,13 @@ class MyTestCase(unittest.TestCase):
             session.close()
 ```
 
-默认情况下，它会拉取最新的IoTDB镜像 `apache/iotdb:latest`进行测试，如果您想指定待测IoTDB的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.12.0")`，此时，您就会得到一个`0.12.0`版本的IoTDB实例。
-
-
+默认情况下，它会拉取最新的 IoTDB 镜像 `apache/iotdb:latest`进行测试，如果您想指定待测 IoTDB 的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.12.0")`，此时，您就会得到一个`0.12.0`版本的 IoTDB 实例。
 
 ### 对 Pandas 的支持
 
-我们支持将查询结果轻松地转换为[Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)。
+我们支持将查询结果轻松地转换为 [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)。
 
-SessionDataSet有一个方法`.todf()`，它的作用是消费SessionDataSet中的数据，并将数据转换为pandas dataframe。
+SessionDataSet 有一个方法`.todf()`，它的作用是消费 SessionDataSet 中的数据，并将数据转换为 pandas dataframe。
 
 例子：
 
@@ -102,49 +96,40 @@ session.close()
 df = ...
 ```
 
-
-
 ### 给开发人员
 
 #### 介绍
 
-这是一个使用thrift rpc接口连接到IoTDB的示例。在Windows和Linux上操作几乎是一样的，但要注意路径分隔符等不同之处。
-
-
+这是一个使用 thrift rpc 接口连接到 IoTDB 的示例。在 Windows 和 Linux 上操作几乎是一样的，但要注意路径分隔符等不同之处。
 
 #### 依赖
 
-首选Python3.7或更高版本。
+首选 Python3.7 或更高版本。
 
-必须安装thrift（0.11.0或更高版本）才能将thrift文件编译为Python代码。下面是官方的安装教程，最终，您应该得到一个thrift可执行文件。
+必须安装 thrift（0.11.0 或更高版本）才能将 thrift 文件编译为 Python 代码。下面是官方的安装教程，最终，您应该得到一个 thrift 可执行文件。
 
 ```
 http://thrift.apache.org/docs/install/
 ```
 
-在开始之前，您还需要在Python环境中安装`requirements_dev.txt`中的其他依赖：
+在开始之前，您还需要在 Python 环境中安装`requirements_dev.txt`中的其他依赖：
 ```shell
 pip install -r requirements_dev.txt
 ```
 
+#### 编译 thrift 库并调试
 
+在 IoTDB 源代码文件夹的根目录下，运行`mvn clean generate-sources -pl client-py -am`，
 
-#### 编译thrift库并调试
+这个指令将自动删除`iotdb/thrift`中的文件，并使用新生成的 thrift 文件重新填充该文件夹。
 
-在IoTDB源代码文件夹的根目录下，运行`mvn clean generate-sources -pl client-py -am`，
+这个文件夹在 git 中会被忽略，并且**永远不应该被推到 git 中！**
 
-这个指令将自动删除`iotdb/thrift`中的文件，并使用新生成的thrift文件重新填充该文件夹。
-
-这个文件夹在git中会被忽略，并且**永远不应该被推到git中！**
-
-**注意**不要将`iotdb/thrift`上传到git仓库中 ！
-
-
-
+**注意**不要将`iotdb/thrift`上传到 git 仓库中 ！
 
 #### Session 客户端 & 使用示例 
 
-我们将thrift接口打包到`client-py/src/iotdb/session.py `中（与Java版本类似），还提供了一个示例文件`client-py/src/SessionExample.py`来说明如何使用Session模块。请仔细阅读。
+我们将 thrift 接口打包到`client-py/src/iotdb/session.py `中（与 Java 版本类似），还提供了一个示例文件`client-py/src/SessionExample.py`来说明如何使用 Session 模块。请仔细阅读。
 
 另一个简单的例子：
 
@@ -161,44 +146,34 @@ zone = session.get_time_zone()
 session.close()
 ```
 
-
-
 #### 测试
 
 请在`tests`文件夹中添加自定义测试。
 
 要运行所有的测试，只需在根目录中运行`pytest . `即可。
 
-**注意**一些测试需要在您的系统上使用docker，因为测试的IoTDB实例是使用[testcontainers](https://testcontainers-python.readthedocs.io/en/latest/index.html)在docker容器中启动的。
-
-
+**注意**一些测试需要在您的系统上使用 docker，因为测试的 IoTDB 实例是使用 [testcontainers](https://testcontainers-python.readthedocs.io/en/latest/index.html) 在 docker 容器中启动的。
 
 #### 其他工具
 
 [black](https://pypi.org/project/black/) 和 [flake8](https://pypi.org/project/flake8/) 分别用于自动格式化和 linting。
 它们可以通过 `black .` 或 `flake8 .` 分别运行。
 
-
-
 ### 发版
 
 要进行发版，
 
-只需确保您生成了正确的thrift代码，
+只需确保您生成了正确的 thrift 代码，
 
-运行了linting并进行了自动格式化，
+运行了 linting 并进行了自动格式化，
 
 然后，确保所有测试都正常通过（通过`pytest . `），
 
-最后，您就可以将包发布到pypi了。
-
-
+最后，您就可以将包发布到 pypi 了。
 
 #### 准备您的环境
 
 首先，通过`pip install -r requirements_dev.txt`安装所有必要的开发依赖。
-
-
 
 #### 发版
 
@@ -208,7 +183,7 @@ session.close()
 
 * 删除所有临时目录（如果存在）
 
-* （重新）通过mvn生成所有必须的源代码
+* （重新）通过 mvn 生成所有必须的源代码
 
 * 运行 linting （flke8）
 
@@ -217,4 +192,3 @@ session.close()
 * Build
 
 * 发布到 pypi
-

@@ -198,9 +198,7 @@ public class SampleRateKeeper {
         e.printStackTrace();
         return null;
       }
-      long queryId =
-          QueryResourceManager.getInstance()
-              .assignQueryId(true, queryFetchSize, physicalPlan.getPaths().size());
+      long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       QueryContext context = new QueryContext(queryId, false);
       QueryDataSet dataSet = executor.processQuery(physicalPlan, context);
       dataSet.setFetchSize(queryFetchSize);

@@ -133,7 +133,7 @@ public class ClusterAggregator {
    * @param timeFilter nullable
    */
   private List<AggregateResult> getAggregateResult(
-      Path path,
+      PartialPath path,
       Set<String> deviceMeasurements,
       List<String> aggregations,
       TSDataType dataType,
@@ -154,7 +154,8 @@ public class ClusterAggregator {
           ascending);
     } else {
       // perform the aggregations locally
-      DataGroupMember dataMember = metaGroupMember.getLocalDataMember(partitionGroup.getHeader());
+      DataGroupMember dataMember =
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataMember);
       try {
         logger.debug(
@@ -165,13 +166,7 @@ public class ClusterAggregator {
             partitionGroup.getHeader());
         List<AggregateResult> aggrResult =
             localQueryExecutor.getAggrResult(
-                aggregations,
-                deviceMeasurements,
-                dataType,
-                path.getFullPath(),
-                timeFilter,
-                context,
-                ascending);
+                aggregations, deviceMeasurements, dataType, path, timeFilter, context, ascending);
         logger.debug(
             "{}: queried aggregation {} of {} in {} locally are {}",
             metaGroupMember.getName(),
@@ -274,8 +269,13 @@ public class ClusterAggregator {
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        resultBuffers = syncDataClient.getAggrResult(request);
+        try {
+          resultBuffers = syncDataClient.getAggrResult(request);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
+        }
       }
     }
     return resultBuffers;

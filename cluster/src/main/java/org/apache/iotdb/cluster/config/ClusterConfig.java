@@ -48,6 +48,8 @@ public class ClusterConfig {
 
   @ClusterConsistent private int replicationNum = 1;
 
+  @ClusterConsistent private int multiRaftFactor = 1;
+
   @ClusterConsistent private String clusterName = "default";
 
   @ClusterConsistent private boolean useAsyncServer = false;
@@ -55,6 +57,10 @@ public class ClusterConfig {
   private boolean useAsyncApplier = true;
 
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+
+  private long heartbeatIntervalMs = TimeUnit.SECONDS.toMillis(1);
+
+  private long electionTimeoutMs = TimeUnit.SECONDS.toMillis(20);
 
   private int readOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
@@ -167,6 +173,12 @@ public class ClusterConfig {
    */
   private long maxReadLogLag = 1000L;
 
+  /**
+   * When a follower tries to sync log with the leader, sync will fail if the log Lag exceeds
+   * maxSyncLogLag.
+   */
+  private long maxSyncLogLag = 100000L;
+
   private boolean openServerRpcPort = false;
 
   /**
@@ -242,6 +254,14 @@ public class ClusterConfig {
 
   public void setReplicationNum(int replicationNum) {
     this.replicationNum = replicationNum;
+  }
+
+  public int getMultiRaftFactor() {
+    return multiRaftFactor;
+  }
+
+  public void setMultiRaftFactor(int multiRaftFactor) {
+    this.multiRaftFactor = multiRaftFactor;
   }
 
   void setClusterName(String clusterName) {
@@ -464,6 +484,14 @@ public class ClusterConfig {
     this.maxReadLogLag = maxReadLogLag;
   }
 
+  public long getMaxSyncLogLag() {
+    return maxSyncLogLag;
+  }
+
+  public void setMaxSyncLogLag(long maxSyncLogLag) {
+    this.maxSyncLogLag = maxSyncLogLag;
+  }
+
   public String getInternalIp() {
     return internalIp;
   }
@@ -486,6 +514,22 @@ public class ClusterConfig {
 
   public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
     this.waitClientTimeoutMS = waitClientTimeoutMS;
+  }
+
+  public long getHeartbeatIntervalMs() {
+    return heartbeatIntervalMs;
+  }
+
+  public void setHeartbeatIntervalMs(long heartbeatIntervalMs) {
+    this.heartbeatIntervalMs = heartbeatIntervalMs;
+  }
+
+  public long getElectionTimeoutMs() {
+    return electionTimeoutMs;
+  }
+
+  public void setElectionTimeoutMs(long electionTimeoutMs) {
+    this.electionTimeoutMs = electionTimeoutMs;
   }
 
   public int getClusterInfoRpcPort() {

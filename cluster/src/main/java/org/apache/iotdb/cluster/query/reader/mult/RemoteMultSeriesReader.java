@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -46,7 +45,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** mult reader without value filter that reads points from a remote side. */
+/** multi reader without value filter that reads points from a remote side. */
 public class RemoteMultSeriesReader extends AbstractMultPointReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteMultSeriesReader.class);
@@ -74,7 +73,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     this.cachedBatchs = Maps.newHashMap();
     this.pathToDataType = Maps.newHashMap();
     for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
-      String fullPath = PartialPath.getExactFullPath(sourceInfo.getPartialPaths().get(i));
+      String fullPath = sourceInfo.getPartialPaths().get(i).getExactFullPath();
       this.cachedBatchs.put(fullPath, new ConcurrentLinkedQueue<>());
       this.pathToDataType.put(fullPath, sourceInfo.getDataTypes().get(i));
     }
@@ -185,8 +184,14 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
 
     try (SyncDataClient curSyncClient =
         sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS()); ) {
-
-      return curSyncClient.fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
+      try {
+        return curSyncClient.fetchMultSeries(
+            sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        curSyncClient.getInputProtocol().getTransport().close();
+        throw e;
+      }
     } catch (TException e) {
       logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
       return null;

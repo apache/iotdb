@@ -294,9 +294,50 @@ public class IoTDBConfig {
 
   /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. Unit: byte */
   private long tsFileSizeThreshold = 1L;
+  /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  private long unSeqTsFileSize = 1L;
+
+  /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  private long seqTsFileSize = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
+
+  /** Whether to timed flush sequence tsfiles' memtables. */
+  private boolean enableTimedFlushSeqMemtable = false;
+
+  /**
+   * If a memTable's created time is older than current time minus this, the memtable will be
+   * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
+   */
+  private long seqMemtableFlushInterval = 60 * 60 * 1000L;
+
+  /** The interval to check whether sequence memtables need flushing. Unit: ms */
+  private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+
+  /** Whether to timed flush unsequence tsfiles' memtables. */
+  private boolean enableTimedFlushUnseqMemtable = true;
+
+  /**
+   * If a memTable's created time is older than current time minus this, the memtable will be
+   * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
+   */
+  private long unseqMemtableFlushInterval = 60 * 60 * 1000L;
+
+  /** The interval to check whether unsequence memtables need flushing. Unit: ms */
+  private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+
+  /** Whether to timed close tsfiles. */
+  private boolean enableTimedCloseTsFile = true;
+
+  /**
+   * If a TsfileProcessor's last working memtable flush time is older than current time minus this
+   * and its working memtable is null, the TsfileProcessor will be closed. Unit: ms
+   */
+  private long closeTsFileIntervalAfterFlushing = 60 * 60 * 1000L;
+
+  /** The interval to check whether tsfiles need closing. Unit: ms */
+  private long closeTsFileCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
@@ -410,6 +451,9 @@ public class IoTDBConfig {
   /** the max executing time of query in ms. Unit: millisecond */
   private int queryTimeoutThreshold = 60000;
 
+  /** the max time to live of a session in ms. Unit: millisecond */
+  private int sessionTimeoutThreshold = 0;
+
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
@@ -522,7 +566,7 @@ public class IoTDBConfig {
    * despite how much they are overflowed). This may increase merge overhead depending on how much
    * the SeqFiles are overflowed.
    */
-  private boolean forceFullMerge = false;
+  private boolean forceFullMerge = true;
 
   /** The limit of compaction merge can reach per second */
   private int mergeWriteThroughputMbPerSec = 8;
@@ -532,6 +576,30 @@ public class IoTDBConfig {
    * equal to 0.
    */
   private int compactionThreadNum = 10;
+
+  /*
+   * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
+   */
+  private int continuousQueryThreadNum =
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+
+  /*
+   * Maximum number of continuous query tasks that can be pending for execution. When <= 0, the value is
+   * 64 by default.
+   */
+  private int maxPendingContinuousQueryTasks = 64;
+
+  /*
+   * Minimum every interval to perform continuous query.
+   * The every interval of continuous query instances should not be lower than this limit.
+   */
+  private long continuousQueryMinimumEveryInterval = 1000;
+
+  /**
+   * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
+   * statements.
+   */
+  private int selectIntoInsertTabletPlanRowLimit = 10000;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
@@ -579,7 +647,7 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
-  private int concurrentWritingTimePartition = 1;
+  private int concurrentWritingTimePartition = 500;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
@@ -593,7 +661,7 @@ public class IoTDBConfig {
   private long defaultTTL = Long.MAX_VALUE;
 
   /** The default value of primitive array size in array pool */
-  private int primitiveArraySize = 128;
+  private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = false;
@@ -610,7 +678,10 @@ public class IoTDBConfig {
    */
   private int mtreeSnapshotThresholdTime = 3600;
 
-  /** Time range for partitioning data inside each storage group. Unit: second */
+  /**
+   * Time range for partitioning data inside each storage group, the unit is second. Default time is
+   * a week.
+   */
   private long partitionInterval = 604800;
 
   /**
@@ -633,7 +704,7 @@ public class IoTDBConfig {
   private boolean enablePartialInsert = true;
 
   // Open ID Secret
-  private String openIdProviderUrl = null;
+  private String openIdProviderUrl = "";
 
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
@@ -686,6 +757,10 @@ public class IoTDBConfig {
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
+  private String adminName = "root";
+
+  private String adminPassword = "root";
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -735,7 +810,7 @@ public class IoTDBConfig {
     return concurrentWritingTimePartition;
   }
 
-  void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
+  public void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
     this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 
@@ -1107,12 +1182,20 @@ public class IoTDBConfig {
     this.maxPendingWindowEvaluationTasks = maxPendingWindowEvaluationTasks;
   }
 
-  public long getTsFileSizeThreshold() {
-    return tsFileSizeThreshold;
+  public long getSeqTsFileSize() {
+    return seqTsFileSize;
   }
 
-  public void setTsFileSizeThreshold(long tsFileSizeThreshold) {
-    this.tsFileSizeThreshold = tsFileSizeThreshold;
+  public void setSeqTsFileSize(long seqTsFileSize) {
+    this.seqTsFileSize = seqTsFileSize;
+  }
+
+  public long getUnSeqTsFileSize() {
+    return unSeqTsFileSize;
+  }
+
+  public void setUnSeqTsFileSize(long unSeqTsFileSize) {
+    this.unSeqTsFileSize = unSeqTsFileSize;
   }
 
   public boolean isEnableStatMonitor() {
@@ -1201,6 +1284,14 @@ public class IoTDBConfig {
 
   public void setQueryTimeoutThreshold(int queryTimeoutThreshold) {
     this.queryTimeoutThreshold = queryTimeoutThreshold;
+  }
+
+  public int getSessionTimeoutThreshold() {
+    return sessionTimeoutThreshold;
+  }
+
+  public void setSessionTimeoutThreshold(int sessionTimeoutThreshold) {
+    this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
   public boolean isReadOnly() {
@@ -1427,6 +1518,38 @@ public class IoTDBConfig {
     this.compactionThreadNum = compactionThreadNum;
   }
 
+  public int getContinuousQueryThreadNum() {
+    return continuousQueryThreadNum;
+  }
+
+  public void setContinuousQueryThreadNum(int continuousQueryThreadNum) {
+    this.continuousQueryThreadNum = continuousQueryThreadNum;
+  }
+
+  public int getMaxPendingContinuousQueryTasks() {
+    return maxPendingContinuousQueryTasks;
+  }
+
+  public void setMaxPendingContinuousQueryTasks(int maxPendingContinuousQueryTasks) {
+    this.maxPendingContinuousQueryTasks = maxPendingContinuousQueryTasks;
+  }
+
+  public long getContinuousQueryMinimumEveryInterval() {
+    return continuousQueryMinimumEveryInterval;
+  }
+
+  public void setContinuousQueryMinimumEveryInterval(long minimumEveryInterval) {
+    this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
+  }
+
+  public int getSelectIntoInsertTabletPlanRowLimit() {
+    return selectIntoInsertTabletPlanRowLimit;
+  }
+
+  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  }
+
   public int getMergeWriteThroughputMbPerSec() {
     return mergeWriteThroughputMbPerSec;
   }
@@ -1449,6 +1572,78 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public boolean isEnableTimedFlushSeqMemtable() {
+    return enableTimedFlushSeqMemtable;
+  }
+
+  public void setEnableTimedFlushSeqMemtable(boolean enableTimedFlushSeqMemtable) {
+    this.enableTimedFlushSeqMemtable = enableTimedFlushSeqMemtable;
+  }
+
+  public long getSeqMemtableFlushInterval() {
+    return seqMemtableFlushInterval;
+  }
+
+  public void setSeqMemtableFlushInterval(long seqMemtableFlushInterval) {
+    this.seqMemtableFlushInterval = seqMemtableFlushInterval;
+  }
+
+  public long getSeqMemtableFlushCheckInterval() {
+    return seqMemtableFlushCheckInterval;
+  }
+
+  public void setSeqMemtableFlushCheckInterval(long seqMemtableFlushCheckInterval) {
+    this.seqMemtableFlushCheckInterval = seqMemtableFlushCheckInterval;
+  }
+
+  public boolean isEnableTimedFlushUnseqMemtable() {
+    return enableTimedFlushUnseqMemtable;
+  }
+
+  public void setEnableTimedFlushUnseqMemtable(boolean enableTimedFlushUnseqMemtable) {
+    this.enableTimedFlushUnseqMemtable = enableTimedFlushUnseqMemtable;
+  }
+
+  public long getUnseqMemtableFlushInterval() {
+    return unseqMemtableFlushInterval;
+  }
+
+  public void setUnseqMemtableFlushInterval(long unseqMemtableFlushInterval) {
+    this.unseqMemtableFlushInterval = unseqMemtableFlushInterval;
+  }
+
+  public long getUnseqMemtableFlushCheckInterval() {
+    return unseqMemtableFlushCheckInterval;
+  }
+
+  public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
+    this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
+  }
+
+  public boolean isEnableTimedCloseTsFile() {
+    return enableTimedCloseTsFile;
+  }
+
+  public void setEnableTimedCloseTsFile(boolean enableTimedCloseTsFile) {
+    this.enableTimedCloseTsFile = enableTimedCloseTsFile;
+  }
+
+  public long getCloseTsFileIntervalAfterFlushing() {
+    return closeTsFileIntervalAfterFlushing;
+  }
+
+  public void setCloseTsFileIntervalAfterFlushing(long closeTsFileIntervalAfterFlushing) {
+    this.closeTsFileIntervalAfterFlushing = closeTsFileIntervalAfterFlushing;
+  }
+
+  public long getCloseTsFileCheckInterval() {
+    return closeTsFileCheckInterval;
+  }
+
+  public void setCloseTsFileCheckInterval(long closeTsFileCheckInterval) {
+    this.closeTsFileCheckInterval = closeTsFileCheckInterval;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
@@ -2035,6 +2230,7 @@ public class IoTDBConfig {
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
   }
 
   public int getThriftDefaultBufferSize() {
@@ -2043,6 +2239,7 @@ public class IoTDBConfig {
 
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
   }
 
   public int getMaxQueryDeduplicatedPathNum() {
@@ -2172,5 +2369,21 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
+  }
+
+  public String getAdminName() {
+    return adminName;
+  }
+
+  public void setAdminName(String adminName) {
+    this.adminName = adminName;
+  }
+
+  public String getAdminPassword() {
+    return adminPassword;
+  }
+
+  public void setAdminPassword(String adminPassword) {
+    this.adminPassword = adminPassword;
   }
 }
