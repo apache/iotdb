@@ -447,7 +447,8 @@ public class IoTDBSessionSimpleIT {
       tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
       tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
       tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
-      tablet.addValue(schemaList.get(5).getMeasurementId(), rowIndex, new Binary(String.valueOf(time)));
+      tablet.addValue(
+          schemaList.get(5).getMeasurementId(), rowIndex, new Binary(String.valueOf(time)));
     }
 
     BitMap[] bitMaps = new BitMap[schemaList.size()];
@@ -468,7 +469,7 @@ public class IoTDBSessionSimpleIT {
     while (dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
       Assert.assertEquals(6L, rowRecord.getFields().size());
-      for (Field field: rowRecord.getFields()) {
+      for (Field field : rowRecord.getFields()) {
         Assert.assertEquals(9L, field.getLongV());
       }
     }
