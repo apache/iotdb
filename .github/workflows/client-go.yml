@@ -13,6 +13,8 @@ on:
     branches:
       - master
       - 'rel/*'
+      #remove me when cluster- branch is merged
+      - cluster-
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
