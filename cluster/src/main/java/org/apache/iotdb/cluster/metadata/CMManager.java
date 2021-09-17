@@ -652,7 +652,7 @@ public class CMManager extends MManager {
       if (!success) {
         logger.error(
             "create timeseries for device={} failed, plan={}",
-            insertRowPlan.getPrefixPath(),
+            insertRowPlan.getDeviceId(),
             insertRowPlan);
       }
     }
