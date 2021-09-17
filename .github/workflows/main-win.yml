@@ -8,6 +8,7 @@ on:
     branches:
       - master
       - 'rel/*'
+      - JDK17
     paths-ignore:
       - 'docs/**'
   pull_request:
