@@ -97,14 +97,6 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
     if (!resourceToBeSettled.getModFile().exists()) { //if no deletions to this tsfile, then return.
       return null;
     }
-    //Todo
-    try {
-      logger.info("sleep.......");
-      Thread.sleep(15000);
-      logger.info("wake up!");
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
     List<TsFileResource> newResources=new ArrayList<>();
     try (TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool(
         resourceToBeSettled)) {

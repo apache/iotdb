@@ -2466,7 +2466,7 @@ public class StorageGroupProcessor {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     //Todo: Update the relevant data of this tsfile in memory , eg: TsFileResource, TsFileProcessor，etc.
-    //oldTsFileResource.close(); //清空旧TsFile的mods
+    tsFileManagement.remove(oldTsFileResource,oldTsFileResource.isSeq());
 
     SettleService.getFilesToBeSettledCount().addAndGet(-1);
     writeUnlock();
