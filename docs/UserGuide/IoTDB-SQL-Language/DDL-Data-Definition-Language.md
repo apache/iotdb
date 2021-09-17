@@ -388,7 +388,7 @@ Example：
 +------------+
 ```
 
-* return the child nodes of root.vehicle：show child nodes root.ln
+* return the child nodes of root.ln：show child nodes root.ln
 
 ```
 +------------+
