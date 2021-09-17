@@ -108,7 +108,7 @@ public class MemUtils {
       }
       IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
       TSDataType valueType;
-      if (schema.getType() == TSDataType.VECTOR) {
+      if (insertTabletPlan.isAligned()) {
         hasVector = true;
         // value columns memSize
         valueType = schema.getSubMeasurementsTSDataTypeList().get(i);
