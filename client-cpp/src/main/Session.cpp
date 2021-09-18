@@ -345,6 +345,12 @@ void SessionDataSet::closeOperationHandle() {
     }
 }
 
+/**
+ * When delete variable, make sure release all resource.
+ */
+Session::~Session() {
+    close();
+}
 
 /**
    * check whether the batch has been sorted
@@ -381,7 +387,6 @@ void Session::sortTablet(Tablet &tablet) {
     }
 
     this->sortIndexByTimestamp(index, tablet.timestamps, tablet.rowSize);
-    sort(tablet.timestamps.begin(), tablet.timestamps.begin() + tablet.rowSize);
     for (int i = 0; i < tablet.schemas.size(); i++) {
         tablet.values[i] = sortList(tablet.values[i], index, tablet.rowSize);
     }
@@ -491,7 +496,7 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         return;
     }
     shared_ptr <TSocket> socket(new TSocket(host, rpcPort));
-    shared_ptr <TTransport> transport(new TFramedTransport(socket));
+    transport = std::make_shared<TFramedTransport> (socket);
     socket->setConnTimeout(connectionTimeoutInMs);
     if (!transport->isOpen()) {
         try {
@@ -557,7 +562,7 @@ void Session::close() {
                 string("Error occurs when closing session at server. Maybe server is down. ") + e.what());
     }
     isClosed = true;
-    if (transport != NULL) {
+    if (transport != nullptr) {
         transport->close();
     }
 }
@@ -678,7 +683,6 @@ void Session::insertRecordsOfOneDevice(string deviceId, vector <int64_t> &times,
         }
 
         this->sortIndexByTimestamp(index, times, times.size());
-        sort(times.begin(), times.end());
         measurementsList = sortList(measurementsList, index, times.size());
         typesList = sortList(typesList, index, times.size());
         valuesList = sortList(valuesList, index, times.size());

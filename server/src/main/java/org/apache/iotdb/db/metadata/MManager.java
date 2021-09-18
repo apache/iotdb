@@ -102,7 +102,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -440,7 +439,7 @@ public class MManager {
           }
           tagIndex
               .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+              .computeIfAbsent(entry.getValue(), v -> Collections.synchronizedSet(new HashSet<>()))
               .add(leafMNode);
         }
       }
@@ -1131,8 +1130,9 @@ public class MManager {
       }
 
       for (MNode mNode : mNodeTemplatePair.left.getChildren().values()) {
-        MeasurementMNode measurementMNode = (MeasurementMNode) mNode;
-        res.add(measurementMNode.getSchema());
+        if (mNode instanceof MeasurementMNode) {
+          res.add(((MeasurementMNode) mNode).getSchema());
+        }
       }
 
       // template
@@ -1274,7 +1274,7 @@ public class MManager {
         for (Entry<String, String> entry : tagsMap.entrySet()) {
           tagIndex
               .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+              .computeIfAbsent(entry.getValue(), v -> Collections.synchronizedSet(new HashSet<>()))
               .add(leafMNode);
         }
       }
@@ -1327,7 +1327,7 @@ public class MManager {
         if (beforeValue == null || !beforeValue.equals(value)) {
           tagIndex
               .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
+              .computeIfAbsent(value, v -> Collections.synchronizedSet(new HashSet<>()))
               .add(leafMNode);
         }
       }
@@ -1401,7 +1401,7 @@ public class MManager {
       for (Entry<String, String> entry : tagsMap.entrySet()) {
         tagIndex
             .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+            .computeIfAbsent(entry.getValue(), v -> Collections.synchronizedSet(new HashSet<>()))
             .add(leafMNode);
       }
       return;
@@ -1428,7 +1428,7 @@ public class MManager {
         (key, value) ->
             tagIndex
                 .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
+                .computeIfAbsent(value, v -> Collections.synchronizedSet(new HashSet<>()))
                 .add(leafMNode));
   }
 
@@ -1588,7 +1588,7 @@ public class MManager {
       }
       tagIndex
           .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(currentValue, k -> new CopyOnWriteArraySet<>())
+          .computeIfAbsent(currentValue, k -> Collections.synchronizedSet(new HashSet<>()))
           .add(leafMNode);
     }
   }
@@ -1659,7 +1659,7 @@ public class MManager {
       }
       tagIndex
           .computeIfAbsent(newKey, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(value, k -> new CopyOnWriteArraySet<>())
+          .computeIfAbsent(value, k -> Collections.synchronizedSet(new HashSet<>()))
           .add(leafMNode);
     } else if (pair.right.containsKey(oldKey)) {
       // check attribute map
