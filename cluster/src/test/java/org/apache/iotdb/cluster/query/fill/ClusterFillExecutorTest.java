@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query;
+package org.apache.iotdb.cluster.query.fill;
 
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
+import org.apache.iotdb.cluster.query.BaseQueryTest;
+import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -75,14 +77,9 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
             new Object[] {10.0},
           };
       for (int i = 0; i < queryTimes.length; i++) {
-        fillExecutor =
-            new ClusterFillExecutor(
-                plan.getDeduplicatedPaths(),
-                plan.getDeduplicatedDataTypes(),
-                queryTimes[i],
-                plan.getFillType(),
-                testMetaMember);
-        queryDataSet = fillExecutor.execute(context, plan);
+        plan.setQueryTime(queryTimes[i]);
+        fillExecutor = new ClusterFillExecutor(plan, testMetaMember);
+        queryDataSet = fillExecutor.execute(context);
         checkDoubleDataset(queryDataSet, answers[i]);
         assertFalse(queryDataSet.hasNext());
       }
@@ -122,14 +119,50 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
             new Object[] {null},
           };
       for (int i = 0; i < queryTimes.length; i++) {
-        fillExecutor =
-            new ClusterFillExecutor(
-                plan.getDeduplicatedPaths(),
-                plan.getDeduplicatedDataTypes(),
-                queryTimes[i],
-                plan.getFillType(),
-                testMetaMember);
-        queryDataSet = fillExecutor.execute(context, plan);
+        plan.setQueryTime(queryTimes[i]);
+        fillExecutor = new ClusterFillExecutor(plan, testMetaMember);
+        queryDataSet = fillExecutor.execute(context);
+        checkDoubleDataset(queryDataSet, answers[i]);
+        assertFalse(queryDataSet.hasNext());
+      }
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
+    }
+  }
+
+  @Test
+  public void testValueFill()
+      throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
+    FillQueryPlan plan = new FillQueryPlan();
+    plan.setDeduplicatedPaths(
+        Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
+    plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
+    plan.setPaths(plan.getDeduplicatedPaths());
+    plan.setDataTypes(plan.getDeduplicatedDataTypes());
+    double fillValue = 1.0D;
+    Map<TSDataType, IFill> tsDataTypeIFillMap =
+        Collections.singletonMap(
+            TSDataType.DOUBLE, new ValueFill(Double.toString(fillValue), TSDataType.DOUBLE));
+    plan.setFillType(tsDataTypeIFillMap);
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+
+    try {
+      ClusterFillExecutor fillExecutor;
+      QueryDataSet queryDataSet;
+      long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
+      Object[][] answers =
+          new Object[][] {
+            new Object[] {1.0D},
+            new Object[] {0.0D},
+            new Object[] {1.0D},
+            new Object[] {10.0D},
+            new Object[] {1.0D},
+          };
+      for (int i = 0; i < queryTimes.length; i++) {
+        plan.setQueryTime(queryTimes[i]);
+        fillExecutor = new ClusterFillExecutor(plan, testMetaMember);
+        queryDataSet = fillExecutor.execute(context);
         checkDoubleDataset(queryDataSet, answers[i]);
         assertFalse(queryDataSet.hasNext());
       }

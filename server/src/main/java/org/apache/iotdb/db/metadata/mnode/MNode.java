@@ -352,7 +352,7 @@ public class MNode implements Serializable {
     if (fullPath == null) {
       return Objects.equals(getFullPath(), mNode.getFullPath());
     } else {
-      return Objects.equals(fullPath, mNode.fullPath);
+      return Objects.equals(fullPath, mNode.getFullPath());
     }
   }
 
