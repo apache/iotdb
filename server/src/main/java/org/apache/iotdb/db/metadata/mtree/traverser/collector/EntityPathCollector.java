@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 // This class implements the EntityMNode path collection function.
-public class EntityPathCollector extends EntityCollector<Set<PartialPath>> {
+public class EntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
 
   public EntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
@@ -40,16 +40,24 @@ public class EntityPathCollector extends EntityCollector<Set<PartialPath>> {
   }
 
   @Override
-  protected void processValidNode(IMNode node, int idx) throws MetadataException {
-    if (hasLimit) {
-      curOffset += 1;
-      if (curOffset < offset) {
-        return;
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
+  }
+
+  @Override
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isEntity()) {
+      if (hasLimit) {
+        curOffset += 1;
+        if (curOffset < offset) {
+          return true;
+        }
+      }
+      resultSet.add(node.getPartialPath());
+      if (hasLimit) {
+        count += 1;
       }
     }
-    resultSet.add(node.getPartialPath());
-    if (hasLimit) {
-      count += 1;
-    }
+    return false;
   }
 }

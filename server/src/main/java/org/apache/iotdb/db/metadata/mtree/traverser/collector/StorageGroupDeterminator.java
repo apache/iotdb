@@ -53,16 +53,32 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
  *
  * <p>ResultSet: StorageGroupName-FullPath pairs
  */
-public class StorageGroupDeterminator extends StorageGroupCollector<Map<String, String>> {
+public class StorageGroupDeterminator extends CollectorTraverser<Map<String, String>> {
 
   public StorageGroupDeterminator(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     this.resultSet = new HashMap<>();
-    collectInternal = true;
   }
 
   @Override
-  protected void processValidNode(IMNode node, int idx) throws MetadataException {
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isStorageGroup()) {
+      transferToResult(node, idx);
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isStorageGroup()) {
+      transferToResult(node, idx);
+      return true;
+    }
+    return false;
+  }
+
+  protected void transferToResult(IMNode node, int idx) {
     // we have found one storage group, record it
     String sgName = node.getFullPath();
     // concat the remaining path with the storage group name

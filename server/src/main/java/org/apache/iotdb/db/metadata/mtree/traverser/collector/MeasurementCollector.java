@@ -46,18 +46,46 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
   }
 
   @Override
-  protected boolean isValid(IMNode node) {
-    return node.isMeasurement();
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
+    if (!node.isMeasurement() || idx != nodes.length - 2) {
+      return false;
+    }
+    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+    if (schema instanceof VectorMeasurementSchema) {
+      List<String> measurements = schema.getSubMeasurementsList();
+      String targetNameRegex = nodes[idx + 1].replace("*", ".*");
+      for (int i = 0; i < measurements.size(); i++) {
+        if (!Pattern.matches(targetNameRegex, measurements.get(i))) {
+          continue;
+        }
+        if (hasLimit) {
+          curOffset += 1;
+          if (curOffset < offset) {
+            break;
+          }
+        }
+        collectVectorMeasurementSchema((IMeasurementMNode) node, i);
+        if (hasLimit) {
+          count += 1;
+        }
+      }
+    }
+    return true;
   }
 
   @Override
-  public void processValidNode(IMNode node, int idx) throws MetadataException {
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
+    if (!node.isMeasurement()) {
+      return false;
+    }
     IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
     if (schema instanceof MeasurementSchema) {
       if (hasLimit) {
         curOffset += 1;
         if (curOffset < offset) {
-          return;
+          return true;
         }
       }
       collectMeasurementSchema((IMeasurementMNode) node);
@@ -68,7 +96,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
       if (idx >= nodes.length - 1
           && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {
-        return;
+        return true;
       }
       // only when idx > nodes.length or nodes ends with ** or isPrefixMatch
       List<String> measurements = schema.getSubMeasurementsList();
@@ -76,38 +104,12 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
         if (hasLimit) {
           curOffset += 1;
           if (curOffset < offset) {
-            return;
+            return true;
           }
         }
         collectVectorMeasurementSchema((IMeasurementMNode) node, i);
         if (hasLimit) {
           count += 1;
-        }
-      }
-    }
-  }
-
-  @Override
-  protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
-    if (idx == nodes.length - 2) {
-      IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
-      if (schema instanceof VectorMeasurementSchema) {
-        List<String> measurements = schema.getSubMeasurementsList();
-        String targetNameRegex = nodes[idx + 1].replace("*", ".*");
-        for (int i = 0; i < measurements.size(); i++) {
-          if (!Pattern.matches(targetNameRegex, measurements.get(i))) {
-            continue;
-          }
-          if (hasLimit) {
-            curOffset += 1;
-            if (curOffset < offset) {
-              break;
-            }
-          }
-          collectVectorMeasurementSchema((IMeasurementMNode) node, i);
-          if (hasLimit) {
-            count += 1;
-          }
         }
       }
     }

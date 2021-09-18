@@ -30,12 +30,15 @@ public class EntityCounter extends CounterTraverser {
   }
 
   @Override
-  protected boolean isValid(IMNode node) {
-    return node.isEntity();
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
   }
 
   @Override
-  protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isEntity()) {
+      count++;
+    }
     return false;
   }
 }

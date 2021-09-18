@@ -974,7 +974,7 @@ public class MTree implements Serializable {
       MNodeCollector<Set<String>> collector =
           new MNodeCollector<Set<String>>(root, path.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
             @Override
-            protected void processValidNode(IMNode node, int idx) throws MetadataException {
+            protected void transferToResult(IMNode node) {
               resultSet.add(node.getFullPath());
             }
           };
@@ -1003,7 +1003,7 @@ public class MTree implements Serializable {
       MNodeCollector<Set<String>> collector =
           new MNodeCollector<Set<String>>(root, path.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
             @Override
-            protected void processValidNode(IMNode node, int idx) throws MetadataException {
+            protected void transferToResult(IMNode node) {
               resultSet.add(node.getName());
             }
           };
@@ -1058,7 +1058,7 @@ public class MTree implements Serializable {
     MNodeCollector<List<PartialPath>> collector =
         new MNodeCollector<List<PartialPath>>(root, path) {
           @Override
-          protected void processValidNode(IMNode node, int idx) throws MetadataException {
+          protected void transferToResult(IMNode node) {
             resultSet.add(node.getPartialPath());
           }
         };

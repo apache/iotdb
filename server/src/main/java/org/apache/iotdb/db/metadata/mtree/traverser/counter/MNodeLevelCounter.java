@@ -25,20 +25,27 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 // This node implements node count function.
 public class MNodeLevelCounter extends CounterTraverser {
 
+  // level query option
+  protected int targetLevel;
+
   public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
       throws MetadataException {
     super(startNode, path);
-    isLevelTraverser = true;
     this.targetLevel = targetLevel;
   }
 
   @Override
-  protected boolean isValid(IMNode node) {
-    return true;
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
   }
 
   @Override
-  protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
-    return false;
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (level == targetLevel) {
+      count++;
+      return true;
+    } else {
+      return false;
+    }
   }
 }

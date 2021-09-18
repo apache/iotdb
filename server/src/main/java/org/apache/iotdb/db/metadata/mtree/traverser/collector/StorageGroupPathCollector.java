@@ -26,21 +26,40 @@ import java.util.LinkedList;
 import java.util.List;
 
 // This class implements storage group path collection function.
-public class StorageGroupPathCollector extends StorageGroupCollector<List<PartialPath>> {
+public class StorageGroupPathCollector extends CollectorTraverser<List<PartialPath>> {
+
+  protected boolean collectInternal = false;
 
   public StorageGroupPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     this.resultSet = new LinkedList<>();
   }
 
-  public StorageGroupPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
-      throws MetadataException {
-    super(startNode, path, limit, offset);
-    this.resultSet = new LinkedList<>();
+  @Override
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isStorageGroup()) {
+      if (collectInternal) {
+        transferToResult(node);
+      }
+      return true;
+    }
+    return false;
   }
 
   @Override
-  protected void processValidNode(IMNode node, int idx) throws MetadataException {
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isStorageGroup()) {
+      transferToResult(node);
+      return true;
+    }
+    return false;
+  }
+
+  private void transferToResult(IMNode node) {
     resultSet.add(node.getPartialPath());
+  }
+
+  public void setCollectInternal(boolean collectInternal) {
+    this.collectInternal = collectInternal;
   }
 }

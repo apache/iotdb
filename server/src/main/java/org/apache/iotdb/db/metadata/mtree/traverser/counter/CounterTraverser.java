@@ -32,11 +32,6 @@ public abstract class CounterTraverser extends Traverser {
     super(startNode, path);
   }
 
-  @Override
-  protected void processValidNode(IMNode node, int idx) throws MetadataException {
-    count++;
-  }
-
   public int getCount() {
     return count;
   }

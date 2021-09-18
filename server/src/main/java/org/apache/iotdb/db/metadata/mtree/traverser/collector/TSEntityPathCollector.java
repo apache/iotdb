@@ -44,12 +44,29 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
   }
 
   @Override
-  protected boolean isValid(IMNode node) {
-    return node.isMeasurement();
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    if (!node.isMeasurement() || idx != nodes.length - 2) {
+      return false;
+    }
+    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+    if (schema instanceof VectorMeasurementSchema) {
+      List<String> measurements = schema.getSubMeasurementsList();
+      String regex = nodes[idx + 1].replace("*", ".*");
+      for (String measurement : measurements) {
+        if (!Pattern.matches(regex, measurement)) {
+          resultSet.add(node.getParent().getPartialPath());
+          break;
+        }
+      }
+    }
+    return true;
   }
 
   @Override
-  public void processValidNode(IMNode node, int idx) throws MetadataException {
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (!node.isMeasurement()) {
+      return false;
+    }
     IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
     if (schema instanceof MeasurementSchema) {
       resultSet.add(node.getParent().getPartialPath());
@@ -57,27 +74,10 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
       if (idx >= nodes.length - 1
           && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {
-        return;
+        return true;
       }
       // only when idx > nodes.length or nodes ends with ** or isPrefixMatch
       resultSet.add(node.getParent().getPartialPath());
-    }
-  }
-
-  @Override
-  protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
-    if (idx == nodes.length - 2) {
-      IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
-      if (schema instanceof VectorMeasurementSchema) {
-        List<String> measurements = schema.getSubMeasurementsList();
-        String regex = nodes[idx + 1].replace("*", ".*");
-        for (String measurement : measurements) {
-          if (!Pattern.matches(regex, measurement)) {
-            resultSet.add(node.getParent().getPartialPath());
-            break;
-          }
-        }
-      }
     }
     return true;
   }

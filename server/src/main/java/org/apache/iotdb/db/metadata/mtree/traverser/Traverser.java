@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -44,13 +43,6 @@ public abstract class Traverser {
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
-
-  // level query option
-  protected boolean isLevelTraverser = false;
-  protected int targetLevel;
-
-  // traverse for specific storage group
-  protected StorageGroupFilter storageGroupFilter = null;
 
   public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
@@ -78,41 +70,19 @@ public abstract class Traverser {
   protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level)
       throws MetadataException {
 
-    if (storageGroupFilter != null
-        && node.isStorageGroup()
-        && !storageGroupFilter.satisfy(node.getFullPath())) {
-      return;
-    }
-
-    if (isLevelTraverser && level > targetLevel) {
+    if (processMatchedMNode(node, idx, level)) {
       return;
     }
 
     if (idx >= nodes.length - 1) {
-      if (isValid(node)) {
-        if (isLevelTraverser) {
-          if (targetLevel == level) {
-            processValidNode(node, idx);
-            return;
-          }
-        } else {
-          processValidNode(node, idx);
-        }
+      if (multiLevelWildcard || isPrefixMatch) {
+        processMultiLevelWildcard(node, idx, level);
       }
-
-      if (!multiLevelWildcard && !isPrefixMatch) {
-        return;
-      }
-
-      processMultiLevelWildcard(node, idx, level);
-
       return;
     }
 
-    if (isValid(node) || node.isMeasurement()) {
-      if (processInternalValid(node, idx) || node.isMeasurement()) {
-        return;
-      }
+    if (node.isMeasurement()) {
+      return;
     }
 
     String targetName = nodes[idx + 1];
@@ -125,33 +95,19 @@ public abstract class Traverser {
     }
   }
 
-  /**
-   * Check whether the node is desired target. Different case could have different implementation.
-   *
-   * @param node current node
-   * @return whether the node is desired target
-   */
-  protected abstract boolean isValid(IMNode node);
+  private boolean processMatchedMNode(IMNode node, int idx, int level) throws MetadataException {
+    if (idx < nodes.length - 1) {
+      return processInternalMatchedMNode(node, idx, level);
+    } else {
+      return processFullMatchedMNode(node, idx, level);
+    }
+  }
 
-  /**
-   * Process the desired node to get result. Different case could have different implementation.
-   *
-   * @param node current node
-   * @param idx the index of targetName that current node matches in given path
-   */
-  protected abstract void processValidNode(IMNode node, int idx) throws MetadataException;
+  protected abstract boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException;
 
-  /**
-   * Process the desired internal node to get result. The return boolean value means whether the
-   * recursion should return. For example, suppose the case to collect related storage group for
-   * timeseries. After process the storageGroupMNode, there's no need to process the nodes in
-   * subtree, thus return tree. Different case could have different implementation.
-   *
-   * @param node current node
-   * @param idx the index of targetName that current node matches in given path
-   * @return whether the recursion should return.
-   */
-  protected abstract boolean processInternalValid(IMNode node, int idx) throws MetadataException;
+  protected abstract boolean processFullMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException;
 
   protected void processMultiLevelWildcard(IMNode node, int idx, int level)
       throws MetadataException {
@@ -250,17 +206,6 @@ public abstract class Traverser {
             level + 1);
       }
     }
-  }
-
-  public void setTargetLevel(int targetLevel) {
-    this.targetLevel = targetLevel;
-    if (targetLevel > 0) {
-      isLevelTraverser = true;
-    }
-  }
-
-  public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter) {
-    this.storageGroupFilter = storageGroupFilter;
   }
 
   public void setPrefixMatch(boolean isPrefixMatch) {

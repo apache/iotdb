@@ -19,23 +19,59 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 // This class defines any node in MTree as potential target node.
 public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
+  // traverse for specific storage group
+  protected StorageGroupFilter storageGroupFilter = null;
+
+  // level query option
+  protected int targetLevel;
+
   public MNodeCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
   }
 
   @Override
-  protected boolean isValid(IMNode node) {
-    return true;
+  protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level)
+      throws MetadataException {
+    if (storageGroupFilter != null
+        && node.isStorageGroup()
+        && !storageGroupFilter.satisfy(node.getFullPath())) {
+      return;
+    }
+    super.traverse(node, idx, multiLevelWildcard, level);
   }
 
   @Override
-  protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
     return false;
+  }
+
+  @Override
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (targetLevel > 0) {
+      if (level == targetLevel) {
+        transferToResult(node);
+        return true;
+      }
+    } else {
+      transferToResult(node);
+    }
+    return false;
+  }
+
+  protected abstract void transferToResult(IMNode node);
+
+  public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter) {
+    this.storageGroupFilter = storageGroupFilter;
+  }
+
+  public void setTargetLevel(int targetLevel) {
+    this.targetLevel = targetLevel;
   }
 }
