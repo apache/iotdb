@@ -13,11 +13,16 @@ import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,11 +32,10 @@ import static org.junit.Assert.*;
 public class DegradeIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
-  private double prevtimeIndexMemoryProportion;
-  private TimeIndexLevel timeIndexLevel;
+  private double prevTimeIndexMemoryProportion;
 
   private static String[] unSeqSQLs =
-      new String[]{
+      new String[] {
         "insert into root.sg1.d1(time,s1) values(1, 1)",
         "insert into root.sg1.d1(time,s2) values(2, 2)",
         "flush",
@@ -62,66 +66,76 @@ public class DegradeIT {
   public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    prevtimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
-    CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
-    timeIndexLevel = CONFIG.getTimeIndexLevel();
+    prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    CONFIG.setTimeIndexMemoryProportion(prevtimeIndexMemoryProportion);
-    CONFIG.setTimeIndexLevel(String.valueOf(timeIndexLevel));
+    CONFIG.setTimeIndexMemoryProportion(prevTimeIndexMemoryProportion);
   }
-
 
   @Test
   public void multiResourceTest() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       double setTimeIndexMemoryProportion = 4 * Math.pow(10, -6);
-//      CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
       tsFileResourceManager.setTimeIndexMemoryThreshold(setTimeIndexMemoryProportion);
       for (String sql : unSeqSQLs) {
-          statement.execute(sql);
+        statement.execute(sql);
       }
       statement.close();
       List<TsFileResource> seqResources =
-              new ArrayList<>(
-                      StorageEngine.getInstance()
-                              .getProcessor(new PartialPath("root.sg1"))
-                              .getSequenceFileTreeSet());
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.sg1"))
+                  .getSequenceFileTreeSet());
       assertEquals(5, seqResources.size());
+      // five tsFileResource are degraded in total, 2 are in seqResources and 3 are in
+      // unSeqResources
       for (int i = 0; i < seqResources.size(); i++) {
         if (i < 2) {
           assertEquals(
-                  TimeIndexLevel.FILE_TIME_INDEX,
-                  TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
+              TimeIndexLevel.FILE_TIME_INDEX,
+              TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
         } else {
           assertEquals(
-                  TimeIndexLevel.DEVICE_TIME_INDEX,
-                  TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
+              TimeIndexLevel.DEVICE_TIME_INDEX,
+              TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
         }
       }
       List<TsFileResource> unSeqResources =
-              new ArrayList<>(
-                      StorageEngine.getInstance()
-                              .getProcessor(new PartialPath("root.sg1"))
-                              .getUnSequenceFileList());
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.sg1"))
+                  .getUnSequenceFileList());
       assertEquals(3, unSeqResources.size());
-      for (TsFileResource resource: unSeqResources) {
-        System.out.println(resource.getStartTime("root.sg1.d1"));
-        System.out.println(TimeIndexLevel.FILE_TIME_INDEX ==
-                TimeIndexLevel.valueOf(resource.getTimeIndexType()));
+      for (TsFileResource resource : unSeqResources) {
         assertEquals(
-                TimeIndexLevel.FILE_TIME_INDEX,
-                TimeIndexLevel.valueOf(resource.getTimeIndexType()));
+            TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(resource.getTimeIndexType()));
       }
     } catch (StorageEngineException | IllegalPathException e) {
       Assert.fail();
+    }
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("SELECT s1 FROM root.sg1.d1");
+      assertTrue(hasResultSet);
+      String[] exp = new String[] {"1,1.0", "5,5.0", "9,9.0", "13,13.0"};
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
+      }
     }
   }
 
@@ -133,11 +147,6 @@ public class DegradeIT {
         Statement statement = connection.createStatement()) {
       double setTimeIndexMemoryProportion = 0.9 * Math.pow(10, -6);
       tsFileResourceManager.setTimeIndexMemoryThreshold(setTimeIndexMemoryProportion);
-      System.out.println(
-              "memory cost before "
-                      + CONFIG.getAllocateMemoryForRead()
-                      + " "
-                      + CONFIG.getTimeIndexMemoryProportion());
       statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (1000, true)");
       statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (2000, true)");
       statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (3000, true)");
@@ -152,15 +161,6 @@ public class DegradeIT {
       double timeIndexMemoryThreshold =
           CONFIG.getTimeIndexMemoryProportion() * CONFIG.getAllocateMemoryForRead();
       for (TsFileResource resource : resources) {
-        System.out.println(
-            "memory cost "
-                + timeIndexMemoryThreshold
-                + " "
-                + resource.calculateRamSize()
-                + " "
-                + CONFIG.getAllocateMemoryForRead()
-                + " "
-                + CONFIG.getTimeIndexMemoryProportion());
         assertEquals(
             TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(resource.getTimeIndexType()));
       }
@@ -170,55 +170,56 @@ public class DegradeIT {
   }
 
   @Test
-  public void restartResourceTest() throws SQLException, IllegalPathException, StorageEngineException {
+  public void restartResourceTest()
+      throws SQLException, IllegalPathException, StorageEngineException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       double setTimeIndexMemoryProportion = 4 * Math.pow(10, -6);
       CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
       tsFileResourceManager.setTimeIndexMemoryThreshold(setTimeIndexMemoryProportion);
-      for (int i = 0; i < unSeqSQLs.length-1; i++) {
+      for (int i = 0; i < unSeqSQLs.length - 1; i++) {
         statement.execute(unSeqSQLs[i]);
       }
       statement.close();
       List<TsFileResource> seqResources =
-              new ArrayList<>(
-                      StorageEngine.getInstance()
-                              .getProcessor(new PartialPath("root.sg1"))
-                              .getSequenceFileTreeSet());
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.sg1"))
+                  .getSequenceFileTreeSet());
       assertEquals(5, seqResources.size());
+      /**
+       * Four tsFileResource are degraded in total, 1 are in seqResources and 3 are in
+       * unSeqResources. The difference with the multiResourceTest is that last tsFileResource is
+       * not close, so degrade method can't be called.
+       */
       for (int i = 0; i < seqResources.size(); i++) {
-        System.out.println((TimeIndexLevel.FILE_TIME_INDEX ==
-                TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType())) + " " + seqResources.get(i).isClosed() + " " + seqResources.get(i).calculateRamSize());
         if (i < 4) {
           assertTrue(seqResources.get(i).isClosed());
         } else {
           assertFalse(seqResources.get(i).isClosed());
         }
-//      if (i < 2) {
-//        assertEquals(
-//                TimeIndexLevel.FILE_TIME_INDEX,
-//                TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
-//      } else {
-//        assertEquals(
-//                TimeIndexLevel.DEVICE_TIME_INDEX,
-//                TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
-//      }
+        if (i < 1) {
+          assertEquals(
+              TimeIndexLevel.FILE_TIME_INDEX,
+              TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
+        } else {
+          assertEquals(
+              TimeIndexLevel.DEVICE_TIME_INDEX,
+              TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
+        }
       }
       List<TsFileResource> unSeqResources =
-              new ArrayList<>(
-                      StorageEngine.getInstance()
-                              .getProcessor(new PartialPath("root.sg1"))
-                              .getUnSequenceFileList());
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.sg1"))
+                  .getUnSequenceFileList());
       assertEquals(3, unSeqResources.size());
-      for (TsFileResource resource: unSeqResources) {
-        System.out.println((TimeIndexLevel.FILE_TIME_INDEX ==
-                TimeIndexLevel.valueOf(resource.getTimeIndexType())) + " " + resource.calculateRamSize());
+      for (TsFileResource resource : unSeqResources) {
         assertTrue(resource.isClosed());
-//      assertEquals(
-//              TimeIndexLevel.FILE_TIME_INDEX,
-//              TimeIndexLevel.valueOf(resource.getTimeIndexType()));
+        assertEquals(
+            TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(resource.getTimeIndexType()));
       }
     }
 
@@ -227,63 +228,25 @@ public class DegradeIT {
     } catch (Exception e) {
       Assert.fail();
     }
-    System.out.println("after restart " + CONFIG.getTimeIndexMemoryProportion());
     List<TsFileResource> seqResources =
-            new ArrayList<>(
-                    StorageEngine.getInstance()
-                            .getProcessor(new PartialPath("root.sg1"))
-                            .getSequenceFileTreeSet());
+        new ArrayList<>(
+            StorageEngine.getInstance()
+                .getProcessor(new PartialPath("root.sg1"))
+                .getSequenceFileTreeSet());
     assertEquals(5, seqResources.size());
     for (int i = 0; i < seqResources.size(); i++) {
-      System.out.println((TimeIndexLevel.FILE_TIME_INDEX ==
-              TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType())) + " " + seqResources.get(i).isClosed());
-
       assertTrue(seqResources.get(i).isClosed());
-
-//      if (i < 2) {
-//        assertEquals(
-//                TimeIndexLevel.FILE_TIME_INDEX,
-//                TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
-//      } else {
-//        assertEquals(
-//                TimeIndexLevel.DEVICE_TIME_INDEX,
-//                TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
-//      }
     }
     List<TsFileResource> unSeqResources =
-            new ArrayList<>(
-                    StorageEngine.getInstance()
-                            .getProcessor(new PartialPath("root.sg1"))
-                            .getUnSequenceFileList());
+        new ArrayList<>(
+            StorageEngine.getInstance()
+                .getProcessor(new PartialPath("root.sg1"))
+                .getUnSequenceFileList());
     assertEquals(3, unSeqResources.size());
-    for (TsFileResource resource: unSeqResources) {
-      System.out.println(TimeIndexLevel.FILE_TIME_INDEX ==
-              TimeIndexLevel.valueOf(resource.getTimeIndexType()));
-//      assertEquals(
-//              TimeIndexLevel.FILE_TIME_INDEX,
-//              TimeIndexLevel.valueOf(resource.getTimeIndexType()));
+    for (TsFileResource resource : unSeqResources) {
+      assertEquals(
+          TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(resource.getTimeIndexType()));
       assertTrue(resource.isClosed());
     }
-//
-//
-//    try (Connection connection =
-//                 DriverManager.getConnection(
-//                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-//         Statement statement = connection.createStatement()) {
-//      boolean hasResultSet = statement.execute("SELECT s1 FROM root.sg1.d1");
-//      assertTrue(hasResultSet);
-//      String[] exp = new String[] {"1", "2,1.0", "3,1.0"};
-//      int cnt = 0;
-//      try (ResultSet resultSet = statement.getResultSet()) {
-//        while (resultSet.next()) {
-//          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-//          System.out.println("result " + result);
-////          assertEquals(exp[cnt], result);
-//          cnt++;
-//        }
-//      }
-//
-//    }
-
   }
 }

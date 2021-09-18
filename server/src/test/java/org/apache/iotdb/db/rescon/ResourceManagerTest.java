@@ -324,6 +324,7 @@ public class ResourceManagerTest {
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
       tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     }
+    assertEquals(10, tsFileResourceManager.getPriorityQueueSize());
     for (int i = 0; i < seqFileNum; i++) {
       if (i < 7) {
         assertEquals(
@@ -377,5 +378,4 @@ public class ResourceManagerTest {
       throw e;
     }
   }
-
 }

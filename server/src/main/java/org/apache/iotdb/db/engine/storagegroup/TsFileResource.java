@@ -493,9 +493,7 @@ public class TsFileResource {
     }
     processor = null;
     chunkMetadataList = null;
-//    System.out.println("before " + calculateRamSize());
     timeIndex.close();
-//    System.out.println("after " + calculateRamSize());
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
@@ -878,15 +876,9 @@ public class TsFileResource {
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
     timeIndexType = 0;
-//    System.out.println("release " + previousMemory + " " + timeIndex.calculateRamSize());
     return previousMemory - timeIndex.calculateRamSize();
   }
 
-  public void output() {
-    long[] a = timeIndex.getParts();
-    System.out.println("release " + a[0] + " " + a[1] + " " + a[2]);
-
-  }
   // change tsFile name
   public static String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
     return time

@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.thrift.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -200,9 +199,5 @@ public class FileTimeIndex implements ITimeIndex {
       logger.error("Can't get timeIndex type {}", timeIndex.getClass().getName());
       throw new RuntimeException("type of timeIndex is wrong.");
     }
-  }
-  @Override
-  public long[] getParts() {
-    return null;
   }
 }

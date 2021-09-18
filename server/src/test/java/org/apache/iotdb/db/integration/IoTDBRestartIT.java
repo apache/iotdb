@@ -85,7 +85,6 @@ public class IoTDBRestartIT {
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,1.0)");
 
-
       boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
       assertTrue(hasResultSet);
       String[] exp = new String[] {"1,1.0", "2,1.0", "3,1.0"};
