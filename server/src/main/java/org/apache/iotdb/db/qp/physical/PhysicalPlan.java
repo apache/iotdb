@@ -52,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -308,6 +309,8 @@ public abstract class PhysicalPlan {
         case SHOW_DEVICES:
           plan = new ShowDevicesPlan();
           break;
+        case SHOW_NOW:
+          plan = new ShowNowPlan();
         case LOAD_CONFIGURATION:
           plan = new LoadConfigurationPlan();
           break;
@@ -402,6 +405,7 @@ public abstract class PhysicalPlan {
     MULTI_BATCH_INSERT,
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
+    SHOW_NOW,
     CREATE_TEMPLATE,
     SET_DEVICE_TEMPLATE,
     SET_USING_DEVICE_TEMPLATE,

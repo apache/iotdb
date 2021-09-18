@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
@@ -104,7 +105,8 @@ public class PartitionUtils {
         || plan instanceof DataAuthPlan
         || plan instanceof CreateTemplatePlan
         || plan instanceof CreateFunctionPlan
-        || plan instanceof DropFunctionPlan;
+        || plan instanceof DropFunctionPlan
+        || plan instanceof ShowNowPlan;
   }
 
   /**

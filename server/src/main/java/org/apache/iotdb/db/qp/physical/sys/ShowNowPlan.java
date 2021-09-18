@@ -19,18 +19,42 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import com.sun.management.OperatingSystemMXBean;
+import oshi.SystemInfo;
+import oshi.hardware.CentralProcessor;
+
+import java.lang.management.ManagementFactory;
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ShowNowPlan extends ShowPlan {
+
+  public ShowNowPlan() {
+    super(ShowContentType.NOW);
+  }
 
   public ShowNowPlan(ShowContentType showContentType) {
     super(showContentType);
   }
 
-  public String now() {
+  public List<String> now() {
+    ArrayList<String> list = new ArrayList<>();
     DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-    return df.format(new Date());
+    list.add(df.format(System.currentTimeMillis())); // 添加时间
+    final SystemInfo systemInfo = new SystemInfo();
+    OperatingSystemMXBean osmxb =
+        (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    CentralProcessor processor = systemInfo.getHardware().getProcessor();
+    list.add(processor.getSystemCpuLoad() * 100 + ""); // cpu load
+    String totalMemorySize =
+        new DecimalFormat("#.##").format(osmxb.getTotalPhysicalMemorySize() / 1024.0 / 1024 / 1024)
+            + "G";
+    String freePhysicalMemorySize =
+        new DecimalFormat("#.##").format(osmxb.getFreePhysicalMemorySize() / 1024.0 / 1024 / 1024)
+            + "G";
+    return list;
   }
 }
