@@ -31,7 +31,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 // This class implements related entity paths collection for given timeseries path pattern.
 // All the entities, that one of the timeseries matching the path pattern belongs to, will be
@@ -55,7 +55,7 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
       resultSet.add(node.getParent().getPartialPath());
     } else if (schema instanceof VectorMeasurementSchema) {
       if (idx >= nodes.length - 1
-          && !nodes[nodes.length - 1].equals(PATH_MULTI_LEVEL_WILDCARD)
+          && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {
         return;
       }

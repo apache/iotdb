@@ -34,8 +34,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ONE_LEVEL_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
@@ -165,10 +165,10 @@ public class PartialPath extends Path implements Comparable<Path> {
     String pathNode = pathNodes[pathIndex];
     String patternNode = nodes[patternIndex];
     boolean isMatch = false;
-    if (patternNode.equals(PATH_MULTI_LEVEL_WILDCARD)) {
+    if (patternNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
       isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, true);
     } else {
-      if (patternNode.contains(PATH_ONE_LEVEL_WILDCARD)) {
+      if (patternNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
         if (Pattern.matches(patternNode.replace("*", ".*"), pathNode)) {
           isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
         }

@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 // This class defines MeasurementMNode as target node and defines the measurement process framework.
 public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
@@ -66,7 +66,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
       }
     } else if (schema instanceof VectorMeasurementSchema) {
       if (idx >= nodes.length - 1
-          && !nodes[nodes.length - 1].equals(PATH_MULTI_LEVEL_WILDCARD)
+          && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {
         return;
       }

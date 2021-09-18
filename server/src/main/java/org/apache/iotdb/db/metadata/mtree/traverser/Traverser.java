@@ -29,8 +29,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ONE_LEVEL_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 // This class defines the main traversal framework and declares some methods for result process
 // extension.
@@ -116,9 +116,9 @@ public abstract class Traverser {
     }
 
     String targetName = nodes[idx + 1];
-    if (PATH_MULTI_LEVEL_WILDCARD.equals(targetName)) {
+    if (MULTI_LEVEL_PATH_WILDCARD.equals(targetName)) {
       processMultiLevelWildcard(node, idx, level);
-    } else if (targetName.contains(PATH_ONE_LEVEL_WILDCARD)) {
+    } else if (targetName.contains(ONE_LEVEL_PATH_WILDCARD)) {
       processOneLevelWildcard(node, idx, multiLevelWildcard, level);
     } else {
       processNameMatch(node, idx, multiLevelWildcard, level);

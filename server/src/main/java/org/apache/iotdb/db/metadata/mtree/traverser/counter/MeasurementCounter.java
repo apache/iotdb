@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 // This method implements the measurement count function.
 // TODO distinguish timeseries count and measurement count, an aligned timeseries stands for one
@@ -52,7 +52,7 @@ public class MeasurementCounter extends CounterTraverser {
     if (schema instanceof MeasurementSchema) {
       count++;
     } else if (schema instanceof VectorMeasurementSchema) {
-      if (idx >= nodes.length - 1 && !nodes[nodes.length - 1].equals(PATH_MULTI_LEVEL_WILDCARD)) {
+      if (idx >= nodes.length - 1 && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         return;
       }
       // only when idx > nodes.length or nodes ends with **

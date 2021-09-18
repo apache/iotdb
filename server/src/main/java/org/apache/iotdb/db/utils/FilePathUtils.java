@@ -147,7 +147,7 @@ public class FilePathUtils {
       } else {
         transformedPath
             .append(TsFileConstant.PATH_SEPARATOR)
-            .append(IoTDBConstant.PATH_ONE_LEVEL_WILDCARD);
+            .append(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
       }
     }
     transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[tmpPath.length - 1]);
