@@ -459,18 +459,25 @@ public class IoTDBLoadExternalTsfileIT {
               .getUnSequenceFileList()
               .size());
       if (config.getTimeIndexLevel().equals(TimeIndexLevel.DEVICE_TIME_INDEX)) {
-        assertEquals(
-            1,
-            StorageEngine.getInstance()
+        if (StorageEngine.getInstance()
                 .getProcessor(new PartialPath("root.test"))
                 .getUnSequenceFileList()
-                .size());
-        assertEquals(
-            3,
-            StorageEngine.getInstance()
-                .getProcessor(new PartialPath("root.test"))
-                .getSequenceFileTreeSet()
-                .size());
+                .size()
+            == 1) {
+          assertEquals(
+              3,
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet()
+                  .size());
+        } else {
+          assertEquals(
+              2,
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet()
+                  .size());
+        }
       } else if (config.getTimeIndexLevel().equals(TimeIndexLevel.FILE_TIME_INDEX)) {
         assertEquals(
             2,
