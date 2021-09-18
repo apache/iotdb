@@ -857,7 +857,7 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(
                 new PartialPath(COLUMN_STORAGE_GROUP, false), new PartialPath(COLUMN_TTL, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
-    List<PartialPath> selectedSgs = showTTLPlan.getStorageGroups();
+    Set<PartialPath> selectedSgs = new HashSet<>(showTTLPlan.getStorageGroups());
 
     List<IStorageGroupMNode> storageGroups = getAllStorageGroupNodes();
     int timestamp = 0;
