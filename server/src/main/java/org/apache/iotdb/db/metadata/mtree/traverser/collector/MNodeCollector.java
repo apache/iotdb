@@ -37,14 +37,13 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
   }
 
   @Override
-  protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level)
-      throws MetadataException {
+  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
     if (storageGroupFilter != null
         && node.isStorageGroup()
         && !storageGroupFilter.satisfy(node.getFullPath())) {
       return;
     }
-    super.traverse(node, idx, multiLevelWildcard, level);
+    super.traverse(node, idx, level);
   }
 
   @Override

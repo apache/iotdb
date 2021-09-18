@@ -55,7 +55,7 @@ public abstract class Traverser {
   }
 
   public void traverse() throws MetadataException {
-    traverse(startNode, 0, false, 0);
+    traverse(startNode, 0, 0);
   }
 
   /**
@@ -63,19 +63,17 @@ public abstract class Traverser {
    *
    * @param node current node that match the targetName in given path
    * @param idx the index of targetName in given path
-   * @param multiLevelWildcard whether the current targetName is **
    * @param level the level of current node in MTree
    * @throws MetadataException some result process may throw MetadataException
    */
-  protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level)
-      throws MetadataException {
+  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
 
     if (processMatchedMNode(node, idx, level)) {
       return;
     }
 
     if (idx >= nodes.length - 1) {
-      if (multiLevelWildcard || isPrefixMatch) {
+      if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD) || isPrefixMatch) {
         processMultiLevelWildcard(node, idx, level);
       }
       return;
@@ -89,12 +87,13 @@ public abstract class Traverser {
     if (MULTI_LEVEL_PATH_WILDCARD.equals(targetName)) {
       processMultiLevelWildcard(node, idx, level);
     } else if (targetName.contains(ONE_LEVEL_PATH_WILDCARD)) {
-      processOneLevelWildcard(node, idx, multiLevelWildcard, level);
+      processOneLevelWildcard(node, idx, level);
     } else {
-      processNameMatch(node, idx, multiLevelWildcard, level);
+      processNameMatch(node, idx, level);
     }
   }
 
+  // process curNode that matches the targetName during traversal
   private boolean processMatchedMNode(IMNode node, int idx, int level) throws MetadataException {
     if (idx < nodes.length - 1) {
       return processInternalMatchedMNode(node, idx, level);
@@ -103,16 +102,26 @@ public abstract class Traverser {
     }
   }
 
+  /**
+   * internal match: root.sg internal match root.sg.**(pattern)
+   *
+   * @return whether this branch of recursive traversal should stop; if true, stop
+   */
   protected abstract boolean processInternalMatchedMNode(IMNode node, int idx, int level)
       throws MetadataException;
 
+  /**
+   * full match: root.sg.d full match root.sg.**(pattern)
+   *
+   * @return whether this branch of recursive traversal should stop; if true, stop
+   */
   protected abstract boolean processFullMatchedMNode(IMNode node, int idx, int level)
       throws MetadataException;
 
   protected void processMultiLevelWildcard(IMNode node, int idx, int level)
       throws MetadataException {
     for (IMNode child : node.getChildren().values()) {
-      traverse(child, idx + 1, true, level + 1);
+      traverse(child, idx + 1, level + 1);
     }
 
     if (!isMeasurementTraverser || !node.isUseTemplate()) {
@@ -122,25 +131,22 @@ public abstract class Traverser {
     Template upperTemplate = node.getUpperTemplate();
     for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
       traverse(
-          new MeasurementMNode(node, schema.getMeasurementId(), schema, null),
-          idx + 1,
-          true,
-          level + 1);
+          new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, level + 1);
     }
   }
 
-  protected void processOneLevelWildcard(
-      IMNode node, int idx, boolean multiLevelWildcard, int level) throws MetadataException {
+  protected void processOneLevelWildcard(IMNode node, int idx, int level) throws MetadataException {
+    boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     for (IMNode child : node.getChildren().values()) {
       if (!Pattern.matches(targetNameRegex, child.getName())) {
         continue;
       }
-      traverse(child, idx + 1, false, level + 1);
+      traverse(child, idx + 1, level + 1);
     }
     if (multiLevelWildcard) {
       for (IMNode child : node.getChildren().values()) {
-        traverse(child, idx, true, level + 1);
+        traverse(child, idx, level + 1);
       }
     }
 
@@ -154,32 +160,26 @@ public abstract class Traverser {
         continue;
       }
       traverse(
-          new MeasurementMNode(node, schema.getMeasurementId(), schema, null),
-          idx + 1,
-          false,
-          level + 1);
+          new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, level + 1);
     }
     if (multiLevelWildcard) {
       for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
         traverse(
-            new MeasurementMNode(node, schema.getMeasurementId(), schema, null),
-            idx,
-            true,
-            level + 1);
+            new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx, level + 1);
       }
     }
   }
 
-  protected void processNameMatch(IMNode node, int idx, boolean multiLevelWildcard, int level)
-      throws MetadataException {
+  protected void processNameMatch(IMNode node, int idx, int level) throws MetadataException {
+    boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetName = nodes[idx + 1];
     IMNode next = node.getChild(targetName);
     if (next != null) {
-      traverse(next, idx + 1, false, level + 1);
+      traverse(next, idx + 1, level + 1);
     }
     if (multiLevelWildcard) {
       for (IMNode child : node.getChildren().values()) {
-        traverse(child, idx, true, level + 1);
+        traverse(child, idx, level + 1);
       }
     }
 
@@ -193,17 +193,13 @@ public abstract class Traverser {
       traverse(
           new MeasurementMNode(node, targetSchema.getMeasurementId(), targetSchema, null),
           idx + 1,
-          false,
           level + 1);
     }
 
     if (multiLevelWildcard) {
       for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
         traverse(
-            new MeasurementMNode(node, schema.getMeasurementId(), schema, null),
-            idx,
-            true,
-            level + 1);
+            new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx, level + 1);
       }
     }
   }

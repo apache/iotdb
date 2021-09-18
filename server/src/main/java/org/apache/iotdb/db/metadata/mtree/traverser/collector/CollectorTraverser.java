@@ -51,12 +51,11 @@ public abstract class CollectorTraverser<T> extends Traverser {
     }
   }
 
-  protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level)
-      throws MetadataException {
+  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
     if (hasLimit && count == limit) {
       return;
     }
-    super.traverse(node, idx, multiLevelWildcard, level);
+    super.traverse(node, idx, level);
   }
 
   public T getResult() {
