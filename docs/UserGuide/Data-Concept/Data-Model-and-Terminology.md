@@ -150,8 +150,6 @@ The timestamp is the time point at which data is produced. It includes absolute 
 
 * Measurement template (From v0.13)
 
-In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **measurement template** can be declared to define the collectable measurements set. Measurement template is hung on any node of the tree data pattern, which means that all entities under the node have the same measurements set.
+In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **measurement template** can be declared to define the collectable measurements set. Measurement template helps save memory by implementing schema sharing. For detailed description, please refer to Measurement Template doc.
 
-Currently you can only set one **measurement template** on a specific path. If there's one measurement template on one node, it will be forbidden to set any measurement template on the ancestors or descendants of this node.  An entity will use it's own measurement template or ancestor's measurement template.
-
-In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.
+In the following chapters of, data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.

@@ -95,6 +95,7 @@ public class BaseMember {
 
   private int syncLeaderMaxWait;
   private long heartBeatInterval;
+  private long electionTimeout;
 
   @Before
   public void setUp() throws Exception, QueryProcessException {
@@ -111,10 +112,12 @@ public class BaseMember {
     RaftMember.setWaitLeaderTimeMs(10);
 
     syncLeaderMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
-    heartBeatInterval = RaftServer.getHeartBeatIntervalMs();
+    heartBeatInterval = RaftServer.getHeartbeatIntervalMs();
+    electionTimeout = RaftServer.getElectionTimeoutMs();
 
     RaftServer.setSyncLeaderMaxWaitMs(100);
-    RaftServer.setHeartBeatIntervalMs(100);
+    RaftServer.setHeartbeatIntervalMs(100);
+    RaftServer.setElectionTimeoutMs(1000);
 
     allNodes = new PartitionGroup();
     for (int i = 0; i < 100; i += 10) {
@@ -192,7 +195,8 @@ public class BaseMember {
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(prevEnableWAL);
 
     RaftServer.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
-    RaftServer.setHeartBeatIntervalMs(heartBeatInterval);
+    RaftServer.setHeartbeatIntervalMs(heartBeatInterval);
+    RaftServer.setElectionTimeoutMs(electionTimeout);
   }
 
   DataGroupMember getDataGroupMember(Node node) {

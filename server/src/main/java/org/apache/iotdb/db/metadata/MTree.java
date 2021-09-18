@@ -18,13 +18,10 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -32,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -42,6 +40,8 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -49,14 +49,11 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -91,13 +88,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
@@ -181,38 +173,6 @@ public class MTree implements Serializable {
     }
   }
 
-  public static long getLastTimeStamp(IMeasurementMNode node, QueryContext queryContext) {
-    TimeValuePair last = node.getCachedLast();
-    if (last != null) {
-      return node.getCachedLast().getTimestamp();
-    } else {
-      try {
-        QueryDataSource dataSource =
-            QueryResourceManager.getInstance()
-                .getQueryDataSource(node.getPartialPath(), queryContext, null);
-        Set<String> measurementSet = new HashSet<>();
-        measurementSet.add(node.getPartialPath().getFullPath());
-        LastPointReader lastReader =
-            new LastPointReader(
-                node.getPartialPath(),
-                node.getSchema().getType(),
-                measurementSet,
-                queryContext,
-                dataSource,
-                Long.MAX_VALUE,
-                null);
-        last = lastReader.readLastPoint();
-        return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
-      } catch (Exception e) {
-        logger.error(
-            "Something wrong happened while trying to get last time value pair of {}",
-            node.getFullPath(),
-            e);
-        return Long.MIN_VALUE;
-      }
-    }
-  }
-
   private static String jsonToString(JsonObject jsonObject) {
     return GSON.toJson(jsonObject);
   }
@@ -285,7 +245,7 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    checkTimeseries(path.getFullPath());
+    MetaFormatUtils.checkTimeseries(path);
     IMNode cur = root;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getSchemaTemplate();
@@ -324,9 +284,7 @@ public class MTree implements Serializable {
           path.getFullPath() + " ( which is incompatible with template )");
     }
 
-    if (props != null && props.containsKey(LOSS) && props.get(LOSS).equals(SDT)) {
-      checkSDTFormat(path.getFullPath(), props);
-    }
+    MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
     String leafName = nodeNames[nodeNames.length - 1];
 
@@ -375,10 +333,8 @@ public class MTree implements Serializable {
     if (deviceNodeNames.length <= 1 || !deviceNodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(devicePath.getFullPath());
     }
-    checkTimeseries(devicePath.getFullPath());
-    for (String measurement : measurements) {
-      checkTimeseries(measurement);
-    }
+    MetaFormatUtils.checkTimeseries(devicePath);
+    MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     IMNode cur = root;
     boolean hasSetStorageGroup = false;
     // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
@@ -430,61 +386,6 @@ public class MTree implements Serializable {
               null);
       entityMNode.addChild(leafName, measurementMNode);
     }
-  }
-
-  private void checkTimeseries(String timeseries) throws IllegalPathException {
-    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
-      throw new IllegalPathException(
-          String.format("The timeseries name contains unsupported character. %s", timeseries));
-    }
-  }
-
-  // check if sdt parameters are valid
-  private void checkSDTFormat(String path, Map<String, String> props)
-      throws IllegalParameterOfPathException {
-    if (!props.containsKey(SDT_COMP_DEV)) {
-      throw new IllegalParameterOfPathException("SDT compression deviation is required", path);
-    }
-
-    try {
-      double d = Double.parseDouble(props.get(SDT_COMP_DEV));
-      if (d < 0) {
-        throw new IllegalParameterOfPathException(
-            "SDT compression deviation cannot be negative", path);
-      }
-    } catch (NumberFormatException e) {
-      throw new IllegalParameterOfPathException("SDT compression deviation formatting error", path);
-    }
-
-    long compMinTime = sdtCompressionTimeFormat(SDT_COMP_MIN_TIME, props, path);
-    long compMaxTime = sdtCompressionTimeFormat(SDT_COMP_MAX_TIME, props, path);
-
-    if (compMaxTime <= compMinTime) {
-      throw new IllegalParameterOfPathException(
-          "SDT compression maximum time needs to be greater than compression minimum time", path);
-    }
-  }
-
-  private long sdtCompressionTimeFormat(String compTime, Map<String, String> props, String path)
-      throws IllegalParameterOfPathException {
-    boolean isCompMaxTime = compTime.equals(SDT_COMP_MAX_TIME);
-    long time = isCompMaxTime ? Long.MAX_VALUE : 0;
-    String s = isCompMaxTime ? "maximum" : "minimum";
-    if (props.containsKey(compTime)) {
-      try {
-        time = Long.parseLong(props.get(compTime));
-        if (time < 0) {
-          throw new IllegalParameterOfPathException(
-              String.format("SDT compression %s time cannot be negative", s), path);
-        }
-      } catch (IllegalParameterOfPathException e) {
-        throw new IllegalParameterOfPathException(
-            String.format("SDT compression %s time formatting error", s), path);
-      }
-    } else {
-      logger.info("{} enabled SDT but did not set compression {} time", path, s);
-    }
-    return time;
   }
 
   /**
@@ -545,7 +446,7 @@ public class MTree implements Serializable {
         }
         if (((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
           return i == nodeNames.length - 2
-              && ((IMeasurementMNode) cur).getSchema().isCompatible(nodeNames[i + 1]);
+              && ((IMeasurementMNode) cur).getSchema().containsSubMeasurement(nodeNames[i + 1]);
         } else {
           return false;
         }
@@ -562,7 +463,7 @@ public class MTree implements Serializable {
    */
   void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    checkStorageGroup(path.getFullPath());
+    MetaFormatUtils.checkStorageGroup(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
@@ -607,15 +508,6 @@ public class MTree implements Serializable {
                 cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
         cur.addChild(nodeNames[i], storageGroupMNode);
       }
-    }
-  }
-
-  private void checkStorageGroup(String storageGroup) throws IllegalPathException {
-    if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
-      throw new IllegalPathException(
-          String.format(
-              "The storage group name can only be characters, numbers and underscores. %s",
-              storageGroup));
     }
   }
 
@@ -1107,7 +999,7 @@ public class MTree implements Serializable {
       throws PathNotExistException {
     if (node.isMeasurement()) {
       if (idx < nodes.length) {
-        if (((IMeasurementMNode) node).getSchema().isCompatible(nodes[idx])) {
+        if (((IMeasurementMNode) node).getSchema().containsSubMeasurement(nodes[idx])) {
           return 1;
         } else {
           if (!wildcard) {
@@ -1337,36 +1229,36 @@ public class MTree implements Serializable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findPath(
-      IMNode node,
+      IMNode curNode,
       String[] nodes,
-      int idx,
+      int childIndex,
       List<Pair<PartialPath, String[]>> timeseriesSchemaList,
       boolean hasLimit,
       boolean needLast,
       QueryContext queryContext,
       Template upperTemplate)
       throws MetadataException {
-    if (node.isMeasurement()) {
-      if ((nodes.length <= idx
-          || ((IMeasurementMNode) node).getSchema() instanceof VectorMeasurementSchema)) {
+    if (curNode.isMeasurement()) {
+      if ((nodes.length <= childIndex
+          || ((IMeasurementMNode) curNode).getSchema() instanceof VectorMeasurementSchema)) {
         if (hasLimit) {
           curOffset.set(curOffset.get() + 1);
           if (curOffset.get() < offset.get() || count.get().intValue() == limit.get().intValue()) {
             return;
           }
         }
-        IMeasurementSchema measurementSchema = ((IMeasurementMNode) node).getSchema();
+        IMeasurementSchema measurementSchema = ((IMeasurementMNode) curNode).getSchema();
         if (measurementSchema instanceof MeasurementSchema) {
           addMeasurementSchema(
-              node, timeseriesSchemaList, needLast, queryContext, measurementSchema, "*");
+              curNode, timeseriesSchemaList, needLast, queryContext, measurementSchema, "*");
         } else if (measurementSchema instanceof VectorMeasurementSchema) {
           addVectorMeasurementSchema(
-              node,
+              curNode,
               timeseriesSchemaList,
               needLast,
               queryContext,
               measurementSchema,
-              idx < nodes.length ? nodes[idx] : "*");
+              childIndex < nodes.length ? nodes[childIndex] : "*");
         }
         if (hasLimit) {
           count.set(count.get() + 1);
@@ -1375,19 +1267,19 @@ public class MTree implements Serializable {
       return;
     }
 
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (node.getSchemaTemplate() != null) {
-      upperTemplate = node.getSchemaTemplate();
+    String nodeReg = MetaUtils.getNodeRegByIdx(childIndex, nodes);
+    if (curNode.getSchemaTemplate() != null) {
+      upperTemplate = curNode.getSchemaTemplate();
     }
 
-    // we should use template when all child is measurement or this node has no child
+    // we should use template when all child is measurement or this curNode has no child
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      IMNode next = node.getChild(nodeReg);
+      IMNode next = curNode.getChild(nodeReg);
       if (next != null) {
         findPath(
             next,
             nodes,
-            idx + 1,
+            childIndex + 1,
             timeseriesSchemaList,
             hasLimit,
             needLast,
@@ -1395,14 +1287,14 @@ public class MTree implements Serializable {
             upperTemplate);
       }
     } else {
-      for (IMNode child : node.getChildren().values()) {
+      for (IMNode child : curNode.getChildren().values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
         findPath(
             child,
             nodes,
-            idx + 1,
+            childIndex + 1,
             timeseriesSchemaList,
             hasLimit,
             needLast,
@@ -1415,14 +1307,14 @@ public class MTree implements Serializable {
     }
 
     // template part
-    if (node.isUseTemplate()) {
+    if (curNode.isUseTemplate()) {
       if (upperTemplate != null) {
         HashSet<IMeasurementSchema> set = new HashSet<>();
         for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
           if (set.add(schema)) {
             if (schema instanceof MeasurementSchema) {
               addMeasurementSchema(
-                  new MeasurementMNode(node, schema.getMeasurementId(), schema, null),
+                  new MeasurementMNode(curNode, schema.getMeasurementId(), schema, null),
                   timeseriesSchemaList,
                   needLast,
                   queryContext,
@@ -1432,14 +1324,14 @@ public class MTree implements Serializable {
               VectorMeasurementSchema vectorMeasurementSchema = (VectorMeasurementSchema) schema;
               if (Pattern.matches(
                   nodeReg.replace("*", ".*"), vectorMeasurementSchema.getMeasurementId())) {
-                String firstNode = schema.getValueMeasurementIdList().get(0);
+                String firstNode = schema.getSubMeasurementsList().get(0);
                 addVectorMeasurementSchemaForTemplate(
-                    new MeasurementMNode(node, firstNode, schema, null),
+                    new MeasurementMNode(curNode, firstNode, schema, null),
                     timeseriesSchemaList,
                     needLast,
                     queryContext,
                     schema,
-                    MetaUtils.getNodeRegByIdx(idx + 1, nodes),
+                    MetaUtils.getNodeRegByIdx(childIndex + 1, nodes),
                     vectorMeasurementSchema.getMeasurementId());
               }
             }
@@ -1468,7 +1360,8 @@ public class MTree implements Serializable {
       tsRow[5] = String.valueOf(((IMeasurementMNode) node).getOffset());
       tsRow[6] =
           needLast
-              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              ? String.valueOf(
+                  LastCacheManager.getLastTimeStamp((IMeasurementMNode) node, queryContext))
               : null;
       Pair<PartialPath, String[]> temp = new Pair<>(nodePath, tsRow);
       timeseriesSchemaList.add(temp);
@@ -1483,7 +1376,7 @@ public class MTree implements Serializable {
       IMeasurementSchema schema,
       String reg)
       throws StorageGroupNotSetException, IllegalPathException {
-    List<String> measurements = schema.getValueMeasurementIdList();
+    List<String> measurements = schema.getSubMeasurementsList();
     for (int i = 0; i < measurements.size(); i++) {
       if (!Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
         continue;
@@ -1492,16 +1385,17 @@ public class MTree implements Serializable {
       String[] tsRow = new String[7];
       tsRow[0] = null;
       tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
-      tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
-      tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
+      tsRow[2] = schema.getSubMeasurementsTSDataTypeList().get(i).toString();
+      tsRow[3] = schema.getSubMeasurementsTSEncodingList().get(i).toString();
       tsRow[4] = schema.getCompressor().toString();
       tsRow[5] = "-1";
       tsRow[6] =
           needLast
-              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              ? String.valueOf(
+                  LastCacheManager.getLastTimeStamp((IMeasurementMNode) node, queryContext))
               : null;
       Pair<PartialPath, String[]> temp =
-          new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
+          new Pair<>(new VectorPartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
       timeseriesSchemaList.add(temp);
     }
   }
@@ -1515,7 +1409,7 @@ public class MTree implements Serializable {
       String reg,
       String vectorId)
       throws StorageGroupNotSetException, IllegalPathException {
-    List<String> measurements = schema.getValueMeasurementIdList();
+    List<String> measurements = schema.getSubMeasurementsList();
     for (int i = 0; i < measurements.size(); i++) {
       if (!Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
         continue;
@@ -1525,16 +1419,17 @@ public class MTree implements Serializable {
       String[] tsRow = new String[7];
       tsRow[0] = null;
       tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
-      tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
-      tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
+      tsRow[2] = schema.getSubMeasurementsTSDataTypeList().get(i).toString();
+      tsRow[3] = schema.getSubMeasurementsTSEncodingList().get(i).toString();
       tsRow[4] = schema.getCompressor().toString();
       tsRow[5] = "-1";
       tsRow[6] =
           needLast
-              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              ? String.valueOf(
+                  LastCacheManager.getLastTimeStamp((IMeasurementMNode) node, queryContext))
               : null;
       Pair<PartialPath, String[]> temp =
-          new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
+          new Pair<>(new VectorPartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
       timeseriesSchemaList.add(temp);
     }
   }

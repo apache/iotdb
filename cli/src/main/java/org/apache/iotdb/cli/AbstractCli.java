@@ -288,6 +288,9 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
+      // When execute sql in CLI with -e mode, we should print all results by setting continuePrint
+      // is true.
+      continuePrint = true;
       args = Arrays.copyOfRange(args, 0, index);
       return args;
     }

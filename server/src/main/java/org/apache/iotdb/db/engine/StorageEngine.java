@@ -124,7 +124,10 @@ public class StorageEngine implements IService {
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
   private ScheduledExecutorService ttlCheckThread;
-  private ScheduledExecutorService memtableTimedFlushCheckThread;
+  private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
+  private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
+  private ScheduledExecutorService tsFileTimedCloseCheckThread;
+
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
   private ExecutorService recoveryThreadPool;
   // add customized listeners here for flush and close events
@@ -277,15 +280,7 @@ public class StorageEngine implements IService {
         this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
 
-    if (config.isEnableTimedFlushUnseqMemtable()) {
-      memtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
-      memtableTimedFlushCheckThread.scheduleAtFixedRate(
-          this::timedFlushMemTable,
-          config.getUnseqMemtableFlushCheckInterval(),
-          config.getUnseqMemtableFlushCheckInterval(),
-          TimeUnit.MILLISECONDS);
-      logger.info("start memtable timed flush check thread successfully.");
-    }
+    startTimedService();
   }
 
   private void checkTTL() {
@@ -300,46 +295,95 @@ public class StorageEngine implements IService {
     }
   }
 
-  private void timedFlushMemTable() {
+  private void startTimedService() {
+    // timed flush sequence memtable
+    if (config.isEnableTimedFlushSeqMemtable()) {
+      seqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+          this::timedFlushSeqMemTable,
+          config.getSeqMemtableFlushCheckInterval(),
+          config.getSeqMemtableFlushCheckInterval(),
+          TimeUnit.MILLISECONDS);
+      logger.info("start sequence memtable timed flush check thread successfully.");
+    }
+    // timed flush unsequence memtable
+    if (config.isEnableTimedFlushUnseqMemtable()) {
+      unseqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+          this::timedFlushUnseqMemTable,
+          config.getUnseqMemtableFlushCheckInterval(),
+          config.getUnseqMemtableFlushCheckInterval(),
+          TimeUnit.MILLISECONDS);
+      logger.info("start unsequence memtable timed flush check thread successfully.");
+    }
+    // timed close tsfile
+    if (config.isEnableTimedCloseTsFile()) {
+      tsFileTimedCloseCheckThread = Executors.newSingleThreadScheduledExecutor();
+      tsFileTimedCloseCheckThread.scheduleAtFixedRate(
+          this::timedCloseTsFileProcessor,
+          config.getCloseTsFileCheckInterval(),
+          config.getCloseTsFileCheckInterval(),
+          TimeUnit.MILLISECONDS);
+      logger.info("start tsfile timed close check thread successfully.");
+    }
+  }
+
+  private void timedFlushSeqMemTable() {
     try {
       for (VirtualStorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushMemTable();
+        processor.timedFlushSeqMemTable();
       }
     } catch (Exception e) {
-      logger.error("An error occurred when checking memtable flush interval", e);
+      logger.error("An error occurred when timed flushing sequence memtables", e);
+    }
+  }
+
+  private void timedFlushUnseqMemTable() {
+    try {
+      for (VirtualStorageGroupManager processor : processorMap.values()) {
+        processor.timedFlushUnseqMemTable();
+      }
+    } catch (Exception e) {
+      logger.error("An error occurred when timed flushing unsequence memtables", e);
+    }
+  }
+
+  private void timedCloseTsFileProcessor() {
+    try {
+      for (VirtualStorageGroupManager processor : processorMap.values()) {
+        processor.timedCloseTsFileProcessor();
+      }
+    } catch (Exception e) {
+      logger.error("An error occurred when timed closing tsfiles interval", e);
     }
   }
 
   @Override
   public void stop() {
     syncCloseAllProcessor();
-    if (ttlCheckThread != null) {
-      ttlCheckThread.shutdownNow();
-      try {
-        ttlCheckThread.awaitTermination(60, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("TTL check thread still doesn't exit after 60s");
-        Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException(
-            "StorageEngine failed to stop because of " + "ttlCheckThread.", e);
-      }
-    }
-    if (memtableTimedFlushCheckThread != null) {
-      memtableTimedFlushCheckThread.shutdownNow();
-      try {
-        memtableTimedFlushCheckThread.awaitTermination(60, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("Memtable flush interval check thread still doesn't exit after 60s");
-        Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException(
-            "StorageEngine failed to stop because of memtableFlushCheckThread.", e);
-      }
-    }
+    stopTimedService(ttlCheckThread, "TTlCheckThread");
+    stopTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
+    stopTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
+    stopTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
     }
     this.reset();
+  }
+
+  private void stopTimedService(ScheduledExecutorService pool, String poolName) {
+    if (pool != null) {
+      pool.shutdownNow();
+      try {
+        pool.awaitTermination(60, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("{} still doesn't exit after 60s", poolName);
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException(
+            String.format("StorageEngine failed to stop because of %s.", poolName), e);
+      }
+    }
   }
 
   @Override
@@ -349,26 +393,54 @@ public class StorageEngine implements IService {
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);
     }
-    if (ttlCheckThread != null) {
-      ttlCheckThread.shutdownNow();
-      try {
-        ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("TTL check thread still doesn't exit after 30s");
-        Thread.currentThread().interrupt();
-      }
-    }
-    if (memtableTimedFlushCheckThread != null) {
-      memtableTimedFlushCheckThread.shutdownNow();
-      try {
-        memtableTimedFlushCheckThread.awaitTermination(30, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("Memtable flush interval check thread still doesn't exit after 30s");
-        Thread.currentThread().interrupt();
-      }
-    }
+    shutdownTimedService(ttlCheckThread, "TTlCheckThread");
+    shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
+    shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
+    shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     this.reset();
+  }
+
+  private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
+    if (pool != null) {
+      pool.shutdownNow();
+      try {
+        pool.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("{} still doesn't exit after 30s", poolName);
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  /** reboot timed flush sequence/unsequence memetable thread, timed close tsfile thread */
+  public void rebootTimedService() throws ShutdownException {
+    logger.info("Start rebooting all timed service.");
+
+    // exclude ttl check thread
+    stopTimedServiceAndThrow(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
+    stopTimedServiceAndThrow(
+        unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
+    stopTimedServiceAndThrow(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
+
+    logger.info("Stop all timed service successfully, and now restart them.");
+
+    startTimedService();
+
+    logger.info("Reboot all timed service successfully");
+  }
+
+  private void stopTimedServiceAndThrow(ScheduledExecutorService pool, String poolName)
+      throws ShutdownException {
+    if (pool != null) {
+      pool.shutdownNow();
+      try {
+        pool.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("{} still doesn't exit after 30s", poolName);
+        throw new ShutdownException(e);
+      }
+    }
   }
 
   @Override
@@ -635,26 +707,13 @@ public class StorageEngine implements IService {
     virtualStorageGroupManager.closeStorageGroupProcessor(partitionId, isSeq, isSync);
   }
 
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
-    try {
-      List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
-      for (PartialPath storageGroupPath : sgPaths) {
-        // storage group has no data
-        if (!processorMap.containsKey(storageGroupPath)) {
-          continue;
-        }
-
-        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        processorMap.get(storageGroupPath).delete(newPath, startTime, endTime, planIndex);
-      }
-    } catch (IOException | MetadataException e) {
-      throw new StorageEngineException(e.getMessage());
-    }
-  }
-
-  /** delete data of timeseries "{deviceId}.{measurementId}" */
-  public void deleteTimeseries(PartialPath path, long planIndex) throws StorageEngineException {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
@@ -666,7 +725,29 @@ public class StorageEngine implements IService {
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
         processorMap
             .get(storageGroupPath)
-            .delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex);
+            .delete(newPath, startTime, endTime, planIndex, timePartitionFilter);
+      }
+    } catch (IOException | MetadataException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  /** delete data of timeseries "{deviceId}.{measurementId}" */
+  public void deleteTimeseries(
+      PartialPath path, long planIndex, TimePartitionFilter timePartitionFilter)
+      throws StorageEngineException {
+    try {
+      List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
+      for (PartialPath storageGroupPath : sgPaths) {
+        // storage group has no data
+        if (!processorMap.containsKey(storageGroupPath)) {
+          continue;
+        }
+
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        processorMap
+            .get(storageGroupPath)
+            .delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex, timePartitionFilter);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());

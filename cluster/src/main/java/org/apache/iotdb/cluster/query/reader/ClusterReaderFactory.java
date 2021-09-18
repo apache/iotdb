@@ -339,7 +339,7 @@ public class ClusterReaderFactory {
                 dataGroupMember,
                 ascending,
                 null);
-        partialPathPointReaderMap.put(PartialPath.getExactFullPath(partialPath), seriesPointReader);
+        partialPathPointReaderMap.put(partialPath.getExactFullPath(), seriesPointReader);
       }
 
       if (logger.isDebugEnabled()) {
@@ -709,10 +709,12 @@ public class ClusterReaderFactory {
         path -> {
           if (path instanceof VectorPartialPath) {
             StringBuilder builder = new StringBuilder(path.getFullPath());
-            List<PartialPath> pathList = ((VectorPartialPath) path).getSubSensorsPathList();
-            for (PartialPath partialPath : pathList) {
+            List<String> subSensorsList = ((VectorPartialPath) path).getSubSensorsList();
+            for (String subSensor : subSensorsList) {
               builder.append(":");
-              builder.append(partialPath.getFullPath());
+              builder.append(path.getFullPath());
+              builder.append(".");
+              builder.append(subSensor);
             }
             fullPaths.add(builder.toString());
           } else {
@@ -1138,7 +1140,7 @@ public class ClusterReaderFactory {
               ascending,
               null,
               false);
-      partialPathBatchReaderMap.put(PartialPath.getExactFullPath(partialPath), batchReader);
+      partialPathBatchReaderMap.put(partialPath.getExactFullPath(), batchReader);
     }
     return new MultBatchReader(partialPathBatchReaderMap);
   }

@@ -199,7 +199,7 @@ public class LogReplayer {
                     + tPlan.getMeasurements()[i]));
         columnIndex++;
       } else if (tPlan.isAligned()) {
-        List<TSDataType> datatypes = mNodes[i].getSchema().getValueTSDataTypeList();
+        List<TSDataType> datatypes = mNodes[i].getSchema().getSubMeasurementsTSDataTypeList();
         for (int j = 0; j < datatypes.size(); j++) {
           if (tPlan.getDataTypes()[columnIndex] == null) {
             tPlan.getDataTypes()[columnIndex] = datatypes.get(j);
@@ -207,7 +207,7 @@ public class LogReplayer {
             tPlan.markFailedMeasurementInsertion(
                 i,
                 new DataTypeMismatchException(
-                    mNodes[i].getSchema().getValueMeasurementIdList().get(j),
+                    mNodes[i].getSchema().getSubMeasurementsList().get(j),
                     tPlan.getDataTypes()[columnIndex],
                     datatypes.get(j)));
           }

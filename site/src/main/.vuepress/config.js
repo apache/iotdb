@@ -116,13 +116,13 @@ var config = {
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
 				  },
-				{
-					text: 'Blog',
-					items: [
-						{ text: 'Overview', link: '/Blog/Index'},
-						{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
-					]
-				},
+				// {
+				// 	text: 'Blog',
+				// 	items: [
+				// 		{ text: 'Overview', link: '/Blog/Index'},
+				// 		{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
+				// 	]
+				// },
 				  {
 					text: 'ASF',
 					items: [
@@ -558,10 +558,10 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Native API'],
 							['API/Programming-Other-Languages','Other Languages'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)']
 						]
 					},
 					{
@@ -641,7 +641,7 @@ var config = {
 				],
 				'/UserGuide/Master/': [
 					{
-						title:'IoTDB User Guide (In progress)',
+						title:'IoTDB User Guide (latest)',
 						collapsable: false,
 					},
 					{
@@ -669,7 +669,9 @@ var config = {
 							['Data-Concept/Data-Type','Data Type'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
-							['Data-Concept/SDT','SDT']
+							['Data-Concept/SDT','SDT'],
+							['Data-Concept/Auto-Create-MetaData','Auto Create Metadata'],
+							['Data-Concept/Time-Partition','Time Partition']
 						]
 					},
 					{
@@ -696,8 +698,8 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-Python-Native-API','Python Native API'],
 							['API/Programming-Cpp-Native-API','C++ Native API'],
 							['API/Programming-Go-Native-API','Go Native API'],
@@ -748,6 +750,7 @@ var config = {
 						children: [
 							['Ecosystem Integration/Grafana','Grafana'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
@@ -891,12 +894,12 @@ var config = {
 				 {
 					text: '文档',
 					items: [
-						{ text: 'In progress', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
-						{ text: 'V0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
-						{ text: 'V0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
-						{ text: 'V0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
-					  { text: 'V0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
-					  { text: 'V0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
+						{ text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
+						{ text: 'v0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
+						{ text: 'v0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
+					  { text: 'v0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
+					  { text: 'v0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  	{
@@ -1357,10 +1360,10 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Java 原生接口'],
 							['API/Programming-Other-Languages','其他语言原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (不推荐)']
 						]
 					},
 					{
@@ -1462,7 +1465,9 @@ var config = {
 							['Data-Concept/Data-Type','数据类型'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
-							['Data-Concept/SDT','旋转门压缩']
+							['Data-Concept/SDT','旋转门压缩'],
+							['Data-Concept/Auto-Create-MetaData','自动创建元数据'],
+							['Data-Concept/Time-Partition','时间分区']
 						]
 					},
 					{
@@ -1489,8 +1494,8 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
@@ -1541,6 +1546,7 @@ var config = {
 						children: [
 							['Ecosystem Integration/Grafana','Grafana-IoTDB'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],

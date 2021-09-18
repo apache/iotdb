@@ -70,9 +70,7 @@ public class HeartbeatThread implements Runnable {
   public void run() {
     logger.info("{}: Heartbeat thread starts...", memberName);
     // sleep random time to reduce first election conflicts
-    long electionWait =
-        ClusterConstant.getElectionLeastTimeOutMs()
-            + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
+    long electionWait = getElectionRandomWaitMs();
     try {
       logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
       Thread.sleep(electionWait);
@@ -86,15 +84,17 @@ public class HeartbeatThread implements Runnable {
             // send heartbeats to the followers
             sendHeartbeats();
             synchronized (localMember.getHeartBeatWaitObject()) {
-              localMember.getHeartBeatWaitObject().wait(RaftServer.getHeartBeatIntervalMs());
+              localMember.getHeartBeatWaitObject().wait(RaftServer.getHeartbeatIntervalMs());
             }
             hasHadLeader = true;
             break;
           case FOLLOWER:
             // check if heartbeat times out
-            long heartBeatInterval =
+            long heartbeatInterval =
                 System.currentTimeMillis() - localMember.getLastHeartbeatReceivedTime();
-            if (heartBeatInterval >= RaftServer.getConnectionTimeoutInMS()) {
+            long randomElectionTimeout =
+                RaftServer.getElectionTimeoutMs() + getElectionRandomWaitMs();
+            if (heartbeatInterval >= randomElectionTimeout) {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
@@ -105,7 +105,12 @@ public class HeartbeatThread implements Runnable {
                   memberName,
                   localMember.getLeader());
               synchronized (localMember.getHeartBeatWaitObject()) {
-                localMember.getHeartBeatWaitObject().wait(RaftServer.getConnectionTimeoutInMS());
+                // we sleep to next possible heartbeat timeout point
+                long leastWaitTime =
+                    localMember.getLastHeartbeatReceivedTime()
+                        + randomElectionTimeout
+                        - System.currentTimeMillis();
+                localMember.getHeartBeatWaitObject().wait(leastWaitTime);
               }
             }
             hasHadLeader = true;
@@ -203,7 +208,6 @@ public class HeartbeatThread implements Runnable {
   }
 
   void sendHeartbeatSync(Node node) {
-    Client client = localMember.getSyncHeartbeatClient(node);
     HeartbeatHandler heartbeatHandler = new HeartbeatHandler(localMember, node);
     HeartBeatRequest req = new HeartBeatRequest();
     req.setCommitLogTerm(request.commitLogTerm);
@@ -219,26 +223,32 @@ public class HeartbeatThread implements Runnable {
       req.partitionTableBytes = request.partitionTableBytes;
       req.setPartitionTableBytesIsSet(true);
     }
-    if (client != null) {
-      localMember
-          .getSerialToParallelPool()
-          .submit(
-              () -> {
+    localMember
+        .getSerialToParallelPool()
+        .submit(
+            () -> {
+              Client client = localMember.getSyncHeartbeatClient(node);
+              if (client != null) {
                 try {
                   logger.debug("{}: Sending heartbeat to {}", memberName, node);
                   HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
                   heartbeatHandler.onComplete(heartBeatResponse);
                 } catch (TTransportException e) {
                   logger.warn(
-                      "{}: Cannot send heart beat to node {} due to network", memberName, node, e);
+                      memberName
+                          + ": Cannot send heartbeat to node "
+                          + node.toString()
+                          + " due to network",
+                      e);
                   client.getInputProtocol().getTransport().close();
                 } catch (Exception e) {
-                  logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
+                  logger.warn(
+                      memberName + ": Cannot send heart beat to node " + node.toString(), e);
                 } finally {
                   ClientUtils.putBackSyncHeartbeatClient(client);
                 }
-              });
-    }
+              }
+            });
   }
 
   /**
@@ -259,9 +269,7 @@ public class HeartbeatThread implements Runnable {
       startElection();
       if (localMember.getCharacter() == NodeCharacter.ELECTOR) {
         // sleep random time to reduce election conflicts
-        long electionWait =
-            ClusterConstant.getElectionLeastTimeOutMs()
-                + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
+        long electionWait = getElectionRandomWaitMs();
         logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
         Thread.sleep(electionWait);
       }
@@ -321,8 +329,8 @@ public class HeartbeatThread implements Runnable {
         logger.info(
             "{}: Wait for {}ms until election time out",
             memberName,
-            RaftServer.getConnectionTimeoutInMS());
-        localMember.getTerm().wait(RaftServer.getConnectionTimeoutInMS());
+            RaftServer.getElectionTimeoutMs());
+        localMember.getTerm().wait(RaftServer.getElectionTimeoutMs());
       } catch (InterruptedException e) {
         logger.info(
             "{}: Unexpected interruption when waiting the result of election {}",
@@ -400,27 +408,35 @@ public class HeartbeatThread implements Runnable {
   }
 
   private void requestVoteSync(Node node, ElectionHandler handler, ElectionRequest request) {
-    Client client = localMember.getSyncHeartbeatClient(node);
-    if (client != null) {
-      logger.info("{}: Requesting a vote from {}", memberName, node);
-      localMember
-          .getSerialToParallelPool()
-          .submit(
-              () -> {
+    localMember
+        .getSerialToParallelPool()
+        .submit(
+            () -> {
+              Client client = localMember.getSyncHeartbeatClient(node);
+              if (client != null) {
+                logger.info("{}: Requesting a vote from {}", memberName, node);
                 try {
                   long result = client.startElection(request);
                   handler.onComplete(result);
                 } catch (TException e) {
                   client.getInputProtocol().getTransport().close();
                   logger.warn(
-                      "{}: Cannot request a vote from {} due to network", memberName, node, e);
+                      memberName
+                          + ": Cannot request a vote from "
+                          + node.toString()
+                          + " due to network",
+                      e);
                   handler.onError(e);
                 } catch (Exception e) {
                   handler.onError(e);
                 } finally {
                   ClientUtils.putBackSyncHeartbeatClient(client);
                 }
-              });
-    }
+              }
+            });
+  }
+
+  private long getElectionRandomWaitMs() {
+    return Math.abs(random.nextLong() % ClusterConstant.getElectionMaxWaitMs());
   }
 }

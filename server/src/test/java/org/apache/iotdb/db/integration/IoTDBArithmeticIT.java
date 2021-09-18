@@ -188,9 +188,10 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testArithmeticUnary() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       String[] expressions = new String[] {"- s1", "- s2", "- s3", "- s4"};
       String sql = String.format("select %s from root.sg.d1", String.join(",", expressions));
       ResultSet resultSet = statement.executeQuery(sql);
@@ -205,6 +206,7 @@ public class IoTDBArithmeticIT {
           assertEquals(expected, actual, E);
         }
       }
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -212,9 +214,10 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testHybridQuery() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       String[] expressions = new String[] {"s1", "s1 + s2", "sin(s1)"};
       String sql = String.format("select %s from root.sg.d1", String.join(",", expressions));
       ResultSet resultSet = statement.executeQuery(sql);
@@ -227,6 +230,7 @@ public class IoTDBArithmeticIT {
         assertEquals(i + i, Double.parseDouble(resultSet.getString(3)), E);
         assertEquals(Math.sin(i), Double.parseDouble(resultSet.getString(4)), E);
       }
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -234,9 +238,10 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testNonAlign() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("select s7 + s8 from root.sg.d1");
       assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
       assertTrue(resultSet.next());
@@ -246,6 +251,7 @@ public class IoTDBArithmeticIT {
       resultSet = statement.executeQuery("select s7 + s8 from root.sg.d1 where time < 5");
       assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -253,9 +259,10 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testWrongTypeBoolean() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s5 from root.sg.d1");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Unsupported data type: BOOLEAN"));
@@ -264,9 +271,10 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testWrongTypeText() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s6 from root.sg.d1");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Unsupported data type: TEXT"));

@@ -184,7 +184,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     bufferNum = 0;
     for (PartialPath path : paths) {
       if (path instanceof VectorPartialPath) {
-        bufferNum += ((VectorPartialPath) path).getSubSensorsPathList().size();
+        bufferNum += ((VectorPartialPath) path).getSubSensorsList().size();
       } else {
         bufferNum += 1;
       }
@@ -273,7 +273,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           if (rowOffset == 0) {
             if (paths.get(seriesIndex) instanceof VectorPartialPath) {
               for (int i = 0;
-                  i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsPathList().size();
+                  i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsList().size();
                   i++) {
                 currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
                 bufferIndex++;
@@ -572,7 +572,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
         if (paths.get(seriesIndex) instanceof VectorPartialPath) {
           for (int i = 0;
-              i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsPathList().size();
+              i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsList().size();
               i++) {
             record.addField(null);
           }

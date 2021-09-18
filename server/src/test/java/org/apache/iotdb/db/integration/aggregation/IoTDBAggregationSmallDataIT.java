@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.integration.aggregation;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -228,7 +229,11 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Binary statistics does not support: max"));
+                    String.format(
+                        "500: [INTERNAL_SERVER_ERROR] Exception occurred: "
+                            + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
+                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
+                        OperationType.EXECUTE_STATEMENT.getName())));
       }
 
       boolean hasResultSet =
@@ -270,7 +275,11 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Binary statistics does not support: max"));
+                    String.format(
+                        "500: [INTERNAL_SERVER_ERROR] Exception occurred: "
+                            + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
+                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
+                        OperationType.EXECUTE_STATEMENT.getName())));
       }
 
       boolean hasResultSet =
