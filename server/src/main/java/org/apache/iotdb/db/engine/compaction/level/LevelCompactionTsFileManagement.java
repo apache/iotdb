@@ -242,7 +242,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           unSequenceTsFileResource.remove(tsFileResource);
         }
       }
-
     } finally {
       writeUnlock();
     }

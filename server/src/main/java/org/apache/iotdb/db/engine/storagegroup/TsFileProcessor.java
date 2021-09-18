@@ -1082,7 +1082,6 @@ public class TsFileProcessor {
     logger.info("Start to end file {}", tsFileResource);
     long closeStartTime = System.currentTimeMillis();
     tsFileResource.serialize();
-
     writer.endFile();
     logger.info("Ended file {}", tsFileResource);
 
