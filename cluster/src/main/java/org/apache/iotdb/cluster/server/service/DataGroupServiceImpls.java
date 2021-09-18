@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -50,16 +43,26 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataService.Iface {
 
   @Override
   public void sendHeartbeat(
       HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.sendHeartbeat(request, resultHandler);
     }
@@ -67,8 +70,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.startElection(request, resultHandler);
     }
@@ -76,8 +80,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.appendEntries(request, resultHandler);
     }
@@ -85,8 +90,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.appendEntry(request, resultHandler);
     }
@@ -94,8 +100,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.sendSnapshot(request, resultHandler);
     }
@@ -104,8 +111,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void pullSnapshot(
       PullSnapshotRequest request, AsyncMethodCallback<PullSnapshotResp> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.pullSnapshot(request, resultHandler);
     }
@@ -114,8 +122,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void executeNonQueryPlan(
       ExecutNonQueryReq request, AsyncMethodCallback<TSStatus> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.executeNonQueryPlan(request, resultHandler);
     }
@@ -124,8 +133,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void requestCommitIndex(
       RaftNode header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "Request commit index");
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(header, resultHandler, "Request commit index");
     if (service != null) {
       service.requestCommitIndex(header, resultHandler);
     }
@@ -197,8 +207,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       List<String> paths,
       boolean withAlias,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "Find path:" + paths);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(header, resultHandler, "Find path:" + paths);
     if (service != null) {
       service.getAllPaths(header, paths, withAlias, resultHandler);
     }
@@ -207,8 +218,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void endQuery(
       RaftNode header, Node thisNode, long queryId, AsyncMethodCallback<Void> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "End query");
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "End query");
     if (service != null) {
       service.endQuery(header, thisNode, queryId, resultHandler);
     }
@@ -250,8 +261,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void pullTimeSeriesSchema(
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.pullTimeSeriesSchema(request, resultHandler);
     }
@@ -271,8 +283,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void getAllDevices(
       RaftNode header, List<String> paths, AsyncMethodCallback<Set<String>> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "Get all devices");
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Get all devices");
     if (service != null) {
       service.getAllDevices(header, paths, resultHandler);
     }
@@ -282,8 +294,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   public void getDevices(
       RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler)
       throws TException {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "get devices");
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "get devices");
     if (service != null) {
       service.getDevices(header, planBinary, resultHandler);
     }
@@ -295,8 +307,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       String path,
       int nodeLevel,
       AsyncMethodCallback<List<String>> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "Get node list");
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Get node list");
     if (service != null) {
       service.getNodeList(header, path, nodeLevel, resultHandler);
     }
@@ -338,8 +350,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void getAggrResult(
       GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.getAggrResult(request, resultHandler);
     }
@@ -360,8 +373,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.getGroupByExecutor(request, resultHandler);
     }
@@ -374,19 +388,19 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       long startTime,
       long endTime,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "Fetch group by");
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Fetch group by");
     if (service != null) {
       service.getGroupByResult(header, executorId, startTime, endTime, resultHandler);
     }
   }
 
-
   @Override
   public void previousFill(
       PreviousFillRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request);
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
       service.previousFill(request, resultHandler);
     }
@@ -395,8 +409,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void matchTerm(
       long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "Match term");
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Match term");
     if (service != null) {
       service.matchTerm(index, term, header, resultHandler);
     }
@@ -404,8 +418,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, "last");
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, "last");
     if (service != null) {
       service.last(request, resultHandler);
     }
@@ -417,8 +432,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       List<String> pathsToQuery,
       int level,
       AsyncMethodCallback<Integer> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "count path");
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "count path");
     if (service != null) {
       service.getPathCount(header, pathsToQuery, level, resultHandler);
     }
@@ -427,8 +442,9 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public void onSnapshotApplied(
       RaftNode header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
-    DataAsyncService service = DataGroupEngine.getInstance()
-        .getDataAsyncService(header, resultHandler, "Snapshot applied");
+    DataAsyncService service =
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(header, resultHandler, "Snapshot applied");
     if (service != null) {
       service.onSnapshotApplied(header, slots, resultHandler);
     }
@@ -437,199 +453,219 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   @Override
   public long querySingleSeries(SingleSeriesQueryRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).querySingleSeries(request);
+        .getDataSyncService(request.getHeader())
+        .querySingleSeries(request);
   }
 
   @Override
   public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).queryMultSeries(request);
+        .getDataSyncService(request.getHeader())
+        .queryMultSeries(request);
   }
 
   @Override
   public ByteBuffer fetchSingleSeries(RaftNode header, long readerId) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).fetchSingleSeries(header, readerId);
+        .getDataSyncService(header)
+        .fetchSingleSeries(header, readerId);
   }
 
   @Override
   public Map<String, ByteBuffer> fetchMultSeries(RaftNode header, long readerId, List<String> paths)
       throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).fetchMultSeries(header, readerId, paths);
+        .getDataSyncService(header)
+        .fetchMultSeries(header, readerId, paths);
   }
 
   @Override
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).querySingleSeriesByTimestamp(request);
+        .getDataSyncService(request.getHeader())
+        .querySingleSeriesByTimestamp(request);
   }
 
   @Override
   public ByteBuffer fetchSingleSeriesByTimestamps(
       RaftNode header, long readerId, List<Long> timestamps) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).fetchSingleSeriesByTimestamps(header, readerId, timestamps);
+        .getDataSyncService(header)
+        .fetchSingleSeriesByTimestamps(header, readerId, timestamps);
   }
 
   @Override
   public void endQuery(RaftNode header, Node thisNode, long queryId) throws TException {
-    DataGroupEngine.getInstance()
-        .getDataSyncService(header).endQuery(header, thisNode, queryId);
+    DataGroupEngine.getInstance().getDataSyncService(header).endQuery(header, thisNode, queryId);
   }
 
   @Override
   public GetAllPathsResult getAllPaths(RaftNode header, List<String> path, boolean withAlias)
       throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getAllPaths(header, path, withAlias);
+        .getDataSyncService(header)
+        .getAllPaths(header, path, withAlias);
   }
 
   @Override
   public Set<String> getAllDevices(RaftNode header, List<String> path) throws TException {
-    return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getAllDevices(header, path);
+    return DataGroupEngine.getInstance().getDataSyncService(header).getAllDevices(header, path);
   }
 
   @Override
   public List<String> getNodeList(RaftNode header, String path, int nodeLevel) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getNodeList(header, path, nodeLevel);
+        .getDataSyncService(header)
+        .getNodeList(header, path, nodeLevel);
   }
 
   @Override
   public Set<String> getChildNodeInNextLevel(RaftNode header, String path) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getChildNodeInNextLevel(header, path);
+        .getDataSyncService(header)
+        .getChildNodeInNextLevel(header, path);
   }
 
   @Override
   public Set<String> getChildNodePathInNextLevel(RaftNode header, String path) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getChildNodePathInNextLevel(header, path);
+        .getDataSyncService(header)
+        .getChildNodePathInNextLevel(header, path);
   }
 
   @Override
   public ByteBuffer getAllMeasurementSchema(RaftNode header, ByteBuffer planBinary)
       throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getAllMeasurementSchema(header, planBinary);
+        .getDataSyncService(header)
+        .getAllMeasurementSchema(header, planBinary);
   }
 
   @Override
   public ByteBuffer getDevices(RaftNode header, ByteBuffer planBinary) throws TException {
-    return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getDevices(header, planBinary);
+    return DataGroupEngine.getInstance().getDataSyncService(header).getDevices(header, planBinary);
   }
 
   @Override
   public List<ByteBuffer> getAggrResult(GetAggrResultRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).getAggrResult(request);
+        .getDataSyncService(request.getHeader())
+        .getAggrResult(request);
   }
 
   @Override
   public List<String> getUnregisteredTimeseries(RaftNode header, List<String> timeseriesList)
       throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getUnregisteredTimeseries(header, timeseriesList);
+        .getDataSyncService(header)
+        .getUnregisteredTimeseries(header, timeseriesList);
   }
 
   @Override
   public PullSnapshotResp pullSnapshot(PullSnapshotRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).pullSnapshot(request);
+        .getDataSyncService(request.getHeader())
+        .pullSnapshot(request);
   }
 
   @Override
   public long getGroupByExecutor(GroupByRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).getGroupByExecutor(request);
+        .getDataSyncService(request.getHeader())
+        .getGroupByExecutor(request);
   }
 
   @Override
   public List<ByteBuffer> getGroupByResult(
       RaftNode header, long executorId, long startTime, long endTime) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getGroupByResult(header, executorId, startTime, endTime);
+        .getDataSyncService(header)
+        .getGroupByResult(header, executorId, startTime, endTime);
   }
 
   @Override
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).pullTimeSeriesSchema(request);
+        .getDataSyncService(request.getHeader())
+        .pullTimeSeriesSchema(request);
   }
 
   @Override
   public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).pullMeasurementSchema(request);
+        .getDataSyncService(request.getHeader())
+        .pullMeasurementSchema(request);
   }
 
   @Override
   public ByteBuffer previousFill(PreviousFillRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).previousFill(request);
+        .getDataSyncService(request.getHeader())
+        .previousFill(request);
   }
 
   @Override
   public ByteBuffer last(LastQueryRequest request) throws TException {
-    return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).last(request);
+    return DataGroupEngine.getInstance().getDataSyncService(request.getHeader()).last(request);
   }
 
   @Override
   public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).getPathCount(header, pathsToQuery, level);
+        .getDataSyncService(header)
+        .getPathCount(header, pathsToQuery, level);
   }
 
   @Override
   public boolean onSnapshotApplied(RaftNode header, List<Integer> slots) {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).onSnapshotApplied(header, slots);
+        .getDataSyncService(header)
+        .onSnapshotApplied(header, slots);
   }
 
   @Override
   public HeartBeatResponse sendHeartbeat(HeartBeatRequest request) {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).sendHeartbeat(request);
+        .getDataSyncService(request.getHeader())
+        .sendHeartbeat(request);
   }
 
   @Override
   public long startElection(ElectionRequest request) {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).startElection(request);
+        .getDataSyncService(request.getHeader())
+        .startElection(request);
   }
 
   @Override
   public long appendEntries(AppendEntriesRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).appendEntries(request);
+        .getDataSyncService(request.getHeader())
+        .appendEntries(request);
   }
 
   @Override
   public long appendEntry(AppendEntryRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).appendEntry(request);
+        .getDataSyncService(request.getHeader())
+        .appendEntry(request);
   }
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request) throws TException {
-    DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).sendSnapshot(request);
+    DataGroupEngine.getInstance().getDataSyncService(request.getHeader()).sendSnapshot(request);
   }
 
   @Override
   public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader()).executeNonQueryPlan(request);
+        .getDataSyncService(request.getHeader())
+        .executeNonQueryPlan(request);
   }
 
   @Override
   public RequestCommitIndexResponse requestCommitIndex(RaftNode header) throws TException {
-    return DataGroupEngine.getInstance()
-        .getDataSyncService(header).requestCommitIndex(header);
+    return DataGroupEngine.getInstance().getDataSyncService(header).requestCommitIndex(header);
   }
 
   @Override
@@ -643,15 +679,15 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public boolean matchTerm(long index, long term, RaftNode header) {
-    return DataGroupEngine.getInstance()
-        .getDataSyncService(header).matchTerm(index, term, header);
+    return DataGroupEngine.getInstance().getDataSyncService(header).matchTerm(index, term, header);
   }
 
   @Override
   public ByteBuffer peekNextNotNullValue(
       RaftNode header, long executorId, long startTime, long endTime) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header).peekNextNotNullValue(header, executorId, startTime, endTime);
+        .getDataSyncService(header)
+        .peekNextNotNullValue(header, executorId, startTime, endTime);
   }
 
   @Override

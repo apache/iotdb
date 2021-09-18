@@ -120,9 +120,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private boolean allowReport = true;
 
-  /**
-   * hardLinkCleaner will periodically clean expired hardlinks created during snapshots
-   */
+  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread;
 
   // currently, dataClientProvider is only used for those instances who do not belong to any
@@ -157,7 +155,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     MetaPuller.getInstance().init(metaGroupEngine);
 
     // from the scope of the DataGroupEngine,it should be singleton pattern
-    // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in future commit.
+    // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in
+    // future commit.
     DataGroupEngine.setProtocolFactory(protocolFactory);
     DataGroupEngine.setMetaGroupMember(metaGroupEngine);
     dataGroupEngine = DataGroupEngine.getInstance();
@@ -492,9 +491,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
-  /**
-   * Developers may perform pre-start customizations here for debugging or experiments.
-   */
+  /** Developers may perform pre-start customizations here for debugging or experiments. */
   @SuppressWarnings("java:S125") // leaving examples
   private void preStartCustomize() {
     // customize data distribution
@@ -648,7 +645,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
     private static final ClusterIoTDB INSTANCE = new ClusterIoTDB();
 
-    private ClusterIoTDBHolder() {
-    }
+    private ClusterIoTDBHolder() {}
   }
 }

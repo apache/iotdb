@@ -19,34 +19,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
-import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
-import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
-import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -136,6 +108,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
@@ -143,6 +116,35 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
+import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
+import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class MetaGroupMemberTest extends BaseMember {
 
@@ -206,8 +208,7 @@ public class MetaGroupMemberTest extends BaseMember {
           }
 
           @Override
-          public void pullSlots(NodeRemovalResult removalResult) {
-          }
+          public void pullSlots(NodeRemovalResult removalResult) {}
 
           @Override
           public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
@@ -247,13 +248,13 @@ public class MetaGroupMemberTest extends BaseMember {
               public void startElection(
                   ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
                 new Thread(
-                    () -> {
-                      long resp = dummyResponse.get();
-                      // MIN_VALUE means let the request time out
-                      if (resp != Long.MIN_VALUE) {
-                        resultHandler.onComplete(resp);
-                      }
-                    })
+                        () -> {
+                          long resp = dummyResponse.get();
+                          // MIN_VALUE means let the request time out
+                          if (resp != Long.MIN_VALUE) {
+                            resultHandler.onComplete(resp);
+                          }
+                        })
                     .start();
               }
 
@@ -261,12 +262,12 @@ public class MetaGroupMemberTest extends BaseMember {
               public void sendHeartbeat(
                   HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
                 new Thread(
-                    () -> {
-                      HeartBeatResponse response = new HeartBeatResponse();
-                      response.setFollower(thisNode);
-                      response.setTerm(Response.RESPONSE_AGREE);
-                      resultHandler.onComplete(response);
-                    })
+                        () -> {
+                          HeartBeatResponse response = new HeartBeatResponse();
+                          response.setFollower(thisNode);
+                          response.setTerm(Response.RESPONSE_AGREE);
+                          resultHandler.onComplete(response);
+                        })
                     .start();
               }
             };
@@ -362,8 +363,7 @@ public class MetaGroupMemberTest extends BaseMember {
           }
 
           @Override
-          public void updateHardState(long currentTerm, Node leader) {
-          }
+          public void updateHardState(long currentTerm, Node leader) {}
 
           @Override
           protected void addSeedNodes() {
@@ -373,7 +373,7 @@ public class MetaGroupMemberTest extends BaseMember {
               Node node = ClusterUtils.parseNode(seedUrl);
               if (node != null
                   && (!node.getInternalIp().equals(thisNode.internalIp)
-                  || node.getMetaPort() != thisNode.getMetaPort())
+                      || node.getMetaPort() != thisNode.getMetaPort())
                   && !allNodes.contains(node)) {
                 // do not add the local node since it is added in `setThisNode()`
                 allNodes.add(node);
@@ -408,13 +408,13 @@ public class MetaGroupMemberTest extends BaseMember {
                 public void startElection(
                     ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
                   new Thread(
-                      () -> {
-                        long resp = dummyResponse.get();
-                        // MIN_VALUE means let the request time out
-                        if (resp != Long.MIN_VALUE) {
-                          resultHandler.onComplete(resp);
-                        }
-                      })
+                          () -> {
+                            long resp = dummyResponse.get();
+                            // MIN_VALUE means let the request time out
+                            if (resp != Long.MIN_VALUE) {
+                              resultHandler.onComplete(resp);
+                            }
+                          })
                       .start();
                 }
 
@@ -428,12 +428,12 @@ public class MetaGroupMemberTest extends BaseMember {
                     HeartBeatRequest request,
                     AsyncMethodCallback<HeartBeatResponse> resultHandler) {
                   new Thread(
-                      () -> {
-                        HeartBeatResponse response = new HeartBeatResponse();
-                        response.setFollower(thisNode);
-                        response.setTerm(Response.RESPONSE_AGREE);
-                        resultHandler.onComplete(response);
-                      })
+                          () -> {
+                            HeartBeatResponse response = new HeartBeatResponse();
+                            response.setFollower(thisNode);
+                            response.setTerm(Response.RESPONSE_AGREE);
+                            resultHandler.onComplete(response);
+                          })
                       .start();
                 }
 
@@ -441,13 +441,13 @@ public class MetaGroupMemberTest extends BaseMember {
                 public void appendEntry(
                     AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
                   new Thread(
-                      () -> {
-                        long resp = dummyResponse.get();
-                        // MIN_VALUE means let the request time out
-                        if (resp != Long.MIN_VALUE) {
-                          resultHandler.onComplete(dummyResponse.get());
-                        }
-                      })
+                          () -> {
+                            long resp = dummyResponse.get();
+                            // MIN_VALUE means let the request time out
+                            if (resp != Long.MIN_VALUE) {
+                              resultHandler.onComplete(dummyResponse.get());
+                            }
+                          })
                       .start();
                 }
 
@@ -457,17 +457,17 @@ public class MetaGroupMemberTest extends BaseMember {
                     StartUpStatus startUpStatus,
                     AsyncMethodCallback<AddNodeResponse> resultHandler) {
                   new Thread(
-                      () -> {
-                        if (node.getNodeIdentifier() == 10) {
-                          resultHandler.onComplete(
-                              new AddNodeResponse((int) Response.RESPONSE_IDENTIFIER_CONFLICT));
-                        } else {
-                          partitionTable.addNode(node);
-                          AddNodeResponse resp = new AddNodeResponse((int) dummyResponse.get());
-                          resp.setPartitionTableBytes(partitionTable.serialize());
-                          resultHandler.onComplete(resp);
-                        }
-                      })
+                          () -> {
+                            if (node.getNodeIdentifier() == 10) {
+                              resultHandler.onComplete(
+                                  new AddNodeResponse((int) Response.RESPONSE_IDENTIFIER_CONFLICT));
+                            } else {
+                              partitionTable.addNode(node);
+                              AddNodeResponse resp = new AddNodeResponse((int) dummyResponse.get());
+                              resp.setPartitionTableBytes(partitionTable.serialize());
+                              resultHandler.onComplete(resp);
+                            }
+                          })
                       .start();
                 }
 
@@ -475,19 +475,19 @@ public class MetaGroupMemberTest extends BaseMember {
                 public void executeNonQueryPlan(
                     ExecutNonQueryReq request, AsyncMethodCallback<TSStatus> resultHandler) {
                   new Thread(
-                      () -> {
-                        try {
-                          PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-                          planExecutor.processNonQuery(plan);
-                          resultHandler.onComplete(StatusUtils.OK);
-                        } catch (IOException
-                            | QueryProcessException
-                            | StorageGroupNotSetException
-                            | StorageEngineException
-                            | IllegalPathException e) {
-                          resultHandler.onError(e);
-                        }
-                      })
+                          () -> {
+                            try {
+                              PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+                              planExecutor.processNonQuery(plan);
+                              resultHandler.onComplete(StatusUtils.OK);
+                            } catch (IOException
+                                | QueryProcessException
+                                | StorageGroupNotSetException
+                                | StorageEngineException
+                                | IllegalPathException e) {
+                              resultHandler.onError(e);
+                            }
+                          })
                       .start();
                 }
 
@@ -506,11 +506,11 @@ public class MetaGroupMemberTest extends BaseMember {
                 @Override
                 public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
                   new Thread(
-                      () -> {
-                        testMetaMember.applyRemoveNode(
-                            new RemoveNodeLog(partitionTable.serialize(), node));
-                        resultHandler.onComplete(Response.RESPONSE_AGREE);
-                      })
+                          () -> {
+                            testMetaMember.applyRemoveNode(
+                                new RemoveNodeLog(partitionTable.serialize(), node));
+                            resultHandler.onComplete(Response.RESPONSE_AGREE);
+                          })
                       .start();
                 }
 
@@ -519,24 +519,24 @@ public class MetaGroupMemberTest extends BaseMember {
                     StartUpStatus startUpStatus,
                     AsyncMethodCallback<CheckStatusResponse> resultHandler) {
                   new Thread(
-                      () -> {
-                        CheckStatusResponse response = new CheckStatusResponse();
-                        response.setHashSaltEquals(true);
-                        response.setPartitionalIntervalEquals(true);
-                        response.setReplicationNumEquals(true);
-                        response.setSeedNodeEquals(true);
-                        resultHandler.onComplete(response);
-                      })
+                          () -> {
+                            CheckStatusResponse response = new CheckStatusResponse();
+                            response.setHashSaltEquals(true);
+                            response.setPartitionalIntervalEquals(true);
+                            response.setReplicationNumEquals(true);
+                            response.setSeedNodeEquals(true);
+                            resultHandler.onComplete(response);
+                          })
                       .start();
                 }
 
                 @Override
                 public void collectMigrationStatus(AsyncMethodCallback<ByteBuffer> resultHandler) {
                   new Thread(
-                      () -> {
-                        resultHandler.onComplete(
-                            ClusterUtils.serializeMigrationStatus(Collections.emptyMap()));
-                      })
+                          () -> {
+                            resultHandler.onComplete(
+                                ClusterUtils.serializeMigrationStatus(Collections.emptyMap()));
+                          })
                       .start();
                 }
               };
@@ -577,20 +577,20 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testClosePartition()
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
-      IllegalPathException {
+          IllegalPathException {
     System.out.println("Start testClosePartition()");
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new Object[]{String.valueOf(i)});
+      insertPlan.setValues(new Object[] {String.valueOf(i)});
       insertPlan.setMeasurementMNodes(
-          new IMeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
+          new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
@@ -608,7 +608,7 @@ public class MetaGroupMemberTest extends BaseMember {
       System.out.println("Create the first file");
       for (int i = 20; i < 30; i++) {
         insertPlan.setTime(i);
-        insertPlan.setValues(new Object[]{String.valueOf(i)});
+        insertPlan.setValues(new Object[] {String.valueOf(i)});
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -627,7 +627,7 @@ public class MetaGroupMemberTest extends BaseMember {
       System.out.println("Create the second file");
       for (int i = 30; i < 40; i++) {
         insertPlan.setTime(i);
-        insertPlan.setValues(new Object[]{String.valueOf(i)});
+        insertPlan.setValues(new Object[] {String.valueOf(i)});
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -890,13 +890,13 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testGetReaderByTimestamp()
       throws QueryProcessException, StorageEngineException, IOException,
-      StorageGroupNotSetException, IllegalPathException {
+          StorageGroupNotSetException, IllegalPathException {
     System.out.println("Start testGetReaderByTimestamp()");
     ClusterConstant.setReadOperationTimeoutMS(10000);
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(i)));
@@ -913,9 +913,9 @@ public class MetaGroupMemberTest extends BaseMember {
       }
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
-        insertPlan.setValues(new Object[]{String.valueOf(j)});
+        insertPlan.setValues(new Object[] {String.valueOf(j)});
         insertPlan.setMeasurementMNodes(
-            new IMeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
+            new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }
@@ -955,12 +955,12 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testGetReader()
       throws QueryProcessException, StorageEngineException, IOException,
-      StorageGroupNotSetException, IllegalPathException, EmptyIntervalException {
+          StorageGroupNotSetException, IllegalPathException, EmptyIntervalException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     ClusterConstant.setReadOperationTimeoutMS(1000);
 
@@ -979,9 +979,9 @@ public class MetaGroupMemberTest extends BaseMember {
       }
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
-        insertPlan.setValues(new Object[]{String.valueOf(j)});
+        insertPlan.setValues(new Object[] {String.valueOf(j)});
         insertPlan.setMeasurementMNodes(
-            new IMeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
+            new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }
@@ -1161,8 +1161,7 @@ public class MetaGroupMemberTest extends BaseMember {
       testMetaMember.setPartitionTable(partitionTable);
       new MetaAsyncService(testMetaMember)
           .addNode(TestUtils.getNode(11), TestUtils.getStartUpStatus(), handler);
-      while (result.get() == null) {
-      }
+      while (result.get() == null) {}
 
       response = result.get();
       assertEquals(Response.RESPONSE_AGREE, response.getRespNum());
@@ -1226,10 +1225,10 @@ public class MetaGroupMemberTest extends BaseMember {
       result.set(null);
       testMetaMember.setPartitionTable(partitionTable);
       new Thread(
-          () -> {
-            await().atLeast(200, TimeUnit.MILLISECONDS);
-            dummyResponse.set(Response.RESPONSE_AGREE);
-          })
+              () -> {
+                await().atLeast(200, TimeUnit.MILLISECONDS);
+                dummyResponse.set(Response.RESPONSE_AGREE);
+              })
           .start();
       new MetaAsyncService(testMetaMember)
           .addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
@@ -1423,8 +1422,7 @@ public class MetaGroupMemberTest extends BaseMember {
                 e.printStackTrace();
               }
             });
-    while (resultRef.get() == null) {
-    }
+    while (resultRef.get() == null) {}
   }
 
   public MetaGroupMember getTestMetaGroupMember() {
