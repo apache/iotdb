@@ -70,7 +70,6 @@ import org.apache.iotdb.cluster.server.monitor.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.service.DataGroupServiceImpls;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -508,10 +507,10 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       try {
         resp = client.addNode(thisNode, startUpStatus);
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
+        client.close();
         throw e;
       } finally {
-        ClientUtils.putBackSyncClient(client);
+        client.returnSelf();
       }
     }
 
@@ -810,20 +809,32 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         // no need to shake hands with yourself
         continue;
       }
-      try {
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
-          if (asyncClient != null) {
+
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
+        if (asyncClient != null) {
+          try {
             asyncClient.handshake(thisNode, new GenericHandler<>(node, null));
+          } catch (TException e) {
+            logger.error("failed send handshake to node: {}", node, e);
           }
         } else {
-          SyncMetaClient syncClient = (SyncMetaClient) getSyncClient(node);
-          if (syncClient != null) {
-            syncClient.handshake(thisNode);
-          }
+          logger.error("send handshake fail as get empty async client");
         }
-      } catch (TException e) {
-        // ignore handshake exceptions
+      } else {
+        SyncMetaClient syncClient = (SyncMetaClient) getSyncClient(node);
+        if (syncClient != null) {
+          try {
+            syncClient.handshake(thisNode);
+          } catch (TException e) {
+            syncClient.close();
+            logger.error("failed send handshake to node: {}", node, e);
+          } finally {
+            syncClient.returnSelf();
+          }
+        } else {
+          logger.error("send handshake fail as get empty sync client");
+        }
       }
     }
   }
@@ -1217,10 +1228,10 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       try {
         return client.checkStatus(getStartUpStatus());
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
+        client.close();
         logger.warn("Error occurs when check status on node : {}", seedNode);
       } finally {
-        ClientUtils.putBackSyncClient(client);
+        client.returnSelf();
       }
     }
     return null;
@@ -1600,9 +1611,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         try {
           response = client.checkAlive();
         } catch (TException e) {
-          client.getInputProtocol().getTransport().close();
+          client.close();
         } finally {
-          ClientUtils.putBackSyncClient(client);
+          client.returnSelf();
         }
         nodeStatusHandler.onComplete(response);
       }
@@ -1647,7 +1658,14 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     if (client == null) {
       return null;
     }
-    return ClusterUtils.deserializeMigrationStatus(client.collectMigrationStatus());
+    try {
+      return ClusterUtils.deserializeMigrationStatus(client.collectMigrationStatus());
+    } catch (TException e) {
+      client.close();
+      throw e;
+    } finally {
+      client.returnSelf();
+    }
   }
 
   @TestOnly
@@ -1850,12 +1868,14 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     Node node = removeNodeLog.getRemovedNode();
     if (config.isUseAsyncServer()) {
       AsyncMetaClient asyncMetaClient = (AsyncMetaClient) getAsyncClient(node);
-      try {
-        if (asyncMetaClient != null) {
+      if (asyncMetaClient != null) {
+        try {
           asyncMetaClient.exile(removeNodeLog.serialize(), new GenericHandler<>(node, null));
+        } catch (TException e) {
+          logger.warn("Cannot inform {} its removal", node, e);
         }
-      } catch (TException e) {
-        logger.warn("Cannot inform {} its removal", node, e);
+      } else {
+        logger.error("exile node fail for node: {} as empty client", node);
       }
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
@@ -1865,10 +1885,10 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       try {
         client.exile(removeNodeLog.serialize());
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
+        client.close();
         logger.warn("Cannot inform {} its removal", node, e);
       } finally {
-        ClientUtils.putBackSyncClient(client);
+        client.returnSelf();
       }
     }
   }

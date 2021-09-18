@@ -243,12 +243,12 @@ public class ClusterAggregator {
               results);
           return results;
         }
-      } catch (TException | IOException e) {
-        logger.error(
-            "{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("{}: query {} interrupted from {}", metaGroupMember.getName(), path, node, e);
+      } catch (Exception e) {
+        logger.error(
+            "{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node, e);
       }
     }
     throw new StorageEngineException(
@@ -256,8 +256,8 @@ public class ClusterAggregator {
   }
 
   private List<ByteBuffer> getRemoteAggregateResult(Node node, GetAggrResultRequest request)
-      throws IOException, TException, InterruptedException {
-    List<ByteBuffer> resultBuffers;
+      throws Exception {
+    List<ByteBuffer> resultBuffers = null;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
@@ -270,17 +270,12 @@ public class ClusterAggregator {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        try {
-          resultBuffers = syncDataClient.getAggrResult(request);
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
-        }
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
       } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
     }
     return resultBuffers;

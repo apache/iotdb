@@ -48,7 +48,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -187,7 +186,8 @@ public class MetaPuller {
     List<IMeasurementSchema> schemas = null;
     try {
       schemas = pullMeasurementSchemas(node, request);
-    } catch (IOException | TException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error(
           "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
           metaGroupMember.getName(),
@@ -195,8 +195,7 @@ public class MetaPuller {
           request.getPrefixPaths().size() - 1,
           node,
           e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } catch (Exception e) {
       logger.error(
           "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
           metaGroupMember.getName(),
@@ -224,7 +223,7 @@ public class MetaPuller {
   }
 
   private List<IMeasurementSchema> pullMeasurementSchemas(Node node, PullSchemaRequest request)
-      throws TException, InterruptedException, IOException {
+      throws Exception {
     List<IMeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -237,27 +236,23 @@ public class MetaPuller {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        try {
-          // only need measurement name
-          PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
-          ByteBuffer buffer = pullSchemaResp.schemaBytes;
-          int size = buffer.getInt();
-          schemas = new ArrayList<>(size);
-          for (int i = 0; i < size; i++) {
-            schemas.add(
-                buffer.get() == 0
-                    ? MeasurementSchema.partialDeserializeFrom(buffer)
-                    : VectorMeasurementSchema.partialDeserializeFrom(buffer));
-          }
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
+        // only need measurement name
+        PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
+        ByteBuffer buffer = pullSchemaResp.schemaBytes;
+        int size = buffer.getInt();
+        schemas = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+          schemas.add(
+              buffer.get() == 0
+                  ? MeasurementSchema.partialDeserializeFrom(buffer)
+                  : VectorMeasurementSchema.partialDeserializeFrom(buffer));
         }
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
       } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
     }
 
@@ -368,7 +363,8 @@ public class MetaPuller {
     List<TimeseriesSchema> schemas = null;
     try {
       schemas = pullTimeSeriesSchemas(node, request);
-    } catch (IOException | TException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error(
           "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
           metaGroupMember.getName(),
@@ -376,8 +372,7 @@ public class MetaPuller {
           request.getPrefixPaths().size() - 1,
           node,
           e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } catch (Exception e) {
       logger.error(
           "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
           metaGroupMember.getName(),
@@ -415,7 +410,7 @@ public class MetaPuller {
    * null if there was a timeout.
    */
   private List<TimeseriesSchema> pullTimeSeriesSchemas(Node node, PullSchemaRequest request)
-      throws TException, InterruptedException, IOException {
+      throws Exception {
     List<TimeseriesSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -435,10 +430,11 @@ public class MetaPuller {
         for (int i = 0; i < size; i++) {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
         }
+      } catch (TException e) {
+        syncDataClient.close();
+        throw e;
       } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
     }
 

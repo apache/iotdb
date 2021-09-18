@@ -155,20 +155,18 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
                     ClusterIoTDB.getInstance()
                         .getSyncDataClient(
                             queriedNode, ClusterConstant.getReadOperationTimeoutMS());
-                try {
-                  syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
-                } catch (TException e) {
-                  // the connection may be broken, close it to avoid it being reused
-                  syncDataClient.getInputProtocol().getTransport().close();
-                  throw e;
-                }
+                syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
+              } catch (TException e) {
+                // the connection may be broken, close it to avoid it being reused
+                syncDataClient.close();
+                throw e;
               } finally {
                 if (syncDataClient != null) {
                   syncDataClient.returnSelf();
                 }
               }
             }
-          } catch (TException e) {
+          } catch (Exception e) {
             logger.error("Cannot end query {} in {}", queryId, queriedNode);
           }
         }

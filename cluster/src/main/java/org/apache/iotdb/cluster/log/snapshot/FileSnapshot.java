@@ -33,7 +33,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -332,10 +331,13 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
             client.removeHardLink(
                 resource.getTsFile().getAbsolutePath(), new GenericHandler<>(sourceNode, null));
           } catch (TException e) {
+            client.close();
             logger.error(
                 "Cannot remove hardlink {} from {}",
                 resource.getTsFile().getAbsolutePath(),
                 sourceNode);
+          } finally {
+            if (client != null) client.returnSelf();
           }
         }
       } else {
@@ -350,13 +352,13 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         try {
           client.removeHardLink(resource.getTsFile().getAbsolutePath());
         } catch (TException te) {
-          client.getInputProtocol().getTransport().close();
+          client.close();
           logger.error(
               "Cannot remove hardlink {} from {}",
               resource.getTsFile().getAbsolutePath(),
               sourceNode);
         } finally {
-          ClientUtils.putBackSyncClient(client);
+          if (client != null) client.returnSelf();
         }
       }
     }
@@ -530,12 +532,19 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         if (client == null) {
           throw new IOException("No available client for " + node.toString());
         }
-        ByteBuffer buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
+        ByteBuffer buffer;
+        try {
+          buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
+        } catch (TException e) {
+          client.close();
+          throw e;
+        }
         int len = writeBuffer(buffer, dest);
         if (len == 0) {
           break;
         }
         offset += len;
+        client.returnSelf();
       }
       dest.flush();
     }
@@ -576,9 +585,9 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           offset += len;
         }
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
+        client.close();
       } finally {
-        ClientUtils.putBackSyncClient(client);
+        client.returnSelf();
       }
       dest.flush();
     }

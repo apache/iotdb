@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
@@ -91,6 +90,8 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
         Thread.currentThread().interrupt();
         logger.warn("Query {} interrupted", sourceInfo);
         return null;
+      } catch (Exception e) {
+        throw new IOException(e);
       }
     }
     return fetchResult.get();
@@ -116,10 +117,10 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
         return null;
       }
       return fetchResultSync(timestamps, length);
+    } catch (Exception e) {
+      throw new IOException(e);
     } finally {
-      if (curSyncClient != null) {
-        ClientUtils.putBackSyncClient(curSyncClient);
-      }
+      if (curSyncClient != null) curSyncClient.returnSelf();
     }
   }
 }

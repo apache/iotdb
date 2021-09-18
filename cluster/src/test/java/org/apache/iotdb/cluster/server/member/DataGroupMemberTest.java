@@ -205,11 +205,6 @@ public class DataGroupMemberTest extends BaseMember {
           }
 
           @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            return getAsyncClient(node);
-          }
-
-          @Override
           public AsyncClient getAsyncClient(Node node) {
             try {
               return new TestAsyncDataClient(node, dataGroupMemberMap) {

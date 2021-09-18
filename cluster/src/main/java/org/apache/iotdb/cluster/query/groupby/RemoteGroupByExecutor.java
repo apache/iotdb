@@ -90,22 +90,20 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
           syncDataClient =
               ClusterIoTDB.getInstance()
                   .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
-          try {
-            aggrBuffers =
-                syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.getInputProtocol().getTransport().close();
-            throw e;
-          }
+          aggrBuffers =
+              syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.close();
+          throw e;
         } finally {
           if (syncDataClient != null) syncDataClient.returnSelf();
         }
       }
-    } catch (TException e) {
-      throw new IOException(e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      throw new IOException(e);
+    } catch (Exception e) {
       throw new IOException(e);
     }
     resetAggregateResults();
@@ -142,22 +140,20 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
           syncDataClient =
               ClusterIoTDB.getInstance()
                   .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
-          try {
-            aggrBuffer =
-                syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.getInputProtocol().getTransport().close();
-            throw e;
-          }
+          aggrBuffer =
+              syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.close();
+          throw e;
         } finally {
           if (syncDataClient != null) syncDataClient.returnSelf();
         }
       }
-    } catch (TException e) {
-      throw new IOException(e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      throw new IOException(e);
+    } catch (Exception e) {
       throw new IOException(e);
     }
 

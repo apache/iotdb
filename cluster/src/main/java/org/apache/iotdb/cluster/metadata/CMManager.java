@@ -901,8 +901,8 @@ public class CMManager extends MManager {
   private List<String> getUnregisteredSeriesListRemotely(
       List<String> seriesList, PartitionGroup partitionGroup) {
     for (Node node : partitionGroup) {
+      List<String> result = null;
       try {
-        List<String> result;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client =
               ClusterIoTDB.getInstance()
@@ -916,31 +916,16 @@ public class CMManager extends MManager {
             syncDataClient =
                 ClusterIoTDB.getInstance()
                     .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-            try {
-              result =
-                  syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
-            } catch (TException e) {
-              // the connection may be broken, close it to avoid it being reused
-              syncDataClient.getInputProtocol().getTransport().close();
-              throw e;
-            }
+            result =
+                syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
+          } catch (TException e) {
+            // the connection may be broken, close it to avoid it being reused
+            syncDataClient.close();
+            throw e;
           } finally {
-            if (syncDataClient != null) {
-              syncDataClient.returnSelf();
-            }
+            if (syncDataClient != null) syncDataClient.returnSelf();
           }
         }
-        if (result != null) {
-          return result;
-        }
-      } catch (TException e) {
-        logger.error(
-            "{}: cannot getting unregistered {} and other {} paths from {}",
-            metaGroupMember.getName(),
-            seriesList.get(0),
-            seriesList.get(seriesList.size() - 1),
-            node,
-            e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error(
@@ -950,6 +935,17 @@ public class CMManager extends MManager {
             seriesList.get(seriesList.size() - 1),
             node,
             e);
+      } catch (Exception e) {
+        logger.error(
+            "{}: cannot getting unregistered {} and other {} paths from {}",
+            metaGroupMember.getName(),
+            seriesList.get(0),
+            seriesList.get(seriesList.size() - 1),
+            node,
+            e);
+      }
+      if (result != null) {
+        return result;
       }
     }
     return Collections.emptyList();
@@ -1058,10 +1054,10 @@ public class CMManager extends MManager {
           // a non-null result contains correct result even if it is empty, so query next group
           return paths;
         }
-      } catch (IOException | TException e) {
-        throw new MetadataException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        throw new MetadataException(e);
+      } catch (Exception e) {
         throw new MetadataException(e);
       }
     }
@@ -1071,8 +1067,7 @@ public class CMManager extends MManager {
 
   @SuppressWarnings("java:S1168") // null and empty list are different
   private List<PartialPath> getMatchedPaths(
-      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
-      throws IOException, TException, InterruptedException {
+      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias) throws Exception {
     GetAllPathsResult result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -1085,17 +1080,13 @@ public class CMManager extends MManager {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        try {
-          result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
-        }
+        result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
       } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
     }
 
@@ -1197,10 +1188,10 @@ public class CMManager extends MManager {
           }
           return partialPaths;
         }
-      } catch (IOException | TException e) {
-        throw new MetadataException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        throw new MetadataException(e);
+      } catch (Exception e) {
         throw new MetadataException(e);
       }
     }
@@ -1209,7 +1200,7 @@ public class CMManager extends MManager {
   }
 
   private Set<String> getMatchedDevices(Node node, RaftNode header, List<String> pathsToQuery)
-      throws IOException, TException, InterruptedException {
+      throws Exception {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -1226,13 +1217,11 @@ public class CMManager extends MManager {
           paths = syncDataClient.getAllDevices(header, pathsToQuery);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
+          syncDataClient.close();
           throw e;
         }
       } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
     }
     return paths;
@@ -1633,6 +1622,8 @@ public class CMManager extends MManager {
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
+      } catch (Exception e) {
+        logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
       }
     }
 
@@ -1664,6 +1655,8 @@ public class CMManager extends MManager {
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting devices schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
+      } catch (Exception e) {
+        logger.error("Error occurs when getting devices schemas in node {}.", node, e);
       }
     }
 
@@ -1679,7 +1672,7 @@ public class CMManager extends MManager {
   }
 
   private ByteBuffer showRemoteTimeseries(Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
-      throws IOException, TException, InterruptedException {
+      throws Exception {
     ByteBuffer resultBinary;
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1705,16 +1698,14 @@ public class CMManager extends MManager {
           throw e;
         }
       } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
     }
     return resultBinary;
   }
 
   private ByteBuffer getRemoteDevices(Node node, PartitionGroup group, ShowDevicesPlan plan)
-      throws IOException, TException, InterruptedException {
+      throws Exception {
     ByteBuffer resultBinary;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -1728,20 +1719,16 @@ public class CMManager extends MManager {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        try {
-          plan.serialize(dataOutputStream);
-          resultBinary =
-              syncDataClient.getDevices(
-                  group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
-        }
+        plan.serialize(dataOutputStream);
+        resultBinary =
+            syncDataClient.getDevices(
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
       } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
     }
     return resultBinary;

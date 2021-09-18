@@ -126,9 +126,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread;
 
-  // currently, dataClientProvider is only used for those instances who do not belong to any
+  // currently, clientManager is only used for those instances who do not belong to any
   // DataGroup..
-  // TODO: however, why not let all dataGroupMembers getting clients from dataClientProvider
   private IClientManager clientManager;
 
   private ClusterIoTDB() {
@@ -631,7 +630,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     printClientConnectionErrorStack = false;
   }
 
-  public SyncDataClient getSyncDataClient(Node node, int readOperationTimeoutMS) {
+  public SyncDataClient getSyncDataClient(Node node, int readOperationTimeoutMS) throws Exception {
     SyncDataClient dataClient =
         (SyncDataClient) clientManager.borrowSyncClient(node, ClientCategory.DATA);
     if (dataClient != null) {
@@ -640,18 +639,14 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     return dataClient;
   }
 
-  public AsyncDataClient getAsyncDataClient(Node node, int readOperationTimeoutMS) {
-    try {
-      AsyncDataClient dataClient =
-          (AsyncDataClient) clientManager.borrowAsyncClient(node, ClientCategory.DATA);
-      if (dataClient != null) {
-        dataClient.setTimeout(readOperationTimeoutMS);
-      }
-      return dataClient;
-    } catch (IOException e) {
-      logger.warn("error when get async client", e);
+  public AsyncDataClient getAsyncDataClient(Node node, int readOperationTimeoutMS)
+      throws Exception {
+    AsyncDataClient dataClient =
+        (AsyncDataClient) clientManager.borrowAsyncClient(node, ClientCategory.DATA);
+    if (dataClient != null) {
+      dataClient.setTimeout(readOperationTimeoutMS);
     }
-    return null;
+    return dataClient;
   }
 
   private static class ClusterIoTDBHolder {

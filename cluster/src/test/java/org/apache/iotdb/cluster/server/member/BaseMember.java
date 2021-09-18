@@ -226,15 +226,6 @@ public class BaseMember {
           }
 
           @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            try {
-              return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException e) {
-              return null;
-            }
-          }
-
-          @Override
           public AsyncClient getSendLogAsyncClient(Node node) {
             return getAsyncClient(node);
           }

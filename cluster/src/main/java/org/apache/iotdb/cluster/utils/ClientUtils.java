@@ -68,6 +68,16 @@ public class ClientUtils {
     }
   }
 
+  public static void closeAsyncClient(RaftService.AsyncClient client) {
+    if (client instanceof AsyncMetaClient) {
+      ((AsyncMetaClient) client).close();
+    } else if (client instanceof AsyncDataClient) {
+      ((AsyncDataClient) client).close();
+    } else {
+      throw new UnsupportedOperationException("the client type is not supported: " + client);
+    }
+  }
+
   public static void putBackAsyncClient(RaftService.AsyncClient client) {
     if (client instanceof AsyncMetaClient) {
       ((AsyncMetaClient) client).returnSelf();

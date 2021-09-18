@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.coordinator;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -33,7 +34,6 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -63,10 +63,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -740,7 +740,7 @@ public class Coordinator {
         } else {
           status = forwardDataPlanSync(plan, node, group.getHeader());
         }
-      } catch (IOException e) {
+      } catch (Exception e) {
         status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
@@ -764,15 +764,15 @@ public class Coordinator {
    * @return a TSStatus indicating if the forwarding is successful.
    */
   private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
-      throws IOException {
-    RaftService.AsyncClient client =
+      throws Exception {
+    AsyncDataClient client =
         ClusterIoTDB.getInstance()
             .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
     return this.metaGroupMember.forwardPlanAsync(plan, receiver, header, client);
   }
 
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
-      throws IOException {
+      throws Exception {
     SyncDataClient client = null;
     try {
       client =
@@ -780,10 +780,11 @@ public class Coordinator {
               .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
 
       return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
+    } catch (TException e) {
+      client.close();
+      throw e;
     } finally {
-      if (client != null) {
-        client.returnSelf();
-      }
+      if (client != null) client.returnSelf();
     }
   }
 

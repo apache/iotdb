@@ -67,11 +67,6 @@ public class SnapshotCatchUpTaskTest {
       new TestMetaGroupMember() {
 
         @Override
-        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-          return getAsyncClient(node);
-        }
-
-        @Override
         public AsyncClient getAsyncClient(Node node) {
           if (noConnection) {
             return null;

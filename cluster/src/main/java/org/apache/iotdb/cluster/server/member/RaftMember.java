@@ -1378,6 +1378,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (TException e) {
+      client.getInputProtocol().getTransport().close();
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;
@@ -1401,23 +1402,21 @@ public abstract class RaftMember implements RaftMemberMBean {
    *     the node cannot be reached.
    */
   public AsyncClient getAsyncClient(Node node) {
-    return clientManager.borrowAsyncClient(node, getClientCategory());
-  }
-
-  public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-    if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
+    try {
+      return clientManager.borrowAsyncClient(node, getClientCategory());
+    } catch (Exception e) {
+      logger.error("borrow async client fail", e);
       return null;
     }
-
-    if (activatedOnly && !NodeStatusManager.getINSTANCE().isActivated(node)) {
-      return null;
-    }
-
-    return getAsyncClient(node);
   }
 
   public AsyncClient getSendLogAsyncClient(Node node) {
-    return clientManager.borrowAsyncClient(node, ClientCategory.SINGLE_MASTER);
+    try {
+      return clientManager.borrowAsyncClient(node, ClientCategory.SINGLE_MASTER);
+    } catch (Exception e) {
+      logger.error("borrow send log async client fail", e);
+      return null;
+    }
   }
 
   /**
@@ -1428,7 +1427,12 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return the client if node is available, otherwise null
    */
   public Client getSyncClient(Node node) {
-    return clientManager.borrowSyncClient(node, getClientCategory());
+    try {
+      return clientManager.borrowSyncClient(node, getClientCategory());
+    } catch (Exception e) {
+      logger.error("borrow sync client fail", e);
+      return null;
+    }
   }
 
   public Client getSyncClient(Node node, boolean activatedOnly) {
@@ -1453,7 +1457,13 @@ public abstract class RaftMember implements RaftMemberMBean {
         ClientCategory.META == getClientCategory()
             ? ClientCategory.META_HEARTBEAT
             : ClientCategory.DATA_HEARTBEAT;
-    return clientManager.borrowAsyncClient(node, category);
+
+    try {
+      return clientManager.borrowAsyncClient(node, category);
+    } catch (Exception e) {
+      logger.error("borrow async heartbeat client fail", e);
+      return null;
+    }
   }
 
   /**
@@ -1466,7 +1476,12 @@ public abstract class RaftMember implements RaftMemberMBean {
         ClientCategory.META == getClientCategory()
             ? ClientCategory.META_HEARTBEAT
             : ClientCategory.DATA_HEARTBEAT;
-    return clientManager.borrowSyncClient(node, category);
+    try {
+      return clientManager.borrowSyncClient(node, category);
+    } catch (Exception e) {
+      logger.error("borrow sync heartbeat client fail", e);
+      return null;
+    }
   }
 
   public void returnSyncClient(Client client) {

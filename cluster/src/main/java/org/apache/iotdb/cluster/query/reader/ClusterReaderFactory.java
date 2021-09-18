@@ -928,10 +928,10 @@ public class ClusterReaderFactory {
           logger.debug("{}: no data for {} from {}", metaGroupMember.getName(), path, node);
           return new EmptyReader();
         }
-      } catch (TException | IOException e) {
-        logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
+      } catch (Exception e) {
         logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
       }
     }
@@ -939,8 +939,7 @@ public class ClusterReaderFactory {
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
-  private Long getRemoteGroupByExecutorId(Node node, GroupByRequest request)
-      throws IOException, TException, InterruptedException {
+  private Long getRemoteGroupByExecutorId(Node node, GroupByRequest request) throws Exception {
     Long executorId;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -953,17 +952,13 @@ public class ClusterReaderFactory {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        try {
-          executorId = syncDataClient.getGroupByExecutor(request);
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
-        }
+        executorId = syncDataClient.getGroupByExecutor(request);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
       } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
     }
     return executorId;

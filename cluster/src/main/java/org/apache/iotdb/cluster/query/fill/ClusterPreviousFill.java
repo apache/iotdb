@@ -219,14 +219,10 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteAsyncPreviousFill(
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    AsyncDataClient asyncDataClient =
-        ClusterIoTDB.getInstance()
-            .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-    if (asyncDataClient == null) {
-      return null;
-    }
-
     try {
+      AsyncDataClient asyncDataClient =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
     } catch (Exception e) {
       logger.error(
@@ -247,13 +243,17 @@ public class ClusterPreviousFill extends PreviousFill {
       syncDataClient =
           ClusterIoTDB.getInstance()
               .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      try {
-        byteBuffer = syncDataClient.previousFill(request);
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        syncDataClient.getInputProtocol().getTransport().close();
-        throw e;
-      }
+      byteBuffer = syncDataClient.previousFill(request);
+
+    } catch (TException e) {
+      // the connection may be broken, close it to avoid it being reused
+      syncDataClient.close();
+      logger.error(
+          "{}: Cannot perform previous fill of {} to {}",
+          metaGroupMember.getName(),
+          arguments.getPath(),
+          node,
+          e);
     } catch (Exception e) {
       logger.error(
           "{}: Cannot perform previous fill of {} to {}",
@@ -262,9 +262,7 @@ public class ClusterPreviousFill extends PreviousFill {
           node,
           e);
     } finally {
-      if (syncDataClient != null) {
-        syncDataClient.returnSelf();
-      }
+      if (syncDataClient != null) syncDataClient.returnSelf();
     }
     return byteBuffer;
   }

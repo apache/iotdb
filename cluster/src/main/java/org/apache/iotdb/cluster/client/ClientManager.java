@@ -26,7 +26,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import com.google.common.collect.Maps;
 import com.sun.istack.Nullable;
 import org.apache.commons.pool2.KeyedObjectPool;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,18 +136,9 @@ public class ClientManager implements IClientManager {
    * @return RaftService.AsyncClient
    */
   @Override
-  @Nullable
-  public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category) {
-    try {
-      return asyncClientPoolMap.get(category).borrowObject(node);
-    } catch (NullPointerException e) {
-      logger.error("No AsyncClient pool found for {}", category, e);
-    } catch (TException e) {
-      logger.error("AsyncClient transport error for {}", category, e);
-    } catch (Exception e) {
-      logger.error("AsyncClient error for {}", category, e);
-    }
-    return null;
+  public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+      throws Exception {
+    return asyncClientPoolMap.get(category).borrowObject(node);
   }
 
   /**
@@ -160,18 +150,8 @@ public class ClientManager implements IClientManager {
    * @return RaftService.Client
    */
   @Override
-  @Nullable
-  public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
-    try {
-      return syncClientPoolMap.get(category).borrowObject(node);
-    } catch (NullPointerException e) {
-      logger.error("No SyncClient pool found for {}", category, e);
-    } catch (TException e) {
-      logger.error("SyncClient transport error for {}", category, e);
-    } catch (Exception e) {
-      logger.error("SyncClient error for {}", category, e);
-    }
-    return null;
+  public RaftService.Client borrowSyncClient(Node node, ClientCategory category) throws Exception {
+    return syncClientPoolMap.get(category).borrowObject(node);
   }
 
   @Override
