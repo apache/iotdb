@@ -2924,23 +2924,23 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Move tsfile to the target directory if it exists.
+   * Unload tsfile and move it to the target directory if it exists.
    *
-   * <p>Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
+   * <p>Firstly, unload the TsFileResource from sequenceFileList/unSequenceFileList.
    *
    * <p>Secondly, move the tsfile and .resource file to the target directory.
    *
-   * @param fileToBeMoved tsfile to be moved
-   * @return whether the file to be moved exists. @UsedBy load external tsfile module.
+   * @param fileToBeUnloaded tsfile to be unloaded
+   * @return whether the file to be unloaded exists. @UsedBy load external tsfile module.
    */
-  public boolean moveTsfile(File fileToBeMoved, File targetDir) {
-    writeLock("moveTsfile");
+  public boolean unloadTsfile(File fileToBeUnloaded, File targetDir) {
+    writeLock("unloadTsfile");
     TsFileResource tsFileResourceToBeMoved = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
-        if (sequenceResource.getTsFile().getName().equals(fileToBeMoved.getName())) {
+        if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
           tsFileResourceToBeMoved = sequenceResource;
           tsFileManagement.remove(tsFileResourceToBeMoved, true);
           break;
@@ -2950,7 +2950,7 @@ public class StorageGroupProcessor {
         Iterator<TsFileResource> unsequenceIterator = tsFileManagement.getIterator(false);
         while (unsequenceIterator.hasNext()) {
           TsFileResource unsequenceResource = unsequenceIterator.next();
-          if (unsequenceResource.getTsFile().getName().equals(fileToBeMoved.getName())) {
+          if (unsequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
             tsFileResourceToBeMoved = unsequenceResource;
             tsFileManagement.remove(tsFileResourceToBeMoved, false);
             break;
