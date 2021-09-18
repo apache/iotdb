@@ -331,13 +331,10 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
             client.removeHardLink(
                 resource.getTsFile().getAbsolutePath(), new GenericHandler<>(sourceNode, null));
           } catch (TException e) {
-            client.close();
             logger.error(
                 "Cannot remove hardlink {} from {}",
                 resource.getTsFile().getAbsolutePath(),
                 sourceNode);
-          } finally {
-            if (client != null) client.returnSelf();
           }
         }
       } else {
@@ -533,18 +530,12 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           throw new IOException("No available client for " + node.toString());
         }
         ByteBuffer buffer;
-        try {
-          buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
-        } catch (TException e) {
-          client.close();
-          throw e;
-        }
+        buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
         int len = writeBuffer(buffer, dest);
         if (len == 0) {
           break;
         }
         offset += len;
-        client.returnSelf();
       }
       dest.flush();
     }

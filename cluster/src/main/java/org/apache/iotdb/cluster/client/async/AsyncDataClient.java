@@ -98,8 +98,12 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
     return ___transport != null;
   }
 
-  /** return self if clientPool is not null */
-  public void returnSelf() {
+  /**
+   * return self if clientPool is not null, the method doesn't need to call by user, it will trigger
+   * once client transport complete
+   */
+  private void returnSelf() {
+    logger.debug("return client: ", toString());
     if (clientManager != null) clientManager.returnAsyncClient(this, node, category);
   }
 

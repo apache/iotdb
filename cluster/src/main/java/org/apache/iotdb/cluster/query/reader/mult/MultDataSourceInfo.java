@@ -148,35 +148,27 @@ public class MultDataSourceInfo {
   }
 
   private Long applyForReaderIdAsync(Node node, long timestamp) throws Exception {
-    AsyncDataClient client = null;
-    try {
-      client =
-          ClusterIoTDB.getInstance()
-              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      AtomicReference<Long> result = new AtomicReference<>();
-      GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
-      Filter newFilter;
-      // add timestamp to as a timeFilter to skip the data which has been read
-      if (request.isSetTimeFilterBytes()) {
-        Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
-        newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
-      } else {
-        newFilter = TimeFilter.gt(timestamp);
-      }
-      request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
-      client.queryMultSeries(request, handler);
-      synchronized (result) {
-        if (result.get() == null && handler.getException() == null) {
-          result.wait(ClusterConstant.getReadOperationTimeoutMS());
-        }
-      }
-      return result.get();
-    } catch (TException e) {
-      client.close();
-      throw e;
-    } finally {
-      if (client != null) client.returnSelf();
+    AsyncDataClient client =
+        ClusterIoTDB.getInstance()
+            .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+    AtomicReference<Long> result = new AtomicReference<>();
+    GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
+    Filter newFilter;
+    // add timestamp to as a timeFilter to skip the data which has been read
+    if (request.isSetTimeFilterBytes()) {
+      Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
+      newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
+    } else {
+      newFilter = TimeFilter.gt(timestamp);
     }
+    request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
+    client.queryMultSeries(request, handler);
+    synchronized (result) {
+      if (result.get() == null && handler.getException() == null) {
+        result.wait(ClusterConstant.getReadOperationTimeoutMS());
+      }
+    }
+    return result.get();
   }
 
   private Long applyForReaderIdSync(Node node, long timestamp) throws Exception {
@@ -203,9 +195,7 @@ public class MultDataSourceInfo {
       client.close();
       throw e;
     } finally {
-      if (client != null) {
-        client.returnSelf();
-      }
+      if (client != null) client.returnSelf();
     }
   }
 

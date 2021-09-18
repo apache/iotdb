@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.cluster.client;
 
-import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
 import com.google.common.collect.Maps;
-import com.sun.istack.Nullable;
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +47,7 @@ import java.util.Map;
  */
 public class ClientManager implements IClientManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(ClusterIoTDB.class);
+  private static final Logger logger = LoggerFactory.getLogger(ClientManager.class);
 
   private Map<ClientCategory, KeyedObjectPool<Node, RaftService.AsyncClient>> asyncClientPoolMap;
   private Map<ClientCategory, KeyedObjectPool<Node, RaftService.Client>> syncClientPoolMap;

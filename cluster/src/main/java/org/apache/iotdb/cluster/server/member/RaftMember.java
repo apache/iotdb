@@ -22,8 +22,6 @@ package org.apache.iotdb.cluster.server.member;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
@@ -1489,14 +1487,6 @@ public abstract class RaftMember implements RaftMemberMBean {
       ((SyncMetaClient) client).returnSelf();
     } else {
       ((SyncDataClient) client).returnSelf();
-    }
-  }
-
-  public void returnAsyncClient(AsyncClient client) {
-    if (ClientCategory.META == getClientCategory()) {
-      ((AsyncMetaClient) client).returnSelf();
-    } else {
-      ((AsyncDataClient) client).returnSelf();
     }
   }
 

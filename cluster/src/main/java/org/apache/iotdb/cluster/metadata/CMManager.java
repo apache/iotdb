@@ -1694,7 +1694,7 @@ public class CMManager extends MManager {
                   group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
+          syncDataClient.close();
           throw e;
         }
       } finally {

@@ -200,10 +200,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     try {
       leaderClient.pullMeasurementSchema(request, resultHandler);
     } catch (TException e1) {
-      leaderClient.close();
       resultHandler.onError(e1);
-    } finally {
-      leaderClient.returnSelf();
     }
   }
 

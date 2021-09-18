@@ -135,17 +135,13 @@ public class ClientPoolFactoryTest {
     Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
 
     RaftService.AsyncClient asyncClient = null;
-    try {
-      Node node = constructDefaultNode();
 
-      asyncClient = pool.borrowObject(node);
-      mockClientManager.setAsyncClient(asyncClient);
-      Assert.assertNotNull(asyncClient);
-      Assert.assertTrue(asyncClient instanceof AsyncDataClient);
+    Node node = constructDefaultNode();
 
-    } finally {
-      ((AsyncDataClient) asyncClient).returnSelf();
-    }
+    asyncClient = pool.borrowObject(node);
+    mockClientManager.setAsyncClient(asyncClient);
+    Assert.assertNotNull(asyncClient);
+    Assert.assertTrue(asyncClient instanceof AsyncDataClient);
   }
 
   @Test
@@ -159,15 +155,10 @@ public class ClientPoolFactoryTest {
     Node node = constructDefaultNode();
 
     RaftService.AsyncClient asyncClient = null;
-    try {
-      asyncClient = pool.borrowObject(node);
-      mockClientManager.setAsyncClient(asyncClient);
-      Assert.assertNotNull(asyncClient);
-      Assert.assertTrue(asyncClient instanceof AsyncMetaClient);
-
-    } finally {
-      ((AsyncMetaClient) asyncClient).returnSelf();
-    }
+    asyncClient = pool.borrowObject(node);
+    mockClientManager.setAsyncClient(asyncClient);
+    Assert.assertNotNull(asyncClient);
+    Assert.assertTrue(asyncClient instanceof AsyncMetaClient);
   }
 
   @Test

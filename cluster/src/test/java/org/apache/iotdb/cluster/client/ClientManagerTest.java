@@ -139,7 +139,6 @@ public class ClientManagerTest extends BaseClientTest {
     Assert.assertEquals(((AsyncDataClient) clusterClient).getNode(), defaultNode);
     Assert.assertTrue(((AsyncDataClient) clusterClient).isValid());
     Assert.assertTrue(((AsyncDataClient) clusterClient).isReady());
-    ((AsyncDataClient) clusterClient).returnSelf();
 
     // cluster test
     Assert.assertNull(clusterManager.borrowAsyncClient(defaultNode, ClientCategory.DATA_HEARTBEAT));
@@ -160,8 +159,6 @@ public class ClientManagerTest extends BaseClientTest {
     Assert.assertEquals(((AsyncMetaClient) metaClient).getNode(), defaultNode);
     Assert.assertTrue(((AsyncMetaClient) metaClient).isValid());
     Assert.assertTrue(((AsyncMetaClient) metaClient).isReady());
-    ((AsyncMetaClient) metaClient).returnSelf();
-    metaClient = null;
 
     RaftService.AsyncClient metaHeartClient =
         metaManager.borrowAsyncClient(defaultNode, ClientCategory.META_HEARTBEAT);
@@ -170,8 +167,6 @@ public class ClientManagerTest extends BaseClientTest {
     Assert.assertEquals(((AsyncMetaClient) metaHeartClient).getNode(), defaultNode);
     Assert.assertTrue(((AsyncMetaClient) metaHeartClient).isValid());
     Assert.assertTrue(((AsyncMetaClient) metaHeartClient).isReady());
-    ((AsyncMetaClient) metaHeartClient).returnSelf();
-    metaHeartClient = null;
 
     // cluster test
     Assert.assertNull(metaManager.borrowAsyncClient(defaultNode, ClientCategory.DATA));
@@ -192,8 +187,6 @@ public class ClientManagerTest extends BaseClientTest {
     Assert.assertEquals(((AsyncDataClient) dataClient).getNode(), defaultNode);
     Assert.assertTrue(((AsyncDataClient) dataClient).isValid());
     Assert.assertTrue(((AsyncDataClient) dataClient).isReady());
-    ((AsyncDataClient) dataClient).returnSelf();
-    dataClient = null;
 
     RaftService.AsyncClient dataHeartClient =
         dataManager.borrowAsyncClient(defaultNode, ClientCategory.DATA_HEARTBEAT);
@@ -202,8 +195,6 @@ public class ClientManagerTest extends BaseClientTest {
     Assert.assertEquals(((AsyncDataClient) dataHeartClient).getNode(), defaultNode);
     Assert.assertTrue(((AsyncDataClient) dataHeartClient).isValid());
     Assert.assertTrue(((AsyncDataClient) dataHeartClient).isReady());
-    ((AsyncDataClient) dataHeartClient).returnSelf();
-    dataHeartClient = null;
 
     // cluster test
     Assert.assertNull(dataManager.borrowAsyncClient(defaultNode, ClientCategory.META));
