@@ -157,7 +157,7 @@ public class IoTDBLoadExternalTsfileIT {
   }
 
   @Test
-  public void moveTsfileTest() throws SQLException {
+  public void unloadTsfileTest() throws SQLException {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -177,7 +177,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
       assertEquals(
           0,
@@ -203,7 +203,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
       assertEquals(
           0,
