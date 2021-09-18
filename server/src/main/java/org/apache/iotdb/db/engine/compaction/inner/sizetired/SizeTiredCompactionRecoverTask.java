@@ -86,7 +86,13 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
           return;
         }
         File targetFile = new File(targetFileName);
+        File resourceFile = new File(targetFileName + ".resource");
         if (!targetFile.exists()) {
+          if (resourceFile.exists()) {
+            if (!resourceFile.delete()) {
+              LOGGER.warn("Fail to delete tsfile resource {}", resourceFile);
+            }
+          }
           return;
         }
 
@@ -96,6 +102,9 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
           writer.close();
           if (!targetFile.delete()) {
             LOGGER.warn("Fail to delete uncompleted file {}", targetFile);
+          }
+          if (!resourceFile.delete()) {
+            LOGGER.warn("Fail to delete tsfile resource {}", resourceFile);
           }
         } else {
           // the target tsfile is completed

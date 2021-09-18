@@ -103,6 +103,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   @Override
   protected void doCompaction() throws Exception {
+    long startTime = System.currentTimeMillis();
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName =
@@ -185,10 +186,13 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
         fullStorageGroupName);
     combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
+    long costTime = System.currentTimeMillis() - startTime;
     LOGGER.info(
-        "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}",
+        "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
+            + "time cost is {} s",
         fullStorageGroupName,
-        targetFileName);
+        targetFileName,
+        costTime / 1000);
     if (logFile.exists()) {
       logFile.delete();
     }
