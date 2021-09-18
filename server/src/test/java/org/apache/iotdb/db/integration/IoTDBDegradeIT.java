@@ -29,7 +29,7 @@ import java.util.List;
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.*;
 
-public class DegradeIT {
+public class IoTDBDegradeIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private double prevTimeIndexMemoryProportion;
