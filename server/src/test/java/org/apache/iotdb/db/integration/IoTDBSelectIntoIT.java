@@ -366,7 +366,7 @@ public class IoTDBSelectIntoIT {
       try (ResultSet resultSet = statement.executeQuery("select gbf_s1 from root.sg.d1")) {
         assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
 
-        for (int i = 1; i < 10; ++i) {
+        for (int i = 1; i < 5; ++i) {
           assertTrue(resultSet.next());
           for (int j = 0; j < 1 + 1; ++j) {
             assertEquals(String.valueOf(i), resultSet.getString(1));
