@@ -82,13 +82,13 @@ Examples:
 * `remove "root.vehicle/1575028885956-101-0.tsfile"` 
 * `remove "1575028885956-101-0.tsfile"`
 
-#### move a tsfile to a target directory
+#### unload a tsfile and move it to a target directory
 
-The command to move a tsfile to target directory is: `move "<path>" "<dir>"`.
+The command to unload a tsfile and move it to target directory is: `unload "<path>" "<dir>"`.
 
-This command moves a tsfile to a target directory by specifying tsfile path and the target directory(absolute path). The specific implementation is to remove the tsfile from the engine and move the tsfile file and its corresponding `.resource` file to the target directory.
+This command unload a tsfile and move it to a target directory by specifying tsfile path and the target directory(absolute path). The specific implementation is to remove the tsfile from the engine and move the tsfile file and its corresponding `.resource` file to the target directory.
 
 Examples:
 
-* `move "root.vehicle/1575029224130-101-0.tsfile" "/data/data/tmp"`
-* `move "1575029224130-101-0.tsfile" "/data/data/tmp"`
+* `unload "root.vehicle/1575029224130-101-0.tsfile" "/data/data/tmp"`
+* `unload "1575029224130-101-0.tsfile" "/data/data/tmp"`
