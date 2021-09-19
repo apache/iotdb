@@ -95,7 +95,7 @@ statement
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD stringLiteral loadFilesClause?#loadFiles
     | REMOVE stringLiteral #removeFile
-    | MOVE stringLiteral stringLiteral #moveFile
+    | UNLOAD stringLiteral stringLiteral #unloadFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | CREATE TEMPORARY? FUNCTION udfName=ID AS className=stringLiteral #createFunction
@@ -514,7 +514,7 @@ nodeName
     | INFO
     | VERSION
     | REMOVE
-    | MOVE
+    | UNLOAD
     | CHILD
     | PATHS
     | DEVICES
@@ -619,7 +619,7 @@ nodeNameWithoutStar
     | INFO
     | VERSION
     | REMOVE
-    | MOVE
+    | UNLOAD
     | CHILD
     | PATHS
     | DEVICES
@@ -1078,8 +1078,8 @@ VERSION
 REMOVE
     : R E M O V E
     ;
-MOVE
-    : M O V E
+UNLOAD
+    : U N L O A D
     ;
 
 CHILD

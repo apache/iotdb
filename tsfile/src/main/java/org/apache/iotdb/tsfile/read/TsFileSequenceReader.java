@@ -891,6 +891,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     tsFileInput.position(tsFileInput.position() + header.getCompressedSize());
   }
 
+  public ByteBuffer readCompressedPage(PageHeader header) throws IOException {
+    return readData(-1, header.getCompressedSize());
+  }
+
   public ByteBuffer readPage(PageHeader header, CompressionType type) throws IOException {
     ByteBuffer buffer = readData(-1, header.getCompressedSize());
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);

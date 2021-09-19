@@ -1079,15 +1079,15 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testMoveFile() throws QueryProcessException {
+  public void testUnloadFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String targetDir = "user" + File.separator + "backup";
-    String metadata = String.format("move \"%s\" \"%s\"", filePath, targetDir);
+    String metadata = String.format("unload \"%s\" \"%s\"", filePath, targetDir);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=MOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=UNLOAD_FILE}",
             filePath, targetDir),
         plan.toString());
   }

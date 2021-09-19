@@ -83,13 +83,13 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 * `remove "root.vehicle/1575028885956-101-0.tsfile"`
 * `remove "1575028885956-101-0.tsfile"`
 
-#### 移出 tsfile 文件至指定目录
+#### 卸载 tsfile 文件至指定目录
 
-移出 tsfile 文件的指令为：`move "<path>" "<dir>"`
+卸载 tsfile 文件的指令为：`unload "<path>" "<dir>"`
 
-该指令将指定路径的 tsfile 文件移动至目标文件夹（绝对路径）中，具体做法是在引擎中移出该 tsfile，并将该 tsfile 文件和其对应的`.resource`文件移动到目标文件夹下
+该指令将指定路径的 tsfile 文件卸载并移动至目标文件夹（绝对路径）中，具体做法是在引擎中卸载该 tsfile，并将该 tsfile 文件和其对应的`.resource`文件移动到目标文件夹下
 
 示例：
 
-* `move "root.vehicle/1575029224130-101-0.tsfile" "/data/data/tmp"`
-* `move "1575029224130-101-0.tsfile" "/data/data/tmp"`
+* `unload "root.vehicle/1575029224130-101-0.tsfile" "/data/data/tmp"`
+* `unload "1575029224130-101-0.tsfile" "/data/data/tmp"`

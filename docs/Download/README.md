@@ -29,29 +29,29 @@
 	    <th>release notes</th>  
 	</tr>
 	<tr>
-            <td rowspan="4">0.12.1</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-all-bin.zip">All-in-one</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="4"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-source-release.zip">Sources</a></td>
-            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-source-release.zip.asc">ASC</a></td>
-            <td rowspan="4"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.12.1/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="4">0.12.2</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.2/apache-iotdb-0.12.2-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="4"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.2/apache-iotdb-0.12.2-source-release.zip">Sources</a></td>
+            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-source-release.zip.asc">ASC</a></td>
+            <td rowspan="4"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.12.2/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-server-bin.zip">Server</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-server-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-server-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.2/apache-iotdb-0.12.2-server-bin.zip">Server</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-server-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-server-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-cluster-bin.zip">Cluster</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-cluster-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-cluster-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.2/apache-iotdb-0.12.2-cluster-bin.zip">Cluster</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-cluster-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-cluster-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-grafana-bin.zip">Grafana-connector</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-grafana-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-grafana-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.2/apache-iotdb-0.12.2-grafana-bin.zip">Grafana-connector</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-grafana-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.12.2-grafana-bin.zip.asc">ASC</a></td>
       </tr>
       <!-- 0.11.4 -->
 	  <tr>
@@ -89,7 +89,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
 
 - How to upgrade from v.11.x or v0.10.x to v0.12.x?
   * Upgrading from v0.11 or v0.10 to v0.12 is similar as v0.9 to v0.10. The upgrade tool will rewrite the data files automatically.
-  * Stop writing new data.
+  * **<font color=red>Stop writing new data.</font>**
   * Call `flush` command using sbin/start-cli.sh in original version to close all TsFiles.
   * We recommend to backup the data file (also the wal files and mlog.txt) before upgrading for rolling back.
   * Just download, unzip v0.12.x.zip, and modify conf/iotdb-engine.proeprties to let all the 
@@ -105,7 +105,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
 - How to upgrade from v.10.x to v0.11.x?
   * The data format (i.e., TsFile data) of v0.10.x and v0.11 are compatible, but the WAL file is 
   incompatible. So, you can follow the steps:
-  * Stop writing new data.
+  * **<font color=red>Stop writing new data.</font>**
   * Call `flush` command using `sbin/start-cli.sh` in v0.10.x to close all TsFiles.
   * We recommend to backup the the wal files and mlog.txt before upgrading for rolling back.
   * Just download, unzip v0.11.x.zip, and modify conf/iotdb-engine.proeprties to let all the 
@@ -116,9 +116,9 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
   * __NOTICE: V0.11 changes many settings in conf/iotdb-engine.properties, so do not use v0.10's 
     configuration file directly.__
 
-- How to upgrade from v.9.x to v0.10.x?
+- How to upgrade from v0.9.x to v0.10.x?
   * Upgrading from v0.9 to v0.10 is more complex than v0.8 to v0.9.
-  * Stop writing new data.
+  * **<font color=red>Stop writing new data.</font>**
   * Call `flush` command using sbin/start-client.sh in v0.9 to close all TsFiles.
   * We recommend to backup the data file (also the wal files and mlog.txt) before upgrading for rolling back.
   * Just download, unzip v0.10.x.zip, and modify conf/iotdb-engine.proeprties to let all the 
