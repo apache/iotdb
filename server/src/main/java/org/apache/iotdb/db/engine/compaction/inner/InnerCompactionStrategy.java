@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTiereddCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -31,71 +31,71 @@ import java.io.File;
 import java.util.List;
 
 public enum InnerCompactionStrategy {
-  SIZE_TIRED_COMPACTION;
+  SIZE_TIERED_COMPACTION;
 
   public AbstractInnerSpaceCompactionTask getCompactionTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroup,
-      long timePartition,
-      TsFileResourceManager tsFileResourceManager,
-      TsFileResourceList tsFileResourceList,
-      List<TsFileResource> selectedTsFileResourceList,
-      boolean sequence) {
+          String logicalStorageGroupName,
+          String virtualStorageGroup,
+          long timePartition,
+          TsFileResourceManager tsFileResourceManager,
+          TsFileResourceList tsFileResourceList,
+          List<TsFileResource> selectedTsFileResourceList,
+          boolean sequence) {
     switch (this) {
-      case SIZE_TIRED_COMPACTION:
+      case SIZE_TIERED_COMPACTION:
       default:
-        return new SizeTiredCompactionTask(
-            logicalStorageGroupName,
-            virtualStorageGroup,
-            timePartition,
-            tsFileResourceManager,
-            tsFileResourceList,
-            selectedTsFileResourceList,
-            sequence,
-            CompactionTaskManager.currentTaskNum);
+        return new SizeTieredCompactionTask(
+                logicalStorageGroupName,
+                virtualStorageGroup,
+                timePartition,
+                tsFileResourceManager,
+                tsFileResourceList,
+                selectedTsFileResourceList,
+                sequence,
+                CompactionTaskManager.currentTaskNum);
     }
   }
 
   public AbstractInnerSpaceCompactionTask getCompactionRecoverTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroup,
-      long timePartition,
-      File compactionLogFile,
-      String dataDir,
-      boolean sequence) {
+          String logicalStorageGroupName,
+          String virtualStorageGroup,
+          long timePartition,
+          File compactionLogFile,
+          String dataDir,
+          boolean sequence) {
     switch (this) {
-      case SIZE_TIRED_COMPACTION:
+      case SIZE_TIERED_COMPACTION:
       default:
-        return new SizeTiredCompactionRecoverTask(
-            logicalStorageGroupName,
-            virtualStorageGroup,
-            timePartition,
-            compactionLogFile,
-            dataDir,
-            sequence,
-            CompactionTaskManager.currentTaskNum);
+        return new SizeTieredCompactionRecoverTask(
+                logicalStorageGroupName,
+                virtualStorageGroup,
+                timePartition,
+                compactionLogFile,
+                dataDir,
+                sequence,
+                CompactionTaskManager.currentTaskNum);
     }
   }
 
   public AbstractInnerSpaceCompactionSelector getCompactionSelector(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
-      long timePartition,
-      TsFileResourceManager tsFileResourceManager,
-      TsFileResourceList tsFileResources,
-      boolean sequence,
-      InnerSpaceCompactionTaskFactory taskFactory) {
+          String logicalStorageGroupName,
+          String virtualStorageGroupName,
+          long timePartition,
+          TsFileResourceManager tsFileResourceManager,
+          TsFileResourceList tsFileResources,
+          boolean sequence,
+          InnerSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
-      case SIZE_TIRED_COMPACTION:
+      case SIZE_TIERED_COMPACTION:
       default:
-        return new SizeTiredCompactionSelector(
-            logicalStorageGroupName,
-            virtualStorageGroupName,
-            timePartition,
-            tsFileResourceManager,
-            tsFileResources,
-            sequence,
-            taskFactory);
+        return new SizeTiereddCompactionSelector(
+                logicalStorageGroupName,
+                virtualStorageGroupName,
+                timePartition,
+                tsFileResourceManager,
+                tsFileResources,
+                sequence,
+                taskFactory);
     }
   }
 }

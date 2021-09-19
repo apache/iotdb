@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -27,26 +27,26 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class FakedInnerSpaceCompactionTask extends SizeTiredCompactionTask {
+public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
 
   public FakedInnerSpaceCompactionTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
-      long timePartition,
-      TsFileResourceManager tsFileResourceManager,
-      TsFileResourceList tsFileResourceList,
-      List<TsFileResource> selectedTsFileResourceList,
-      boolean sequence,
-      AtomicInteger currentTaskNum) {
+          String logicalStorageGroupName,
+          String virtualStorageGroupName,
+          long timePartition,
+          TsFileResourceManager tsFileResourceManager,
+          TsFileResourceList tsFileResourceList,
+          List<TsFileResource> selectedTsFileResourceList,
+          boolean sequence,
+          AtomicInteger currentTaskNum) {
     super(
-        logicalStorageGroupName,
-        virtualStorageGroupName,
-        timePartition,
-        tsFileResourceManager,
-        tsFileResourceList,
-        selectedTsFileResourceList,
-        sequence,
-        currentTaskNum);
+            logicalStorageGroupName,
+            virtualStorageGroupName,
+            timePartition,
+            tsFileResourceManager,
+            tsFileResourceList,
+            selectedTsFileResourceList,
+            sequence,
+            currentTaskNum);
   }
 
   @Override

@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.inner.sizetired;
+package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogAnalyzer;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,29 +33,29 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
+public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractInnerSpaceCompactionRecoverTask.class);
+          LoggerFactory.getLogger(AbstractInnerSpaceCompactionRecoverTask.class);
   protected File compactionLogFile;
   protected String dataDir;
 
-  public SizeTiredCompactionRecoverTask(
-      String logicalStorageGroupName,
-      String virtualStorageGroup,
-      long timePartition,
-      File compactionLogFile,
-      String dataDir,
-      boolean sequence,
-      AtomicInteger currentTaskNum) {
+  public SizeTieredCompactionRecoverTask(
+          String logicalStorageGroupName,
+          String virtualStorageGroup,
+          long timePartition,
+          File compactionLogFile,
+          String dataDir,
+          boolean sequence,
+          AtomicInteger currentTaskNum) {
     super(
-        logicalStorageGroupName,
-        virtualStorageGroup,
-        timePartition,
-        null,
-        null,
-        null,
-        sequence,
-        currentTaskNum);
+            logicalStorageGroupName,
+            virtualStorageGroup,
+            timePartition,
+            null,
+            null,
+            null,
+            sequence,
+            currentTaskNum);
     this.compactionLogFile = compactionLogFile;
     this.dataDir = dataDir;
   }
@@ -77,8 +76,8 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
     // read log -> Set<Device> -> doCompaction -> clear
     try {
       if (compactionLogFile.exists()) {
-        SizeTiredCompactionLogAnalyzer logAnalyzer =
-            new SizeTiredCompactionLogAnalyzer(compactionLogFile);
+        SizeTieredCompactionLogAnalyzer logAnalyzer =
+                new SizeTieredCompactionLogAnalyzer(compactionLogFile);
         logAnalyzer.analyze();
         List<String> sourceFileList = logAnalyzer.getSourceFiles();
         String targetFileName = logAnalyzer.getTargetFile();
@@ -116,7 +115,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
           }
 
           InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-              sourceTsFileResources, fullStorageGroupName);
+                  sourceTsFileResources, fullStorageGroupName);
           combineModsInCompaction(sourceTsFileResources, targetResource);
         }
       }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.inner.sizetired;
+package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,26 +45,26 @@ import java.util.PriorityQueue;
  * threshold is not reached, the selected files will be put into a queue. If the system is idle, the
  * candidate task in queue will be submitted.
  */
-public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionSelector.class);
+public class SizeTiereddCompactionSelector extends AbstractInnerSpaceCompactionSelector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiereddCompactionSelector.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public SizeTiredCompactionSelector(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
-      long timePartition,
-      TsFileResourceManager tsFileResourceManager,
-      TsFileResourceList tsFileResources,
-      boolean sequence,
-      InnerSpaceCompactionTaskFactory taskFactory) {
+  public SizeTiereddCompactionSelector(
+          String logicalStorageGroupName,
+          String virtualStorageGroupName,
+          long timePartition,
+          TsFileResourceManager tsFileResourceManager,
+          TsFileResourceList tsFileResources,
+          boolean sequence,
+          InnerSpaceCompactionTaskFactory taskFactory) {
     super(
-        logicalStorageGroupName,
-        virtualStorageGroupName,
-        timePartition,
-        tsFileResourceManager,
-        tsFileResources,
-        sequence,
-        taskFactory);
+            logicalStorageGroupName,
+            virtualStorageGroupName,
+            timePartition,
+            tsFileResourceManager,
+            tsFileResources,
+            sequence,
+            taskFactory);
   }
 
   @Override
@@ -78,20 +77,20 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     PriorityQueue<Pair<List<TsFileResource>, Long>> notFullCompactionQueue =
-        new PriorityQueue<>(10, new SizeTiredCompactionTaskComparator());
+            new PriorityQueue<>(10, new SizeTieredCompactionTaskComparator());
 
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
     LOGGER.info(
-        "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
-            + "target file num is {}, current task num is {}, total task num is {}, "
-            + "max task num is {}",
-        logicalStorageGroupName + "-" + virtualStorageGroupName,
-        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum(),
-        CompactionTaskManager.currentTaskNum.get(),
-        CompactionTaskManager.getInstance().getTaskCount(),
-        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+            "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
+                    + "target file num is {}, current task num is {}, total task num is {}, "
+                    + "max task num is {}",
+            logicalStorageGroupName + "-" + virtualStorageGroupName,
+            IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize(),
+            IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum(),
+            CompactionTaskManager.currentTaskNum.get(),
+            CompactionTaskManager.getInstance().getTaskCount(),
+            IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     int submitTaskNum = 0;
     try {
       // traverse the tsfile from new to old
@@ -104,41 +103,41 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         // or compaction of current type is disable
         // just return
         if ((CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread)
-            || (!enableSeqSpaceCompaction && sequence)
-            || (!enableUnseqSpaceCompaction && !sequence)) {
+                || (!enableSeqSpaceCompaction && sequence)
+                || (!enableUnseqSpaceCompaction && !sequence)) {
           if (CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread) {
             LOGGER.info(
-                "{} [Compaction] Return selection because too many compaction thread, "
-                    + "current thread num is {}, total task num is {}",
-                logicalStorageGroupName + "-" + virtualStorageGroupName,
-                CompactionTaskManager.currentTaskNum,
-                CompactionTaskManager.getInstance().getTaskCount());
+                    "{} [Compaction] Return selection because too many compaction thread, "
+                            + "current thread num is {}, total task num is {}",
+                    logicalStorageGroupName + "-" + virtualStorageGroupName,
+                    CompactionTaskManager.currentTaskNum,
+                    CompactionTaskManager.getInstance().getTaskCount());
           } else {
             LOGGER.info(
-                "{} [Compaction] Return selection because compaction is not enable",
-                logicalStorageGroupName + "-" + virtualStorageGroupName);
+                    "{} [Compaction] Return selection because compaction is not enable",
+                    logicalStorageGroupName + "-" + virtualStorageGroupName);
           }
           LOGGER.info(
-              "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
-              logicalStorageGroupName + "-" + virtualStorageGroupName,
-              submitTaskNum);
+                  "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
+                  logicalStorageGroupName + "-" + virtualStorageGroupName,
+                  submitTaskNum);
           return taskSubmitted;
         }
         // the file size reach threshold
         // or meet an unelectable file
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
-            || currentFile.isMerging()
-            || !currentFile.isClosed()) {
+                || currentFile.isMerging()
+                || !currentFile.isClosed()) {
           if (currentFile.getTsFileSize() >= targetCompactionFileSize) {
             LOGGER.debug("Selected file list is clear because current file is too large");
           } else {
             LOGGER.debug(
-                "Selected file list is clear because current file is {}",
-                currentFile.isMerging() ? "merging" : "not closed");
+                    "Selected file list is clear because current file is {}",
+                    currentFile.isMerging() ? "merging" : "not closed");
           }
           if (selectedFileList.size() > 1) {
             notFullCompactionQueue.add(
-                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+                    new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
           }
           selectedFileList.clear();
           selectedFileSize = 0L;
@@ -147,17 +146,17 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         selectedFileList.add(currentFile);
         selectedFileSize += currentFile.getTsFileSize();
         LOGGER.debug(
-            "Add tsfile {}, current select file num is {}, size is {}",
-            currentFile,
-            selectedFileList.size(),
-            selectedFileSize);
+                "Add tsfile {}, current select file num is {}, size is {}",
+                currentFile,
+                selectedFileList.size(),
+                selectedFileSize);
         // if the file size or file num reach threshold
         if (selectedFileSize >= targetCompactionFileSize
-            || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
+                || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
           LOGGER.info(
-              "Submit a {} inner space compaction task because {}",
-              sequence ? "sequence" : "unsequence",
-              selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
+                  "Submit a {} inner space compaction task because {}",
+                  sequence ? "sequence" : "unsequence",
+                  selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
           // submit the task
           createAndSubmitTask(selectedFileList);
           taskSubmitted = true;
@@ -171,15 +170,15 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       }
       if (config.isEnableNotFullCompaction()) {
         while (CompactionTaskManager.currentTaskNum.get() < config.getConcurrentCompactionThread()
-            && notFullCompactionQueue.size() > 0) {
+                && notFullCompactionQueue.size() > 0) {
           createAndSubmitTask(notFullCompactionQueue.poll().left);
           submitTaskNum++;
         }
       }
       LOGGER.info(
-          "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
-          logicalStorageGroupName + "-" + virtualStorageGroupName,
-          submitTaskNum);
+              "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
+              logicalStorageGroupName + "-" + virtualStorageGroupName,
+              submitTaskNum);
       return taskSubmitted;
     } finally {
       tsFileResources.readUnlock();
@@ -188,34 +187,34 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
 
   private void createAndSubmitTask(List<TsFileResource> selectedFileList) {
     AbstractCompactionTask compactionTask =
-        taskFactory.createTask(
-            logicalStorageGroupName,
-            virtualStorageGroupName,
-            timePartition,
-            tsFileResourceManager,
-            tsFileResources,
-            selectedFileList,
-            sequence);
+            taskFactory.createTask(
+                    logicalStorageGroupName,
+                    virtualStorageGroupName,
+                    timePartition,
+                    tsFileResourceManager,
+                    tsFileResources,
+                    selectedFileList,
+                    sequence);
     for (TsFileResource resource : selectedFileList) {
       resource.setMerging(true);
       LOGGER.info(
-          "{}-{} [Compaction] start to compact TsFile {}",
-          logicalStorageGroupName,
-          virtualStorageGroupName,
-          resource);
+              "{}-{} [Compaction] start to compact TsFile {}",
+              logicalStorageGroupName,
+              virtualStorageGroupName,
+              resource);
     }
     CompactionTaskManager.getInstance()
-        .submitTask(
-            logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
+            .submitTask(
+                    logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
     LOGGER.info(
-        "{}-{} [Compaction] submit a inner compaction task of {} files",
-        logicalStorageGroupName,
-        virtualStorageGroupName,
-        selectedFileList.size());
+            "{}-{} [Compaction] submit a inner compaction task of {} files",
+            logicalStorageGroupName,
+            virtualStorageGroupName,
+            selectedFileList.size());
   }
 
-  private class SizeTiredCompactionTaskComparator
-      implements Comparator<Pair<List<TsFileResource>, Long>> {
+  private class SizeTieredCompactionTaskComparator
+          implements Comparator<Pair<List<TsFileResource>, Long>> {
 
     @Override
     public int compare(Pair<List<TsFileResource>, Long> o1, Pair<List<TsFileResource>, Long> o2) {
