@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTiereddCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -88,7 +88,7 @@ public enum InnerCompactionStrategy {
     switch (this) {
       case SIZE_TIERED_COMPACTION:
       default:
-        return new SizeTiereddCompactionSelector(
+        return new SizeTieredCompactionSelector(
                 logicalStorageGroupName,
                 virtualStorageGroupName,
                 timePartition,

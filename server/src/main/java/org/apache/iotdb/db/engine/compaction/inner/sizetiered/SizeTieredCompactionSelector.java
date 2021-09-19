@@ -45,11 +45,11 @@ import java.util.PriorityQueue;
  * threshold is not reached, the selected files will be put into a queue. If the system is idle, the
  * candidate task in queue will be submitted.
  */
-public class SizeTiereddCompactionSelector extends AbstractInnerSpaceCompactionSelector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiereddCompactionSelector.class);
+public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(SizeTieredCompactionSelector.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public SizeTiereddCompactionSelector(
+  public SizeTieredCompactionSelector(
           String logicalStorageGroupName,
           String virtualStorageGroupName,
           long timePartition,

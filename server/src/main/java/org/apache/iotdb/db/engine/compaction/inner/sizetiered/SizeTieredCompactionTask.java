@@ -45,7 +45,7 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 
 /**
  * SizeTiredCompactionTask compact serveral inner space files selected by {@link
- * SizeTiereddCompactionSelector} into one file.
+ * SizeTieredCompactionSelector} into one file.
  */
 public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTieredCompactionTask.class);
