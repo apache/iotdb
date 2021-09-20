@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -125,9 +124,6 @@ public class TsFileResource {
   private ITimeSeriesMetadata timeSeriesMetadata;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-
-  /** manage TsFileResource degrade */
-  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
   private List<TsFileResource> upgradedResources;
@@ -863,7 +859,7 @@ public class TsFileResource {
   /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
   public long degradeTimeIndex() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
-    // if current timeIndex is FileTimeIndex, nno need to degrade
+    // if current timeIndex is FileTimeIndex, no need to degrade
     if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
     long previousMemory = calculateRamSize();
     // get the minimum startTime

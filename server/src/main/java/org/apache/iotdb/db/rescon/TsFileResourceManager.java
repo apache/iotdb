@@ -15,10 +15,10 @@ import java.util.PriorityQueue;
 public class TsFileResourceManager {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceManager.class);
 
-  private static IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /** threshold total memory for all TimeIndex */
-  private static double TIME_INDEX_MEMORY_THRESHOLD =
+  private double TIME_INDEX_MEMORY_THRESHOLD =
       CONFIG.getAllocateMemoryForRead() * CONFIG.getTimeIndexMemoryProportion();
 
   /** store the sealed TsFileResource, sorted by priority of TimeIndex */
@@ -29,7 +29,7 @@ public class TsFileResourceManager {
   private long totalTimeIndexMemCost;
 
   @TestOnly
-  public static void setTimeIndexMemoryThreshold(double timeIndexMemoryProportion) {
+  public void setTimeIndexMemoryThreshold(double timeIndexMemoryProportion) {
     TIME_INDEX_MEMORY_THRESHOLD = CONFIG.getAllocateMemoryForRead() * timeIndexMemoryProportion;
   }
 
@@ -75,6 +75,7 @@ public class TsFileResourceManager {
       }
       long memoryReduce = tsFileResource.degradeTimeIndex();
       releaseTimeIndexMemCost(memoryReduce);
+      // add the polled tsFileResource to the priority queue
       sealedTsFileResources.add(tsFileResource);
     }
   }

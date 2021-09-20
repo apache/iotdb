@@ -324,14 +324,12 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
     if (timeIndex instanceof DeviceTimeIndex) {
-      if (getMinStartTime() < timeIndex.getMinStartTime()) return -1;
-      else if (getMinStartTime() > timeIndex.getMinStartTime()) return 1;
-      else return 0;
+      return Long.compare(getMinStartTime(), timeIndex.getMinStartTime());
     } else if (timeIndex instanceof FileTimeIndex) {
       return -1;
     } else {
-      logger.error("Can't get timeIndex type {}", timeIndex.getClass().getName());
-      throw new RuntimeException("type of timeIndex is wrong.");
+      logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
+      throw new RuntimeException("Wrong timeIndex type " +  timeIndex.getClass().getName());
     }
   }
 }

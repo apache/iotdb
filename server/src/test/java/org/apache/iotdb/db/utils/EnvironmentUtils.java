@@ -144,7 +144,6 @@ public class EnvironmentUtils {
     }
     // close metadata
     IoTDB.metaManager.clear();
-    TsFileResourceManager.getInstance().clear();
 
     // close tracing
     if (config.isEnablePerformanceTracing()) {
@@ -159,6 +158,9 @@ public class EnvironmentUtils {
 
     // clear memtable manager info
     MemTableManager.getInstance().close();
+
+    // clear tsFileResource manager info
+    TsFileResourceManager.getInstance().clear();
 
     // delete all directory
     cleanAllDir();

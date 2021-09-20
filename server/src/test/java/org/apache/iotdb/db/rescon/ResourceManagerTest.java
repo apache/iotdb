@@ -57,14 +57,12 @@ public class ResourceManagerTest {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();;
   private double timeIndexMemoryProportion;
-  private long allocateMemoryForRead;
   private TimeIndexLevel timeIndexLevel;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     IoTDB.metaManager.init();
     timeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
-    allocateMemoryForRead = CONFIG.getAllocateMemoryForRead();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
   }
@@ -163,7 +161,7 @@ public class ResourceManagerTest {
   }
 
   @Test
-  public void testReduceMemory() throws IOException, WriteProcessException {
+  public void testDegradeMethod() throws IOException, WriteProcessException {
     File file =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(

@@ -29,7 +29,7 @@ import java.util.List;
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.*;
 
-public class IoTDBDegradeIT {
+public class IoTDBManageTsFileResourceIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private double prevTimeIndexMemoryProportion;
@@ -158,8 +158,6 @@ public class IoTDBDegradeIT {
                   .getProcessor(new PartialPath("root.sg1"))
                   .getSequenceFileTreeSet());
       assertEquals(1, resources.size());
-      double timeIndexMemoryThreshold =
-          CONFIG.getTimeIndexMemoryProportion() * CONFIG.getAllocateMemoryForRead();
       for (TsFileResource resource : resources) {
         assertEquals(
             TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(resource.getTimeIndexType()));
@@ -189,11 +187,10 @@ public class IoTDBDegradeIT {
                   .getProcessor(new PartialPath("root.sg1"))
                   .getSequenceFileTreeSet());
       assertEquals(5, seqResources.size());
-      /**
-       * Four tsFileResource are degraded in total, 1 are in seqResources and 3 are in
-       * unSeqResources. The difference with the multiResourceTest is that last tsFileResource is
-       * not close, so degrade method can't be called.
-       */
+
+       // Four tsFileResource are degraded in total, 1 are in seqResources and 3 are in
+       // unSeqResources. The difference with the multiResourceTest is that last tsFileResource is
+       // not close, so degrade method can't be called.
       for (int i = 0; i < seqResources.size(); i++) {
         if (i < 4) {
           assertTrue(seqResources.get(i).isClosed());
@@ -247,6 +244,23 @@ public class IoTDBDegradeIT {
       assertEquals(
           TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(resource.getTimeIndexType()));
       assertTrue(resource.isClosed());
+    }
+
+    try (Connection connection =
+                 DriverManager.getConnection(
+                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("SELECT s1 FROM root.sg1.d1");
+      assertTrue(hasResultSet);
+      String[] exp = new String[] {"1,1.0", "5,5.0", "9,9.0", "13,13.0"};
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
+      }
     }
   }
 }

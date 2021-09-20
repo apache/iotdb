@@ -227,8 +227,10 @@ public class StorageGroupProcessor {
 
   /** manage seqFileList and unSeqFileList */
   private TsFileManagement tsFileManagement;
+
   /** manage tsFileResource degrade */
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
+
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
    * deletion/update such that after they are persisted, the order of insertions, deletions and

@@ -47,7 +47,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -120,9 +119,6 @@ public class TsFileProcessor {
    * Whether the processor is in the queue of the FlushManager or being flushed by a flush thread.
    */
   private volatile boolean managedByFlushManager;
-
-  /** manage TsFileResource degrade */
-  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   /** a lock to mutual exclude query and query */
   private final ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
