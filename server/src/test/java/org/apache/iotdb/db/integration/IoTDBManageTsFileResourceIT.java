@@ -94,7 +94,8 @@ public class IoTDBManageTsFileResourceIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    prevTimeIndexMemoryThreshold = prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+    prevTimeIndexMemoryThreshold =
+        prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     CONFIG.setCompactionStrategy(prevTsFileManagementStrategy);
   }
@@ -108,7 +109,7 @@ public class IoTDBManageTsFileResourceIT {
       double setTimeIndexMemoryProportion = 4 * Math.pow(10, -6);
       CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
       double curTimeIndexMemoryThreshold =
-              setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+          setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
       tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       for (String sql : unSeqSQLs) {
         statement.execute(sql);
@@ -173,7 +174,7 @@ public class IoTDBManageTsFileResourceIT {
         Statement statement = connection.createStatement()) {
       double setTimeIndexMemoryProportion = 0.9 * Math.pow(10, -6);
       double curTimeIndexMemoryThreshold =
-              setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+          setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
       tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (1000, true)");
       statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (2000, true)");
@@ -205,7 +206,7 @@ public class IoTDBManageTsFileResourceIT {
       double setTimeIndexMemoryProportion = 4 * Math.pow(10, -6);
       CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
       double curTimeIndexMemoryThreshold =
-              setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+          setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
       tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       for (int i = 0; i < unSeqSQLs.length - 1; i++) {
         statement.execute(unSeqSQLs[i]);
