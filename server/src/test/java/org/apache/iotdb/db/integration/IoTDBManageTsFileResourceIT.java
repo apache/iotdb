@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -33,6 +51,8 @@ public class IoTDBManageTsFileResourceIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private double prevTimeIndexMemoryProportion;
+  private double prevTimeIndexMemoryThreshold;
+  private CompactionStrategy prevTsFileManagementStrategy;
 
   private static String[] unSeqSQLs =
       new String[] {
@@ -67,13 +87,16 @@ public class IoTDBManageTsFileResourceIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
+    prevTsFileManagementStrategy = CONFIG.getCompactionStrategy();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    CONFIG.setTimeIndexMemoryProportion(prevTimeIndexMemoryProportion);
+    prevTimeIndexMemoryThreshold = prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
+    CONFIG.setCompactionStrategy(prevTsFileManagementStrategy);
   }
 
   @Test
@@ -83,7 +106,10 @@ public class IoTDBManageTsFileResourceIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       double setTimeIndexMemoryProportion = 4 * Math.pow(10, -6);
-      tsFileResourceManager.setTimeIndexMemoryThreshold(setTimeIndexMemoryProportion);
+      CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+      double curTimeIndexMemoryThreshold =
+              setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+      tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       for (String sql : unSeqSQLs) {
         statement.execute(sql);
       }
@@ -146,7 +172,9 @@ public class IoTDBManageTsFileResourceIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       double setTimeIndexMemoryProportion = 0.9 * Math.pow(10, -6);
-      tsFileResourceManager.setTimeIndexMemoryThreshold(setTimeIndexMemoryProportion);
+      double curTimeIndexMemoryThreshold =
+              setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+      tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (1000, true)");
       statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (2000, true)");
       statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (3000, true)");
@@ -176,7 +204,9 @@ public class IoTDBManageTsFileResourceIT {
         Statement statement = connection.createStatement()) {
       double setTimeIndexMemoryProportion = 4 * Math.pow(10, -6);
       CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
-      tsFileResourceManager.setTimeIndexMemoryThreshold(setTimeIndexMemoryProportion);
+      double curTimeIndexMemoryThreshold =
+              setTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+      tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       for (int i = 0; i < unSeqSQLs.length - 1; i++) {
         statement.execute(unSeqSQLs[i]);
       }
@@ -188,9 +218,9 @@ public class IoTDBManageTsFileResourceIT {
                   .getSequenceFileTreeSet());
       assertEquals(5, seqResources.size());
 
-       // Four tsFileResource are degraded in total, 1 are in seqResources and 3 are in
-       // unSeqResources. The difference with the multiResourceTest is that last tsFileResource is
-       // not close, so degrade method can't be called.
+      // Four tsFileResource are degraded in total, 1 are in seqResources and 3 are in
+      // unSeqResources. The difference with the multiResourceTest is that last tsFileResource is
+      // not close, so degrade method can't be called.
       for (int i = 0; i < seqResources.size(); i++) {
         if (i < 4) {
           assertTrue(seqResources.get(i).isClosed());
@@ -247,9 +277,9 @@ public class IoTDBManageTsFileResourceIT {
     }
 
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("SELECT s1 FROM root.sg1.d1");
       assertTrue(hasResultSet);
       String[] exp = new String[] {"1,1.0", "5,5.0", "9,9.0", "13,13.0"};

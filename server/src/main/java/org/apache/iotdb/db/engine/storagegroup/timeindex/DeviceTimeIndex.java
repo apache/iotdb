@@ -329,7 +329,7 @@ public class DeviceTimeIndex implements ITimeIndex {
       return -1;
     } else {
       logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
-      throw new RuntimeException("Wrong timeIndex type " +  timeIndex.getClass().getName());
+      throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
     }
   }
 }

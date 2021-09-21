@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -56,13 +74,14 @@ public class ResourceManagerTest {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();;
-  private double timeIndexMemoryProportion;
+  private double prevTimeIndexMemoryProportion;
+  private double prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     IoTDB.metaManager.init();
-    timeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
+    prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
   }
@@ -72,8 +91,10 @@ public class ResourceManagerTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    CONFIG.setTimeIndexMemoryProportion(timeIndexMemoryProportion);
+    CONFIG.setTimeIndexMemoryProportion(prevTimeIndexMemoryProportion);
     CONFIG.setTimeIndexLevel(String.valueOf(timeIndexLevel));
+    prevTimeIndexMemoryThreshold = prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
@@ -208,7 +229,9 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
-    tsFileResourceManager.setTimeIndexMemoryThreshold(smallMemoryProportion);
+    double curTimeIndexMemoryThreshold =
+            smallMemoryProportion * CONFIG.getAllocateMemoryForRead();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     assertEquals(
         TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
@@ -236,7 +259,9 @@ public class ResourceManagerTest {
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     long previousRamSize = tsFileResource.calculateRamSize();
-    tsFileResourceManager.setTimeIndexMemoryThreshold(largeMemoryProportion);
+    double curTimeIndexMemoryThreshold =
+            largeMemoryProportion * CONFIG.getAllocateMemoryForRead();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     assertEquals(0, previousRamSize - tsFileResource.calculateRamSize());
     assertEquals(
@@ -265,7 +290,9 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
-    tsFileResourceManager.setTimeIndexMemoryThreshold(smallMemoryProportion);
+    double curTimeIndexMemoryThreshold =
+            smallMemoryProportion * CONFIG.getAllocateMemoryForRead();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource1);
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
@@ -299,7 +326,9 @@ public class ResourceManagerTest {
   @Test
   public void testMultiDeviceTimeIndexDegrade() throws IOException, WriteProcessException {
     double timeIndexMemoryProportion = 3 * Math.pow(10, -5);
-    tsFileResourceManager.setTimeIndexMemoryThreshold(timeIndexMemoryProportion);
+    double curTimeIndexMemoryThreshold =
+            timeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     for (int i = 0; i < seqFileNum; i++) {
       File file =
           new File(
@@ -341,7 +370,9 @@ public class ResourceManagerTest {
     double timeIndexMemoryProportion = Math.pow(10, -6);
     long reducedMemory = 0;
     CONFIG.setTimeIndexLevel(String.valueOf(TimeIndexLevel.FILE_TIME_INDEX));
-    tsFileResourceManager.setTimeIndexMemoryThreshold(timeIndexMemoryProportion);
+    double curTimeIndexMemoryThreshold =
+            timeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     try {
       for (int i = 0; i < seqFileNum; i++) {
         File file =

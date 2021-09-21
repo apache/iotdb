@@ -195,7 +195,7 @@ public class FileTimeIndex implements ITimeIndex {
       return Long.compare(startTime, timeIndex.getMinStartTime());
     } else {
       logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
-      throw new RuntimeException("Wrong timeIndex type " +  timeIndex.getClass().getName());
+      throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
     }
   }
 }
