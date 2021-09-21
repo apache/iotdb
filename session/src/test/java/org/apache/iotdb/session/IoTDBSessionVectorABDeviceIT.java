@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -64,6 +65,7 @@ public class IoTDBSessionVectorABDeviceIT {
   }
 
   @Test
+  @Ignore
   public void vectorAlignByDeviceTest() {
     try {
       SessionDataSet dataSet =
