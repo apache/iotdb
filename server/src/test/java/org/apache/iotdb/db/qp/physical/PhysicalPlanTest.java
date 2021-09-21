@@ -513,7 +513,6 @@ public class PhysicalPlanTest {
       assertEquals("udf", createFunctionPlan.getUdfName());
       assertEquals(
           "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      assertFalse(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       fail(e.toString());
     }
@@ -532,7 +531,6 @@ public class PhysicalPlanTest {
       assertEquals("udf", createFunctionPlan.getUdfName());
       assertEquals(
           "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       fail(e.toString());
     }
@@ -546,11 +544,7 @@ public class PhysicalPlanTest {
               processor.parseSQLToPhysicalPlan(
                   "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
           "select udf(d2.s1, d1.s1), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d1.s1, d2.s1), udf(d2.s1, d1.s1), d1.s1, d2.s1 from root.vehicle";
@@ -592,11 +586,7 @@ public class PhysicalPlanTest {
               processor.parseSQLToPhysicalPlan(
                   "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
           "select udf(d2.s1, d1.s1, \"addend\"=\"100\"), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
@@ -641,11 +631,7 @@ public class PhysicalPlanTest {
               processor.parseSQLToPhysicalPlan(
                   "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);

@@ -398,8 +398,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFRegistrationException {
-    UDFRegistrationService.getInstance()
-        .register(plan.getUdfName(), plan.getClassName(), plan.isTemporary(), true);
+    UDFRegistrationService.getInstance().register(plan.getUdfName(), plan.getClassName(), true);
     return true;
   }
 
@@ -950,10 +949,6 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     for (UDFRegistrationInformation info :
         UDFRegistrationService.getInstance().getRegistrationInformation()) {
-      if (showPlan.showTemporary() && !info.isTemporary()) {
-        continue;
-      }
-
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
       String functionType = "";
@@ -1016,10 +1011,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void appendNativeFunctions(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
-    if (showPlan.showTemporary()) {
-      return;
-    }
-
     final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
     final Binary className = Binary.valueOf("");
     for (String functionName : SQLConstant.getNativeFunctionNames()) {
