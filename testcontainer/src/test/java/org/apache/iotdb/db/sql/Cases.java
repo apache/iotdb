@@ -349,7 +349,7 @@ public abstract class Cases {
   }
 
   @Test
-  public void testCreateFunctionPlan1() {
+  public void testCreateFunctionPlan() {
     try {
       PhysicalPlan plan =
           processor.parseSQLToPhysicalPlan(
@@ -361,26 +361,6 @@ public abstract class Cases {
       Assert.assertEquals("udf", createFunctionPlan.getUdfName());
       Assert.assertEquals(
           "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      Assert.assertFalse(createFunctionPlan.isTemporary());
-    } catch (QueryProcessException e) {
-      Assert.fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testCreateFunctionPlan2() { // create temporary function
-    try {
-      PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
-        Assert.fail();
-      }
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      Assert.assertEquals("udf", createFunctionPlan.getUdfName());
-      Assert.assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      Assert.assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       Assert.fail(e.toString());
     }

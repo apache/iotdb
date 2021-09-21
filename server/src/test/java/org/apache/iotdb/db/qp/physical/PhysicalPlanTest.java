@@ -519,24 +519,6 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testCreateFunctionPlan2() { // create temporary function
-    try {
-      PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
-        fail();
-      }
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      assertEquals("udf", createFunctionPlan.getUdfName());
-      assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
-  }
-
-  @Test
   public void testUDTFQuery1() {
     try {
       CreateFunctionPlan createFunctionPlan =
