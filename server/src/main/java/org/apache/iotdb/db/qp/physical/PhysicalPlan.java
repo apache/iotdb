@@ -96,6 +96,7 @@ public abstract class PhysicalPlan {
   protected long index;
 
   private boolean debug;
+  private boolean enableTracing = false;
 
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
@@ -149,6 +150,14 @@ public abstract class PhysicalPlan {
 
   public void setDebug(boolean debug) {
     this.debug = debug;
+  }
+
+  public boolean isEnableTracing() {
+    return enableTracing;
+  }
+
+  public void setEnableTracing(boolean enableTracing) {
+    this.enableTracing = enableTracing;
   }
 
   /**

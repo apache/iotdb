@@ -1064,6 +1064,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         queryOp.setWhereComponent(whereComponent);
       }
     }
+    queryOp.setEnableTracing(ctx.TRACING() != null);
     // 4. Check whether it's a select-into clause
     return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
   }

@@ -48,6 +48,11 @@ struct TSQueryNonAlignDataSet{
   2: required list<binary> valueList
 }
 
+struct TSTracingInfo{
+  1: required list<string> activityList
+  2: required list<i64> elapsedTimeList
+}
+
 struct TSExecuteStatementResp {
   1: required TSStatus status
   2: optional i64 queryId
@@ -63,6 +68,7 @@ struct TSExecuteStatementResp {
   9: optional map<string, i32> columnNameIndexMap
   10: optional list<string> sgColumns
   11: optional list<byte> aliasColumns
+  12: optional TSTracingInfo tracingInfo
 }
 
 enum TSProtocolVersion {

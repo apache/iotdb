@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.control;
+package org.apache.iotdb.db.query.control.tracing;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,11 +39,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TracingManager {
 
   private static final Logger logger = LoggerFactory.getLogger(TracingManager.class);
-  private static final String QUERY_ID = "Query Id: %d";
-  private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
+
   private BufferedWriter writer;
-  private Map<Long, Long> queryStartTime = new ConcurrentHashMap<>();
-  private Map<Long, TracingInfo> tracingInfoMap = new ConcurrentHashMap<>();
+
+  // (statementId -> TracingInfo)
+  private final Map<Long, TracingInfo> statementIdToTracingInfo = new ConcurrentHashMap<>();
 
   public TracingManager(String dirName, String logFileName) {
     initTracingManager(dirName, logFileName);
@@ -72,69 +72,78 @@ public class TracingManager {
     return TracingManagerHelper.INSTANCE;
   }
 
-  public TracingInfo getTracingInfo(long queryId) {
-    return tracingInfoMap.computeIfAbsent(queryId, k -> new TracingInfo());
+  public TracingInfo getTracingInfo(long statementId) {
+    return statementIdToTracingInfo.computeIfAbsent(statementId, k -> new TracingInfo());
   }
 
-  public void writeQueryInfo(long queryId, String statement, long startTime, int pathsNum)
+  public void writeQueryInfo(long statementId, String statement, int pathsNum)
       throws IOException {
-    queryStartTime.put(queryId, startTime);
+    long startTime = statementIdToTracingInfo.get(statementId).getStartTime();
+    statementIdToTracingInfo.get(statementId).setSeriesPathNum(pathsNum);
     StringBuilder builder = new StringBuilder();
     builder
-        .append(String.format(QUERY_ID, queryId))
-        .append(String.format(" - Query Statement: %s", statement))
+        .append(String.format(TracingConstant.STATEMENT_ID, statementId))
+        .append(String.format(" - Statement: %s", statement))
         .append("\n")
-        .append(String.format(QUERY_ID, queryId))
+        .append(String.format(TracingConstant.STATEMENT_ID, statementId))
         .append(" - Start time: ")
-        .append(new SimpleDateFormat(DATE_FORMAT).format(startTime))
+        .append(new SimpleDateFormat(TracingConstant.DATE_FORMAT).format(startTime))
         .append("\n")
-        .append(String.format(QUERY_ID, queryId))
+        .append(String.format(TracingConstant.STATEMENT_ID, statementId))
         .append(String.format(" - Number of series paths: %d", pathsNum))
         .append("\n");
     writer.write(builder.toString());
   }
 
   // for align by device query
-  public void writeQueryInfo(long queryId, String statement, long startTime) throws IOException {
-    queryStartTime.put(queryId, startTime);
+  public void writeQueryInfo(long statementId, String statement)
+      throws IOException {
+    long startTime = statementIdToTracingInfo.get(statementId).getStartTime();
     StringBuilder builder = new StringBuilder();
     builder
-        .append(String.format(QUERY_ID, queryId))
-        .append(String.format(" - Query Statement: %s", statement))
+        .append(String.format(TracingConstant.STATEMENT_ID, statementId))
+        .append(String.format(" - Statement: %s", statement))
         .append("\n")
-        .append(String.format(QUERY_ID, queryId))
+        .append(String.format(TracingConstant.STATEMENT_ID, statementId))
         .append(" - Start time: ")
-        .append(new SimpleDateFormat(DATE_FORMAT).format(startTime))
+        .append(new SimpleDateFormat(TracingConstant.DATE_FORMAT).format(startTime))
         .append("\n");
     writer.write(builder.toString());
   }
 
-  public void writePathsNum(long queryId, int pathsNum) throws IOException {
+  // for align by device query
+  public void writePathsNum(long statementId, int pathsNum) throws IOException {
+    statementIdToTracingInfo.get(statementId).setSeriesPathNum(pathsNum);
     StringBuilder builder =
-        new StringBuilder(String.format(QUERY_ID, queryId))
+        new StringBuilder(String.format(TracingConstant.STATEMENT_ID, statementId))
             .append(String.format(" - Number of series paths: %d", pathsNum))
             .append("\n");
     writer.write(builder.toString());
   }
 
-  public void writeTracingInfo(long queryId) throws IOException {
-    TracingInfo tracingInfo = tracingInfoMap.get(queryId);
-    writeTsFileInfo(queryId, tracingInfo.getSeqFileSet(), tracingInfo.getUnSeqFileSet());
-    writeChunksInfo(queryId, tracingInfo.getTotalChunkNum(), tracingInfo.getTotalChunkPoints());
+  public void writeTracingInfo(long statementId) throws IOException {
+    TracingInfo tracingInfo = statementIdToTracingInfo.get(statementId);
+    writeTsFileInfo(statementId, tracingInfo.getSeqFileSet(), tracingInfo.getUnSeqFileSet());
+    writeSeqChunksInfo(
+        statementId, tracingInfo.getSequenceChunkNum(), tracingInfo.getSequenceChunkPoints());
+    writeUnSeqChunksInfo(
+        statementId, tracingInfo.getUnsequenceChunkNum(), tracingInfo.getUnsequenceChunkPoints());
     writeOverlappedPageInfo(
-        queryId, tracingInfo.getTotalPageNum(), tracingInfo.getOverlappedPageNum());
+        statementId, tracingInfo.getTotalPageNum(), tracingInfo.getOverlappedPageNum());
   }
 
   public void writeTsFileInfo(
-      long queryId, Set<TsFileResource> seqFileResources, Set<TsFileResource> unSeqFileResources)
+      long statementId,
+      Set<TsFileResource> seqFileResources,
+      Set<TsFileResource> unSeqFileResources)
       throws IOException {
     // to avoid the disorder info of multi query
     // add query id as prefix of each info
     StringBuilder builder =
-        new StringBuilder(String.format(QUERY_ID, queryId))
-            .append(String.format(" - Number of sequence files: %d", seqFileResources.size()));
+        new StringBuilder(String.format(TracingConstant.STATEMENT_ID, statementId))
+            .append(String.format(" - Number of sequence files read: %d", seqFileResources.size()));
     if (!seqFileResources.isEmpty()) {
-      builder.append("\n").append(String.format(QUERY_ID, queryId)).append(" - SeqFiles: ");
+      builder.append("\n").append(String.format(TracingConstant.STATEMENT_ID, statementId)).append(" - SeqFiles: ");
       Iterator<TsFileResource> seqFileIterator = seqFileResources.iterator();
       while (seqFileIterator.hasNext()) {
         builder.append(seqFileIterator.next().getTsFile().getName());
@@ -146,10 +155,13 @@ public class TracingManager {
 
     builder
         .append("\n")
-        .append(String.format(QUERY_ID, queryId))
-        .append(String.format(" - Number of unSequence files: %d", unSeqFileResources.size()));
+        .append(String.format(TracingConstant.STATEMENT_ID, statementId))
+        .append(String.format(" - Number of unSequence files read: %d", unSeqFileResources.size()));
     if (!unSeqFileResources.isEmpty()) {
-      builder.append("\n").append(String.format(QUERY_ID, queryId)).append(" - UnSeqFiles: ");
+      builder
+          .append("\n")
+          .append(String.format(TracingConstant.STATEMENT_ID, statementId))
+          .append(" - UnSeqFiles: ");
       Iterator<TsFileResource> unSeqFileIterator = unSeqFileResources.iterator();
       while (unSeqFileIterator.hasNext()) {
         builder.append(unSeqFileIterator.next().getTsFile().getName());
@@ -162,35 +174,46 @@ public class TracingManager {
     writer.write(builder.toString());
   }
 
-  public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkPoints)
+  public void writeSeqChunksInfo(long statementId, long totalChunkNum, long totalChunkPoints)
       throws IOException {
     double avgChunkPoints = (double) totalChunkPoints / totalChunkNum;
     StringBuilder builder =
-        new StringBuilder(String.format(QUERY_ID, queryId))
-            .append(String.format(" - Number of chunks: %d", totalChunkNum))
-            .append(String.format(", Average data points of chunks: %.1f", avgChunkPoints))
+        new StringBuilder(String.format(TracingConstant.STATEMENT_ID, statementId))
+            .append(String.format(" - Num of sequence chunks: %d", totalChunkNum))
+            .append(String.format(", avg points: %.1f", avgChunkPoints))
             .append("\n");
     writer.write(builder.toString());
   }
 
-  public void writeOverlappedPageInfo(long queryId, int totalPageNum, int overlappedPageNum)
+  public void writeUnSeqChunksInfo(long statementId, long totalChunkNum, long totalChunkPoints)
       throws IOException {
+    double avgChunkPoints = (double) totalChunkPoints / totalChunkNum;
     StringBuilder builder =
-        new StringBuilder(String.format(QUERY_ID, queryId))
-            .append(" - Rate of overlapped pages: ")
-            .append(String.format("%.1f%%, ", (double) overlappedPageNum / totalPageNum * 100))
-            .append(
-                String.format(
-                    "%d overlapped pages in total %d pages.\n", overlappedPageNum, totalPageNum));
+        new StringBuilder(String.format(TracingConstant.STATEMENT_ID, statementId))
+            .append(String.format(" - Num of unsequence chunks: %d", totalChunkNum))
+            .append(String.format(", avg points: %.1f", avgChunkPoints))
+            .append("\n");
     writer.write(builder.toString());
   }
 
-  public void writeEndTime(long queryId) throws IOException {
-    long endTime = System.currentTimeMillis();
+  public void writeOverlappedPageInfo(long statementId, int totalPageNum, int overlappedPageNum)
+      throws IOException {
     StringBuilder builder =
-        new StringBuilder(String.format(QUERY_ID, queryId))
+        new StringBuilder(String.format(TracingConstant.STATEMENT_ID, statementId))
+            .append(String.format(" - Num of Pages: %d, ", totalPageNum))
+            .append(
+                String.format(
+                    "overlapped pages: %d (%.1f%%)",
+                    overlappedPageNum, (double) overlappedPageNum / totalPageNum * 100))
+    .append("\n");
+    writer.write(builder.toString());
+  }
+
+  public void writeEndTime(long statementId, long endTime) throws IOException {
+    StringBuilder builder =
+        new StringBuilder(String.format(TracingConstant.STATEMENT_ID, statementId))
             .append(" - Total cost time: ")
-            .append(endTime - queryStartTime.remove(queryId))
+            .append(endTime - statementIdToTracingInfo.get(statementId).getStartTime())
             .append("ms\n");
     writer.write(builder.toString());
     writer.flush();

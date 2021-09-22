@@ -49,6 +49,7 @@ import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
@@ -56,6 +57,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
   protected IoTDBJDBCDataSet ioTDBRpcDataSet;
+  protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private boolean isRpcFetchResult = true;
   private List<String> sgColumns;
   private BitSet aliasColumnMap;
@@ -90,6 +92,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             timeout,
             sgColumns,
             aliasColumnMap);
+    this.ioTDBRpcTracingInfo = new IoTDBTracingInfo();
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     this.aliasColumnMap = aliasColumnMap;
@@ -122,6 +125,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             null,
             statement.getFetchSize(),
             timeout);
+    this.ioTDBRpcTracingInfo = new IoTDBTracingInfo();
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     this.isRpcFetchResult = isRpcFetchResult;
@@ -1183,4 +1187,19 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   abstract String getValueByName(String columnName) throws SQLException;
 
   abstract Object getObjectByName(String columnName) throws SQLException;
+
+  public boolean isSetTracingInfo() {
+    return ioTDBRpcTracingInfo.tsTracingInfo != null;
+  }
+
+  public List<List<String>> getTracingInfo() {
+    List<List<String>> lists = new ArrayList<>(2);
+    List<String> activityList = ioTDBRpcTracingInfo.getActivityList();
+    List<String> elapsedTimeList = ioTDBRpcTracingInfo.getElapsedTimeList();
+    activityList.add(0, "Activity");
+    elapsedTimeList.add(0, "Elapsed Time");
+    lists.set(0,activityList);
+    lists.set(1,elapsedTimeList);
+    return lists;
+  }
 }

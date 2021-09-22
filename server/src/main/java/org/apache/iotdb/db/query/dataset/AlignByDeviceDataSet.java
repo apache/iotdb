@@ -166,8 +166,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.expression = deviceToFilterMap.get(currentDevice.getFullPath());
       }
 
+      // for tracing: try to calculate the number of series paths
       SessionManager sessionManager = SessionManager.getInstance();
-      if (sessionManager.isEnableTracing(sessionManager.getCurrSessionId())) {
+      long statementId = sessionManager.getStatementIdByQueryId(context.getQueryId());
+      if (sessionManager.isEnableTracing(statementId)) {
         pathsNum += executeColumns.size();
       }
 

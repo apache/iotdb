@@ -18,18 +18,21 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import static org.junit.Assert.fail;
 
@@ -47,20 +50,27 @@ public class IoTDBTracingIT {
   }
 
   @Test
-  public void tracingTest() throws ClassNotFoundException {
+  public void tracingTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      //      Assert.assertEquals(false, config.isEnablePerformanceTracing());
-      //
-      //      statement.execute("tracing on");
-      //      Assert.assertEquals(true, config.isEnablePerformanceTracing());
-      //
-      //      statement.execute("tracing off");
-      //      Assert.assertEquals(false, config.isEnablePerformanceTracing());
+    Connection connection =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("tracing on");
+    } catch (Exception e) {
+      Assert.assertEquals("411: TRACING ON/OFF hasn't been supported yet", e.getMessage());
+    }
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("tracing off");
+    } catch (Exception e) {
+      Assert.assertEquals("411: TRACING ON/OFF hasn't been supported yet", e.getMessage());
+    }
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("tracing select s1 from root.sg1.d1");
+      ResultSet resultSet = statement.getResultSet();
+      List<List<String>> tracingInfo = ((IoTDBJDBCResultSet) resultSet).getTracingInfo();
+      Assert.assertEquals(2, tracingInfo.size());
+      Assert.assertEquals(11, tracingInfo.get(0).size());
+      Assert.assertEquals(11, tracingInfo.get(1).size());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -23,6 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.control.tracing.TracingInfo;
+import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -45,10 +47,10 @@ public class TracingManagerTest {
 
   private final String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
   private TracingManager tracingManager;
-  private final String sql = "select * from root.sg.device1 where time > 10";
-  private final long queryId = 10;
+  private final String statement = "tracing select * from root.sg.device1 where time > 10";
+  private final long statementId = 10;
 
-  private Set<TsFileResource> seqResources = new HashSet<>();
+  private final Set<TsFileResource> seqResources = new HashSet<>();
 
   @Before
   public void setUp() {
@@ -67,27 +69,31 @@ public class TracingManagerTest {
     if (!tracingManager.getWriterStatus()) {
       tracingManager.openTracingWriteStream();
     }
+    TracingInfo tracingInfo = tracingManager.getTracingInfo(statementId);
+    tracingInfo.setStartTime(System.currentTimeMillis());
     String[] ans = {
-      "Query Id: 10 - Query Statement: " + sql,
-      "Query Id: 10 - Start time: 2020-12-",
-      "Query Id: 10 - Number of series paths: 3",
-      "Query Id: 10 - Query Statement: " + sql,
-      "Query Id: 10 - Start time: 2020-12-",
-      "Query Id: 10 - Number of series paths: 3",
-      "Query Id: 10 - Number of sequence files: 1",
-      "Query Id: 10 - SeqFiles: 1-1-0.tsfile",
-      "Query Id: 10 - Number of unSequence files: 0",
-      "Query Id: 10 - Number of chunks: 3, Average data points of chunks: 1371",
-      "Query Id: 10 - Rate of overlapped pages: 50.0%, 10 overlapped pages in total 20 pages",
-      "Query Id: 10 - Total cost time: "
+      "Statement Id: 10 - Statement: " + statement,
+      "Statement Id: 10 - Start time: ",
+      "Statement Id: 10 - Number of series paths: ",
+      "Statement Id: 10 - Statement: " + statement,
+      "Statement Id: 10 - Start time: ",
+      "Statement Id: 10 - Number of series paths: ",
+      "Statement Id: 10 - Number of sequence files read: 1",
+      "Statement Id: 10 - SeqFiles: 1-1-0.tsfile",
+      "Statement Id: 10 - Number of unSequence files read: 0",
+      "Statement Id: 10 - Num of sequence chunks: 3, avg points: 1371.0",
+      "Statement Id: 10 - Num of unsequence chunks: 3, avg points: 1371.0",
+      "Statement Id: 10 - Num of Pages: 20, overlapped pages: 10 (50.0%)",
+      "Statement Id: 10 - Total cost time: "
     };
-    tracingManager.writeQueryInfo(queryId, sql, 1607529600000L);
-    tracingManager.writePathsNum(queryId, 3);
-    tracingManager.writeQueryInfo(queryId, sql, 1607529600000L, 3);
-    tracingManager.writeTsFileInfo(queryId, seqResources, Collections.EMPTY_SET);
-    tracingManager.writeChunksInfo(queryId, 3, 4113L);
-    tracingManager.writeOverlappedPageInfo(queryId, 20, 10);
-    tracingManager.writeEndTime(queryId);
+    tracingManager.writeQueryInfo(statementId, statement);
+    tracingManager.writePathsNum(statementId, 3);
+    tracingManager.writeQueryInfo(statementId, statement, 3);
+    tracingManager.writeTsFileInfo(statementId, seqResources, Collections.EMPTY_SET);
+    tracingManager.writeSeqChunksInfo(statementId, 3, 4113L);
+    tracingManager.writeUnSeqChunksInfo(statementId, 3, 4113L);
+    tracingManager.writeOverlappedPageInfo(statementId, 20, 10);
+    tracingManager.writeEndTime(statementId, System.currentTimeMillis());
     tracingManager.close();
 
     File tracingFile =
@@ -95,7 +101,8 @@ public class TracingManagerTest {
     BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile));
     String str;
     int cnt = 0;
-    while ((str = bufferedReader.readLine()) != null) {
+    while (cnt < ans.length) {
+      str = bufferedReader.readLine();
       Assert.assertTrue(str.contains(ans[cnt++]));
     }
     bufferedReader.close();
