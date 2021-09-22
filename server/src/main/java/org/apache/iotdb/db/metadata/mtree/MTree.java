@@ -98,18 +98,45 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-/** The hierarchical struct of the Metadata Tree is implemented in this class. */
+/**
+ * The hierarchical struct of the Metadata Tree is implemented in this class.
+ *
+ * <p>Since there are too many interfaces and methods in this class, we use code region to help
+ * manage code. The code region starts with //region and ends with //endregion. When using Intellij
+ * Idea to develop, it's easy to fold the code region and see code region overview by collapsing
+ * all.
+ *
+ * <p>The codes are divided into the following code regions:
+ *
+ * <ol>
+ *   <li>MTree initialization, clear and serialization
+ *   <li>Timeseries operation, including create and delete
+ *   <li>Entity/Device operation
+ *   <li>StorageGroup Operation, including set and delete
+ *   <li>Interfaces and Implementation for metadata info Query
+ *       <ol>
+ *         <li>Interfaces for Storage Group info Query
+ *         <li>Interfaces for Device info Query
+ *         <li>Interfaces for timeseries, measurement and schema info Query
+ *         <li>Interfaces for Level Node info Query
+ *       </ol>
+ *   <li>Interfaces and Implementation for MNode Query
+ *   <li>Interfaces and Implementation for metadata count
+ *   <li>Interfaces and Implementation for Template check
+ *   <li>TestOnly Interface
+ * </ol>
+ */
 public class MTree implements Serializable {
 
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final long serialVersionUID = -4200394435237291964L;
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
-  private static final String NO_CHILDNODE_MSG = " does not have the child node ";
   private IMNode root;
 
   private String mtreeSnapshotPath;
   private String mtreeSnapshotTmpPath;
 
+  // region MTree initialization, clear and serialization
   public MTree() {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
@@ -180,51 +207,107 @@ public class MTree implements Serializable {
     return GSON.toJson(jsonObject);
   }
 
-  /** combine multiple metadata in string format */
-  @TestOnly
-  public static JsonObject combineMetadataInStrings(String[] metadataStrs) {
-    JsonObject[] jsonObjects = new JsonObject[metadataStrs.length];
-    for (int i = 0; i < jsonObjects.length; i++) {
-      jsonObjects[i] = GSON.fromJson(metadataStrs[i], JsonObject.class);
+  public void serializeTo(String snapshotPath) throws IOException {
+    try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
+      root.serializeTo(mLogWriter);
     }
-
-    JsonObject root = jsonObjects[0];
-    for (int i = 1; i < jsonObjects.length; i++) {
-      root = combineJsonObjects(root, jsonObjects[i]);
-    }
-
-    return root;
   }
 
-  private static JsonObject combineJsonObjects(JsonObject a, JsonObject b) {
-    JsonObject res = new JsonObject();
-
-    Set<String> retainSet = new HashSet<>(a.keySet());
-    retainSet.retainAll(b.keySet());
-    Set<String> aCha = new HashSet<>(a.keySet());
-    Set<String> bCha = new HashSet<>(b.keySet());
-    aCha.removeAll(retainSet);
-    bCha.removeAll(retainSet);
-
-    for (String key : aCha) {
-      res.add(key, a.get(key));
+  public static MTree deserializeFrom(File mtreeSnapshot) {
+    try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
+      return new MTree(deserializeFromReader(mLogReader));
+    } catch (IOException e) {
+      logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
+      return new MTree();
     }
+  }
 
-    for (String key : bCha) {
-      res.add(key, b.get(key));
-    }
-    for (String key : retainSet) {
-      JsonElement v1 = a.get(key);
-      JsonElement v2 = b.get(key);
-      if (v1 instanceof JsonObject && v2 instanceof JsonObject) {
-        res.add(key, combineJsonObjects((JsonObject) v1, (JsonObject) v2));
-      } else {
-        res.add(v1.getAsString(), v2);
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  private static InternalMNode deserializeFromReader(MLogReader mLogReader) {
+    Deque<IMNode> nodeStack = new ArrayDeque<>();
+    IMNode node = null;
+    while (mLogReader.hasNext()) {
+      PhysicalPlan plan = null;
+      try {
+        plan = mLogReader.next();
+        if (plan == null) {
+          continue;
+        }
+        int childrenSize = 0;
+        if (plan instanceof StorageGroupMNodePlan) {
+          node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
+          childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
+        } else if (plan instanceof MeasurementMNodePlan) {
+          node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
+          childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
+        } else if (plan instanceof MNodePlan) {
+          node = InternalMNode.deserializeFrom((MNodePlan) plan);
+          childrenSize = ((MNodePlan) plan).getChildSize();
+        }
+
+        if (childrenSize != 0) {
+          ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
+          for (int i = 0; i < childrenSize; i++) {
+            IMNode child = nodeStack.removeFirst();
+            childrenMap.put(child.getName(), child);
+            if (child.isMeasurement()) {
+              if (!node.isEntity()) {
+                node = IEntityMNode.setToEntity(node);
+              }
+              String alias = ((IMeasurementMNode) child).getAlias();
+              if (alias != null) {
+                ((IEntityMNode) node).addAlias(alias, (IMeasurementMNode) child);
+              }
+            }
+            child.setParent(node);
+          }
+          node.setChildren(childrenMap);
+        }
+        nodeStack.push(node);
+      } catch (Exception e) {
+        logger.error(
+            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
       }
     }
-    return res;
+    if (!IoTDBConstant.PATH_ROOT.equals(node.getName())) {
+      logger.error("Snapshot file corrupted!");
+      //      throw new MetadataException("Snapshot file corrupted!");
+    }
+
+    return (InternalMNode) node;
   }
 
+  @Override
+  public String toString() {
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.add(root.getName(), mNodeToJSON(root, null));
+    return jsonToString(jsonObject);
+  }
+
+  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
+    JsonObject jsonObject = new JsonObject();
+    if (node.getChildren().size() > 0) {
+      if (node.isStorageGroup()) {
+        storageGroupName = node.getFullPath();
+      }
+      for (IMNode child : node.getChildren().values()) {
+        jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
+      }
+    } else if (node.isMeasurement()) {
+      IMeasurementMNode leafMNode = (IMeasurementMNode) node;
+      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
+      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
+      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
+      if (leafMNode.getSchema().getProps() != null) {
+        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
+      }
+      jsonObject.addProperty("StorageGroup", storageGroupName);
+    }
+    return jsonObject;
+  }
+  // endregion
+
+  // region Timeseries operation, including create and delete
   /**
    * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
    * storage group should be set first, throw exception otherwise
@@ -392,6 +475,47 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Delete path. The path should be a full path from root to leaf node
+   *
+   * @param path Format: root.node(.node)+
+   */
+  public Pair<PartialPath, IMeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(
+      PartialPath path) throws MetadataException {
+    IMNode curNode = getNodeByPath(path);
+    if (!(curNode.isMeasurement())) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+
+    IMeasurementMNode deletedNode = (IMeasurementMNode) curNode;
+
+    // delete the last node of path
+    curNode.getParent().deleteChild(path.getMeasurement());
+    if (deletedNode.getAlias() != null) {
+      deletedNode.getParent().deleteAliasChild(((IMeasurementMNode) curNode).getAlias());
+    }
+    curNode = curNode.getParent();
+    // delete all empty ancestors except storage group and MeasurementMNode
+    while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
+        && !(curNode.isMeasurement())
+        && curNode.getChildren().size() == 0) {
+      // if current storage group has no time series, return the storage group name
+      if (curNode.isStorageGroup()) {
+        return new Pair<>(curNode.getPartialPath(), deletedNode);
+      }
+      curNode.getParent().deleteChild(curNode.getName());
+      curNode = curNode.getParent();
+    }
+    return new Pair<>(null, deletedNode);
+  }
+  // endregion
+
+  // region Entity/Device operation
+  // including device auto creation and transform from InternalMNode to EntityMNode
+  /**
    * Add an interval path to MTree. This is only used for automatically creating schema
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
@@ -427,39 +551,16 @@ public class MTree implements Serializable {
     return cur;
   }
 
-  /**
-   * Check whether the given path exists.
-   *
-   * @param path a full path or a prefix path
-   */
-  public boolean isPathExist(PartialPath path) {
-    String[] nodeNames = path.getNodes();
-    IMNode cur = root;
-    if (!nodeNames[0].equals(root.getName())) {
-      return false;
+  public IEntityMNode setToEntity(IMNode node) {
+    // synchronize check and replace, we need replaceChild become atomic operation
+    // only write on mtree will be synchronized
+    synchronized (this) {
+      return IEntityMNode.setToEntity(node);
     }
-    Template upperTemplate = cur.getSchemaTemplate();
-    for (int i = 1; i < nodeNames.length; i++) {
-      if (!cur.hasChild(nodeNames[i])) {
-        return cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i]);
-      }
-      cur = cur.getChild(nodeNames[i]);
-      if (cur.isMeasurement()) {
-        if (i == nodeNames.length - 1) {
-          return true;
-        }
-        if (((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
-          return i == nodeNames.length - 2
-              && ((IMeasurementMNode) cur).getSchema().containsSubMeasurement(nodeNames[i + 1]);
-        } else {
-          return false;
-        }
-      }
-      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
-    }
-    return true;
   }
+  // endregion
 
+  // region StorageGroup Operation, including set and delete
   /**
    * Set storage group. Make sure check seriesPath before setting storage group
    *
@@ -548,7 +649,43 @@ public class MTree implements Serializable {
     }
     return leafMNodes;
   }
+  // endregion
 
+  // region Interfaces and Implementation for metadata info Query
+  /**
+   * Check whether the given path exists.
+   *
+   * @param path a full path or a prefix path
+   */
+  public boolean isPathExist(PartialPath path) {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    if (!nodeNames[0].equals(root.getName())) {
+      return false;
+    }
+    Template upperTemplate = cur.getSchemaTemplate();
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChild(nodeNames[i])) {
+        return cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i]);
+      }
+      cur = cur.getChild(nodeNames[i]);
+      if (cur.isMeasurement()) {
+        if (i == nodeNames.length - 1) {
+          return true;
+        }
+        if (((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+          return i == nodeNames.length - 2
+              && ((IMeasurementMNode) cur).getSchema().containsSubMeasurement(nodeNames[i + 1]);
+        } else {
+          return false;
+        }
+      }
+      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
+    }
+    return true;
+  }
+
+  // region Interfaces for Storage Group info Query
   /**
    * Check whether path is storage group or not
    *
@@ -576,50 +713,351 @@ public class MTree implements Serializable {
     return cur != null && cur.isStorageGroup();
   }
 
-  /**
-   * Delete path. The path should be a full path from root to leaf node
-   *
-   * @param path Format: root.node(.node)+
-   */
-  public Pair<PartialPath, IMeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(
-      PartialPath path) throws MetadataException {
-    IMNode curNode = getNodeByPath(path);
-    if (!(curNode.isMeasurement())) {
-      throw new PathNotExistException(path.getFullPath());
-    }
+  /** Check whether the given path contains a storage group */
+  public boolean checkStorageGroupByPath(PartialPath path) {
     String[] nodes = path.getNodes();
-    if (nodes.length == 0 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
-      throw new IllegalPathException(path.getFullPath());
-    }
-
-    IMeasurementMNode deletedNode = (IMeasurementMNode) curNode;
-
-    // delete the last node of path
-    curNode.getParent().deleteChild(path.getMeasurement());
-    if (deletedNode.getAlias() != null) {
-      deletedNode.getParent().deleteAliasChild(((IMeasurementMNode) curNode).getAlias());
-    }
-    curNode = curNode.getParent();
-    // delete all empty ancestors except storage group and MeasurementMNode
-    while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
-        && !(curNode.isMeasurement())
-        && curNode.getChildren().size() == 0) {
-      // if current storage group has no time series, return the storage group name
-      if (curNode.isStorageGroup()) {
-        return new Pair<>(curNode.getPartialPath(), deletedNode);
+    IMNode cur = root;
+    for (int i = 1; i < nodes.length; i++) {
+      cur = cur.getChild(nodes[i]);
+      if (cur == null) {
+        return false;
+      } else if (cur.isStorageGroup()) {
+        return true;
       }
-      curNode.getParent().deleteChild(curNode.getName());
-      curNode = curNode.getParent();
     }
-    return new Pair<>(null, deletedNode);
+    return false;
   }
 
+  /**
+   * Get all storage groups under the given path
+   *
+   * @return storage group list
+   * @apiNote :for cluster
+   */
+  public List<String> getStorageGroupByPath(PartialPath path) throws MetadataException {
+    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
+    collector.setCollectInternal(true);
+    collector.traverse();
+    return collector.getResult().stream().map(PartialPath::getFullPath).collect(toList());
+  }
+
+  /**
+   * Get all storage group names
+   *
+   * @return a list contains all distinct storage groups
+   */
+  public List<PartialPath> getAllStorageGroupPaths() {
+    List<PartialPath> res = new ArrayList<>();
+    Deque<IMNode> nodeStack = new ArrayDeque<>();
+    nodeStack.add(root);
+    while (!nodeStack.isEmpty()) {
+      IMNode current = nodeStack.pop();
+      if (current.isStorageGroup()) {
+        res.add(current.getPartialPath());
+      } else {
+        nodeStack.addAll(current.getChildren().values());
+      }
+    }
+    return res;
+  }
+
+  /**
+   * Get the storage group that given path matches or belongs to. The path may contain wildcard.
+   *
+   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
+   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
+   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
+   *
+   * @param path a path pattern or a full path, may contain wildcard
+   * @return a list contains all storage groups related to given path
+   */
+  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
+      throws MetadataException {
+    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
+    collector.setCollectInternal(true);
+    collector.traverse();
+    return collector.getResult();
+  }
+
+  /**
+   * Get all storage group that the given path matches.
+   *
+   * @param path a path pattern or a full path, may contain wildcard
+   * @return a list contains all storage group names under give path
+   */
+  public List<PartialPath> getStorageGroupPaths(PartialPath path) throws MetadataException {
+    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
+    collector.setCollectInternal(false);
+    collector.traverse();
+    return collector.getResult();
+  }
+
+  /**
+   * Get storage group path by path
+   *
+   * <p>e.g., root.sg1 is storage group, path is root.sg1.d1, return root.sg1
+   *
+   * @return storage group in the given path
+   */
+  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
+    String[] nodes = path.getNodes();
+    IMNode cur = root;
+    for (int i = 1; i < nodes.length; i++) {
+      cur = cur.getChild(nodes[i]);
+      if (cur == null) {
+        throw new StorageGroupNotSetException(path.getFullPath());
+      } else if (cur.isStorageGroup()) {
+        return cur.getPartialPath();
+      }
+    }
+    throw new StorageGroupNotSetException(path.getFullPath());
+  }
+
+  /**
+   * Try determining the storage group using the children of a mNode. If one child is a storage
+   * group node, put a storageGroupName-fullPath pair into paths. Otherwise put the children that
+   * match the path into the queue and discard other children.
+   */
+  public Map<String, String> determineStorageGroup(PartialPath path) throws MetadataException {
+    StorageGroupDeterminator determinator = new StorageGroupDeterminator(root, path);
+    determinator.traverse();
+    return determinator.getResult();
+  }
+  // endregion
+
+  // region Interfaces for Device info Query
+  /**
+   * Get all devices matching the given path. If isPrefixMatch, then the devices under the given
+   * path will be collected too.
+   *
+   * @return a list contains all distinct devices names
+   */
+  public Set<PartialPath> getDevices(PartialPath path, boolean isPrefixMatch)
+      throws MetadataException {
+    EntityPathCollector collector = new EntityPathCollector(root, path);
+    collector.setPrefixMatch(isPrefixMatch);
+    collector.traverse();
+    return collector.getResult();
+  }
+
+  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+    EntityPathCollector collector =
+        new EntityPathCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());
+    collector.traverse();
+    Set<PartialPath> devices = collector.getResult();
+    List<ShowDevicesResult> res = new ArrayList<>();
+    for (PartialPath device : devices) {
+      if (plan.hasSgCol()) {
+        res.add(
+            new ShowDevicesResult(device.getFullPath(), getStorageGroupPath(device).getFullPath()));
+      } else {
+        res.add(new ShowDevicesResult(device.getFullPath()));
+      }
+    }
+    return res;
+  }
+
+  public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
+    TSEntityPathCollector collector = new TSEntityPathCollector(root, timeseries);
+    collector.traverse();
+    return collector.getResult();
+  }
+  // endregion
+
+  // region Interfaces for timeseries, measurement and schema info Query
   /**
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
   public IMeasurementSchema getSchema(PartialPath path) throws MetadataException {
     IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(path);
     return node.getSchema();
+  }
+
+  /**
+   * Get all timeseries matching the given path pattern
+   *
+   * @param path a path pattern or a full path, may contain wildcard.
+   */
+  public List<PartialPath> getAllTimeseriesPath(PartialPath path) throws MetadataException {
+    return getAllTimeseriesPathWithAlias(path, 0, 0).left;
+  }
+
+  /**
+   * Get all timeseries paths matching the given path pattern
+   *
+   * @param path a path pattern or a full path, may contain wildcard
+   * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
+   *     if we don't set offset.
+   */
+  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
+      PartialPath path, int limit, int offset) throws MetadataException {
+    MeasurementPathCollector collector = new MeasurementPathCollector(root, path, limit, offset);
+    collector.traverse();
+    offset = collector.getCurOffset() + 1;
+    List<PartialPath> res = collector.getResult();
+    return new Pair<>(res, offset);
+  }
+
+  /**
+   * Get all time series schema matching the given path pattern order by insert frequency
+   *
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
+   */
+  public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
+      ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
+    MeasurementSchemaCollector collector = new MeasurementSchemaCollector(root, plan.getPath());
+    collector.setQueryContext(queryContext);
+    collector.setNeedLast(true);
+    collector.traverse();
+    List<Pair<PartialPath, String[]>> allMatchedNodes = collector.getResult();
+
+    Stream<Pair<PartialPath, String[]>> sortedStream =
+        allMatchedNodes.stream()
+            .sorted(
+                Comparator.comparingLong(
+                        (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
+                    .reversed()
+                    .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
+
+    // no limit
+    if (plan.getLimit() == 0) {
+      return sortedStream.collect(toList());
+    } else {
+      return sortedStream.skip(plan.getOffset()).limit(plan.getLimit()).collect(toList());
+    }
+  }
+
+  /**
+   * Get all time series schema matching the given path pattern
+   *
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
+   */
+  public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
+      throws MetadataException {
+    MeasurementSchemaCollector collector =
+        new MeasurementSchemaCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());
+    collector.traverse();
+    return collector.getResult();
+  }
+  // endregion
+
+  // region Interfaces for Level Node info Query
+  /**
+   * Get child node path in the next level of the given path.
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [root.sg1.d1, root.sg1.d2]
+   *
+   * @param path The given path
+   * @return All child nodes' seriesPath(s) of given seriesPath.
+   */
+  public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
+    try {
+      MNodeCollector<Set<String>> collector =
+          new MNodeCollector<Set<String>>(root, path.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+            @Override
+            protected void transferToResult(IMNode node) {
+              resultSet.add(node.getFullPath());
+            }
+          };
+      collector.setResultSet(new TreeSet<>());
+      collector.traverse();
+      return collector.getResult();
+    } catch (IllegalPathException e) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+  }
+
+  /**
+   * Get child node in the next level of the given path.
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [d1, d2]
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
+   * return [s1, s2]
+   *
+   * @param path Path
+   * @return All child nodes' seriesPath(s) of given seriesPath.
+   */
+  public Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
+    try {
+      MNodeCollector<Set<String>> collector =
+          new MNodeCollector<Set<String>>(root, path.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+            @Override
+            protected void transferToResult(IMNode node) {
+              resultSet.add(node.getName());
+            }
+          };
+      collector.setResultSet(new TreeSet<>());
+      collector.traverse();
+      return collector.getResult();
+    } catch (IllegalPathException e) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+  }
+
+  /** Get all paths from root to the given level */
+  public List<PartialPath> getNodesListInGivenLevel(
+      PartialPath path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+    MNodeCollector<List<PartialPath>> collector =
+        new MNodeCollector<List<PartialPath>>(root, path) {
+          @Override
+          protected void transferToResult(IMNode node) {
+            resultSet.add(node.getPartialPath());
+          }
+        };
+    collector.setResultSet(new LinkedList<>());
+    collector.setTargetLevel(nodeLevel);
+    collector.setStorageGroupFilter(filter);
+    collector.traverse();
+    return collector.getResult();
+  }
+  // endregion
+  // endregion
+
+  // region Interfaces and Implementation for MNode Query
+  /**
+   * Get node by the path
+   *
+   * @return last node in given seriesPath
+   */
+  public IMNode getNodeByPath(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    IMNode cur = root;
+    Template upperTemplate = cur.getSchemaTemplate();
+
+    for (int i = 1; i < nodes.length; i++) {
+      if (cur.isMeasurement()) {
+        if (i == nodes.length - 1
+            || ((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+          return cur;
+        } else {
+          throw new PathNotExistException(path.getFullPath(), true);
+        }
+      }
+      if (cur.getSchemaTemplate() != null) {
+        upperTemplate = cur.getSchemaTemplate();
+      }
+      IMNode next = cur.getChild(nodes[i]);
+      if (next == null) {
+        if (upperTemplate == null) {
+          throw new PathNotExistException(path.getFullPath(), true);
+        }
+
+        String realName = nodes[i];
+        IMeasurementSchema schema = upperTemplate.getSchemaMap().get(realName);
+        if (schema == null) {
+          throw new PathNotExistException(path.getFullPath(), true);
+        }
+        return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
+      }
+      cur = next;
+    }
+    return cur;
   }
 
   /**
@@ -694,113 +1132,6 @@ public class MTree implements Serializable {
     throw new StorageGroupNotSetException(path.getFullPath());
   }
 
-  /**
-   * Get node by the path
-   *
-   * @return last node in given seriesPath
-   */
-  public IMNode getNodeByPath(PartialPath path) throws MetadataException {
-    String[] nodes = path.getNodes();
-    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(path.getFullPath());
-    }
-    IMNode cur = root;
-    Template upperTemplate = cur.getSchemaTemplate();
-
-    for (int i = 1; i < nodes.length; i++) {
-      if (cur.isMeasurement()) {
-        if (i == nodes.length - 1
-            || ((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
-          return cur;
-        } else {
-          throw new PathNotExistException(path.getFullPath(), true);
-        }
-      }
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
-      }
-      IMNode next = cur.getChild(nodes[i]);
-      if (next == null) {
-        if (upperTemplate == null) {
-          throw new PathNotExistException(path.getFullPath(), true);
-        }
-
-        String realName = nodes[i];
-        IMeasurementSchema schema = upperTemplate.getSchemaMap().get(realName);
-        if (schema == null) {
-          throw new PathNotExistException(path.getFullPath(), true);
-        }
-        return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
-      }
-      cur = next;
-    }
-    return cur;
-  }
-
-  /**
-   * Get all storage groups under the given path
-   *
-   * @return storage group list
-   * @apiNote :for cluster
-   */
-  public List<String> getStorageGroupByPath(PartialPath path) throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
-    collector.setCollectInternal(true);
-    collector.traverse();
-    return collector.getResult().stream().map(PartialPath::getFullPath).collect(toList());
-  }
-
-  /**
-   * Get all storage group names
-   *
-   * @return a list contains all distinct storage groups
-   */
-  public List<PartialPath> getAllStorageGroupPaths() {
-    List<PartialPath> res = new ArrayList<>();
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
-    while (!nodeStack.isEmpty()) {
-      IMNode current = nodeStack.pop();
-      if (current.isStorageGroup()) {
-        res.add(current.getPartialPath());
-      } else {
-        nodeStack.addAll(current.getChildren().values());
-      }
-    }
-    return res;
-  }
-
-  /**
-   * Get the storage group that given path matches or belongs to. The path may contain wildcard.
-   *
-   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
-   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
-   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
-   *
-   * @param path a path pattern or a full path, may contain wildcard
-   * @return a list contains all storage groups related to given path
-   */
-  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
-      throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
-    collector.setCollectInternal(true);
-    collector.traverse();
-    return collector.getResult();
-  }
-
-  /**
-   * Get all storage group that the given path matches.
-   *
-   * @param path a path pattern or a full path, may contain wildcard
-   * @return a list contains all storage group names under give path
-   */
-  public List<PartialPath> getStorageGroupPaths(PartialPath path) throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
-    collector.setCollectInternal(false);
-    collector.traverse();
-    return collector.getResult();
-  }
-
   /** Get all storage group MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     List<IStorageGroupMNode> ret = new ArrayList<>();
@@ -816,68 +1147,9 @@ public class MTree implements Serializable {
     }
     return ret;
   }
+  // endregion
 
-  /**
-   * Get storage group path by path
-   *
-   * <p>e.g., root.sg1 is storage group, path is root.sg1.d1, return root.sg1
-   *
-   * @return storage group in the given path
-   */
-  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
-    String[] nodes = path.getNodes();
-    IMNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        throw new StorageGroupNotSetException(path.getFullPath());
-      } else if (cur.isStorageGroup()) {
-        return cur.getPartialPath();
-      }
-    }
-    throw new StorageGroupNotSetException(path.getFullPath());
-  }
-
-  /** Check whether the given path contains a storage group */
-  public boolean checkStorageGroupByPath(PartialPath path) {
-    String[] nodes = path.getNodes();
-    IMNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        return false;
-      } else if (cur.isStorageGroup()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Get all timeseries matching the given path pattern
-   *
-   * @param path a path pattern or a full path, may contain wildcard.
-   */
-  public List<PartialPath> getAllTimeseriesPath(PartialPath path) throws MetadataException {
-    return getAllTimeseriesPathWithAlias(path, 0, 0).left;
-  }
-
-  /**
-   * Get all timeseries paths matching the given path pattern
-   *
-   * @param path a path pattern or a full path, may contain wildcard
-   * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
-   *     if we don't set offset.
-   */
-  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
-      PartialPath path, int limit, int offset) throws MetadataException {
-    MeasurementPathCollector collector = new MeasurementPathCollector(root, path, limit, offset);
-    collector.traverse();
-    offset = collector.getCurOffset() + 1;
-    List<PartialPath> res = collector.getResult();
-    return new Pair<>(res, offset);
-  }
-
+  // region Interfaces and Implementation for metadata count
   /**
    * Get the count of timeseries matching the given path.
    *
@@ -917,276 +1189,9 @@ public class MTree implements Serializable {
     counter.traverse();
     return counter.getCount();
   }
+  // endregion
 
-  /**
-   * Get all time series schema matching the given path pattern order by insert frequency
-   *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
-   */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
-      ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
-    MeasurementSchemaCollector collector = new MeasurementSchemaCollector(root, plan.getPath());
-    collector.setQueryContext(queryContext);
-    collector.setNeedLast(true);
-    collector.traverse();
-    List<Pair<PartialPath, String[]>> allMatchedNodes = collector.getResult();
-
-    Stream<Pair<PartialPath, String[]>> sortedStream =
-        allMatchedNodes.stream()
-            .sorted(
-                Comparator.comparingLong(
-                        (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
-                    .reversed()
-                    .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
-
-    // no limit
-    if (plan.getLimit() == 0) {
-      return sortedStream.collect(toList());
-    } else {
-      return sortedStream.skip(plan.getOffset()).limit(plan.getLimit()).collect(toList());
-    }
-  }
-
-  /**
-   * Get all time series schema matching the given path pattern
-   *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
-   */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
-      throws MetadataException {
-    MeasurementSchemaCollector collector =
-        new MeasurementSchemaCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());
-    collector.traverse();
-    return collector.getResult();
-  }
-
-  /**
-   * Get child node path in the next level of the given path.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param path The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
-    try {
-      MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, path.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              resultSet.add(node.getFullPath());
-            }
-          };
-      collector.setResultSet(new TreeSet<>());
-      collector.traverse();
-      return collector.getResult();
-    } catch (IllegalPathException e) {
-      throw new IllegalPathException(path.getFullPath());
-    }
-  }
-
-  /**
-   * Get child node in the next level of the given path.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2]
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
-   * return [s1, s2]
-   *
-   * @param path Path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  public Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
-    try {
-      MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, path.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              resultSet.add(node.getName());
-            }
-          };
-      collector.setResultSet(new TreeSet<>());
-      collector.traverse();
-      return collector.getResult();
-    } catch (IllegalPathException e) {
-      throw new IllegalPathException(path.getFullPath());
-    }
-  }
-
-  /**
-   * Get all devices matching the given path. If isPrefixMatch, then the devices under the given
-   * path will be collected too.
-   *
-   * @return a list contains all distinct devices names
-   */
-  public Set<PartialPath> getDevices(PartialPath path, boolean isPrefixMatch)
-      throws MetadataException {
-    EntityPathCollector collector = new EntityPathCollector(root, path);
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    return collector.getResult();
-  }
-
-  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
-    EntityPathCollector collector =
-        new EntityPathCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());
-    collector.traverse();
-    Set<PartialPath> devices = collector.getResult();
-    List<ShowDevicesResult> res = new ArrayList<>();
-    for (PartialPath device : devices) {
-      if (plan.hasSgCol()) {
-        res.add(
-            new ShowDevicesResult(device.getFullPath(), getStorageGroupPath(device).getFullPath()));
-      } else {
-        res.add(new ShowDevicesResult(device.getFullPath()));
-      }
-    }
-    return res;
-  }
-
-  public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
-    TSEntityPathCollector collector = new TSEntityPathCollector(root, timeseries);
-    collector.traverse();
-    return collector.getResult();
-  }
-
-  /** Get all paths from root to the given level */
-  public List<PartialPath> getNodesList(PartialPath path, int nodeLevel, StorageGroupFilter filter)
-      throws MetadataException {
-    MNodeCollector<List<PartialPath>> collector =
-        new MNodeCollector<List<PartialPath>>(root, path) {
-          @Override
-          protected void transferToResult(IMNode node) {
-            resultSet.add(node.getPartialPath());
-          }
-        };
-    collector.setResultSet(new LinkedList<>());
-    collector.setTargetLevel(nodeLevel);
-    collector.setStorageGroupFilter(filter);
-    collector.traverse();
-    return collector.getResult();
-  }
-
-  public void serializeTo(String snapshotPath) throws IOException {
-    try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
-      root.serializeTo(mLogWriter);
-    }
-  }
-
-  public static MTree deserializeFrom(File mtreeSnapshot) {
-    try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
-      return new MTree(deserializeFromReader(mLogReader));
-    } catch (IOException e) {
-      logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
-      return new MTree();
-    }
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static InternalMNode deserializeFromReader(MLogReader mLogReader) {
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    IMNode node = null;
-    while (mLogReader.hasNext()) {
-      PhysicalPlan plan = null;
-      try {
-        plan = mLogReader.next();
-        if (plan == null) {
-          continue;
-        }
-        int childrenSize = 0;
-        if (plan instanceof StorageGroupMNodePlan) {
-          node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
-          childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
-        } else if (plan instanceof MeasurementMNodePlan) {
-          node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
-          childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
-        } else if (plan instanceof MNodePlan) {
-          node = InternalMNode.deserializeFrom((MNodePlan) plan);
-          childrenSize = ((MNodePlan) plan).getChildSize();
-        }
-
-        if (childrenSize != 0) {
-          ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
-          for (int i = 0; i < childrenSize; i++) {
-            IMNode child = nodeStack.removeFirst();
-            childrenMap.put(child.getName(), child);
-            if (child.isMeasurement()) {
-              if (!node.isEntity()) {
-                node = IEntityMNode.setToEntity(node);
-              }
-              String alias = ((IMeasurementMNode) child).getAlias();
-              if (alias != null) {
-                ((IEntityMNode) node).addAlias(alias, (IMeasurementMNode) child);
-              }
-            }
-            child.setParent(node);
-          }
-          node.setChildren(childrenMap);
-        }
-        nodeStack.push(node);
-      } catch (Exception e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
-      }
-    }
-    if (!IoTDBConstant.PATH_ROOT.equals(node.getName())) {
-      logger.error("Snapshot file corrupted!");
-      //      throw new MetadataException("Snapshot file corrupted!");
-    }
-
-    return (InternalMNode) node;
-  }
-
-  @Override
-  public String toString() {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.add(root.getName(), mNodeToJSON(root, null));
-    return jsonToString(jsonObject);
-  }
-
-  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
-    JsonObject jsonObject = new JsonObject();
-    if (node.getChildren().size() > 0) {
-      if (node.isStorageGroup()) {
-        storageGroupName = node.getFullPath();
-      }
-      for (IMNode child : node.getChildren().values()) {
-        jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
-      }
-    } else if (node.isMeasurement()) {
-      IMeasurementMNode leafMNode = (IMeasurementMNode) node;
-      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
-      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
-      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
-      if (leafMNode.getSchema().getProps() != null) {
-        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
-      }
-      jsonObject.addProperty("StorageGroup", storageGroupName);
-    }
-    return jsonObject;
-  }
-
-  /**
-   * Try determining the storage group using the children of a mNode. If one child is a storage
-   * group node, put a storageGroupName-fullPath pair into paths. Otherwise put the children that
-   * match the path into the queue and discard other children.
-   */
-  public Map<String, String> determineStorageGroup(PartialPath path) throws MetadataException {
-    StorageGroupDeterminator determinator = new StorageGroupDeterminator(root, path);
-    determinator.traverse();
-    return determinator.getResult();
-  }
-
-  public IEntityMNode setToEntity(IMNode node) {
-    // synchronize check and replace, we need replaceChild become atomic operation
-    // only write on mtree will be synchronized
-    synchronized (this) {
-      return IEntityMNode.setToEntity(node);
-    }
-  }
-
+  // region Interfaces and Implementation for Template check
   /**
    * check whether there is template on given path and the subTree has template return true,
    * otherwise false
@@ -1231,4 +1236,52 @@ public class MTree implements Serializable {
       checkTemplateOnSubtree(child);
     }
   }
+  // endregion
+
+  // region TestOnly Interface
+  /** combine multiple metadata in string format */
+  @TestOnly
+  public static JsonObject combineMetadataInStrings(String[] metadataStrs) {
+    JsonObject[] jsonObjects = new JsonObject[metadataStrs.length];
+    for (int i = 0; i < jsonObjects.length; i++) {
+      jsonObjects[i] = GSON.fromJson(metadataStrs[i], JsonObject.class);
+    }
+
+    JsonObject root = jsonObjects[0];
+    for (int i = 1; i < jsonObjects.length; i++) {
+      root = combineJsonObjects(root, jsonObjects[i]);
+    }
+
+    return root;
+  }
+
+  private static JsonObject combineJsonObjects(JsonObject a, JsonObject b) {
+    JsonObject res = new JsonObject();
+
+    Set<String> retainSet = new HashSet<>(a.keySet());
+    retainSet.retainAll(b.keySet());
+    Set<String> aCha = new HashSet<>(a.keySet());
+    Set<String> bCha = new HashSet<>(b.keySet());
+    aCha.removeAll(retainSet);
+    bCha.removeAll(retainSet);
+
+    for (String key : aCha) {
+      res.add(key, a.get(key));
+    }
+
+    for (String key : bCha) {
+      res.add(key, b.get(key));
+    }
+    for (String key : retainSet) {
+      JsonElement v1 = a.get(key);
+      JsonElement v2 = b.get(key);
+      if (v1 instanceof JsonObject && v2 instanceof JsonObject) {
+        res.add(key, combineJsonObjects((JsonObject) v1, (JsonObject) v2));
+      } else {
+        res.add(v1.getAsString(), v2);
+      }
+    }
+    return res;
+  }
+  // endregion
 }

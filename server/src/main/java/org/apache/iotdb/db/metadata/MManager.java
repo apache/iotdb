@@ -880,7 +880,7 @@ public class MManager {
 
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-    return mtree.getNodesList(path, nodeLevel, filter);
+    return mtree.getNodesListInGivenLevel(path, nodeLevel, filter);
   }
 
   /**

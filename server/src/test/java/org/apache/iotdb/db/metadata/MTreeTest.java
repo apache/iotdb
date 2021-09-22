@@ -926,10 +926,14 @@ public class MTreeTest {
         null);
     StorageGroupFilter filter = storageGroup -> storageGroup.equals("root.sg1");
 
-    Assert.assertEquals(4, root.getNodesList(new PartialPath("root.**"), 3, null).size());
-    Assert.assertEquals(2, root.getNodesList(new PartialPath("root.**"), 3, filter).size());
-    Assert.assertEquals(2, root.getNodesList(new PartialPath("root.*.*"), 2, null).size());
-    Assert.assertEquals(1, root.getNodesList(new PartialPath("root.*.**"), 2, filter).size());
+    Assert.assertEquals(
+        4, root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null).size());
+    Assert.assertEquals(
+        2, root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter).size());
+    Assert.assertEquals(
+        2, root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null).size());
+    Assert.assertEquals(
+        1, root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter).size());
   }
 
   @Test
