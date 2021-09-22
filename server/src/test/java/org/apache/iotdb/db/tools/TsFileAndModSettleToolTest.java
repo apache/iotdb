@@ -1,12 +1,5 @@
 package org.apache.iotdb.db.tools;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -14,45 +7,42 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.service.RegisterManager;
-import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.TsFileRewriteToolTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class TsFileAndModSettleToolTest {
   private final boolean newEnablePartition = true;
   private final long newPartitionInterval = 3600_000;
-  protected final long maxTimestamp = 50000L;//100000000L;
-  protected final String folder ="C:\\IOTDB\\sourceCode\\choubenson\\iotdb\\data\\data\\sequence\\root.sg_0\\0\\0";
+  protected final long maxTimestamp = 50000L; // 100000000L;
+  protected final String folder =
+      "C:\\IOTDB\\sourceCode\\choubenson\\iotdb\\data\\data\\sequence\\root.sg_0\\0\\0";
   protected final String STORAGE_GROUP = "root.sg_0";
   protected final String DEVICE1 = STORAGE_GROUP + ".device_1";
   protected final String DEVICE2 = STORAGE_GROUP + ".device_2";
@@ -64,7 +54,6 @@ public class TsFileAndModSettleToolTest {
   private IoTDBConfig config;
   private boolean originEnablePartition;
   private long originPartitionInterval;
-
 
   @Before
   public void setUp() {
@@ -103,16 +92,15 @@ public class TsFileAndModSettleToolTest {
     }
   }
 
-
   @Test
-  public void onlineSettleTest(){
-    try{
-      List<TsFileResource> oldResources =createFiles();
-      for(TsFileResource resource:oldResources){
-        TsFileAndModSettleTool.recoverSettleFileMap.put(resource.getTsFilePath(),new Integer(1));
+  public void onlineSettleTest() {
+    try {
+      List<TsFileResource> oldResources = createFiles();
+      for (TsFileResource resource : oldResources) {
+        TsFileAndModSettleTool.recoverSettleFileMap.put(resource.getTsFilePath(), new Integer(1));
       }
-      //new RegisterManager().register(SettleService.getINSTANCE());
-    }catch (IOException | InterruptedException e) {
+      // new RegisterManager().register(SettleService.getINSTANCE());
+    } catch (IOException | InterruptedException e) {
       Assert.fail(e.getMessage());
     }
   }
@@ -120,40 +108,41 @@ public class TsFileAndModSettleToolTest {
   @Test
   public void settleTsFilesAndModsTest() {
     try {
-      List<TsFileResource> resourcesToBeSettled =createFiles();
-      for(TsFileResource oldResource:resourcesToBeSettled){
-        try(TsFileAndModSettleTool tsFileAndModSettleTool=new TsFileAndModSettleTool(oldResource)) {
+      List<TsFileResource> resourcesToBeSettled = createFiles();
+      for (TsFileResource oldResource : resourcesToBeSettled) {
+        try (TsFileAndModSettleTool tsFileAndModSettleTool =
+            new TsFileAndModSettleTool(oldResource)) {
           tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource);
         }
       }
-    } catch (WriteProcessException | InterruptedException | IOException e) {
+    } catch (WriteProcessException | InterruptedException | IllegalPathException | IOException e) {
       Assert.fail(e.getMessage());
     }
   }
 
   public List<TsFileResource> createFiles() throws IOException, InterruptedException {
-    List<TsFileResource> resourcesToBeSettled=new ArrayList<>();
+    List<TsFileResource> resourcesToBeSettled = new ArrayList<>();
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
     List<String> sensors = new ArrayList<>();
 
-    //first File
+    // first File
     sensors.add(SENSOR1);
     deviceSensorsMap.put(DEVICE1, sensors);
     String timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR1;
-    createFile(resourcesToBeSettled,deviceSensorsMap,timeseriesPath);
+    createFile(resourcesToBeSettled, deviceSensorsMap, timeseriesPath);
 
-    //second file
+    // second file
     path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
     sensors.add(SENSOR2);
     deviceSensorsMap.put(DEVICE1, sensors);
     timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR2;
-    createFile(resourcesToBeSettled,deviceSensorsMap,timeseriesPath);
+    createFile(resourcesToBeSettled, deviceSensorsMap, timeseriesPath);
 
     Thread.sleep(100);
-    //third file
+    // third file
     path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
     createOneTsFile(deviceSensorsMap);
-    TsFileResource tsFileResource=new TsFileResource(new File(path));
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
     tsFileResource.serialize();
     tsFileResource.close();
     resourcesToBeSettled.add(tsFileResource);
@@ -161,12 +150,16 @@ public class TsFileAndModSettleToolTest {
     return resourcesToBeSettled;
   }
 
-  private void createFile(List<TsFileResource> resourcesToBeSettled,HashMap<String, List<String>> deviceSensorsMap , String timeseriesPath)
+  private void createFile(
+      List<TsFileResource> resourcesToBeSettled,
+      HashMap<String, List<String>> deviceSensorsMap,
+      String timeseriesPath)
       throws IOException {
     createOneTsFile(deviceSensorsMap);
     createlModificationFile(timeseriesPath);
-    TsFileResource tsFileResource=new TsFileResource(new File(path));
-    tsFileResource.setModFile(new ModificationFile(tsFileResource.getTsFilePath()+ModificationFile.FILE_SUFFIX));
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    tsFileResource.setModFile(
+        new ModificationFile(tsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
     tsFileResource.serialize();
     tsFileResource.close();
     resourcesToBeSettled.add(tsFileResource);
@@ -189,7 +182,6 @@ public class TsFileAndModSettleToolTest {
       Assert.fail(e.getMessage());
     }
   }
-
 
   private void createOneTsFileWithOnlyOnePage(HashMap<String, List<String>> deviceSensorsMap) {
     try {
@@ -267,8 +259,6 @@ public class TsFileAndModSettleToolTest {
       Assert.fail(e.getMessage());
     }
   }
-
-
 
   private void createOneTsFileWithTwoPages(String device, String sensor) {
     TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();

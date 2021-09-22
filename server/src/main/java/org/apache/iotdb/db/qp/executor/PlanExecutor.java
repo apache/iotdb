@@ -103,6 +103,7 @@ import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SettlePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -130,6 +131,7 @@ import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -371,6 +373,9 @@ public class PlanExecutor implements IPlanExecutor {
         return operateCreateContinuousQuery((CreateContinuousQueryPlan) plan);
       case DROP_CONTINUOUS_QUERY:
         return operateDropContinuousQuery((DropContinuousQueryPlan) plan);
+      case SETTLE:
+        settle((SettlePlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -2010,5 +2015,11 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     return noExistSg;
+  }
+
+  private void settle(SettlePlan plan) throws StorageEngineException {
+    PartialPath sgPath = plan.getSgPath();
+    SettleService.setStorageGroupPath(sgPath);
+    SettleService.getINSTANCE().start();
   }
 }

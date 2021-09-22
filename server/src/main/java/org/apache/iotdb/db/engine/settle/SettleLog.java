@@ -1,16 +1,18 @@
 package org.apache.iotdb.db.engine.settle;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SettleLog {
   private static final Logger logger = LoggerFactory.getLogger(SettleLog.class);
@@ -19,7 +21,7 @@ public class SettleLog {
   private static final String SETTLE_DIR = "settle";
   private static final String SETTLE_LOG_NAME = "settle.txt";
   private static BufferedWriter settleLogWriter;
-  private static File settleLogPath =          //the path of upgrade log is "data/system/settle/settle.txt"
+  private static File settleLogPath = // the path of upgrade log is "data/system/settle/settle.txt"
       SystemFileFactory.INSTANCE.getFile(
           SystemFileFactory.INSTANCE.getFile(config.getSystemDir(), SETTLE_DIR), SETTLE_LOG_NAME);
 
@@ -42,7 +44,7 @@ public class SettleLog {
   public static boolean writeSettleLog(String content) {
     settleLogFileLock.writeLock().lock();
     try {
-     settleLogWriter.write(content);  //Todo:bug，settleLogWriter null
+      settleLogWriter.write(content); // Todo:bug，settleLogWriter null
       settleLogWriter.newLine();
       settleLogWriter.flush();
       return true;
@@ -64,14 +66,15 @@ public class SettleLog {
     }
   }
 
-  public static String getSettleLogPath() { //"data/system/settle/settle.txt"
+  public static String getSettleLogPath() { // "data/system/settle/settle.txt"
     return settleLogPath.getAbsolutePath();
   }
 
   public static void setSettleLogPath(File settleLogPath) {
     SettleLog.settleLogPath = settleLogPath;
   }
-  public static enum SettleCheckStatus{
+
+  public static enum SettleCheckStatus {
     BEGIN_SETTLE_FILE(1),
     AFTER_SETTLE_FILE(2),
     SETTLE_SUCCESS(3);

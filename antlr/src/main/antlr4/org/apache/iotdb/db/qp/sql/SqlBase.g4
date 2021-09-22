@@ -45,6 +45,7 @@ statement
     | DROP INDEX indexName=ID ON prefixPath #dropIndex //not support yet
     | MERGE #merge
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
+    | SETTLE prefixPath #settle
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
     | CREATE USER userName=ID password= stringLiteral#createUser
@@ -1063,6 +1064,10 @@ FLUSH
     : F L U S H
     ;
 
+SETTLE
+    : S E T T L E
+    ;
+
 TASK
     : T A S K
     ;
@@ -1188,7 +1193,7 @@ PLA
    ;
 
 LZ4
-   : L Z '4' 
+   : L Z '4'
    ;
 
 LATEST

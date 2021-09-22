@@ -325,9 +325,9 @@ public class VirtualStorageGroupManager {
     return totalUpgradeFileNum;
   }
 
-  public int countSettleFiles(){
-    int totalSettleFileNum=0;
-    for(StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+  public int countSettleFiles() {
+    int totalSettleFileNum = 0;
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         totalSettleFileNum += storageGroupProcessor.countSettleFiles();
       }
@@ -344,7 +344,7 @@ public class VirtualStorageGroupManager {
     }
   }
 
-  public void settleAll(){
+  public void settleAll() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         storageGroupProcessor.settle();

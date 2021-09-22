@@ -23,8 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.settle.SettleTask;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.SettleTsFileCallBack;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
@@ -544,7 +544,7 @@ public class TsFileResource {
     UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
   }
 
-  public void doSettle(){
+  public void doSettle() {
     SettleService.getINSTANCE().submitSettleTask(new SettleTask(this));
   }
 
@@ -719,8 +719,7 @@ public class TsFileResource {
     return settleTsFileCallBack;
   }
 
-  public void setSettleTsFileCallBack(
-      SettleTsFileCallBack settleTsFileCallBack) {
+  public void setSettleTsFileCallBack(SettleTsFileCallBack settleTsFileCallBack) {
     this.settleTsFileCallBack = settleTsFileCallBack;
   }
 

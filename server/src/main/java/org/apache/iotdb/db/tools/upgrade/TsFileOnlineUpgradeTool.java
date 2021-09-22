@@ -187,6 +187,27 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
             }
             break;
           case MetaMarker.VERSION:
+            long version = ((TsFileSequenceReaderForV2) reader).readVersion();
+            // convert old Modification to new
+            if (oldModification != null && modsIterator.hasNext()) {
+              if (currentMod == null) {
+                currentMod = (Deletion) modsIterator.next();
+              }
+              if (currentMod.getFileOffset() <= version) {
+                for (Entry<TsFileIOWriter, ModificationFile> entry :
+                    fileModificationMap.entrySet()) {
+                  TsFileIOWriter tsFileIOWriter = entry.getKey();
+                  ModificationFile newMods = entry.getValue();
+                  newMods.write(
+                      new Deletion(
+                          currentMod.getPath(),
+                          tsFileIOWriter.getFile().length(),
+                          currentMod.getStartTime(),
+                          currentMod.getEndTime()));
+                }
+                currentMod = null;
+              }
+            }
             // write plan indices for ending memtable
             for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
               tsFileIOWriter.writePlanIndices();
@@ -203,7 +224,25 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
         upgradedResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
 
-      deleteOldModificationFile();
+      // write the remain modification for new file
+      if (oldModification != null) {
+        while (currentMod != null || modsIterator.hasNext()) {
+          if (currentMod == null) {
+            currentMod = (Deletion) modsIterator.next();
+          }
+          for (Entry<TsFileIOWriter, ModificationFile> entry : fileModificationMap.entrySet()) {
+            TsFileIOWriter tsFileIOWriter = entry.getKey();
+            ModificationFile newMods = entry.getValue();
+            newMods.write(
+                new Deletion(
+                    currentMod.getPath(),
+                    tsFileIOWriter.getFile().length(),
+                    currentMod.getStartTime(),
+                    currentMod.getEndTime()));
+          }
+          currentMod = null;
+        }
+      }
 
     } catch (Exception e2) {
       throw new IOException(
@@ -230,7 +269,6 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
    * PLAIN encoding, and also add a sum statistic for BOOLEAN data, these types of data need to
    * decode to points and rewrite in new TsFile.
    */
-  @Override
   protected boolean checkIfNeedToDecode(
       TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
     return dataType == TSDataType.BOOLEAN
@@ -240,7 +278,6 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
             != StorageEngine.getTimePartition(pageHeader.getEndTime());
   }
 
-  @Override
   protected void decodeAndWritePage(
       MeasurementSchema schema,
       ByteBuffer pageData,

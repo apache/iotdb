@@ -96,7 +96,7 @@ public class UpgradeSevice implements IService {
   }
 
   private static void countUpgradeFiles() {
-    cntUpgradeFileNum.addAndGet(StorageEngine.getInstance().countUpgradeFiles()); //Todo:bug?
+    cntUpgradeFileNum.addAndGet(StorageEngine.getInstance().countUpgradeFiles()); // Todo:bug?
     logger.info("finish counting upgrading files, total num:{}", cntUpgradeFileNum);
   }
 

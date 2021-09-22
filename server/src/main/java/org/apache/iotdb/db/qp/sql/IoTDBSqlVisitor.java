@@ -84,6 +84,7 @@ import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.SettleOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
@@ -566,6 +567,15 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       flushOperator.setStorageGroupList(storageGroups);
     }
     return flushOperator;
+  }
+
+  @Override
+  public Operator visitSettle(SqlBaseParser.SettleContext ctx) {
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
+    settleOperator.setStorageGroupPath(path);
+    // Operator o=super.visitSettle(ctx);
+    return settleOperator;
   }
 
   @Override

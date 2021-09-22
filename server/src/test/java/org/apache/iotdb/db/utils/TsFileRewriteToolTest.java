@@ -68,7 +68,7 @@ public class TsFileRewriteToolTest {
 
   private final boolean newEnablePartition = true;
   private final long newPartitionInterval = 3600_000;
-  protected final long maxTimestamp = 50000L;//100000000L;
+  protected final long maxTimestamp = 50000L; // 100000000L;
   protected final String folder = "target" + File.separator + "split";
   protected final String STORAGE_GROUP = "root.sg_0";
   protected final String DEVICE1 = STORAGE_GROUP + ".device_1";
@@ -133,8 +133,6 @@ public class TsFileRewriteToolTest {
       Assert.fail(e.getMessage());
     }
   }
-
-
 
   @Test
   public void splitOneTsfileWithOneDeviceOneSensorTest() {
@@ -204,39 +202,40 @@ public class TsFileRewriteToolTest {
   @Test
   public void settleTsFilesAndModsTest() {
     try {
-      List<TsFileResource> resourcesToBeSettled =createFiles();
-      for(TsFileResource oldResource:resourcesToBeSettled){
-        try(TsFileAndModSettleTool tsFileAndModSettleTool=new TsFileAndModSettleTool(oldResource)) {
+      List<TsFileResource> resourcesToBeSettled = createFiles();
+      for (TsFileResource oldResource : resourcesToBeSettled) {
+        try (TsFileAndModSettleTool tsFileAndModSettleTool =
+            new TsFileAndModSettleTool(oldResource)) {
           tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource);
         }
       }
-    } catch (WriteProcessException | IOException e) {
+    } catch (WriteProcessException | IOException | IllegalPathException e) {
       Assert.fail(e.getMessage());
     }
   }
 
   public List<TsFileResource> createFiles() throws IOException {
-    List<TsFileResource> resourcesToBeSettled=new ArrayList<>();
+    List<TsFileResource> resourcesToBeSettled = new ArrayList<>();
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
     List<String> sensors = new ArrayList<>();
 
-    //first File
+    // first File
     sensors.add(SENSOR1);
     deviceSensorsMap.put(DEVICE1, sensors);
     String timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR1;
-    createFile(resourcesToBeSettled,deviceSensorsMap,timeseriesPath);
+    createFile(resourcesToBeSettled, deviceSensorsMap, timeseriesPath);
 
-    //second file
+    // second file
     path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
     sensors.add(SENSOR2);
     deviceSensorsMap.put(DEVICE1, sensors);
     timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR2;
-    createFile(resourcesToBeSettled,deviceSensorsMap,timeseriesPath);
+    createFile(resourcesToBeSettled, deviceSensorsMap, timeseriesPath);
 
-    //third file
+    // third file
     path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
     createOneTsFile(deviceSensorsMap);
-    TsFileResource tsFileResource=new TsFileResource(new File(path));
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
     tsFileResource.serialize();
     tsFileResource.close();
     resourcesToBeSettled.add(tsFileResource);
@@ -244,12 +243,16 @@ public class TsFileRewriteToolTest {
     return resourcesToBeSettled;
   }
 
-  private void createFile(List<TsFileResource> resourcesToBeSettled,HashMap<String, List<String>> deviceSensorsMap , String timeseriesPath)
+  private void createFile(
+      List<TsFileResource> resourcesToBeSettled,
+      HashMap<String, List<String>> deviceSensorsMap,
+      String timeseriesPath)
       throws IOException {
     createOneTsFile(deviceSensorsMap);
     createlModificationFile(timeseriesPath);
-    TsFileResource tsFileResource=new TsFileResource(new File(path));
-    tsFileResource.setModFile(new ModificationFile(tsFileResource.getTsFilePath()+ModificationFile.FILE_SUFFIX));
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    tsFileResource.setModFile(
+        new ModificationFile(tsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
     tsFileResource.serialize();
     tsFileResource.close();
     resourcesToBeSettled.add(tsFileResource);
@@ -279,7 +282,7 @@ public class TsFileRewriteToolTest {
     List<TsFileResource> splitResource = new ArrayList<>();
     try {
       TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResource);
-    } catch (IOException | WriteProcessException e) {
+    } catch (IOException | WriteProcessException | IllegalPathException e) {
       Assert.fail(e.getMessage());
     }
     Assert.assertEquals(maxTimestamp / newPartitionInterval + 1, splitResource.size());
@@ -462,7 +465,7 @@ public class TsFileRewriteToolTest {
     List<TsFileResource> splitResource = new ArrayList<>();
     try {
       TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResource);
-    } catch (IOException | WriteProcessException e) {
+    } catch (IOException | WriteProcessException | IllegalPathException e) {
       Assert.fail(e.getMessage());
     }
     Assert.assertEquals(2, splitResource.size());

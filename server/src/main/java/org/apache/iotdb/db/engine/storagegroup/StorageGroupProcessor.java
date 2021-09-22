@@ -18,38 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -117,8 +85,42 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
@@ -190,8 +192,8 @@ public class StorageGroupProcessor {
   // upgrading unsequence TsFile resource list
   private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
 
-  private List<TsFileResource> settleSeqFileList = new LinkedList<>();
-  private List<TsFileResource> settleUnseqFileList = new LinkedList<>();
+  private Map<String, TsFileResource> settleSeqFileList = new HashMap<>();
+  private Map<String, TsFileResource> settleUnseqFileList = new HashMap<>();
 
   /** unsequence tsfile processors which are closing */
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor =
@@ -629,12 +631,6 @@ public class StorageGroupProcessor {
     for (Map.Entry<String, Integer> entry :
         TsFileAndModSettleTool.recoverSettleFileMap.entrySet()) {
       File fileToBeRecovered = new File(entry.getKey());
-      /**
-       * It may happen in a settle process that all the data in this tsfile has been deleted, then
-       * its all corresponding files has been deleted during the process while it crashed, which
-       * makes the old tsfile and its corresponding file has been deleted and leave an empty
-       * partition dir.
-       */
       if (!fileToBeRecovered.exists()) {
         logger.warn(
             "meet error when recovering to settle file : the file to be recovered may be deleted!");
@@ -659,42 +655,25 @@ public class StorageGroupProcessor {
             .getParentFile()
             .getName()
             .equals("sequence")) {
-          settleSeqFileList.add(resource);
+          settleSeqFileList.put(resource.getTsFile().getName(), resource);
         } else {
-          settleUnseqFileList.add(resource);
+          settleUnseqFileList.put(resource.getTsFile().getName(), resource);
         }
       }
     }
-
-    /*for (String baseDirPath : folders) {
-      File virtualStorageGroupDir = fsFactory.getFile(
-          baseDirPath + File.separator + logicalStorageGroupName, virtualStorageGroupId);
-      if (!virtualStorageGroupDir.exists()) {
-        continue;
-      }
-      File[] partionDirs = virtualStorageGroupDir.listFiles();
-      for (File partionDir : partionDirs) {
-        if (!partionDir.isDirectory()) {
-          continue;
-        }
-        File[] tsFiles = fsFactory.listFilesBySuffix(partionDir.getAbsolutePath(), TSFILE_SUFFIX);
-        for (File f : tsFiles) {
-          if (TsFileAndModSettleTool.recoverSettleFileMap.containsKey(f.getAbsolutePath())) {
-            TsFileResource resource = new TsFileResource(f);
-            resource.setClosed(true);
-            if (isSeq) {
-              settleSeqFileList.add(resource);
-            } else {
-              settleUnseqFileList.add(resource);
-            }
-          }
-        }
-      }
-    }*/
   }
 
   private void addSettleFilesToList() {
-    // Todo:
+    for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+      if (!settleSeqFileList.containsKey(resource.getTsFilePath())) {
+        settleSeqFileList.put(resource.getTsFile().getName(), resource);
+      }
+    }
+    for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
+      if (!settleUnseqFileList.containsKey(resource.getTsFilePath())) {
+        settleUnseqFileList.put(resource.getTsFile().getName(), resource);
+      }
+    }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1946,9 +1925,13 @@ public class StorageGroupProcessor {
     // If there are still some old version tsfiles, the delete won't succeeded.
     if (upgradeFileCount.get()
         != 0) { // Todo: Here can be optimized! Because the granularity is too large, what if the
-                // TsFile of this deletion is not in the upgrading File List?
+      // TsFile of this deletion is not in the upgrading File List?
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files upgraded.");
+    }
+    if (SettleService.getFilesToBeSettledCount().get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files settled.");
     }
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
@@ -2076,15 +2059,6 @@ public class StorageGroupProcessor {
           deletion.getStartTime(),
           deletion.getEndTime(),
           timePartitionFilter)) {
-        continue;
-      }
-
-      // if the Tsfile is rewritting, then add the deletion to the oldFileModificationMap
-      String fName = tsFileResource.getTsFile().getName();
-      if (TsFileRewriteTool.tmpFileModificationMap.containsKey(fName)) {
-        TsFileRewriteTool.tmpFileModificationMap
-            .get(tsFileResource.getTsFile().getName())
-            .write(deletion);
         continue;
       }
 
@@ -2311,6 +2285,8 @@ public class StorageGroupProcessor {
   }
 
   public int countSettleFiles() {
+    addRecoverSettleFilesToList();
+    addSettleFilesToList();
     return settleSeqFileList.size() + settleUnseqFileList.size();
   }
 
@@ -2370,60 +2346,49 @@ public class StorageGroupProcessor {
 
   /** Settle All TsFiles and mods belonging to this storage group */
   public void settle() {
-    addRecoverSettleFilesToList();
-    addSettleFilesToList();
-    for (TsFileResource seqTsFileResource : settleSeqFileList) {
+    for (Map.Entry<String, TsFileResource> entry : settleSeqFileList.entrySet()) {
+      TsFileResource seqTsFileResource = entry.getValue();
       seqTsFileResource.readLock();
       seqTsFileResource.setSeq(true);
       seqTsFileResource.setSettleTsFileCallBack(this::settleTsFileCallBack);
       seqTsFileResource.doSettle();
       seqTsFileResource.readUnlock();
     }
-    for (TsFileResource unSeqTsFileResource : settleUnseqFileList) {
+    for (Map.Entry<String, TsFileResource> entry : settleUnseqFileList.entrySet()) {
+      TsFileResource unSeqTsFileResource = entry.getValue();
       unSeqTsFileResource.readLock();
       unSeqTsFileResource.setSeq(false);
       unSeqTsFileResource.setSettleTsFileCallBack(this::settleTsFileCallBack);
       unSeqTsFileResource.doSettle();
       unSeqTsFileResource.readUnlock();
     }
-    settleSeqFileList = null;
-    settleUnseqFileList = null;
+    settleSeqFileList.clear();
+    settleUnseqFileList.clear();
   }
 
-  /**
-   * After finishing settling tsfile, we need to do 3 things : (1) move the new tsfile to the
-   * correct folder (2) write the deletions produced during the settling process to its
-   * corresponding new mods file (3) update the relevant data of this old tsFile in memory , eg:
-   * TsFileResource, TsFileProcessor, etc.
+  /**insert into root.ln.wf01.wt01(timestamp,status) values(1600,false);
+   * select * from root.*.*.*; delete from root.*.*.*.* where time>800; After finishing settling
+   * tsfile, we need to do 3 things : (1) move the new tsfile to the correct folder (2) write the
+   * deletions produced during the settling process to its corresponding new mods file (3) update
+   * the relevant data of this old tsFile in memory , eg: TsFileResource, TsFileProcessor, etc.
    */
   private void settleTsFileCallBack(
       TsFileResource oldTsFileResource, TsFileResource newTsFileResource) throws IOException {
-    writeLock("settleTsFileCallBack");
-    try {
-      logger.info("Here wait...");
-      Thread.sleep(8000);
-      logger.info("wake up!!!");
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    TsFileRewriteTool.writeNewModification(oldTsFileResource, newTsFileResource);
+    oldTsFileResource.writeUnlock();
     TsFileRewriteTool.moveNewTsFile(oldTsFileResource, newTsFileResource);
-    TsFileAndModSettleTool.tmpFileModificationMap.remove(
-        oldTsFileResource
-            .getTsFile()
-            .getName()); // 将当前TsFile从列表中移除，说明它已经settle完毕，这样下次对该TsFile进行的删除操作就直接写入其新mods文件就可以了
     if (TsFileAndModSettleTool.recoverSettleFileMap.size() != 0) {
       TsFileAndModSettleTool.recoverSettleFileMap.remove(oldTsFileResource.getTsFilePath());
     }
     // clear Cache , including chunk cache and timeseriesMetadata cache
-    ChunkCache.getInstance().clear();
+    ChunkCache.getInstance().clear(); // Todo:???
     TimeSeriesMetadataCache.getInstance().clear();
-    // Todo: Update the relevant data of this tsfile in memory , eg: TsFileResource,
-    // TsFileProcessor，etc.
-    tsFileManagement.remove(oldTsFileResource, oldTsFileResource.isSeq());
 
+    // if old tsfile is being deleted in the process due to its all data's being deleted.
+    if (!oldTsFileResource.getTsFile().exists()) {
+      tsFileManagement.remove(oldTsFileResource, oldTsFileResource.isSeq());
+    }
     SettleService.getFilesToBeSettledCount().addAndGet(-1);
-    writeUnlock();
+    oldTsFileResource.writeUnlock();
   }
 
   private void loadUpgradedResources(List<TsFileResource> resources, boolean isseq) {

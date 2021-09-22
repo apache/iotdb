@@ -1,32 +1,27 @@
 package org.apache.iotdb.db.service;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SettleService implements IService  {
-  private AtomicInteger threadCnt = new AtomicInteger();    //线程数量，用作计数
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class SettleService implements IService {
+  private static final Logger logger = LoggerFactory.getLogger(SettleService.class);
+
+  private AtomicInteger threadCnt = new AtomicInteger();
   private ExecutorService settleThreadPool;
   private static AtomicInteger filesToBeSettledCount = new AtomicInteger();
-
-  private static final Logger logger = LoggerFactory.getLogger(SettleService.class);
+  private static PartialPath storageGroupPath;
 
   public static SettleService getINSTANCE() {
     return InstanceHolder.INSTANCE;
@@ -40,14 +35,13 @@ public class SettleService implements IService  {
 
   @Override
   public void start() {
-    int settleThreadNum= IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
+    int settleThreadNum = IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
     settleThreadPool =
         Executors.newFixedThreadPool(
-            settleThreadNum,
-            r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement())); //创建整理线程池
+            settleThreadNum, r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement()));
     TsFileAndModSettleTool.findFilesToBeRecovered();
     countSettleFiles();
-    if(!SettleLog.createSettleLog()||filesToBeSettledCount.get()==0){
+    if (!SettleLog.createSettleLog() || filesToBeSettledCount.get() == 0) {
       stop();
       return;
     }
@@ -57,6 +51,9 @@ public class SettleService implements IService  {
   @Override
   public void stop() {
     SettleLog.closeLogWriter();
+    TsFileAndModSettleTool.clearRecoverSettleFileMap();
+    setStorageGroupPath(null);
+    filesToBeSettledCount.set(0);
     if (settleThreadPool != null) {
       settleThreadPool.shutdownNow();
       logger.info("Waiting for settle task pool to shut down");
@@ -70,44 +67,32 @@ public class SettleService implements IService  {
     return ServiceType.SETTLE_SERVICE;
   }
 
-
-  private void settleAll(){
+  private void settleAll() {
     try {
-      StorageEngine.getInstance().settleAll();
+      StorageEngine.getInstance().settleAll(getStorageGroupPath());
     } catch (StorageEngineException e) {
-      logger.error("Cannot perform a global upgrade because", e);
+      logger.error("Cannot perform a global settle because", e);
     }
   }
-
 
   public static AtomicInteger getFilesToBeSettledCount() {
     return filesToBeSettledCount;
   }
 
-  private static void countSettleFiles( ){
-    filesToBeSettledCount.addAndGet(TsFileAndModSettleTool.recoverSettleFileMap.size());
-    filesToBeSettledCount.addAndGet(StorageEngine.getInstance().countSettleFiles());
+  private static void countSettleFiles() {
+    filesToBeSettledCount.addAndGet(
+        StorageEngine.getInstance().countSettleFiles(getStorageGroupPath()));
   }
 
-  public void submitSettleTask(SettleTask settleTask) {  //往该“整理TSFile文件”服务的线程池里提交该整理线程settleTask
+  public void submitSettleTask(SettleTask settleTask) {
     settleThreadPool.submit(settleTask);
   }
 
-  public static void recoverSettle() {
-    if(TsFileAndModSettleTool.recoverSettleFileMap.size()==0){
-      return;
-    }
-    for(Map.Entry<String,Integer> entry :TsFileAndModSettleTool.recoverSettleFileMap.entrySet()){
-      String oldFilePath = entry.getKey();
-      File oldFile = new File(oldFilePath);
-      TsFileResource oldResource=new TsFileResource(oldFile);
-      try {
-        oldResource.close();
-      } catch (IOException e) {
-        logger.error("meet errors when recovering settle files",e);
-      }
-      getINSTANCE().submitSettleTask(new SettleTask(oldResource));
-    }
-    TsFileAndModSettleTool.clearRecoverSettleFileMap();
+  public static PartialPath getStorageGroupPath() {
+    return storageGroupPath;
+  }
+
+  public static void setStorageGroupPath(PartialPath storageGroupPath) {
+    SettleService.storageGroupPath = storageGroupPath;
   }
 }
