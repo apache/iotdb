@@ -427,6 +427,73 @@ It costs 0.014s
 
 Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
 
+Known Implementation UDF Libraries:
+
++ [IoTDB-Quality](https://thulab.github.io/iotdb-quality), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
+
+### Nested Query (Subquery)
+
+"Nested query" is also called "subquery", that is, in a SQL statement, the result of the "inner query" can be used as the input of the "outer query".
+
+IoTDB supports the execution of arbitrary nested expressions consisting of **time series, arithmetic expressions, and time series generation functions (including user-defined functions)** in the `select` clause.
+
+#### Syntax
+
+The following is the syntax definition of the `select` clause:
+
+```sql
+selectClause
+    : SELECT resultColumn (',' resultColumn)*
+    ;
+
+resultColumn
+    : expression (AS ID)?
+    ;
+
+expression
+    : '(' expression ')'
+    | '-' expression
+    | expression ('*' | '/' | '%') expression
+    | expression ('+' | '-') expression
+    | functionName '(' expression (',' expression)* functionAttribute* ')'
+    | timeSeriesSuffixPath
+    ;
+```
+
+#### Example
+
+SQL: 
+
+```sql
+select 
+  a, 
+  b, 
+  sin(a + sin(a + sin(b))), 
+  -(a + b) * (sin(a + b) * sin(a + b) + cos(a + b) * cos(a + b)) 
+from root.sg1.d1;
+```
+
+Result:
+
+```
++-----------------------------+-------------+-------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                         Time|root.sg1.d1.a|root.sg1.d1.b|sin(root.sg1.d1.a + sin(root.sg1.d1.a + sin(root.sg1.d1.b)))|-root.sg1.d1.a + root.sg1.d1.b * sin(root.sg1.d1.a + root.sg1.d1.b) * sin(root.sg1.d1.a + root.sg1.d1.b) + cos(root.sg1.d1.a + root.sg1.d1.b) * cos(root.sg1.d1.a + root.sg1.d1.b)|
++-----------------------------+-------------+-------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|1970-01-01T08:00:00.000+08:00|            0|            0|                                                         0.0|                                                                                                                                                                              -0.0|
+|1970-01-01T08:00:00.001+08:00|            1|            1|                                          0.9238430524420609|                                                                                                                                                                              -2.0|
+|1970-01-01T08:00:00.002+08:00|            2|            2|                                          0.7903505371876317|                                                                                                                                                                              -4.0|
+|1970-01-01T08:00:00.003+08:00|            3|            3|                                         0.14065207680386618|                                                                                                                                                                -5.999999999999999|
+|1970-01-01T08:00:00.004+08:00|            4|            4|                                         -0.6867272852305377|                                                                                                                                                                              -8.0|
+|1970-01-01T08:00:00.005+08:00|            5|            5|                                         -0.8797812615294988|                                                                                                                                                                             -10.0|
+|1970-01-01T08:00:00.006+08:00|            6|            6|                                         -0.7288037411970917|                                                                                                                                                                             -12.0|
+|1970-01-01T08:00:00.007+08:00|            7|            7|                                          0.9919871278709939|                                                                                                                                                                             -14.0|
+|1970-01-01T08:00:00.008+08:00|            8|            8|                                          0.8430810955779515|                                                                                                                                                                             -16.0|
+|1970-01-01T08:00:00.009+08:00|            9|            9|                                          0.4005516488102476|                                                                                                                                                                             -18.0|
++-----------------------------+-------------+-------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+Total line number = 10
+It costs 0.029s
+```
+
 ### Aggregate Query
 
 This section mainly introduces the related examples of aggregate query.
