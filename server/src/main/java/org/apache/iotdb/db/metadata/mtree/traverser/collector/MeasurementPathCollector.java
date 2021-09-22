@@ -41,7 +41,7 @@ public class MeasurementPathCollector extends MeasurementCollector<List<PartialP
   }
 
   @Override
-  protected void collectMeasurementSchema(IMeasurementMNode node) throws MetadataException {
+  protected void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException {
     PartialPath path = node.getPartialPath();
     if (nodes[nodes.length - 1].equals(node.getAlias())) {
       path.setMeasurementAlias(node.getAlias());
@@ -50,7 +50,7 @@ public class MeasurementPathCollector extends MeasurementCollector<List<PartialP
   }
 
   @Override
-  protected void collectVectorMeasurementSchema(IMeasurementMNode node, int index)
+  protected void collectVectorMeasurement(IMeasurementMNode node, int index)
       throws MetadataException {
     resultSet.add(
         new VectorPartialPath(

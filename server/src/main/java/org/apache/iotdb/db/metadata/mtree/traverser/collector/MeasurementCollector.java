@@ -65,7 +65,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             break;
           }
         }
-        collectVectorMeasurementSchema((IMeasurementMNode) node, i);
+        collectVectorMeasurement((IMeasurementMNode) node, i);
         if (hasLimit) {
           count += 1;
         }
@@ -88,7 +88,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
           return true;
         }
       }
-      collectMeasurementSchema((IMeasurementMNode) node);
+      collectUnaryMeasurement((IMeasurementMNode) node);
       if (hasLimit) {
         count += 1;
       }
@@ -107,7 +107,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             return true;
           }
         }
-        collectVectorMeasurementSchema((IMeasurementMNode) node, i);
+        collectVectorMeasurement((IMeasurementMNode) node, i);
         if (hasLimit) {
           count += 1;
         }
@@ -116,8 +116,19 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     return true;
   }
 
-  protected abstract void collectMeasurementSchema(IMeasurementMNode node) throws MetadataException;
+  /**
+   * collect the information of unary measurement
+   *
+   * @param node MeasurementMNode holding unary the measurement schema
+   */
+  protected abstract void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException;
 
-  protected abstract void collectVectorMeasurementSchema(IMeasurementMNode node, int index)
+  /**
+   * collect the information of target sub measurement of vector measurement
+   *
+   * @param node MeasurementMNode holding the vector measurement schema
+   * @param index the index of target sub measurement
+   */
+  protected abstract void collectVectorMeasurement(IMeasurementMNode node, int index)
       throws MetadataException;
 }

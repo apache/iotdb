@@ -62,7 +62,7 @@ public class MeasurementSchemaCollector
   }
 
   @Override
-  protected void collectMeasurementSchema(IMeasurementMNode node) throws MetadataException {
+  protected void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException {
     IMeasurementSchema measurementSchema = node.getSchema();
     String[] tsRow = new String[7];
     tsRow[0] = node.getAlias();
@@ -77,7 +77,7 @@ public class MeasurementSchemaCollector
   }
 
   @Override
-  protected void collectVectorMeasurementSchema(IMeasurementMNode node, int index)
+  protected void collectVectorMeasurement(IMeasurementMNode node, int index)
       throws MetadataException {
     IMeasurementSchema schema = node.getSchema();
     List<String> measurements = schema.getSubMeasurementsList();

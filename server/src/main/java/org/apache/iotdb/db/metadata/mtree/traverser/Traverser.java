@@ -31,8 +31,12 @@ import java.util.regex.Pattern;
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-// This class defines the main traversal framework and declares some methods for result process
-// extension.
+/**
+ * This class defines the main traversal framework and declares some methods for result process
+ * extension. This class could be extended to implement concrete tasks. Currently, the tasks are
+ * classified into two type: 1. counter: to count the node num or measurement num that matches the
+ * path pattern 2. collector: to collect customized results of the matched node or measurement
+ */
 public abstract class Traverser {
 
   protected IMNode startNode;
@@ -54,12 +58,17 @@ public abstract class Traverser {
     this.nodes = nodes;
   }
 
+  /**
+   * The interface to start the traversal. The node process should be defined before traversal by
+   * overriding or implement concerned methods.
+   */
   public void traverse() throws MetadataException {
     traverse(startNode, 0, 0);
   }
 
   /**
-   * The recursive method for MTree traversal.
+   * The recursive method for MTree traversal. If the node matches nodes[idx], then do some
+   * operation and traverse the children with nodes[idx+1].
    *
    * @param node current node that match the targetName in given path
    * @param idx the index of targetName in given path
@@ -93,7 +102,14 @@ public abstract class Traverser {
     }
   }
 
-  // process curNode that matches the targetName during traversal
+  /**
+   * process curNode that matches the targetName during traversal. there are two cases: 1. internal
+   * match: root.sg internal match root.sg.**(pattern) 2. full match: root.sg.d full match
+   * root.sg.**(pattern) Both of them are default abstract and should be implemented according
+   * concrete tasks.
+   *
+   * @return whether this branch of recursive traversal should stop; if true, stop
+   */
   private boolean processMatchedMNode(IMNode node, int idx, int level) throws MetadataException {
     if (idx < nodes.length - 1) {
       return processInternalMatchedMNode(node, idx, level);
