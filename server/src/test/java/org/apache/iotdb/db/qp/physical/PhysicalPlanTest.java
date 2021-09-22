@@ -513,26 +513,6 @@ public class PhysicalPlanTest {
       assertEquals("udf", createFunctionPlan.getUdfName());
       assertEquals(
           "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      assertFalse(createFunctionPlan.isTemporary());
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testCreateFunctionPlan2() { // create temporary function
-    try {
-      PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
-        fail();
-      }
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      assertEquals("udf", createFunctionPlan.getUdfName());
-      assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       fail(e.toString());
     }
@@ -546,11 +526,7 @@ public class PhysicalPlanTest {
               processor.parseSQLToPhysicalPlan(
                   "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
           "select udf(d2.s1, d1.s1), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d1.s1, d2.s1), udf(d2.s1, d1.s1), d1.s1, d2.s1 from root.vehicle";
@@ -592,11 +568,7 @@ public class PhysicalPlanTest {
               processor.parseSQLToPhysicalPlan(
                   "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
           "select udf(d2.s1, d1.s1, \"addend\"=\"100\"), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
@@ -641,11 +613,7 @@ public class PhysicalPlanTest {
               processor.parseSQLToPhysicalPlan(
                   "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle.**";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -1079,15 +1047,15 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testMoveFile() throws QueryProcessException {
+  public void testUnloadFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String targetDir = "user" + File.separator + "backup";
-    String metadata = String.format("move \"%s\" \"%s\"", filePath, targetDir);
+    String metadata = String.format("unload \"%s\" \"%s\"", filePath, targetDir);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=MOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=UNLOAD_FILE}",
             filePath, targetDir),
         plan.toString());
   }
