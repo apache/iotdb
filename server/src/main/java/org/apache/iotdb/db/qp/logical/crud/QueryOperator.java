@@ -458,6 +458,10 @@ public class QueryOperator extends Operator {
     FunctionOperator basicOperator;
     if (operator instanceof InOperator) {
       basicOperator = (InOperator) operator;
+    } else if (operator instanceof LikeOperator) {
+      basicOperator = (LikeOperator) operator;
+    } else if (operator instanceof RegexpOperator) {
+      basicOperator = (RegexpOperator) operator;
     } else {
       basicOperator = (BasicFunctionOperator) operator;
     }

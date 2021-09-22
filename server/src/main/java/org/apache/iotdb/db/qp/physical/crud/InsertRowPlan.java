@@ -324,7 +324,9 @@ public class InsertRowPlan extends InsertPlan {
     }
     failedValues.add(values[index]);
     values[index] = null;
-    dataTypes[index] = null;
+    if (isNeedInferType) {
+      dataTypes[index] = null;
+    }
   }
 
   @Override
@@ -412,7 +414,7 @@ public class InsertRowPlan extends InsertPlan {
       // and is forwarded to other nodes
       if (dataTypes == null || dataTypes[i] == null) {
         ReadWriteIOUtils.write(TYPE_RAW_STRING, outputStream);
-        ReadWriteIOUtils.write((String) values[i], outputStream);
+        ReadWriteIOUtils.write(values[i].toString(), outputStream);
       } else {
         ReadWriteIOUtils.write(dataTypes[i], outputStream);
         switch (dataTypes[i]) {
@@ -451,7 +453,7 @@ public class InsertRowPlan extends InsertPlan {
       // and is forwarded to other nodes
       if (dataTypes == null || dataTypes[i] == null) {
         ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
-        ReadWriteIOUtils.write((String) values[i], buffer);
+        ReadWriteIOUtils.write(values[i].toString(), buffer);
       } else {
         ReadWriteIOUtils.write(dataTypes[i], buffer);
         switch (dataTypes[i]) {
