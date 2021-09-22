@@ -40,7 +40,7 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
    */
   private int curIndex = 0;
 
-  private int subSensorSize;
+  private final int subSensorSize;
 
   public VectorSeriesAggregateReader(
       VectorPartialPath seriesPath,

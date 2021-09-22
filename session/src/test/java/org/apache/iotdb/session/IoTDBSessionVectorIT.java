@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -64,11 +65,11 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
-  public void alignedTest() {
+  public void alignedRawDataQueryTest() {
     try {
       insertTabletWithAlignedTimeseriesMethod();
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1");
+      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
       assertEquals(dataSet.getColumnNames().size(), 3);
       assertEquals(dataSet.getColumnNames().get(0), "Time");
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s1");
@@ -96,7 +97,8 @@ public class IoTDBSessionVectorIT {
       insertTabletWithAlignedTimeseriesMethod();
       insertRecord(ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from root.sg_1.d1.vector.s2");
       assertEquals(dataSet.getColumnNames().size(), 2);
       assertEquals(dataSet.getColumnNames().get(0), "Time");
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
@@ -121,7 +123,7 @@ public class IoTDBSessionVectorIT {
       insertTabletWithAlignedTimeseriesMethod();
       insertRecord(ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector");
+      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1.vector");
       assertEquals(dataSet.getColumnNames().size(), 3);
       assertEquals(dataSet.getColumnNames().get(0), "Time");
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s1");
@@ -139,16 +141,6 @@ public class IoTDBSessionVectorIT {
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     }
-  }
-
-  private SessionDataSet selectTest(String sql)
-      throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement(sql);
-    System.out.println(dataSet.getColumnNames());
-    while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
-    }
-    return dataSet;
   }
 
   /** Method 1 for insert tablet with aligned timeseries */
