@@ -49,7 +49,7 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompact
  * SizeTiredCompactionSelector} into one file.
  */
 public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
   protected TsFileResourceManager tsFileResourceManager;

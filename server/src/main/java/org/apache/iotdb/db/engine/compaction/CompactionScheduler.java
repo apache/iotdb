@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class CompactionScheduler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CompactionScheduler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // fullStorageGroupName -> timePartition -> compactionCount
   private static volatile Map<String, Map<Long, Long>> compactionCountInPartition =

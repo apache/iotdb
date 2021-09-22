@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -35,8 +34,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractInnerSpaceCompactionRecoverTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   protected File compactionLogFile;
   protected String dataDir;
 

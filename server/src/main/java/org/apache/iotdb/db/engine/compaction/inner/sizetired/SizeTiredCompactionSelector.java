@@ -47,7 +47,7 @@ import java.util.PriorityQueue;
  * candidate task in queue will be submitted.
  */
 public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionSelector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public SizeTiredCompactionSelector(
