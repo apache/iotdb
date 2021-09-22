@@ -34,28 +34,27 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
-  private static final Logger LOGGER =
-          LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   protected File compactionLogFile;
   protected String dataDir;
 
   public SizeTieredCompactionRecoverTask(
-          String logicalStorageGroupName,
-          String virtualStorageGroup,
-          long timePartition,
-          File compactionLogFile,
-          String dataDir,
-          boolean sequence,
-          AtomicInteger currentTaskNum) {
+      String logicalStorageGroupName,
+      String virtualStorageGroup,
+      long timePartition,
+      File compactionLogFile,
+      String dataDir,
+      boolean sequence,
+      AtomicInteger currentTaskNum) {
     super(
-            logicalStorageGroupName,
-            virtualStorageGroup,
-            timePartition,
-            null,
-            null,
-            null,
-            sequence,
-            currentTaskNum);
+        logicalStorageGroupName,
+        virtualStorageGroup,
+        timePartition,
+        null,
+        null,
+        null,
+        sequence,
+        currentTaskNum);
     this.compactionLogFile = compactionLogFile;
     this.dataDir = dataDir;
   }
@@ -77,7 +76,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
     try {
       if (compactionLogFile.exists()) {
         SizeTieredCompactionLogAnalyzer logAnalyzer =
-                new SizeTieredCompactionLogAnalyzer(compactionLogFile);
+            new SizeTieredCompactionLogAnalyzer(compactionLogFile);
         logAnalyzer.analyze();
         List<String> sourceFileList = logAnalyzer.getSourceFiles();
         String targetFileName = logAnalyzer.getTargetFile();
@@ -115,7 +114,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           }
 
           InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-                  sourceTsFileResources, fullStorageGroupName);
+              sourceTsFileResources, fullStorageGroupName);
           combineModsInCompaction(sourceTsFileResources, targetResource);
         }
       }

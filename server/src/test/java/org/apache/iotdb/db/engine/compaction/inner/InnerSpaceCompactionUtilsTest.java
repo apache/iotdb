@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
@@ -35,6 +34,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,37 +70,37 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
   @Test
   public void testCompact() throws IOException, IllegalPathException {
     TsFileResource targetTsFileResource =
-            new TsFileResource(
-                    new File(
-                            TestConstant.BASE_OUTPUT_PATH.concat(
-                                    0
-                                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                                            + 0
-                                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                                            + 1
-                                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                                            + 0
-                                            + ".tsfile")));
+        new TsFileResource(
+            new File(
+                TestConstant.BASE_OUTPUT_PATH.concat(
+                    0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile")));
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
-            new SizeTieredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+        new SizeTieredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
       sizeTieredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
     }
     sizeTieredCompactionLogger.logSequence(true);
     InnerSpaceCompactionUtils.compact(
-            targetTsFileResource,
-            seqResources,
-            COMPACTION_TEST_SG,
-            sizeTieredCompactionLogger,
-            new HashSet<>(),
-            true);
+        targetTsFileResource,
+        seqResources,
+        COMPACTION_TEST_SG,
+        sizeTieredCompactionLogger,
+        new HashSet<>(),
+        true);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     try (TsFileSequenceReader reader =
-                 new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
-         ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+            new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
+        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
       QueryExpression queryExpression =
-              QueryExpression.create(Collections.singletonList(path), null);
+          QueryExpression.create(Collections.singletonList(path), null);
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
       int cut = 0;
       RowRecord record;

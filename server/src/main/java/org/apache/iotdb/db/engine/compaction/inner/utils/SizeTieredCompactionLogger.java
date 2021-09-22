@@ -38,18 +38,18 @@ public class SizeTieredCompactionLogger {
   private BufferedWriter logStream;
 
   public SizeTieredCompactionLogger(String storageGroupDir, String storageGroupName)
-          throws IOException {
+      throws IOException {
     logStream =
-            new BufferedWriter(
-                    new FileWriter(
-                            SystemFileFactory.INSTANCE.getFile(
-                                    storageGroupDir, storageGroupName + COMPACTION_LOG_NAME),
-                            true));
+        new BufferedWriter(
+            new FileWriter(
+                SystemFileFactory.INSTANCE.getFile(
+                    storageGroupDir, storageGroupName + COMPACTION_LOG_NAME),
+                true));
   }
 
   public SizeTieredCompactionLogger(String logFile) throws IOException {
     logStream =
-            new BufferedWriter(new FileWriter(SystemFileFactory.INSTANCE.getFile(logFile), true));
+        new BufferedWriter(new FileWriter(SystemFileFactory.INSTANCE.getFile(logFile), true));
   }
 
   public void close() throws IOException {

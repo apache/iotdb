@@ -30,23 +30,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
 
   public FakedInnerSpaceCompactionTask(
-          String logicalStorageGroupName,
-          String virtualStorageGroupName,
-          long timePartition,
-          TsFileResourceManager tsFileResourceManager,
-          TsFileResourceList tsFileResourceList,
-          List<TsFileResource> selectedTsFileResourceList,
-          boolean sequence,
-          AtomicInteger currentTaskNum) {
+      String logicalStorageGroupName,
+      String virtualStorageGroupName,
+      long timePartition,
+      TsFileResourceManager tsFileResourceManager,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResource> selectedTsFileResourceList,
+      boolean sequence,
+      AtomicInteger currentTaskNum) {
     super(
-            logicalStorageGroupName,
-            virtualStorageGroupName,
-            timePartition,
-            tsFileResourceManager,
-            tsFileResourceList,
-            selectedTsFileResourceList,
-            sequence,
-            currentTaskNum);
+        logicalStorageGroupName,
+        virtualStorageGroupName,
+        timePartition,
+        tsFileResourceManager,
+        tsFileResourceList,
+        selectedTsFileResourceList,
+        sequence,
+        currentTaskNum);
   }
 
   @Override

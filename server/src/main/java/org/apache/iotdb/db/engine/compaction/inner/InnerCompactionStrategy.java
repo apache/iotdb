@@ -34,68 +34,68 @@ public enum InnerCompactionStrategy {
   SIZE_TIERED_COMPACTION;
 
   public AbstractInnerSpaceCompactionTask getCompactionTask(
-          String logicalStorageGroupName,
-          String virtualStorageGroup,
-          long timePartition,
-          TsFileResourceManager tsFileResourceManager,
-          TsFileResourceList tsFileResourceList,
-          List<TsFileResource> selectedTsFileResourceList,
-          boolean sequence) {
+      String logicalStorageGroupName,
+      String virtualStorageGroup,
+      long timePartition,
+      TsFileResourceManager tsFileResourceManager,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResource> selectedTsFileResourceList,
+      boolean sequence) {
     switch (this) {
       case SIZE_TIERED_COMPACTION:
       default:
         return new SizeTieredCompactionTask(
-                logicalStorageGroupName,
-                virtualStorageGroup,
-                timePartition,
-                tsFileResourceManager,
-                tsFileResourceList,
-                selectedTsFileResourceList,
-                sequence,
-                CompactionTaskManager.currentTaskNum);
+            logicalStorageGroupName,
+            virtualStorageGroup,
+            timePartition,
+            tsFileResourceManager,
+            tsFileResourceList,
+            selectedTsFileResourceList,
+            sequence,
+            CompactionTaskManager.currentTaskNum);
     }
   }
 
   public AbstractInnerSpaceCompactionTask getCompactionRecoverTask(
-          String logicalStorageGroupName,
-          String virtualStorageGroup,
-          long timePartition,
-          File compactionLogFile,
-          String dataDir,
-          boolean sequence) {
+      String logicalStorageGroupName,
+      String virtualStorageGroup,
+      long timePartition,
+      File compactionLogFile,
+      String dataDir,
+      boolean sequence) {
     switch (this) {
       case SIZE_TIERED_COMPACTION:
       default:
         return new SizeTieredCompactionRecoverTask(
-                logicalStorageGroupName,
-                virtualStorageGroup,
-                timePartition,
-                compactionLogFile,
-                dataDir,
-                sequence,
-                CompactionTaskManager.currentTaskNum);
+            logicalStorageGroupName,
+            virtualStorageGroup,
+            timePartition,
+            compactionLogFile,
+            dataDir,
+            sequence,
+            CompactionTaskManager.currentTaskNum);
     }
   }
 
   public AbstractInnerSpaceCompactionSelector getCompactionSelector(
-          String logicalStorageGroupName,
-          String virtualStorageGroupName,
-          long timePartition,
-          TsFileResourceManager tsFileResourceManager,
-          TsFileResourceList tsFileResources,
-          boolean sequence,
-          InnerSpaceCompactionTaskFactory taskFactory) {
+      String logicalStorageGroupName,
+      String virtualStorageGroupName,
+      long timePartition,
+      TsFileResourceManager tsFileResourceManager,
+      TsFileResourceList tsFileResources,
+      boolean sequence,
+      InnerSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
       case SIZE_TIERED_COMPACTION:
       default:
         return new SizeTieredCompactionSelector(
-                logicalStorageGroupName,
-                virtualStorageGroupName,
-                timePartition,
-                tsFileResourceManager,
-                tsFileResources,
-                sequence,
-                taskFactory);
+            logicalStorageGroupName,
+            virtualStorageGroupName,
+            timePartition,
+            tsFileResourceManager,
+            tsFileResources,
+            sequence,
+            taskFactory);
     }
   }
 }

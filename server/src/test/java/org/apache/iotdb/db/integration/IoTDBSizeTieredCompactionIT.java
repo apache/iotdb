@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -52,23 +53,21 @@ public class IoTDBSizeTieredCompactionIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  /**
-   * test compaction files num > MAX_FILE_NUM_IN_LEVEL * MAX_LEVEL_NUM
-   */
+  /** test compaction files num > MAX_FILE_NUM_IN_LEVEL * MAX_LEVEL_NUM */
   @Test
   public void test() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -77,9 +76,9 @@ public class IoTDBSizeTieredCompactionIT {
       int flushCount = 32;
       for (int i = 0; i < flushCount; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -101,15 +100,13 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction first use deserialize merge and then use append merge
-   */
+  /** test compaction first use deserialize merge and then use append merge */
   @Test
   public void testAppendMergeAfterDeserializeMerge() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       try {
         statement.execute("CREATE TIMESERIES root.compactionTest.s1 WITH DATATYPE=INT64");
@@ -122,8 +119,8 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (long row = 0; row < 10000; row++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
         if (row % pageSize == 0) {
           statement.execute("FLUSH");
         }
@@ -134,8 +131,8 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (long row = 0; row < 2400; row++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
         if (row % pageSize == 0) {
           statement.execute("FLUSH");
         }
@@ -144,7 +141,7 @@ public class IoTDBSizeTieredCompactionIT {
 
       int cnt;
       try (ResultSet resultSet =
-                   statement.executeQuery("SELECT COUNT(s1) FROM root.compactionTest")) {
+          statement.executeQuery("SELECT COUNT(s1) FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           System.out.println(resultSet.getLong(1));
@@ -156,15 +153,13 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction first use append merge and then use deserialize merge
-   */
+  /** test compaction first use append merge and then use deserialize merge */
   @Test
   public void testDeserializeMergeAfterAppendMerge() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       try {
         statement.execute("CREATE TIMESERIES root.compactionTest.s1 WITH DATATYPE=INT64");
@@ -176,13 +171,13 @@ public class IoTDBSizeTieredCompactionIT {
       long timestamp = 1;
 
       int prevMergePagePointNumberThreshold =
-              IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
+          IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
       IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
 
       for (long row = 0; row < 10000; row++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
         if (row % pageSize == 0) {
           statement.execute("FLUSH");
         }
@@ -195,8 +190,8 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (long row = 0; row < 2400; row++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
         if (row % pageSize == 0) {
           statement.execute("FLUSH");
         }
@@ -205,7 +200,7 @@ public class IoTDBSizeTieredCompactionIT {
 
       int cnt;
       try (ResultSet resultSet =
-                   statement.executeQuery("SELECT COUNT(s1) FROM root.compactionTest")) {
+          statement.executeQuery("SELECT COUNT(s1) FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           System.out.println(resultSet.getLong(1));
@@ -215,24 +210,24 @@ public class IoTDBSizeTieredCompactionIT {
       }
       assertEquals(1, cnt);
       IoTDBDescriptor.getInstance()
-              .getConfig()
-              .setMergePagePointNumberThreshold(prevMergePagePointNumberThreshold);
+          .getConfig()
+          .setMergePagePointNumberThreshold(prevMergePagePointNumberThreshold);
     }
   }
 
   private void testCompactionNoUnseq(int mergeCount) throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -240,9 +235,9 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 0; i < mergeCount; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -264,45 +259,41 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction just once, no unseq
-   */
+  /** test compaction just once, no unseq */
   @Test
   public void testCompactionOnceNoUnseq() throws SQLException {
     this.testCompactionNoUnseq(2);
   }
 
-  /**
-   * test compaction to just once, with unseq
-   */
+  /** test compaction to just once, with unseq */
   @Test
   public void testCompactionOnceWithUnseq() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
       }
 
       statement.execute(
-              String.format(
-                      "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                      1, 2, 3, 4));
+          String.format(
+              "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+              1, 2, 3, 4));
       statement.execute("FLUSH");
       statement.execute(
-              String.format(
-                      "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                      0, 1, 2, 3));
+          String.format(
+              "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+              0, 1, 2, 3));
       statement.execute("FLUSH");
 
       int cnt;
@@ -323,31 +314,27 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction to second level once, no unseq
-   */
+  /** test compaction to second level once, no unseq */
   @Test
   public void testCompactionToSecondLevelNoUnseq() throws SQLException {
     this.testCompactionNoUnseq(4);
   }
 
-  /**
-   * test compaction to second level once, with unseq
-   */
+  /** test compaction to second level once, with unseq */
   @Test
   public void testCompactionToSecondLevelWithUnseq() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -355,25 +342,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 1; i < 3; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 1; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 3; i < 5; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -395,23 +382,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction to second level once, with unseq, disable unseqCompaction
-   */
+  /** test compaction to second level once, with unseq, disable unseqCompaction */
   @Test
   public void testCompactionToSecondLevelWithUnseqDisableUnseqCompaction() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -419,25 +404,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 1; i < 3; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 1; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 3; i < 5; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -459,31 +444,27 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction to stable level once, No unseq
-   */
+  /** test compaction to stable level once, No unseq */
   @Test
   public void testCompactionToStableLevelNoUnseq() throws SQLException {
     this.testCompactionNoUnseq(8);
   }
 
-  /**
-   * test compaction to stable level once, with unseq
-   */
+  /** test compaction to stable level once, with unseq */
   @Test
   public void testCompactionToStableLevelWithUnseq() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -491,25 +472,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 4; i < 8; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 4; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 8; i < 12; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -531,23 +512,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction to stable level once, with unseq, disable unseqCompaction
-   */
+  /** test compaction to stable level once, with unseq, disable unseqCompaction */
   @Test
   public void testCompactionToStableLevelWithUnseqDisableUnseqCompaction() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -555,25 +534,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 4; i < 8; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 4; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 8; i < 12; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -595,23 +574,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test seq max level num = 0
-   */
+  /** test seq max level num = 0 */
   @Test
   public void testCompactionSeqMaxLevelNumError0() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -619,25 +596,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 4; i < 8; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 4; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 8; i < 12; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -659,23 +636,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test seq max level num = -1
-   */
+  /** test seq max level num = -1 */
   @Test
   public void testCompactionSeqMaxLevelNumError1() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -683,25 +658,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 4; i < 8; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 4; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 8; i < 12; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -723,23 +698,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test seq file num in each level = 0
-   */
+  /** test seq file num in each level = 0 */
   @Test
   public void testCompactionSeqFileNumInEachLevelError0() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -747,25 +720,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 4; i < 8; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 4; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 8; i < 12; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -787,23 +760,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test seq max level num = -1
-   */
+  /** test seq max level num = -1 */
   @Test
   public void testCompactionSeqFileNumInEachLevelError1() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -811,25 +782,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 4; i < 8; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 4; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 8; i < 12; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -851,23 +822,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction with unseq compaction
-   */
+  /** test compaction with unseq compaction */
   @Test
   public void testCompactionWithUnseqCompaction() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -875,25 +844,25 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 10000; i < 10001; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 50; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 10001; i < 10005; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -915,9 +884,9 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 10010; i < 10055; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -938,23 +907,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction with deletion timeseries
-   */
+  /** test compaction with deletion timeseries */
   @Test
   public void testCompactionWithDeletionTimeseries() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -962,18 +929,18 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 0; i < 1; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
       statement.execute("DELETE timeseries root.compactionTest.s1");
 
       for (int i = 1; i < 2; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s2,s3) VALUES (%d," + "%d,%d)",
-                        i, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s2,s3) VALUES (%d," + "%d,%d)",
+                i, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -993,23 +960,21 @@ public class IoTDBSizeTieredCompactionIT {
     }
   }
 
-  /**
-   * test compaction with deletion timeseries and create different type
-   */
+  /** test compaction with deletion timeseries and create different type */
   @Test
   public void testCompactionWithDeletionTimeseriesAndCreateDifferentTypeTest() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
@@ -1017,17 +982,17 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 10000; i < 10001; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
       for (int i = 0; i < 50; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         if (i % 2 == 1) {
           statement.execute("FLUSH");
         }
@@ -1035,13 +1000,13 @@ public class IoTDBSizeTieredCompactionIT {
       statement.execute("FLUSH");
       statement.execute("DELETE timeseries root.compactionTest.s1");
       statement.execute(
-              "create timeseries root.compactionTest.s1 with datatype=FLOAT, encoding=PLAIN");
+          "create timeseries root.compactionTest.s1 with datatype=FLOAT, encoding=PLAIN");
 
       for (int i = 10001; i < 10005; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -1061,9 +1026,9 @@ public class IoTDBSizeTieredCompactionIT {
 
       for (int i = 10010; i < 10055; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
 
@@ -1086,30 +1051,30 @@ public class IoTDBSizeTieredCompactionIT {
   public void testSequenceInnerCompactionContinously() throws SQLException {
     int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     long oriTargetFileSize =
-            IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
       }
       for (int i = 10000; i < 10004; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
       int totalWaitingTime = 0;
@@ -1149,29 +1114,29 @@ public class IoTDBSizeTieredCompactionIT {
   @Test
   public void testSequenceInnerCompactionConcurrently() throws SQLException {
     long oriTargetFileSize =
-            IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
       }
       for (int i = 10000; i < 10020; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
       long totalWaitingTime = 0;
@@ -1215,36 +1180,36 @@ public class IoTDBSizeTieredCompactionIT {
   public void testUnsequenceInnerCompactionContinously() throws SQLException {
     int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     long oriTargetFileSize =
-            IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originFinishCount = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
       }
       statement.execute(
-              String.format(
-                      "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                      20000, 20000 + 1, 20000 + 2, 20000 + 3));
+          String.format(
+              "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+              20000, 20000 + 1, 20000 + 2, 20000 + 3));
       statement.execute("FLUSH");
       // create unsequence file
       for (int i = 10000; i < 10004; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
       long totalWaitingTime = 0;
@@ -1284,35 +1249,35 @@ public class IoTDBSizeTieredCompactionIT {
   @Test
   public void testUnsequenceInnerCompactionConcurrently() throws SQLException {
     long oriTargetFileSize =
-            IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
       }
       statement.execute(
-              String.format(
-                      "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                      20000, 20001, 20002, 20003));
+          String.format(
+              "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+              20000, 20001, 20002, 20003));
       statement.execute("FLUSH");
       // create unsequence file
       for (int i = 10000; i < 10004; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
       int totalWaitingTime = 0;
@@ -1352,38 +1317,38 @@ public class IoTDBSizeTieredCompactionIT {
   @Test
   public void testSequenceAndUnsequenceInnerCompactionConcurrently() throws SQLException {
     long oriTargetFileSize =
-            IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
-                  "CREATE TIMESERIES root.compactionTest.s"
-                          + i
-                          + " WITH DATATYPE=INT64,"
-                          + "ENCODING=PLAIN");
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
         } catch (SQLException e) {
           // ignore
         }
       }
       for (int i = 20000; i < 20004; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
       statement.execute("FLUSH");
       // create unsequence file
       for (int i = 10000; i < 10004; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                        i, i + 1, i + 2, i + 3));
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
       int totalWaitingTime = 0;

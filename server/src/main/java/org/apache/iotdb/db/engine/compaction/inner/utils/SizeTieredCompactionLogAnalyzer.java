@@ -41,9 +41,7 @@ public class SizeTieredCompactionLogAnalyzer {
     this.logFile = logFile;
   }
 
-  /**
-   * @return analyze (source file list, target file)
-   */
+  /** @return analyze (source file list, target file) */
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
