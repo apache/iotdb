@@ -79,7 +79,6 @@ import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigur
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
-import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
@@ -100,6 +99,7 @@ import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AliasClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignStatementContext;
@@ -181,7 +181,6 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MeasurementNameContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MeasurementValueContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MergeContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.MoveFileContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.NodeNameContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.NodeNameWithoutStarContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.OffsetClauseContext;
@@ -240,6 +239,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingOffContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingOnContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TriggerAttributeContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TypeClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.UnloadFileContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.WhereClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.WithoutNullClauseContext;
@@ -476,7 +476,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitCreateFunction(CreateFunctionContext ctx) {
     CreateFunctionOperator createFunctionOperator =
         new CreateFunctionOperator(SQLConstant.TOK_FUNCTION_CREATE);
-    createFunctionOperator.setTemporary(ctx.TEMPORARY() != null);
     createFunctionOperator.setUdfName(ctx.udfName.getText());
     createFunctionOperator.setClassName(removeStringQuote(ctx.className.getText()));
     return createFunctionOperator;
@@ -492,10 +491,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitShowFunctions(ShowFunctionsContext ctx) {
-    ShowFunctionsOperator showFunctionsOperator =
-        new ShowFunctionsOperator(SQLConstant.TOK_SHOW_FUNCTIONS);
-    showFunctionsOperator.setShowTemporary(ctx.TEMPORARY() != null);
-    return showFunctionsOperator;
+    return new ShowFunctionsOperator(SQLConstant.TOK_SHOW_FUNCTIONS);
   }
 
   @Override
@@ -1021,8 +1017,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
-  public Operator visitMoveFile(MoveFileContext ctx) {
-    return new MoveFileOperator(
+  public Operator visitUnloadFile(UnloadFileContext ctx) {
+    return new UnloadFileOperator(
         new File(removeStringQuote(ctx.stringLiteral(0).getText())),
         new File(removeStringQuote(ctx.stringLiteral(1).getText())));
   }

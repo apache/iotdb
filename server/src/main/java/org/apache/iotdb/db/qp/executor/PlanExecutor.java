@@ -308,8 +308,8 @@ public class PlanExecutor implements IPlanExecutor {
       case REMOVE_FILE:
         operateRemoveFile((OperateFilePlan) plan);
         return true;
-      case MOVE_FILE:
-        operateMoveFile((OperateFilePlan) plan);
+      case UNLOAD_FILE:
+        operateUnloadFile((OperateFilePlan) plan);
         return true;
       case FLUSH:
         operateFlush((FlushPlan) plan);
@@ -398,8 +398,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFRegistrationException {
-    UDFRegistrationService.getInstance()
-        .register(plan.getUdfName(), plan.getClassName(), plan.isTemporary(), true);
+    UDFRegistrationService.getInstance().register(plan.getUdfName(), plan.getClassName(), true);
     return true;
   }
 
@@ -859,7 +858,7 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(
                 new PartialPath(COLUMN_STORAGE_GROUP, false), new PartialPath(COLUMN_TTL, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
-    List<PartialPath> selectedSgs = showTTLPlan.getStorageGroups();
+    Set<PartialPath> selectedSgs = new HashSet<>(showTTLPlan.getStorageGroups());
 
     List<IStorageGroupMNode> storageGroups = getAllStorageGroupNodes();
     int timestamp = 0;
@@ -950,10 +949,6 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     for (UDFRegistrationInformation info :
         UDFRegistrationService.getInstance().getRegistrationInformation()) {
-      if (showPlan.showTemporary() && !info.isTemporary()) {
-        continue;
-      }
-
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
       String functionType = "";
@@ -1016,10 +1011,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void appendNativeFunctions(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
-    if (showPlan.showTemporary()) {
-      return;
-    }
-
     final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
     final Binary className = Binary.valueOf("");
     for (String functionName : SQLConstant.getNativeFunctionNames()) {
@@ -1242,20 +1233,20 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void operateMoveFile(OperateFilePlan plan) throws QueryProcessException {
+  private void operateUnloadFile(OperateFilePlan plan) throws QueryProcessException {
     if (!plan.getTargetDir().exists() || !plan.getTargetDir().isDirectory()) {
       throw new QueryProcessException(
           String.format("Target dir %s is invalid.", plan.getTargetDir().getPath()));
     }
     try {
-      if (!StorageEngine.getInstance().moveTsfile(plan.getFile(), plan.getTargetDir())) {
+      if (!StorageEngine.getInstance().unloadTsfile(plan.getFile(), plan.getTargetDir())) {
         throw new QueryProcessException(
             String.format("File %s doesn't exist.", plan.getFile().getName()));
       }
     } catch (StorageEngineException | IllegalPathException e) {
       throw new QueryProcessException(
           String.format(
-              "Cannot move file %s to target directory %s because %s",
+              "Cannot unload file %s to target directory %s because %s",
               plan.getFile().getPath(), plan.getTargetDir().getPath(), e.getMessage()));
     }
   }

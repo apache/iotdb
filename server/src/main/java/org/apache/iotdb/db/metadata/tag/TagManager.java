@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 import static java.util.stream.Collectors.toList;
 
@@ -87,7 +86,7 @@ public class TagManager {
   public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
     tagIndex
         .computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(tagValue, v -> new CopyOnWriteArraySet<>())
+        .computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()))
         .add(measurementMNode);
   }
 

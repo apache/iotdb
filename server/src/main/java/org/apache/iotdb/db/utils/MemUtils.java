@@ -101,40 +101,32 @@ public class MemUtils {
       return 0L;
     }
     long memSize = 0;
-    int columnCount = 0;
+    boolean hasVector = false;
     for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
       if (insertTabletPlan.getMeasurementMNodes()[i] == null) {
-        columnCount++;
         continue;
       }
       IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-      if (schema.getType() == TSDataType.VECTOR) {
-        // time and index column memSize
-        memSize += (end - start) * (8L + 4L);
+      TSDataType valueType;
+      if (insertTabletPlan.isAligned()) {
+        hasVector = true;
         // value columns memSize
-        for (TSDataType type : schema.getSubMeasurementsTSDataTypeList()) {
-          if (type == TSDataType.TEXT && addingTextDataSize) {
-            for (int j = start; j < end; j++) {
-              memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
-            }
-          } else {
-            memSize += (end - start) * type.getDataTypeSize();
-          }
-          columnCount++;
-        }
+        valueType = schema.getSubMeasurementsTSDataTypeList().get(i);
       } else {
         // time column memSize
         memSize += (end - start) * 8L;
-        if (insertTabletPlan.getDataTypes()[columnCount] == TSDataType.TEXT && addingTextDataSize) {
-          for (int j = start; j < end; j++) {
-            memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
-          }
-        } else {
-          memSize += (end - start) * insertTabletPlan.getDataTypes()[columnCount].getDataTypeSize();
+        valueType = insertTabletPlan.getDataTypes()[i];
+      }
+      if (valueType == TSDataType.TEXT && addingTextDataSize) {
+        for (int j = start; j < end; j++) {
+          memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
         }
-        columnCount++;
+      } else {
+        memSize += (long) (end - start) * valueType.getDataTypeSize();
       }
     }
+    // time and index column memSize for vector
+    memSize += hasVector ? (end - start) * (8L + 4L) : 0L;
     return memSize;
   }
 

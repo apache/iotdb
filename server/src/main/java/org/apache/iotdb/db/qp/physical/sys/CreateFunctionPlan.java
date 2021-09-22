@@ -32,7 +32,6 @@ import java.util.List;
 
 public class CreateFunctionPlan extends PhysicalPlan {
 
-  private boolean isTemporary;
   private String udfName;
   private String className;
 
@@ -40,15 +39,10 @@ public class CreateFunctionPlan extends PhysicalPlan {
     super(false, OperatorType.CREATE_FUNCTION);
   }
 
-  public CreateFunctionPlan(boolean isTemporary, String udfName, String className) {
+  public CreateFunctionPlan(String udfName, String className) {
     super(false, OperatorType.CREATE_FUNCTION);
-    this.isTemporary = isTemporary;
     this.udfName = udfName;
     this.className = className;
-  }
-
-  public boolean isTemporary() {
-    return isTemporary;
   }
 
   public String getUdfName() {
@@ -57,14 +51,6 @@ public class CreateFunctionPlan extends PhysicalPlan {
 
   public String getClassName() {
     return className;
-  }
-
-  public void setTemporary(boolean temporary) {
-    isTemporary = temporary;
-  }
-
-  public void setUdfName(String udfName) {
-    this.udfName = udfName;
   }
 
   public void setClassName(String className) {
@@ -80,7 +66,6 @@ public class CreateFunctionPlan extends PhysicalPlan {
   public void serialize(DataOutputStream outputStream) throws IOException {
     outputStream.writeByte((byte) PhysicalPlanType.CREATE_FUNCTION.ordinal());
 
-    outputStream.writeBoolean(isTemporary);
     putString(outputStream, udfName);
     putString(outputStream, className);
     outputStream.writeLong(index);
@@ -89,7 +74,6 @@ public class CreateFunctionPlan extends PhysicalPlan {
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
 
-    isTemporary = buffer.get() == 1;
     udfName = readString(buffer);
     className = readString(buffer);
     this.index = buffer.getLong();

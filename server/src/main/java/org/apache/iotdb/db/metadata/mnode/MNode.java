@@ -145,7 +145,7 @@ public abstract class MNode implements IMNode {
     if (fullPath == null) {
       return Objects.equals(getFullPath(), mNode.getFullPath());
     } else {
-      return Objects.equals(fullPath, mNode.fullPath);
+      return Objects.equals(fullPath, mNode.getFullPath());
     }
   }
 
