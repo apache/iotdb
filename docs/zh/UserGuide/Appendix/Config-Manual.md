@@ -383,12 +383,57 @@
 |默认值| 10000 |
 |改后生效方式|重启服务生效|
 
-* tsfile\_size\_threshold
+* seq\_tsfile\_size
 
-|名字| tsfile\_size\_threshold |
+|名字| seq\_tsfile\_size |
 |:---:|:---|
-|描述| 每个 tsfile 大小|
-|类型|Long|
+|描述| 每个顺序 tsfile 大小|
+|类型|byte|
+|默认值| 1 |
+|改后生效方式| 重启服务生效|
+
+* unseq\_tsfile\_size
+
+|名字| unseq\_tsfile\_size |
+|:---:|:---|
+|描述| 每个乱序 tsfile 大小|
+|类型|byte|
+|默认值| 1 |
+|改后生效方式| 重启服务生效|
+
+* seq\_file\_num\_in\_each\_level
+
+|名字| seq\_file\_num\_in\_each\_level |
+|:---:|:---|
+|描述| 顺序每层级文件最大数|
+|类型|INT64|
+|默认值| 6 |
+|改后生效方式| 重启服务生效|
+
+* unseq\_file\_num\_in\_each\_level
+
+|名字| unseq\_file\_num\_in\_each\_level |
+|:---:|:---|
+|描述| 乱序每层级文件最大数|
+|类型|INT64|
+|默认值| 10 |
+|改后生效方式| 重启服务生效|
+
+* seq\_level\_num
+
+|名字| seq\_level\_num |
+|:---:|:---|
+|描述| 顺序最大层级数|
+|类型|INT64|
+|默认值| 3 |
+|改后生效方式| 重启服务生效|
+
+* unseq\_level\_num
+
+|名字| unseq\_level\_num |
+|:---:|:---|
+|描述| 乱序最大层级数|
+|类型|INT64|
 |默认值| 1 |
 |改后生效方式| 重启服务生效|
 
