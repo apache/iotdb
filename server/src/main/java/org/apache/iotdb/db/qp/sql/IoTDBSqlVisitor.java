@@ -476,7 +476,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitCreateFunction(CreateFunctionContext ctx) {
     CreateFunctionOperator createFunctionOperator =
         new CreateFunctionOperator(SQLConstant.TOK_FUNCTION_CREATE);
-    createFunctionOperator.setTemporary(ctx.TEMPORARY() != null);
     createFunctionOperator.setUdfName(ctx.udfName.getText());
     createFunctionOperator.setClassName(removeStringQuote(ctx.className.getText()));
     return createFunctionOperator;
@@ -492,10 +491,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitShowFunctions(ShowFunctionsContext ctx) {
-    ShowFunctionsOperator showFunctionsOperator =
-        new ShowFunctionsOperator(SQLConstant.TOK_SHOW_FUNCTIONS);
-    showFunctionsOperator.setShowTemporary(ctx.TEMPORARY() != null);
-    return showFunctionsOperator;
+    return new ShowFunctionsOperator(SQLConstant.TOK_SHOW_FUNCTIONS);
   }
 
   @Override
