@@ -1376,7 +1376,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public IMNode getMNode(IMNode deviceMNode, String measurementName) {
+  protected IMNode getMeasurementMNode(IMNode deviceMNode, String measurementName) {
     IMNode child = deviceMNode.getChild(measurementName);
     if (child == null) {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurementName));

@@ -967,8 +967,8 @@ public class MTreeTest {
         null,
         null);
 
-    Assert.assertEquals(2, root.getDevicesForTimeseries(new PartialPath("root.**")).size());
-    Assert.assertEquals(1, root.getDevicesForTimeseries(new PartialPath("root.*.d1.*")).size());
-    Assert.assertEquals(2, root.getDevicesForTimeseries(new PartialPath("root.*.d*.*")).size());
+    Assert.assertEquals(2, root.getDevicesByTimeseries(new PartialPath("root.**")).size());
+    Assert.assertEquals(1, root.getDevicesByTimeseries(new PartialPath("root.*.d1.*")).size());
+    Assert.assertEquals(2, root.getDevicesByTimeseries(new PartialPath("root.*.d*.*")).size());
   }
 }

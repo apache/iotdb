@@ -1046,7 +1046,7 @@ public class MTree implements Serializable {
     return res;
   }
 
-  public Set<PartialPath> getDevicesForTimeseries(PartialPath timeseries) throws MetadataException {
+  public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
     TSEntityPathCollector collector = new TSEntityPathCollector(root, timeseries);
     collector.traverse();
     return collector.getResult();

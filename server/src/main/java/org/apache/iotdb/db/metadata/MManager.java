@@ -806,14 +806,33 @@ public class MManager {
     return mtree.getDevices(prefixPath, true);
   }
 
-  public Set<PartialPath> getDevicesForTimeseries(PartialPath timeseries) throws MetadataException {
-    return mtree.getDevicesForTimeseries(timeseries);
+  /**
+   * Get all devices that one of the timeseries, matching the given timeseries path pattern, belongs
+   * to.
+   *
+   * @param timeseries a path pattern of the target timeseries
+   * @return A HashSet instance which stores devices paths.
+   */
+  public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
+    return mtree.getDevicesByTimeseries(timeseries);
   }
 
+  /**
+   * Get all device paths matching the path pattern.
+   *
+   * @param pathPattern the pattern of the target devices.
+   * @return A HashSet instance which stores devices paths matching the given path pattern.
+   */
   public Set<PartialPath> getDevices(PartialPath pathPattern) throws MetadataException {
     return mtree.getDevices(pathPattern, false);
   }
 
+  /**
+   * Get all device paths and according storage group paths as ShowDevicesResult.
+   *
+   * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
+   * @return ShowDevicesResult.
+   */
   public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
     return mtree.getDevices(plan);
   }
@@ -1316,6 +1335,7 @@ public class MManager {
     return storageGroupsTTL;
   }
 
+  // region Interfaces for alias and tag/attribute operations.
   /**
    * Check whether the given path contains a storage group change or set the new offset of a
    * timeseries
@@ -1511,6 +1531,7 @@ public class MManager {
     // tags, attributes
     tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
   }
+  // endregion
 
   /** Check whether the given path contains a storage group */
   boolean checkStorageGroupByPath(PartialPath path) {
@@ -1623,6 +1644,7 @@ public class MManager {
     // do nothing
   }
 
+  // region Interfaces for lastCache operations
   /**
    * Update the last cache value of time series of given seriesPath.
    *
@@ -1816,7 +1838,9 @@ public class MManager {
           (IEntityMNode) node, originalPath, startTime, endTime);
     }
   }
+  // endregion
 
+  // region Interfaces and implementation for InsertPlan process.
   /** get schema for device. Attention!!! Only support insertPlan */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
@@ -1859,7 +1883,7 @@ public class MManager {
     for (int i = 0; i < measurementList.length; i++) {
       try {
         String measurement = measurementList[i];
-        IMNode child = getMNode(deviceMNode, plan.isAligned() ? vectorId : measurement);
+        IMNode child = getMeasurementMNode(deviceMNode, plan.isAligned() ? vectorId : measurement);
         if (child != null && child.isMeasurement()) {
           measurementMNode = (IMeasurementMNode) child;
         } else if (child != null && child.isStorageGroup()) {
@@ -2001,7 +2025,7 @@ public class MManager {
     return dataType;
   }
 
-  public IMNode getMNode(IMNode deviceMNode, String measurementName) {
+  protected IMNode getMeasurementMNode(IMNode deviceMNode, String measurementName) {
     return deviceMNode.getChild(measurementName);
   }
 
@@ -2060,6 +2084,7 @@ public class MManager {
         encodings,
         TSFileDescriptor.getInstance().getConfig().getCompressor());
   }
+  // endregion
 
   /**
    * StorageGroupFilter filters unsatisfied storage groups in metadata queries to speed up and
@@ -2071,6 +2096,7 @@ public class MManager {
     boolean satisfy(String storageGroup);
   }
 
+  // region Interfaces and implementation for Template operations
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
       templateManager.createSchemaTemplate(plan);
@@ -2107,10 +2133,6 @@ public class MManager {
     }
   }
 
-  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
-  }
-
   private void setUsingSchemaTemplate(SetUsingSchemaTemplatePlan plan) throws MetadataException {
     try {
       setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
@@ -2132,6 +2154,11 @@ public class MManager {
       mNodeCache.removeObject(entityMNode.getPartialPath());
     }
     return entityMNode;
+  }
+  // endregion
+
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+    mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
   }
 
   public long getTotalSeriesNumber() {

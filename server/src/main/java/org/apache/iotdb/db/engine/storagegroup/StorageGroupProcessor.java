@@ -1897,7 +1897,7 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.metaManager.getDevicesForTimeseries(path);
+      Set<PartialPath> devicePaths = IoTDB.metaManager.getDevicesByTimeseries(path);
       for (PartialPath device : devicePaths) {
         Long lastUpdateTime = null;
         for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
