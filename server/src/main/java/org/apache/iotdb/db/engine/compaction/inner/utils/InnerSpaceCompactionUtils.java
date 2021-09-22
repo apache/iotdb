@@ -398,13 +398,15 @@ public class InnerSpaceCompactionUtils {
                   totalChunkNum += chunkMetadatas.size();
                 }
                 logger.info(
-                    "{} [Compaction] compacting {}, max chunk num is {},  min chunk num is {},"
-                        + " average chunk num is {}",
+                    "{} [Compaction] compacting {}.{}, max chunk num is {},  min chunk num is {},"
+                        + " average chunk num is {}, using {} compaction",
                     storageGroup,
+                    device,
                     sensor,
                     maxChunkPointNum,
                     minChunkPointNum,
-                    totalChunkPointNum.divide(BigInteger.valueOf(totalChunkNum)).longValue());
+                    totalChunkPointNum.divide(BigInteger.valueOf(totalChunkNum)).longValue(),
+                    isChunkEnoughLarge ? "flushing chunk" : isPageEnoughLarge ? "merge chunk" : "");
                 if (isFileListHasModifications(
                     readerChunkMetadataListMap.keySet(), modificationCache, device, sensor)) {
                   isPageEnoughLarge = false;
@@ -413,7 +415,7 @@ public class InnerSpaceCompactionUtils {
 
                 // if a chunk is large enough, it's page must be large enough too
                 if (isChunkEnoughLarge) {
-                  logger.info(
+                  logger.debug(
                       "{} [Compaction] {} chunk enough large, use append chunk merge",
                       storageGroup,
                       sensor);
@@ -425,7 +427,7 @@ public class InnerSpaceCompactionUtils {
                       targetResource,
                       writer);
                 } else if (isPageEnoughLarge) {
-                  logger.info(
+                  logger.debug(
                       "{} [Compaction] {} page enough large, use append page merge",
                       storageGroup,
                       sensor);
@@ -437,7 +439,7 @@ public class InnerSpaceCompactionUtils {
                       targetResource,
                       writer);
                 } else {
-                  logger.info(
+                  logger.debug(
                       "{} [Compaction] {} page too small, use deserialize page merge",
                       storageGroup,
                       sensor);
