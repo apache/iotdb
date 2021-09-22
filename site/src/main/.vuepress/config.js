@@ -711,11 +711,10 @@ var config = {
 						title: 'Advanced Features',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							// The trigger module has not been implemented yet,
-							// so the website should not show users how to use it to avoid misleading.
-							// ['Advanced-Features/Triggers','Trigger'],
               ['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
               ['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
+							['Advanced-Features/Triggers','Triggers'],
+							['Advanced-Features/Alerting','Alerting'],
 						]
 					},
 					{
@@ -1507,11 +1506,10 @@ var config = {
 						title: '高级功能',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-						  // The trigger module has not been implemented yet,
-						  // so the website should not show users how to use it to avoid misleading.
-						  // ['Advanced-Features/Triggers','触发器'],
               ['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
               ['Advanced-Features/Continuous-Query','连续查询(CQ)'],
+							['Advanced-Features/Triggers','触发器'],
+							['Advanced-Features/Alerting','告警机制'],
 						]
 					},
 					{
