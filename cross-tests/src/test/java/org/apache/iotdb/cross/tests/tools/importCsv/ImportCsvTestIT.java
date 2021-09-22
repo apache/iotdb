@@ -180,7 +180,7 @@ public class ImportCsvTestIT extends AbstractScript {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      if (statement.execute("select * from root")) {
+      if (statement.execute("select * from root.**")) {
         ResultSet resultSet = statement.getResultSet();
         testResult(resultSet, 6, 3);
         resultSet.close();
@@ -239,7 +239,7 @@ public class ImportCsvTestIT extends AbstractScript {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      if (statement.execute("select * from root")) {
+      if (statement.execute("select * from root.**")) {
         ResultSet resultSet = statement.getResultSet();
         testResult(resultSet, 6, 3);
         resultSet.close();
@@ -269,7 +269,7 @@ public class ImportCsvTestIT extends AbstractScript {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      if (statement.execute("select * from root")) {
+      if (statement.execute("select ** from root")) {
         ResultSet resultSet = statement.getResultSet();
         testResult(resultSet, 6, 3);
         resultSet.close();
