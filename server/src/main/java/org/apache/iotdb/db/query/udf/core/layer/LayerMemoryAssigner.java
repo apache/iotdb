@@ -55,7 +55,8 @@ public class LayerMemoryAssigner {
           expressionReferenceEntry.getValue()
               * (expressionReferenceEntry.getKey() instanceof FunctionExpression ? 2 : 1);
     }
-    memoryBudgetForSingleReference = memoryBudgetInMB / memoryPartitions;
+    memoryBudgetForSingleReference =
+        memoryPartitions == 0 ? memoryBudgetInMB : memoryBudgetInMB / memoryPartitions;
   }
 
   public int getReference(Expression expression) {
