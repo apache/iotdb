@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
@@ -71,6 +72,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   private final boolean enableUnseqCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
+
+  private ReentrantLock compactionSelectionLock = new ReentrantLock();
 
   /**
    * Long -> partition list. Use treemap to keep the small partition in front.
@@ -565,13 +568,27 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (enableUnseqCompaction
         && unseqLevelNum <= 1
         && forkedUnSequenceTsFileResources.get(0).size() > 0) {
-      isMergeExecutedInCurrentTask =
-          merge(
-                  isForceFullMerge,
-                  getTsFileListByTimePartition(true, timePartition),
-                  forkedUnSequenceTsFileResources.get(0),
-                  Long.MAX_VALUE)
-              || isMergeExecutedInCurrentTask;
+      compactionSelectionLock.lock();
+      try {
+        if (!checkAndSetFilesMergingIfNotSet(
+            getTsFileListByTimePartition(true, timePartition),
+            forkedUnSequenceTsFileResources.get(0))) {
+          return;
+        }
+      } finally {
+        compactionSelectionLock.unlock();
+      }
+      if (checkAndSetFilesMergingIfNotSet(
+          getTsFileListByTimePartition(true, timePartition),
+          forkedUnSequenceTsFileResources.get(0))) {
+        isMergeExecutedInCurrentTask =
+            merge(
+                    isForceFullMerge,
+                    getTsFileListByTimePartition(true, timePartition),
+                    forkedUnSequenceTsFileResources.get(0),
+                    Long.MAX_VALUE)
+                || isMergeExecutedInCurrentTask;
+      }
     } else {
       isMergeExecutedInCurrentTask =
           merge(
@@ -617,6 +634,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to
             // seq file
+            compactionSelectionLock.lock();
+            try {
+              if (!checkAndSetFilesMergingIfNotSet(
+                  getTsFileListByTimePartition(true, timePartition), mergeResources.get(i))) {
+                // if any of the source file is being merged
+                // end the selection
+                return false;
+              }
+            } finally {
+              compactionSelectionLock.unlock();
+            }
             isSeqMerging = false;
             isMergeExecutedInCurrentTask =
                 merge(
@@ -628,6 +656,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             List<TsFileResource> toMergeTsFiles =
                 mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
+            compactionSelectionLock.lock();
+            try {
+              if (!checkAndSetFilesMergingIfNotSet(toMergeTsFiles, null)) {
+                return false;
+              }
+            } finally {
+              compactionSelectionLock.unlock();
+            }
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
               mergeResource.setMerging(true);
@@ -853,6 +889,43 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     }
+  }
+
+  /**
+   * Check if the TsFiles are begin merged. If all of the TsFiles are not being merged, set their
+   * merging flag.
+   *
+   * @param seqFiles Collections of the seqFiles, can be null
+   * @param unseqFiles Collections of the unseqFiles, can be null
+   * @return true if all the TsFiles is not being merged, else false
+   */
+  private boolean checkAndSetFilesMergingIfNotSet(
+      Collection<TsFileResource> seqFiles, Collection<TsFileResource> unseqFiles) {
+    if (seqFiles != null) {
+      for (TsFileResource seqFile : seqFiles) {
+        if (seqFile.isMerging()) {
+          return false;
+        }
+      }
+    }
+    if (unseqFiles != null) {
+      for (TsFileResource unseqFile : unseqFiles) {
+        if (unseqFile.isMerging()) {
+          return false;
+        }
+      }
+    }
+    if (seqFiles != null) {
+      for (TsFileResource seqFile : seqFiles) {
+        seqFile.setMerging(true);
+      }
+    }
+    if (unseqFiles != null) {
+      for (TsFileResource unseqFile : unseqFiles) {
+        unseqFile.setMerging(true);
+      }
+    }
+    return true;
   }
 
   @TestOnly

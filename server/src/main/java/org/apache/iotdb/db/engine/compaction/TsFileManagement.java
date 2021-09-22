@@ -250,13 +250,6 @@ public abstract class TsFileManagement {
         // cached during selection
         mergeResource.setCacheDeviceMeta(true);
 
-        for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
-          tsFileResource.setMerging(true);
-        }
-        for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
-          tsFileResource.setMerging(true);
-        }
-
         long mergeStartTime = System.currentTimeMillis();
         MergeTask mergeTask =
             new MergeTask(
