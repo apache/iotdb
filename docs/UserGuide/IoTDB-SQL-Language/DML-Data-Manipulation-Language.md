@@ -514,7 +514,7 @@ All supported aggregation functions are: count, sum, avg, last_value, first_valu
 When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type.
 Otherwise, it will generate a syntax error.
 
-### Down-Frequency Aggregate Query
+#### Down-Frequency Aggregate Query
 
 This section mainly introduces the related examples of down-frequency aggregation query, 
 using the [GROUP BY clause](../Appendix/SQL-Reference.md), 
@@ -540,7 +540,7 @@ and value filtering conditions specified.
 
 **Figure 5.2 The actual meanings of the three types of parameters**
 
-#### Down-Frequency Aggregate Query without Specifying the Sliding Step Length
+##### Down-Frequency Aggregate Query without Specifying the Sliding Step Length
 
 The SQL statement is:
 
@@ -575,7 +575,7 @@ Total line number = 7
 It costs 0.024s
 ```
 
-#### Down-Frequency Aggregate Query Specifying the Sliding Step Length
+##### Down-Frequency Aggregate Query Specifying the Sliding Step Length
 
 The SQL statement is:
 
@@ -615,7 +615,7 @@ Total line number = 7
 It costs 0.006s
 ```
 
-#### Down-Frequency Aggregate Query by Natural Month
+##### Down-Frequency Aggregate Query by Natural Month
 
 The SQL statement is:
 
@@ -703,7 +703,7 @@ The SQL execution result is:
 +-----------------------------+-------------------------------+
 ```
 
-#### Left Open And Right Close Range
+##### Left Open And Right Close Range
 
 The SQL statement is:
 
@@ -731,6 +731,94 @@ Total line number = 7
 It costs 0.004s
 ```
 
+#### Down-Frequency Aggregate Query with Fill Clause
+
+In group by fill, sliding step is not supported in group by clause
+
+Now, only last_value aggregation function is supported in group by fill.
+
+Linear fill is not supported in group by fill.
+
+
+Difference Between PREVIOUSUNTILLAST And PREVIOUS:
+
+* PREVIOUS will fill any null value as long as there exist value is not null before it.
+* PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
+
+first, we check value root.ln.wf01.wt01.temperature when time after 2017-11-07T23:50:00.
+
+```
+IoTDB> SELECT temperature FROM root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
++-----------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|
++-----------------------------+-----------------------------+
+|2017-11-07T23:50:00.000+08:00|                         23.7|
+|2017-11-07T23:51:00.000+08:00|                        22.24|
+|2017-11-07T23:52:00.000+08:00|                        20.18|
+|2017-11-07T23:53:00.000+08:00|                        24.58|
+|2017-11-07T23:54:00.000+08:00|                        22.52|
+|2017-11-07T23:55:00.000+08:00|                         25.9|
+|2017-11-07T23:56:00.000+08:00|                        24.44|
+|2017-11-07T23:57:00.000+08:00|                        24.39|
+|2017-11-07T23:58:00.000+08:00|                        22.93|
+|2017-11-07T23:59:00.000+08:00|                        21.07|
++-----------------------------+-----------------------------+
+Total line number = 10
+It costs 0.002s
+```
+
+we will find the last time and value of root.ln.wf01.wt01.temperature are 2017-11-07T23:59:00 and 21.07 respectively. 
+
+Then execute SQL statements:
+
+```sql
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUSUNTILLAST]);
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUS]);
+```
+
+result:
+
+```
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     23.7|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                    20.18|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                     25.9|
+|2017-11-07T23:56:00.000+08:00|                                    24.44|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                    22.93|
+|2017-11-07T23:59:00.000+08:00|                                    21.07|
+|2017-11-08T00:00:00.000+08:00|                                     null|
++-----------------------------+-----------------------------------------+
+Total line number = 11
+It costs 0.005s
+
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     23.7|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                    20.18|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                     25.9|
+|2017-11-07T23:56:00.000+08:00|                                    24.44|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                    22.93|
+|2017-11-07T23:59:00.000+08:00|                                    21.07|
+|2017-11-08T00:00:00.000+08:00|                                    21.07|
++-----------------------------+-----------------------------------------+
+Total line number = 11
+It costs 0.006s
+```
+
+which means:
+
+using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:59.
 
 #### Down-Frequency Aggregate Query with Level Clause
 
@@ -787,226 +875,11 @@ Total line number = 7
 It costs 0.004s
 ```
 
-#### Down-Frequency Aggregate Query with Fill Clause
-
-In group by fill, sliding step is not supported in group by clause
-
-Now, only last_value aggregation function is supported in group by fill.
-
-Linear fill is not supported in group by fill.
-
-
-##### Difference Between PREVIOUSUNTILLAST And PREVIOUS
-
-* PREVIOUS will fill any null value as long as there exist value is not null before it.
-* PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
-
-first, we check value root.ln.wf01.wt01.temperature when time after 2017-11-07T23:50:00.
-
-```
-IoTDB> SELECT temperature FROM root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+
-|                         Time|root.ln.wf01.wt01.temperature|
-+-----------------------------+-----------------------------+
-|2017-11-07T23:50:00.000+08:00|                         23.7|
-|2017-11-07T23:51:00.000+08:00|                        22.24|
-|2017-11-07T23:52:00.000+08:00|                        20.18|
-|2017-11-07T23:53:00.000+08:00|                        24.58|
-|2017-11-07T23:54:00.000+08:00|                        22.52|
-|2017-11-07T23:55:00.000+08:00|                         25.9|
-|2017-11-07T23:56:00.000+08:00|                        24.44|
-|2017-11-07T23:57:00.000+08:00|                        24.39|
-|2017-11-07T23:58:00.000+08:00|                        22.93|
-|2017-11-07T23:59:00.000+08:00|                        21.07|
-+-----------------------------+-----------------------------+
-Total line number = 10
-It costs 0.002s
-```
-
-we will find the last time and value of root.ln.wf01.wt01.temperature are 2017-11-07T23:59:00 and 21.07 respectively. 
-
-Then execute SQL statements:
-
-```sql
-SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUSUNTILLAST]);
-SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUS]);
-```
-
-result:
-```
-+-----------------------------+-----------------------------------------+
-|                         Time|last_value(root.ln.wf01.wt01.temperature)|
-+-----------------------------+-----------------------------------------+
-|2017-11-07T23:50:00.000+08:00|                                     23.7|
-|2017-11-07T23:51:00.000+08:00|                                    22.24|
-|2017-11-07T23:52:00.000+08:00|                                    20.18|
-|2017-11-07T23:53:00.000+08:00|                                    24.58|
-|2017-11-07T23:54:00.000+08:00|                                    22.52|
-|2017-11-07T23:55:00.000+08:00|                                     25.9|
-|2017-11-07T23:56:00.000+08:00|                                    24.44|
-|2017-11-07T23:57:00.000+08:00|                                    24.39|
-|2017-11-07T23:58:00.000+08:00|                                    22.93|
-|2017-11-07T23:59:00.000+08:00|                                    21.07|
-|2017-11-08T00:00:00.000+08:00|                                     null|
-+-----------------------------+-----------------------------------------+
-Total line number = 11
-It costs 0.005s
-
-+-----------------------------+-----------------------------------------+
-|                         Time|last_value(root.ln.wf01.wt01.temperature)|
-+-----------------------------+-----------------------------------------+
-|2017-11-07T23:50:00.000+08:00|                                     23.7|
-|2017-11-07T23:51:00.000+08:00|                                    22.24|
-|2017-11-07T23:52:00.000+08:00|                                    20.18|
-|2017-11-07T23:53:00.000+08:00|                                    24.58|
-|2017-11-07T23:54:00.000+08:00|                                    22.52|
-|2017-11-07T23:55:00.000+08:00|                                     25.9|
-|2017-11-07T23:56:00.000+08:00|                                    24.44|
-|2017-11-07T23:57:00.000+08:00|                                    24.39|
-|2017-11-07T23:58:00.000+08:00|                                    22.93|
-|2017-11-07T23:59:00.000+08:00|                                    21.07|
-|2017-11-08T00:00:00.000+08:00|                                    21.07|
-+-----------------------------+-----------------------------------------+
-Total line number = 11
-It costs 0.006s
-```
-
-which means:
-
-using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:59.
-
-### Last point Query
-
-In scenarios when IoT devices updates data in a fast manner, users are more interested in the most recent point of IoT devices.
-
-The Last point query is to return the most recent data point of the given timeseries in a three column format.
-
-The SQL statement is defined as:
-
-```sql
-select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
-```
-
-which means: Query and return the last data points of timeseries prefixPath.path.
-
-Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
-
-The result will be returned in a four column table format.
-
-```
-| Time | timeseries | value | dataType |
-```
-
-Example 1: get the last point of root.ln.wf01.wt01.status:
-
-```
-IoTDB> select last status from root.ln.wf01.wt01
-+-----------------------------+------------------------+-----+--------+
-|                         Time|              timeseries|value|dataType|
-+-----------------------------+------------------------+-----+--------+
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false| BOOLEAN|
-+-----------------------------+------------------------+-----+--------+
-Total line number = 1
-It costs 0.000s
-```
-
-Example 2: get the last status and temperature points of root.ln.wf01.wt01,
-whose timestamp larger or equal to 2017-11-07T23:50:00。
-
-```
-IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+---------+--------+
-|                         Time|                   timeseries|    value|dataType|
-+-----------------------------+-----------------------------+---------+--------+
-|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
-+-----------------------------+-----------------------------+---------+--------+
-Total line number = 2
-It costs 0.002s
-```
-
-### Fuzzy query
-
-Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of TEXT type data.
-
-Like statement:
-
-Example 1: Query data containing `'cc'` in `value` under `root.sg.device`. 
-The percentage (`%`) wildcard matches any string of zero or more characters.
-
-
-```
-IoTDB> select * from root.sg.device where value like '%cc%'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
-Total line number = 2
-It costs 0.002s
-```
-
-Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.device`.
-The underscore (`_`) wildcard matches any single character.
-```
-IoTDB> select * from root.sg.device where value like '_b_'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|                 abc| 
-+-----------------------------+--------------------+
-Total line number = 1
-It costs 0.002s
-```
-
-Regexp statement：
-
-The filter conditions that need to be passed in are regular expressions in the Java standard library style
-
-Example 1: Query a string composed of 26 English characters for the value under root.sg.device
-```
-IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
-Total line number = 2
-It costs 0.002s
-```
-
-Example 2: Query root.sg.device where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
-```
-IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
-Total line number = 2
-It costs 0.002s
-```
-
-Examples of common regular matching:
-
-```
-All characters with a length of 3-20: ^.{3,20}$
-Uppercase english characters: ^[A-Z]+$
-Numbers and English characters: ^[A-Za-z0-9]+$
-Beginning with a: ^a.*
-```
-
-For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
 ### Automated Fill
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
 
 Automated fill function refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
-
-> Note: In the current version, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
 
 #### Fill Function
 
@@ -1180,6 +1053,151 @@ When the fill method is not specified, each data type bears its own default fill
 </center>
 
 > Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
+
+### Last point Query
+
+In scenarios when IoT devices updates data in a fast manner, users are more interested in the most recent point of IoT devices.
+
+The Last point query is to return the most recent data point of the given timeseries in a three column format.
+
+The SQL statement is defined as:
+
+```sql
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
+```
+
+which means: Query and return the last data points of timeseries prefixPath.path.
+
+Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
+
+The result will be returned in a four column table format.
+
+```
+| Time | timeseries | value | dataType |
+```
+
+Example 1: get the last point of root.ln.wf01.wt01.status:
+
+```
+IoTDB> select last status from root.ln.wf01.wt01
++-----------------------------+------------------------+-----+--------+
+|                         Time|              timeseries|value|dataType|
++-----------------------------+------------------------+-----+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false| BOOLEAN|
++-----------------------------+------------------------+-----+--------+
+Total line number = 1
+It costs 0.000s
+```
+
+Example 2: get the last status and temperature points of root.ln.wf01.wt01,
+whose timestamp larger or equal to 2017-11-07T23:50:00。
+
+```
+IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
++-----------------------------+-----------------------------+---------+--------+
+Total line number = 2
+It costs 0.002s
+```
+
+### Fuzzy query
+
+Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of TEXT type data.
+
+Like statement:
+
+Example 1: Query data containing `'cc'` in `value` under `root.sg.device`. 
+The percentage (`%`) wildcard matches any string of zero or more characters.
+
+
+```
+IoTDB> select * from root.sg.device where value like '%cc%'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.device`.
+The underscore (`_`) wildcard matches any single character.
+
+```
+IoTDB> select * from root.sg.device where value like '_b_'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|                 abc| 
++-----------------------------+--------------------+
+Total line number = 1
+It costs 0.002s
+```
+
+Regexp statement：
+
+The filter conditions that need to be passed in are regular expressions in the Java standard library style
+
+Example 1: Query a string composed of 26 English characters for the value under root.sg.device
+
+```
+IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Example 2: Query root.sg.device where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
+
+```
+IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Examples of common regular matching:
+
+```
+All characters with a length of 3-20: ^.{3,20}$
+Uppercase english characters: ^[A-Z]+$
+Numbers and English characters: ^[A-Za-z0-9]+$
+Beginning with a: ^a.*
+```
+
+For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
+
+### Alias
+
+Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
+
+For example：
+
+```sql
+select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
+```
+
+The result set is：
+
+| Time | temperature | speed |
+| ---- | ----------- | ----- |
+| ...  | ...         | ...   |
 
 ### Row and Column Control over Query Results
 
@@ -1541,7 +1559,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or exceeds the number of sequences (2) that can actually be returned.
 ```
 
-#### Null Value Control over Query Results
+### Null Value Control over Query Results
 
 * IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
 
@@ -1554,22 +1572,6 @@ select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```sql
 select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
-
-### Use Alias
-
-Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
-
-For example：
-
-```sql
-select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
-```
-
-The result set is：
-
-| Time | temperature | speed |
-| ---- | ----------- | ----- |
-| ...  | ...         | ...   |
 
 ### Other ResultSet Formats
 
