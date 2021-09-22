@@ -114,14 +114,18 @@ public class IoTDBSessionVectorAggregationIT {
     try {
       SessionDataSet dataSet =
           session.executeQueryStatement(
-              "select min_time(s1), max_time(s2) from root.sg1.d1.vector1");
-      assertEquals(2, dataSet.getColumnNames().size());
+              "select min_time(s1), min_time(s2), max_time(s1), max_time(s2) from root.sg1.d1.vector1");
+      assertEquals(4, dataSet.getColumnNames().size());
       assertEquals("min_time(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(0));
-      assertEquals("max_time(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(1));
+      assertEquals("min_time(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(1));
+      assertEquals("max_time(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(2));
+      assertEquals("max_time(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(3));
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(1, rowRecord.getFields().get(0).getLongV());
-        assertEquals(100, rowRecord.getFields().get(1).getLongV());
+        assertEquals(1, rowRecord.getFields().get(1).getLongV());
+        assertEquals(100, rowRecord.getFields().get(2).getLongV());
+        assertEquals(100, rowRecord.getFields().get(3).getLongV());
         dataSet.next();
       }
 
@@ -144,7 +148,7 @@ public class IoTDBSessionVectorAggregationIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(2, rowRecord.getFields().get(0).getLongV());
-        assertEquals(102, rowRecord.getFields().get(1).getIntV(), 102);
+        assertEquals(102, rowRecord.getFields().get(1).getIntV());
         dataSet.next();
       }
 

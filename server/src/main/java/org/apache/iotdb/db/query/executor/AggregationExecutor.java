@@ -304,7 +304,7 @@ public class AggregationExecutor {
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-    if (ascAggregateResultList != null && !ascAggregateResultList.isEmpty()) {
+    if (!isAggregateResultEmpty(ascAggregateResultList)) {
       VectorSeriesAggregateReader seriesReader =
           new VectorSeriesAggregateReader(
               seriesPath,
@@ -318,7 +318,7 @@ public class AggregationExecutor {
               true);
       aggregateFromVectorReader(seriesReader, ascAggregateResultList);
     }
-    if (descAggregateResultList != null && !descAggregateResultList.isEmpty()) {
+    if (!isAggregateResultEmpty(descAggregateResultList)) {
       VectorSeriesAggregateReader seriesReader =
           new VectorSeriesAggregateReader(
               seriesPath,
@@ -332,6 +332,15 @@ public class AggregationExecutor {
               false);
       aggregateFromVectorReader(seriesReader, descAggregateResultList);
     }
+  }
+
+  private static boolean isAggregateResultEmpty(List<List<AggregateResult>> resultList) {
+    for (List<AggregateResult> result : resultList) {
+      if (!result.isEmpty()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -39,9 +40,9 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBSessionVectorABDeviceIT {
+public class IoTDBSessionVectorAggregationWithUnSeqIT {
+
   private static final String ROOT_SG1_D1_VECTOR1 = "root.sg1.d1.vector1";
-  private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static Session session;
 
@@ -52,8 +53,7 @@ public class IoTDBSessionVectorABDeviceIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     createAlignedTimeseries();
-    prepareAlignedTimeSeriesData();
-    prepareNonAlignedTimeSeriesData();
+    prepareAlignedTimeseriesDataWithUnSeq();
   }
 
   @AfterClass
@@ -64,22 +64,44 @@ public class IoTDBSessionVectorABDeviceIT {
   }
 
   @Test
-  public void subMeasurementAlignByDeviceTest() {
+  public void vectorAggregationCountTest() {
+    try {
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select count(s1), count(s2) from root.sg1.d1.vector1");
+      assertEquals(2, dataSet.getColumnNames().size());
+      assertEquals("count(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(0));
+      assertEquals("count(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(1));
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(200, rowRecord.getFields().get(0).getLongV());
+        assertEquals(200, rowRecord.getFields().get(1).getLongV());
+        dataSet.next();
+      }
+
+      dataSet.closeOperationHandle();
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void vectorAggregationMinMaxTimeTest() {
     try {
       SessionDataSet dataSet =
           session.executeQueryStatement(
-              "select vector1.s1, vector1.s2 from root.sg1.d1 limit 1 align by device");
+              "select min_time(s1), max_time(s1), min_time(s2), max_time(s2) from root.sg1.d1.vector1");
       assertEquals(4, dataSet.getColumnNames().size());
-      assertEquals("Time", dataSet.getColumnNames().get(0));
-      assertEquals("Device", dataSet.getColumnNames().get(1));
-      assertEquals("vector1.s1", dataSet.getColumnNames().get(2));
-      assertEquals("vector1.s2", dataSet.getColumnNames().get(3));
+      assertEquals("min_time(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(0));
+      assertEquals("max_time(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(1));
+      assertEquals("min_time(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(2));
+      assertEquals("max_time(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(3));
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(1, rowRecord.getTimestamp());
-        assertEquals("root.sg1.d1", rowRecord.getFields().get(0).getBinaryV().toString());
-        assertEquals(2, rowRecord.getFields().get(1).getLongV());
-        assertEquals(3, rowRecord.getFields().get(2).getLongV());
+        assertEquals(1, rowRecord.getFields().get(0).getLongV());
+        assertEquals(200, rowRecord.getFields().get(1).getLongV());
+        assertEquals(1, rowRecord.getFields().get(2).getLongV());
+        assertEquals(200, rowRecord.getFields().get(3).getLongV());
         dataSet.next();
       }
 
@@ -91,79 +113,22 @@ public class IoTDBSessionVectorABDeviceIT {
   }
 
   @Test
-  public void vectorAlignByDeviceTest() {
+  public void vectorAggregationMinMaxValueTest() {
     try {
       SessionDataSet dataSet =
-          session.executeQueryStatement("select vector1 from root.sg1.d1 limit 1 align by device");
+          session.executeQueryStatement(
+              "select min_value(s1), min_value(s2), max_value(s1), max_value(s2) from root.sg1.d1.vector1");
       assertEquals(4, dataSet.getColumnNames().size());
-      assertEquals("Time", dataSet.getColumnNames().get(0));
-      assertEquals("Device", dataSet.getColumnNames().get(1));
-      assertEquals("vector1.s1", dataSet.getColumnNames().get(2));
-      assertEquals("vector1.s2", dataSet.getColumnNames().get(3));
+      assertEquals("min_value(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(0));
+      assertEquals("min_value(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(1));
+      assertEquals("max_value(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(2));
+      assertEquals("max_value(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(3));
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(1, rowRecord.getTimestamp());
-        assertEquals("root.sg1.d1", rowRecord.getFields().get(0).getBinaryV().toString());
-        assertEquals(2, rowRecord.getFields().get(1).getLongV());
-        assertEquals(3, rowRecord.getFields().get(2).getLongV());
-        dataSet.next();
-      }
-
-      dataSet.closeOperationHandle();
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  /** Ignore until the tablet interface. */
-  public void vectorAlignByDeviceWithWildcardTest() {
-    try {
-      SessionDataSet dataSet =
-          session.executeQueryStatement("select * from root.sg1.d1 limit 1 align by device");
-      assertEquals(7, dataSet.getColumnNames().size());
-      assertEquals("Time", dataSet.getColumnNames().get(0));
-      assertEquals("Device", dataSet.getColumnNames().get(1));
-      assertEquals("s3", dataSet.getColumnNames().get(2));
-      assertEquals("s4", dataSet.getColumnNames().get(3));
-      assertEquals("s5", dataSet.getColumnNames().get(4));
-      assertEquals("vector1.s1", dataSet.getColumnNames().get(5));
-      assertEquals("vector1.s2", dataSet.getColumnNames().get(6));
-
-      while (dataSet.hasNext()) {
-        RowRecord rowRecord = dataSet.next();
-        assertEquals(1, rowRecord.getTimestamp());
-        assertEquals("root.sg1.d1", rowRecord.getFields().get(0).getBinaryV().toString());
-        assertEquals(2, rowRecord.getFields().get(4).getLongV());
-        assertEquals(3, rowRecord.getFields().get(5).getLongV());
-        assertEquals(4, rowRecord.getFields().get(1).getLongV());
-        assertEquals(5, rowRecord.getFields().get(2).getLongV());
-        assertEquals(6, rowRecord.getFields().get(3).getLongV());
-        dataSet.next();
-      }
-
-      dataSet.closeOperationHandle();
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void vectorAggregationAlignByDeviceTest() {
-    try {
-      SessionDataSet dataSet =
-          session.executeQueryStatement("select count(vector1) from root.sg1.d1 align by device");
-      assertEquals(3, dataSet.getColumnNames().size());
-      assertEquals("Device", dataSet.getColumnNames().get(0));
-      assertEquals("count(vector1.s1)", dataSet.getColumnNames().get(1));
-      assertEquals("count(vector1.s2)", dataSet.getColumnNames().get(2));
-      while (dataSet.hasNext()) {
-        RowRecord rowRecord = dataSet.next();
-        assertEquals("root.sg1.d1", rowRecord.getFields().get(0).getBinaryV().toString());
-        assertEquals(100, rowRecord.getFields().get(1).getLongV());
-        assertEquals(100, rowRecord.getFields().get(2).getLongV());
+        assertEquals(2, rowRecord.getFields().get(0).getLongV());
+        assertEquals(3, rowRecord.getFields().get(1).getLongV());
+        assertEquals(201, rowRecord.getFields().get(2).getLongV());
+        assertEquals(202, rowRecord.getFields().get(3).getLongV());
         dataSet.next();
       }
 
@@ -191,7 +156,7 @@ public class IoTDBSessionVectorABDeviceIT {
         ROOT_SG1_D1_VECTOR1, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
   }
 
-  private static void prepareAlignedTimeSeriesData()
+  private static void prepareAlignedTimeseriesDataWithUnSeq()
       throws StatementExecutionException, IoTDBConnectionException {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
@@ -200,31 +165,28 @@ public class IoTDBSessionVectorABDeviceIT {
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT64);
 
-    for (long time = 1; time <= 100; time++) {
+    for (long time = 1; time <= 200; time++) {
       List<Object> values = new ArrayList<>();
       values.add(time + 1);
       values.add(time + 2);
       session.insertRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values, true);
     }
-  }
+    session.executeNonQueryStatement("flush");
 
-  private static void prepareNonAlignedTimeSeriesData()
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<String> measurements = new ArrayList<>();
-    List<TSDataType> types = new ArrayList<>();
-    measurements.add("s3");
-    measurements.add("s4");
-    measurements.add("s5");
-    types.add(TSDataType.INT64);
-    types.add(TSDataType.INT64);
-    types.add(TSDataType.INT64);
-
-    for (long time = 1; time <= 100; time++) {
+    for (long time = 2; time <= 50; time += 2) {
       List<Object> values = new ArrayList<>();
-      values.add(time + 3L);
-      values.add(time + 4L);
-      values.add(time + 5L);
-      session.insertRecord(ROOT_SG1_D1, time, measurements, types, values);
+      values.add(time + 1);
+      values.add(time + 2);
+      session.insertRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values, true);
     }
+    session.executeNonQueryStatement("flush");
+
+    for (long time = 150; time <= 200; time += 10) {
+      List<Object> values = new ArrayList<>();
+      values.add(time + 1);
+      values.add(time + 2);
+      session.insertRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values, true);
+    }
+    session.executeNonQueryStatement("flush");
   }
 }

@@ -668,28 +668,26 @@ public class BatchData {
     if (this.vectorRet == null) {
       throw new IOException("SubBatchData can only be generated from VectorBatchData");
     }
-    int subSensorSize = this.vectorRet.get(0)[0].length;
-    BatchData[] subBatchData;
-    switch (batchDataType) {
-      case Ordinary:
-        subBatchData = new BatchData[subSensorSize];
-        break;
-      case DescRead:
-        subBatchData = new DescReadBatchData[subSensorSize];
-        break;
-      case DescReadWrite:
-        subBatchData = new DescReadWriteBatchData[subSensorSize];
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("BatchData type %s is not supported.", batchDataType));
-    }
-
-    // set data type for each subBatchData
     TsPrimitiveType[] firstValues = getVector();
+    int subSensorSize = firstValues.length;
+    BatchData[] subBatchData = new BatchData[subSensorSize];
+    // set data type for each subBatchData
     for (int i = 0; i < subSensorSize; i++) {
       TsPrimitiveType primitiveVal = firstValues[i];
-      subBatchData[i].setDataType(primitiveVal.getDataType());
+      switch (batchDataType) {
+        case Ordinary:
+          subBatchData[i] = new BatchData(primitiveVal.getDataType());
+          break;
+        case DescRead:
+          subBatchData[i] = new DescReadBatchData(primitiveVal.getDataType());
+          break;
+        case DescReadWrite:
+          subBatchData[i] = new DescReadWriteBatchData(primitiveVal.getDataType());
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("BatchData type %s is not supported.", batchDataType));
+      }
     }
 
     while (hasCurrent()) {
