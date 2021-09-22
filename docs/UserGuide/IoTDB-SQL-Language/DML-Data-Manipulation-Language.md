@@ -45,19 +45,19 @@ The above example code inserts the long integer timestamp and the value "true" i
 
 The INSERT statement can also support the insertion of multi-column data at the same time point.  The sample code of  inserting the values of the two timeseries at the same time point '2' is as follows:
 
-```
+```sql
 IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (2, false, 'v2')
 ```
 
 In addition, The INSERT statement support insert multi-rows at once. The sample code of inserting two rows as follows:
 
-```
+```sql
 IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, false, 'v3'),(4, true, 'v4')
 ```
 
 After inserting the data, we can simply query the inserted data using the SELECT statement:
 
-```
+```sql
 IoTDB > select * from root.ln.wf02 where time < 5
 ```
 
@@ -86,7 +86,7 @@ This chapter mainly introduces the relevant examples of time slice query using I
 
 The SQL statement is:
 
-```
+```sql
 select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
 which means:
@@ -116,7 +116,7 @@ It costs 0.026s
 
 The SQL statement is:
 
-```
+```sql
 select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000;
 ```
 which means:
@@ -144,7 +144,7 @@ It costs 0.018s
 
 IoTDB supports specifying multiple time interval conditions in a query. Users can combine time interval conditions at will according to their needs. For example, the SQL statement is:
 
-```
+```sql
 select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
 which means:
@@ -175,7 +175,7 @@ It costs 0.018s
 
 The system supports the selection of data in any column in a query, i.e., the selected columns can come from different devices. For example, the SQL statement is:
 
-```
+```sql
 select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
 which means:
@@ -433,7 +433,7 @@ This section mainly introduces the related examples of aggregate query.
 
 #### Count Points
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01;
 ```
 Result:
@@ -448,7 +448,7 @@ Total line number = 1
 It costs 0.016s
 ```
 
-##### Aggregation By Level
+#### Aggregation By Level
 
 **Aggregation by level statement** is used for aggregating upon specific hierarchical level of timeseries path.
 For all timeseries paths, by convention, "level=0" represents *root* level. 
@@ -456,7 +456,8 @@ That is, to tally the points of any measurements under "root.ln", the level shou
 
 For example, there are multiple series under "root.ln.wf01", such as "root.ln.wf01.wt01.status","root.ln.wf01.wt02.status","root.ln.wf01.wt03.status".
 To count the number of "status" points of all these series, use query:
-```
+
+```sql
 select count(status) from root.ln.wf01.* group by level=2
 ```
 Result:
@@ -476,7 +477,7 @@ Suppose we add another two timeseries, "root.ln.wf01.wt01.temperature" and "root
 To query the count and the sum of "temperature" under path "root.ln.*.*", 
 aggregating on level=2, use following statement:
 
-```
+```sql
 select count(temperature), sum(temperature) from root.ln.*.* group by level=2
 ```
 Result：
@@ -494,7 +495,7 @@ It costs 0.013s
 To query the count and the sum of path "root.ln.\*.\*.temperature" aggregating on "root.ln" level,
 simply set level=1
 
-```
+```sql
 select count(temperature), sum(temperature) from root.ln.*.* group by level=1
 ```
 Result：
@@ -543,7 +544,7 @@ and value filtering conditions specified.
 
 The SQL statement is:
 
-```
+```sql
 select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d);
 ```
 which means:
@@ -578,7 +579,7 @@ It costs 0.024s
 
 The SQL statement is:
 
-```
+```sql
 select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d);
 ```
 
@@ -618,7 +619,7 @@ It costs 0.006s
 
 The SQL statement is:
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by([2017-11-01T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 ```
 
@@ -660,7 +661,7 @@ The SQL execution result is:
 
 The SQL statement is:
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by([2017-10-31T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 ```
 
@@ -706,7 +707,7 @@ The SQL execution result is:
 
 The SQL statement is:
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00],1d);
 ```
 
@@ -741,7 +742,7 @@ The SQL statement is:
 
 Get down-frequency aggregate query by level.
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00],1d), level=1;
 ```
 Result:
@@ -764,7 +765,7 @@ It costs 0.006s
 
 Down-frequency aggregate query with sliding step and by level.
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d), level=1;
 ```
 
@@ -826,7 +827,7 @@ we will find the last time and value of root.ln.wf01.wt01.temperature are 2017-1
 
 Then execute SQL statements:
 
-```
+```sql
 SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUSUNTILLAST]);
 SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUS]);
 ```
@@ -882,7 +883,7 @@ The Last point query is to return the most recent data point of the given timese
 
 The SQL statement is defined as:
 
-```
+```sql
 select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
 ```
 
@@ -1013,7 +1014,7 @@ Automated fill function refers to filling empty values according to the user's s
 
 When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows (see Section 7.1.3.6 for detailed syntax):
 
-```
+```sql
 select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <before_range>], …)
 ```
 
@@ -1031,7 +1032,7 @@ Detailed descriptions of all parameters are given in Table 3-4.
 
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
 
-```
+```sql
 select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1s]) 
 ```
 which means:
@@ -1067,7 +1068,7 @@ It costs 0.004s
 
 When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
 
-```
+```sql
 select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <before_range>, <after_range>]…)
 ```
 Detailed descriptions of all parameters are given in Table 3-5.
@@ -1087,7 +1088,7 @@ Otherwise, if there is no valid fill value in either range [T-before_range，T] 
 
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
 
-```
+```sql
 select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])
 ```
 which means:
@@ -1110,7 +1111,7 @@ It costs 0.017s
 
 When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
 
-```
+```sql
 select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
 ```
 Detailed descriptions of all parameters are given in Table 3-6.
@@ -1129,7 +1130,7 @@ Detailed descriptions of all parameters are given in Table 3-6.
 
 Here we give an example of filling null values using the value method. The SQL statement is as follows:
 
-```
+```sql
 select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
 ```
 which means:
@@ -1199,7 +1200,7 @@ By using LIMIT and OFFSET clauses, users control the query results in a row-rela
 
 The SQL statement is:
 
-```
+```sql
 select status, temperature from root.ln.wf01.wt01 limit 10
 ```
 which means:
@@ -1231,7 +1232,7 @@ It costs 0.000s
 
 The SQL statement is:
 
-```
+```sql
 select status, temperature from root.ln.wf01.wt01 limit 5 offset 3
 ```
 which means:
@@ -1258,7 +1259,7 @@ It costs 0.342s
 
 The SQL statement is:
 
-```
+```sql
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time< 2017-11-01T00:12:00.000 limit 2 offset 3
 ```
 which means:
@@ -1285,7 +1286,7 @@ It costs 0.000s
 
 The SQL statement is:
 
-```
+```sql
 select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) limit 5 offset 3
 ```
 which means:
@@ -1309,7 +1310,7 @@ It costs 0.016s
 
 It is worth noting that because the current FILL clause can only fill in the missing value of timeseries at a certain time point, that is to say, the execution result of FILL clause is exactly one line, so LIMIT and OFFSET are not expected to be used in combination with FILL clause, otherwise errors will be prompted. For example, executing the following SQL statement:
 
-```
+```sql
 select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) limit 10
 ```
 
@@ -1327,7 +1328,7 @@ By using SLIMIT and SOFFSET clauses, users can control the query results in a co
 
 The SQL statement is:
 
-```
+```sql
 select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
 ```
 which means:
@@ -1355,7 +1356,7 @@ It costs 0.000s
 
 The SQL statement is:
 
-```
+```sql
 select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 1
 ```
 which means:
@@ -1383,7 +1384,7 @@ It costs 0.003s
 
 The SQL statement is:
 
-```
+```sql
 select max_value(*) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) slimit 1 soffset 1
 ```
 
@@ -1409,7 +1410,7 @@ It costs 0.000s
 
 The SQL statement is:
 
-```
+```sql
 select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:35:00 fill(float[previous, 1m]) slimit 1 soffset 1
 ```
 which means:
@@ -1434,7 +1435,7 @@ In addition to row or column control over query results, IoTDB allows users to c
 
 The SQL statement is:
 
-```
+```sql
 select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 ```
 which means:
@@ -1462,17 +1463,95 @@ Total line number = 10
 It costs 0.009s
 ```
 
+####  Error Handling
+
+If the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB returns all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
+
+```sql
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
+```
+
+The result is shown below:
+
+```
++-----------------------------+------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
++-----------------------------+------------------------+-----------------------------+
+|2017-11-01T00:06:00.000+08:00|                   false|                        20.71|
+|2017-11-01T00:07:00.000+08:00|                   false|                        21.45|
+|2017-11-01T00:08:00.000+08:00|                   false|                        22.58|
+|2017-11-01T00:09:00.000+08:00|                   false|                        20.98|
+|2017-11-01T00:10:00.000+08:00|                    true|                        25.52|
+|2017-11-01T00:11:00.000+08:00|                   false|                        22.91|
++-----------------------------+------------------------+-----------------------------+
+Total line number = 6
+It costs 0.005s
+```
+
+If the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system prompts errors. For example, executing the following SQL statement:
+
+```sql
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
+```
+
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+
+```
+Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
+```
+
+If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:
+
+```sql
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
+```
+
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+
+```
+Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, SLIMIT, OFFSET, SOFFSET, GROUP, DISABLE, ALIGN}
+```
+
+If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
+
+```sql
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
+```
+
+The result is shown below:
+
+```
++----+------------------------+-----------------------------+
+|Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
++----+------------------------+-----------------------------+
++----+------------------------+-----------------------------+
+Empty set.
+It costs 0.005s
+```
+
+If the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system prompts errors. For example, executing the following SQL statement:
+
+```sql
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 2
+```
+
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+
+```
+Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or exceeds the number of sequences (2) that can actually be returned.
+```
+
 #### Null Value Control over Query Results
 
 * IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
 
-```
+```sql
 select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
 
-```
+```sql
 select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
@@ -1482,7 +1561,7 @@ Since the unique data model of IoTDB, lots of additional information like device
 
 For example：
 
-```
+```sql
 select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 ```
 
@@ -1492,15 +1571,17 @@ The result set is：
 | ---- | ----------- | ----- |
 | ...  | ...         | ...   |
 
-#### Other ResultSet Format
+### Other ResultSet Formats
 
 In addition, IoTDB supports two other results set format: 'align by device' and 'disable align'.
+
+#### align by device
 
 The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
 The SQL statement is:
 
-```
+```sql
 select * from root.ln.* where time <= 2017-11-01T00:01:00 align by device
 ```
 
@@ -1521,14 +1602,15 @@ Total line number = 6
 It costs 0.012s
 ```
 
-
 For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
+
+#### disable align
 
 The 'disable align' indicates that there are 2 columns for each time series in the result set. Disable Align Clause can only be used at the end of a query statement. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
 
 The SQL statement is:
 
-```
+```sql
 select * from root.ln.* where time <= 2017-11-01T00:01:00 disable align
 ```
 
@@ -1550,79 +1632,6 @@ It costs 0.018s
 
 For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
 
-####  Error Handling
-
-If the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB returns all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
-```
-The result is shown below:
-
-```
-+-----------------------------+------------------------+-----------------------------+
-|                         Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+-----------------------------+------------------------+-----------------------------+
-|2017-11-01T00:06:00.000+08:00|                   false|                        20.71|
-|2017-11-01T00:07:00.000+08:00|                   false|                        21.45|
-|2017-11-01T00:08:00.000+08:00|                   false|                        22.58|
-|2017-11-01T00:09:00.000+08:00|                   false|                        20.98|
-|2017-11-01T00:10:00.000+08:00|                    true|                        25.52|
-|2017-11-01T00:11:00.000+08:00|                   false|                        22.91|
-+-----------------------------+------------------------+-----------------------------+
-Total line number = 6
-It costs 0.005s
-```
-
-If the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system prompts errors. For example, executing the following SQL statement:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
-```
-The SQL statement will not be executed and the corresponding error prompt is given as follows:
-
-```
-Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
-```
-
-If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
-```
-
-The SQL statement will not be executed and the corresponding error prompt is given as follows:
-
-```
-Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, SLIMIT, OFFSET, SOFFSET, GROUP, DISABLE, ALIGN}
-```
-
-If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
-```
-The result is shown below:
-```
-+----+------------------------+-----------------------------+
-|Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+----+------------------------+-----------------------------+
-+----+------------------------+-----------------------------+
-Empty set.
-It costs 0.005s
-```
-
-If the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system prompts errors. For example, executing the following SQL statement:
-
-```
-select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 2
-```
-The SQL statement will not be executed and the corresponding error prompt is given as follows:
-
-```
-Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or exceeds the number of sequences (2) that can actually be returned.
-```
-
 ## DELETE
 
 Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Appendix/SQL-Reference.md). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data within a certain time interval.
@@ -1634,18 +1643,18 @@ Taking ln Group as an example, there exists such a usage scenario:
 
 The wf02 plant's wt02 device has many segments of errors in its power supply status before 2017-11-01 16:26:00, and the data cannot be analyzed correctly. The erroneous data affected the correlation analysis with other devices. At this point, the data before this time point needs to be deleted. The SQL statement for this operation is
 
-```
+```sql
 delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
 In case we hope to merely delete the data before 2017-11-01 16:26:00 in the year of 2017, The SQL statement is:
-```
+```sql
 delete from root.ln.wf02.wt02.status where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
 ```
 
 IoTDB supports to delete a range of timeseries points. Users can write SQL expressions as follows to specify the delete interval:
 
-```
+```sql
 delete from root.ln.wf02.wt02.status where time < 10
 delete from root.ln.wf02.wt02.status where time <= 10
 delete from root.ln.wf02.wt02.status where time < 20 and time > 10
@@ -1665,7 +1674,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 
 If no "where" clause specified in a delete statement, all the data in a timeseries will be deleted.
 
-```
+```sql
 delete from root.ln.wf02.status
 ```
 
@@ -1673,12 +1682,12 @@ delete from root.ln.wf02.status
 ### Delete Multiple Timeseries
 If both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Data-Concept/Data-Model-and-Terminology.md) can be used to delete the data. The SQL statement for this operation is:
 
-```
+```sql
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
 ```
 or
 
-```
+```sql
 delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 ```
 It should be noted that when the deleted path does not exist, IoTDB will not prompt that the path does not exist, but that the execution is successful, because SQL is a declarative programming method. Unless it is a syntax error, insufficient permissions and so on, it is not considered an error, as shown below:
@@ -1690,7 +1699,7 @@ Msg: The statement is executed successfully.
 ### Delete Time Partition (experimental)
 You may delete all data in a time partition of a storage group using the following grammar:
 
-```
+```sql
 DELETE PARTITION root.ln 0,1,2
 ```
 
