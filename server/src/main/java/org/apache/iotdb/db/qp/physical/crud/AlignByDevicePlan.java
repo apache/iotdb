@@ -29,6 +29,10 @@ import java.util.Map;
 
 public class AlignByDevicePlan extends QueryPlan {
 
+  public static String MEASUREMENT_ERROR_MESSAGE =
+      "The paths of the SELECT clause can only be measurements or STAR.";
+  public static String ALIAS_ERROR_MESSAGE = "alias %s can only be matched with one time series";
+
   // to record result measurement columns, e.g. temperature, status, speed
   private List<String> measurements;
   private Map<String, MeasurementInfo> measurementInfoMap;

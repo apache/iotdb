@@ -155,16 +155,6 @@ public class QueryOperator extends Operator {
         throw new LogicalOperatorException(
             "ALIGN BY DEVICE clause is not supported in UDF queries.");
       }
-
-      for (PartialPath path : selectComponent.getPaths()) {
-        String device = path.getDevice();
-        if (!device.isEmpty()) {
-          throw new LogicalOperatorException(
-              "The paths of the SELECT clause can only be single level. In other words, "
-                  + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
-                  + " For more details please refer to the SQL document.");
-        }
-      }
     }
   }
 
@@ -228,7 +218,6 @@ public class QueryOperator extends Operator {
     List<PartialPath> devices = removeStarsInDeviceWithUnique(prefixPaths);
     List<ResultColumn> resultColumns = selectComponent.getResultColumns();
     List<String> aggregationFuncs = selectComponent.getAggregationFunctions();
-
     // to record result measurement columns
     List<String> measurements = new ArrayList<>();
     Map<String, MeasurementInfo> measurementInfoMap = new HashMap<>();
@@ -255,12 +244,14 @@ public class QueryOperator extends Operator {
         try {
           // remove stars in SELECT to get actual paths
           List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
+          if (suffixPath.getNodes().length > 1
+              && (actualPaths.isEmpty() || !(actualPaths.get(0) instanceof VectorPartialPath))) {
+            throw new QueryProcessException(AlignByDevicePlan.MEASUREMENT_ERROR_MESSAGE);
+          }
           if (resultColumn.hasAlias() && actualPaths.size() >= 2) {
             throw new QueryProcessException(
-                String.format(
-                    "alias %s can only be matched with one time series", resultColumn.getAlias()));
+                String.format(AlignByDevicePlan.ALIAS_ERROR_MESSAGE, resultColumn.getAlias()));
           }
-
           if (actualPaths.isEmpty()) {
             String nonExistMeasurement = getMeasurementName(fullPath, aggregation);
             if (measurementSetOfGivenSuffix.add(nonExistMeasurement)) {

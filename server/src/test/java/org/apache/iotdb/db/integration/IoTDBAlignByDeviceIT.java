@@ -20,6 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -676,11 +677,7 @@ public class IoTDBAlignByDeviceIT {
       statement.execute("select d0.s1, d0.s2, d1.s0 from root.vehicle align by device");
       fail("No exception thrown.");
     } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage()
-              .contains(
-                  "The paths of the SELECT clause can only be single level. In other words, "
-                      + "the paths of the SELECT clause can only be measurements or STAR, without DOT."));
+      Assert.assertTrue(e.getMessage().contains(AlignByDevicePlan.MEASUREMENT_ERROR_MESSAGE));
     }
   }
 
