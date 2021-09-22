@@ -308,6 +308,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
    * @param t timestamp
    * @param v vector data.
    */
+  @Override
   public void putVector(long t, TsPrimitiveType[] v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= CAPACITY_THRESHOLD) {

@@ -150,11 +150,8 @@ public class QueryOperator extends Operator {
   }
 
   public void check() throws LogicalOperatorException {
-    if (isAlignByDevice()) {
-      if (selectComponent.hasTimeSeriesGeneratingFunction()) {
-        throw new LogicalOperatorException(
-            "ALIGN BY DEVICE clause is not supported in UDF queries.");
-      }
+    if (isAlignByDevice() && selectComponent.hasTimeSeriesGeneratingFunction()) {
+      throw new LogicalOperatorException("ALIGN BY DEVICE clause is not supported in UDF queries.");
     }
   }
 
