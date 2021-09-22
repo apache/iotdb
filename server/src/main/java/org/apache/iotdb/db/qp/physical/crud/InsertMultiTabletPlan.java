@@ -23,16 +23,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * Mainly used in the distributed version, when multiple InsertTabletPlans belong to a raft
@@ -124,6 +121,14 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
       result.addAll(insertTabletPlan.getPaths());
     }
     return result;
+  }
+
+  public List<PartialPath> getPrefixPaths() {
+    Set<PartialPath> result = new HashSet<>();
+    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+      result.add(insertTabletPlan.getDeviceId());
+    }
+    return new ArrayList<>(result);
   }
 
   @Override
@@ -224,6 +229,10 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
 
   public List<InsertTabletPlan> getInsertTabletPlanList() {
     return insertTabletPlanList;
+  }
+
+  public TSStatus[] getFailingStatus() {
+    return StatusUtils.getFailingStatus(results, insertTabletPlanList.size());
   }
 
   public void setResults(Map<Integer, TSStatus> results) {
