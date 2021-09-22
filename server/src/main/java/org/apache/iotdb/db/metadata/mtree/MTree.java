@@ -44,8 +44,8 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollecto
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupDeterminator;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupPathCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupResolver;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.TSEntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
@@ -814,14 +814,14 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Try determining the storage group using the children of a mNode. If one child is a storage
-   * group node, put a storageGroupName-fullPath pair into paths. Otherwise put the children that
-   * match the path into the queue and discard other children.
+   * Resolve the path or path pattern into StorageGroupName-FullPath pairs. Try determining the
+   * storage group using the children of a mNode. If one child is a storage group node, put a
+   * storageGroupName-fullPath pair into paths.
    */
-  public Map<String, String> determineStorageGroup(PartialPath path) throws MetadataException {
-    StorageGroupDeterminator determinator = new StorageGroupDeterminator(root, path);
-    determinator.traverse();
-    return determinator.getResult();
+  public Map<String, String> resolvePathByStorageGroup(PartialPath path) throws MetadataException {
+    StorageGroupResolver resolver = new StorageGroupResolver(root, path);
+    resolver.traverse();
+    return resolver.getResult();
   }
   // endregion
 

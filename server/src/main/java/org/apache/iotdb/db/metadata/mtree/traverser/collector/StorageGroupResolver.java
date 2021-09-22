@@ -29,9 +29,11 @@ import java.util.Map;
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /**
- * This class implements the storage group determination function as following description.
+ * This class implements the storage group resolution function as following description.
  *
- * <p>For a path, infer all storage groups it may belong to. The path can have wildcards.
+ * <p>For a path, infer all storage groups it may belong to. The path can have wildcards. Resolve
+ * the path or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given
+ * path.
  *
  * <p>Consider the path into two parts: (1) the sub path which can not contain a storage group name
  * and (2) the sub path which is substring that begin after the storage group name.
@@ -53,9 +55,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
  *
  * <p>ResultSet: StorageGroupName-FullPath pairs
  */
-public class StorageGroupDeterminator extends CollectorTraverser<Map<String, String>> {
+public class StorageGroupResolver extends CollectorTraverser<Map<String, String>> {
 
-  public StorageGroupDeterminator(IMNode startNode, PartialPath path) throws MetadataException {
+  public StorageGroupResolver(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     this.resultSet = new HashMap<>();
   }

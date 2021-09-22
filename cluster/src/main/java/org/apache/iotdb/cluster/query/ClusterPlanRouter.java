@@ -400,7 +400,7 @@ public class ClusterPlanRouter {
       throws MetadataException {
     // CountPlan is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard
-    Map<String, String> sgPathMap = getMManager().determineStorageGroup(plan.getPath());
+    Map<String, String> sgPathMap = getMManager().resolvePathByStorageGroup(plan.getPath());
     if (sgPathMap.isEmpty()) {
       throw new StorageGroupNotSetException(plan.getPath().getFullPath());
     }

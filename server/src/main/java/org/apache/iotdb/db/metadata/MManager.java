@@ -1638,7 +1638,8 @@ public class MManager {
   }
 
   /**
-   * For a path, infer all storage groups it may belong to. The path can have wildcards.
+   * For a path, infer all storage groups it may belong to. The path can have wildcards. Resolve the
+   * path or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
    *
    * <p>Consider the path into two parts: (1) the sub path which can not contain a storage group
    * name and (2) the sub path which is substring that begin after the storage group name.
@@ -1662,8 +1663,8 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    * @apiNote :for cluster
    */
-  public Map<String, String> determineStorageGroup(PartialPath path) throws MetadataException {
-    Map<String, String> sgPathMap = mtree.determineStorageGroup(path);
+  public Map<String, String> resolvePathByStorageGroup(PartialPath path) throws MetadataException {
+    Map<String, String> sgPathMap = mtree.resolvePathByStorageGroup(path);
     if (logger.isDebugEnabled()) {
       logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     }

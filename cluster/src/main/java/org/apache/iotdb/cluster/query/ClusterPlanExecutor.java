@@ -137,9 +137,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
+    // "root.**" will be translated into:
+    // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
+    Map<String, String> sgPathMap = IoTDB.metaManager.resolvePathByStorageGroup(path);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }

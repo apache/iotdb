@@ -951,9 +951,9 @@ public class CMManager extends MManager {
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = determineStorageGroup(originPath);
+    // "root.**" will be translated into:
+    // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
+    Map<String, String> sgPathMap = resolvePathByStorageGroup(originPath);
     Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
     return ret;
@@ -1224,9 +1224,9 @@ public class CMManager extends MManager {
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = determineStorageGroup(path);
+    // "root.**" will be translated into:
+    // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
+    Map<String, String> sgPathMap = resolvePathByStorageGroup(path);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);
 
     int skippedOffset = 0;
@@ -1256,9 +1256,9 @@ public class CMManager extends MManager {
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = determineStorageGroup(originPath);
+    // "root.**" will be translated into:
+    // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
+    Map<String, String> sgPathMap = resolvePathByStorageGroup(originPath);
     List<PartialPath> ret = getMatchedPaths(sgPathMap, false);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
