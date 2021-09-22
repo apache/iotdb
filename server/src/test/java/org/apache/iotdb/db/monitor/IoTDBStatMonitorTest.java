@@ -155,7 +155,7 @@ public class IoTDBStatMonitorTest {
   private void recoveryTest() {
     statMonitor.recovery();
     Assert.assertEquals(5, statMonitor.getStorageGroupTotalPointsNum(STORAGE_GROUP_NAME));
-    Assert.assertEquals(6, statMonitor.getGlobalTotalPointsNum());
+    Assert.assertEquals(14, statMonitor.getGlobalTotalPointsNum());
     Assert.assertEquals(7, statMonitor.getGlobalReqSuccessNum());
     Assert.assertEquals(0, statMonitor.getGlobalReqFailNum());
   }
