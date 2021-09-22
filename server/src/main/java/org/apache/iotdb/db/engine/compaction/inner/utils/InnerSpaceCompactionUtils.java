@@ -57,6 +57,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -74,7 +75,7 @@ import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
 public class InnerSpaceCompactionUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(InnerSpaceCompactionUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   public static final String COMPACTION_LOG_SUFFIX = ".compaction_log";
 
   private InnerSpaceCompactionUtils() {
@@ -367,6 +368,10 @@ public class InnerSpaceCompactionUtils {
               } else {
                 boolean isChunkEnoughLarge = true;
                 boolean isPageEnoughLarge = true;
+                BigInteger totalChunkPointNum = new BigInteger("0");
+                long totalChunkNum = 0;
+                long maxChunkPointNum = Long.MIN_VALUE;
+                long minChunkPointNum = Long.MAX_VALUE;
                 for (List<ChunkMetadata> chunkMetadatas : readerChunkMetadataListMap.values()) {
                   for (ChunkMetadata chunkMetadata : chunkMetadatas) {
                     if (chunkMetadata.getNumOfPoints()
@@ -381,8 +386,25 @@ public class InnerSpaceCompactionUtils {
                             .getMergeChunkPointNumberThreshold()) {
                       isChunkEnoughLarge = false;
                     }
+                    totalChunkPointNum =
+                        totalChunkPointNum.add(BigInteger.valueOf(chunkMetadata.getNumOfPoints()));
+                    if (chunkMetadata.getNumOfPoints() > maxChunkPointNum) {
+                      maxChunkPointNum = chunkMetadata.getNumOfPoints();
+                    }
+                    if (chunkMetadata.getNumOfPoints() < minChunkPointNum) {
+                      minChunkPointNum = chunkMetadata.getNumOfPoints();
+                    }
                   }
+                  totalChunkNum += chunkMetadatas.size();
                 }
+                logger.info(
+                    "{} [Compaction] compacting {}, max chunk num is {},  min chunk num is {},"
+                        + " average chunk num is {}",
+                    storageGroup,
+                    sensor,
+                    maxChunkPointNum,
+                    minChunkPointNum,
+                    totalChunkPointNum.divide(BigInteger.valueOf(totalChunkNum)).longValue());
                 if (isFileListHasModifications(
                     readerChunkMetadataListMap.keySet(), modificationCache, device, sensor)) {
                   isPageEnoughLarge = false;
@@ -391,8 +413,10 @@ public class InnerSpaceCompactionUtils {
 
                 // if a chunk is large enough, it's page must be large enough too
                 if (isChunkEnoughLarge) {
-                  logger.debug(
-                      "{} [Compaction] chunk enough large, use append chunk merge", storageGroup);
+                  logger.info(
+                      "{} [Compaction] {} chunk enough large, use append chunk merge",
+                      storageGroup,
+                      sensor);
                   // append page in chunks, so we do not have to deserialize a chunk
                   writeByAppendChunkMerge(
                       device,
@@ -401,8 +425,10 @@ public class InnerSpaceCompactionUtils {
                       targetResource,
                       writer);
                 } else if (isPageEnoughLarge) {
-                  logger.debug(
-                      "{} [Compaction] page enough large, use append page merge", storageGroup);
+                  logger.info(
+                      "{} [Compaction] {} page enough large, use append page merge",
+                      storageGroup,
+                      sensor);
                   // append page in chunks, so we do not have to deserialize a chunk
                   writeByAppendPageMerge(
                       device,
@@ -411,8 +437,10 @@ public class InnerSpaceCompactionUtils {
                       targetResource,
                       writer);
                 } else {
-                  logger.debug(
-                      "{} [Compaction] page too small, use deserialize page merge", storageGroup);
+                  logger.info(
+                      "{} [Compaction] {} page too small, use deserialize page merge",
+                      storageGroup,
+                      sensor);
                   // we have to deserialize chunks to merge pages
                   writeByDeserializePageMerge(
                       device,
