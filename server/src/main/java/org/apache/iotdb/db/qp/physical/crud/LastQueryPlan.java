@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
@@ -56,7 +55,6 @@ public class LastQueryPlan extends RawDataQueryPlan {
         columnForReaderSet.add(column);
       }
     }
-    transformPaths(IoTDB.metaManager);
     setResultColumns(deduplicatedResultColumns);
   }
 

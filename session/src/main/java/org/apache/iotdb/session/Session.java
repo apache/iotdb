@@ -1328,10 +1328,10 @@ public class Session {
       request.setIsAligned(true);
       IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
       request.setPrefixPath(tablet.prefixPath);
-      int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
+      int measurementsSize = measurementSchema.getSubMeasurementsList().size();
       for (int i = 0; i < measurementsSize; i++) {
-        request.addToMeasurements(measurementSchema.getValueMeasurementIdList().get(i));
-        request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
+        request.addToMeasurements(measurementSchema.getSubMeasurementsList().get(i));
+        request.addToTypes(measurementSchema.getSubMeasurementsTSDataTypeList().get(i).ordinal());
       }
       request.setIsAligned(true);
     } else {
@@ -1741,10 +1741,13 @@ public class Session {
         }
         columnIndex++;
       } else {
-        int measurementSize = schema.getValueMeasurementIdList().size();
+        int measurementSize = schema.getSubMeasurementsList().size();
         for (int j = 0; j < measurementSize; j++) {
           tablet.values[columnIndex] =
-              sortList(tablet.values[columnIndex], schema.getValueTSDataTypeList().get(j), index);
+              sortList(
+                  tablet.values[columnIndex],
+                  schema.getSubMeasurementsTSDataTypeList().get(j),
+                  index);
           if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
             tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
           }
@@ -1907,6 +1910,14 @@ public class Session {
 
   public void setEnableQueryRedirection(boolean enableQueryRedirection) {
     this.enableQueryRedirection = enableQueryRedirection;
+  }
+
+  public boolean isEnableCacheLeader() {
+    return enableCacheLeader;
+  }
+
+  public void setEnableCacheLeader(boolean enableCacheLeader) {
+    this.enableCacheLeader = enableCacheLeader;
   }
 
   public static class Builder {

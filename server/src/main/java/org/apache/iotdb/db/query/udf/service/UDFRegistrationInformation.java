@@ -27,20 +27,14 @@ public class UDFRegistrationInformation {
 
   private final String functionName;
   private final String className;
-  private final boolean isTemporary;
   private final boolean isBuiltin;
 
   private Class<?> functionClass;
 
   public UDFRegistrationInformation(
-      String functionName,
-      String className,
-      boolean isTemporary,
-      boolean isBuiltin,
-      Class<?> functionClass) {
+      String functionName, String className, boolean isBuiltin, Class<?> functionClass) {
     this.functionName = functionName;
     this.className = className;
-    this.isTemporary = isTemporary;
     this.isBuiltin = isBuiltin;
     this.functionClass = functionClass;
   }
@@ -51,11 +45,6 @@ public class UDFRegistrationInformation {
 
   public String getClassName() {
     return className;
-  }
-
-  /** For a builtin function, this method always returns false. */
-  public boolean isTemporary() {
-    return !isBuiltin && isTemporary;
   }
 
   public boolean isBuiltin() {
