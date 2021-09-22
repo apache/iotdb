@@ -26,6 +26,7 @@
 * [IOTDB-1275] Fix backgroup exec for cli -e function causes an infinite loop
 * [IOTDB-1287] Fix C++ class Session has 2 useless sort()
 * [IOTDB-1289] fix CPP mem-leak in SessionExample.cpp insertRecords()
+* [IOTDB-1578] Set unsequnce when loading TsFile with the same establish time
 * [IOTDB-1619] Fix an error msg when restart iotdb-cluster
 * [IOTDB-1629] fix the NPE when using value fill in cluster mode
 * [IOTDB-1632] Fix Value fill function fills even when the data exists
@@ -36,9 +37,9 @@
 * [IOTDB-1678] Fix client-cpp session bug: can cause connection leak.
 * [IOTDB-1679] client-cpp: Session descontruction need release server resource
 * [IOTDB-1690] Fix align by device type cast error
-* [IOTDB-1703] Fix MManager slow recover with tag  
+* [IOTDB-1693] fix IoTDB restart does not truncate broken ChunkGroup bug
+* [IOTDB-1703] Fix MManager slow recover with tag
 * [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
-* fix IoTDB restart does not truncate broken ChunkGroup bug
 * fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
 
