@@ -41,9 +41,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -130,11 +131,12 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
     // 2.register the measurement
     boolean slotExistsInPartition;
-    List<Integer> slots = null;
+    HashSet<Integer> slots = null;
     if (dataGroupMember.getMetaGroupMember() != null) {
       slots =
-          ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-              .getNodeSlots(dataGroupMember.getHeader());
+          new HashSet<>(
+              ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+                  .getNodeSlots(dataGroupMember.getHeader()));
     }
 
     for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {
@@ -154,7 +156,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     slotSnapshots.clear();
     Map<PartialPath, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile =
         StorageEngine.getInstance().getAllClosedStorageGroupTsFile();
-    List<TsFileResource> createdHardlinks = new ArrayList<>();
+    List<TsFileResource> createdHardlinks = new LinkedList<>();
     // group the TsFiles by their slots
     for (Entry<PartialPath, Map<Long, List<TsFileResource>>> entry :
         allClosedStorageGroupTsFile.entrySet()) {

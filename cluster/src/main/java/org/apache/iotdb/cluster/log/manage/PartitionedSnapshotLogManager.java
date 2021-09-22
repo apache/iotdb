@@ -44,6 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to a
@@ -97,13 +98,15 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   void collectTimeseriesSchemas(List<Integer> requiredSlots) {
     slotTimeseries.clear();
     List<IStorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+
+    Set<Integer> requiredSlotsSet = new HashSet<Integer>(requiredSlots);
     for (IMNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
       int slot =
           SlotPartitionTable.getSlotStrategy()
               .calculateSlotByTime(storageGroupName, 0, ClusterConstant.SLOT_NUM);
 
-      if (!requiredSlots.contains(slot)) {
+      if (!requiredSlotsSet.contains(slot)) {
         continue;
       }
       Collection<TimeseriesSchema> schemas =

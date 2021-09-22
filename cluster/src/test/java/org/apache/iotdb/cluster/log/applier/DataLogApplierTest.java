@@ -101,7 +101,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   private static final Logger logger = LoggerFactory.getLogger(DataLogApplierTest.class);
   private boolean partialWriteEnabled;
-
+  private boolean isPartitionEnabled;
   private TestMetaGroupMember testMetaGroupMember =
       new TestMetaGroupMember() {
         @Override
@@ -177,6 +177,8 @@ public class DataLogApplierTest extends IoTDBTest {
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
+    isPartitionEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(true);
     testMetaGroupMember.setClientProvider(
         new DataClientProvider(new Factory()) {
           @Override
@@ -206,6 +208,10 @@ public class DataLogApplierTest extends IoTDBTest {
                               for (int i = 0; i < 10; i++) {
                                 timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(4, i));
                               }
+                            } else if (path.startsWith(TestUtils.getTestSg(1))
+                                || path.startsWith(TestUtils.getTestSg(2))
+                                || path.startsWith(TestUtils.getTestSg(3))) {
+                              // do nothing
                             } else if (!path.startsWith(TestUtils.getTestSg(5))) {
                               resultHandler.onError(new StorageGroupNotSetException(path));
                               return;
@@ -257,6 +263,7 @@ public class DataLogApplierTest extends IoTDBTest {
     super.tearDown();
     NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(partialWriteEnabled);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(isPartitionEnabled);
   }
 
   @Test
