@@ -663,6 +663,7 @@ public class BatchData {
     return readCurArrayIndex;
   }
 
+  /** Generate an array of subBatchData with certain data type from vector BatchData. */
   public BatchData[] generateSubBatchData() throws IOException {
     if (this.vectorRet == null) {
       throw new IOException("SubBatchData can only be generated from VectorBatchData");

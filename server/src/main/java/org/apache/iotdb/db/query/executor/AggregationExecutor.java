@@ -490,9 +490,6 @@ public class AggregationExecutor {
       remainingToCalculate =
           aggregateBatchData(
               aggregateResultList, isCalculatedArray, remainingToCalculate, nextOverlappedPageData);
-      if (remainingToCalculate == 0) {
-        return 0;
-      }
     }
     return remainingToCalculate;
   }

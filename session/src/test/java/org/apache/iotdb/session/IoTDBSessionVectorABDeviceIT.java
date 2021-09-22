@@ -66,6 +66,7 @@ public class IoTDBSessionVectorABDeviceIT {
 
   @Test
   @Ignore
+  /** Ignore until the tablet interface. */
   public void vectorAlignByDeviceTest() {
     try {
       SessionDataSet dataSet =
@@ -79,7 +80,7 @@ public class IoTDBSessionVectorABDeviceIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(1, rowRecord.getFields().get(0).getLongV());
-        assertEquals("root.sg1.d1", rowRecord.getFields().get(1).getBinaryV());
+        assertEquals("root.sg1.d1", rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals(2, rowRecord.getFields().get(2).getLongV());
         assertEquals(3, rowRecord.getFields().get(3).getIntV());
         dataSet.next();

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -33,7 +34,12 @@ import java.util.Set;
 public class VectorSeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
+  /**
+   * Used to locate the subSensor that we are traversing now. Use hasNextSubSeries() method to check
+   * if we have more sub series in one loop. And use nextSeries() method to move to next sub series.
+   */
   private int curIndex = 0;
+
   private int subSensorSize;
 
   public VectorSeriesAggregateReader(

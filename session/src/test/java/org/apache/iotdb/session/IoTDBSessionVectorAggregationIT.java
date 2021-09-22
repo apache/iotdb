@@ -184,7 +184,7 @@ public class IoTDBSessionVectorAggregationIT {
       SessionDataSet dataSet =
           session.executeQueryStatement(
               "select count(vector1.s1), max_value(s3), count(vector1.s2), min_time(s4) from root.sg1.d1");
-      assertEquals(dataSet.getColumnNames().size(), 4);
+      assertEquals(4, dataSet.getColumnNames().size());
       assertEquals("count(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(0));
       assertEquals("max_value(" + ROOT_SG1_D1 + ".s3)", dataSet.getColumnNames().get(1));
       assertEquals("count(" + ROOT_SG1_D1_VECTOR1 + ".s2)", dataSet.getColumnNames().get(2));
