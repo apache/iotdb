@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -260,14 +261,14 @@ public class QueryOperator extends Operator {
           }
 
           if (actualPaths.isEmpty()) {
-            String nonExistMeasurement = getMeasurementName(fullPath.getMeasurement(), aggregation);
+            String nonExistMeasurement = getMeasurementName(fullPath, aggregation);
             if (measurementSetOfGivenSuffix.add(nonExistMeasurement)) {
               measurementInfoMap.putIfAbsent(
                   nonExistMeasurement, new MeasurementInfo(MeasurementType.NonExist));
             }
           } else {
             for (PartialPath path : actualPaths) {
-              String measurementName = getMeasurementName(path.getMeasurement(), aggregation);
+              String measurementName = getMeasurementName(path, aggregation);
               TSDataType measurementDataType = IoTDB.metaManager.getSeriesType(path);
               TSDataType columnDataType = getAggregationType(aggregation);
               columnDataType = columnDataType == null ? measurementDataType : columnDataType;
@@ -372,7 +373,12 @@ public class QueryOperator extends Operator {
         : (((FunctionExpression) expression).getPaths().get(0));
   }
 
-  private String getMeasurementName(String initialMeasurement, String aggregation) {
+  private String getMeasurementName(PartialPath path, String aggregation) {
+    String initialMeasurement = path.getMeasurement();
+    if (path instanceof VectorPartialPath) {
+      String subMeasurement = ((VectorPartialPath) path).getSubSensor(0);
+      initialMeasurement += "." + subMeasurement;
+    }
     if (aggregation != null) {
       initialMeasurement = aggregation + "(" + initialMeasurement + ")";
     }
@@ -447,6 +453,10 @@ public class QueryOperator extends Operator {
     FunctionOperator basicOperator;
     if (operator instanceof InOperator) {
       basicOperator = (InOperator) operator;
+    } else if (operator instanceof LikeOperator) {
+      basicOperator = (LikeOperator) operator;
+    } else if (operator instanceof RegexpOperator) {
+      basicOperator = (RegexpOperator) operator;
     } else {
       basicOperator = (BasicFunctionOperator) operator;
     }

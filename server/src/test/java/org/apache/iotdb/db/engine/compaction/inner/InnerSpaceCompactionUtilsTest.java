@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -34,8 +35,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,7 +44,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_NAME;
 import static org.junit.Assert.assertEquals;
 
 public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
@@ -70,37 +69,37 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
   @Test
   public void testCompact() throws IOException, IllegalPathException {
     TsFileResource targetTsFileResource =
-        new TsFileResource(
-            new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
-    SizeTiredCompactionLogger sizeTiredCompactionLogger =
-        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+            new TsFileResource(
+                    new File(
+                            TestConstant.BASE_OUTPUT_PATH.concat(
+                                    0
+                                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                                            + 0
+                                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                                            + 1
+                                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                                            + 0
+                                            + ".tsfile")));
+    SizeTieredCompactionLogger sizeTieredCompactionLogger =
+            new SizeTieredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
-      sizeTiredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
+      sizeTieredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
     }
-    sizeTiredCompactionLogger.logSequence(true);
+    sizeTieredCompactionLogger.logSequence(true);
     InnerSpaceCompactionUtils.compact(
-        targetTsFileResource,
-        seqResources,
-        COMPACTION_TEST_SG,
-        sizeTiredCompactionLogger,
-        new HashSet<>(),
-        true);
-    sizeTiredCompactionLogger.close();
+            targetTsFileResource,
+            seqResources,
+            COMPACTION_TEST_SG,
+            sizeTieredCompactionLogger,
+            new HashSet<>(),
+            true);
+    sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     try (TsFileSequenceReader reader =
-            new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+                 new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
+         ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
       QueryExpression queryExpression =
-          QueryExpression.create(Collections.singletonList(path), null);
+              QueryExpression.create(Collections.singletonList(path), null);
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
       int cut = 0;
       RowRecord record;

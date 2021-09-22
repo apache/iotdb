@@ -26,7 +26,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public class SizeTiredCompactionLogger {
+public class SizeTieredCompactionLogger {
 
   public static final String COMPACTION_LOG_NAME = ".compaction.log";
   public static final String SOURCE_NAME = "source";
@@ -37,19 +37,19 @@ public class SizeTiredCompactionLogger {
 
   private BufferedWriter logStream;
 
-  public SizeTiredCompactionLogger(String storageGroupDir, String storageGroupName)
-      throws IOException {
+  public SizeTieredCompactionLogger(String storageGroupDir, String storageGroupName)
+          throws IOException {
     logStream =
-        new BufferedWriter(
-            new FileWriter(
-                SystemFileFactory.INSTANCE.getFile(
-                    storageGroupDir, storageGroupName + COMPACTION_LOG_NAME),
-                true));
+            new BufferedWriter(
+                    new FileWriter(
+                            SystemFileFactory.INSTANCE.getFile(
+                                    storageGroupDir, storageGroupName + COMPACTION_LOG_NAME),
+                            true));
   }
 
-  public SizeTiredCompactionLogger(String logFile) throws IOException {
+  public SizeTieredCompactionLogger(String logFile) throws IOException {
     logStream =
-        new BufferedWriter(new FileWriter(SystemFileFactory.INSTANCE.getFile(logFile), true));
+            new BufferedWriter(new FileWriter(SystemFileFactory.INSTANCE.getFile(logFile), true));
   }
 
   public void close() throws IOException {

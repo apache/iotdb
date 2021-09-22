@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -245,10 +246,11 @@ public class CrossSpaceMergeResource {
   public void removeOutdatedSeqReaders() throws IOException {
     Iterator<Entry<TsFileResource, TsFileSequenceReader>> entryIterator =
         fileReaderCache.entrySet().iterator();
+    HashSet<TsFileResource> fileSet = new HashSet<>(seqFiles);
     while (entryIterator.hasNext()) {
       Entry<TsFileResource, TsFileSequenceReader> entry = entryIterator.next();
       TsFileResource tsFile = entry.getKey();
-      if (!seqFiles.contains(tsFile)) {
+      if (!fileSet.contains(tsFile)) {
         TsFileSequenceReader reader = entry.getValue();
         reader.close();
         entryIterator.remove();

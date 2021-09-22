@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -26,7 +27,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -35,8 +36,6 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,7 +60,7 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
     tsFileResourceManager =
-        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+            new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @Override
@@ -84,10 +83,10 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     ChunkMetadata firstChunkMetadata = reader.getChunkMetadataList(paths.get(0)).get(0);
     firstChunkMetadata.setFilePath(tsFileResource.getTsFilePath());
     TimeSeriesMetadataCacheKey firstTimeSeriesMetadataCacheKey =
-        new TimeSeriesMetadataCacheKey(
-            seqResources.get(1).getTsFilePath(),
-            paths.get(0).getDevice(),
-            paths.get(0).getMeasurement());
+            new TimeSeriesMetadataCacheKey(
+                    seqResources.get(1).getTsFilePath(),
+                    paths.get(0).getDevice(),
+                    paths.get(0).getMeasurement());
 
     // add cache
     ChunkCache.getInstance().get(firstChunkMetadata);
@@ -96,17 +95,17 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
-    SizeTiredCompactionTask sizeTiredCompactionTask =
-        new SizeTiredCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileResourceManager,
-            tsFileResourceManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            CompactionTaskManager.currentTaskNum);
-    sizeTiredCompactionTask.call();
+    SizeTieredCompactionTask sizeTieredCompactionTask =
+            new SizeTieredCompactionTask(
+                    COMPACTION_TEST_SG,
+                    "0",
+                    0,
+                    tsFileResourceManager,
+                    tsFileResourceManager.getSequenceListByTimePartition(0),
+                    seqResources,
+                    true,
+                    CompactionTaskManager.currentTaskNum);
+    sizeTieredCompactionTask.call();
 
     firstChunkMetadata.setFilePath(null);
     try {

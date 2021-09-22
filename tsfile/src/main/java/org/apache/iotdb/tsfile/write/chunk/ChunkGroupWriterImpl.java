@@ -108,7 +108,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     int batchSize = tablet.rowSize;
     VectorMeasurementSchema vectorMeasurementSchema =
         (VectorMeasurementSchema) tablet.getSchemas().get(index);
-    List<TSDataType> valueDataTypes = vectorMeasurementSchema.getValueTSDataTypeList();
+    List<TSDataType> valueDataTypes = vectorMeasurementSchema.getSubMeasurementsTSDataTypeList();
     IChunkWriter vectorChunkWriter = chunkWriters.get(measurement);
     for (int row = 0; row < batchSize; row++) {
       long time = tablet.timestamps[row];

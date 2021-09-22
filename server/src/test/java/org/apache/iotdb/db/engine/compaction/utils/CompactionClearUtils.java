@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
@@ -28,14 +28,16 @@ import java.io.IOException;
 
 public class CompactionClearUtils {
 
-  /** Clear all generated and merged files in the test directory */
+  /**
+   * Clear all generated and merged files in the test directory
+   */
   public static void clearAllCompactionFiles() throws IOException {
     File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".tsfile");
     for (File file : files) {
       file.delete();
     }
     File[] resourceFiles =
-        FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
+            FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
     }
@@ -44,8 +46,8 @@ public class CompactionClearUtils {
       mergeFile.delete();
     }
     File[] compactionLogFiles =
-        FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix("target", SizeTiredCompactionLogger.COMPACTION_LOG_NAME);
+            FSFactoryProducer.getFSFactory()
+                    .listFilesBySuffix("target", SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
     for (File compactionLogFile : compactionLogFiles) {
       compactionLogFile.delete();
     }

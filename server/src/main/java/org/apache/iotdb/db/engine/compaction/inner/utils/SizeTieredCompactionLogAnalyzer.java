@@ -26,12 +26,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.SEQUENCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.UNSEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.*;
 
-public class SizeTiredCompactionLogAnalyzer {
+public class SizeTieredCompactionLogAnalyzer {
 
   public static final String STR_DEVICE_OFFSET_SEPARATOR = " ";
 
@@ -40,11 +37,13 @@ public class SizeTiredCompactionLogAnalyzer {
   private String targetFile = null;
   private boolean isSeq = false;
 
-  public SizeTiredCompactionLogAnalyzer(File logFile) {
+  public SizeTieredCompactionLogAnalyzer(File logFile) {
     this.logFile = logFile;
   }
 
-  /** @return analyze (source file list, target file) */
+  /**
+   * @return analyze (source file list, target file)
+   */
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
