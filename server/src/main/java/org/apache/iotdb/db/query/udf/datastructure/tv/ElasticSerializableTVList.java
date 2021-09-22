@@ -224,7 +224,6 @@ public class ElasticSerializableTVList implements PointCollector {
     }
   }
 
-  // todo: remove it
   public LayerPointReader constructPointReaderUsingTrivialEvictionStrategy() {
 
     return new LayerPointReader() {
