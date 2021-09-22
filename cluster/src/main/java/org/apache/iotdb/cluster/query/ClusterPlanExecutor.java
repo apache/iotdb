@@ -327,7 +327,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getNodesList(
+      return IoTDB.metaManager.getNodesListInGivenLevel(
           schemaPattern,
           level,
           new SlotSgFilter(

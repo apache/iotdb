@@ -727,7 +727,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
       throws MetadataException {
-    return IoTDB.metaManager.getNodesList(schemaPattern, level);
+    return IoTDB.metaManager.getNodesListInGivenLevel(schemaPattern, level);
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
