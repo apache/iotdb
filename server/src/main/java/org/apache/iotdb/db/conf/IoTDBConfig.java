@@ -807,7 +807,7 @@ public class IoTDBConfig {
     return concurrentWritingTimePartition;
   }
 
-  void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
+  public void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
     this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 

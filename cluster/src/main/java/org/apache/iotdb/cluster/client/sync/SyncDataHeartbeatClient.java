@@ -40,7 +40,7 @@ public class SyncDataHeartbeatClient extends TSDataServiceClient {
         protocolFactory,
         target.getInternalIp(),
         target.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-        ClusterConstant.getConnectionTimeoutInMS(),
+        ClusterConstant.getHeartbeatClientConnTimeoutMs(),
         target,
         pool);
   }

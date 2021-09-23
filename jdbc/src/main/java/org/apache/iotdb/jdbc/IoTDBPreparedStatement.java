@@ -55,7 +55,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -67,7 +67,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   private static final Logger logger = LoggerFactory.getLogger(IoTDBPreparedStatement.class);
 
   /** save the SQL parameters as (paramLoc,paramValue) pairs. */
-  private final Map<Integer, String> parameters = new LinkedHashMap<>();
+  private final Map<Integer, String> parameters = new HashMap<>();
 
   IoTDBPreparedStatement(
       IoTDBConnection connection, Iface client, Long sessionId, String sql, ZoneId zoneId)

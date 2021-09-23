@@ -691,8 +691,8 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testJoinClusterFailed() throws QueryProcessException {
     System.out.println("Start testJoinClusterFailed()");
-    long prevInterval = ClusterConstant.getHeartBeatIntervalMs();
-    ClusterConstant.setHeartBeatIntervalMs(10);
+    long prevInterval = ClusterConstant.getHeartbeatIntervalMs();
+    ClusterConstant.setHeartbeatIntervalMs(10);
     ClusterDescriptor.getInstance().getConfig().setJoinClusterTimeOutMs(100);
     dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
@@ -703,7 +703,7 @@ public class MetaGroupMemberTest extends BaseMember {
       assertTrue(e instanceof StartUpCheckFailureException);
     } finally {
       newMember.closeLogManager();
-      ClusterConstant.setHeartBeatIntervalMs(prevInterval);
+      ClusterConstant.setHeartbeatIntervalMs(prevInterval);
     }
   }
 

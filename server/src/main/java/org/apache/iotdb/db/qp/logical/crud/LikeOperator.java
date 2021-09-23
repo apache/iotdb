@@ -122,4 +122,8 @@ public class LikeOperator extends FunctionOperator {
   public String toString() {
     return "[" + singlePath.getFullPath() + getFilterSymbol() + value + "]";
   }
+
+  public String getValue() {
+    return value;
+  }
 }

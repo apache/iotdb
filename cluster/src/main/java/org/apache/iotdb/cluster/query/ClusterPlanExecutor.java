@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -37,6 +36,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -45,15 +45,12 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
-import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -624,12 +621,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected AlignByDeviceDataSet getAlignByDeviceDataSet(
-      AlignByDevicePlan plan, QueryContext context, IQueryRouter router) {
-    return new ClusterAlignByDeviceDataSet(plan, context, router);
-  }
-
-  @Override
   protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
     switch (plan.getLoadConfigurationPlanType()) {
       case GLOBAL:
@@ -659,15 +650,21 @@ public class ClusterPlanExecutor extends PlanExecutor {
           path,
           deletePlan.getDeleteStartTime(),
           deletePlan.getDeleteEndTime(),
-          deletePlan.getIndex());
+          deletePlan.getIndex(),
+          deletePlan.getPartitionFilter());
     }
   }
 
   @Override
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws QueryProcessException {
     try {
-      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
+      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex, timePartitionFilter);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }
