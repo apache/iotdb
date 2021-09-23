@@ -52,7 +52,8 @@ public class IotDBInfluxDB {
   // Measurement currently selected by influxdb
   private String measurement;
   // Tag list and order corresponding to all measurements in the current database
-  // TODO At present, the distributed situation is not considered. It is assumed that all writes are performed by the instance
+  // TODO At present, the distributed situation is not considered. It is assumed that all writes are
+  // performed by the instance
   private Map<String, Map<String, Integer>> measurementTagOrder = new HashMap<>();
   // Tag list and order under current measurement
   private Map<String, Integer> tagOrders;
@@ -302,7 +303,8 @@ public class IotDBInfluxDB {
       List<Object> value = new ArrayList<>();
       values = new ArrayList<>();
       // after the data is constructed, the final results are generated
-      // First, judge whether there are common queries. If there are, a selector function is allowed without aggregate functions
+      // First, judge whether there are common queries. If there are, a selector function is allowed
+      // without aggregate functions
       if (selectComponent.isHasCommonQuery()) {
         Selector selector = (Selector) functions.get(0);
         List<Object> relatedValue = selector.getRelatedValues();
@@ -355,8 +357,9 @@ public class IotDBInfluxDB {
         queryResult, IotDBInfluxDBUtils.removeDuplicate(newColumns), values);
   }
 
-  /** before each query, first obtain all the field lists in the measurement,
-   * and update all the field lists of the current measurement and the specified order
+  /**
+   * before each query, first obtain all the field lists in the measurement, and update all the
+   * field lists of the current measurement and the specified order
    */
   private void updateFiledOrders() throws IoTDBConnectionException, StatementExecutionException {
     // first init
@@ -370,7 +373,8 @@ public class IotDBInfluxDB {
       List<org.apache.iotdb.tsfile.read.common.Field> fields = result.next().getFields();
       String filed = IotDBInfluxDBUtils.getFiledByPath(fields.get(0).getStringValue());
       if (!fieldOrders.containsKey(filed)) {
-        // The corresponding order of fields is 1 + tagnum (the first is timestamp, then all tags, and finally all fields)
+        // The corresponding order of fields is 1 + tagnum (the first is timestamp, then all tags,
+        // and finally all fields)
         fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
         fieldOrdersReversed.put(tagOrderNums + fieldNums + 1, filed);
         fieldNums++;
@@ -439,7 +443,8 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * when the database changes, update the database related information, that is, obtain the list and order of all tags corresponding to the database from iotdb
+   * when the database changes, update the database related information, that is, obtain the list
+   * and order of all tags corresponding to the database from iotdb
    *
    * @param database update database name
    */
@@ -470,7 +475,8 @@ public class IotDBInfluxDB {
       // the last measurement is to add the tags of the current measurement
       measurementTagOrder.put(measurementName, tagOrder);
     } catch (StatementExecutionException e) {
-      // at first execution, tag_ If the info table is not created, intercept the error and print the log
+      // at first execution, tag_ If the info table is not created, intercept the error and print
+      // the log
       if (e.getStatusCode() == 411) {
         System.out.println(e.getMessage());
       }
@@ -510,7 +516,8 @@ public class IotDBInfluxDB {
     // the maximum number of traversals from 1 to the current query condition
     for (int i = 1; i <= currentQueryMaxTagNum; i++) {
       if (realTagOrders.containsKey(i)) {
-        // since it is the value in the path, you need to remove the quotation marks at the beginning and end
+        // since it is the value in the path, you need to remove the quotation marks at the
+        // beginning and end
         curQueryPath
             .append(".")
             .append(IotDBInfluxDBUtils.removeQuotation(realTagOrders.get(i).getLiteral()));
@@ -584,7 +591,7 @@ public class IotDBInfluxDB {
   }
 
   /**
-   *cConvert align by device query result of iotdb to the query result of influxdb
+   * cConvert align by device query result of iotdb to the query result of influxdb
    *
    * @param sessionDataSet iotdb query results to be converted
    * @return query results in influxdb format
@@ -716,7 +723,8 @@ public class IotDBInfluxDB {
         }
         // the same path has been traversed
         if (i == samePath.get(sameListIndex)) {
-          // if there is non-null in the data, it will be inserted into the actual data, otherwise it will be skipped directly
+          // if there is non-null in the data, it will be inserted into the actual data, otherwise
+          // it will be skipped directly
           if (!allNull) {
             // insert time into value
             value[0] = timestamp;
