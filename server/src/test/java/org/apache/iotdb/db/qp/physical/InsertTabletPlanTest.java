@@ -143,11 +143,11 @@ public class InsertTabletPlanTest {
     columns[5] = new Binary[4];
 
     for (int r = 0; r < 4; r++) {
-      ((double[]) columns[0])[r] = 1.0;
-      ((float[]) columns[1])[r] = 2;
-      ((long[]) columns[2])[r] = 10000;
-      ((int[]) columns[3])[r] = 100;
-      ((boolean[]) columns[4])[r] = false;
+      ((double[]) columns[0])[r] = 1.0 + r;
+      ((float[]) columns[1])[r] = 2 + r;
+      ((long[]) columns[2])[r] = 10000 + r;
+      ((int[]) columns[3])[r] = 100 + r;
+      ((boolean[]) columns[4])[r] = (r % 2 == 0);
       ((Binary[]) columns[5])[r] = new Binary("hh" + r);
     }
 
