@@ -45,11 +45,11 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
 
 public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
@@ -1193,13 +1193,13 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   }
 
   public List<List<String>> getTracingInfo() {
-    List<List<String>> lists = new ArrayList<>(2);
+    List<List<String>> lists = new ArrayList<>();
     List<String> activityList = ioTDBRpcTracingInfo.getActivityList();
     List<String> elapsedTimeList = ioTDBRpcTracingInfo.getElapsedTimeList();
     activityList.add(0, "Activity");
     elapsedTimeList.add(0, "Elapsed Time");
-    lists.set(0,activityList);
-    lists.set(1,elapsedTimeList);
+    lists.add(0, activityList);
+    lists.add(1, elapsedTimeList);
     return lists;
   }
 }

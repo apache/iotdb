@@ -76,8 +76,7 @@ public class TracingManager {
     return statementIdToTracingInfo.computeIfAbsent(statementId, k -> new TracingInfo());
   }
 
-  public void writeQueryInfo(long statementId, String statement, int pathsNum)
-      throws IOException {
+  public void writeQueryInfo(long statementId, String statement, int pathsNum) throws IOException {
     long startTime = statementIdToTracingInfo.get(statementId).getStartTime();
     statementIdToTracingInfo.get(statementId).setSeriesPathNum(pathsNum);
     StringBuilder builder = new StringBuilder();
@@ -96,8 +95,7 @@ public class TracingManager {
   }
 
   // for align by device query
-  public void writeQueryInfo(long statementId, String statement)
-      throws IOException {
+  public void writeQueryInfo(long statementId, String statement) throws IOException {
     long startTime = statementIdToTracingInfo.get(statementId).getStartTime();
     StringBuilder builder = new StringBuilder();
     builder
@@ -143,7 +141,10 @@ public class TracingManager {
         new StringBuilder(String.format(TracingConstant.STATEMENT_ID, statementId))
             .append(String.format(" - Number of sequence files read: %d", seqFileResources.size()));
     if (!seqFileResources.isEmpty()) {
-      builder.append("\n").append(String.format(TracingConstant.STATEMENT_ID, statementId)).append(" - SeqFiles: ");
+      builder
+          .append("\n")
+          .append(String.format(TracingConstant.STATEMENT_ID, statementId))
+          .append(" - SeqFiles: ");
       Iterator<TsFileResource> seqFileIterator = seqFileResources.iterator();
       while (seqFileIterator.hasNext()) {
         builder.append(seqFileIterator.next().getTsFile().getName());
@@ -205,7 +206,7 @@ public class TracingManager {
                 String.format(
                     "overlapped pages: %d (%.1f%%)",
                     overlappedPageNum, (double) overlappedPageNum / totalPageNum * 100))
-    .append("\n");
+            .append("\n");
     writer.write(builder.toString());
   }
 

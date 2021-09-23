@@ -25,13 +25,11 @@ import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
-import java.io.PrintStream;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
 
 public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   private String operationType = "";

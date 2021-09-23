@@ -527,7 +527,7 @@ public abstract class AbstractCli {
           }
           // output tracing activity
           if (((AbstractIoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
-            maxSizeList = new ArrayList<>(2);
+            maxSizeList = new ArrayList<>();
             lists = cacheTracingInfo(resultSet, maxSizeList);
             outputTracingInfo(lists, maxSizeList);
           }
@@ -642,8 +642,8 @@ public abstract class AbstractCli {
       ResultSet resultSet, List<Integer> maxSizeList) {
     List<List<String>> lists = ((AbstractIoTDBJDBCResultSet) resultSet).getTracingInfo();
 
-    maxSizeList.set(0, -1);
-    maxSizeList.set(1, -1);
+    maxSizeList.add(0, -1);
+    maxSizeList.add(1, -1);
     for (int i = 0; i < lists.get(0).size(); i++) {
       int tmp0 = lists.get(0).get(i).length();
       if (tmp0 > maxSizeList.get(0)) {

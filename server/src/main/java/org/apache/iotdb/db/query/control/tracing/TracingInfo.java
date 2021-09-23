@@ -50,7 +50,6 @@ public class TracingInfo {
   private int totalPageNum = 0;
   private int overlappedPageNum = 0;
 
-
   private final List<Pair<String, Long>> activityList = new ArrayList<>();
 
   public TracingInfo() {}

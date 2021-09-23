@@ -880,19 +880,19 @@ public class TSServiceImpl implements TSIService.Iface {
           tracingManager.getTracingInfo(statementId).setStatisticsInfo();
           tracingManager.writeTracingInfo(statementId);
           tracingManager
-                  .getTracingInfo(statementId)
-                  .registerActivity(TracingConstant.ACTIVITY_REQUEST_COMPLETE, endTime);
+              .getTracingInfo(statementId)
+              .registerActivity(TracingConstant.ACTIVITY_REQUEST_COMPLETE, endTime);
           tracingManager.writeEndTime(statementId, endTime);
 
           TSTracingInfo tsTracingInfo =
-                  fillRpcReturnTracingInfo(TracingManager.getInstance().getTracingInfo(statementId));
+              fillRpcReturnTracingInfo(TracingManager.getInstance().getTracingInfo(statementId));
           resp.setTracingInfo(tsTracingInfo);
         }
       } catch (IOException e) {
         LOGGER.error(
-                "Error while writing tracing info to {}, {}",
-                config.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG,
-                e.getMessage());
+            "Error while writing tracing info to {}, {}",
+            config.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG,
+            e.getMessage());
       }
 
       return resp;
