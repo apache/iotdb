@@ -578,17 +578,13 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       } finally {
         compactionSelectionLock.unlock();
       }
-      if (checkAndSetFilesMergingIfNotSet(
-          getTsFileListByTimePartition(true, timePartition),
-          forkedUnSequenceTsFileResources.get(0))) {
-        isMergeExecutedInCurrentTask =
-            merge(
-                    isForceFullMerge,
-                    getTsFileListByTimePartition(true, timePartition),
-                    forkedUnSequenceTsFileResources.get(0),
-                    Long.MAX_VALUE)
-                || isMergeExecutedInCurrentTask;
-      }
+      isMergeExecutedInCurrentTask =
+          merge(
+                  isForceFullMerge,
+                  getTsFileListByTimePartition(true, timePartition),
+                  forkedUnSequenceTsFileResources.get(0),
+                  Long.MAX_VALUE)
+              || isMergeExecutedInCurrentTask;
     } else {
       isMergeExecutedInCurrentTask =
           merge(
@@ -666,7 +662,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             }
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
-              mergeResource.setMerging(true);
               compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
             }
             File newLevelFile =
