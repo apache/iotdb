@@ -201,11 +201,11 @@ public class DoubleTVList extends TVList {
   }
 
   @Override
-  public void putDoubles(long[] time, BitMap bitMap, double[] value, int start, int end) {
+  public void putDoubles(long[] time, double[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
 
     int idx = start;
-    // constraint: time.length + timeIdxOffset = value.length
+    // constraint: time.length + timeIdxOffset == value.length
     int timeIdxOffset = 0;
     if (bitMap != null && !bitMap.isAllUnmarked()) {
       // time array is a reference, should clone necessary time values

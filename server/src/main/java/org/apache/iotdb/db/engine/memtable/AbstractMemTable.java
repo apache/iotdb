@@ -220,15 +220,15 @@ public abstract class AbstractMemTable implements IMemTable {
           columnIndex++;
         }
         memSeries.write(
-            insertTabletPlan.getTimes(), bitMaps, columns, TSDataType.VECTOR, start, end);
+            insertTabletPlan.getTimes(), columns, bitMaps, TSDataType.VECTOR, start, end);
         break;
       } else {
         memSeries.write(
             insertTabletPlan.getTimes(),
+            insertTabletPlan.getColumns()[columnIndex],
             insertTabletPlan.getBitMaps() != null
                 ? insertTabletPlan.getBitMaps()[columnIndex]
                 : null,
-            insertTabletPlan.getColumns()[columnIndex],
             insertTabletPlan.getDataTypes()[columnIndex],
             start,
             end);

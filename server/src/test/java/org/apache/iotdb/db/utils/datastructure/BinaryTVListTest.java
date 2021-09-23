@@ -52,7 +52,7 @@ public class BinaryTVListTest {
       binaryList[1000 - i] = Binary.valueOf(String.valueOf(i));
     }
     tvList.putBinaries(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), null, binaryList, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, null, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
@@ -72,7 +72,7 @@ public class BinaryTVListTest {
       }
     }
     tvList.putBinaries(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), bitMap, binaryList, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, bitMap, 0, 1000);
     tvList.sort();
     int nullCnt = 0;
     for (long i = 1; i < binaryList.length; i++) {
@@ -100,7 +100,7 @@ public class BinaryTVListTest {
       }
     }
     tvList.putBinaries(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), bitMap, binaryList, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, bitMap, 0, 1000);
     tvList.sort();
     BinaryTVList clonedTvList = tvList.clone();
     for (long i = 0; i < tvList.size; i++) {

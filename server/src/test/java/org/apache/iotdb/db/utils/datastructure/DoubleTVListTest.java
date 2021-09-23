@@ -67,8 +67,8 @@ public class DoubleTVListTest {
     }
     tvList.putDoubles(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        null,
         ArrayUtils.toPrimitive(doubleList.toArray(new Double[0]), 0.0d),
+        null,
         0,
         1000);
     for (long i = 0; i < tvList.size; i++) {
@@ -92,8 +92,8 @@ public class DoubleTVListTest {
     }
     tvList.putDoubles(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        bitMap,
         ArrayUtils.toPrimitive(doubleList.toArray(new Double[0]), 0.0d),
+        bitMap,
         0,
         1000);
     tvList.sort();
@@ -123,8 +123,8 @@ public class DoubleTVListTest {
     }
     tvList.putDoubles(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        bitMap,
         ArrayUtils.toPrimitive(doubleList.toArray(new Double[0]), 0.0d),
+        bitMap,
         0,
         1000);
     tvList.sort();

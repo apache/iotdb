@@ -197,11 +197,11 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  public void putBooleans(long[] time, BitMap bitMap, boolean[] value, int start, int end) {
+  public void putBooleans(long[] time, boolean[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
 
     int idx = start;
-    // constraint: time.length + timeIdxOffset = value.length
+    // constraint: time.length + timeIdxOffset == value.length
     int timeIdxOffset = 0;
     if (bitMap != null && !bitMap.isAllUnmarked()) {
       // time array is a reference, should clone necessary time values

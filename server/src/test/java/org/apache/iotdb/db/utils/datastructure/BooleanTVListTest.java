@@ -58,8 +58,8 @@ public class BooleanTVListTest {
     }
     tvList.putBooleans(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        null,
         ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])),
+        null,
         0,
         1000);
     for (long i = 0; i < tvList.size; i++) {
@@ -82,8 +82,8 @@ public class BooleanTVListTest {
     }
     tvList.putBooleans(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        bitMap,
         ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])),
+        bitMap,
         0,
         1000);
     tvList.sort();
@@ -113,8 +113,8 @@ public class BooleanTVListTest {
     }
     tvList.putBooleans(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        bitMap,
         ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])),
+        bitMap,
         0,
         1000);
     tvList.sort();

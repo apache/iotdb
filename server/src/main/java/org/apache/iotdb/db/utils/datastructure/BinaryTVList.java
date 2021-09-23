@@ -197,11 +197,11 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  public void putBinaries(long[] time, BitMap bitMap, Binary[] value, int start, int end) {
+  public void putBinaries(long[] time, Binary[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
 
     int idx = start;
-    // constraint: time.length + timeIdxOffset = value.length
+    // constraint: time.length + timeIdxOffset == value.length
     int timeIdxOffset = 0;
     if (bitMap != null && !bitMap.isAllUnmarked()) {
       // time array is a reference, should clone necessary time values

@@ -195,11 +195,11 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  public void putLongs(long[] time, BitMap bitMap, long[] value, int start, int end) {
+  public void putLongs(long[] time, long[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
 
     int idx = start;
-    // constraint: time.length + timeIdxOffset = value.length
+    // constraint: time.length + timeIdxOffset == value.length
     int timeIdxOffset = 0;
     if (bitMap != null && !bitMap.isAllUnmarked()) {
       // time array is a reference, should clone necessary time values

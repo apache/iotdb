@@ -601,7 +601,7 @@ public class VectorTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putVectors(long[] time, BitMap[] bitMaps, Object[] value, int start, int end) {
+  public void putVectors(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
     checkExpansion();
     int idx = start;
 

@@ -66,8 +66,8 @@ public class IntTVListTest {
     }
     tvList.putInts(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        null,
         ArrayUtils.toPrimitive(intList.toArray(new Integer[0])),
+        null,
         0,
         1000);
     for (long i = 0; i < tvList.size; i++) {
@@ -91,8 +91,8 @@ public class IntTVListTest {
     }
     tvList.putInts(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        bitMap,
         ArrayUtils.toPrimitive(intList.toArray(new Integer[0])),
+        bitMap,
         0,
         1000);
     tvList.sort();
@@ -122,8 +122,8 @@ public class IntTVListTest {
     }
     tvList.putInts(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        bitMap,
         ArrayUtils.toPrimitive(intList.toArray(new Integer[0])),
+        bitMap,
         0,
         1000);
     tvList.sort();
