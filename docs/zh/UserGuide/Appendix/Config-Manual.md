@@ -46,7 +46,7 @@
 
 |名字|JMX\_LOCAL|
 |:---:|:---|
-|描述|JMX 监控模式，配置为 true 表示仅允许本地监控，设置为 false 的时候表示允许远程监控|
+|描述|JMX 监控模式，配置为 true 表示仅允许本地监控，设置为 false 的时候表示允许远程监控。如想在本地通过网络连接JMX Service，比如nodeTool.sh会尝试连接127.0.0.1:31999，请将JMX_LOCAL设置为false。|
 |类型|枚举 String : “true”, “false”|
 |默认值|true|
 |改后生效方式|重启服务生效|
@@ -55,7 +55,7 @@
 
 |名字|JMX\_PORT|
 |:---:|:---|
-|描述|JMX 监听端口。请确认该端口不是系统保留端口并且未被占用。|
+|描述|JMX 监听端口。请确认该端口是不是系统保留端口并且未被占用。|
 |类型|Short Int: [0,65535]|
 |默认值|31999|
 |改后生效方式|重启服务生效|
@@ -176,7 +176,7 @@
 |默认值| data/data |
 |改后生效方式|触发生效|
 
-* system\_dirs
+* system\_dir
 
 |名字| system\_dirs |
 |:---:|:---|
@@ -198,7 +198,7 @@
 
 |名字| enable\_wal |
 |:---:|:---|
-|描述| 是否开启写前日志，默认值为 true 表示开启，配置成 false 表示关闭 |
+|描述| 是否开启前写日志，默认值为 true 表示开启，配置成 false 表示关闭 |
 |类型|Bool|
 |默认值| true |
 |改后生效方式|触发生效|
@@ -225,18 +225,36 @@
 
 |名字| enable\_partial\_insert |
 |:---:|:---|
-|描述| 在一次 insert 请求中，如果部分测点写入失败，是否继续写入其他测点|
-|类型| Bool |
+|描述| 在一次 insert 请求中，如果部分测点写入失败，是否继续写入其他测点。|
+|类型| Boolean |
 |默认值| true |
+|改后生效方式|重启服务生效|
+
+* enable\_mtree\_snapshot
+
+|名字| enable\_mtree\_snapshot |
+|:---:|:---|
+|描述| 是否启用 MTree snapshot。 从 0.11.0 开始默认为 false。|
+|类型| Boolean |
+|默认值| false |
 |改后生效方式|重启服务生效|
 
 * mtree\_snapshot\_interval
 
 |名字| mtree\_snapshot\_interval |
 |:---:|:---|
-|描述| 创建 MTree snapshot 时至少累积的 mlog 日志行数。单位为日志行数|
+|描述| 创建 MTree snapshot 时至少累积的 mlog 日志行数。单位为日志行数。|
 |类型| Int32 |
 |默认值| 100000 |
+|改后生效方式|重启服务生效|
+
+* mtree\_snapshot\_threhold\_time
+
+|名字| mtree\_snapshot\_threhold\_time |
+|:---:|:---|
+|描述| MTree 修改的阈值间隔时间，若最后一次修改时间小于这个阈值，则不会创建 MTree snapshot。 单位：秒。 默认值：1 小时（3600 秒）|
+|类型| Int32 |
+|默认值| 3600 |
 |改后生效方式|重启服务生效|
 
 * mlog\_buffer\_size
@@ -282,15 +300,123 @@
 |描述| 每个用户定义的虚拟存储组数 |
 |类型|Int64|
 |默认值| 1 |
-|改后生效方式|触发生效|
+|改后生效方式|仅允许在第一次启动服务前修改|
 
 * enable\_mem\_control
 
 |名字| enable\_mem\_control |
 |:---:|:---|
 |描述| 开启内存控制，避免爆内存|
-|类型|Bool|
+|类型|Boolean|
 |默认值| true |
+|改后生效方式|重启服务生效|
+
+* write\_read\_schema\_free\_memory\_proportion
+
+|名字| write\_read\_schema\_free\_memory\_proportion |
+|:---:|:---|
+|描述| 读写内存分配比率。 参数形式为a:b:c:d，其中a、b、c、d为整数。如“1:1:1:1”、“6:2:1:1”，如果你的写入压力大而读取压力小，请调整为“6:1:1:2” |
+|类型|String|
+|默认值| 4:3:1:2 |
+|改后生效方式|重启服务生效|
+
+* primary\_array\_size
+
+|名字| primary\_array\_size |
+|:---:|:---|
+|描述| 数组池中的原始数组大小（每个数组的长度）|
+|类型|Int32|
+|默认值| 32 |
+|改后生效方式|重启服务生效|
+
+* flush\_proportion
+
+|名字| flush\_proportion |
+|:---:|:---|
+|描述| 调用flush disk的写入内存比例，默认0.4,若有极高的写入负载力（比如batch=1000），可以设置为低于默认值，比如0.2 |
+|类型|Float|
+|默认值| 0.4 |
+|改后生效方式|重启服务生效|
+
+* buffered\_arrays\_memory\_proportion
+
+|名字| buffered\_arrays\_memory\_proportion |
+|:---:|:---|
+|描述| 为缓冲数组分配的写入内存比例，默认为0.6 |
+|类型|Float|
+|默认值| 0.6 |
+|改后生效方式|重启服务生效|
+
+* reject\_proportion
+
+|名字| reject\_proportion |
+|:---:|:---|
+|描述| 拒绝插入的写入内存比例，默认0.8，若有极高的写入负载力（比如batch=1000）并且物理内存足够大，它可以设置为高于默认值，如0.9|
+|类型|Float|
+|默认值| 0.8 |
+|改后生效方式|重启服务生效|
+
+* storage\_group\_report\_threshold
+
+|名字| storage\_group\_report\_threshold |
+|:---:|:---|
+|描述| 如果存储组的内存（以字节byte为单位）增加超过此阈值，则向系统报告。默认值为16MB|
+|类型|Int32|
+|默认值| 16777216 |
+|改后生效方式|重启服务生效|
+
+* max\_deduplicated\_path\_num
+
+|名字| max\_deduplicated\_path\_num |
+|:---:|:---|
+|描述| 在一次查询中，允许最大重复路径的数据量，这只是一个建议值，实际限制是这个默认值和计算值的之间 |
+|类型|Int32|
+|默认值| 1000 |
+|改后生效方式|重启服务生效|
+
+* check\_period\_when\_insert\_blocked
+
+|名字| check\_period\_when\_insert\_blocked |
+|:---:|:---|
+|描述| 当插入被拒绝时，等待时间（以毫秒为单位）去再次检查系统，默认为50。若插入被拒绝，读取负载低，可以设置大一些。 |
+|类型|Int32|
+|默认值| 50 |
+|改后生效方式|重启服务生效|
+
+* max\_waiting\_time\_when\_insert\_blocked
+
+|名字| max\_waiting\_time\_when\_insert\_blocked |
+|:---:|:---|
+|描述| 当插入的等待时间（以毫秒为单位）超过此值时，抛出异常。默认为10000。若插入被拒绝，读取负载低，可以设置大一些。|
+|类型|Int32|
+|默认值| 10000 |
+|改后生效方式|重启服务生效|
+
+* estimated\_series\_size
+
+|名字| estimated\_series\_size |
+|:---:|:---|
+|描述| 在Mtree中一个时间序列的评估元数据大小（以字节byte为单位）。|
+|类型|Int32|
+|默认值| 300 |
+|改后生效方式|重启服务生效|
+
+* io\_task\_queue\_size\_for\_flushing
+
+|名字| io\_task\_queue\_size\_for\_flushing |
+|:---:|:---|
+|描述| ioTaskQueue 的大小。默认值为10。|
+|类型|Int32|
+|默认值| 10 |
+|改后生效方式|重启服务生效|
+
+* update\_thread\_num
+
+|名字| update\_thread\_num |
+|:---:|:---|
+|描述| 当存在旧版本（V0.9.x/v1）数据时，会设置多少线程来执行升级任务，默认为1。小于等于V0.X时设置为1。|
+|类型|Int32|
+|默认值| 1 |
 |改后生效方式|重启服务生效|
 
 * memtable\_size\_threshold
@@ -307,7 +433,7 @@
 |名字| enable\_timed\_flush\_seq\_memtable |
 |:---:|:---|
 |描述| 是否开启定时刷盘顺序 memtable |
-|类型|Bool|
+|类型|Boolean|
 |默认值| false |
 |改后生效方式| 触发生效 |
 
@@ -334,7 +460,7 @@
 |名字| enable\_timed\_flush\_unseq\_memtable |
 |:---:|:---|
 |描述| 是否开启定时刷新乱序 memtable |
-|类型|Bool|
+|类型|Boolean|
 |默认值| false |
 |改后生效方式| 触发生效 |
 
@@ -361,8 +487,8 @@
 |名字| enable\_timed\_close\_tsfile |
 |:---:|:---|
 |描述| 是否开启定时关闭 tsfile |
-|类型|Bool|
-|默认值| false |
+|类型|Boolean|
+|默认值| true |
 |改后生效方式| 触发生效 |
 
 * close\_tsfile\_interval\_after\_flushing\_in\_ms
@@ -392,66 +518,12 @@
 |默认值| 10000 |
 |改后生效方式|重启服务生效|
 
-* seq\_tsfile\_size
-
-|名字| seq\_tsfile\_size |
-|:---:|:---|
-|描述| 每个顺序 tsfile 大小|
-|类型|byte|
-|默认值| 1 |
-|改后生效方式| 重启服务生效|
-
-* unseq\_tsfile\_size
-
-|名字| unseq\_tsfile\_size |
-|:---:|:---|
-|描述| 每个乱序 tsfile 大小|
-|类型|byte|
-|默认值| 1 |
-|改后生效方式| 重启服务生效|
-
-* seq\_file\_num\_in\_each\_level
-
-|名字| seq\_file\_num\_in\_each\_level |
-|:---:|:---|
-|描述| 顺序每层级文件最大数|
-|类型|INT64|
-|默认值| 6 |
-|改后生效方式| 重启服务生效|
-
-* unseq\_file\_num\_in\_each\_level
-
-|名字| unseq\_file\_num\_in\_each\_level |
-|:---:|:---|
-|描述| 乱序每层级文件最大数|
-|类型|INT64|
-|默认值| 10 |
-|改后生效方式| 重启服务生效|
-
-* seq\_level\_num
-
-|名字| seq\_level\_num |
-|:---:|:---|
-|描述| 顺序最大层级数|
-|类型|INT64|
-|默认值| 3 |
-|改后生效方式| 重启服务生效|
-
-* unseq\_level\_num
-
-|名字| unseq\_level\_num |
-|:---:|:---|
-|描述| 乱序最大层级数|
-|类型|INT64|
-|默认值| 1 |
-|改后生效方式| 重启服务生效|
-
 * enable\_partition
 
 |名字| enable\_partition |
 |:---:|:---|
 |描述| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0|
-|类型|Bool|
+|类型|Boolean|
 |默认值| false |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
@@ -477,7 +549,7 @@
 
 |名字| rpc\_address |
 |:---:|:---|
-|描述| |
+|描述|rpc地址 |
 |类型|String|
 |默认值| "0.0.0.0" |
 |改后生效方式|重启服务生效|
@@ -505,7 +577,7 @@
 |名字| rpc\_thrift\_compression\_enable |
 |:---:|:---|
 |描述|是否启用 thrift 的压缩机制。|
-|类型|true 或者 false|
+|类型|Boolean|
 |默认值| false |
 |改后生效方式|重启服务生效|
 
@@ -514,7 +586,7 @@
 |名字| rpc\_advanced\_compression\_enable |
 |:---:|:---|
 |描述|是否启用 thrift 的自定制压缩机制。|
-|类型|true 或者 false|
+|类型|Boolean|
 |默认值| false |
 |改后生效方式|重启服务生效|
 
@@ -534,6 +606,33 @@
 |描述| 当 IoTDB 将内存中的数据写入磁盘时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 0。|
 |类型| Int32 |
 |默认值| 0 |
+|改后生效方式|重启服务生效|
+
+* concurrent\_query\_thread
+
+|名字| concurrent\_query\_thread |
+|:---:|:---|
+|描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 0。|
+|类型| Int32 |
+|默认值| 0 |
+|改后生效方式|重启服务生效|
+
+* chunk\_buffer\_pool\_enable
+
+|名字| chunk\_buffer\_pool\_enable |
+|:---:|:---|
+|描述|在将 memtable 序列化为内存中的字节时，是否开启由 IoTDB 而不是 JVM 接管内存管理，默认关闭。 |
+|类型| Boolean |
+|默认值| false |
+|改后生效方式|重启服务生效|
+
+* batch\_size
+
+|名字| batch\_size |
+|:---:|:---|
+|描述|服务器中每次迭代的数据量（数据条目，即不同时间戳的数量。） |
+|类型| Int64 |
+|默认值| 100000 |
 |改后生效方式|重启服务生效|
 
 * tsfile\_storage\_fs
@@ -669,7 +768,7 @@
 |:---:|:---|
 |描述| RPC 请求/响应的最大字节数|
 |类型| long |
-|默认值| 67108864 （应大于等于 8 * 1024 * 1024) |
+|默认值| 536870912 （默认值512MB，应大于等于 512 * 1024 * 1024) |
 |改后生效方式|重启服务生效|
 
 * thrift\_init\_buffer\_size
@@ -690,6 +789,15 @@
 |默认值| ms |
 |改后生效方式|触发生效|
 
+* time\_index\_level
+
+|名字| time\_index\_level |
+|:---:|:---|
+|描述| TimeIndex的级别，记录了TsFileResource的开始时间和结束时间。 目前，支持 DEVICE_TIME_INDEX 和 FILE_TIME_INDEX，第一次设置后无法更改。 |
+|类型|String |
+|默认值| DEVICE_TIME_INDEX |
+|改后生效方式|触发生效|
+
 * default\_ttl
 
 |名字| default\_ttl |
@@ -698,6 +806,237 @@
 |类型| long |
 |默认值| 36000000 |
 |改后生效方式|重启服务生效|
+
+* default\_fill\_interval
+
+|名字| default\_fill\_interval |
+|:---:|:---|
+|描述| 填充查询中使用的默认时间段，默认-1表示无限过去时间，以毫秒ms为单位 |
+|类型| Int32 |
+|默认值| -1 |
+|改后生效方式|重启服务生效|
+
+## 合并配置
+
+* compaction\_strategy
+
+|名字| compaction\_strategy |
+|:---:|:---|
+|描述| 默认开启合并，可根据需求开启合并或关闭合并（LEVEL_COMPACTION, NO_COMPACTION） |
+|类型| String |
+|默认值| LEVEL_COMPACTION |
+|改后生效方式|重启服务生效|
+
+* enable\_unseq_compaction
+
+|名字| enable\_unseq_compaction |
+|:---:|:---|
+|描述| 是否将unseq文件合并为seq文件。仅当compaction_strategy为LEVEL_COMPACTION时有效。 |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式|仅开启合并后，重启服务生效|
+
+* compaction\_interval
+
+|名字| compaction\_interval |
+|:---:|:---|
+|描述| 设置延迟时间开始压缩任务，单位是：ms |
+|类型| Int32 |
+|默认值| 30000 |
+|改后生效方式|仅开启合并后，重启服务生效|
+
+* seq\_tsfile\_size
+
+|名字| seq\_tsfile\_size |
+|:---:|:---|
+|描述| 每个顺序tsfile大小,单位：byte |
+|类型|Int32|
+|默认值| 1 |
+|改后生效方式| 重启服务生效|
+
+* unseq\_tsfile\_size
+
+|名字| unseq\_tsfile\_size |
+|:---:|:---|
+|描述| 每个无序 tsfile 大小,单位：byte |
+|类型|Int32|
+|默认值| 1 |
+|改后生效方式| 重启服务生效|
+
+* seq\_file\_num\_in\_each\_level
+
+|名字| seq\_file\_num\_in\_each\_level |
+|:---:|:---|
+|描述| 顺序每层级文件最大数|
+|类型|Int32|
+|默认值| 6 |
+|改后生效方式| 重启服务生效|
+
+* unseq\_file\_num\_in\_each\_level
+
+|名字| unseq\_file\_num\_in\_each\_level |
+|:---:|:---|
+|描述| 无序每层级文件最大数|
+|类型|Int32|
+|默认值| 10 |
+|改后生效方式| 重启服务生效|
+
+* seq\_level\_num
+
+|名字| seq\_level\_num |
+|:---:|:---|
+|描述| 顺序最大层级数|
+|类型|Int32|
+|默认值| 3 |
+|改后生效方式| 重启服务生效|
+
+* unseq\_level\_num
+
+|名字| unseq\_level\_num |
+|:---:|:---|
+|描述| 无序最大层级数|
+|类型|Int32|
+|默认值| 1 |
+|改后生效方式| 重启服务生效|
+
+* max\_select\_unseq\_file\_num\_in\_each\_unseq\_compaction
+
+|名字| max\_select\_unseq\_file\_num\_in\_each\_unseq\_compaction |
+|:---:|:---|
+|描述| 每个无序压缩任务中的最大打开文件数，仅当compaction_strategy为LEVEL_COMPACTION时有效。此参数必须远小于操作系统控制的每个进程允许的最大打开文件数（大多数系统为65535）。|
+|类型|Int32|
+|默认值| 2000 |
+|改后生效方式| 重启服务生效|
+
+* merge\_chunk\_point\_number
+
+|名字| merge\_chunk\_point\_number |
+|:---:|:---|
+|描述| 在目标文件中chunk的平均点数值达到值时，将文件合并到顶层。仅当compaction_strategy为LEVEL_COMPACTION时有效。在合并过程中，如果一个chunk的点数少于该参数，则该chunk将被与其后续的块合并，即使它没有溢出，直到合并的chunk到达这个阈值和新的块将被刷新。若小于0时，此机制将被禁用。|
+|类型|Int32|
+|默认值| 100000 |
+|改后生效方式| 重启服务生效|
+
+* merge\_page\_point\_number
+
+|名字| merge\_page\_point\_number |
+|:---:|:---|
+|描述| 当一个页面的点数达到该值时，使用“追加合并”而不是“反序列化合并”。仅当compaction_strategy为LEVEL_COMPACTION时有效。|
+|类型|Int32|
+|默认值| 100 |
+|改后生效方式| 重启服务生效|
+
+* merge\_chunk\_subthread\_num
+
+|名字| merge\_chunk\_subthread\_num |
+|:---:|:---|
+|描述| 设置多少个线程来执行乱序合并块子任务，默认为 4。若小于等于0时设置为1。|
+|类型|Int32|
+|默认值| 4 |
+|改后生效方式| 重启服务生效|
+
+* merge\_fileSelection\_time\_budget
+
+|名字| merge\_fileSelection\_time\_budget |
+|:---:|:---|
+|描述| 若一个合并文件选择运行的时间超过这个时间，它将结束，并且当前的文件合并选择将用作为最终选择。当时间小于0 时，则表示时间是无边界的。单位：ms。|
+|类型|Int32|
+|默认值| 30000 |
+|改后生效方式| 重启服务生效|
+
+* merge\_memory\_budget
+
+|名字| merge\_memory\_budget |
+|:---:|:---|
+|描述| 一个合并任务可以使用多少内存（以字节为单位），默认为最大JVM内存的10%。这只是一个粗略的估计，从一个比较小的值开始，避免OOM。每个新的合并线程可能会占用这样的内存，所以merge_thread_num * merge_memory_budget是合并的预估总内存。|
+|类型|Int32|
+|默认值| 2147483648 |
+|改后生效方式| 重启服务生效|
+
+* continue\_merge\_after\_reboot
+
+|名字| continue\_merge\_after\_reboot |
+|:---:|:---|
+|描述| 重启后继续合并，当true时，在系统重启过程中检测到一些崩溃的合并，则此类合并将继续，为false时，则合并中未完成的部分将不会继续，已完成的合并部分仍保持原样，若如果重启太慢，可设置为false。 |
+|类型|Boolean|
+|默认值| false |
+|改后生效方式| 重启服务生效|
+
+* force\_full\_merge
+
+|名字| force\_full\_merge |
+|:---:|:---|
+|描述| 当设置为 true 时，所有乱序文件合并变为完全合并。|
+|类型|Boolean|
+|默认值| true |
+|改后生效方式| 重启服务生效|
+
+* compaction\_thread\_num
+
+|名字| compaction\_thread\_num |
+|:---:|:---|
+|描述| 设置多少线程来执行压缩，默认为 10。数值小于等于0时设置为1。|
+|类型|Int32|
+|默认值| 10 |
+|改后生效方式| 重启服务生效|
+
+* merge\_write\_throughput\_mb\_per\_sec
+
+|名字| merge\_write\_throughput\_mb\_per\_sec |
+|:---:|:---|
+|描述| 每秒可达到的写入吞吐量合并限制。|
+|类型|Int32|
+|默认值| 8 |
+|改后生效方式| 重启服务生效|
+
+* query\_timeout\_threshold
+
+|名字| query\_timeout\_threshold |
+|:---:|:---|
+|描述| 查询的最大执行时间。单位：毫秒。|
+|类型|Int32|
+|默认值| 60000 |
+|改后生效方式| 重启服务生效|
+
+## 元数据缓存配置
+
+* meta\_data\_cache\_enable
+
+|名字| meta\_data\_cache\_enable |
+|:---:|:---|
+|描述| 是否缓存元数据Chunk Metadata 和 TimeSeries Metadata）。|
+|类型|Boolean|
+|默认值| true |
+|改后生效方式| 重启服务生效|
+
+* chunk\_timeseriesmeta\_free\_memory\_proportion
+
+|名字| chunk\_timeseriesmeta\_free\_memory\_proportion |
+|:---:|:---|
+|描述| 读取内存分配比例，ChunkCache、TimeseriesMetadataCache、数据集查询的内存和可用内存的查询。参数形式为a:b:c:d，其中a、b、c、d为整数。 例如“1:1:1:1” ，“1:2:3:4” 。|
+|类型|String|
+|默认值| 1:2:3:4 |
+|改后生效方式| 重启服务生效|
+
+* metadata\_node\_cache\_size
+
+|名字| metadata\_node\_cache\_size |
+|:---:|:---|
+|描述| Manager的缓存大小。所有路径检查和将具有相应路径的MManager中的TSDataType的缓存，都将被用作提高写入速度。|
+|类型|Int32|
+|默认值| 300000 |
+|改后生效方式| 重启服务生效|
+
+## 上次缓存配置
+
+* enable\_last\_cache
+
+|名字| enable\_last\_cache |
+|:---:|:---|
+|描述| 是否开启上次缓存 |
+|类型|Boolean|
+|默认值| true |
+|改后生效方式| 重启服务生效|
 
 ## 数据类型自动推断
 
