@@ -34,7 +34,7 @@ public class SettleTask extends WrappedRunnable {
     }
   }
 
-  private void settleTsFile() throws IOException, WriteProcessException, IllegalPathException {
+  public void settleTsFile() throws IOException, WriteProcessException, IllegalPathException {
     TsFileResource settledResource = null;
     // tsFileAndModSettleTool.addSettleFileToList(resourceToBeSettled);
     if (TsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {

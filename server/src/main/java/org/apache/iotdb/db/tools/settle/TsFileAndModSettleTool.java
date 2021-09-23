@@ -196,9 +196,11 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
       tsFileAndModSettleTool.parseAndRewriteFile(newResources);
     }
     if (newResources.size() == 0) { // if all the data in this tsfile has been deleted
+      resourceToBeSettled.readUnlock();
       resourceToBeSettled.writeLock();
       resourceToBeSettled.delete();
       resourceToBeSettled.writeUnlock();
+      resourceToBeSettled.readLock();
       return null;
     }
     return newResources.get(0);

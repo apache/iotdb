@@ -799,7 +799,8 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void settleAll(PartialPath sgPath) throws StorageEngineException {
+  public void settleAll(PartialPath sgPath)
+      throws StorageEngineException, org.apache.iotdb.tsfile.exception.write.WriteProcessException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file settle");

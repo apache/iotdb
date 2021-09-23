@@ -2345,8 +2345,9 @@ public class StorageGroupProcessor {
   }
 
   /** Settle All TsFiles and mods belonging to this storage group */
-  public void settle() {
+  public void settle() throws org.apache.iotdb.tsfile.exception.write.WriteProcessException {
     for (Map.Entry<String, TsFileResource> entry : settleSeqFileList.entrySet()) {
+      System.out.println("-------------------------------------------------");
       TsFileResource seqTsFileResource = entry.getValue();
       seqTsFileResource.readLock();
       seqTsFileResource.setSeq(true);
@@ -2362,19 +2363,28 @@ public class StorageGroupProcessor {
       unSeqTsFileResource.doSettle();
       unSeqTsFileResource.readUnlock();
     }
+    System.out.println("-----------------Finish-------------------");
     settleSeqFileList.clear();
     settleUnseqFileList.clear();
   }
 
-  /**insert into root.ln.wf01.wt01(timestamp,status) values(1600,false);
-   * select * from root.*.*.*; delete from root.*.*.*.* where time>800; After finishing settling
-   * tsfile, we need to do 3 things : (1) move the new tsfile to the correct folder (2) write the
-   * deletions produced during the settling process to its corresponding new mods file (3) update
-   * the relevant data of this old tsFile in memory , eg: TsFileResource, TsFileProcessor, etc.
+  /**
+   * insert into root.ln.wf01.wt01(timestamp,status) values(1600,false); select * from root.*.*.*;
+   * delete from root.*.*.*.* where time>800; After finishing settling tsfile, we need to do 3
+   * things : (1) move the new tsfile to the correct folder (2) write the deletions produced during
+   * the settling process to its corresponding new mods file (3) update the relevant data of this
+   * old tsFile in memory , eg: TsFileResource, TsFileProcessor, etc.
    */
   private void settleTsFileCallBack(
       TsFileResource oldTsFileResource, TsFileResource newTsFileResource) throws IOException {
-    oldTsFileResource.writeUnlock();
+    oldTsFileResource.readUnlock();
+    oldTsFileResource.writeLock();
+//        try {
+//          logger.info("writeLock");
+//          Thread.sleep(5500);
+//        } catch (InterruptedException e) {
+//          e.printStackTrace();
+//        }
     TsFileRewriteTool.moveNewTsFile(oldTsFileResource, newTsFileResource);
     if (TsFileAndModSettleTool.recoverSettleFileMap.size() != 0) {
       TsFileAndModSettleTool.recoverSettleFileMap.remove(oldTsFileResource.getTsFilePath());
@@ -2387,8 +2397,11 @@ public class StorageGroupProcessor {
     if (!oldTsFileResource.getTsFile().exists()) {
       tsFileManagement.remove(oldTsFileResource, oldTsFileResource.isSeq());
     }
+    // Todo: update partionLatestFlushedTime,etc
+
     SettleService.getFilesToBeSettledCount().addAndGet(-1);
     oldTsFileResource.writeUnlock();
+    oldTsFileResource.readLock();
   }
 
   private void loadUpgradedResources(List<TsFileResource> resources, boolean isseq) {

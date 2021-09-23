@@ -142,6 +142,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -374,7 +375,11 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_CONTINUOUS_QUERY:
         return operateDropContinuousQuery((DropContinuousQueryPlan) plan);
       case SETTLE:
-        settle((SettlePlan) plan);
+        try {
+          settle((SettlePlan) plan);
+        } catch (WriteProcessException e) {
+          throw new QueryProcessException(e.getMessage());
+        }
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -2017,9 +2022,9 @@ public class PlanExecutor implements IPlanExecutor {
     return noExistSg;
   }
 
-  private void settle(SettlePlan plan) throws StorageEngineException {
+  private void settle(SettlePlan plan) throws WriteProcessException, StorageEngineException {
     PartialPath sgPath = plan.getSgPath();
     SettleService.setStorageGroupPath(sgPath);
-    SettleService.getINSTANCE().start();
+    SettleService.getINSTANCE().startSettling();
   }
 }

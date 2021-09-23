@@ -322,7 +322,7 @@ public class TsFileRewriteTool implements AutoCloseable {
    * false.
    */
   protected boolean checkIfNeedToDecode(
-      MeasurementSchema schema,String deviceId, PageHeader pageHeader)
+      MeasurementSchema schema, String deviceId, PageHeader pageHeader)
       throws IllegalPathException {
     if (pageHeader.getStatistics() == null) {
       return true;
@@ -333,7 +333,9 @@ public class TsFileRewriteTool implements AutoCloseable {
       Deletion currentDeletion = null;
       while (modsIterator.hasNext()) {
         currentDeletion = (Deletion) modsIterator.next();
-        if (currentDeletion.getPath().matchFullPath(new PartialPath(deviceId+"."+schema.getMeasurementId()))) {
+        if (currentDeletion
+            .getPath()
+            .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))) {
           if (pageHeader.getStartTime() <= currentDeletion.getEndTime()
               && pageHeader.getEndTime() >= currentDeletion.getStartTime()) {
             return true;
@@ -362,7 +364,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     Map<Long, ChunkWriterImpl> partitionChunkWriterMap = new HashMap<>();
     for (int i = 0; i < pageDataInChunk.size(); i++) {
       if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(i))) {
-        decodeAndWritePage(schema,deviceId, pageDataInChunk.get(i), partitionChunkWriterMap);
+        decodeAndWritePage(schema, deviceId, pageDataInChunk.get(i), partitionChunkWriterMap);
       } else {
         writePage(
             schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), partitionChunkWriterMap);
@@ -453,8 +455,10 @@ public class TsFileRewriteTool implements AutoCloseable {
       Deletion currentDeletion = null;
       while (modsIterator.hasNext()) {
         currentDeletion = (Deletion) modsIterator.next();
-        //if deletion path match the chunkPath, then add the deletion to the list
-        if (currentDeletion.getPath().matchFullPath(new PartialPath(deviceId+"."+schema.getMeasurementId()))) {
+        // if deletion path match the chunkPath, then add the deletion to the list
+        if (currentDeletion
+            .getPath()
+            .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))) {
           deleteIntervalList.add(
               new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));
         }

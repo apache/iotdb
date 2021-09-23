@@ -1,16 +1,23 @@
 ## TsFile整理工具
 
-整理工具可以帮助你整理指定目录下所有已封口的TsFile文件和.mods文件，过滤掉删除的数据并生成新的TsFile。整理完后会将本地旧的.mods文件删除，若某TsFile里的数据被全部删除了，则会删除本地该TsFile文件和对应的.resource文件。
+### 介绍
 
-目前整理工具只能针对v0.12版本的IOTDB来使用（即只能对版本为v3的TsFile进行整理），分为线上和线下的工具。
+1. 整理工具可以帮助你整理已封口的TsFile文件和.mods文件，过滤掉删除的数据并生成新的TsFile。整理完后会将本地旧的.mods文件删除，若某TsFile里的数据被全部删除了，则会删除本地该TsFile文件和对应的.resource文件。
 
-### 1. 线下整理工具
+2. 整理工具只能针对v0.12版本的IOTDB来使用，即只能针对版本为V3的TsFile进行整理，若低于此版本则必须先用在线升级工具将TsFile升级到V3版本。
+3. TsFile整理工具分为在线整理工具和离线整理工具，两者在整理的时候都会记录日志，供下次恢复先前整理失败的文件。在执行整理的时候会先去检测日志里是否存在失败的文件，有的话则优先整理它们。
 
-线下整理工具是以命令行的方式来启动，在使用的时候必须保证IOTDB Server是停止运行的，否则会出现整理错误。具体使用方式详见用户手册。
+### 1. 离线整理工具
 
-### 2. 线上整理工具
+离线整理工具是以命令行的方式来启动，该工具的启动脚本settle.bat和settle.sh在编译了server后会生成至server\target\iotdb-server-{version}\tools\tsfileToolSet目录中。在使用的时候必须保证IOTDB Server是停止运行的，否则会出现整理错误。具体使用方式详见用户手册。
 
- 线上整理工具是当IOTDB server运行后，会在后台注册启动一个整理服务Settle Service，该服务为每个TsFile开启一个整理线程进行整理，下面讲解每个整理线程的工作流程。
+#### 1.1 涉及的相关类
+
+整理工具类：org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool
+
+### 2.在线整理工具
+
+在线整理工具是当用户在IOTDB客户端输入了settle命令后，会在后台注册启动一个整理服务Settle Service，该服务会去寻找指定存储组下的所有TsFile文件，并为每个TsFile开启一个整理线程进行整理。下面讲解整理线程的工作流程。
 
 #### 2.1 整理线程的工作流程
 
@@ -22,7 +29,7 @@
 
 4. 往整理日志记录标记该文件的状态为2。
 
-5. 对文件所在虚拟存储组**加写锁**，阻塞用户的查询等操作。【该步骤在StorageGroupProcessor类的settleTsFileCallBack()方法里】
+5. 对旧TsFile文件**加写锁**，阻塞用户的查询等操作。【该步骤在StorageGroupProcessor类的settleTsFileCallBack()方法里】
 
 6. 删除旧mods文件，然后将新TsFile和对应的新.resource文件移动到正确的目录下（即旧TsFile所在目录），此过程是先删除旧对应旧文件，再把新的移动过去。【该步骤在TsFileRewriteTool类的moveNewTsFile()方法里】
 
@@ -34,15 +41,12 @@
 
    【该步骤在StorageGroupProcessor类的settleTsFileCallBack()方法里】
 
-6. 对该TsFile所在虚拟存储组**释放写锁**，然后对该TsFile**释放读锁**。允许用户对该文件进行查询操作。
-7. 往整理日志标记该文件的状态为3，settle结束！
+8. 对该TsFile**释放写锁**，允许用户对该文件进行查询操作，然后**释放读锁**，允许该文件被删除。
+9. 往整理日志标记该文件的状态为3，settle结束！
 
 #### 2.2 注意事项
 
-1. 整理工具只能对版本为V3的TsFile进行整理，若低于此版本的应该先使用在线升级工具将TsFile升级到V3版本。
-2. 整理工具在整理完每个TsFile后会删除该TsFile的本地.mods文件。若某TsFile里的数据都被删掉了，则整理工具会直接删除本地该TsFile文件和对应的.resource文件。
-3. 在整理过程中阻塞了用户对该虚拟存储组下的数据有任何的删除操作，直到整理完毕。
-4. 线上整理工具会记录日志，供下次重启时恢复上次整理失败的TsFile，每次整理服务启动时会先检测是否有上次整理失败的文件，有的话则优先整理它们；线下整理工具则不会记录到整理日志。
+​	在线整理工具在整理过程中阻塞了用户对该虚拟存储组下的数据有任何的删除操作，直到整理完毕。
 
 #### 2.3 补充说明
 
@@ -60,7 +64,7 @@
 
    (3) 进行了重写后，旧TsFile的所有数据都被删除了，就会删除本地该TsFile文件和.resource文件，并且不会生成新的TsFile，则返回null。
 
-#### 2.4 涉及到的相关类
+#### 2.4 涉及的相关类
 
 1. 整理服务类：org.apache.iotdb.db.service.SettleService
 2. 整理线程类：org.apache.iotdb.db.engine.settle.SettleTask
@@ -69,7 +73,7 @@
 
 #### 2.5 整理日志
 
-1. 整理日志文件的路径在data/system/settle/settle.txt，它有一条条记录项，存放了某个TsFile的整理状态，每条记录项的格式为：<TsFile文件路径>,<整理状态>
+1. 整理日志文件的路径在"data\system\settle\settle.txt"，它有一条条记录项，存放了某个TsFile的整理状态，每条记录项的格式为：<TsFile文件路径>,<整理状态>
 
 2. 整理共有三个状态，每个状态代表的含义如下：
 

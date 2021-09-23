@@ -30,11 +30,13 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -544,8 +546,14 @@ public class TsFileResource {
     UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
   }
 
-  public void doSettle() {
-    SettleService.getINSTANCE().submitSettleTask(new SettleTask(this));
+  public void doSettle() throws WriteProcessException {
+    // SettleService.getINSTANCE().submitSettleTask(new SettleTask(this));
+    try {
+      SettleService.getINSTANCE().settleTsFile(new SettleTask(this));
+    } catch (WriteProcessException | IllegalPathException | IOException e) {
+      e.printStackTrace();
+      throw new WriteProcessException("Meet error when settling tsFile : " + this.getTsFilePath());
+    }
   }
 
   public void removeModFile() throws IOException {
