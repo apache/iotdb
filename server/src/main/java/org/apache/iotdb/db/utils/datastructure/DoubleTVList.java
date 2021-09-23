@@ -33,6 +33,8 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class DoubleTVList extends TVList {
 
+  // list of primitive array, add 1 when expanded -> double primitive array
+  // index relation: arrayIndex -> elementIndex
   private List<double[]> values;
 
   private double[][] sortedValues;

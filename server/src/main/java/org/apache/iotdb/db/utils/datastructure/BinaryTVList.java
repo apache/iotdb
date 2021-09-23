@@ -33,6 +33,8 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class BinaryTVList extends TVList {
 
+  // list of primitive array, add 1 when expanded -> Binary primitive array
+  // index relation: arrayIndex -> elementIndex
   private List<Binary[]> values;
 
   private Binary[][] sortedValues;

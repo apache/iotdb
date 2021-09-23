@@ -33,6 +33,8 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class FloatTVList extends TVList {
 
+  // list of primitive array, add 1 when expanded -> float primitive array
+  // index relation: arrayIndex -> elementIndex
   private List<float[]> values;
 
   private float[][] sortedValues;
