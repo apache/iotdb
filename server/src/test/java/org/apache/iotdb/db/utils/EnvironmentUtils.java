@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -142,6 +143,9 @@ public class EnvironmentUtils {
     }
     // close metadata
     IoTDB.metaManager.clear();
+
+    // close tracing
+    TracingManager.getInstance().close();
 
     // close array manager
     PrimitiveArrayManager.close();
