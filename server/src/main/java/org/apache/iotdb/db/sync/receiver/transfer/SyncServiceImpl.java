@@ -78,7 +78,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus check(ConfirmInfo info) {
     String ipAddress = info.address, uuid = info.uuid;
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
-    if (!info.version.equals(IoTDBConstant.MAJOR_VERSION)) {
+    if (!getMajorVersion(info.version).equals(IoTDBConstant.MAJOR_VERSION)) {
       return getErrorResult(
           String.format(
               "Version mismatch: the sender <%s>, the receiver <%s>",
@@ -104,6 +104,12 @@ public class SyncServiceImpl implements SyncService.Iface {
       return getErrorResult(
           "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
     }
+  }
+
+  private String getMajorVersion(String version) {
+    return version.equals("UNKNOWN")
+        ? "UNKNOWN"
+        : version.split("\\.")[0] + "." + version.split("\\.")[1];
   }
 
   private boolean checkRecovery() {
