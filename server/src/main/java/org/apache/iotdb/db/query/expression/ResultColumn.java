@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.expression;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -69,6 +70,8 @@ public class ResultColumn {
 
   private final Expression expression;
   private final String alias;
+
+  private TSDataType dataType;
 
   public ResultColumn(Expression expression, String alias) {
     this.expression = expression;
@@ -134,6 +137,14 @@ public class ResultColumn {
   }
 
   public String getResultColumnName() {
-    return alias != null ? alias : expression.toString();
+    return alias != null ? alias : expression.getExpressionString();
+  }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
+  public TSDataType getDataType() {
+    return dataType;
   }
 }

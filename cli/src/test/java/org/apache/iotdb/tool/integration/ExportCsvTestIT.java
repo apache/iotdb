@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tool;
+package org.apache.iotdb.tool.integration;
 
 import org.apache.iotdb.cli.AbstractScript;
 
