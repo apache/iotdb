@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.input;
+package org.apache.iotdb.db.query.udf.core.layer;
 
 public class SafetyLine {
 

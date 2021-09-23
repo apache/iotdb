@@ -54,7 +54,7 @@ public class Max implements UDTF {
   }
 
   @Override
-  public void transform(Row row, PointCollector collector) {
+  public void transform(Row row, PointCollector collector) throws IOException {
     int candidateValue = row.getInt(0);
     if (time == null || value < candidateValue) {
       time = row.getTime();

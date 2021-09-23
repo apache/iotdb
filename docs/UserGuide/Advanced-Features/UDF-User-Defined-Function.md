@@ -390,7 +390,7 @@ The process of registering a UDF in IoTDB is as follows:
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
 3. Place the JAR package in the directory `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` or in a subdirectory of `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`.
    **Note that when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
-    
+   
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
 
@@ -477,13 +477,13 @@ SELECT example(s1, s2, "key1"="value1", "key2"="value2") FROM root.sg.d1;
 
 
 
-### Hybrid Queries
-
-Currently IoTDB supports hybrid queries of UDF queries and raw data queries, for example:
+### Nested Queries
 
 ``` sql
 SELECT s1, s2, example(s1, s2) FROM root.sg.d1;
-SELECT *, example(*) FROM root.sg.d1 NON ALIGN;
+SELECT *, example(*) FROM root.sg.d1 DISABLE ALIGN;
+SELECT s1 * example(* / s1 + s2) FROM root.sg.d1;
+SELECT s1, s2, s1 + example(s1, s2), s1 - example(s1 + example(s1, s2) / s2) FROM root.sg.d1;
 ```
 
 
@@ -577,7 +577,7 @@ When you have prepared the UDF source code, test cases, and instructions, you ar
 
 ## Q&A
 
-Q1: **How to modify the registered UDF? **
+Q1: How to modify the registered UDF? 
 
 A1: Assume that the name of the UDF is `example` and the full class name is `org.apache.iotdb.udf.ExampleUDTF`, which is introduced by `example.jar`.
 

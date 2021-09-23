@@ -60,9 +60,9 @@ public class IoTDBUDFWindowQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(1);
-    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(1);
-    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(5);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(5);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(5);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
@@ -318,7 +318,7 @@ public class IoTDBUDFWindowQueryIT {
       int timeInterval, int slidingStep, int displayWindowBegin, int displayWindowEnd) {
     String sql =
         String.format(
-            "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+            "select accumulator(s1, s1, s1, \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
             ACCESS_STRATEGY_KEY,
             ACCESS_STRATEGY_SLIDING_TIME,
             TIME_INTERVAL_KEY,

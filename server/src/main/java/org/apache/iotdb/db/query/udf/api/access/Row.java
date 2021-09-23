@@ -22,6 +22,8 @@ package org.apache.iotdb.db.query.udf.api.access;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.io.IOException;
+
 public interface Row {
 
   /**
@@ -29,7 +31,7 @@ public interface Row {
    *
    * @return timestamp
    */
-  long getTime();
+  long getTime() throws IOException;
 
   /**
    * Returns the int value at the specified column in this row.
@@ -39,7 +41,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the int value at the specified column in this row
    */
-  int getInt(int columnIndex);
+  int getInt(int columnIndex) throws IOException;
 
   /**
    * Returns the long value at the specified column in this row.
@@ -49,7 +51,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the long value at the specified column in this row
    */
-  long getLong(int columnIndex);
+  long getLong(int columnIndex) throws IOException;
 
   /**
    * Returns the float value at the specified column in this row.
@@ -59,7 +61,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the float value at the specified column in this row
    */
-  float getFloat(int columnIndex);
+  float getFloat(int columnIndex) throws IOException;
 
   /**
    * Returns the double value at the specified column in this row.
@@ -70,7 +72,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the double value at the specified column in this row
    */
-  double getDouble(int columnIndex);
+  double getDouble(int columnIndex) throws IOException;
 
   /**
    * Returns the boolean value at the specified column in this row.
@@ -81,7 +83,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the boolean value at the specified column in this row
    */
-  boolean getBoolean(int columnIndex);
+  boolean getBoolean(int columnIndex) throws IOException;
 
   /**
    * Returns the Binary value at the specified column in this row.
@@ -91,7 +93,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
    */
-  Binary getBinary(int columnIndex);
+  Binary getBinary(int columnIndex) throws IOException;
 
   /**
    * Returns the String value at the specified column in this row.
@@ -101,7 +103,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the String value at the specified column in this row
    */
-  String getString(int columnIndex);
+  String getString(int columnIndex) throws IOException;
 
   /**
    * Returns the actual data type of the value at the specified column in this row.
