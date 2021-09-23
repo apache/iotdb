@@ -167,27 +167,27 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putLongs(long[] time, long[] value, int start, int end) {
+  public void putLongs(long[] time, BitMap bitMap, long[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putInts(long[] time, int[] value, int start, int end) {
+  public void putInts(long[] time, BitMap bitMap, int[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putFloats(long[] time, float[] value, int start, int end) {
+  public void putFloats(long[] time, BitMap bitMap, float[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putDoubles(long[] time, double[] value, int start, int end) {
+  public void putDoubles(long[] time, BitMap bitMap, double[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBinaries(long[] time, Binary[] value, int start, int end) {
+  public void putBinaries(long[] time, BitMap bitMap, Binary[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBooleans(long[] time, boolean[] value, int start, int end) {
+  public void putBooleans(long[] time, BitMap bitMap, boolean[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

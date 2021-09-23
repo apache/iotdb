@@ -141,32 +141,32 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void putLongs(long[] t, BitMap bitMap, long[] v, int start, int end) {
-    list.putLongs(t, v, start, end);
+    list.putLongs(t, bitMap, v, start, end);
   }
 
   @Override
   public void putInts(long[] t, BitMap bitMap, int[] v, int start, int end) {
-    list.putInts(t, v, start, end);
+    list.putInts(t, bitMap, v, start, end);
   }
 
   @Override
   public void putFloats(long[] t, BitMap bitMap, float[] v, int start, int end) {
-    list.putFloats(t, v, start, end);
+    list.putFloats(t, bitMap, v, start, end);
   }
 
   @Override
   public void putDoubles(long[] t, BitMap bitMap, double[] v, int start, int end) {
-    list.putDoubles(t, v, start, end);
+    list.putDoubles(t, bitMap, v, start, end);
   }
 
   @Override
   public void putBinaries(long[] t, BitMap bitMap, Binary[] v, int start, int end) {
-    list.putBinaries(t, v, start, end);
+    list.putBinaries(t, bitMap, v, start, end);
   }
 
   @Override
   public void putBooleans(long[] t, BitMap bitMap, boolean[] v, int start, int end) {
-    list.putBooleans(t, v, start, end);
+    list.putBooleans(t, bitMap, v, start, end);
   }
 
   @Override

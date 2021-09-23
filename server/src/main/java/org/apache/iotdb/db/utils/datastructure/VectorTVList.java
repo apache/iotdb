@@ -150,19 +150,23 @@ public class VectorTVList extends TVList {
         arrayIndex = validIndexesForTimeDuplicatedRows[columnIndex] / ARRAY_SIZE;
         elementIndex = validIndexesForTimeDuplicatedRows[columnIndex] % ARRAY_SIZE;
       }
-      if (bitMaps != null && bitMaps.get(columnIndex) != null && isValueMarked(valueIndex, columnIndex)) {
+      if (bitMaps != null
+          && bitMaps.get(columnIndex) != null
+          && isValueMarked(valueIndex, columnIndex)) {
         continue;
       }
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
           vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(columnIndex), ((Binary[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((Binary[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case FLOAT:
           vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(columnIndex), ((float[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((float[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case INT32:
           vector[columnIndex] =
@@ -172,17 +176,20 @@ public class VectorTVList extends TVList {
         case INT64:
           vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(columnIndex), ((long[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((long[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case DOUBLE:
           vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(columnIndex), ((double[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((double[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case BOOLEAN:
           vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(columnIndex), ((boolean[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((boolean[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         default:
           throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
