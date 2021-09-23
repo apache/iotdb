@@ -729,16 +729,24 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all storage groups under the given path
+   * Get storage group path by path
    *
-   * @return storage group list
-   * @apiNote :for cluster
+   * <p>e.g., root.sg1 is storage group, path is root.sg1.d1, return root.sg1
+   *
+   * @return storage group in the given path
    */
-  public List<String> getStorageGroupByPath(PartialPath path) throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
-    collector.setCollectInternal(true);
-    collector.traverse();
-    return collector.getResult().stream().map(PartialPath::getFullPath).collect(toList());
+  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
+    String[] nodes = path.getNodes();
+    IMNode cur = root;
+    for (int i = 1; i < nodes.length; i++) {
+      cur = cur.getChild(nodes[i]);
+      if (cur == null) {
+        throw new StorageGroupNotSetException(path.getFullPath());
+      } else if (cur.isStorageGroup()) {
+        return cur.getPartialPath();
+      }
+    }
+    throw new StorageGroupNotSetException(path.getFullPath());
   }
 
   /**
@@ -762,24 +770,6 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get the storage group that given path matches or belongs to. The path may contain wildcard.
-   *
-   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
-   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
-   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
-   *
-   * @param path a path pattern or a full path, may contain wildcard
-   * @return a list contains all storage groups related to given path
-   */
-  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
-      throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
-    collector.setCollectInternal(true);
-    collector.traverse();
-    return collector.getResult();
-  }
-
-  /**
    * Get all storage group that the given path matches.
    *
    * @param path a path pattern or a full path, may contain wildcard
@@ -793,24 +783,20 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get storage group path by path
+   * Get the storage group that given path matches or belongs to. The path may contain wildcard.
    *
-   * <p>e.g., root.sg1 is storage group, path is root.sg1.d1, return root.sg1
+   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
+   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
+   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
    *
-   * @return storage group in the given path
+   * @param path a path pattern or a full path, may contain wildcard
+   * @return a list contains all storage groups related to given path
    */
-  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
-    String[] nodes = path.getNodes();
-    IMNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        throw new StorageGroupNotSetException(path.getFullPath());
-      } else if (cur.isStorageGroup()) {
-        return cur.getPartialPath();
-      }
-    }
-    throw new StorageGroupNotSetException(path.getFullPath());
+  public List<PartialPath> getAllRelatedStorageGroups(PartialPath path) throws MetadataException {
+    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
+    collector.setCollectInternal(true);
+    collector.traverse();
+    return collector.getResult();
   }
 
   /**

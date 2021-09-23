@@ -920,11 +920,17 @@ public class MManager {
     return mtree.isStorageGroup(path);
   }
 
+  /** Check whether the given path contains a storage group */
+  public boolean checkStorageGroupByPath(PartialPath path) {
+    return mtree.checkStorageGroupByPath(path);
+  }
+
   /**
    * Get storage group name by path
    *
    * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
    *
+   * @param path only full path, cannot be path pattern
    * @return storage group in the given path
    */
   public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
@@ -934,11 +940,6 @@ public class MManager {
   /** Get all storage group paths */
   public List<PartialPath> getAllStorageGroupPaths() {
     return mtree.getAllStorageGroupPaths();
-  }
-
-  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
-      throws MetadataException {
-    return mtree.searchAllRelatedStorageGroups(path);
   }
 
   /**
@@ -951,9 +952,18 @@ public class MManager {
     return mtree.getStorageGroupPaths(path);
   }
 
-  /** Get all storage group MNodes */
-  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return mtree.getAllStorageGroupNodes();
+  /**
+   * Get the storage group that given path matches or belongs to. The path may contain wildcard.
+   *
+   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
+   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
+   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
+   *
+   * @param path a path pattern or a full path, may contain wildcard
+   * @return a list contains all storage groups related to given path
+   */
+  public List<PartialPath> getAllRelatedStorageGroups(PartialPath path) throws MetadataException {
+    return mtree.getAllRelatedStorageGroups(path);
   }
 
   /**
@@ -975,24 +985,6 @@ public class MManager {
     return storageGroupsTTL;
   }
 
-  /** Check whether the given path contains a storage group */
-  boolean checkStorageGroupByPath(PartialPath path) {
-    return mtree.checkStorageGroupByPath(path);
-  }
-
-  /**
-   * Get all storage groups under the given path
-   *
-   * @return List of String represented all storage group names
-   * @apiNote :for cluster
-   */
-  List<String> getStorageGroupByPath(PartialPath path) throws MetadataException {
-    try {
-      return mtree.getStorageGroupByPath(path);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
-    }
-  }
   // endregion
 
   // region Interfaces for Entity/Device info Query
@@ -1341,6 +1333,11 @@ public class MManager {
     return mtree.getStorageGroupNodeByPath(path);
   }
 
+  /** Get all storage group MNodes */
+  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
+    return mtree.getAllStorageGroupNodes();
+  }
+
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
@@ -1582,7 +1579,48 @@ public class MManager {
 
   // region Interfaces only for Cluster module usage
 
+  /**
+   * Collect the timeseries schemas under "startingPath".
+   *
+   * @apiNote :for cluster
+   */
+  public void collectSeries(PartialPath startingPath, List<IMeasurementSchema> measurementSchemas) {
+    IMNode node;
+    try {
+      node = getNodeByPath(startingPath);
+    } catch (MetadataException e) {
+      return;
+    }
+    collectMeasurementSchema(node, measurementSchemas);
+  }
+
+  private void collectMeasurementSchema(
+      IMNode startingNode, Collection<IMeasurementSchema> measurementSchemas) {
+    Deque<IMNode> nodeDeque = new ArrayDeque<>();
+    nodeDeque.addLast(startingNode);
+    while (!nodeDeque.isEmpty()) {
+      IMNode node = nodeDeque.removeFirst();
+      if (node.isMeasurement()) {
+        IMeasurementSchema nodeSchema = ((IMeasurementMNode) node).getSchema();
+        measurementSchemas.add(nodeSchema);
+      } else if (!node.getChildren().isEmpty()) {
+        nodeDeque.addAll(node.getChildren().values());
+      }
+    }
+  }
+
   public void collectTimeseriesSchema(
+      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
+    IMNode node;
+    try {
+      node = getNodeByPath(prefixPath);
+    } catch (MetadataException e) {
+      return;
+    }
+    collectTimeseriesSchema(node, timeseriesSchemas);
+  }
+
+  private void collectTimeseriesSchema(
       IMNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
     Deque<IMNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
@@ -1600,41 +1638,6 @@ public class MManager {
         nodeDeque.addAll(node.getChildren().values());
       }
     }
-  }
-
-  public void collectTimeseriesSchema(
-      String prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
-    collectTimeseriesSchema(getNodeByPath(new PartialPath(prefixPath)), timeseriesSchemas);
-  }
-
-  public void collectMeasurementSchema(
-      IMNode startingNode, Collection<IMeasurementSchema> measurementSchemas) {
-    Deque<IMNode> nodeDeque = new ArrayDeque<>();
-    nodeDeque.addLast(startingNode);
-    while (!nodeDeque.isEmpty()) {
-      IMNode node = nodeDeque.removeFirst();
-      if (node.isMeasurement()) {
-        IMeasurementSchema nodeSchema = ((IMeasurementMNode) node).getSchema();
-        measurementSchemas.add(nodeSchema);
-      } else if (!node.getChildren().isEmpty()) {
-        nodeDeque.addAll(node.getChildren().values());
-      }
-    }
-  }
-
-  /**
-   * Collect the timeseries schemas under "startingPath".
-   *
-   * @apiNote :for cluster
-   */
-  public void collectSeries(PartialPath startingPath, List<IMeasurementSchema> measurementSchemas) {
-    IMNode node;
-    try {
-      node = getNodeByPath(startingPath);
-    } catch (MetadataException e) {
-      return;
-    }
-    collectMeasurementSchema(node, measurementSchemas);
   }
 
   /**

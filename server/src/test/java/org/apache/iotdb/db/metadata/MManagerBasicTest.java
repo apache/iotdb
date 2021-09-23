@@ -523,14 +523,15 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
-      List<String> list = new ArrayList<>();
+      List<PartialPath> list = new ArrayList<>();
 
-      list.add("root.laptop.d1");
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.d1")));
-      list.add("root.laptop.d2");
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.**")));
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.**")));
+      list.add(new PartialPath("root.laptop.d1"));
+      assertEquals(list, manager.getAllRelatedStorageGroups(new PartialPath("root.laptop.d1.s1")));
+      assertEquals(list, manager.getAllRelatedStorageGroups(new PartialPath("root.laptop.d1")));
+
+      list.add(new PartialPath("root.laptop.d2"));
+      assertEquals(list, manager.getAllRelatedStorageGroups(new PartialPath("root.laptop.**")));
+      assertEquals(list, manager.getAllRelatedStorageGroups(new PartialPath("root.**")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -543,24 +544,36 @@ public class MManagerBasicTest {
 
     try {
       assertTrue(manager.getAllTimeseriesPath(new PartialPath("root")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle.device")).isEmpty());
+      assertTrue(manager.getAllRelatedStorageGroups(new PartialPath("root")).isEmpty());
+      assertTrue(manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(
-          manager.getStorageGroupByPath(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertTrue(
+          manager
+              .getAllRelatedStorageGroups(new PartialPath("root.vehicle.device.sensor"))
+              .isEmpty());
 
       manager.setStorageGroup(new PartialPath("root.vehicle"));
-      assertFalse(manager.getStorageGroupByPath(new PartialPath("root.vehicle")).isEmpty());
-      assertFalse(manager.getStorageGroupByPath(new PartialPath("root.vehicle.device")).isEmpty());
+      assertFalse(manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertFalse(
-          manager.getStorageGroupByPath(new PartialPath("root.vehicle.device.sensor")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device")).isEmpty());
+          manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertFalse(
+          manager
+              .getAllRelatedStorageGroups(new PartialPath("root.vehicle.device.sensor"))
+              .isEmpty());
+      assertTrue(manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
+      assertTrue(
+          manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
 
       manager.setStorageGroup(new PartialPath("root.vehicle1.device"));
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device1")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device2")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device3")).isEmpty());
-      assertFalse(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device")).isEmpty());
+      assertTrue(
+          manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());
+      assertTrue(
+          manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device2")).isEmpty());
+      assertTrue(
+          manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device3")).isEmpty());
+      assertFalse(
+          manager.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
