@@ -74,11 +74,15 @@ public class BinaryTVListTest {
     tvList.putBinaries(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), bitMap, binaryList, 0, 1000);
     tvList.sort();
-    for (long i = 0; i < tvList.size; i++) {
-      long value = i + 1;
-      Assert.assertEquals(new Binary(String.valueOf(value)), tvList.getBinary((int) i));
-      Assert.assertEquals(value, tvList.getTime((int) i));
-      Assert.assertEquals(value % 100 == 0, tvList.isValueMarked((int) i));
+    int nullCnt = 0;
+    for (long i = 1; i < binaryList.length; i++) {
+      if (i % 100 == 0) {
+        nullCnt++;
+        continue;
+      }
+      Assert.assertEquals(
+          Binary.valueOf(String.valueOf(i)), tvList.getBinary((int) i - nullCnt - 1));
+      Assert.assertEquals(i, tvList.getTime((int) i - nullCnt - 1));
     }
   }
 
@@ -102,7 +106,6 @@ public class BinaryTVListTest {
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.getBinary((int) i), clonedTvList.getBinary((int) i));
       Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
-      Assert.assertEquals(tvList.isValueMarked((int) i), clonedTvList.isValueMarked((int) i));
     }
   }
 }

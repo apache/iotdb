@@ -96,11 +96,14 @@ public class IntTVListTest {
         0,
         1000);
     tvList.sort();
-    for (long i = 0; i < tvList.size; i++) {
-      long value = i + 1;
-      Assert.assertEquals(value, tvList.getInt((int) i));
-      Assert.assertEquals(value, tvList.getTime((int) i));
-      Assert.assertEquals(value % 100 == 0, tvList.isValueMarked((int) i));
+    int nullCnt = 0;
+    for (long i = 1; i < intList.size(); i++) {
+      if (i % 100 == 0) {
+        nullCnt++;
+        continue;
+      }
+      Assert.assertEquals(i, tvList.getInt((int) i - nullCnt - 1));
+      Assert.assertEquals(i, tvList.getTime((int) i - nullCnt - 1));
     }
   }
 
@@ -128,7 +131,6 @@ public class IntTVListTest {
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.getInt((int) i), clonedTvList.getInt((int) i));
       Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
-      Assert.assertEquals(tvList.isValueMarked((int) i), clonedTvList.isValueMarked((int) i));
     }
   }
 }

@@ -118,11 +118,14 @@ public class LongTVListTest {
         0,
         1000);
     tvList.sort();
-    for (long i = 0; i < tvList.size; i++) {
-      long value = i + 1;
-      Assert.assertEquals(value, tvList.getLong((int) i));
-      Assert.assertEquals(value, tvList.getTime((int) i));
-      Assert.assertEquals(value % 100 == 0, tvList.isValueMarked((int) i));
+    int nullCnt = 0;
+    for (long i = 1; i < longList.size(); i++) {
+      if (i % 100 == 0) {
+        nullCnt++;
+        continue;
+      }
+      Assert.assertEquals(i, tvList.getLong((int) i - nullCnt - 1));
+      Assert.assertEquals(i, tvList.getTime((int) i - nullCnt - 1));
     }
   }
 
@@ -150,7 +153,6 @@ public class LongTVListTest {
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.getLong((int) i), clonedTvList.getLong((int) i));
       Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
-      Assert.assertEquals(tvList.isValueMarked((int) i), clonedTvList.isValueMarked((int) i));
     }
   }
 }
