@@ -607,7 +607,13 @@ public class MManager {
       }
       PartialPath storageGroupPath =
           MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
-      setStorageGroup(storageGroupPath);
+      try {
+        setStorageGroup(storageGroupPath);
+      } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
+        // do nothing
+        // concurrent timeseries creation may result concurrent ensureStorageGroup
+        // it's ok that the storageGroup has already been set
+      }
     }
   }
 
@@ -1368,8 +1374,24 @@ public class MManager {
     return (IMeasurementMNode) getNodeByPath(fullPath);
   }
 
-  protected IMNode getMeasurementMNode(IMNode deviceMNode, String measurementName) {
-    return deviceMNode.getChild(measurementName);
+  /**
+   * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
+   * result is not null and is not MeasurementMNode, it means a timeseries with same path cannot be
+   * created thus throw PathAlreadyExistException.
+   */
+  protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
+      throws PathAlreadyExistException {
+    IMNode result = deviceMNode.getChild(measurementName);
+    if (result == null) {
+      return null;
+    }
+
+    if (result.isMeasurement()) {
+      return (IMeasurementMNode) result;
+    } else {
+      throw new PathAlreadyExistException(
+          deviceMNode.getFullPath() + PATH_SEPARATOR + measurementName);
+    }
   }
   // endregion
 
@@ -1933,14 +1955,12 @@ public class MManager {
     for (int i = 0; i < measurementList.length; i++) {
       try {
         String measurement = measurementList[i];
-        IMNode child = getMeasurementMNode(deviceMNode, plan.isAligned() ? vectorId : measurement);
-        if (child != null && child.isMeasurement()) {
-          measurementMNode = (IMeasurementMNode) child;
-        } else if (child != null && child.isStorageGroup()) {
-          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
-        } else if ((measurementMNode = findTemplate(deviceMNode, measurement, vectorId)) != null) {
-          // empty
-        } else {
+        measurementMNode =
+            getMeasurementMNode(deviceMNode, plan.isAligned() ? vectorId : measurement);
+        if (measurementMNode == null) {
+          measurementMNode = findTemplate(deviceMNode, measurement, vectorId);
+        }
+        if (measurementMNode == null) {
           if (!config.isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           } else {
