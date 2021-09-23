@@ -275,6 +275,15 @@
 |默认值| 16777216 |
 |改后生效方式|触发生效|
 
+* virtual\_storage\_group\_num
+
+|名字| virtual\_storage\_group\_num |
+|:---:|:---|
+|描述| 每个用户定义的虚拟存储组数 |
+|类型|Int64|
+|默认值| 1 |
+|改后生效方式|触发生效|
+
 * enable\_mem\_control
 
 |名字| enable\_mem\_control |
