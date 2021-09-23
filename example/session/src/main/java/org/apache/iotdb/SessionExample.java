@@ -453,11 +453,12 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
-    BitMap[] bitMaps = new BitMap[schemaList.size()];
+
+    // Method 1 to add tablet data
+    tablet.bitMaps = new BitMap[schemaList.size()];
     for (int s = 0; s < 3; s++) {
-      bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
+      tablet.bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
     }
-    tablet.bitMaps = bitMaps;
 
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {
@@ -467,7 +468,7 @@ public class SessionExample {
         long value = new Random().nextLong();
         // mark null value
         if (row % 3 == s) {
-          bitMaps[s].mark((int) row);
+          tablet.bitMaps[s].mark((int) row);
         }
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
       }
@@ -476,6 +477,37 @@ public class SessionExample {
         tablet.reset();
       }
       timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
+    // Method 2 to add tablet data
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
+    BitMap[] bitMaps = new BitMap[schemaList.size()];
+    for (int s = 0; s < 3; s++) {
+      bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
+    }
+    tablet.bitMaps = bitMaps;
+
+    for (long time = 0; time < 100; time++) {
+      int row = tablet.rowSize++;
+      timestamps[row] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor = (long[]) values[i];
+        // mark null value
+        if (row % 3 == i) {
+          bitMaps[i].mark(row);
+        }
+        sensor[row] = i;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
     }
 
     if (tablet.rowSize != 0) {
