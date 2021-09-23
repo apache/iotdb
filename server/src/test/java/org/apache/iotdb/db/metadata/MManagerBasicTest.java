@@ -1879,4 +1879,33 @@ public class MManagerBasicTest {
       Assert.assertFalse(manager.isPathExist(new PartialPath("root.a.d")));
     }
   }
+
+  @Test
+  public void testTimeseriesDeletionWithEntityUsingTemplate() throws MetadataException {
+    MManager manager = IoTDB.metaManager;
+    manager.setStorageGroup(new PartialPath("root.sg"));
+
+    CreateTemplatePlan plan = getCreateTemplatePlan("s1");
+    manager.createSchemaTemplate(plan);
+    SetSchemaTemplatePlan setPlan = new SetSchemaTemplatePlan("template1", "root.sg.d1");
+    manager.setSchemaTemplate(setPlan);
+    manager.createTimeseries(
+        new PartialPath("root.sg.d1.s2"),
+        TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.sg.d1")));
+    manager.deleteTimeseries(new PartialPath("root.sg.d1.s2"));
+    assertTrue(manager.isPathExist(new PartialPath("root.sg.d1")));
+
+    manager.createTimeseries(
+        new PartialPath("root.sg.d2.s2"),
+        TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    manager.deleteTimeseries(new PartialPath("root.sg.d2.s2"));
+    assertFalse(manager.isPathExist(new PartialPath("root.sg.d2")));
+  }
 }

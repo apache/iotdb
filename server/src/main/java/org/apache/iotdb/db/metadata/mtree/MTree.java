@@ -500,7 +500,7 @@ public class MTree implements Serializable {
     curNode = curNode.getParent();
     // delete all empty ancestors except storage group and MeasurementMNode
     while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
-        && !(curNode.isMeasurement())
+        && !(curNode.isUseTemplate())
         && curNode.getChildren().size() == 0) {
       // if current storage group has no time series, return the storage group name
       if (curNode.isStorageGroup()) {
