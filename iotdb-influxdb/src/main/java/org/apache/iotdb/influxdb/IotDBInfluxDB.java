@@ -47,30 +47,28 @@ import java.util.stream.Collectors;
 public class IotDBInfluxDB {
 
   private static Session session;
-  // 当前influxdb选择的database
+  // Database currently selected by influxdb
   private String database;
-  // 当前influxdb选择的measurement
+  // Measurement currently selected by influxdb
   private String measurement;
-  // 当前database下的所有measurement对应的tag列表及顺序
-  // TODO 当前不考虑分布式的情况,假定写入都是由该实例执行的
+  // Tag list and order corresponding to all measurements in the current database
+  // TODO At present, the distributed situation is not considered. It is assumed that all writes are performed by the instance
   private Map<String, Map<String, Integer>> measurementTagOrder = new HashMap<>();
-  // 当前measurement下的tag列表及顺序
+  // Tag list and order under current measurement
   private Map<String, Integer> tagOrders;
 
-  // 当前measurement下的field列表及指定规则的顺序
+  // The list of fields under the current measurement and the order of the specified rules
   private Map<String, Integer> fieldOrders;
-  // 反转map
   private Map<Integer, String> fieldOrdersReversed;
 
-  // 占位符
   private final String placeholder = "PH";
 
   /**
-   * 构造函数
+   * constructor function
    *
-   * @param url 包括host和port
-   * @param userName 用户名
-   * @param password 用户密码
+   * @param url contain host and port
+   * @param userName username
+   * @param password user password
    */
   public IotDBInfluxDB(String url, String userName, String password) {
     try {
@@ -82,12 +80,12 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 构造函数
+   * constructor function
    *
-   * @param host 域名
-   * @param rpcPort 端口号
-   * @param userName 用户名
-   * @param password 用户密码
+   * @param host host
+   * @param rpcPort port
+   * @param userName username
+   * @param password user password
    */
   public IotDBInfluxDB(String host, int rpcPort, String userName, String password)
       throws IoTDBConnectionException {
@@ -98,9 +96,9 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 兼容influxdb的插入函数
+   * write function compatible with influxdb
    *
-   * @param point 写入的point点
+   * @param point Data structure for inserting data
    */
   public void write(Point point) throws IoTDBConnectionException, StatementExecutionException {
     String measurement = null;
@@ -108,7 +106,7 @@ public class IotDBInfluxDB {
     Map<String, Object> fields = new HashMap<>();
     Long time = null;
     Field[] reflectFields = point.getClass().getDeclaredFields();
-    // 利用反射获取influxdb中point的属性
+    // Get the property of point in influxdb by reflection
     for (Field reflectField : reflectFields) {
       reflectField.setAccessible(true);
       try {
@@ -132,7 +130,7 @@ public class IotDBInfluxDB {
         e.printStackTrace();
       }
     }
-    // 设置为当前时间
+    // set current time
     if (time == null) {
       time = System.currentTimeMillis();
     }
@@ -141,7 +139,7 @@ public class IotDBInfluxDB {
       tagOrders = new HashMap<>();
     }
     int measurementTagNum = tagOrders.size();
-    // 当前插入时实际tag的数量
+    // The actual number of tags at the time of current insertion
     Map<Integer, String> realTagOrders = new HashMap<>();
     for (Map.Entry<String, String> entry : tags.entrySet()) {
       if (tagOrders.containsKey(entry.getKey())) {
@@ -153,7 +151,7 @@ public class IotDBInfluxDB {
         tagOrders.put(entry.getKey(), measurementTagNum);
       }
     }
-    // 更新内存中map
+    // update tagOrder map in memory
     measurementTagOrder.put(measurement, tagOrders);
     StringBuilder path = new StringBuilder("root." + database + "." + measurement);
     for (int i = 1; i <= measurementTagNum; i++) {
@@ -185,10 +183,10 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 兼容influxdb的查询函数
+   * query function compatible with influxdb
    *
-   * @param query influxdb的查询参数，包括databaseName和sql语句
-   * @return 返回Influxdb的查询结果
+   * @param query query parameters of influxdb, including databasename and SQL statement
+   * @return returns the query result of influxdb
    */
   public QueryResult query(Query query) throws Exception {
     String sql = query.getCommand();
@@ -198,23 +196,23 @@ public class IotDBInfluxDB {
     }
     Operator operator = LogicalGenerator.generate(sql);
     IotDBInfluxDBUtils.checkQueryOperator(operator);
-    // 更新相关数据
+    // update relative data
     updateMeasurement(((QueryOperator) operator).getFromComponent().getNodeName().get(0));
     updateFiledOrders();
-    // step1 生成查询的结果
+    // step1 : generate query results
     QueryResult queryResult =
         queryExpr(((QueryOperator) operator).getWhereComponent().getFilterOperator());
-    // step2 进行select筛选
+    // step2 : select filter
     ProcessSelectComponent(queryResult, ((QueryOperator) operator).getSelectComponent());
     return queryResult;
   }
 
   /**
-   * 当有新的tag出现时，插入到数据库中
+   * When a new tag appears, it is inserted into the database
    *
-   * @param measurement 插入的measurement
-   * @param tag 对应的tag名称
-   * @param order 对应的tag顺序
+   * @param measurement inserted measurement
+   * @param tag tag name
+   * @param order tag order
    */
   private void updateNewTagIntoDB(String measurement, String tag, int order)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -237,25 +235,25 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 通过select的查询条件进一步处理获得的queryResult
+   * further process the obtained query result through the query criteria of select
    *
-   * @param queryResult 需要处理的查询结果
-   * @param selectComponent 需要过滤的select条件
+   * @param queryResult query results to be processed
+   * @param selectComponent select conditions to be filtered
    */
   private void ProcessSelectComponent(QueryResult queryResult, SelectComponent selectComponent) {
-    // 先获取当前数据结果的行顺序map
+    // get the row order map of the current data result first
     List<String> columns = queryResult.getResults().get(0).getSeries().get(0).getColumns();
     Map<String, Integer> columnOrders = new HashMap<>();
     for (int i = 0; i < columns.size(); i++) {
       columnOrders.put(columns.get(i), i);
     }
-    // 获取当前values
+    // get current values
     List<List<Object>> values = queryResult.getResults().get(0).getSeries().get(0).getValues();
-    // 新的行列表
+    // new columns
     List<String> newColumns = new ArrayList<>();
     newColumns.add(SQLConstant.RESERVED_TIME);
 
-    // 当含有函数时
+    // when have function
     if (selectComponent.isHasFunction()) {
       List<Function> functions = new ArrayList<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
@@ -287,13 +285,13 @@ public class IotDBInfluxDB {
             Object selectedValue = value.get(columnOrders.get(parmaName));
             Long selectedTimestamp = (Long) value.get(0);
             if (selectedValue != null) {
-              // 选择函数
+              // selector function
               if (function instanceof Selector) {
                 ((Selector) function)
                     .updateValueAndRelate(
                         new FunctionValue(selectedValue, selectedTimestamp), value);
               } else {
-                // 聚合函数
+                // aggregate function
                 ((Aggregate) function)
                     .updateValue(new FunctionValue(selectedValue, selectedTimestamp));
               }
@@ -303,8 +301,8 @@ public class IotDBInfluxDB {
       }
       List<Object> value = new ArrayList<>();
       values = new ArrayList<>();
-      // 数据构造完毕，开始生成最后的结果
-      // 首先判断是否含有常规查询，如果有的话，那么这种情况是允许出现一个selector函数,且不会出现聚合函数的情况
+      // after the data is constructed, the final results are generated
+      // First, judge whether there are common queries. If there are, a selector function is allowed without aggregate functions
       if (selectComponent.isHasCommonQuery()) {
         Selector selector = (Selector) functions.get(0);
         List<Object> relatedValue = selector.getRelatedValues();
@@ -318,7 +316,7 @@ public class IotDBInfluxDB {
           }
         }
       } else {
-        // 如果没有常规查询，那么都是函数查询
+        // If there are no common queries, they are all function queries
         for (Function function : functions) {
           if (value.size() == 0) {
             value.add(function.calculate().getTimestamp());
@@ -333,13 +331,13 @@ public class IotDBInfluxDB {
       }
       values.add(value);
     }
-    // 如果不是函数查询，那么只是常规查询时
+    // if it is not a function query, it is only a common query
     else if (selectComponent.isHasCommonQuery()) {
-      // 开始遍历select的范围
+      // start traversing the scope of the select
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         if (expression instanceof NodeExpression) {
-          // 非star的情况
+          // not star case
           if (!((NodeExpression) expression).getName().equals(SQLConstant.STAR)) {
             newColumns.add(((NodeExpression) expression).getName());
           } else {
@@ -357,9 +355,11 @@ public class IotDBInfluxDB {
         queryResult, IotDBInfluxDBUtils.removeDuplicate(newColumns), values);
   }
 
-  /** 每次查询前，先获取该measurement中所有的field列表,更新当前measure的所有的field列表及指定顺序 */
+  /** before each query, first obtain all the field lists in the measurement,
+   * and update all the field lists of the current measurement and the specified order
+   */
   private void updateFiledOrders() throws IoTDBConnectionException, StatementExecutionException {
-    // 先初始化
+    // first init
     fieldOrders = new HashMap<>();
     fieldOrdersReversed = new HashMap<>();
     String showTimeseriesSql = "show timeseries root." + database + '.' + measurement;
@@ -370,7 +370,7 @@ public class IotDBInfluxDB {
       List<org.apache.iotdb.tsfile.read.common.Field> fields = result.next().getFields();
       String filed = IotDBInfluxDBUtils.getFiledByPath(fields.get(0).getStringValue());
       if (!fieldOrders.containsKey(filed)) {
-        // field对应的顺序是1+tagNum （第一个是时间戳，接着是所有的tag，最后是所有的field）
+        // The corresponding order of fields is 1 + tagnum (the first is timestamp, then all tags, and finally all fields)
         fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
         fieldOrdersReversed.put(tagOrderNums + fieldNums + 1, filed);
         fieldNums++;
@@ -379,9 +379,9 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 更新当前的measurement
+   * update current measurement
    *
-   * @param measurement 需要更改的measurement
+   * @param measurement measurement to be changed
    */
   private void updateMeasurement(String measurement) {
     if (!measurement.equals(this.measurement)) {
@@ -394,9 +394,9 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 创建database，写入iotdb中
+   * create database,write to iotdb
    *
-   * @param name database的name
+   * @param name database name
    */
   public void createDatabase(String name) {
     IotDBInfluxDBUtils.checkNonEmptyString(name, "database name");
@@ -405,7 +405,7 @@ public class IotDBInfluxDB {
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       if (e instanceof StatementExecutionException
           && ((StatementExecutionException) e).getStatusCode() == 300) {
-        // 当前database已经被创建过
+        // current database have been created
         System.out.println(e.getMessage());
       } else {
         e.printStackTrace();
@@ -414,9 +414,9 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 删除database
+   * delete database
    *
-   * @param name database的name
+   * @param name database name
    */
   public void deleteDatabase(String name) {
     try {
@@ -427,9 +427,9 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 设置database，同时获取database对应的所有tag列表及顺序
+   * set database，and get the list and order of all tags corresponding to the database
    *
-   * @param database 需要设置的database的name
+   * @param database database name
    */
   public void setDatabase(String database) {
     if (!database.equals(this.database)) {
@@ -439,9 +439,9 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 当database发生改变时，更新database相关信息，即从iotdb中获取database对应的所有tag列表及顺序
+   * when the database changes, update the database related information, that is, obtain the list and order of all tags corresponding to the database from iotdb
    *
-   * @param database 需要更新的database的name
+   * @param database update database name
    */
   private void updateDatabase(String database) {
     try {
@@ -455,22 +455,22 @@ public class IotDBInfluxDB {
         List<org.apache.iotdb.tsfile.read.common.Field> fields = result.next().getFields();
         String tmpMeasurementName = fields.get(1).getStringValue();
         if (measurementName == null) {
-          // 首次获取到measurementName
+          // get measurement name for the first time
           measurementName = tmpMeasurementName;
         } else {
-          // 不相等的话，则是遇到了新的measurement
+          // if it is not equal, a new measurement is encountered
           if (!tmpMeasurementName.equals(measurementName)) {
-            // 将当前measurement的tags加入其中
+            // add the tags of the current measurement to it
             measurementTagOrder.put(measurementName, tagOrder);
             tagOrder = new HashMap<>();
           }
         }
         tagOrder.put(fields.get(2).getStringValue(), fields.get(3).getIntV());
       }
-      // 最后一个measurement，将当前measurement的tags加入其中
+      // the last measurement is to add the tags of the current measurement
       measurementTagOrder.put(measurementName, tagOrder);
     } catch (StatementExecutionException e) {
-      // 首次执行时，TAG_INFO表没有创建，拦截错误，打印日志即可
+      // at first execution, tag_ If the info table is not created, intercept the error and print the log
       if (e.getStatusCode() == 411) {
         System.out.println(e.getMessage());
       }
@@ -480,39 +480,37 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 通过条件获取查询Influxdb格式的查询结果
+   * get query results in the format of influxdb through conditions
    *
-   * @param conditions 限制条件列表，包括tag和field条件限制
-   * @return 返回Influxdb查询结果
+   * @param conditions list of conditions, including tag and field condition
+   * @return returns the results of the influxdb query
    */
   private QueryResult queryByConditions(List<Condition> conditions)
       throws IoTDBConnectionException, StatementExecutionException {
-    // 用来存储符合tag的实际顺序
+    // used to store the actual order according to the tag
     Map<Integer, Condition> realTagOrders = new HashMap<>();
-    // 存储属于field的conditions列表
+    // stores a list of conditions belonging to the field
     List<Condition> fieldConditions = new ArrayList<>();
-    // 当前measurement中tag的数目
-    int measurementTagNum = tagOrders.size();
-    // 当前查询条件中的最大tag数目
+    // maximum number of tags in the current query criteria
     int currentQueryMaxTagNum = 0;
     for (Condition condition : conditions) {
-      // 当前条件是处于tag中
+      // the current condition is in tag
       if (tagOrders.containsKey(condition.getValue())) {
         int curOrder = tagOrders.get(condition.getValue());
-        // 将其放入符合tag的map中
+        // put it into the map according to the tag
         realTagOrders.put(curOrder, condition);
-        // 更新当前查询条件的最大tag顺序
+        // update the maximum tag order of the current query criteria
         currentQueryMaxTagNum = Math.max(currentQueryMaxTagNum, curOrder);
       } else {
         fieldConditions.add(condition);
       }
     }
-    // 构造实际的查询路径
+    // construct the actual query path
     StringBuilder curQueryPath = new StringBuilder("root." + database + "." + measurement);
-    // 从1遍历到当前查询条件的最大数目
+    // the maximum number of traversals from 1 to the current query condition
     for (int i = 1; i <= currentQueryMaxTagNum; i++) {
       if (realTagOrders.containsKey(i)) {
-        // 由于是path中的value，因此需要把首尾的引号去除
+        // since it is the value in the path, you need to remove the quotation marks at the beginning and end
         curQueryPath
             .append(".")
             .append(IotDBInfluxDBUtils.removeQuotation(realTagOrders.get(i).getLiteral()));
@@ -520,7 +518,7 @@ public class IotDBInfluxDB {
         curQueryPath.append(".").append("*");
       }
     }
-    // 构造实际的查询条件
+    // construct actual query condition
     StringBuilder realIotDBCondition = new StringBuilder();
     for (int i = 0; i < fieldConditions.size(); i++) {
       Condition condition = fieldConditions.get(i);
@@ -534,7 +532,7 @@ public class IotDBInfluxDB {
           .append(" ")
           .append(condition.getLiteral());
     }
-    // 实际的查询sql语句
+    // actual query SQL statement
     String realQuerySql;
 
     realQuerySql = "select * from " + curQueryPath;
@@ -586,20 +584,20 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 将iotdb的align by device查询结果转换为influxdb的查询结果
+   *cConvert align by device query result of iotdb to the query result of influxdb
    *
-   * @param sessionDataSet 待转换的iotdb查询结果
-   * @return influxdb格式的查询结果
+   * @param sessionDataSet iotdb query results to be converted
+   * @return query results in influxdb format
    */
   private QueryResult iotdbAlignByDeviceResultCvtToInfluxdbResult(SessionDataSet sessionDataSet)
       throws IoTDBConnectionException, StatementExecutionException {
     if (sessionDataSet == null) {
       return IotDBInfluxDBUtils.getNullQueryResult();
     }
-    // 生成series
+    // generate series
     QueryResult.Series series = new QueryResult.Series();
     series.setName(measurement);
-    // 获取tag的反向map
+    // gets the reverse map of the tag
     Map<Integer, String> tagOrderReversed =
         tagOrders.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
@@ -617,7 +615,7 @@ public class IotDBInfluxDB {
     columns.add("time");
     columns.addAll(tagList);
     columns.addAll(fieldList);
-    // 把columns插入series中
+    // insert columns into series
     series.setColumns(columns);
 
     List<List<Object>> values = new ArrayList<>();
@@ -641,11 +639,11 @@ public class IotDBInfluxDB {
       for (int i = 1; i < fields.size(); i++) {
         Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(i));
         if (o != null) {
-          // 将filed的值插入其中
+          // insert the value of filed into it
           value[fieldOrders.get(iotdbResultColumn.get(i + 1))] = o;
         }
       }
-      // 插入实际的value
+      // insert actual value
       values.add(Arrays.asList(value));
     }
     series.setValues(values);
@@ -659,20 +657,18 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 将iotdb的查询结果转换为influxdb的查询结果
+   * convert the query result of iotdb to the query result of influxdb
    *
-   * @param sessionDataSet 待转换的iotdb查询结果
-   * @return influxdb格式的查询结果
+   * @param sessionDataSet iotdb query results to be converted
+   * @return query results in influxdb format
    */
   private QueryResult iotdbResultCvtToInfluxdbResult(SessionDataSet sessionDataSet)
       throws IoTDBConnectionException, StatementExecutionException {
     if (sessionDataSet == null) {
       return IotDBInfluxDBUtils.getNullQueryResult();
     }
-    // 生成series
     QueryResult.Series series = new QueryResult.Series();
     series.setName(measurement);
-    // 获取tag的反向map
     Map<Integer, String> tagOrderReversed =
         tagOrders.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
@@ -690,7 +686,6 @@ public class IotDBInfluxDB {
     columns.add("time");
     columns.addAll(tagList);
     columns.addAll(fieldList);
-    // 把columns插入series中
     series.setColumns(columns);
 
     List<List<Object>> values = new ArrayList<>();
@@ -705,9 +700,9 @@ public class IotDBInfluxDB {
       RowRecord record = sessionDataSet.next();
       List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
       long timestamp = record.getTimestamp();
-      // 判断该path是否所有的值都为null
+      // determine whether all values of the path are null
       boolean allNull = true;
-      // 记录sameList的当前下标
+      // record the current index of sameList
       int sameListIndex = 0;
       for (int i = 0; i < fields.size(); i++) {
         Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(i));
@@ -715,30 +710,30 @@ public class IotDBInfluxDB {
           if (allNull) {
             allNull = false;
           }
-          // 将filed的值插入其中
+          // insert the value of filed into it
           value[fieldOrders.get(IotDBInfluxDBUtils.getFiledByPath(iotdbResultColumn.get(i + 1)))] =
               o;
         }
-        // 该相同的path已经遍历完成
+        // the same path has been traversed
         if (i == samePath.get(sameListIndex)) {
-          // 如果数据中有非null，则插入实际的数据中，否则直接跳过
+          // if there is non-null in the data, it will be inserted into the actual data, otherwise it will be skipped directly
           if (!allNull) {
-            // 先把时间插入value中
+            // insert time into value
             value[0] = timestamp;
-            // 再把该path中的tag插入value中国
-            // 加1，第零列是time
+            // then insert the tag in the path into value
+            // plus 1, the zeroth column is time
             String tmpPathName = iotdbResultColumn.get(i + 1);
             String[] tmpTags = tmpPathName.split("\\.");
             for (int j = 3; i < tmpTags.length - 1; i++) {
               if (!tmpTags[j].equals(placeholder)) {
-                // 放入指定的序列中
+                // put into the specified sequence
                 value[j - 2] = tmpTags[j];
               }
             }
           }
-          // 插入实际的value
+          // insert actual value
           values.add(Arrays.asList(value));
-          // 重制value
+          // init value
           value = new Object[columns.size()];
         }
       }
@@ -754,10 +749,10 @@ public class IotDBInfluxDB {
   }
 
   /**
-   * 通过Influxdb的语法树获取查询结果
+   * get query results through the syntax tree of influxdb
    *
-   * @param operator 需要处理的查询语法树
-   * @return influxdb格式的查询结果
+   * @param operator query syntax tree to be processed
+   * @return query results in influxdb format
    */
   public QueryResult queryExpr(FilterOperator operator) throws Exception {
     if (operator instanceof BasicFunctionOperator) {

@@ -23,10 +23,10 @@ import org.apache.iotdb.influxdb.qp.constant.FilterConstant;
 
 public class Condition {
 
-  // 当前查询过滤条件的var
+  // var of current query filter criteria
   public String Value;
   public FilterConstant.FilterType FilterType;
-  // 当前查询过滤条件的实际值
+  // actual value of current query filter condition
   public String Literal;
 
   public Condition(String value, FilterConstant.FilterType filterType, String literal) {

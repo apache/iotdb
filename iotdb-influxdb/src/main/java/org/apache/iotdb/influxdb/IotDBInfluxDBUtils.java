@@ -31,10 +31,10 @@ import java.util.*;
 public final class IotDBInfluxDBUtils {
 
   /**
-   * 如果当前字符串的第一个和最后一个是引号，则将其去除
+   * if the first and last of the current string are quotation marks, they are removed
    *
-   * @param str 需要处理的字符串
-   * @return 处理之后的字符串
+   * @param str string to process
+   * @return string after processing
    */
   public static String removeQuotation(String str) {
     if (str.charAt(0) == '"' && str.charAt(str.length() - 1) == '"') {
@@ -44,11 +44,11 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 将两个influxdb的查询结果取交集
+   * take the intersection of the query results of two influxdb
    *
-   * @param queryResult1 第一个查询结果
-   * @param queryResult2 第二个查询结果
-   * @return 两个查询结果取交集
+   * @param queryResult1 query result 1
+   * @param queryResult2 query result 2
+   * @return intersection of two query results
    */
   public static QueryResult andQueryResultProcess(
       QueryResult queryResult1, QueryResult queryResult2) {
@@ -66,13 +66,13 @@ public final class IotDBInfluxDBUtils {
       for (List<Object> value2 : values2) {
         boolean allEqual = true;
         for (int t = 0; t < value1.size(); t++) {
-          // 如果有不相等的话，那么跳过当前j
+          // if there is any inequality, skip the current J
           if (!checkEqualsContainNull(value1.get(t), value2.get(t))) {
             allEqual = false;
             break;
           }
         }
-        // 此时匹配完，如果完全相等
+        // at this time, the matching is completed. If it is completely equal
         if (allEqual) {
           sameValues.add(value1);
         }
@@ -83,11 +83,11 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 将两个influxdb的查询结果取并集
+   * union the query results of two influxdb
    *
-   * @param queryResult1 第一个查询结果
-   * @param queryResult2 第二个查询结果
-   * @return 两个查询结果取并集
+   * @param queryResult1 query result 1
+   * @param queryResult2 query result 2
+   * @return union of two query results
    */
   public static QueryResult orQueryResultProcess(
       QueryResult queryResult1, QueryResult queryResult2) {
@@ -108,7 +108,7 @@ public final class IotDBInfluxDBUtils {
       for (List<Object> value2 : values2) {
         boolean notEqual = false;
         for (int t = 0; t < value1.size(); t++) {
-          // 如果有不相等的话，那么跳过当前j
+          // if there is any inequality, skip the current J
           if (!checkEqualsContainNull(value1.get(t), value2.get(t))) {
             notEqual = true;
             break;
@@ -123,18 +123,18 @@ public final class IotDBInfluxDBUtils {
         notSameValuesInValues1.add(value1);
       }
     }
-    // values2加上 不相同的valueList
+    // values2 plus a different valueList
     values2.addAll(notSameValuesInValues1);
     updateQueryResultValue(queryResult1, values2);
     return queryResult1;
   }
 
   /**
-   * 将两个influxdb的查询结果取和（即默认二者不会有重复的数据，直接加在一起）
+   * sum the query results of two influxdb (that is, by default, they will not have duplicate data and will be directly added together)
    *
-   * @param queryResult1 第一个查询结果
-   * @param queryResult2 第二个查询结果
-   * @return 两个查询结果取和
+   * @param queryResult1 query result1
+   * @param queryResult2 query result2
+   * @return sum of two query results
    */
   public static QueryResult addQueryResultProcess(
       QueryResult queryResult1, QueryResult queryResult2) {
@@ -149,17 +149,16 @@ public final class IotDBInfluxDBUtils {
     }
     List<List<Object>> values1 = queryResult1.getResults().get(0).getSeries().get(0).getValues();
     List<List<Object>> values2 = queryResult2.getResults().get(0).getSeries().get(0).getValues();
-    // values相加
     values1.addAll(values2);
     updateQueryResultValue(queryResult1, values1);
     return queryResult1;
   }
 
   /**
-   * 将新的values更新到influxdb的查询结果中
+   * update the new values to the query results of influxdb
    *
-   * @param queryResult 待更新的influxdb查询结果
-   * @param updateValues 待更新的values
+   * @param queryResult influxdb query results to be updated
+   * @param updateValues values to be updated
    */
   private static void updateQueryResultValue(
       QueryResult queryResult, List<List<Object>> updateValues) {
@@ -175,11 +174,11 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 将新的values更新到influxdb的查询结果中
+   * update the new values to the query results of influxdb
    *
-   * @param queryResult 待更新的influxdb查询结果
-   * @param columns 待更新的columns
-   * @param updateValues 待更新的values
+   * @param queryResult influxdb query results to be updated
+   * @param columns columns to be updated
+   * @param updateValues values to be updated
    */
   public static void updateQueryResultColumnValue(
       QueryResult queryResult, List<String> columns, List<List<Object>> updateValues) {
@@ -196,11 +195,11 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 检查两个influxdb的查询结果是否属于同一个查询，即measurement和columns是否一致
+   * check whether the query results of two influxdb belong to the same query, that is, whether the measurement and columns are consistent
    *
-   * @param queryResult1 待检查结果1
-   * @param queryResult2 待检查结果2
-   * @return 是否属于同一个查询
+   * @param queryResult1 query result1
+   * @param queryResult2 query result2
+   * @return belong to the same query
    */
   private static boolean checkSameQueryResult(QueryResult queryResult1, QueryResult queryResult2) {
     return queryResult1
@@ -216,11 +215,11 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 判断两个字符串列表是否相同
+   * determine whether the two string lists are the same
    *
-   * @param list1 需要比对的第一个列表
-   * @param list2 需要比对的第二个列表
-   * @return 是否相同
+   * @param list1 first list to compare
+   * @param list2 second list to compare
+   * @return Is it the same
    */
   private static boolean checkSameStringList(List<String> list1, List<String> list2) {
     if (list1.size() != list2.size()) {
@@ -236,10 +235,10 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 判断该语法树的子树是否有or操作，如果没有均为and操作的话，则可以合并查询
+   * judge whether the subtrees of the syntax tree have or operations. If not, the query can be merged
    *
-   * @param operator 需要判断的子树
-   * @return 是否可以合并查询
+   * @param operator subtree to judge
+   * @return can merge queries
    */
   public static boolean canMergeOperator(FilterOperator operator) {
     if (operator instanceof BasicFunctionOperator) {
@@ -256,15 +255,15 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 通过语法树来生成查询条件（如果进入这个函数，说明一定是可以合并的语法树，不存在or的情况）
+   * generate query conditions through the syntax tree (if you enter this function, it means that it must be a syntax tree that can be merged, and there is no or)
    *
-   * @param filterOperator 需要生成查询条件的语法树
-   * @return 条件列表
+   * @param filterOperator the syntax tree of query criteria needs to be generated
+   * @return condition list
    */
   public static List<Condition> getConditionsByFilterOperatorOperator(
       FilterOperator filterOperator) {
     if (filterOperator instanceof BasicFunctionOperator) {
-      // 一定会是非or的情况
+      // It must be a non-or situation
       List<Condition> conditions = new ArrayList<>();
       conditions.add(getConditionForBasicFunctionOperator((BasicFunctionOperator) filterOperator));
       return conditions;
@@ -279,10 +278,10 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 通过唯一条件的子树来生成条件
+   * conditions are generated from subtrees of unique conditions
    *
-   * @param basicFunctionOperator 需要生成条件的子树
-   * @return 对应的条件
+   * @param basicFunctionOperator subtree to generate condition
+   * @return corresponding conditions
    */
   public static Condition getConditionForBasicFunctionOperator(
       BasicFunctionOperator basicFunctionOperator) {
@@ -294,28 +293,27 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 通过iotdb中的path来获取最后一个节点
+   * get the last node through the path in iotdb
    *
-   * @param path 需要处理的path
-   * @return 最后一个节点
+   * @param path path to process
+   * @return last node
    */
-  // 截取最后一个点
   public static String getFiledByPath(String path) {
     String[] tmpList = path.split("\\.");
     return tmpList[tmpList.length - 1];
   }
 
   /**
-   * 通过一个行列表来生成相同layerPath的列表 example: input:{root.d.s.x.s.field1 , root.d.s.x.s.field2 ,
+   * generate a list of the same layer path from a list of rows example: input:{root.d.s.x.s.field1 , root.d.s.x.s.field2 ,
    * root.d.s.xx.ss.filed3 , root.d.s.xx.ss.filed1 , root.d.s.xxx.sss.field4} output:{1,3,4}
-   * 对应的是列表下标的1，3和4。也就是当前同一layerPath的最后一个下标。便于区分同一组数据
+   * corresponding to the subscripts 1, 3 and 4 of the list. That is, the last subscript of the current same layer path. It is easy to distinguish the same set of data
    *
-   * @param columnNames 需要生成列表的行名称列表
-   * @return 相同layerPath中最后一个下标的集合
+   * @param columnNames list of row names to be generated
+   * @return the collection of the last subscript in the same layer path
    */
   public static ArrayList<Integer> getSamePathForList(List<String> columnNames) {
     ArrayList<Integer> list = new ArrayList<>();
-    // 记录上一个结果么，用来判断是否和当前重复
+    // record the last result to determine whether it is repeated with the current result
     String lastPath = null;
     for (int i = 1; i < columnNames.size(); i++) {
       String columnName = columnNames.get(i);
@@ -334,10 +332,10 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 将iotdb中field的值转换成object
+   * convert the value of field in iotdb to object
    *
-   * @param field 需要转换的filed
-   * @return field中存储的值
+   * @param field filed to be converted
+   * @return value stored in field
    */
   public static Object iotdbFiledCvt(Field field) {
     if (field.getDataType() == null) {
@@ -362,9 +360,9 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 获得一个空值的QueryResult
+   * get a null query result
    *
-   * @return 空值QueryResult
+   * @return null queryResult
    */
   public static QueryResult getNullQueryResult() {
     QueryResult queryResult = new QueryResult();
@@ -374,21 +372,21 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 以指定的方式来检查QueryResult是否为null
+   * checks whether query result is null in the specified way
    *
-   * @param queryResult 待检查的QueryResult
-   * @return 是否为null
+   * @param queryResult query result to be checked
+   * @return is null
    */
   public static boolean checkQueryResultNull(QueryResult queryResult) {
     return queryResult.getResults().get(0).getSeries() == null;
   }
 
   /**
-   * 判断两个实例是否相等，允许null检查
+   * judge whether two instances are equal, and allow null check
    *
-   * @param o1 实例1
-   * @param o2 实例2
-   * @return 是否相等
+   * @param o1 object1
+   * @param o2 object2
+   * @return are they equal
    */
   public static boolean checkEqualsContainNull(Object o1, Object o2) {
     if (o1 == null && o2 == null) {
@@ -403,10 +401,10 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 检查该字段是否为空,如果为空，则抛出错误
+   * check whether the field is empty. If it is empty, an error will be thrown
    *
-   * @param string 需要检查的字段
-   * @param name 抛错中的提示信息
+   * @param string string to check
+   * @param name prompt information in error throwing
    */
   public static void checkNonEmptyString(String string, String name)
       throws IllegalArgumentException {
@@ -416,9 +414,9 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 检查sql生成的operator是否为合法的查询语句，如果不合法，则抛出错误
+   * check whether the operator generated by SQL is a valid query statement. If it is not, an error will be thrown
    *
-   * @param operator 需要检查的operator
+   * @param operator operator to check
    */
   public static void checkQueryOperator(Operator operator) {
     if (!(operator instanceof QueryOperator)) {
@@ -436,10 +434,10 @@ public final class IotDBInfluxDBUtils {
   }
 
   /**
-   * 去除字符串列表重名
+   * remove string list duplicate names
    *
-   * @param strings 需要去除重名的字符串列表
-   * @return 去重后的字符串列表
+   * @param strings the list of strings with duplicate names needs to be removed
+   * @return list of de duplicated strings
    */
   public static List<String> removeDuplicate(List<String> strings) {
     Map<String, Integer> nameNums = new HashMap<>();

@@ -35,21 +35,21 @@ public class InfluxDBExample {
   private static IotDBInfluxDB iotDBInfluxDB;
 
   public static void main(String[] args) throws Exception {
-    // 初始化
+    // init
     iotDBInfluxDB = new IotDBInfluxDB("http://127.0.0.1:6667", "root", "root");
-    // 创建database
+    // create database
     iotDBInfluxDB.createDatabase("database");
-    // 设置database
+    // set database
     iotDBInfluxDB.setDatabase("database");
 
     insertData();
     queryData();
   }
 
-  // 插入数据
+  // insert data
   public static void insertData() throws IoTDBConnectionException, StatementExecutionException {
 
-    // 构造influxdb的插入build参数
+    // insert the build parameter to construct the influxdb
     Point.Builder builder = Point.measurement("student");
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();
@@ -62,7 +62,7 @@ public class InfluxDBExample {
     builder.fields(fields);
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     Point point = builder.build();
-    // build构造完成，开始write
+    // after the build construction is completed, start writing
     iotDBInfluxDB.write(point);
 
     builder = Point.measurement("student");
@@ -80,13 +80,13 @@ public class InfluxDBExample {
     iotDBInfluxDB.write(point);
   }
 
-  // 查询数据
+  // query data
   private static void queryData() throws Exception {
 
     Query query;
     QueryResult result;
 
-    // selector查询和field值并行
+    // the selector query is parallel to the field value
     query =
         new Query(
             "select max(score),* from student where (name=\"xie\" and sex=\"m\")or time<now()-7d",
@@ -94,7 +94,7 @@ public class InfluxDBExample {
     result = iotDBInfluxDB.query(query);
     System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
 
-    // 聚合查询和selector查询并行
+    // aggregate query and selector query are parallel
     query =
         new Query(
             "select count(score),first(score),last(country),max(score),mean(score),median(score),min(score),mode(score),spread(score),stddev(score),sum(score) from student where (name=\"xie\" and sex=\"m\")or score<99",
