@@ -21,10 +21,13 @@ github:
   description: "Apache IoTDB"
   homepage: https://iotdb.apache.org/
   labels:
-  - timeseries
-  - database
-  - iot
-  - nosql
-  - big-data
-  - java
-  - tsdb
+    - timeseries
+    - database
+    - iot
+    - nosql
+    - big-data
+    - java
+    - tsdb
+  features:
+    wiki: true
+    issue: true

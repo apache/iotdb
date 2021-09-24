@@ -17,17 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.datastructure.primitive;
+package org.apache.iotdb.db.metadata.lastCache.container.value;
 
-import java.io.IOException;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-public interface IntList {
+// this interface declares the simplest storage operation of lastCacheValue
+public interface ILastCacheValue {
 
-  int size();
+  long getTimestamp();
 
-  int get(int index) throws IOException;
+  void setTimestamp(long timestamp);
 
-  void put(int value) throws IOException;
+  void setValue(TsPrimitiveType value);
 
-  void clear();
+  TimeValuePair getTimeValuePair();
+
+  int getSize();
+
+  long getTimestamp(int index);
+
+  void setTimestamp(int index, long timestamp);
+
+  TsPrimitiveType getValue(int index);
+
+  void setValue(int index, TsPrimitiveType value);
+
+  TimeValuePair getTimeValuePair(int index);
 }

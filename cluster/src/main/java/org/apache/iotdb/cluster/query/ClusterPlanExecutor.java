@@ -27,7 +27,6 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -45,15 +44,12 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
-import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -608,12 +604,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
       logger.warn("Failed to check consistency.", e);
     }
     return IoTDB.metaManager.getAllStorageGroupNodes();
-  }
-
-  @Override
-  protected AlignByDeviceDataSet getAlignByDeviceDataSet(
-      AlignByDevicePlan plan, QueryContext context, IQueryRouter router) {
-    return new ClusterAlignByDeviceDataSet(plan, context, router);
   }
 
   @Override

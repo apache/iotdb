@@ -27,7 +27,6 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class CreateFunctionOperator extends Operator {
 
-  private boolean isTemporary;
   private String udfName;
   private String className;
 
@@ -36,20 +35,12 @@ public class CreateFunctionOperator extends Operator {
     operatorType = OperatorType.CREATE_FUNCTION;
   }
 
-  public void setTemporary(boolean temporary) {
-    isTemporary = temporary;
-  }
-
   public void setUdfName(String udfName) {
     this.udfName = udfName;
   }
 
   public void setClassName(String className) {
     this.className = className;
-  }
-
-  public boolean isTemporary() {
-    return isTemporary;
   }
 
   public String getUdfName() {
@@ -63,6 +54,6 @@ public class CreateFunctionOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new CreateFunctionPlan(isTemporary, udfName, className);
+    return new CreateFunctionPlan(udfName, className);
   }
 }

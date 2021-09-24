@@ -33,18 +33,18 @@ TSDataType::TSDataType getTSDataTypeFromString(string str) {
     return TSDataType::TEXT;
 }
 
-void RpcUtils::verifySuccess(TSStatus &status) {
+void RpcUtils::verifySuccess(const TSStatus &status) {
     if (status.code == TSStatusCode::MULTIPLE_ERROR) {
         verifySuccess(status.subStatus);
         return;
     }
     if (status.code != TSStatusCode::SUCCESS_STATUS) {
-        throw IoTDBConnectionException(to_string(status.code) + ": " + status.message.c_str());
+        throw IoTDBConnectionException(to_string(status.code) + ": " + status.message);
     }
 }
 
-void RpcUtils::verifySuccess(vector <TSStatus> &statuses) {
-    for (TSStatus status : statuses) {
+void RpcUtils::verifySuccess(const vector <TSStatus> &statuses) {
+    for (TSStatus status: statuses) {
         if (status.code != TSStatusCode::SUCCESS_STATUS) {
             throw BatchExecutionException(statuses, status.message);
         }
@@ -52,13 +52,13 @@ void RpcUtils::verifySuccess(vector <TSStatus> &statuses) {
 }
 
 TSStatus RpcUtils::getStatus(TSStatusCode::TSStatusCode tsStatusCode) {
-    TSStatus tmpTSStatus = TSStatus();
-    tmpTSStatus.__set_code(tsStatusCode);
-    return tmpTSStatus;
+    TSStatus status;
+    status.__set_code(tsStatusCode);
+    return status;
 }
 
-TSStatus RpcUtils::getStatus(int code, string message) {
-    TSStatus status = TSStatus();
+TSStatus RpcUtils::getStatus(int code, const string &message) {
+    TSStatus status;
     status.__set_code(code);
     status.__set_message(message);
     return status;
@@ -70,12 +70,12 @@ shared_ptr <TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(TSStatus
 }
 
 shared_ptr <TSExecuteStatementResp>
-RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, string message) {
+RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, const string &message) {
     TSStatus status = getStatus(tsStatusCode, message);
     return getTSExecuteStatementResp(status);
 }
 
-shared_ptr <TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(TSStatus &status) {
+shared_ptr <TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(const TSStatus &status) {
     shared_ptr <TSExecuteStatementResp> resp(new TSExecuteStatementResp());
     TSStatus tsStatus(status);
     resp->status = status;
@@ -88,12 +88,12 @@ shared_ptr <TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(TSStatusCode::TS
 }
 
 shared_ptr <TSFetchResultsResp>
-RpcUtils::getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, string appendMessage) {
+RpcUtils::getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, const string &appendMessage) {
     TSStatus status = getStatus(tsStatusCode, appendMessage);
     return getTSFetchResultsResp(status);
 }
 
-shared_ptr <TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(TSStatus &status) {
+shared_ptr <TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(const TSStatus &status) {
     shared_ptr <TSFetchResultsResp> resp(new TSFetchResultsResp());
     TSStatus tsStatus(status);
     resp->__set_status(tsStatus);
@@ -109,7 +109,7 @@ void Tablet::createColumns() {
     timestamps.resize(maxRowNumber);
     // create value columns
     values.resize(schemas.size());
-    for (int i = 0; i < schemas.size(); i++) {
+    for (size_t i = 0; i < schemas.size(); i++) {
         values[i].resize(maxRowNumber);
     }
 }
@@ -120,7 +120,7 @@ int Tablet::getTimeBytesSize() {
 
 int Tablet::getValueByteSize() {
     int valueOccupation = 0;
-    for (int i = 0; i < schemas.size(); i++) {
+    for (size_t i = 0; i < schemas.size(); i++) {
         switch (schemas[i].second) {
             case TSDataType::BOOLEAN:
                 valueOccupation += rowSize;
@@ -139,7 +139,7 @@ int Tablet::getValueByteSize() {
                 break;
             case TSDataType::TEXT:
                 valueOccupation += rowSize * 4;
-                for (string value : values[i]) {
+                for (string value: values[i]) {
                     valueOccupation += value.size();
                 }
                 break;
@@ -151,7 +151,7 @@ int Tablet::getValueByteSize() {
     return valueOccupation;
 }
 
-string SessionUtils::getTime(Tablet &tablet) {
+string SessionUtils::getTime(const Tablet &tablet) {
     MyStringBuffer timeBuffer;
     for (int i = 0; i < tablet.rowSize; i++) {
         timeBuffer.putLong(tablet.timestamps[i]);
@@ -159,9 +159,9 @@ string SessionUtils::getTime(Tablet &tablet) {
     return timeBuffer.str;
 }
 
-string SessionUtils::getValue(Tablet &tablet) {
+string SessionUtils::getValue(const Tablet &tablet) {
     MyStringBuffer valueBuffer;
-    for (int i = 0; i < tablet.schemas.size(); i++) {
+    for (size_t i = 0; i < tablet.schemas.size(); i++) {
         TSDataType::TSDataType dataType = tablet.schemas[i].second;
         switch (dataType) {
             case TSDataType::BOOLEAN:
@@ -345,13 +345,19 @@ void SessionDataSet::closeOperationHandle() {
     }
 }
 
+/**
+ * When delete variable, make sure release all resource.
+ */
+Session::~Session() {
+    close();
+}
 
 /**
    * check whether the batch has been sorted
    *
    * @return whether the batch has been sorted
    */
-bool Session::checkSorted(Tablet &tablet) {
+bool Session::checkSorted(const Tablet &tablet) {
     for (int i = 1; i < tablet.rowSize; i++) {
         if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
             return false;
@@ -360,8 +366,8 @@ bool Session::checkSorted(Tablet &tablet) {
     return true;
 }
 
-bool Session::checkSorted(vector <int64_t> &times) {
-    for (int i = 1; i < times.size(); i++) {
+bool Session::checkSorted(const vector <int64_t> &times) {
+    for (size_t i = 1; i < times.size(); i++) {
         if (times[i] < times[i - 1]) {
             return false;
         }
@@ -381,8 +387,7 @@ void Session::sortTablet(Tablet &tablet) {
     }
 
     this->sortIndexByTimestamp(index, tablet.timestamps, tablet.rowSize);
-    sort(tablet.timestamps.begin(), tablet.timestamps.begin() + tablet.rowSize);
-    for (int i = 0; i < tablet.schemas.size(); i++) {
+    for (size_t i = 0; i < tablet.schemas.size(); i++) {
         tablet.values[i] = sortList(tablet.values[i], index, tablet.rowSize);
     }
 
@@ -412,14 +417,27 @@ void Session::sortIndexByTimestamp(int *index, std::vector <int64_t> &timestamps
 /**
  * Append value into buffer in Big Endian order to comply with IoTDB server
  */
-void Session::appendValues(string &buffer, char *value, int size) {
-    for (int i = size - 1; i >= 0; i--) {
-        buffer.append(value + i, 1);
+void Session::appendValues(string &buffer, const char *value, int size) {
+    static bool hasCheckedEndianFlag = false;
+    static bool localCpuIsBigEndian = false;
+    if (!hasCheckedEndianFlag) {
+        hasCheckedEndianFlag = true;
+        int chk = 0x0201;  //used to distinguish CPU's type (BigEndian or LittleEndian)
+        localCpuIsBigEndian = (0x01 != *(char *) (&chk));
+    }
+
+    if (localCpuIsBigEndian) {
+        buffer.append(value, size);
+    } else {
+        for (int i = size - 1; i >= 0; i--) {
+            buffer.append(value + i, 1);
+        }
     }
 }
 
-void Session::putValuesIntoBuffer(vector <TSDataType::TSDataType> &types, vector<char *> &values, string &buf) {
-    for (int i = 0; i < values.size(); i++) {
+void
+Session::putValuesIntoBuffer(const vector <TSDataType::TSDataType> &types, const vector<char *> &values, string &buf) {
+    for (size_t i = 0; i < values.size(); i++) {
         int8_t typeNum = getDataTypeNumber(types[i]);
         buf.append((char *) (&typeNum), sizeof(int8_t));
         switch (types[i]) {
@@ -438,12 +456,14 @@ void Session::putValuesIntoBuffer(vector <TSDataType::TSDataType> &types, vector
             case TSDataType::DOUBLE:
                 appendValues(buf, values[i], sizeof(double));
                 break;
-            case TSDataType::TEXT:
-                string str(values[i]);
-                int len = str.length();
+            case TSDataType::TEXT: {
+                int len = strlen(values[i]);
                 appendValues(buf, (char *) (&len), sizeof(int));
                 // no need to change the byte order of string value
                 buf.append(values[i], len);
+                break;
+            }
+            case TSDataType::NULLTYPE:
                 break;
         }
     }
@@ -469,29 +489,20 @@ int8_t Session::getDataTypeNumber(TSDataType::TSDataType type) {
 }
 
 void Session::open() {
-    try {
-        open(false, DEFAULT_TIMEOUT_MS);
-    }
-    catch (IoTDBConnectionException e) {
-        throw IoTDBConnectionException(e.what());
-    }
+    open(false, DEFAULT_TIMEOUT_MS);
 }
 
 void Session::open(bool enableRPCCompression) {
-    try {
-        open(enableRPCCompression, DEFAULT_TIMEOUT_MS);
-    }
-    catch (IoTDBConnectionException e) {
-        throw IoTDBConnectionException(e.what());
-    }
+    open(enableRPCCompression, DEFAULT_TIMEOUT_MS);
 }
 
 void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     if (!isClosed) {
         return;
     }
+
     shared_ptr <TSocket> socket(new TSocket(host, rpcPort));
-    shared_ptr <TTransport> transport(new TFramedTransport(socket));
+    transport = std::make_shared<TFramedTransport>(socket);
     socket->setConnTimeout(connectionTimeoutInMs);
     if (!transport->isOpen()) {
         try {
@@ -503,29 +514,28 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     }
     if (enableRPCCompression) {
         shared_ptr <TCompactProtocol> protocol(new TCompactProtocol(transport));
-        shared_ptr <TSIServiceIf> client_instance(new TSIServiceClient(protocol));
-        client = client_instance;
+        client = std::make_shared<TSIServiceClient>(protocol);
     } else {
         shared_ptr <TBinaryProtocol> protocol(new TBinaryProtocol(transport));
-        shared_ptr <TSIServiceIf> client_instance(new TSIServiceClient(protocol));
-        client = client_instance;
+        client = std::make_shared<TSIServiceClient>(protocol);
     }
-    shared_ptr <TSOpenSessionReq> openReq(new TSOpenSessionReq());
-    openReq->__set_username(username);
-    openReq->__set_password(password);
-    openReq->__set_zoneId(zoneId);
+
+    TSOpenSessionReq openReq;
+    openReq.__set_username(username);
+    openReq.__set_password(password);
+    openReq.__set_zoneId(zoneId);
     try {
-        shared_ptr <TSOpenSessionResp> openResp(new TSOpenSessionResp());
-        client->openSession(*openResp, *openReq);
-        RpcUtils::verifySuccess(openResp->status);
-        if (protocolVersion != openResp->serverProtocolVersion) {
-            if (openResp->serverProtocolVersion == 0) {// less than 0.10
+        TSOpenSessionResp openResp;
+        client->openSession(openResp, openReq);
+        RpcUtils::verifySuccess(openResp.status);
+        if (protocolVersion != openResp.serverProtocolVersion) {
+            if (openResp.serverProtocolVersion == 0) {// less than 0.10
                 throw logic_error(string("Protocol not supported, Client version is ") + to_string(protocolVersion) +
-                                  ", but Server version is " + to_string(openResp->serverProtocolVersion));
+                                  ", but Server version is " + to_string(openResp.serverProtocolVersion));
             }
         }
 
-        sessionId = openResp->sessionId;
+        sessionId = openResp.sessionId;
         statementId = client->requestStatementId(sessionId);
 
         if (zoneId != "") {
@@ -538,6 +548,7 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         transport->close();
         throw IoTDBConnectionException(e.what());
     }
+
     isClosed = false;
 }
 
@@ -557,115 +568,124 @@ void Session::close() {
                 string("Error occurs when closing session at server. Maybe server is down. ") + e.what());
     }
     isClosed = true;
-    if (transport != NULL) {
+    if (transport != nullptr) {
         transport->close();
     }
 }
 
 
-void Session::insertRecord(string deviceId, int64_t time, vector <string> &measurements, vector <string> &values) {
-    shared_ptr <TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
-    req->__set_sessionId(sessionId);
-    req->__set_deviceId(deviceId);
-    req->__set_timestamp(time);
-    req->__set_measurements(measurements);
-    req->__set_values(values);
-    shared_ptr <TSStatus> resp(new TSStatus());
+void Session::insertRecord(const string &deviceId, int64_t time,
+                           const vector <string> &measurements,
+                           const vector <string> &values) {
+    TSInsertStringRecordReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_deviceId(deviceId);
+    req.__set_timestamp(time);
+    req.__set_measurements(measurements);
+    req.__set_values(values);
+    TSStatus respStatus;
     try {
-        client->insertStringRecord(*resp, *req);
-        RpcUtils::verifySuccess(*resp);
+        client->insertStringRecord(respStatus, req);
+        RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());
     }
 }
 
-void Session::insertRecord(string prefixPath, int64_t time, vector <string> &measurements,
-                           vector <TSDataType::TSDataType> &types, vector<char *> &values) {
-    shared_ptr <TSInsertRecordReq> req(new TSInsertRecordReq());
-    req->__set_sessionId(sessionId);
-    req->__set_prefixPath(prefixPath);
-    req->__set_timestamp(time);
-    req->__set_measurements(measurements);
+void Session::insertRecord(const string &prefixPath, int64_t time,
+                           const vector <string> &measurements,
+                           const vector <TSDataType::TSDataType> &types,
+                           const vector<char *> &values) {
+    TSInsertRecordReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_prefixPath(prefixPath);
+    req.__set_timestamp(time);
+    req.__set_measurements(measurements);
     string buffer;
     putValuesIntoBuffer(types, values, buffer);
-    req->__set_values(buffer);
-    shared_ptr <TSStatus> resp(new TSStatus());
+    req.__set_values(buffer);
+    TSStatus respStatus;
     try {
-        client->insertRecord(*resp, *req);
-        RpcUtils::verifySuccess(*resp);
+        client->insertRecord(respStatus, req);
+        RpcUtils::verifySuccess(respStatus);
     } catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());
     }
 }
 
-void
-Session::insertRecords(vector <string> &deviceIds, vector <int64_t> &times, vector <vector<string>> &measurementsList,
-                       vector <vector<string>> &valuesList) {
-    int len = deviceIds.size();
+void Session::insertRecords(const vector <string> &deviceIds,
+                            const vector <int64_t> &times,
+                            const vector <vector<string>> &measurementsList,
+                            const vector <vector<string>> &valuesList) {
+    size_t len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
         logic_error e("deviceIds, times, measurementsList and valuesList's size should be equal");
         throw exception(e);
     }
-    shared_ptr <TSInsertStringRecordsReq> request(new TSInsertStringRecordsReq());
-    request->__set_sessionId(sessionId);
-    request->__set_deviceIds(deviceIds);
-    request->__set_timestamps(times);
-    request->__set_measurementsList(measurementsList);
-    request->__set_valuesList(valuesList);
+    TSInsertStringRecordsReq request;
+    request.__set_sessionId(sessionId);
+    request.__set_deviceIds(deviceIds);
+    request.__set_timestamps(times);
+    request.__set_measurementsList(measurementsList);
+    request.__set_valuesList(valuesList);
 
     try {
-        shared_ptr <TSStatus> resp(new TSStatus());
-        client->insertStringRecords(*resp, *request);
-        RpcUtils::verifySuccess(*resp);
+        TSStatus respStatus;
+        client->insertStringRecords(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());
     }
 }
 
-void Session::insertRecords(vector <string> &deviceIds, vector <int64_t> &times,
-                            vector <vector<string>> &measurementsList,
-                            vector <vector<TSDataType::TSDataType>> typesList,
-                            vector <vector<char *>> &valuesList) {
-    int len = deviceIds.size();
+void Session::insertRecords(const vector <string> &deviceIds,
+                            const vector <int64_t> &times,
+                            const vector <vector<string>> &measurementsList,
+                            const vector <vector<TSDataType::TSDataType>> &typesList,
+                            const vector <vector<char *>> &valuesList) {
+    size_t len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
         logic_error e("deviceIds, times, measurementsList and valuesList's size should be equal");
         throw exception(e);
     }
-    shared_ptr <TSInsertRecordsReq> request(new TSInsertRecordsReq());
-    request->__set_sessionId(sessionId);
-    request->__set_deviceIds(deviceIds);
-    request->__set_timestamps(times);
-    request->__set_measurementsList(measurementsList);
+    TSInsertRecordsReq request;
+    request.__set_sessionId(sessionId);
+    request.__set_deviceIds(deviceIds);
+    request.__set_timestamps(times);
+    request.__set_measurementsList(measurementsList);
     vector <string> bufferList;
-    for (int i = 0; i < valuesList.size(); i++) {
+    for (size_t i = 0; i < valuesList.size(); i++) {
         string buffer;
         putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
         bufferList.push_back(buffer);
     }
-    request->__set_valuesList(bufferList);
+    request.__set_valuesList(bufferList);
 
     try {
-        shared_ptr <TSStatus> resp(new TSStatus());
-        client->insertRecords(*resp, *request);
-        RpcUtils::verifySuccess(*resp);
+        TSStatus respStatus;
+        client->insertRecords(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
     } catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());
     }
 }
 
-void Session::insertRecordsOfOneDevice(string deviceId, vector <int64_t> &times,
-                                       vector <vector<string>> measurementsList,
-                                       vector <vector<TSDataType::TSDataType>> typesList,
+void Session::insertRecordsOfOneDevice(const string &deviceId,
+                                       vector <int64_t> &times,
+                                       vector <vector<string>> &measurementsList,
+                                       vector <vector<TSDataType::TSDataType>> &typesList,
                                        vector <vector<char *>> &valuesList) {
     insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
 }
 
-void Session::insertRecordsOfOneDevice(string deviceId, vector <int64_t> &times,
-                                       vector <vector<string>> measurementsList,
-                                       vector <vector<TSDataType::TSDataType>> typesList,
-                                       vector <vector<char *>> &valuesList, bool sorted) {
+void Session::insertRecordsOfOneDevice(const string &deviceId,
+                                       vector <int64_t> &times,
+                                       vector <vector<string>> &measurementsList,
+                                       vector <vector<TSDataType::TSDataType>> &typesList,
+                                       vector <vector<char *>> &valuesList,
+                                       bool sorted) {
 
     if (sorted) {
         if (!checkSorted(times)) {
@@ -673,34 +693,33 @@ void Session::insertRecordsOfOneDevice(string deviceId, vector <int64_t> &times,
         }
     } else {
         int *index = new int[times.size()];
-        for (int i = 0; i < times.size(); i++) {
+        for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;
         }
 
         this->sortIndexByTimestamp(index, times, times.size());
-        sort(times.begin(), times.end());
         measurementsList = sortList(measurementsList, index, times.size());
         typesList = sortList(typesList, index, times.size());
         valuesList = sortList(valuesList, index, times.size());
         delete[] index;
     }
-    unique_ptr <TSInsertRecordsOfOneDeviceReq> request(new TSInsertRecordsOfOneDeviceReq());
-    request->__set_sessionId(sessionId);
-    request->__set_deviceId(deviceId);
-    request->__set_timestamps(times);
-    request->__set_measurementsList(measurementsList);
+    TSInsertRecordsOfOneDeviceReq request;
+    request.__set_sessionId(sessionId);
+    request.__set_deviceId(deviceId);
+    request.__set_timestamps(times);
+    request.__set_measurementsList(measurementsList);
     vector <string> bufferList;
-    for (int i = 0; i < valuesList.size(); i++) {
+    for (size_t i = 0; i < valuesList.size(); i++) {
         string buffer;
         putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
         bufferList.push_back(buffer);
     }
-    request->__set_valuesList(bufferList);
+    request.__set_valuesList(bufferList);
 
     try {
-        unique_ptr <TSStatus> resp(new TSStatus());
-        client->insertRecordsOfOneDevice(*resp, *request);
-        RpcUtils::verifySuccess(*resp);
+        TSStatus respStatus;
+        client->insertRecordsOfOneDevice(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
     } catch (const exception &e) {
         throw IoTDBConnectionException(e.what());
     }
@@ -725,21 +744,21 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
         sortTablet(tablet);
     }
 
-    shared_ptr <TSInsertTabletReq> request(new TSInsertTabletReq());
-    request->__set_sessionId(sessionId);
-    request->prefixPath = tablet.deviceId;
-    for (pair <string, TSDataType::TSDataType> schema : tablet.schemas) {
-        request->measurements.push_back(schema.first);
-        request->types.push_back(schema.second);
+    TSInsertTabletReq request;
+    request.__set_sessionId(sessionId);
+    request.prefixPath = tablet.deviceId;
+    for (pair <string, TSDataType::TSDataType> schema: tablet.schemas) {
+        request.measurements.push_back(schema.first);
+        request.types.push_back(schema.second);
     }
-    request->__set_timestamps(SessionUtils::getTime(tablet));
-    request->__set_values(SessionUtils::getValue(tablet));
-    request->__set_size(tablet.rowSize);
+    request.__set_timestamps(SessionUtils::getTime(tablet));
+    request.__set_values(SessionUtils::getValue(tablet));
+    request.__set_size(tablet.rowSize);
 
     try {
-        shared_ptr <TSStatus> resp(new TSStatus());
-        client->insertTablet(*resp, *request);
-        RpcUtils::verifySuccess(*resp);
+        TSStatus respStatus;
+        client->insertTablet(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
         throw new IoTDBConnectionException(e.what());
@@ -757,10 +776,10 @@ void Session::insertTablets(map<string, Tablet *> &tablets) {
 }
 
 void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
-    shared_ptr <TSInsertTabletsReq> request(new TSInsertTabletsReq());
-    request->__set_sessionId(sessionId);
+    TSInsertTabletsReq request;
+    request.__set_sessionId(sessionId);
 
-    for (auto &item : tablets) {
+    for (const auto &item: tablets) {
         if (sorted) {
             if (!checkSorted(*(item.second))) {
                 throw BatchExecutionException("Times in Tablet are not in ascending order");
@@ -769,23 +788,23 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
             sortTablet(*(tablets[item.first]));
         }
 
-        request->deviceIds.push_back(item.second->deviceId);
+        request.deviceIds.push_back(item.second->deviceId);
         vector <string> measurements;
         vector<int> dataTypes;
-        for (pair <string, TSDataType::TSDataType> schema : item.second->schemas) {
+        for (pair <string, TSDataType::TSDataType> schema: item.second->schemas) {
             measurements.push_back(schema.first);
             dataTypes.push_back(schema.second);
         }
-        request->measurementsList.push_back(measurements);
-        request->typesList.push_back(dataTypes);
-        request->timestampsList.push_back(SessionUtils::getTime(*(item.second)));
-        request->valuesList.push_back(SessionUtils::getValue(*(item.second)));
-        request->sizeList.push_back(item.second->rowSize);
+        request.measurementsList.push_back(measurements);
+        request.typesList.push_back(dataTypes);
+        request.timestampsList.push_back(SessionUtils::getTime(*(item.second)));
+        request.valuesList.push_back(SessionUtils::getValue(*(item.second)));
+        request.sizeList.push_back(item.second->rowSize);
 
         try {
-            shared_ptr <TSStatus> resp(new TSStatus());
-            client->insertTablets(*resp, *request);
-            RpcUtils::verifySuccess(*resp);
+            TSStatus respStatus;
+            client->insertTablets(respStatus, request);
+            RpcUtils::verifySuccess(respStatus);
         }
         catch (const exception &e) {
             throw IoTDBConnectionException(e.what());
@@ -793,7 +812,8 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
     }
 }
 
-void Session::testInsertRecord(string deviceId, int64_t time, vector <string> &measurements, vector <string> &values) {
+void Session::testInsertRecord(const string &deviceId, int64_t time, const vector <string> &measurements,
+                               const vector <string> &values) {
     shared_ptr <TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
     req->__set_sessionId(sessionId);
     req->__set_deviceId(deviceId);
@@ -810,11 +830,11 @@ void Session::testInsertRecord(string deviceId, int64_t time, vector <string> &m
     }
 }
 
-void Session::testInsertTablet(Tablet &tablet) {
+void Session::testInsertTablet(const Tablet &tablet) {
     shared_ptr <TSInsertTabletReq> request(new TSInsertTabletReq());
     request->__set_sessionId(sessionId);
     request->prefixPath = tablet.deviceId;
-    for (pair <string, TSDataType::TSDataType> schema : tablet.schemas) {
+    for (pair <string, TSDataType::TSDataType> schema: tablet.schemas) {
         request->measurements.push_back(schema.first);
         request->types.push_back(schema.second);
     }
@@ -832,9 +852,11 @@ void Session::testInsertTablet(Tablet &tablet) {
     }
 }
 
-void Session::testInsertRecords(vector <string> &deviceIds, vector <int64_t> &times,
-                                vector <vector<string>> &measurementsList, vector <vector<string>> &valuesList) {
-    int len = deviceIds.size();
+void Session::testInsertRecords(const vector <string> &deviceIds,
+                                const vector <int64_t> &times,
+                                const vector <vector<string>> &measurementsList,
+                                const vector <vector<string>> &valuesList) {
+    size_t len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
         logic_error error("deviceIds, times, measurementsList and valuesList's size should be equal");
         throw exception(error);
@@ -856,13 +878,13 @@ void Session::testInsertRecords(vector <string> &deviceIds, vector <int64_t> &ti
     }
 }
 
-void Session::deleteTimeseries(string path) {
+void Session::deleteTimeseries(const string &path) {
     vector <string> paths;
     paths.push_back(path);
     deleteTimeseries(paths);
 }
 
-void Session::deleteTimeseries(vector <string> &paths) {
+void Session::deleteTimeseries(const vector <string> &paths) {
     shared_ptr <TSStatus> resp(new TSStatus());
     try {
         client->deleteTimeseries(*resp, sessionId, paths);
@@ -873,13 +895,13 @@ void Session::deleteTimeseries(vector <string> &paths) {
     }
 }
 
-void Session::deleteData(string path, int64_t time) {
+void Session::deleteData(const string &path, int64_t time) {
     vector <string> paths;
     paths.push_back(path);
     deleteData(paths, time);
 }
 
-void Session::deleteData(vector <string> &deviceId, int64_t time) {
+void Session::deleteData(const vector <string> &deviceId, int64_t time) {
     shared_ptr <TSDeleteDataReq> req(new TSDeleteDataReq());
     req->__set_sessionId(sessionId);
     req->__set_paths(deviceId);
@@ -894,7 +916,7 @@ void Session::deleteData(vector <string> &deviceId, int64_t time) {
     }
 }
 
-void Session::setStorageGroup(string storageGroupId) {
+void Session::setStorageGroup(const string &storageGroupId) {
     shared_ptr <TSStatus> resp(new TSStatus());
     try {
         client->setStorageGroup(*resp, sessionId, storageGroupId);
@@ -905,13 +927,13 @@ void Session::setStorageGroup(string storageGroupId) {
     }
 }
 
-void Session::deleteStorageGroup(string storageGroup) {
+void Session::deleteStorageGroup(const string &storageGroup) {
     vector <string> storageGroups;
     storageGroups.push_back(storageGroup);
     deleteStorageGroups(storageGroups);
 }
 
-void Session::deleteStorageGroups(vector <string> &storageGroups) {
+void Session::deleteStorageGroups(const vector <string> &storageGroups) {
     shared_ptr <TSStatus> resp(new TSStatus());
     try {
         client->deleteStorageGroups(*resp, sessionId, storageGroups);
@@ -922,7 +944,9 @@ void Session::deleteStorageGroups(vector <string> &storageGroups) {
     }
 }
 
-void Session::createTimeseries(string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
+void Session::createTimeseries(const string &path,
+                               TSDataType::TSDataType dataType,
+                               TSEncoding::TSEncoding encoding,
                                CompressionType::CompressionType compressor) {
     try {
         createTimeseries(path, dataType, encoding, compressor, NULL, NULL, NULL, "");
@@ -932,10 +956,15 @@ void Session::createTimeseries(string path, TSDataType::TSDataType dataType, TSE
     }
 }
 
-void Session::createTimeseries(string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
+// TODO:
+void Session::createTimeseries(const string &path,
+                               TSDataType::TSDataType dataType,
+                               TSEncoding::TSEncoding encoding,
                                CompressionType::CompressionType compressor,
-                               map <string, string> *props, map <string, string> *tags,
-                               map <string, string> *attributes, string measurementAlias) {
+                               map <string, string> *props,
+                               map <string, string> *tags,
+                               map <string, string> *attributes,
+                               const string &measurementAlias) {
     shared_ptr <TSCreateTimeseriesReq> req(new TSCreateTimeseriesReq());
     req->__set_sessionId(sessionId);
     req->__set_path(path);
@@ -966,10 +995,12 @@ void Session::createTimeseries(string path, TSDataType::TSDataType dataType, TSE
     }
 }
 
-void Session::createMultiTimeseries(vector <string> paths, vector <TSDataType::TSDataType> dataTypes,
-                                    vector <TSEncoding::TSEncoding> encodings,
-                                    vector <CompressionType::CompressionType> compressors,
-                                    vector <map<string, string>> *propsList, vector <map<string, string>> *tagsList,
+void Session::createMultiTimeseries(const vector <string> &paths,
+                                    const vector <TSDataType::TSDataType> &dataTypes,
+                                    const vector <TSEncoding::TSEncoding> &encodings,
+                                    const vector <CompressionType::CompressionType> &compressors,
+                                    vector <map<string, string>> *propsList,
+                                    vector <map<string, string>> *tagsList,
                                     vector <map<string, string>> *attributesList,
                                     vector <string> *measurementAliasList) {
     shared_ptr <TSCreateMultiTimeseriesReq> request(new TSCreateMultiTimeseriesReq());
@@ -977,13 +1008,13 @@ void Session::createMultiTimeseries(vector <string> paths, vector <TSDataType::T
     request->__set_paths(paths);
 
     vector<int> dataTypesOrdinal;
-    for (TSDataType::TSDataType dataType : dataTypes) {
+    for (TSDataType::TSDataType dataType: dataTypes) {
         dataTypesOrdinal.push_back(dataType);
     }
     request->__set_dataTypes(dataTypesOrdinal);
 
     vector<int> encodingsOrdinal;
-    for (TSEncoding::TSEncoding encoding : encodings) {
+    for (TSEncoding::TSEncoding encoding: encodings) {
         encodingsOrdinal.push_back(encoding);
     }
     request->__set_encodings(encodingsOrdinal);
@@ -1018,7 +1049,7 @@ void Session::createMultiTimeseries(vector <string> paths, vector <TSDataType::T
     }
 }
 
-bool Session::checkTimeseriesExists(string path) {
+bool Session::checkTimeseriesExists(const string &path) {
     try {
         std::unique_ptr <SessionDataSet> dataset = executeQueryStatement("SHOW TIMESERIES " + path);
         bool isExisted = dataset->hasNext();
@@ -1045,7 +1076,7 @@ string Session::getTimeZone() {
     return resp->timeZone;
 }
 
-void Session::setTimeZone(string zoneId) {
+void Session::setTimeZone(const string &zoneId) {
     shared_ptr <TSSetTimeZoneReq> req(new TSSetTimeZoneReq());
     req->__set_sessionId(sessionId);
     req->__set_timeZone(zoneId);
@@ -1060,7 +1091,7 @@ void Session::setTimeZone(string zoneId) {
     this->zoneId = zoneId;
 }
 
-unique_ptr <SessionDataSet> Session::executeQueryStatement(string sql) {
+unique_ptr <SessionDataSet> Session::executeQueryStatement(const string &sql) {
     shared_ptr <TSExecuteStatementReq> req(new TSExecuteStatementReq());
     req->__set_sessionId(sessionId);
     req->__set_statementId(statementId);
@@ -1079,7 +1110,7 @@ unique_ptr <SessionDataSet> Session::executeQueryStatement(string sql) {
             sql, resp->columns, resp->dataTypeList, resp->queryId, statementId, client, sessionId, queryDataSet));
 }
 
-void Session::executeNonQueryStatement(string sql) {
+void Session::executeNonQueryStatement(const string &sql) {
     shared_ptr <TSExecuteStatementReq> req(new TSExecuteStatementReq());
     req->__set_sessionId(sessionId);
     req->__set_statementId(statementId);

@@ -27,16 +27,16 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.io.File;
 
-public class MoveFileOperator extends Operator {
+public class UnloadFileOperator extends Operator {
 
   private File file;
   private File targetDir;
 
-  public MoveFileOperator(File file, File targetDir) {
-    super(SQLConstant.TOK_MOVE_FILE);
+  public UnloadFileOperator(File file, File targetDir) {
+    super(SQLConstant.TOK_UNLOAD_FILE);
     this.file = file;
     this.targetDir = targetDir;
-    this.operatorType = OperatorType.MOVE_FILE;
+    this.operatorType = OperatorType.UNLOAD_FILE;
   }
 
   public File getFile() {
@@ -50,6 +50,6 @@ public class MoveFileOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new OperateFilePlan(file, targetDir, OperatorType.MOVE_FILE);
+    return new OperateFilePlan(file, targetDir, OperatorType.UNLOAD_FILE);
   }
 }
