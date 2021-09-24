@@ -649,7 +649,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                     mergeResources.get(i),
                     Long.MAX_VALUE);
           } else {
-            compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             List<TsFileResource> toMergeTsFiles =
                 mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
             compactionSelectionLock.lock();
@@ -660,6 +659,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             } finally {
               compactionSelectionLock.unlock();
             }
+            compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
               compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
