@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -33,6 +34,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,6 +53,7 @@ public class CompactionTaskManager implements IService {
   private ScheduledThreadPoolExecutor pool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
+  private Queue<AbstractCompactionTask> compactionTaskQueue = new PriorityQueue<>();
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
@@ -148,6 +152,8 @@ public class CompactionTaskManager implements IService {
   public ServiceType getID() {
     return ServiceType.COMPACTION_SERVICE;
   }
+
+  public synchronized void addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {}
 
   public synchronized void submitTask(
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)

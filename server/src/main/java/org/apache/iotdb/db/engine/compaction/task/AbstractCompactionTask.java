@@ -63,4 +63,12 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     }
     return null;
   }
+
+  public String getFullStorageGroupName() {
+    return fullStorageGroupName;
+  }
+
+  public long getTimePartition() {
+    return timePartition;
+  }
 }
