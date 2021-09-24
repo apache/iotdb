@@ -936,7 +936,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         // the node may have some inconsistent logs with the leader
         waitedTime = System.currentTimeMillis() - startTime;
         synchronized (syncLock) {
-          syncLock.wait(ClusterConstant.getHeartBeatIntervalMs());
+          syncLock.wait(ClusterConstant.getHeartbeatIntervalMs());
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

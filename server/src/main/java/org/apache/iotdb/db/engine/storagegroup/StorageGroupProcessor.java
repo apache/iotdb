@@ -56,7 +56,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -76,7 +75,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -1092,32 +1090,34 @@ public class StorageGroupProcessor {
       return;
     }
     IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
-    int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
-      // Don't update cached last value for vector type
-      if (mNodes[i] != null && plan.isAligned()) {
-        columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
+      if (plan.getColumns()[i] == null) {
+        continue;
+      }
+      // Update cached last value with high priority
+      if (mNodes[i] == null) {
+        // no matter aligned or not, concat the path to use the full path to update LastCache
+        IoTDB.metaManager.updateLastCache(
+            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+            plan.composeLastTimeValuePair(i),
+            true,
+            latestFlushedTime);
       } else {
-        if (plan.getColumns()[i] == null) {
-          columnIndex++;
-          continue;
-        }
-        // Update cached last value with high priority
-        if (mNodes[i] != null) {
+        if (plan.isAligned()) {
+          // vector lastCache update need subMeasurement
+          IoTDB.metaManager.updateLastCache(
+              mNodes[i],
+              plan.getMeasurements()[i],
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
+
+        } else {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              null, plan.composeLastTimeValuePair(columnIndex), true, latestFlushedTime, mNodes[i]);
-        } else {
-          // measurementMNodes[i] is null, use the path to update remote cache
-          IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
-              plan.composeLastTimeValuePair(columnIndex),
-              true,
-              latestFlushedTime,
-              null);
+              mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
         }
-        columnIndex++;
       }
     }
   }
@@ -1159,29 +1159,33 @@ public class StorageGroupProcessor {
       return;
     }
     IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
-    int columnIndex = 0;
-    for (IMeasurementMNode mNode : mNodes) {
-      // Don't update cached last value for vector type
-      if (!plan.isAligned()) {
-        if (plan.getValues()[columnIndex] == null) {
-          columnIndex++;
-          continue;
-        }
-        // Update cached last value with high priority
-        if (mNode != null) {
+    for (int i = 0; i < mNodes.length; i++) {
+      if (plan.getValues()[i] == null) {
+        continue;
+      }
+      // Update cached last value with high priority
+      if (mNodes[i] == null) {
+        // no matter aligned or not, concat the path to use the full path to update LastCache
+        IoTDB.metaManager.updateLastCache(
+            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+            plan.composeTimeValuePair(i),
+            true,
+            latestFlushedTime);
+      } else {
+        if (plan.isAligned()) {
+          // vector lastCache update need subSensor path
+          IoTDB.metaManager.updateLastCache(
+              mNodes[i],
+              plan.getMeasurements()[i],
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        } else {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              null, plan.composeTimeValuePair(columnIndex), true, latestFlushedTime, mNode);
-        } else {
-          IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
-              plan.composeTimeValuePair(columnIndex),
-              true,
-              latestFlushedTime,
-              null);
+              mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
         }
-        columnIndex++;
       }
     }
   }
@@ -1872,8 +1876,14 @@ public class StorageGroupProcessor {
    * @param path the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
+   * @param timePartitionFilter
    */
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws IOException {
     // If there are still some old version tsfiles, the delete won't succeeded.
     if (upgradeFileCount.get() != 0) {
@@ -1904,7 +1914,7 @@ public class StorageGroupProcessor {
       }
 
       // write log to impacted working TsFileProcessors
-      logDeletion(startTime, endTime, path);
+      logDeletion(startTime, endTime, path, timePartitionFilter);
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
       if (tsFileManagement.mergingModification != null) {
@@ -1913,9 +1923,19 @@ public class StorageGroupProcessor {
       }
 
       deleteDataInFiles(
-          tsFileManagement.getTsFileList(true), deletion, devicePaths, updatedModFiles, planIndex);
+          tsFileManagement.getTsFileList(true),
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          planIndex,
+          timePartitionFilter);
       deleteDataInFiles(
-          tsFileManagement.getTsFileList(false), deletion, devicePaths, updatedModFiles, planIndex);
+          tsFileManagement.getTsFileList(false),
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          planIndex,
+          timePartitionFilter);
 
     } catch (Exception e) {
       // roll back
@@ -1928,19 +1948,27 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void logDeletion(long startTime, long endTime, PartialPath path) throws IOException {
+  private void logDeletion(
+      long startTime, long endTime, PartialPath path, TimePartitionFilter timePartitionFilter)
+      throws IOException {
     long timePartitionStartId = StorageEngine.getTimePartition(startTime);
     long timePartitionEndId = StorageEngine.getTimePartition(endTime);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       DeletePlan deletionPlan = new DeletePlan(startTime, endTime, path);
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-        if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
+        if (timePartitionStartId <= entry.getKey()
+            && entry.getKey() <= timePartitionEndId
+            && (timePartitionFilter == null
+                || timePartitionFilter.satisfy(logicalStorageGroupName, entry.getKey()))) {
           entry.getValue().getLogNode().write(deletionPlan);
         }
       }
 
       for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-        if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
+        if (timePartitionStartId <= entry.getKey()
+            && entry.getKey() <= timePartitionEndId
+            && (timePartitionFilter == null
+                || timePartitionFilter.satisfy(logicalStorageGroupName, entry.getKey()))) {
           entry.getValue().getLogNode().write(deletionPlan);
         }
       }
@@ -1951,7 +1979,13 @@ public class StorageGroupProcessor {
       TsFileResource tsFileResource,
       Set<PartialPath> devicePaths,
       long deleteStart,
-      long deleteEnd) {
+      long deleteEnd,
+      TimePartitionFilter timePartitionFilter) {
+    if (timePartitionFilter != null
+        && !timePartitionFilter.satisfy(
+            logicalStorageGroupName, tsFileResource.getTimePartition())) {
+      return true;
+    }
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
       long endTime = tsFileResource.getEndTime(deviceId);
@@ -1972,11 +2006,16 @@ public class StorageGroupProcessor {
       Deletion deletion,
       Set<PartialPath> devicePaths,
       List<ModificationFile> updatedModFiles,
-      long planIndex)
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(
-          tsFileResource, devicePaths, deletion.getStartTime(), deletion.getEndTime())) {
+          tsFileResource,
+          devicePaths,
+          deletion.getStartTime(),
+          deletion.getEndTime(),
+          timePartitionFilter)) {
         continue;
       }
 
@@ -2012,24 +2051,7 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
-
-      for (IMNode measurementNode : node.getChildren().values()) {
-        if (measurementNode != null
-            && originalPath.matchFullPath(measurementNode.getPartialPath())) {
-          TimeValuePair lastPair = ((IMeasurementMNode) measurementNode).getCachedLast();
-          if (lastPair != null
-              && startTime <= lastPair.getTimestamp()
-              && lastPair.getTimestamp() <= endTime) {
-            ((IMeasurementMNode) measurementNode).resetCache();
-            if (logger.isDebugEnabled()) {
-              logger.debug(
-                  "[tryToDeleteLastCache] Last cache for path: {} is set to null",
-                  measurementNode.getFullPath());
-            }
-          }
-        }
-      }
+      IoTDB.metaManager.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
     }
@@ -2362,16 +2384,7 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
-
-      for (IMNode measurementNode : node.getChildren().values()) {
-        if (measurementNode != null) {
-          ((IMeasurementMNode) measurementNode).resetCache();
-          logger.debug(
-              "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
-              measurementNode.getFullPath());
-        }
-      }
+      IoTDB.metaManager.deleteLastCacheByDevice(deviceId);
     } catch (MetadataException e) {
       // the path doesn't cache in cluster mode now, ignore
     }
@@ -2911,23 +2924,23 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Move tsfile to the target directory if it exists.
+   * Unload tsfile and move it to the target directory if it exists.
    *
-   * <p>Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
+   * <p>Firstly, unload the TsFileResource from sequenceFileList/unSequenceFileList.
    *
    * <p>Secondly, move the tsfile and .resource file to the target directory.
    *
-   * @param fileToBeMoved tsfile to be moved
-   * @return whether the file to be moved exists. @UsedBy load external tsfile module.
+   * @param fileToBeUnloaded tsfile to be unloaded
+   * @return whether the file to be unloaded exists. @UsedBy load external tsfile module.
    */
-  public boolean moveTsfile(File fileToBeMoved, File targetDir) {
-    writeLock("moveTsfile");
+  public boolean unloadTsfile(File fileToBeUnloaded, File targetDir) {
+    writeLock("unloadTsfile");
     TsFileResource tsFileResourceToBeMoved = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
-        if (sequenceResource.getTsFile().getName().equals(fileToBeMoved.getName())) {
+        if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
           tsFileResourceToBeMoved = sequenceResource;
           tsFileManagement.remove(tsFileResourceToBeMoved, true);
           break;
@@ -2937,7 +2950,7 @@ public class StorageGroupProcessor {
         Iterator<TsFileResource> unsequenceIterator = tsFileManagement.getIterator(false);
         while (unsequenceIterator.hasNext()) {
           TsFileResource unsequenceResource = unsequenceIterator.next();
-          if (unsequenceResource.getTsFile().getName().equals(fileToBeMoved.getName())) {
+          if (unsequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
             tsFileResourceToBeMoved = unsequenceResource;
             tsFileManagement.remove(tsFileResourceToBeMoved, false);
             break;

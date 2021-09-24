@@ -16,18 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tool;
 
-import org.junit.Assert;
-import org.junit.Test;
+package org.apache.iotdb.db.metadata.lastCache.container.value;
 
-public class CsvLineSplitTest {
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-  @Test
-  public void testSplit() {
-    Assert.assertArrayEquals(
-        new String[] {"", "a", "b", "c", "\\\""}, ImportCsv.splitCsvLine(",a,b,c,\"\\\"\""));
-    Assert.assertArrayEquals(
-        new String[] {"", "a", "b", "\\'"}, ImportCsv.splitCsvLine(",a,b,\"\\'\""));
-  }
+// this interface declares the simplest storage operation of lastCacheValue
+public interface ILastCacheValue {
+
+  long getTimestamp();
+
+  void setTimestamp(long timestamp);
+
+  void setValue(TsPrimitiveType value);
+
+  TimeValuePair getTimeValuePair();
+
+  int getSize();
+
+  long getTimestamp(int index);
+
+  void setTimestamp(int index, long timestamp);
+
+  TsPrimitiveType getValue(int index);
+
+  void setValue(int index, TsPrimitiveType value);
+
+  TimeValuePair getTimeValuePair(int index);
 }

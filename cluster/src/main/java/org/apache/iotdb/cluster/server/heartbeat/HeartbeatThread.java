@@ -69,9 +69,7 @@ public class HeartbeatThread implements Runnable {
   public void run() {
     logger.info("{}: Heartbeat thread starts...", memberName);
     // sleep random time to reduce first election conflicts
-    long electionWait =
-        ClusterConstant.getElectionLeastTimeOutMs()
-            + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
+    long electionWait = getElectionRandomWaitMs();
     try {
       logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
       Thread.sleep(electionWait);
@@ -85,15 +83,18 @@ public class HeartbeatThread implements Runnable {
             // send heartbeats to the followers
             sendHeartbeats();
             synchronized (localMember.getHeartBeatWaitObject()) {
-              localMember.getHeartBeatWaitObject().wait(ClusterConstant.getHeartBeatIntervalMs());
+              localMember.getHeartBeatWaitObject().wait(ClusterConstant.getHeartbeatIntervalMs());
             }
             hasHadLeader = true;
             break;
           case FOLLOWER:
             // check if heartbeat times out
-            long heartBeatInterval =
+            long heartbeatInterval =
                 System.currentTimeMillis() - localMember.getLastHeartbeatReceivedTime();
-            if (heartBeatInterval >= ClusterConstant.getConnectionTimeoutInMS()) {
+
+            long randomElectionTimeout =
+                ClusterConstant.getElectionTimeoutMs() + getElectionRandomWaitMs();
+            if (heartbeatInterval >= randomElectionTimeout) {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
@@ -104,9 +105,12 @@ public class HeartbeatThread implements Runnable {
                   memberName,
                   localMember.getLeader());
               synchronized (localMember.getHeartBeatWaitObject()) {
-                localMember
-                    .getHeartBeatWaitObject()
-                    .wait(ClusterConstant.getConnectionTimeoutInMS());
+                // we sleep to next possible heartbeat timeout point
+                long leastWaitTime =
+                    localMember.getLastHeartbeatReceivedTime()
+                        + randomElectionTimeout
+                        - System.currentTimeMillis();
+                localMember.getHeartBeatWaitObject().wait(leastWaitTime);
               }
             }
             hasHadLeader = true;
@@ -232,17 +236,15 @@ public class HeartbeatThread implements Runnable {
                 } catch (TTransportException e) {
                   if (ClusterIoTDB.printClientConnectionErrorStack) {
                     logger.warn(
-                        "{}: Cannot send heart beat to node {} due to network",
-                        memberName,
-                        node,
-                        e);
+                        "{}: Cannot send heartbeat to node {} due to network", memberName, node, e);
                   } else {
                     logger.warn(
-                        "{}: Cannot send heart beat to node {} due to network", memberName, node);
+                        "{}: Cannot send heartbeat to node {} due to network", memberName, node);
                   }
                   client.getInputProtocol().getTransport().close();
                 } catch (Exception e) {
-                  logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
+                  logger.warn(
+                      memberName + ": Cannot send heart beat to node " + node.toString(), e);
                 } finally {
                   localMember.returnSyncClient(client);
                 }
@@ -268,9 +270,7 @@ public class HeartbeatThread implements Runnable {
       startElection();
       if (localMember.getCharacter() == NodeCharacter.ELECTOR) {
         // sleep random time to reduce election conflicts
-        long electionWait =
-            ClusterConstant.getElectionLeastTimeOutMs()
-                + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
+        long electionWait = getElectionRandomWaitMs();
         logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
         Thread.sleep(electionWait);
       }
@@ -330,8 +330,8 @@ public class HeartbeatThread implements Runnable {
         logger.info(
             "{}: Wait for {}ms until election time out",
             memberName,
-            ClusterConstant.getConnectionTimeoutInMS());
-        localMember.getTerm().wait(ClusterConstant.getConnectionTimeoutInMS());
+            ClusterConstant.getElectionTimeoutMs());
+        localMember.getTerm().wait(ClusterConstant.getElectionTimeoutMs());
       } catch (InterruptedException e) {
         logger.info(
             "{}: Unexpected interruption when waiting the result of election {}",
@@ -422,7 +422,11 @@ public class HeartbeatThread implements Runnable {
                 } catch (TException e) {
                   client.getInputProtocol().getTransport().close();
                   logger.warn(
-                      "{}: Cannot request a vote from {} due to network", memberName, node, e);
+                      memberName
+                          + ": Cannot request a vote from "
+                          + node.toString()
+                          + " due to network",
+                      e);
                   handler.onError(e);
                 } catch (Exception e) {
                   handler.onError(e);
@@ -431,5 +435,9 @@ public class HeartbeatThread implements Runnable {
                 }
               }
             });
+  }
+
+  private long getElectionRandomWaitMs() {
+    return Math.abs(random.nextLong() % ClusterConstant.getElectionMaxWaitMs());
   }
 }
