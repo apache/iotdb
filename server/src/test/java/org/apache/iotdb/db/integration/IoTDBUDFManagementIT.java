@@ -273,6 +273,27 @@ public class IoTDBUDFManagementIT {
   }
 
   @Test
+  public void testDropBuiltInFunction() throws SQLException { // drop
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("drop function abs");
+        fail();
+      } catch (SQLException throwable) {
+        assertTrue(throwable.getMessage().contains("Built-in function"));
+      }
+      statement.execute("INSERT INTO root.vehicle.d1(time, s1) VALUES(1, -10.0)");
+      ResultSet rs = statement.executeQuery("SELECT ABS(s1) FROM root.vehicle.d1");
+      Assert.assertTrue(rs.next());
+      Assert.assertEquals(1, rs.getLong(1));
+      Assert.assertEquals(10.0F, rs.getFloat(2), 0.00001);
+      Assert.assertFalse(rs.next());
+    }
+  }
+
+  @Test
   public void testCreateBuiltinFunction() throws ClassNotFoundException {
     UDFRegistrationService.getInstance()
         .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
