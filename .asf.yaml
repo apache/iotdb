@@ -30,4 +30,4 @@ github:
     - tsdb
   features:
     wiki: true
-    issue: true
+    issues: true
