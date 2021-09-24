@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.influxdb.example;
 
-import org.apache.iotdb.influxdb.IotDBInfluxDB;
 import org.apache.iotdb.influxdb.IotDBInfluxDBFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -34,11 +33,11 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class InfluxDBExample {
-  private static InfluxDB influxDB ;
+  private static InfluxDB influxDB;
 
   public static void main(String[] args) throws Exception {
     // init
-    influxDB= IotDBInfluxDBFactory.connect("http://127.0.0.1:6667", "root", "root");
+    influxDB = IotDBInfluxDBFactory.connect("http://127.0.0.1:6667", "root", "root");
     // create database
     influxDB.createDatabase("database");
     // set database

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.influxdb.integration;
 
-
 import org.apache.iotdb.influxdb.IotDBInfluxDBFactory;
+
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
@@ -45,8 +45,9 @@ public class IotdbInfluxdbIT {
 
   @Before
   public void setUp() {
-    influxDB=
-            IotDBInfluxDBFactory.connect(IotDB.getContainerIpAddress(), IotDB.getMappedPort(6667), "root", "root");
+    influxDB =
+        IotDBInfluxDBFactory.connect(
+            IotDB.getContainerIpAddress(), IotDB.getMappedPort(6667), "root", "root");
     influxDB.createDatabase("database");
     influxDB.setDatabase("database");
     insertData();
