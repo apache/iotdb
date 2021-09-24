@@ -550,9 +550,9 @@ public class SyncClient implements ISyncClient {
     logger.info("Start to sync names of deleted files in storage group {}", sgName);
     for (File file : deletedFilesName) {
       try {
-        if (serviceClient.syncDeletedFileName(getFileNameWithSG(file)).code == SUCCESS_CODE) {
+        if (serviceClient.syncDeletedFileName(getFileInfoWithVgAndTimePartition(file)).code == SUCCESS_CODE) {
           logger.info(
-              "Receiver has received deleted file name {} successfully.", getFileNameWithSG(file));
+              "Receiver has received deleted file name {} successfully.", file.getPath());
           lastLocalFilesMap.get(sgName).get(vgId).get(timeRangeId).remove(file);
           syncLog.finishSyncDeletedFileName(file);
         }
@@ -623,7 +623,7 @@ public class SyncClient implements ISyncClient {
     try {
       int retryCount = 0;
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
-      serviceClient.initSyncData(getFileNameWithSG(snapshotFile));
+      serviceClient.initSyncData(getFileInfoWithVgAndTimePartition(snapshotFile));
       outer:
       while (true) {
         retryCount++;
@@ -745,13 +745,11 @@ public class SyncClient implements ISyncClient {
     SyncClient.config = config;
   }
 
-  private String getFileNameWithSG(File file) {
-    return file.getParentFile().getParentFile().getParentFile().getName()
-        + File.separator
-        + file.getParentFile().getParentFile().getName()
-        + File.separator
+  private String getFileInfoWithVgAndTimePartition(File file) {
+    return file.getParentFile().getParentFile().getName()
+        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
         + file.getParentFile().getName()
-        + File.separator
+        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
         + file.getName();
   }
 }
