@@ -78,11 +78,11 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus check(ConfirmInfo info) {
     String ipAddress = info.address, uuid = info.uuid;
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
-    if (!info.version.equals(IoTDBConstant.VERSION)) {
+    if (!info.version.equals(IoTDBConstant.MAJOR_VERSION)) {
       return getErrorResult(
           String.format(
               "Version mismatch: the sender <%s>, the receiver <%s>",
-              info.version, IoTDBConstant.VERSION));
+              info.version, IoTDBConstant.MAJOR_VERSION));
     }
     if (info.partitionInterval
         != IoTDBDescriptor.getInstance().getConfig().getPartitionInterval()) {

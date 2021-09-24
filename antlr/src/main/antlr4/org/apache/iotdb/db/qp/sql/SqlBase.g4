@@ -124,13 +124,18 @@ resultColumn
     ;
 
 expression
-    : LR_BRACKET unary=expression RR_BRACKET
-    | (PLUS | MINUS) unary=expression
+    : LR_BRACKET unaryInBracket=expression RR_BRACKET
+    | (PLUS | MINUS) unaryAfterSign=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-    | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPath
     | literal=SINGLE_QUOTE_STRING_LITERAL
+    ;
+
+functionName
+    : ID
+    | COUNT
     ;
 
 functionAttribute

@@ -143,6 +143,14 @@ For example, for the path `root.sg1.d1.v1`,  `${1}` means `sg1`,  `${2}` means `
   from root.sg.d1
   ```
 
+* Nested query
+
+  ```sql
+  select -s1, sin(cos(tan(s1 + s2 * s3))) + cos(s3), top_k(s1 + s3, 'k'='1') 
+  into t1, t2, t3 
+  from root.sg.d1
+  ```
+  
 * Fill query
 
   ```sql
