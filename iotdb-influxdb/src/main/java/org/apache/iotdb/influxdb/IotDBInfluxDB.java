@@ -211,16 +211,25 @@ public class IotDBInfluxDB implements InfluxDB {
     }
     Operator operator = LogicalGenerator.generate(sql);
     IotDBInfluxDBUtils.checkQueryOperator(operator);
+    QueryOperator queryOperator = (QueryOperator) operator;
     // update relative data
-    updateMeasurement(((QueryOperator) operator).getFromComponent().getNodeName().get(0));
+    updateMeasurement(queryOperator.getFromComponent().getNodeName().get(0));
     QueryResult queryResult = null;
     try {
       updateFiledOrders();
-
-      // step1 : generate query results
-      queryResult = queryExpr(((QueryOperator) operator).getWhereComponent().getFilterOperator());
-      // step2 : select filter
-      ProcessSelectComponent(queryResult, ((QueryOperator) operator).getSelectComponent());
+      // contain filter condition or don't have function the result of the function is calculated by
+      // traversal
+      if (queryOperator.getWhereComponent() != null
+          || !queryOperator.getSelectComponent().isHasFunction()) {
+        // step1 : generate query results
+        queryResult = queryExpr(queryOperator.getWhereComponent().getFilterOperator());
+        // step2 : select filter
+        ProcessSelectComponent(queryResult, queryOperator.getSelectComponent());
+      }
+      // don't contain filter condition and have function use iotdb function
+      else {
+        queryResult = queryFuncWithoutFilter(queryOperator.getSelectComponent());
+      }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       throw new RuntimeException(e.getMessage());
     }
@@ -888,6 +897,59 @@ public class IotDBInfluxDB implements InfluxDB {
     values.add(tag);
     values.add(order);
     session.insertRecord("root.TAG_INFO", System.currentTimeMillis(), measurements, types, values);
+  }
+
+  /**
+   * Query the select result. By default, there are no filter conditions. The functions to be
+   * queried use the built-in iotdb functions
+   *
+   * @param selectComponent select data to query
+   * @return select query result
+   */
+  private QueryResult queryFuncWithoutFilter(SelectComponent selectComponent) {
+    // columns
+    List<String> columns = new ArrayList<>();
+    columns.add(SQLConstant.RESERVED_TIME);
+
+    List<Function> functions = new ArrayList<>();
+    String path = "root." + this.database + "." + this.measurement;
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if (expression instanceof FunctionExpression) {
+        String functionName = ((FunctionExpression) expression).getFunctionName();
+        functions.add(
+            FunctionFactory.generateFunctionBySession(
+                functionName, ((FunctionExpression) expression).getExpressions(), session, path));
+        columns.add(functionName);
+      }
+    }
+
+    List<Object> value = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+    for (Function function : functions) {
+      FunctionValue functionValue = function.calculateByIotdbFunc();
+      if (value.size() == 0) {
+        value.add(functionValue.getTimestamp());
+      } else {
+        value.set(0, functionValue.getTimestamp());
+      }
+      value.add(functionValue.getValue());
+    }
+    if (selectComponent.isHasAggregationFunction() || selectComponent.isHasMoreFunction()) {
+      value.set(0, 0);
+    }
+    values.add(value);
+
+    // generate series
+    QueryResult queryResult = new QueryResult();
+    QueryResult.Series series = new QueryResult.Series();
+    series.setColumns(columns);
+    series.setValues(values);
+    series.setName(measurement);
+    QueryResult.Result result = new QueryResult.Result();
+    result.setSeries(new ArrayList<>(Arrays.asList(series)));
+    queryResult.setResults(new ArrayList<>(Arrays.asList(result)));
+    return queryResult;
   }
 
   /**

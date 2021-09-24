@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
+import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.qp.utils.MathUtil;
 import org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +37,10 @@ public class SumFunction extends Aggregate {
 
   public SumFunction(List<Expression> expressionList) {
     super(expressionList);
+  }
+
+  public SumFunction(List<Expression> expressionList, Session session, String path) {
+    super(expressionList, session, path);
   }
 
   public SumFunction() {}
@@ -49,5 +59,25 @@ public class SumFunction extends Aggregate {
   @Override
   public FunctionValue calculate() {
     return new FunctionValue(numbers.size() == 0 ? numbers : MathUtil.Sum(numbers), 0L);
+  }
+
+  @Override
+  public FunctionValue calculateByIotdbFunc() {
+    int sum = 0;
+    try {
+      SessionDataSet sessionDataSet =
+          this.session.executeQueryStatement(
+              IotDBInfluxDBUtils.generateFunctionSql("sum", getParmaName(), path));
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
+        if (fields.get(1).getDataType() != null) {
+          sum += fields.get(1).getDoubleV();
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
+    return new FunctionValue(sum, 0L);
   }
 }

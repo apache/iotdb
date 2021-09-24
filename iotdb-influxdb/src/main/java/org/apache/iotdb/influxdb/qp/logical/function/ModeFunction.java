@@ -70,4 +70,9 @@ public class ModeFunction extends Aggregate {
   public FunctionValue calculate() {
     return new FunctionValue(maxObject, 0L);
   }
+
+  @Override
+  public FunctionValue calculateByIotdbFunc() {
+    return null;
+  }
 }

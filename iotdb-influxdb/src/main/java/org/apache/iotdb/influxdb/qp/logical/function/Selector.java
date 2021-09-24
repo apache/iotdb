@@ -20,6 +20,7 @@
 package org.apache.iotdb.influxdb.qp.logical.function;
 
 import org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.session.Session;
 
 import java.util.List;
 
@@ -34,6 +35,10 @@ public abstract class Selector extends Function {
 
   public Selector(List<Expression> expressionList) {
     super(expressionList);
+  }
+
+  public Selector(List<Expression> expressionList, Session session, String path) {
+    super(expressionList, session, path);
   }
 
   public abstract void updateValueAndRelate(FunctionValue functionValue, List<Object> values);

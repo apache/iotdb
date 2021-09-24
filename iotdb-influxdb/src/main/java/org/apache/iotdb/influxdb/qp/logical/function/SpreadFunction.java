@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
+import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.List;
 
@@ -31,7 +37,9 @@ public class SpreadFunction extends Aggregate {
     super(expressionList);
   }
 
-  public SpreadFunction() {}
+  public SpreadFunction(List<Expression> expressionList, Session session, String path) {
+    super(expressionList, session, path);
+  }
 
   @Override
   public void updateValue(FunctionValue functionValue) {
@@ -52,5 +60,51 @@ public class SpreadFunction extends Aggregate {
   @Override
   public FunctionValue calculate() {
     return new FunctionValue(maxNum - minNum, 0L);
+  }
+
+  @Override
+  public FunctionValue calculateByIotdbFunc() {
+    Double maxNumber = null;
+    Double minNumber = null;
+    try {
+      SessionDataSet sessionDataSet =
+          this.session.executeQueryStatement(
+              IotDBInfluxDBUtils.generateFunctionSql("max_value", getParmaName(), path));
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
+        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
+        if ((o instanceof Number)) {
+          double tmpValue = ((Number) o).doubleValue();
+          if (maxNumber == null) {
+            maxNumber = tmpValue;
+          } else if (tmpValue > maxNumber) {
+            maxNumber = tmpValue;
+          }
+        }
+      }
+      sessionDataSet =
+          this.session.executeQueryStatement(
+              IotDBInfluxDBUtils.generateFunctionSql("min_value", getParmaName(), path));
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
+        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
+        if ((o instanceof Number)) {
+          double tmpValue = ((Number) o).doubleValue();
+          if (minNumber == null) {
+            minNumber = tmpValue;
+          } else if (tmpValue < minNumber) {
+            minNumber = tmpValue;
+          }
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
+    if (maxNumber == null || minNumber == null) {
+      return new FunctionValue(null, null);
+    }
+    return new FunctionValue(maxNumber - minNumber, 0L);
   }
 }

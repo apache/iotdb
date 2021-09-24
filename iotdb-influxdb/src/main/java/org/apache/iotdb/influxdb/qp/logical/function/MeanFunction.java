@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
+import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.qp.utils.MathUtil;
 import org.apache.iotdb.influxdb.qp.utils.TypeUtil;
 import org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +37,10 @@ public class MeanFunction extends Aggregate {
 
   public MeanFunction(List<Expression> expressionList) {
     super(expressionList);
+  }
+
+  public MeanFunction(List<Expression> expressionList, Session session, String path) {
+    super(expressionList, session, path);
   }
 
   public MeanFunction() {}
@@ -49,5 +59,38 @@ public class MeanFunction extends Aggregate {
   public FunctionValue calculate() {
     return new FunctionValue(
         numbers.size() == 0 ? numbers : String.valueOf(MathUtil.Mean(numbers)), 0L);
+  }
+
+  @Override
+  public FunctionValue calculateByIotdbFunc() {
+
+    int sum = 0;
+    int count = 0;
+    try {
+      SessionDataSet sessionDataSet =
+          this.session.executeQueryStatement(
+              IotDBInfluxDBUtils.generateFunctionSql("count", getParmaName(), path));
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
+        if (fields.get(1).getDataType() != null) {
+          count += fields.get(1).getLongV();
+        }
+      }
+
+      sessionDataSet =
+          this.session.executeQueryStatement(
+              IotDBInfluxDBUtils.generateFunctionSql("sum", getParmaName(), path));
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
+        if (fields.get(1).getDataType() != null) {
+          sum += fields.get(1).getDoubleV();
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
+    return new FunctionValue(count != 0 ? sum / count : null, count != 0 ? 0L : null);
   }
 }

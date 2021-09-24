@@ -21,6 +21,7 @@ package org.apache.iotdb.influxdb.qp.logical.function;
 
 import org.apache.iotdb.influxdb.qp.constant.SQLConstant;
 import org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.session.Session;
 
 import java.util.List;
 
@@ -49,6 +50,30 @@ public class FunctionFactory {
         return new StddevFunction(expressionList);
       case SQLConstant.SUM:
         return new SumFunction(expressionList);
+      default:
+        throw new IllegalArgumentException("not support aggregation name:" + name);
+    }
+  }
+
+  public static Function generateFunctionBySession(
+      String name, List<Expression> expressionList, Session session, String path) {
+    switch (name) {
+      case SQLConstant.MAX:
+        return new MaxFunction(expressionList, session, path);
+      case SQLConstant.MIN:
+        return new MinFunction(expressionList, session, path);
+      case SQLConstant.MEAN:
+        return new MeanFunction(expressionList, session, path);
+      case SQLConstant.LAST:
+        return new LastFunction(expressionList, session, path);
+      case SQLConstant.FIRST:
+        return new FirstFunction(expressionList, session, path);
+      case SQLConstant.COUNT:
+        return new CountFunction(expressionList, session, path);
+      case SQLConstant.SUM:
+        return new SumFunction(expressionList, session, path);
+      case SQLConstant.SPREAD:
+        return new SpreadFunction(expressionList, session, path);
       default:
         throw new IllegalArgumentException("not support aggregation name:" + name);
     }

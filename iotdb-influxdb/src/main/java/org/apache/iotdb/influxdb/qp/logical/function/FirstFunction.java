@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
+import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.List;
 
@@ -29,6 +35,10 @@ public class FirstFunction extends Selector {
   public FirstFunction(List<Expression> expressionList) {
     super(expressionList);
     this.setTimestamp(Long.MAX_VALUE);
+  }
+
+  public FirstFunction(List<Expression> expressionList, Session session, String path) {
+    super(expressionList, session, path);
   }
 
   @Override
@@ -47,5 +57,52 @@ public class FirstFunction extends Selector {
   @Override
   public FunctionValue calculate() {
     return new FunctionValue(value, this.getTimestamp());
+  }
+
+  @Override
+  public FunctionValue calculateByIotdbFunc() {
+    Object firstValue = null;
+    Long firstTime = null;
+    try {
+      SessionDataSet sessionDataSet =
+          this.session.executeQueryStatement(
+              IotDBInfluxDBUtils.generateFunctionSql("first_value", getParmaName(), path));
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
+        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
+        if (o != null) {
+          String newPath =
+              String.format(
+                  "select %s from %s where %s.%s=%s",
+                  getParmaName(),
+                  fields.get(0).toString(),
+                  fields.get(0).toString(),
+                  getParmaName(),
+                  o.toString());
+          SessionDataSet sessionDataSetNew = this.session.executeQueryStatement(newPath);
+          while (sessionDataSetNew.hasNext()) {
+            RowRecord recordNew = sessionDataSetNew.next();
+            List<org.apache.iotdb.tsfile.read.common.Field> newFields = recordNew.getFields();
+            Long time = recordNew.getTimestamp();
+            if (firstValue == null && firstTime == null) {
+              firstValue = newFields.get(0);
+              firstTime = time;
+            } else {
+              if (time < firstTime) {
+                firstValue = newFields.get(0);
+                firstTime = time;
+              }
+            }
+          }
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
+    if (firstValue == null) {
+      return new FunctionValue(null, null);
+    }
+    return new FunctionValue(firstValue, firstTime);
   }
 }

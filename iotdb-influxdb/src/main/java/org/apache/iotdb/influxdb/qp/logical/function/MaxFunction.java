@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
+import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.List;
 
@@ -33,7 +39,9 @@ public class MaxFunction extends Selector {
     super(expressionList);
   }
 
-  public MaxFunction() {}
+  public MaxFunction(List<Expression> expressionList, Session session, String path) {
+    super(expressionList, session, path);
+  }
 
   @Override
   public void updateValueAndRelate(FunctionValue functionValue, List<Object> values) {
@@ -75,5 +83,31 @@ public class MaxFunction extends Selector {
     } else {
       return new FunctionValue(doubleValue, this.getTimestamp());
     }
+  }
+
+  @Override
+  public FunctionValue calculateByIotdbFunc() {
+    Double maxNumber = null;
+    try {
+      SessionDataSet sessionDataSet =
+          this.session.executeQueryStatement(
+              IotDBInfluxDBUtils.generateFunctionSql("max_value", getParmaName(), path));
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
+        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
+        if ((o instanceof Number)) {
+          double tmpValue = ((Number) o).doubleValue();
+          if (maxNumber == null) {
+            maxNumber = tmpValue;
+          } else if (tmpValue > maxNumber) {
+            maxNumber = tmpValue;
+          }
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
+    return new FunctionValue(maxNumber, maxNumber == null ? null : 0L);
   }
 }

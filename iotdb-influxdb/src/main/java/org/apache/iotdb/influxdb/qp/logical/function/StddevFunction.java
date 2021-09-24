@@ -49,4 +49,9 @@ public class StddevFunction extends Aggregate {
   public FunctionValue calculate() {
     return new FunctionValue(numbers.size() == 0 ? numbers : MathUtil.POP_STD_dev(numbers), 0L);
   }
+
+  @Override
+  public FunctionValue calculateByIotdbFunc() {
+    return null;
+  }
 }

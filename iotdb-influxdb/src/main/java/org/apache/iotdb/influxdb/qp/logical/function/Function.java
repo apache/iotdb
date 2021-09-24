@@ -20,6 +20,8 @@
 package org.apache.iotdb.influxdb.qp.logical.function;
 
 import org.apache.iotdb.influxdb.query.expression.Expression;
+import org.apache.iotdb.influxdb.query.expression.unary.NodeExpression;
+import org.apache.iotdb.session.Session;
 
 import java.util.List;
 
@@ -28,17 +30,41 @@ public abstract class Function {
   // 包含了可能存在参数
   private List<Expression> expressionList;
 
+  protected Session session;
+
+  protected String path;
+
   public Function(List<Expression> expressionList) {
     this.expressionList = expressionList;
   }
 
+  public Function(List<Expression> expressionList, Session session, String path) {
+    this.expressionList = expressionList;
+    this.session = session;
+    this.path = path;
+  }
+
   public Function() {}
 
-  // 计算最后的结构
+  // 计算最后的结果
   public abstract FunctionValue calculate();
+
+  public abstract FunctionValue calculateByIotdbFunc();
 
   // 获取expressionList
   public List<Expression> getExpressions() {
     return this.expressionList;
+  }
+
+  public Session getSession() {
+    return this.session;
+  }
+
+  public String getParmaName() {
+    if (expressionList == null) {
+      throw new IllegalArgumentException("not support param");
+    }
+    NodeExpression parmaExpression = (NodeExpression) expressionList.get(0);
+    return parmaExpression.getName();
   }
 }

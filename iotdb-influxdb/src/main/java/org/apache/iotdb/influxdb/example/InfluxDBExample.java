@@ -86,7 +86,7 @@ public class InfluxDBExample {
     Query query;
     QueryResult result;
 
-    // the selector query is parallel to the field value
+    //     the selector query is parallel to the field value
     query =
         new Query(
             "select max(score),* from student where (name=\"xie\" and sex=\"m\")or time<now()-7d",
@@ -94,12 +94,20 @@ public class InfluxDBExample {
     result = iotDBInfluxDB.query(query);
     System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
 
+    // use iotdb built-in func
+    query =
+        new Query(
+            "select max(score),min(score),sum(score),count(score),spread(score),mean(score),first(score),last(score) from student ",
+            "database");
+    result = iotDBInfluxDB.query(query);
+    System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());
+
     // aggregate query and selector query are parallel
     query =
         new Query(
             "select count(score),first(score),last(country),max(score),mean(score),median(score),min(score),mode(score),spread(score),stddev(score),sum(score) from student where (name=\"xie\" and sex=\"m\")or score<99",
             "database");
     result = iotDBInfluxDB.query(query);
-    System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());
+    System.out.println("query3 result:" + result.getResults().get(0).getSeries().get(0).toString());
   }
 }

@@ -55,4 +55,9 @@ public class MedianFunction extends Aggregate {
       return new FunctionValue(numbers.get(len / 2), 0L);
     }
   }
+
+  @Override
+  public FunctionValue calculateByIotdbFunc() {
+    return null;
+  }
 }

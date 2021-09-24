@@ -461,4 +461,9 @@ public final class IotDBInfluxDBUtils {
     }
     return result;
   }
+
+  public static String generateFunctionSql(String functionName, String functionParam, String path) {
+    return String.format(
+        "select %s(%s) from %s align by device", functionName, functionParam, path);
+  }
 }
