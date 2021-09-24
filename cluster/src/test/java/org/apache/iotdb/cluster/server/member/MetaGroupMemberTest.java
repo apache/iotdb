@@ -540,7 +540,7 @@ public class MetaGroupMemberTest extends BaseMember {
         .setClientManager(
             new ClientManager(
                 ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
-                ClientManager.Type.ClusterClient));
+                ClientManager.Type.RequestForwardClient));
     return metaGroupMember;
   }
 

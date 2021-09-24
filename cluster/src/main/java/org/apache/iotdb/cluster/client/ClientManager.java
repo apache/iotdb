@@ -30,18 +30,9 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /**
- * One should borrow the reusable client from this class and return the client after use. The
+ * One should borrow the reusable client from this manager and return the client after use. The
  * underlying client pool is powered by Apache Commons Pool. The class provided 3 default pool group
- * according to current usage: ClusterClients, DataGroupClients, MetaGroupClients.
- *
- * <p>ClusterClients implement the data query and insert interfaces such as query and non-query
- * request
- *
- * <p>DataGroupClient implement the data group raft rpc interfaces such as appendEntry,
- * appendEntries, sendHeartbeat, etc.
- *
- * <p>MetaGroupClient implement the meta group raft rpc interfaces such as appendEntry,
- * appendEntries, sendHeartbeat, etc.
+ * according to current usage: RequestForwardClient, DataGroupClients, MetaGroupClients.
  *
  * <p>TODO: We can refine the client structure by reorg the interfaces defined in cluster-thrift.
  */
@@ -53,8 +44,18 @@ public class ClientManager implements IClientManager {
   private Map<ClientCategory, KeyedObjectPool<Node, RaftService.Client>> syncClientPoolMap;
   private ClientPoolFactory clientPoolFactory;
 
+  /**
+   * {@link ClientManager.Type#RequestForwardClient} represents the clients used to forward external
+   * client requests to proper node to handle such as query, insert request.
+   *
+   * <p>{@link ClientManager.Type#DataGroupClient} represents the clients used to appendEntry,
+   * appendEntries, sendHeartbeat, etc for data raft group.
+   *
+   * <p>{@link ClientManager.Type#MetaGroupClient} represents the clients used to appendEntry,
+   * appendEntries, sendHeartbeat, etc for meta raft group. *
+   */
   public enum Type {
-    ClusterClient,
+    RequestForwardClient,
     DataGroupClient,
     MetaGroupClient
   }
@@ -73,7 +74,11 @@ public class ClientManager implements IClientManager {
 
   private void constructAsyncClientMap(Type type) {
     switch (type) {
-      case ClusterClient:
+        /**
+         * request from external clients are forward via data group port, so it's type is {@link
+         * ClientCategory.DATA} *
+         */
+      case RequestForwardClient:
         asyncClientPoolMap.put(
             ClientCategory.DATA, clientPoolFactory.createAsyncDataPool(ClientCategory.DATA));
         break;
@@ -101,7 +106,11 @@ public class ClientManager implements IClientManager {
 
   private void constructSyncClientMap(Type type) {
     switch (type) {
-      case ClusterClient:
+        /**
+         * request from external clients are forward via data group port, so it's type is {@link
+         * ClientCategory.DATA} *
+         */
+      case RequestForwardClient:
         syncClientPoolMap.put(
             ClientCategory.DATA, clientPoolFactory.createSyncDataPool(ClientCategory.DATA));
         break;

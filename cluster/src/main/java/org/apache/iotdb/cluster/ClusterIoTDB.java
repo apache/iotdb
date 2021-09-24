@@ -160,7 +160,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     clientManager =
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
-            ClientManager.Type.ClusterClient);
+            ClientManager.Type.RequestForwardClient);
     initTasks();
     try {
       // we need to check config after initLocalEngines.

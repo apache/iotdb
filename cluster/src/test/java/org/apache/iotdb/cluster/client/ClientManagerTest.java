@@ -53,7 +53,8 @@ public class ClientManagerTest extends BaseClientTest {
   @Test
   public void syncClientManagersTest() throws Exception {
     // ---------Sync cluster clients manager test------------
-    ClientManager clusterManager = new ClientManager(false, ClientManager.Type.ClusterClient);
+    ClientManager clusterManager =
+        new ClientManager(false, ClientManager.Type.RequestForwardClient);
     RaftService.Client syncClusterClient =
         clusterManager.borrowSyncClient(defaultNode, ClientCategory.DATA);
 
@@ -130,7 +131,7 @@ public class ClientManagerTest extends BaseClientTest {
   @Test
   public void asyncClientManagersTest() throws Exception {
     // ---------async cluster clients manager test------------
-    ClientManager clusterManager = new ClientManager(true, ClientManager.Type.ClusterClient);
+    ClientManager clusterManager = new ClientManager(true, ClientManager.Type.RequestForwardClient);
     RaftService.AsyncClient clusterClient =
         clusterManager.borrowAsyncClient(defaultNode, ClientCategory.DATA);
 
