@@ -192,7 +192,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public void shutdown() throws Exception {
-    //TODO shutdown is not equal to stop()
+    // TODO shutdown is not equal to stop()
     logger.info("Deactivating IoTDB...");
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
       TracingManager.getInstance().close();
