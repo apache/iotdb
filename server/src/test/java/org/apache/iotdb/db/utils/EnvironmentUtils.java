@@ -264,6 +264,7 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
+
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
@@ -331,6 +332,10 @@ public class EnvironmentUtils {
     } catch (AuthException e) {
       logger.error("create user and role folders failed", e);
       fail(e.getMessage());
+    }
+    // open tracing write stream
+    if (!TracingManager.getInstance().getWriterStatus()) {
+      TracingManager.getInstance().openTracingWriteStream();
     }
   }
 

@@ -84,8 +84,8 @@ statement
     | SHOW MERGE #showMergeStatus
     | SHOW QUERY PROCESSLIST #showQueryProcesslist
     | KILL QUERY INT? #killQuery
-    | TRACING ON #tracingOn
-    | TRACING OFF #tracingOff
+    | TRACING ON #tracingOn // not support yet
+    | TRACING OFF #tracingOff // not support yet
     | SET SYSTEM TO READONLY #setSystemToReadOnly
     | SET SYSTEM TO WRITABLE #setSystemToWritable
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
