@@ -465,12 +465,12 @@ public class MTreeTest {
       assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1")));
       assertEquals(
           "root.laptop.d1",
-          root.getStorageGroupPath(new PartialPath("root.laptop.d1")).getFullPath());
+          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
       assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s1")));
       assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
       assertEquals(
           "root.laptop.d1",
-          root.getStorageGroupPath(new PartialPath("root.laptop.d1.s1")).getFullPath());
+          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -495,7 +495,7 @@ public class MTreeTest {
     try {
       assertEquals(
           "root.laptop.d1",
-          root.getStorageGroupPath(new PartialPath("root.laptop.d1.s0")).getFullPath());
+          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s0")).getFullPath());
       root.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.INT32,
@@ -505,7 +505,7 @@ public class MTreeTest {
           null);
       assertEquals(
           "root.laptop.d1",
-          root.getStorageGroupPath(new PartialPath("root.laptop.d1.s1")).getFullPath());
+          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
       root.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
@@ -515,7 +515,7 @@ public class MTreeTest {
           null);
       assertEquals(
           "root.laptop.d2",
-          root.getStorageGroupPath(new PartialPath("root.laptop.d2.s0")).getFullPath());
+          root.getBelongedStorageGroup(new PartialPath("root.laptop.d2.s0")).getFullPath());
       root.createTimeseries(
           new PartialPath("root.laptop.d2.s0"),
           TSDataType.INT32,
@@ -525,7 +525,7 @@ public class MTreeTest {
           null);
       assertEquals(
           "root.laptop.d2",
-          root.getStorageGroupPath(new PartialPath("root.laptop.d2.s1")).getFullPath());
+          root.getBelongedStorageGroup(new PartialPath("root.laptop.d2.s1")).getFullPath());
       root.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
@@ -609,12 +609,12 @@ public class MTreeTest {
       List<PartialPath> list = new ArrayList<>();
 
       list.add(new PartialPath("root.laptop.d1"));
-      assertEquals(list, root.getAllRelatedStorageGroups(new PartialPath("root.laptop.d1.s1")));
-      assertEquals(list, root.getAllRelatedStorageGroups(new PartialPath("root.laptop.d1")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.laptop.d1.s1")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.laptop.d1")));
 
       list.add(new PartialPath("root.laptop.d2"));
-      assertEquals(list, root.getAllRelatedStorageGroups(new PartialPath("root.laptop.**")));
-      assertEquals(list, root.getAllRelatedStorageGroups(new PartialPath("root.**")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.laptop.**")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.**")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -626,31 +626,25 @@ public class MTreeTest {
     // set storage group first
     MTree root = new MTree();
     try {
-      assertTrue(root.getAllRelatedStorageGroups(new PartialPath("root")).isEmpty());
-      assertTrue(root.getAllRelatedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
-      assertTrue(root.getAllRelatedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
       assertTrue(
-          root.getAllRelatedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
 
       root.setStorageGroup(new PartialPath("root.vehicle"));
-      assertFalse(root.getAllRelatedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
+      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
+      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
       assertFalse(
-          root.getAllRelatedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
-      assertFalse(
-          root.getAllRelatedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
-      assertTrue(root.getAllRelatedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
-      assertTrue(
-          root.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
 
       root.setStorageGroup(new PartialPath("root.vehicle1.device"));
-      assertTrue(
-          root.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());
-      assertTrue(
-          root.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device2")).isEmpty());
-      assertTrue(
-          root.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device3")).isEmpty());
-      assertFalse(
-          root.getAllRelatedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device2")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device3")).isEmpty());
+      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -774,7 +768,7 @@ public class MTreeTest {
     }
 
     assertEquals(
-        root.getAllRelatedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
+        root.getBelongedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
         Collections.singletonList(new PartialPath(sgPath1)));
   }
 

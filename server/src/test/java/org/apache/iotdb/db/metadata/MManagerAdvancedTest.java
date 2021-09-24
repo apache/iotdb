@@ -149,7 +149,7 @@ public class MManagerAdvancedTest {
       // test filename by seriesPath
       assertEquals(
           new PartialPath("root.vehicle.d0"),
-          mmanager.getStorageGroupPath(new PartialPath("root.vehicle.d0.s1")));
+          mmanager.getBelongedStorageGroup(new PartialPath("root.vehicle.d0.s1")));
       List<PartialPath> pathList =
           mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d1.**"));
       assertEquals(6, pathList.size());

@@ -783,7 +783,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<PartialPath> getStorageGroupNames(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getStorageGroupPaths(path);
+    return IoTDB.metaManager.getMatchedStorageGroups(path);
   }
 
   private QueryDataSet processShowStorageGroup(ShowStorageGroupPlan showStorageGroupPlan)
@@ -1250,7 +1250,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
       List<PartialPath> storageGroupPaths =
-          IoTDB.metaManager.getStorageGroupPaths(plan.getStorageGroup());
+          IoTDB.metaManager.getMatchedStorageGroups(plan.getStorageGroup());
       for (PartialPath storagePath : storageGroupPaths) {
         IoTDB.metaManager.setTTL(storagePath, plan.getDataTTL());
         StorageEngine.getInstance().setTTL(storagePath, plan.getDataTTL());
@@ -1703,7 +1703,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {
         List<PartialPath> allRelatedStorageGroupPath =
-            IoTDB.metaManager.getStorageGroupPaths(storageGroupPath);
+            IoTDB.metaManager.getMatchedStorageGroups(storageGroupPath);
         if (allRelatedStorageGroupPath.isEmpty()) {
           throw new PathNotExistException(storageGroupPath.getFullPath(), true);
         }

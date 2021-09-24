@@ -44,8 +44,8 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollecto
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.PathGrouperByStorageGroup;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupPathCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupResolver;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.TSEntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
@@ -119,9 +119,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
  *         <li>Interfaces for Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
  *         <li>Interfaces for Level Node info Query
+ *         <li>Interfaces and Implementation for metadata count
  *       </ol>
  *   <li>Interfaces and Implementation for MNode Query
- *   <li>Interfaces and Implementation for metadata count
  *   <li>Interfaces and Implementation for Template check
  *   <li>TestOnly Interface
  * </ol>
@@ -735,7 +735,7 @@ public class MTree implements Serializable {
    *
    * @return storage group in the given path
    */
-  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
+  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
     String[] nodes = path.getNodes();
     IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
@@ -747,6 +747,38 @@ public class MTree implements Serializable {
       }
     }
     throw new StorageGroupNotSetException(path.getFullPath());
+  }
+
+  /**
+   * Get the storage group that given path pattern matches or belongs to.
+   *
+   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
+   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
+   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
+   *
+   * @param pathPattern a path pattern or a full path
+   * @return a list contains all storage groups related to given path
+   */
+  public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
+      throws MetadataException {
+    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, pathPattern);
+    collector.setCollectInternal(true);
+    collector.traverse();
+    return collector.getResult();
+  }
+
+  /**
+   * Get all storage group that the given path pattern matches.
+   *
+   * @param pathPattern a path pattern or a full path
+   * @return a list contains all storage group names under given path pattern
+   */
+  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern)
+      throws MetadataException {
+    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, pathPattern);
+    collector.setCollectInternal(false);
+    collector.traverse();
+    return collector.getResult();
   }
 
   /**
@@ -770,43 +802,12 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all storage group that the given path pattern matches.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @return a list contains all storage group names under given path pattern
-   */
-  public List<PartialPath> getStorageGroupPaths(PartialPath pathPattern) throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, pathPattern);
-    collector.setCollectInternal(false);
-    collector.traverse();
-    return collector.getResult();
-  }
-
-  /**
-   * Get the storage group that given path pattern matches or belongs to.
-   *
-   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
-   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
-   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @return a list contains all storage groups related to given path
-   */
-  public List<PartialPath> getAllRelatedStorageGroups(PartialPath pathPattern)
-      throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, pathPattern);
-    collector.setCollectInternal(true);
-    collector.traverse();
-    return collector.getResult();
-  }
-
-  /**
    * Resolve the path or path pattern into StorageGroupName-FullPath pairs. Try determining the
    * storage group using the children of a mNode. If one child is a storage group node, put a
    * storageGroupName-fullPath pair into paths.
    */
-  public Map<String, String> resolvePathByStorageGroup(PartialPath path) throws MetadataException {
-    StorageGroupResolver resolver = new StorageGroupResolver(root, path);
+  public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
+    PathGrouperByStorageGroup resolver = new PathGrouperByStorageGroup(root, path);
     resolver.traverse();
     return resolver.getResult();
   }
@@ -836,7 +837,8 @@ public class MTree implements Serializable {
     for (PartialPath device : devices) {
       if (plan.hasSgCol()) {
         res.add(
-            new ShowDevicesResult(device.getFullPath(), getStorageGroupPath(device).getFullPath()));
+            new ShowDevicesResult(
+                device.getFullPath(), getBelongedStorageGroup(device).getFullPath()));
       } else {
         res.add(new ShowDevicesResult(device.getFullPath()));
       }
@@ -1004,6 +1006,49 @@ public class MTree implements Serializable {
     return collector.getResult();
   }
   // endregion
+
+  // region Interfaces and Implementation for metadata count
+  /**
+   * Get the count of timeseries matching the given path.
+   *
+   * @param path a path pattern or a full path, may contain wildcard
+   */
+  public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
+    CounterTraverser counter = new MeasurementCounter(root, path);
+    counter.traverse();
+    return counter.getCount();
+  }
+
+  /**
+   * Get the count of devices matching the given path.
+   *
+   * @param path a path pattern or a full path, may contain wildcard
+   */
+  public int getDevicesNum(PartialPath path) throws MetadataException {
+    CounterTraverser counter = new EntityCounter(root, path);
+    counter.traverse();
+    return counter.getCount();
+  }
+
+  /**
+   * Get the count of storage group matching the given path.
+   *
+   * @param path a path pattern or a full path, may contain wildcard.
+   */
+  public int getStorageGroupNum(PartialPath path) throws MetadataException {
+    CounterTraverser counter = new StorageGroupCounter(root, path);
+    counter.traverse();
+    return counter.getCount();
+  }
+
+  /** Get the count of nodes in the given level matching the given path. */
+  public int getNodesCountInGivenLevel(PartialPath path, int level) throws MetadataException {
+    MNodeLevelCounter counter = new MNodeLevelCounter(root, path, level);
+    counter.traverse();
+    return counter.getCount();
+  }
+  // endregion
+
   // endregion
 
   // region Interfaces and Implementation for MNode Query
@@ -1136,48 +1181,6 @@ public class MTree implements Serializable {
       }
     }
     return ret;
-  }
-  // endregion
-
-  // region Interfaces and Implementation for metadata count
-  /**
-   * Get the count of timeseries matching the given path.
-   *
-   * @param path a path pattern or a full path, may contain wildcard
-   */
-  public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(root, path);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  /**
-   * Get the count of devices matching the given path.
-   *
-   * @param path a path pattern or a full path, may contain wildcard
-   */
-  public int getDevicesNum(PartialPath path) throws MetadataException {
-    CounterTraverser counter = new EntityCounter(root, path);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  /**
-   * Get the count of storage group matching the given path.
-   *
-   * @param path a path pattern or a full path, may contain wildcard.
-   */
-  public int getStorageGroupNum(PartialPath path) throws MetadataException {
-    CounterTraverser counter = new StorageGroupCounter(root, path);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  /** Get the count of nodes in the given level matching the given path. */
-  public int getNodesCountInGivenLevel(PartialPath path, int level) throws MetadataException {
-    MNodeLevelCounter counter = new MNodeLevelCounter(root, path, level);
-    counter.traverse();
-    return counter.getCount();
   }
   // endregion
 

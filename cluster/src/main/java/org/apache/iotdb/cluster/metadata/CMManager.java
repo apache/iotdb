@@ -955,7 +955,7 @@ public class CMManager extends MManager {
     // added, e.g:
     // "root.**" will be translated into:
     // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
-    Map<String, String> sgPathMap = resolvePathByStorageGroup(originPath);
+    Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
     Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
     return ret;
@@ -1228,7 +1228,7 @@ public class CMManager extends MManager {
     // added, e.g:
     // "root.**" will be translated into:
     // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
-    Map<String, String> sgPathMap = resolvePathByStorageGroup(pathPattern);
+    Map<String, String> sgPathMap = groupPathByStorageGroup(pathPattern);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);
 
     int skippedOffset = 0;
@@ -1260,7 +1260,7 @@ public class CMManager extends MManager {
     // added, e.g:
     // "root.**" will be translated into:
     // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
-    Map<String, String> sgPathMap = resolvePathByStorageGroup(originPath);
+    Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
     List<PartialPath> ret = getMatchedPaths(sgPathMap, false);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
@@ -1329,7 +1329,7 @@ public class CMManager extends MManager {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      getDevices(new PartialPath(path)).stream()
+      this.getMatchedDevices(new PartialPath(path)).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }
@@ -1393,11 +1393,11 @@ public class CMManager extends MManager {
   }
 
   public List<ShowDevicesResult> getLocalDevices(ShowDevicesPlan plan) throws MetadataException {
-    return super.getDevices(plan);
+    return super.getMatchedDevices(plan);
   }
 
   @Override
-  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+  public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
     ConcurrentSkipListSet<ShowDevicesResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool =
         new ThreadPoolExecutor(
@@ -1563,7 +1563,7 @@ public class CMManager extends MManager {
         metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      List<ShowDevicesResult> localResult = super.getDevices(plan);
+      List<ShowDevicesResult> localResult = super.getMatchedDevices(plan);
       resultSet.addAll(localResult);
       logger.debug("Fetched {} devices of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
@@ -1747,16 +1747,16 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
+  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
     try {
-      return super.getStorageGroupPath(path);
+      return super.getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
       try {
         metaGroupMember.syncLeader(null);
       } catch (CheckConsistencyException ex) {
         logger.warn("Failed to check consistency.", e);
       }
-      return super.getStorageGroupPath(path);
+      return super.getBelongedStorageGroup(path);
     }
   }
 }

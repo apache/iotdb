@@ -110,7 +110,7 @@ public class ClusterPlanRouter {
   private PartitionGroup routePlan(ShowChildPathsPlan plan) {
     try {
       return partitionTable.route(
-          getMManager().getStorageGroupPath(plan.getPath()).getFullPath(), 0);
+          getMManager().getBelongedStorageGroup(plan.getPath()).getFullPath(), 0);
     } catch (MetadataException e) {
       // the path is too short to have no a storage group name, e.g., "root"
       // so we can do it locally.
@@ -222,7 +222,7 @@ public class ClusterPlanRouter {
         InsertTabletPlan tmpPlan = (InsertTabletPlan) entry.getKey();
         PartitionGroup tmpPg = entry.getValue();
         // 1.1 the sg that the plan(actually calculated based on device) belongs to
-        PartialPath tmpSgPath = IoTDB.metaManager.getStorageGroupPath(tmpPlan.getPrefixPath());
+        PartialPath tmpSgPath = IoTDB.metaManager.getBelongedStorageGroup(tmpPlan.getPrefixPath());
         Map<PartialPath, InsertMultiTabletPlan> sgPathPlanMap = pgSgPathPlanMap.get(tmpPg);
         if (sgPathPlanMap == null) {
           // 2.1 construct the InsertMultiTabletPlan
@@ -283,7 +283,7 @@ public class ClusterPlanRouter {
     Map<PartitionGroup, InsertRowsPlan> groupPlanMap = new HashMap<>();
     for (int i = 0; i < insertRowsPlan.getInsertRowPlanList().size(); i++) {
       InsertRowPlan rowPlan = insertRowsPlan.getInsertRowPlanList().get(i);
-      PartialPath storageGroup = getMManager().getStorageGroupPath(rowPlan.getPrefixPath());
+      PartialPath storageGroup = getMManager().getBelongedStorageGroup(rowPlan.getPrefixPath());
       PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), rowPlan.getTime());
       if (groupPlanMap.containsKey(group)) {
         InsertRowsPlan tmpPlan = groupPlanMap.get(group);
@@ -304,7 +304,7 @@ public class ClusterPlanRouter {
   @SuppressWarnings("SuspiciousSystemArraycopy")
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertTabletPlan plan)
       throws MetadataException {
-    PartialPath storageGroup = getMManager().getStorageGroupPath(plan.getPrefixPath());
+    PartialPath storageGroup = getMManager().getBelongedStorageGroup(plan.getPrefixPath());
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     long[] times = plan.getTimes();
     if (times.length == 0) {
@@ -400,7 +400,7 @@ public class ClusterPlanRouter {
       throws MetadataException {
     // CountPlan is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard
-    Map<String, String> sgPathMap = getMManager().resolvePathByStorageGroup(plan.getPath());
+    Map<String, String> sgPathMap = getMManager().groupPathByStorageGroup(plan.getPath());
     if (sgPathMap.isEmpty()) {
       throw new StorageGroupNotSetException(plan.getPath().getFullPath());
     }
@@ -517,7 +517,7 @@ public class ClusterPlanRouter {
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     Map<PartitionGroup, List<InsertRowPlan>> groupPlanMap = new HashMap<>();
     Map<PartitionGroup, List<Integer>> groupPlanIndexMap = new HashMap<>();
-    PartialPath storageGroup = getMManager().getStorageGroupPath(plan.getPrefixPath());
+    PartialPath storageGroup = getMManager().getBelongedStorageGroup(plan.getPrefixPath());
     for (int i = 0; i < plan.getRowPlans().length; i++) {
       InsertRowPlan p = plan.getRowPlans()[i];
       PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), p.getTime());

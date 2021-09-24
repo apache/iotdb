@@ -372,7 +372,7 @@ public class ClusterUtils {
       PartialPath prefixPath, MetaGroupMember metaGroupMember) throws MetadataException {
     int slot;
     try {
-      PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(prefixPath);
+      PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(prefixPath);
       slot =
           SlotPartitionTable.getSlotStrategy()
               .calculateSlotByPartitionNum(storageGroup.getFullPath(), 0, ClusterConstant.SLOT_NUM);
@@ -384,7 +384,7 @@ public class ClusterUtils {
       } catch (CheckConsistencyException checkConsistencyException) {
         throw new MetadataException(checkConsistencyException.getMessage());
       }
-      PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(prefixPath);
+      PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(prefixPath);
       slot =
           SlotPartitionTable.getSlotStrategy()
               .calculateSlotByPartitionNum(storageGroup.getFullPath(), 0, ClusterConstant.SLOT_NUM);

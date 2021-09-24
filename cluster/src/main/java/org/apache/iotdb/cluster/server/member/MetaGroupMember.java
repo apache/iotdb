@@ -1494,7 +1494,7 @@ public class MetaGroupMember extends RaftMember {
     List<PartitionGroup> partitionGroups = new ArrayList<>();
     PartialPath storageGroupName;
     try {
-      storageGroupName = IoTDB.metaManager.getStorageGroupPath(path);
+      storageGroupName = IoTDB.metaManager.getBelongedStorageGroup(path);
     } catch (MetadataException e) {
       throw new StorageEngineException(e);
     }

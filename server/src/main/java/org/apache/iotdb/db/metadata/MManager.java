@@ -137,6 +137,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for get and auto create device
  *   <li>Interfaces for metadata info Query
  *       <ol>
+ *         <li>Interfaces for metadata count
  *         <li>Interfaces for level Node info Query
  *         <li>Interfaces for StorageGroup and TTL info Query
  *         <li>Interfaces for Entity/Device info Query
@@ -148,7 +149,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for lastCache operations
  *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
- *   <li>Interfaces for metadata count
  *   <li>TestOnly Interfaces
  * </ol>
  */
@@ -600,7 +600,7 @@ public class MManager {
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      mtree.getStorageGroupPath(path);
+      mtree.getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
@@ -868,6 +868,42 @@ public class MManager {
     return TIME_SERIES_TREE_HEADER + mtree;
   }
 
+  // region Interfaces for metadata count
+
+  public long getTotalSeriesNumber() {
+    return totalSeriesNumber.get();
+  }
+
+  /**
+   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
+   * path, may contain wildcard.
+   */
+  public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
+    return mtree.getAllTimeseriesCount(path);
+  }
+
+  /** To calculate the count of devices for given path pattern. */
+  public int getDevicesNum(PartialPath path) throws MetadataException {
+    return mtree.getDevicesNum(path);
+  }
+
+  /** To calculate the count of storage group for given path pattern. */
+  public int getStorageGroupNum(PartialPath path) throws MetadataException {
+    return mtree.getStorageGroupNum(path);
+  }
+
+  /**
+   * To calculate the count of nodes in the given level for given path pattern.
+   *
+   * @param path a path pattern or a full path
+   * @param level the level should match the level of the path
+   */
+  public int getNodesCountInGivenLevel(PartialPath path, int level) throws MetadataException {
+    return mtree.getNodesCountInGivenLevel(path, level);
+  }
+
+  // endregion
+
   // region Interfaces for level Node info Query
   /**
    * Get all nodes matching the given path pattern in the given level. The level of the path should
@@ -943,18 +979,8 @@ public class MManager {
    * @param path only full path, cannot be path pattern
    * @return storage group in the given path
    */
-  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
-    return mtree.getStorageGroupPath(path);
-  }
-
-  /**
-   * Get all storage group matching given path pattern.
-   *
-   * @param pathPattern a pattern of a full path
-   * @return A ArrayList instance which stores storage group paths matching given path pattern.
-   */
-  public List<PartialPath> getStorageGroupPaths(PartialPath pathPattern) throws MetadataException {
-    return mtree.getStorageGroupPaths(pathPattern);
+  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
+    return mtree.getBelongedStorageGroup(path);
   }
 
   /**
@@ -967,9 +993,20 @@ public class MManager {
    * @param pathPattern a path pattern or a full path
    * @return a list contains all storage groups related to given path pattern
    */
-  public List<PartialPath> getAllRelatedStorageGroups(PartialPath pathPattern)
+  public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
-    return mtree.getAllRelatedStorageGroups(pathPattern);
+    return mtree.getBelongedStorageGroups(pathPattern);
+  }
+
+  /**
+   * Get all storage group matching given path pattern.
+   *
+   * @param pathPattern a pattern of a full path
+   * @return A ArrayList instance which stores storage group paths matching given path pattern.
+   */
+  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern)
+      throws MetadataException {
+    return mtree.getMatchedStorageGroups(pathPattern);
   }
 
   /** Get all storage group paths */
@@ -1034,7 +1071,7 @@ public class MManager {
    * @param timeseries a path pattern of the target timeseries
    * @return A HashSet instance which stores devices paths.
    */
-  public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
+  public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
     return mtree.getDevicesByTimeseries(timeseries);
   }
 
@@ -1044,7 +1081,7 @@ public class MManager {
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
-  public Set<PartialPath> getDevices(PartialPath pathPattern) throws MetadataException {
+  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern) throws MetadataException {
     return mtree.getDevices(pathPattern, false);
   }
 
@@ -1054,7 +1091,7 @@ public class MManager {
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult.
    */
-  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+  public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
     return mtree.getDevices(plan);
   }
   // endregion
@@ -1117,7 +1154,7 @@ public class MManager {
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
                   leaf.getAlias(),
-                  getStorageGroupPath(leaf.getPartialPath()).getFullPath(),
+                  getBelongedStorageGroup(leaf.getPartialPath()).getFullPath(),
                   measurementSchema.getType(),
                   measurementSchema.getEncodingType(),
                   measurementSchema.getCompressor(),
@@ -1693,8 +1730,8 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    * @apiNote :for cluster
    */
-  public Map<String, String> resolvePathByStorageGroup(PartialPath path) throws MetadataException {
-    Map<String, String> sgPathMap = mtree.resolvePathByStorageGroup(path);
+  public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
+    Map<String, String> sgPathMap = mtree.groupPathByStorageGroup(path);
     if (logger.isDebugEnabled()) {
       logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     }
@@ -2215,40 +2252,6 @@ public class MManager {
       mNodeCache.removeObject(entityMNode.getPartialPath());
     }
     return entityMNode;
-  }
-  // endregion
-
-  // region Interfaces for metadata count
-  /**
-   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
-   * path, may contain wildcard.
-   */
-  public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
-    return mtree.getAllTimeseriesCount(path);
-  }
-
-  /** To calculate the count of devices for given path pattern. */
-  public int getDevicesNum(PartialPath path) throws MetadataException {
-    return mtree.getDevicesNum(path);
-  }
-
-  /** To calculate the count of storage group for given path pattern. */
-  public int getStorageGroupNum(PartialPath path) throws MetadataException {
-    return mtree.getStorageGroupNum(path);
-  }
-
-  /**
-   * To calculate the count of nodes in the given level for given path pattern.
-   *
-   * @param path a path pattern or a full path
-   * @param level the level should match the level of the path
-   */
-  public int getNodesCountInGivenLevel(PartialPath path, int level) throws MetadataException {
-    return mtree.getNodesCountInGivenLevel(path, level);
-  }
-
-  public long getTotalSeriesNumber() {
-    return totalSeriesNumber.get();
   }
   // endregion
 

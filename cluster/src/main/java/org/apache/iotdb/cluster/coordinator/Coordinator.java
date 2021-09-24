@@ -207,7 +207,7 @@ public class Coordinator {
       throws MetadataException, CheckConsistencyException {
     if (plan instanceof SetSchemaTemplatePlan) {
       try {
-        IoTDB.metaManager.getStorageGroupPath(
+        IoTDB.metaManager.getBelongedStorageGroup(
             new PartialPath(((SetSchemaTemplatePlan) plan).getPrefixPath()));
       } catch (IllegalPathException e) {
         // the plan has been checked

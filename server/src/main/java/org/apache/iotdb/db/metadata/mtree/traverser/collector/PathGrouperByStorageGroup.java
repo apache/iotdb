@@ -55,9 +55,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
  *
  * <p>ResultSet: StorageGroupName-FullPath pairs
  */
-public class StorageGroupResolver extends CollectorTraverser<Map<String, String>> {
+public class PathGrouperByStorageGroup extends CollectorTraverser<Map<String, String>> {
 
-  public StorageGroupResolver(IMNode startNode, PartialPath path) throws MetadataException {
+  public PathGrouperByStorageGroup(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     this.resultSet = new HashMap<>();
   }

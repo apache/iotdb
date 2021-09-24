@@ -715,7 +715,7 @@ public class StorageEngine implements IService {
       TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
     try {
-      List<PartialPath> sgPaths = IoTDB.metaManager.getAllRelatedStorageGroups(path);
+      List<PartialPath> sgPaths = IoTDB.metaManager.getBelongedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         // storage group has no data
         if (!processorMap.containsKey(storageGroupPath)) {
@@ -737,7 +737,7 @@ public class StorageEngine implements IService {
       PartialPath path, long planIndex, TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
     try {
-      List<PartialPath> sgPaths = IoTDB.metaManager.getAllRelatedStorageGroups(path);
+      List<PartialPath> sgPaths = IoTDB.metaManager.getBelongedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         // storage group has no data
         if (!processorMap.containsKey(storageGroupPath)) {
@@ -877,7 +877,7 @@ public class StorageEngine implements IService {
     }
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
-    PartialPath storageGroupPath = IoTDB.metaManager.getStorageGroupPath(devicePath);
+    PartialPath storageGroupPath = IoTDB.metaManager.getBelongedStorageGroup(devicePath);
     getProcessorDirectly(storageGroupPath).loadNewTsFile(newTsFileResource);
   }
 
