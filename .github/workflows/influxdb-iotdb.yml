@@ -51,6 +51,6 @@ jobs:
           docker images
 
       - name: IT Test
+        shell: bash
         run: |
-          cd iotdb-influxdb \
-          mvn -B clean compile post-integration-test -Dtest.port.closed=true
+          cd iotdb-influxdb && mvn -B clean compile post-integration-test -Dtest.port.closed=true
