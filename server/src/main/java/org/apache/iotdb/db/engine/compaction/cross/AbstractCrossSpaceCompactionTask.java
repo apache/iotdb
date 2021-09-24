@@ -20,13 +20,39 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactionTask {
 
+  List<TsFileResource> selectedSequenceFiles;
+  List<TsFileResource> selectedUnsequenceFiles;
+
+  public AbstractCrossSpaceCompactionTask(
+      String fullStorageGroupName,
+      long timePartition,
+      AtomicInteger currentTaskNum,
+      List<TsFileResource> selectedSequenceFiles,
+      List<TsFileResource> selectedUnsequenceFiles) {
+    super(fullStorageGroupName, timePartition, currentTaskNum);
+    this.selectedSequenceFiles = selectedSequenceFiles;
+    this.selectedUnsequenceFiles = selectedUnsequenceFiles;
+  }
+
   public AbstractCrossSpaceCompactionTask(
       String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
     super(fullStorageGroupName, timePartition, currentTaskNum);
+    this.selectedSequenceFiles = null;
+    this.selectedUnsequenceFiles = null;
+  }
+
+  public List<TsFileResource> getSelectedSequenceFiles() {
+    return selectedSequenceFiles;
+  }
+
+  public List<TsFileResource> getSelectedUnsequenceFiles() {
+    return selectedUnsequenceFiles;
   }
 }

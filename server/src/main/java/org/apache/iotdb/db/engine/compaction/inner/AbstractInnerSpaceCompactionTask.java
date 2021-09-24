@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +40,11 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   protected long maxFileVersion;
 
   public AbstractInnerSpaceCompactionTask(
-          String storageGroupName, long timePartition, AtomicInteger currentTaskNum, boolean sequence, List<TsFileResource> selectedTsFileResourceList) {
+      String storageGroupName,
+      long timePartition,
+      AtomicInteger currentTaskNum,
+      boolean sequence,
+      List<TsFileResource> selectedTsFileResourceList) {
     super(storageGroupName, timePartition, currentTaskNum);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
@@ -53,7 +58,8 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     for (TsFileResource resource : selectedTsFileResourceList) {
       try {
         selectedFileSize += resource.getTsFileSize();
-        TsFileNameGenerator.TsFileName fileName = TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
+        TsFileNameGenerator.TsFileName fileName =
+            TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
         sumOfCompactionCount += fileName.getInnerCompactionCnt();
         if (fileName.getVersion() > maxFileVersion) {
           maxFileVersion = fileName.getVersion();
@@ -83,5 +89,4 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   public long getMaxFileVersion() {
     return maxFileVersion;
   }
-
 }

@@ -34,8 +34,9 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
 
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if (((o1 instanceof AbstractInnerSpaceCompactionTask) ^ (o2 instanceof AbstractInnerSpaceCompactionTask))
-            && config.getCompactionPriority() != CompactionPriority.BALANCE) {
+    if (((o1 instanceof AbstractInnerSpaceCompactionTask)
+            ^ (o2 instanceof AbstractInnerSpaceCompactionTask))
+        && config.getCompactionPriority() != CompactionPriority.BALANCE) {
       // the two task is different type, and the compaction priority is not balance
       if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
         return o1 instanceof AbstractInnerSpaceCompactionTask ? 1 : -1;
@@ -45,15 +46,15 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     }
     if (o1 instanceof AbstractInnerSpaceCompactionTask) {
       return compareInnerSpaceCompactionTask(
-              (AbstractInnerSpaceCompactionTask) o1, (AbstractInnerSpaceCompactionTask) o2);
+          (AbstractInnerSpaceCompactionTask) o1, (AbstractInnerSpaceCompactionTask) o2);
     } else {
       return comparefCrossSpaceCompactionTask(
-              (AbstractCrossSpaceCompactionTask) o1, (AbstractCrossSpaceCompactionTask) o2);
+          (AbstractCrossSpaceCompactionTask) o1, (AbstractCrossSpaceCompactionTask) o2);
     }
   }
 
   private int compareInnerSpaceCompactionTask(
-          AbstractInnerSpaceCompactionTask o1, AbstractInnerSpaceCompactionTask o2) {
+      AbstractInnerSpaceCompactionTask o1, AbstractInnerSpaceCompactionTask o2) {
     if (o1.isSequence() ^ o2.isSequence()) {
       // prioritize sequence file compaction
       return o1.isSequence() ? 1 : -1;
@@ -92,7 +93,10 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
   }
 
   private int comparefCrossSpaceCompactionTask(
-          AbstractCrossSpaceCompactionTask o1, AbstractCrossSpaceCompactionTask o2) {
-    return -1;
+      AbstractCrossSpaceCompactionTask o1, AbstractCrossSpaceCompactionTask o2) {
+    if (o1.getSelectedUnsequenceFiles().size() != o2.getSelectedUnsequenceFiles().size()) {
+      return o1.getSelectedUnsequenceFiles().size() - o2.getSelectedUnsequenceFiles().size();
+    }
+    return o2.getSelectedSequenceFiles().size() - o1.getSelectedSequenceFiles().size();
   }
 }
