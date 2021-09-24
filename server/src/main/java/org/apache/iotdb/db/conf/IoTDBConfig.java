@@ -699,6 +699,9 @@ public class IoTDBConfig {
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  // Interval num of tag and attribute records when force flushing to disk
+  private int tagAttributeFlushInterval = 1000;
+
   // In one insert (one device, one timestamp, multiple measurements),
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
@@ -2194,6 +2197,14 @@ public class IoTDBConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getTagAttributeFlushInterval() {
+    return tagAttributeFlushInterval;
+  }
+
+  public void setTagAttributeFlushInterval(int tagAttributeFlushInterval) {
+    this.tagAttributeFlushInterval = tagAttributeFlushInterval;
   }
 
   public int getPrimitiveArraySize() {

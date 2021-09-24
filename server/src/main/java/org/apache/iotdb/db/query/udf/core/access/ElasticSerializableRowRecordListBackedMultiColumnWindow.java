@@ -22,59 +22,67 @@ package org.apache.iotdb.db.query.udf.core.access;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.datastructure.primitive.IntList;
 import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
-public class RowWindowImpl implements RowWindow {
+public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements RowWindow {
 
   private final ElasticSerializableRowRecordList rowRecordList;
-
-  private final int[] columnIndexes;
   private final TSDataType[] dataTypes;
-  private final IntList windowRowIndexes;
 
-  private final RowImpl row;
-  private final RowIteratorImpl rowIterator;
+  private int beginIndex;
+  private int endIndex;
+  private int size;
 
-  public RowWindowImpl(
-      ElasticSerializableRowRecordList rowRecordList,
-      int[] columnIndexes,
-      TSDataType[] dataTypes,
-      IntList windowRowIndexes) {
+  private final ElasticSerializableRowRecordListBackedMultiColumnRow row;
+  private ElasticSerializableRowRecordListBackedMultiColumnWindowIterator rowIterator;
+
+  public ElasticSerializableRowRecordListBackedMultiColumnWindow(
+      ElasticSerializableRowRecordList rowRecordList) {
     this.rowRecordList = rowRecordList;
-    this.columnIndexes = columnIndexes;
-    this.dataTypes = dataTypes;
-    this.windowRowIndexes = windowRowIndexes;
-    row = new RowImpl(columnIndexes, dataTypes);
-    rowIterator = new RowIteratorImpl(rowRecordList, columnIndexes, dataTypes, windowRowIndexes);
+    this.dataTypes = rowRecordList.getDataTypes();
+
+    beginIndex = 0;
+    endIndex = 0;
+    size = 0;
+
+    row = new ElasticSerializableRowRecordListBackedMultiColumnRow(dataTypes);
   }
 
   @Override
   public int windowSize() {
-    return windowRowIndexes.size();
+    return size;
   }
 
   @Override
   public Row getRow(int rowIndex) throws IOException {
-    if (rowIndex < 0 || windowRowIndexes.size() <= rowIndex) {
-      throw new ArrayIndexOutOfBoundsException(
-          String.format(
-              "Array index(%d) out of range [%d, %d).", rowIndex, 0, windowRowIndexes.size()));
-    }
-    return row.setRowRecord(rowRecordList.getRowRecord(windowRowIndexes.get(rowIndex)));
+    return row.setRowRecord(rowRecordList.getRowRecord(beginIndex + rowIndex));
   }
 
   @Override
   public TSDataType getDataType(int columnIndex) {
-    return dataTypes[columnIndexes[columnIndex]];
+    return dataTypes[columnIndex];
   }
 
   @Override
   public RowIterator getRowIterator() {
+    if (rowIterator == null) {
+      rowIterator =
+          new ElasticSerializableRowRecordListBackedMultiColumnWindowIterator(
+              rowRecordList, beginIndex, endIndex);
+    }
+
     rowIterator.reset();
     return rowIterator;
+  }
+
+  public void seek(int beginIndex, int endIndex) {
+    this.beginIndex = beginIndex;
+    this.endIndex = endIndex;
+    size = endIndex - beginIndex;
+
+    rowIterator = null;
   }
 }

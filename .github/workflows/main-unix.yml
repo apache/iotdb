@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 11, 16 ]
+        java: [ 8, 11, 17 ]
         os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os}}
 
