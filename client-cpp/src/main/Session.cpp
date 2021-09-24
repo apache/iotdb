@@ -18,6 +18,7 @@
  */
 
 #include "Session.h"
+#include <algorithm>
 
 using namespace std;
 
@@ -387,6 +388,7 @@ void Session::sortTablet(Tablet &tablet) {
     }
 
     this->sortIndexByTimestamp(index, tablet.timestamps, tablet.rowSize);
+    tablet.timestamps = sortList(tablet.timestamps, index, tablet.rowSize);
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         tablet.values[i] = sortList(tablet.values[i], index, tablet.rowSize);
     }
@@ -395,23 +397,12 @@ void Session::sortTablet(Tablet &tablet) {
 }
 
 void Session::sortIndexByTimestamp(int *index, std::vector <int64_t> &timestamps, int length) {
-    // Use Insert Sort Algorithm
-    if (length >= 2) {
-        for (int i = 1; i < length; i++) {
-            int x = timestamps[i];
-            int tmpIndex = index[i];
-            int j = i - 1;
-
-            while (j >= 0 && timestamps[j] > x) {
-                timestamps[j + 1] = timestamps[j];
-                index[j + 1] = index[j];
-                j--;
-            }
-
-            timestamps[j + 1] = x;
-            index[j + 1] = tmpIndex;
-        }
+    if ( length <= 1 ) {
+        return;
     }
+
+    TsCompare tsCompareObj(timestamps);
+    std::sort(&index[0], &index[length], tsCompareObj);
 }
 
 /**
@@ -698,6 +689,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
         }
 
         this->sortIndexByTimestamp(index, times, times.size());
+        times = sortList(times, index, times.size());
         measurementsList = sortList(measurementsList, index, times.size());
         typesList = sortList(typesList, index, times.size());
         valuesList = sortList(valuesList, index, times.size());
@@ -785,7 +777,7 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
                 throw BatchExecutionException("Times in Tablet are not in ascending order");
             }
         } else {
-            sortTablet(*(tablets[item.first]));
+            sortTablet(*(item.second));
         }
 
         request.deviceIds.push_back(item.second->deviceId);
