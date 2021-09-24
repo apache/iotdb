@@ -57,8 +57,7 @@ public class MeanFunction extends Aggregate {
 
   @Override
   public FunctionValue calculate() {
-    return new FunctionValue(
-        numbers.size() == 0 ? numbers : String.valueOf(MathUtil.Mean(numbers)), 0L);
+    return new FunctionValue(numbers.size() == 0 ? numbers : MathUtil.Mean(numbers), 0L);
   }
 
   @Override

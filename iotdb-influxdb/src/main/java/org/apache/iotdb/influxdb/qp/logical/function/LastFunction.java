@@ -83,11 +83,11 @@ public class LastFunction extends Selector {
             List<org.apache.iotdb.tsfile.read.common.Field> newFields = recordNew.getFields();
             Long time = recordNew.getTimestamp();
             if (LastValue == null && LastTime == null) {
-              LastValue = newFields.get(0);
+              LastValue = IotDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
               LastTime = time;
             } else {
               if (time > LastTime) {
-                LastValue = newFields.get(0);
+                LastValue = IotDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
                 LastTime = time;
               }
             }

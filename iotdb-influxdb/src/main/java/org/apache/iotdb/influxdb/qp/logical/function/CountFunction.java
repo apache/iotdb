@@ -49,7 +49,7 @@ public class CountFunction extends Aggregate {
 
   @Override
   public FunctionValue calculate() {
-    return new FunctionValue(String.valueOf(this.countNum), 0L);
+    return new FunctionValue(this.countNum, 0L);
   }
 
   @Override

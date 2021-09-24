@@ -81,8 +81,9 @@ public class IotDBInfluxDB implements InfluxDB {
     try {
       URI uri = new URI(url);
       new IotDBInfluxDB(uri.getHost(), uri.getPort(), userName, password);
-    } catch (URISyntaxException | IoTDBConnectionException e) {
+    } catch (URISyntaxException e) {
       e.printStackTrace();
+      throw new IllegalArgumentException(e);
     }
   }
 
@@ -94,11 +95,14 @@ public class IotDBInfluxDB implements InfluxDB {
    * @param userName username
    * @param password user password
    */
-  public IotDBInfluxDB(String host, int rpcPort, String userName, String password)
-      throws IoTDBConnectionException {
+  public IotDBInfluxDB(String host, int rpcPort, String userName, String password) {
     session = new Session(host, rpcPort, userName, password);
-    session.open(false);
-
+    try {
+      session.open(false);
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+      throw new IllegalArgumentException(e.getMessage());
+    }
     session.setFetchSize(10000);
   }
 
@@ -1064,11 +1068,15 @@ public class IotDBInfluxDB implements InfluxDB {
           }
         }
       }
+      List<List<Object>> newValues = new ArrayList();
       for (List<Object> value : values) {
+        List<Object> tmpValue = new ArrayList();
         for (String newColumn : newColumns) {
-          value.add(value.get(columnOrders.get(newColumn)));
+          tmpValue.add(value.get(columnOrders.get(newColumn)));
         }
+        newValues.add(tmpValue);
       }
+      values = newValues;
     }
     IotDBInfluxDBUtils.updateQueryResultColumnValue(
         queryResult, IotDBInfluxDBUtils.removeDuplicate(newColumns), values);

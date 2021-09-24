@@ -79,18 +79,18 @@ public class FirstFunction extends Selector {
                   fields.get(0).toString(),
                   fields.get(0).toString(),
                   getParmaName(),
-                  o.toString());
+                  o);
           SessionDataSet sessionDataSetNew = this.session.executeQueryStatement(newPath);
           while (sessionDataSetNew.hasNext()) {
             RowRecord recordNew = sessionDataSetNew.next();
             List<org.apache.iotdb.tsfile.read.common.Field> newFields = recordNew.getFields();
             Long time = recordNew.getTimestamp();
             if (firstValue == null && firstTime == null) {
-              firstValue = newFields.get(0);
+              firstValue = IotDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
               firstTime = time;
             } else {
               if (time < firstTime) {
-                firstValue = newFields.get(0);
+                firstValue = IotDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
                 firstTime = time;
               }
             }

@@ -42,7 +42,7 @@ public class InfluxDBExample {
     // set database
     iotDBInfluxDB.setDatabase("database");
 
-    insertData();
+    //    insertData();
     queryData();
   }
 
@@ -89,8 +89,7 @@ public class InfluxDBExample {
     //     the selector query is parallel to the field value
     query =
         new Query(
-            "select max(score),* from student where (name=\"xie\" and sex=\"m\")or time<now()-7d",
-            "database");
+            "select * from student where (name=\"xie\" and sex=\"m\")or time<now()-7d", "database");
     result = iotDBInfluxDB.query(query);
     System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
 
