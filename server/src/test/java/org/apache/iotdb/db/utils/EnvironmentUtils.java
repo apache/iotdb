@@ -145,7 +145,9 @@ public class EnvironmentUtils {
     IoTDB.metaManager.clear();
 
     // close tracing
-    TracingManager.getInstance().close();
+    if (TracingManager.getInstance().getWriterStatus()) {
+      TracingManager.getInstance().close();
+    }
 
     // close array manager
     PrimitiveArrayManager.close();
