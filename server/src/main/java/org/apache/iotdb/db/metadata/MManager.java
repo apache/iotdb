@@ -23,10 +23,24 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.*;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -590,10 +604,11 @@ public class MManager {
       if (lastNode.isMeasurement()) {
         IMeasurementSchema schema = ((IMeasurementMNode) lastNode).getSchema();
         if (schema instanceof VectorMeasurementSchema) {
-          if (schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
+          if (schema.getSubMeasurementsList().size() != allTimeseries.size()) {
             throw new AlignedTimeseriesException(
                 "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
           } else {
+            allTimeseries.clear();
             allTimeseries.add(lastNode.getPartialPath());
           }
         }
@@ -652,7 +667,7 @@ public class MManager {
       removeFromTagInvertedIndex(pair.right);
       timeseriesNum = 1;
     } else if (schema instanceof VectorMeasurementSchema) {
-      timeseriesNum += schema.getValueTSDataTypeList().size();
+      timeseriesNum += schema.getSubMeasurementsTSDataTypeList().size();
     }
     PartialPath storageGroupPath = pair.left;
 
@@ -749,19 +764,17 @@ public class MManager {
       return TSDataType.INT64;
     }
 
-    if (path instanceof VectorPartialPath) {
-      if (((VectorPartialPath) path).getSubSensorsPathList().size() != 1) {
-        return TSDataType.VECTOR;
-      } else {
-        path = ((VectorPartialPath) path).getSubSensorsPathList().get(0);
-      }
-    }
     IMeasurementSchema schema = mtree.getSchema(path);
     if (schema instanceof MeasurementSchema) {
       return schema.getType();
     } else {
-      List<String> measurements = schema.getValueMeasurementIdList();
-      return schema.getValueTSDataTypeList().get(measurements.indexOf(path.getMeasurement()));
+      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
+        return TSDataType.VECTOR;
+      } else {
+        String subSensor = ((VectorPartialPath) path).getSubSensor(0);
+        List<String> measurements = schema.getSubMeasurementsList();
+        return schema.getSubMeasurementsTSDataTypeList().get(measurements.indexOf(subSensor));
+      }
     }
   }
 
@@ -988,7 +1001,7 @@ public class MManager {
         }
         res.add(
             new ShowTimeSeriesResult(
-                ansString.left.getFullPath(),
+                ansString.left.getExactFullPath(),
                 ansString.right[0],
                 ansString.right[1],
                 TSDataType.valueOf(ansString.right[2]),
@@ -1038,53 +1051,37 @@ public class MManager {
   protected IMeasurementSchema getSeriesSchema(PartialPath fullPath, IMeasurementMNode leaf) {
     IMeasurementSchema schema = leaf.getSchema();
 
-    if (schema == null || schema.getType() != TSDataType.VECTOR) {
+    if (!(fullPath instanceof VectorPartialPath)
+        || schema == null
+        || schema.getType() != TSDataType.VECTOR) {
       return schema;
     }
-    List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
-    List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
-    TSDataType[] types = new TSDataType[measurements.size()];
-    TSEncoding[] encodings = new TSEncoding[measurements.size()];
+    List<String> measurementsInLeaf = schema.getSubMeasurementsList();
+    List<String> subMeasurements = ((VectorPartialPath) fullPath).getSubSensorsList();
+    TSDataType[] types = new TSDataType[subMeasurements.size()];
+    TSEncoding[] encodings = new TSEncoding[subMeasurements.size()];
 
-    for (int i = 0; i < measurements.size(); i++) {
-      int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
-      types[i] = schema.getValueTSDataTypeList().get(index);
-      encodings[i] = schema.getValueTSEncodingList().get(index);
+    for (int i = 0; i < subMeasurements.size(); i++) {
+      int index = measurementsInLeaf.indexOf(subMeasurements.get(i));
+      types[i] = schema.getSubMeasurementsTSDataTypeList().get(index);
+      encodings[i] = schema.getSubMeasurementsTSEncodingList().get(index);
     }
-    String[] array = new String[measurements.size()];
+    String[] array = new String[subMeasurements.size()];
     for (int i = 0; i < array.length; i++) {
-      array[i] = measurements.get(i).getMeasurement();
+      array[i] = subMeasurements.get(i);
     }
     return new VectorMeasurementSchema(
         schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
   }
 
   /**
-   * Transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector. otherwise,
-   * we don't change it.
-   */
-  public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
-    IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(partialPath);
-    if (node.getSchema() instanceof MeasurementSchema) {
-      return partialPath;
-    } else {
-      return toVectorPath(partialPath);
-    }
-  }
-
-  /** Convert the PartialPath to VectorPartialPath. */
-  protected VectorPartialPath toVectorPath(PartialPath partialPath) throws MetadataException {
-    List<PartialPath> subSensorsPathList = new ArrayList<>();
-    subSensorsPathList.add(partialPath);
-    return new VectorPartialPath(partialPath.getDevice(), subSensorsPathList);
-  }
-
-  /**
-   * Get schema of partialPaths, in which aligned timeseries should only organized to one schema.
-   * This method should be called when logical plan converts to physical plan.
+   * Get schema of partialPaths, in which aligned time series should only organized to one schema.
+   * BEFORE this method, all the aligned time series is NOT united. For example,
+   * VectorMeasurementSchema(root.sg.d1.vector1 [s1,s2]) will be * root.sg.d1.vector1[s1],
+   * root.sg.d1.vector1[s2]
    *
-   * @param fullPaths full path list without pointing out which timeseries are aligned. For example,
-   *     maybe (s1,s2) are aligned, but the input could be [root.sg1.d1.s1, root.sg1.d1.s2]
+   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
+   *     series.
    * @return Size of partial path list could NOT equal to the input list size. For example, the
    *     VectorMeasurementSchema (s1,s2) would be returned once; Size of integer list must equal to
    *     the input list size. It indicates the index of elements of original list in the result list
@@ -1092,68 +1089,28 @@ public class MManager {
   public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
     Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
-    Map<IMNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
+    Map<String, Integer> pathIndex = new LinkedHashMap<>();
     for (int i = 0; i < fullPaths.size(); i++) {
       PartialPath path = fullPaths.get(i);
-      // use dfs to collect paths
-      IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(path);
-      getNodeToPartialPath(node, nodeToPartialPath, nodeToIndex, path, i);
-    }
-    return getPair(fullPaths, nodeToPartialPath, nodeToIndex);
-  }
+      pathIndex.put(path.getExactFullPath(), i);
+      if (path.isMeasurementAliasExists()) {
+        pathIndex.put(path.getFullPathWithAlias(), i);
+      }
 
-  protected void getNodeToPartialPath(
-      IMeasurementMNode node,
-      Map<IMNode, PartialPath> nodeToPartialPath,
-      Map<IMNode, List<Integer>> nodeToIndex,
-      PartialPath path,
-      int index)
-      throws MetadataException {
-    if (!nodeToPartialPath.containsKey(node)) {
-      if (node.getSchema() instanceof MeasurementSchema) {
-        nodeToPartialPath.put(node, path);
+      IMeasurementMNode node = getMeasurementMNode(path);
+      if (!nodeToPartialPath.containsKey(node)) {
+        nodeToPartialPath.put(node, path.copy());
       } else {
-        List<PartialPath> subSensorsPathList = new ArrayList<>();
-        subSensorsPathList.add(path);
-        nodeToPartialPath.put(node, new VectorPartialPath(node.getFullPath(), subSensorsPathList));
-      }
-      nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
-    } else {
-      // if nodeToPartialPath contains node
-      String existPath = nodeToPartialPath.get(node).getFullPath();
-      if (existPath.equals(path.getFullPath())) {
-        // could be the same path in different aggregate functions
-        nodeToIndex.get(node).add(index);
-      } else {
-        // could be VectorPartialPath
-        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
-        nodeToIndex.get(node).add(index);
+        // if nodeToPartialPath contains node
+        PartialPath existPath = nodeToPartialPath.get(node);
+        if (!existPath.equals(path)) {
+          // could be VectorPartialPath
+          ((VectorPartialPath) existPath)
+              .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
+        }
       }
     }
-  }
-
-  protected Pair<List<PartialPath>, Map<String, Integer>> getPair(
-      List<PartialPath> fullPaths,
-      Map<IMNode, PartialPath> nodeToPartialPath,
-      Map<IMNode, List<Integer>> nodeToIndex)
-      throws MetadataException {
-    Map<String, Integer> indexMap = new HashMap<>();
-    int i = 0;
-    for (List<Integer> indexList : nodeToIndex.values()) {
-      for (int index : indexList) {
-        PartialPath partialPath = fullPaths.get(i);
-        if (indexMap.containsKey(partialPath.getFullPath())) {
-          throw new MetadataException(
-              "Query for measurement and its alias at the same time!", true);
-        }
-        indexMap.put(partialPath.getFullPath(), index);
-        if (partialPath.isMeasurementAliasExists()) {
-          indexMap.put(partialPath.getFullPathWithAlias(), index);
-        }
-        i++;
-      }
-    }
-    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), indexMap);
+    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), pathIndex);
   }
 
   /**
@@ -1188,6 +1145,10 @@ public class MManager {
    */
   public boolean isPathExist(PartialPath path) {
     return mtree.isPathExist(path);
+  }
+
+  protected IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+    return (IMeasurementMNode) getNodeByPath(fullPath);
   }
 
   /** Get node by path */
@@ -1280,8 +1241,10 @@ public class MManager {
       Template template = node.getUpperTemplate();
 
       for (IMNode child : node.getChildren().values()) {
-        IMeasurementMNode measurementMNode = (IMeasurementMNode) child;
-        res.add(measurementMNode.getSchema());
+        if (child.isMeasurement()) {
+          IMeasurementMNode measurementMNode = (IMeasurementMNode) child;
+          res.add(measurementMNode.getSchema());
+        }
       }
 
       // template
@@ -1661,32 +1624,198 @@ public class MManager {
     // do nothing
   }
 
+  /**
+   * Update the last cache value of time series of given seriesPath.
+   *
+   * <p>MManager will use the seriesPath to search the node first and then process the lastCache in
+   * the MeasurementMNode
+   *
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
+   *
+   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   */
   public void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime,
-      IMeasurementMNode node) {
-    if (node != null) {
-      node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } else {
-      try {
-        IMeasurementMNode node1 = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
-        node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-      } catch (MetadataException e) {
-        logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
-      }
+      Long latestFlushedTime) {
+    IMeasurementMNode node;
+    try {
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+    } catch (MetadataException e) {
+      logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return;
+    }
+
+    LastCacheManager.updateLastCache(
+        seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, node);
+  }
+
+  /**
+   * Update the last cache value in given unary MeasurementMNode. Vector lastCache operation won't
+   * work.
+   *
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
+   *
+   * @param node the measurementMNode holding the lastCache, must be unary measurement
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   */
+  public void updateLastCache(
+      IMeasurementMNode node,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    if (node.getSchema() instanceof VectorMeasurementSchema) {
+      throw new UnsupportedOperationException("Must provide subMeasurement for vector measurement");
+    }
+    LastCacheManager.updateLastCache(
+        node.getPartialPath(), timeValuePair, highPriorityUpdate, latestFlushedTime, node);
+  }
+
+  /**
+   * Update the last cache value of subMeasurement given Vector MeasurementMNode.
+   *
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
+   *
+   * @param node the measurementMNode holding the lastCache
+   * @param subMeasurement the subMeasurement of aligned timeseries
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   */
+  public void updateLastCache(
+      IMeasurementMNode node,
+      String subMeasurement,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
+      throw new UnsupportedOperationException(
+          "Can't update lastCache of subMeasurement in unary measurement");
+    }
+    LastCacheManager.updateLastCache(
+        node.getPartialPath().concatNode(subMeasurement),
+        timeValuePair,
+        highPriorityUpdate,
+        latestFlushedTime,
+        node);
+  }
+
+  /**
+   * Get the last cache value of time series of given seriesPath. MManager will use the seriesPath
+   * to search the node.
+   *
+   * <p>Invoking scenario: last cache read during last Query
+   *
+   * @param seriesPath the full path from root to measurement of timeseries or subMeasurement of
+   *     aligned timeseries
+   * @return the last cache value
+   */
+  public TimeValuePair getLastCache(PartialPath seriesPath) {
+    IMeasurementMNode node;
+    try {
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+    } catch (MetadataException e) {
+      logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return null;
+    }
+
+    return LastCacheManager.getLastCache(seriesPath, node);
+  }
+
+  /**
+   * Get the last cache value in given unary MeasurementMNode. Vector case won't work.
+   *
+   * <p>Invoking scenario: last cache read during last Query
+   *
+   * @param node the measurementMNode holding the lastCache, must be unary measurement
+   * @return the last cache value
+   */
+  public TimeValuePair getLastCache(IMeasurementMNode node) {
+    if (node.getSchema() instanceof VectorMeasurementSchema) {
+      throw new UnsupportedOperationException("Must provide subMeasurement for vector measurement");
+    }
+    return LastCacheManager.getLastCache(node.getPartialPath(), node);
+  }
+
+  /**
+   * Get the last cache value of given subMeasurement of given MeasurementMNode. Must be Vector
+   * case.
+   *
+   * <p>Invoking scenario: last cache read during last Query
+   *
+   * @param node the measurementMNode holding the lastCache
+   * @param subMeasurement the subMeasurement of aligned timeseries
+   * @return the last cache value
+   */
+  public TimeValuePair getLastCache(IMeasurementMNode node, String subMeasurement) {
+    if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
+      throw new UnsupportedOperationException(
+          "Can't get lastCache of subMeasurement from unary measurement");
+    }
+    return LastCacheManager.getLastCache(node.getPartialPath().concatNode(subMeasurement), node);
+  }
+
+  /**
+   * Reset the last cache value of time series of given seriesPath. MManager will use the seriesPath
+   * to search the node.
+   *
+   * @param seriesPath the path from root to measurement of timeseries or subMeasurement of aligned
+   *     timeseries
+   */
+  public void resetLastCache(PartialPath seriesPath) {
+    IMeasurementMNode node;
+    try {
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+    } catch (MetadataException e) {
+      logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return;
+    }
+
+    LastCacheManager.resetLastCache(seriesPath, node);
+  }
+
+  /**
+   * delete all the last cache value of any timeseries or aligned timeseries under the device
+   *
+   * <p>Invoking scenario (1) after upload tsfile
+   *
+   * @param deviceId path of device
+   */
+  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
+    IMNode node = getDeviceNode(deviceId);
+    if (node.isEntity()) {
+      LastCacheManager.deleteLastCacheByDevice((IEntityMNode) node);
     }
   }
 
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    try {
-      IMeasurementMNode node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
-      return node.getCachedLast();
-    } catch (MetadataException e) {
-      logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
+  /**
+   * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
+   * is under the device and matching the originalPath
+   *
+   * <p>Invoking scenario (1) delete timeseries
+   *
+   * @param deviceId path of device
+   * @param originalPath origin timeseries path
+   * @param startTime startTime
+   * @param endTime endTime
+   */
+  public void deleteLastCacheByDevice(
+      PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
+      throws MetadataException {
+    IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
+    if (node.isEntity()) {
+      LastCacheManager.deleteLastCacheByDevice(
+          (IEntityMNode) node, originalPath, startTime, endTime);
     }
-    return null;
   }
 
   /** get schema for device. Attention!!! Only support insertPlan */
@@ -1770,7 +1899,7 @@ public class MManager {
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           if (plan.isAligned()) {
             TSDataType dataTypeInNode =
-                measurementMNode.getSchema().getValueTSDataTypeList().get(i);
+                measurementMNode.getSchema().getSubMeasurementsTSDataTypeList().get(i);
             insertDataType = plan.getDataTypes()[i];
             if (insertDataType == null) {
               insertDataType = dataTypeInNode;
@@ -1778,7 +1907,7 @@ public class MManager {
             if (dataTypeInNode != insertDataType) {
               logger.warn(
                   "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
-                  measurementMNode.getSchema().getValueMeasurementIdList().get(i),
+                  measurementMNode.getSchema().getSubMeasurementsList().get(i),
                   measurementList[i],
                   insertDataType,
                   dataTypeInNode);

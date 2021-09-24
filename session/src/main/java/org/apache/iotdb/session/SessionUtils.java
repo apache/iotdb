@@ -58,9 +58,9 @@ public class SessionUtils {
         getValueBufferOfDataType(schema.getType(), tablet, indexOfValues, valueBuffer);
         indexOfValues++;
       } else {
-        for (int j = 0; j < schema.getValueTSDataTypeList().size(); j++) {
+        for (int j = 0; j < schema.getSubMeasurementsTSDataTypeList().size(); j++) {
           getValueBufferOfDataType(
-              schema.getValueTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
+              schema.getSubMeasurementsTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
           indexOfValues++;
         }
       }

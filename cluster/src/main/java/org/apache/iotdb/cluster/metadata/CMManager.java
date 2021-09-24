@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -51,12 +52,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -79,7 +75,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -97,7 +92,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -194,11 +188,12 @@ public class CMManager extends MManager {
       return TSDataType.INT64;
     }
 
+    String measurement = path.getMeasurement();
     if (path instanceof VectorPartialPath) {
-      if (((VectorPartialPath) path).getSubSensorsPathList().size() != 1) {
+      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        path = ((VectorPartialPath) path).getSubSensorsPathList().get(0);
+        measurement = ((VectorPartialPath) path).getSubSensor(0);
       }
     }
 
@@ -207,7 +202,7 @@ public class CMManager extends MManager {
       cacheLock.readLock().lock();
       IMeasurementMNode measurementMNode = mRemoteMetaCache.get(path);
       if (measurementMNode != null) {
-        return measurementMNode.getDataType(path.getMeasurement());
+        return measurementMNode.getDataType(measurement);
       }
     } finally {
       cacheLock.readLock().unlock();
@@ -227,8 +222,8 @@ public class CMManager extends MManager {
             new MeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
-          for (String subSensorId : measurementSchema.getValueMeasurementIdList()) {
-            cacheMeta(new PartialPath(path.getDevice(), subSensorId), measurementMNode, false);
+          for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
+            cacheMeta(((VectorPartialPath) path).getPathWithSubSensor(i), measurementMNode, false);
           }
           cacheMeta(
               new PartialPath(path.getDevice(), measurementSchema.getMeasurementId()),
@@ -246,38 +241,12 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
-      throws MetadataException {
-    Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
-    Map<IMNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
-    for (int i = 0; i < fullPaths.size(); i++) {
-      PartialPath path = fullPaths.get(i);
-      IMeasurementMNode node = getMeasurementMNode(path);
-      super.getNodeToPartialPath(node, nodeToPartialPath, nodeToIndex, path, i);
-    }
-    return getPair(fullPaths, nodeToPartialPath, nodeToIndex);
-  }
-
-  @Override
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     return super.getSeriesSchema(fullPath, getMeasurementMNode(fullPath));
   }
 
-  /**
-   * Transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector. otherwise,
-   * we don't change it.
-   */
   @Override
-  public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
-    IMeasurementMNode node = getMeasurementMNode(partialPath);
-    if (node.getSchema() instanceof MeasurementSchema) {
-      return partialPath;
-    } else {
-      return toVectorPath(partialPath);
-    }
-  }
-
-  private IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+  protected IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     IMeasurementMNode node = null;
     // try remote cache first
     try {
@@ -407,26 +376,26 @@ public class CMManager extends MManager {
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime,
-      IMeasurementMNode node) {
+      Long latestFlushedTime) {
     cacheLock.writeLock().lock();
     try {
       IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
       if (measurementMNode != null) {
-        measurementMNode.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+        LastCacheManager.updateLastCache(
+            seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, measurementMNode);
       }
     } finally {
       cacheLock.writeLock().unlock();
     }
     // maybe local also has the timeseries
-    super.updateLastCache(seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, node);
+    super.updateLastCache(seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   @Override
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
     if (measurementMNode != null) {
-      return measurementMNode.getCachedLast();
+      return LastCacheManager.getLastCache(seriesPath, measurementMNode);
     }
 
     return super.getLastCache(seriesPath);
@@ -705,6 +674,22 @@ public class CMManager extends MManager {
     return allSuccess;
   }
 
+  public boolean createTimeseries(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+      throws CheckConsistencyException, IllegalPathException {
+    boolean allSuccess = true;
+    for (InsertRowPlan insertRowPlan : insertRowsOfOneDevicePlan.getRowPlans()) {
+      boolean success = createTimeseries(insertRowPlan);
+      allSuccess = allSuccess && success;
+      if (!success) {
+        logger.error(
+            "create timeseries for device={} failed, plan={}",
+            insertRowPlan.getPrefixPath(),
+            insertRowPlan);
+      }
+    }
+    return allSuccess;
+  }
+
   /**
    * Create timeseries automatically for an InsertPlan.
    *
@@ -719,6 +704,10 @@ public class CMManager extends MManager {
 
     if (insertPlan instanceof InsertRowsPlan) {
       return createTimeseries((InsertRowsPlan) insertPlan);
+    }
+
+    if (insertPlan instanceof InsertRowsOfOneDevicePlan) {
+      return createTimeseries((InsertRowsOfOneDevicePlan) insertPlan);
     }
 
     List<String> seriesList = new ArrayList<>();

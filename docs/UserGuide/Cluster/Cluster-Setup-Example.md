@@ -200,7 +200,7 @@ default\_replica\_num = 3
 
 internal\_ip = *A\_private\_Ip* (or *B\_private\_Ip*, *C\_private\_Ip*)
 
-***iotdb-enginer.properties***
+***iotdb-engine.properties***
 
 rpc\_address = *A\_public\_Ip* (or *B\_private\_Ip*, *C\_public\_Ip*)
 

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -55,8 +54,6 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
   public UDTFNonAlignDataSet(
       QueryContext context,
       UDTFPlan udtfPlan,
-      List<PartialPath> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes,
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
       List<Boolean> cached)
@@ -64,8 +61,8 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
     super(
         context,
         udtfPlan,
-        deduplicatedPaths,
-        deduplicatedDataTypes,
+        udtfPlan.getDeduplicatedPaths(),
+        udtfPlan.getDeduplicatedDataTypes(),
         timestampGenerator,
         readersOfSelectedSeries,
         cached);
@@ -74,13 +71,14 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
 
   /** execute without value filter */
   public UDTFNonAlignDataSet(
-      QueryContext context,
-      UDTFPlan udtfPlan,
-      List<PartialPath> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes,
-      List<ManagedSeriesReader> readersOfSelectedSeries)
+      QueryContext context, UDTFPlan udtfPlan, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
-    super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
+    super(
+        context,
+        udtfPlan,
+        udtfPlan.getDeduplicatedPaths(),
+        udtfPlan.getDeduplicatedDataTypes(),
+        readersOfSelectedSeries);
     isInitialized = false;
   }
 
@@ -115,7 +113,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
       valueBufferList.add(timeValueByteBufferPair.right);
     }
 
-    inputLayer.updateRowRecordListEvictionUpperBound();
+    rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
 
     tsQueryNonAlignDataSet.setTimeList(timeBufferList);
     tsQueryNonAlignDataSet.setValueList(valueBufferList);

@@ -23,75 +23,75 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public class RowImpl implements Row {
+public class ElasticSerializableRowRecordListBackedMultiColumnRow implements Row {
 
-  private final int[] columnIndexes;
   private final TSDataType[] dataTypes;
+  private final int size;
 
   private Object[] rowRecord;
 
-  public RowImpl(int[] columnIndexes, TSDataType[] dataTypes) {
-    this.columnIndexes = columnIndexes;
+  public ElasticSerializableRowRecordListBackedMultiColumnRow(TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
+    size = dataTypes.length;
   }
 
   @Override
   public long getTime() {
-    return (long) rowRecord[rowRecord.length - 1];
+    return (long) rowRecord[size];
   }
 
   @Override
   public int getInt(int columnIndex) {
-    return (int) rowRecord[columnIndexes[columnIndex]];
+    return (int) rowRecord[columnIndex];
   }
 
   @Override
   public long getLong(int columnIndex) {
-    return (long) rowRecord[columnIndexes[columnIndex]];
+    return (long) rowRecord[columnIndex];
   }
 
   @Override
   public float getFloat(int columnIndex) {
-    return (float) rowRecord[columnIndexes[columnIndex]];
+    return (float) rowRecord[columnIndex];
   }
 
   @Override
   public double getDouble(int columnIndex) {
-    return (double) rowRecord[columnIndexes[columnIndex]];
+    return (double) rowRecord[columnIndex];
   }
 
   @Override
   public boolean getBoolean(int columnIndex) {
-    return (boolean) rowRecord[columnIndexes[columnIndex]];
+    return (boolean) rowRecord[columnIndex];
   }
 
   @Override
   public Binary getBinary(int columnIndex) {
-    return (Binary) rowRecord[columnIndexes[columnIndex]];
+    return (Binary) rowRecord[columnIndex];
   }
 
   @Override
   public String getString(int columnIndex) {
-    return ((Binary) rowRecord[columnIndexes[columnIndex]]).getStringValue();
+    return ((Binary) rowRecord[columnIndex]).getStringValue();
   }
 
   @Override
   public TSDataType getDataType(int columnIndex) {
-    return dataTypes[columnIndexes[columnIndex]];
+    return dataTypes[columnIndex];
   }
 
   @Override
   public boolean isNull(int columnIndex) {
-    return rowRecord[columnIndexes[columnIndex]] == null;
+    return rowRecord[columnIndex] == null;
+  }
+
+  @Override
+  public int size() {
+    return size;
   }
 
   public Row setRowRecord(Object[] rowRecord) {
     this.rowRecord = rowRecord;
     return this;
-  }
-
-  @Override
-  public int size() {
-    return this.columnIndexes.length;
   }
 }

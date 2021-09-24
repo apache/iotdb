@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cli;
 
+import org.apache.thrift.annotation.Nullable;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +29,7 @@ import static org.junit.Assert.assertEquals;
 
 public abstract class AbstractScript {
 
-  protected void testOutput(ProcessBuilder builder, String[] output) throws IOException {
+  protected void testOutput(ProcessBuilder builder, @Nullable String[] output) throws IOException {
     builder.redirectErrorStream(true);
     Process p = builder.start();
     BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -54,8 +56,10 @@ public abstract class AbstractScript {
       System.out.println(s);
     }
 
-    for (int i = 0; i < output.length; i++) {
-      assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
+    if (output != null) {
+      for (int i = 0; i < output.length; i++) {
+        assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
+      }
     }
   }
 

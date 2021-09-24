@@ -37,7 +37,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.*;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_ROW_BY_ROW;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_SIZE;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_TIME;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.DISPLAY_WINDOW_BEGIN_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.DISPLAY_WINDOW_END_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.SLIDING_STEP_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.WINDOW_SIZE_KEY;
 
 public class Accumulator implements UDTF {
 
@@ -45,7 +53,7 @@ public class Accumulator implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.INT32);
+    validator.validateInputSeriesDataType(0, TSDataType.INT32);
   }
 
   @Override
