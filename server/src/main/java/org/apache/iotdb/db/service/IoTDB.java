@@ -192,9 +192,16 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public void shutdown() throws Exception {
-    stop();
-
-    logger.info("IoTDB is shutdown.");
+    //TODO shutdown is not equal to stop()
+    logger.info("Deactivating IoTDB...");
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      TracingManager.getInstance().close();
+    }
+    registerManager.shutdownAll();
+    PrimitiveArrayManager.close();
+    SystemInfo.getInstance().close();
+    JMXService.deregisterMBean(mbeanName);
+    logger.info("IoTDB is deactivated.");
   }
 
   private void setUncaughtExceptionHandler() {
