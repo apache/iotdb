@@ -8,7 +8,6 @@ on:
     branches:
       - master
       - 'rel/*'
-      - test/e2e
     paths-ignore:
       - 'docs/**'
   pull_request:
@@ -30,20 +29,27 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Set up JDK 11
         uses: actions/setup-java@v1
         with:
           java-version: 11
+
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+
+      - name: Build Distribution Zip
+        run: ./mvnw.sh -B -DskipTests clean install
+
       - name: Build Docker Image
         run: |
           docker build . -f docker/src/main/Dockerfile-single -t "iotdb:$GITHUB_SHA"
           docker images
+
       - name: IT Test
         run: |
           cd iotdb-influxdb \
