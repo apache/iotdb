@@ -312,9 +312,6 @@ COUNT(*)
 
 返回measurement中的每个field key对应的field value的数目。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，遍历获取非空字段的数目
 
 ### 2. DISTINCE（）
 
@@ -342,9 +339,6 @@ DISTINCT(*)
 
 `DISTINCT()`支持所有数据类型的field value，InfluxQL支持`COUNT()`嵌套`DISTINCT()`。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，遍历获取不同值的列表
 
 ### 3.INTEGRAL()
 
@@ -374,7 +368,6 @@ INTEGRAL(*)
 
 `INTEGRAL()`不支持`fill()`，`INTEGRAL()`支持int64和float64两个数据类型。
 
-#### 暂不支持
 
 ### 4.MEAN（）
 
@@ -402,9 +395,6 @@ MEAN(*)
 
 `MEAN()`支持int64和float64两个数据类型。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，遍历求和然后求其平均值
 
 ### 5.MEDIAN（）
 
@@ -434,9 +424,6 @@ MEDIAN(*)
 
 > 注意：`MEDIAN()`近似于`PERCENTILE（field_key，50）`，除了如果该字段包含偶数个值，`MEDIAN()`返回两个中间字段值的平均值之外。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，排序找到其中位数
 
 ### 6. MODE（）
 
@@ -466,10 +453,6 @@ MODE(*)
 
 > 注意：`MODE()`如果最多出现次数有两个或多个值，则返回具有最早时间戳的字段值。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，找到其出现频率最高的值，如果有出现多个，那么取最早时间戳的字段值。
-
 ### 7.SPREAD()
 
 返回字段中最大和最小值的差值。
@@ -496,9 +479,6 @@ SPREAD(*)
 
 `SPREAD()`支持所有的数值类型的field。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，找到其最大和最小的差值。
 
 ### 8.STDDEV()
 
@@ -526,9 +506,6 @@ STDDEV(*)
 
 `STDDEV()`支持所有的数值类型的field。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，计算其标准差。
 
 ### 9.SUM（）
 
@@ -556,9 +533,6 @@ SUM(*)
 
 `SUM()`支持所有的数值类型的field。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，计算其和。
 
 ### 10.BOTTOM()
 
@@ -591,9 +565,6 @@ BOTTOM(field_key,N),tag_key(s),field_key(s)
 > - 如果一个field有两个或多个相等的field value，`BOTTOM()`返回时间戳最早的那个。
 > - `BOTTOM()`和`INTO`子句一起使用的时候，和其他的函数有些不一样。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，遍历找到其最小的N个值
 
 ### 11.FIRST()
 
@@ -627,9 +598,6 @@ FIRST(field_key),tag_key(s),field_key(s)
 
 `FIRST()`支持所有类型的field。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，找到其时间戳最早的值
 
 ### 12.LAST()
 
@@ -663,9 +631,6 @@ LAST(field_key),tag_key(s),field_key(s)
 
 `LAST()`支持所有类型的field。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，找到其时间戳最近的值
 
 ### 13.MAX()
 
@@ -699,9 +664,6 @@ MAX(field_key),tag_key(s),field_key(s)
 
 `MAX()`支持所有数值类型的field。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，找到其最大的值
 
 ### 14.MIN()
 
@@ -735,9 +697,6 @@ MIN(field_key),tag_key(s),field_key(s)
 
 `MIN()`支持所有数值类型的field。
 
-#### 实现方法
-
-在已经生成的QueryResult中找到满足条件的column，找到其最小的值。
 
 ### 15.PERCENTILE()
 
@@ -773,7 +732,6 @@ PERCENTILE(field_key,N),tag_key(s),field_key(s)
 
 `PERCENTILE()`支持所有数值类型的field。
 
-#### 暂不支持
 
 ### 16.SAMPLE()
 
@@ -809,7 +767,6 @@ SAMPLE(field_key,N),tag_key(s),field_key(s)
 
 `SAMPLE()`支持所有类型的field。
 
-#### 暂不支持
 
 ### 17.TOP()
 
@@ -842,11 +799,27 @@ TOP(field_key,N),tag_key(s),field_key(s)
 > - 如果一个field有两个或多个相等的field value，`TOP()`返回时间戳最早的那个。
 > - `TOP()`和`INTO`子句一起使用的时候，和其他的函数有些不一样。
 
-#### 实现方法
 
-在已经生成的QueryResult中找到满足条件的column，遍历找到其最大的N个值
+## 8. 支持的函数
 
-## 8.参考资料
+1. first()
+先利用iotdb中的first_value函数，然后对每一个device中的first值再重回iotdb中查询，指定path和where限定条件，查询出对应的time
+4. last()
+先利用iotdb中的last_value函数，然后对每一个device中的last值再重回iotdb中查询，指定path和where限定条件，查询出对应的time
+5. max()
+通过利用iotdb中的max_value函数，对多个device对最大值再求最大值，找到最大值后，指定path和where限定条件，再重回iotdb中查询对应的time
+6. min()
+通过利用iotdb中的min_value函数，对多个device对最小值再求最小值，找到最小值后，指定path和where限定条件，再重回iotdb中查询对应的time
+7. count()
+通过利用iotdb中的count函数,将多个设备的count值求和
+8. sum()
+通过利用iotdb中的sum函数，对多个device的求和值再进行求和
+9. mean()
+通过利用iotdb中的avg和count函数，对多个device的数量乘以avg之和再除以总数量
+10. spread()
+通过利用iotdb中的max_value和min_value函数，对多个device查找最大值和最小值，进行求和
+
+## 9.参考资料
 
 1. https://summer.iscas.ac.cn/#/org/orgdetail/apacheiotdb
 2. https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=165224300#Prometheus%E8%BF%9E%E6%8E%A5%E5%99%A8-3.4%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3
