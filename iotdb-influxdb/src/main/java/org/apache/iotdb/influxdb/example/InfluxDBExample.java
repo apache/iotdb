@@ -20,9 +20,11 @@
 package org.apache.iotdb.influxdb.example;
 
 import org.apache.iotdb.influxdb.IotDBInfluxDB;
+import org.apache.iotdb.influxdb.IotDBInfluxDBFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
@@ -32,17 +34,17 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class InfluxDBExample {
-  private static IotDBInfluxDB iotDBInfluxDB;
+  private static InfluxDB influxDB ;
 
   public static void main(String[] args) throws Exception {
     // init
-    iotDBInfluxDB = new IotDBInfluxDB("http://127.0.0.1:6667", "root", "root");
+    influxDB= IotDBInfluxDBFactory.connect("http://127.0.0.1:6667", "root", "root");
     // create database
-    iotDBInfluxDB.createDatabase("database");
+    influxDB.createDatabase("database");
     // set database
-    iotDBInfluxDB.setDatabase("database");
+    influxDB.setDatabase("database");
 
-    //    insertData();
+    insertData();
     queryData();
   }
 
@@ -63,7 +65,7 @@ public class InfluxDBExample {
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     Point point = builder.build();
     // after the build construction is completed, start writing
-    iotDBInfluxDB.write(point);
+    influxDB.write(point);
 
     builder = Point.measurement("student");
     tags = new HashMap<>();
@@ -77,7 +79,7 @@ public class InfluxDBExample {
     builder.fields(fields);
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     point = builder.build();
-    iotDBInfluxDB.write(point);
+    influxDB.write(point);
   }
 
   // query data
@@ -90,7 +92,7 @@ public class InfluxDBExample {
     query =
         new Query(
             "select * from student where (name=\"xie\" and sex=\"m\")or time<now()-7d", "database");
-    result = iotDBInfluxDB.query(query);
+    result = influxDB.query(query);
     System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
 
     // use iotdb built-in func
@@ -98,7 +100,7 @@ public class InfluxDBExample {
         new Query(
             "select max(score),min(score),sum(score),count(score),spread(score),mean(score),first(score),last(score) from student ",
             "database");
-    result = iotDBInfluxDB.query(query);
+    result = influxDB.query(query);
     System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());
 
     // aggregate query and selector query are parallel
@@ -106,7 +108,7 @@ public class InfluxDBExample {
         new Query(
             "select count(score),first(score),last(country),max(score),mean(score),median(score),min(score),mode(score),spread(score),stddev(score),sum(score) from student where (name=\"xie\" and sex=\"m\")or score<99",
             "database");
-    result = iotDBInfluxDB.query(query);
+    result = influxDB.query(query);
     System.out.println("query3 result:" + result.getResults().get(0).getSeries().get(0).toString());
   }
 }

@@ -34,6 +34,7 @@ InfluxDB是当前世界排名第一的时序数据库，具有繁荣的生态系
    1. 正确性测试：通过适配器以influxb的协议插入数据，然后查询IotDB数据库，将我们认为发送的内容与我们希望存储的内容进行比较。进行正确性测试
    2. 性能测试：以多线程的方式或者以Fiber多协程方式并发写入和读取，进行性能测试，类似的 demo：https://github.com/Tencent/TencentKona-8/tree/KonaFiber/demo/fiber/iotdb-sync-stress-demo
 
+
 ## 3.方案一
 
 ### 3.1 IotDB-InfluxDb适配器
@@ -819,7 +820,33 @@ TOP(field_key,N),tag_key(s),field_key(s)
 10. spread()
 通过利用iotdb中的max_value和min_value函数，对多个device查找最大值和最小值，进行求和
 
-## 9.参考资料
+## 9.切换方案
+
+ - 原版本
+```java
+influxDB = InfluxDBFactory.connect(openurl, username, password);
+influxDB.createDatabase(database);
+influxDB.insert(ponit);
+influxDB.query(query);
+```
+
+- 迁移版本
+```java
+influxDB = IotDBInfluxDBFactory.connect(openurl, username, password);
+influxDB.createDatabase(database);
+influxDB.insert(ponit);
+influxDB.query(query);
+```        
+
+只需要把
+InfluxDBFactory.connect(openurl, username, password);
+
+改为
+**IotDBInfluxDBFactory**.connect(openurl, username, password);
+
+即可
+
+## 10.参考资料
 
 1. https://summer.iscas.ac.cn/#/org/orgdetail/apacheiotdb
 2. https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=165224300#Prometheus%E8%BF%9E%E6%8E%A5%E5%99%A8-3.4%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3

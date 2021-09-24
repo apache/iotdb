@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.influxdb.integration;
 
-import org.apache.iotdb.influxdb.IotDBInfluxDB;
 
+import org.apache.iotdb.influxdb.IotDBInfluxDBFactory;
+import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
@@ -40,14 +41,14 @@ public class IotdbInfluxdbIT {
   public GenericContainer IotDB =
       new GenericContainer("apache/iotdb:latest").withExposedPorts(6667);
 
-  private IotDBInfluxDB iotDBInfluxDB;
+  private InfluxDB influxDB;
 
   @Before
   public void setUp() {
-    iotDBInfluxDB =
-        new IotDBInfluxDB(IotDB.getContainerIpAddress(), IotDB.getMappedPort(6667), "root", "root");
-    iotDBInfluxDB.createDatabase("database");
-    iotDBInfluxDB.setDatabase("database");
+    influxDB=
+            IotDBInfluxDBFactory.connect(IotDB.getContainerIpAddress(), IotDB.getMappedPort(6667), "root", "root");
+    influxDB.createDatabase("database");
+    influxDB.setDatabase("database");
     insertData();
   }
 
@@ -66,7 +67,7 @@ public class IotdbInfluxdbIT {
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     Point point = builder.build();
     // after the build construction is completed, start writing
-    iotDBInfluxDB.write(point);
+    influxDB.write(point);
 
     builder = Point.measurement("student");
     tags = new HashMap<>();
@@ -80,7 +81,7 @@ public class IotdbInfluxdbIT {
     builder.fields(fields);
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     point = builder.build();
-    iotDBInfluxDB.write(point);
+    influxDB.write(point);
   }
 
   @Test
@@ -88,7 +89,7 @@ public class IotdbInfluxdbIT {
     Query query =
         new Query(
             "select * from student where (name=\"xie\" and sex=\"m\")or time<now()-7d", "database");
-    QueryResult result = iotDBInfluxDB.query(query);
+    QueryResult result = influxDB.query(query);
     QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
 
     String[] retArray = new String[] {"time", "name", "sex", "province", "country", "score", "tel"};
@@ -103,7 +104,7 @@ public class IotdbInfluxdbIT {
         new Query(
             "select max(score),min(score),sum(score),count(score),spread(score),mean(score),first(score),last(score) from student ",
             "database");
-    QueryResult result = iotDBInfluxDB.query(query);
+    QueryResult result = influxDB.query(query);
     QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
 
     Object[] retArray = new Object[] {0, 99.0, 87.0, 186, 2, 12.0, 93, 87, 99};
@@ -118,7 +119,7 @@ public class IotdbInfluxdbIT {
         new Query(
             "select count(score),first(score),last(country),max(score),mean(score),median(score),min(score),mode(score),spread(score),stddev(score),sum(score) from student where (name=\"xie\" and sex=\"m\")or score<99",
             "database");
-    QueryResult result = iotDBInfluxDB.query(query);
+    QueryResult result = influxDB.query(query);
     QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
     System.out.println("qqq" + series.toString());
 

@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.*;
 
 import java.lang.reflect.Field;
