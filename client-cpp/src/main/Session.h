@@ -613,6 +613,12 @@ private:
 
     int8_t getDataTypeNumber(TSDataType::TSDataType type);
 
+    struct TsCompare {
+        std::vector <int64_t> &timestamps;
+        TsCompare(std::vector <int64_t> &inTimestamps):timestamps(inTimestamps) {};
+        bool operator() (int i, int j) { return (timestamps[i] < timestamps[j]) ;};
+    };
+
 public:
     Session(const std::string &host, int rpcPort) : username("user"), password("password") {
         this->host = host;
