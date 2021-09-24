@@ -49,7 +49,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: IT/UT Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean compile post-integration-test -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer'
+        run: mvn -B clean compile post-integration-test -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!iotdb-influxdb'
       - name: Code Coverage (Coveralls)
         if: ${{ success() && (github.event_name == 'pull_request_target' || github.event_name == 'push')}}
         run: |
