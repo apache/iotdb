@@ -45,10 +45,10 @@ public class VectorChunkWriterImpl implements IChunkWriter {
             schema.getTimeTSEncoding(),
             schema.getTimeEncoder());
 
-    List<String> valueMeasurementIdList = schema.getValueMeasurementIdList();
-    List<TSDataType> valueTSDataTypeList = schema.getValueTSDataTypeList();
-    List<TSEncoding> valueTSEncodingList = schema.getValueTSEncodingList();
-    List<Encoder> valueEncoderList = schema.getValueEncoderList();
+    List<String> valueMeasurementIdList = schema.getSubMeasurementsList();
+    List<TSDataType> valueTSDataTypeList = schema.getSubMeasurementsTSDataTypeList();
+    List<TSEncoding> valueTSEncodingList = schema.getSubMeasurementsTSEncodingList();
+    List<Encoder> valueEncoderList = schema.getSubMeasurementsEncoderList();
 
     valueChunkWriterList = new ArrayList<>(valueMeasurementIdList.size());
     for (int i = 0; i < valueMeasurementIdList.size(); i++) {

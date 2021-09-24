@@ -168,7 +168,7 @@ public class Template {
       if (schemaEntry.getValue() instanceof VectorMeasurementSchema) {
         VectorMeasurementSchema vectorMeasurementSchema =
             (VectorMeasurementSchema) schemaEntry.getValue();
-        res.put(schemaEntry.getKey(), vectorMeasurementSchema.getValueMeasurementIdList());
+        res.put(schemaEntry.getKey(), vectorMeasurementSchema.getSubMeasurementsList());
       } else {
         res.put(schemaEntry.getKey(), new ArrayList<>());
       }

@@ -1812,7 +1812,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         new Thread(
                 () -> {
                   try {
-                    Thread.sleep(ClusterConstant.getHeartBeatIntervalMs());
+                    Thread.sleep(ClusterConstant.getHeartbeatIntervalMs());
                   } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     // ignore

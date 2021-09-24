@@ -708,26 +708,13 @@ public class StorageEngine implements IService {
     virtualStorageGroupManager.closeStorageGroupProcessor(partitionId, isSeq, isSync);
   }
 
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws StorageEngineException {
-    try {
-      List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
-      for (PartialPath storageGroupPath : sgPaths) {
-        // storage group has no data
-        if (!processorMap.containsKey(storageGroupPath)) {
-          continue;
-        }
-
-        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        processorMap.get(storageGroupPath).delete(newPath, startTime, endTime, planIndex);
-      }
-    } catch (IOException | MetadataException e) {
-      throw new StorageEngineException(e.getMessage());
-    }
-  }
-
-  /** delete data of timeseries "{deviceId}.{measurementId}" */
-  public void deleteTimeseries(PartialPath path, long planIndex) throws StorageEngineException {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
@@ -739,7 +726,29 @@ public class StorageEngine implements IService {
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
         processorMap
             .get(storageGroupPath)
-            .delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex);
+            .delete(newPath, startTime, endTime, planIndex, timePartitionFilter);
+      }
+    } catch (IOException | MetadataException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  /** delete data of timeseries "{deviceId}.{measurementId}" */
+  public void deleteTimeseries(
+      PartialPath path, long planIndex, TimePartitionFilter timePartitionFilter)
+      throws StorageEngineException {
+    try {
+      List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
+      for (PartialPath storageGroupPath : sgPaths) {
+        // storage group has no data
+        if (!processorMap.containsKey(storageGroupPath)) {
+          continue;
+        }
+
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        processorMap
+            .get(storageGroupPath)
+            .delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex, timePartitionFilter);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -885,10 +894,10 @@ public class StorageEngine implements IService {
         .deleteTsfile(deletedTsfile);
   }
 
-  public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
+  public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeMoved)))
-        .moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded)))
+        .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
   /**

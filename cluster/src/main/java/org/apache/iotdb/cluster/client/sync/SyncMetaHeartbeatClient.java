@@ -35,12 +35,11 @@ public class SyncMetaHeartbeatClient extends TSMetaServiceClient {
   private SyncMetaHeartbeatClient(
       TProtocolFactory protocolFactory, Node target, SyncClientPool pool)
       throws TTransportException {
-    // the difference of the two clients lies in the port
     super(
         protocolFactory,
         target.getInternalIp(),
         target.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET,
-        ClusterConstant.getConnectionTimeoutInMS(),
+        ClusterConstant.getHeartbeatClientConnTimeoutMs(),
         target,
         pool);
   }

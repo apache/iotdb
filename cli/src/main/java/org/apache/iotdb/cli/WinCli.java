@@ -99,20 +99,16 @@ public class WinCli extends AbstractCli {
         timeFormat = RpcUtils.setTimeFormat("long");
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
-        maxPrintRowCount = Integer.parseInt(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
-        if (maxPrintRowCount <= 0) {
-          println(
-              IOTDB_CLI_PREFIX
-                  + "> error format of max print row count, it should be a number greater than 0");
-          return false;
-        }
+        setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
       }
     } catch (ParseException e) {
       println("Require more params input, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
       return false;
     } catch (NumberFormatException e) {
-      println(IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number");
+      println(
+          IOTDB_CLI_PREFIX
+              + "> error format of max print row count, it should be an integer number");
       return false;
     }
     return true;
@@ -133,6 +129,7 @@ public class WinCli extends AbstractCli {
                 DriverManager.getConnection(
                     Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
           properties = connection.getServerProperties();
+          timestampPrecision = properties.getTimestampPrecision();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
           processCommand(execute, connection);
           return;

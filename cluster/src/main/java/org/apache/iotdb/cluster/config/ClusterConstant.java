@@ -24,11 +24,20 @@ import org.apache.iotdb.db.utils.TestOnly;
 public class ClusterConstant {
 
   /**
-   * We only change the two values in tests to reduce test time, so they are essentially constant.
+   * We only change the value in tests to reduce test time, so they are essentially constant. A
+   * failed election will restart in [0, max(heartbeatInterval, 50ms)). If this range is too small,
+   * a stale node may frequently issue elections and thus makes the leader step down.
    */
-  private static long electionLeastTimeOutMs = 2 * 1000L;
+  private static long electionMaxWaitMs =
+      Math.max(ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs(), 50L);
 
-  private static long electionRandomTimeOutMs = 3 * 1000L;
+  // Heartbeat client connection timeout should not be larger than heartbeat interval, otherwise
+  // the thread pool of sending heartbeats or requesting votes may be used up by waiting for
+  // establishing connection with some slow or dead nodes.
+  private static final int heartbeatClientConnTimeoutMs =
+      Math.min(
+          (int) ClusterConstant.getHeartbeatIntervalMs(),
+          ClusterConstant.getConnectionTimeoutInMS());
 
   public static final int SLOT_NUM = 10000;
   public static final int HASH_SALT = 2333;
@@ -58,26 +67,13 @@ public class ClusterConstant {
     // constant class
   }
 
-  /**
-   * a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
-   * interval, or a stale node may frequently issue elections and thus makes the leader step down
-   */
-  public static long getElectionLeastTimeOutMs() {
-    return electionLeastTimeOutMs;
-  }
-
-  public static long getElectionRandomTimeOutMs() {
-    return electionRandomTimeOutMs;
+  public static long getElectionMaxWaitMs() {
+    return electionMaxWaitMs;
   }
 
   @TestOnly
-  public static void setElectionLeastTimeOutMs(long electionLeastTimeOutMs) {
-    ClusterConstant.electionLeastTimeOutMs = electionLeastTimeOutMs;
-  }
-
-  @TestOnly
-  public static void setElectionRandomTimeOutMs(long electionRandomTimeOutMs) {
-    ClusterConstant.electionRandomTimeOutMs = electionRandomTimeOutMs;
+  public static void setElectionMaxWaitMs(long electionMaxWaitMs) {
+    ClusterConstant.electionMaxWaitMs = electionMaxWaitMs;
   }
 
   private static int connectionTimeoutInMS =
@@ -87,7 +83,10 @@ public class ClusterConstant {
   private static int writeOperationTimeoutMS =
       ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS();
   private static int syncLeaderMaxWaitMs = 20 * 1000;
-  private static long heartBeatIntervalMs = 1000L;
+  private static long heartbeatIntervalMs =
+      ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs();
+  private static long electionTimeoutMs =
+      ClusterDescriptor.getInstance().getConfig().getElectionTimeoutMs();
 
   public static int getConnectionTimeoutInMS() {
     return connectionTimeoutInMS;
@@ -113,12 +112,24 @@ public class ClusterConstant {
     ClusterConstant.syncLeaderMaxWaitMs = syncLeaderMaxWaitMs;
   }
 
-  public static long getHeartBeatIntervalMs() {
-    return heartBeatIntervalMs;
+  public static long getHeartbeatIntervalMs() {
+    return heartbeatIntervalMs;
   }
 
-  public static void setHeartBeatIntervalMs(long heartBeatIntervalMs) {
-    ClusterConstant.heartBeatIntervalMs = heartBeatIntervalMs;
+  public static void setHeartbeatIntervalMs(long heartBeatIntervalMs) {
+    ClusterConstant.heartbeatIntervalMs = heartBeatIntervalMs;
+  }
+
+  public static long getElectionTimeoutMs() {
+    return electionTimeoutMs;
+  }
+
+  public static void setElectionTimeoutMs(long electionTimeoutMs) {
+    ClusterConstant.electionTimeoutMs = electionTimeoutMs;
+  }
+
+  public static int getHeartbeatClientConnTimeoutMs() {
+    return heartbeatClientConnTimeoutMs;
   }
 
   @TestOnly

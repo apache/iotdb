@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
-import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.metadata.CMManager;
@@ -51,6 +50,7 @@ import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -59,6 +59,8 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
@@ -101,6 +103,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   private static final Logger logger = LoggerFactory.getLogger(DataLogApplierTest.class);
   private boolean partialWriteEnabled;
+  private boolean isPartitionEnabled;
 
   private TestMetaGroupMember testMetaGroupMember =
       new TestMetaGroupMember() {
@@ -146,9 +149,12 @@ public class DataLogApplierTest extends IoTDBTest {
         }
       };
 
-  private TestDataGroupMember testDataGroupMember = new TestDataGroupMember();
+  private TestDataGroupMember testDataGroupMember =
+      new TestDataGroupMember(
+          TestUtils.getNode(10),
+          new PartitionGroup(Collections.singletonList(TestUtils.getNode(10))));
 
-  private LogApplier applier = new DataLogApplier(testMetaGroupMember, testDataGroupMember);
+  private DataLogApplier applier;
 
   @Override
   @Before
@@ -170,12 +176,13 @@ public class DataLogApplierTest extends IoTDBTest {
     testMetaGroupMember.setThisNode(TestUtils.getNode(0));
 
     testMetaGroupMember.setLeader(testMetaGroupMember.getThisNode());
-    testDataGroupMember.setLeader(testDataGroupMember.getThisNode());
+    testDataGroupMember.setLeader(TestUtils.getNode(10));
     testDataGroupMember.setCharacter(NodeCharacter.LEADER);
     testMetaGroupMember.setCharacter(NodeCharacter.LEADER);
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
+    isPartitionEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
     //    //TODO fixme : 恢复正常的provider
     ClusterIoTDB.getInstance()
         .setClientProvider(
@@ -247,6 +254,8 @@ public class DataLogApplierTest extends IoTDBTest {
               }
             });
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(testMetaGroupMember);
+    testDataGroupMember.setMetaGroupMember(testMetaGroupMember);
+    applier = new DataLogApplier(testMetaGroupMember, testDataGroupMember);
   }
 
   @Override
@@ -259,6 +268,7 @@ public class DataLogApplierTest extends IoTDBTest {
     super.tearDown();
     NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(partialWriteEnabled);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(isPartitionEnabled);
   }
 
   @Test
@@ -418,6 +428,27 @@ public class DataLogApplierTest extends IoTDBTest {
     // the applier should sync meta leader to get root.sg2 and report no error
     applier.apply(log);
     assertTrue(IoTDB.metaManager.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
+    assertNull(log.getException());
+  }
+
+  @Test
+  public void testApplyDeletePartitionFilter() throws QueryProcessException {
+    applier.setQueryExecutor(
+        new PlanExecutor() {
+          @Override
+          public boolean processNonQuery(PhysicalPlan plan) {
+            assertTrue(plan instanceof DeletePlan);
+            DeletePlan deletePlan = (DeletePlan) plan;
+            TimePartitionFilter planFilter = deletePlan.getPartitionFilter();
+            TimePartitionFilter memberFilter = testDataGroupMember.getTimePartitionFilter();
+            assertEquals(planFilter, memberFilter);
+            return true;
+          }
+        });
+
+    DeletePlan deletePlan = new DeletePlan();
+    PhysicalPlanLog log = new PhysicalPlanLog(deletePlan);
+    applier.apply(log);
     assertNull(log.getException());
   }
 
