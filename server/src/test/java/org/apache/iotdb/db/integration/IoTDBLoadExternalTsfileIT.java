@@ -157,7 +157,7 @@ public class IoTDBLoadExternalTsfileIT {
   }
 
   @Test
-  public void moveTsfileTest() throws SQLException {
+  public void unloadTsfileTest() throws SQLException {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -177,7 +177,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
       assertEquals(
           0,
@@ -203,7 +203,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
       assertEquals(
           0,
@@ -250,7 +250,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
 
       // move root.test
@@ -279,7 +279,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
 
       // load all tsfile in tmp dir
@@ -407,7 +407,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
       resources =
           new ArrayList<>(
@@ -416,7 +416,7 @@ public class IoTDBLoadExternalTsfileIT {
                   .getUnSequenceFileList());
       assertEquals(1, resources.size());
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
 
       // move root.test
@@ -431,7 +431,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
       resources =
           new ArrayList<>(
@@ -440,7 +440,7 @@ public class IoTDBLoadExternalTsfileIT {
                   .getUnSequenceFileList());
       assertEquals(2, resources.size());
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
 
       // load all tsfile in tmp dir
@@ -459,18 +459,25 @@ public class IoTDBLoadExternalTsfileIT {
               .getUnSequenceFileList()
               .size());
       if (config.getTimeIndexLevel().equals(TimeIndexLevel.DEVICE_TIME_INDEX)) {
-        assertEquals(
-            1,
-            StorageEngine.getInstance()
+        if (StorageEngine.getInstance()
                 .getProcessor(new PartialPath("root.test"))
                 .getUnSequenceFileList()
-                .size());
-        assertEquals(
-            3,
-            StorageEngine.getInstance()
-                .getProcessor(new PartialPath("root.test"))
-                .getSequenceFileTreeSet()
-                .size());
+                .size()
+            == 1) {
+          assertEquals(
+              3,
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet()
+                  .size());
+        } else {
+          assertEquals(
+              2,
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet()
+                  .size());
+        }
       } else if (config.getTimeIndexLevel().equals(TimeIndexLevel.FILE_TIME_INDEX)) {
         assertEquals(
             2,
@@ -558,7 +565,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
 
       // move root.test
@@ -581,7 +588,7 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
+        statement.execute(String.format("unload \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
 
       Set<String> expectedSet =
@@ -676,7 +683,7 @@ public class IoTDBLoadExternalTsfileIT {
       }
 
       for (TsFileResource resource : resources) {
-        statement.execute("move \"" + resource.getTsFilePath() + "\" \"" + vehicleTmpDir + "\"");
+        statement.execute("unload \"" + resource.getTsFilePath() + "\" \"" + vehicleTmpDir + "\"");
       }
 
       resources =
@@ -692,7 +699,7 @@ public class IoTDBLoadExternalTsfileIT {
       }
 
       for (TsFileResource resource : resources) {
-        statement.execute("move \"" + resource.getTsFilePath() + "\" \"" + testTmpDir + "\"");
+        statement.execute("unload \"" + resource.getTsFilePath() + "\" \"" + testTmpDir + "\"");
       }
 
       for (String sql : deleteSqls) {

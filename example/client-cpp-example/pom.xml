@@ -111,10 +111,6 @@
                                             <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
                                             <destinationFile>${project.build.directory}/CMakeLists.txt</destinationFile>
                                         </fileSet>
-                                        <fileSet>
-                                            <sourceFile>${project.parent.basedir}/../client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}.zip</sourceFile>
-                                            <destinationFile>${project.build.directory}/client-cpp-${project.version}-cpp-${os.classifier}.zip</destinationFile>
-                                        </fileSet>
                                     </fileSets>
                                 </configuration>
                             </execution>

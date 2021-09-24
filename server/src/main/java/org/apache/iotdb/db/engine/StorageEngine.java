@@ -893,10 +893,10 @@ public class StorageEngine implements IService {
         .deleteTsfile(deletedTsfile);
   }
 
-  public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
+  public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeMoved)))
-        .moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded)))
+        .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
   /**

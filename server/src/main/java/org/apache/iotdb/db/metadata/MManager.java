@@ -1241,7 +1241,7 @@ public class MManager {
       Template template = node.getUpperTemplate();
 
       for (IMNode child : node.getChildren().values()) {
-        if (child.isMeasurement()){
+        if (child.isMeasurement()) {
           IMeasurementMNode measurementMNode = (IMeasurementMNode) child;
           res.add(measurementMNode.getSchema());
         }

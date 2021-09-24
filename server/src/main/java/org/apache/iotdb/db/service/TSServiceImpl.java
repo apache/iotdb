@@ -965,7 +965,7 @@ public class TSServiceImpl implements TSIService.Iface {
         UDTFPlan udtfPlan = (UDTFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(resultColumns.get(i).getResultColumnName());
-          seriesTypes.add(udtfPlan.getOriginalOutputColumnDataType(i));
+          seriesTypes.add(resultColumns.get(i).getDataType());
         }
         break;
       default:
