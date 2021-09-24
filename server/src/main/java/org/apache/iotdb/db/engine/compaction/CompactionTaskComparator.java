@@ -24,19 +24,18 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.Comparator;
+import java.util.List;
 
 public class CompactionTaskComparator implements Comparator<AbstractCompactionTask> {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if ((((o1 instanceof AbstractInnerSpaceCompactionTask)
-                && !(o2 instanceof AbstractInnerSpaceCompactionTask))
-            || ((o1 instanceof AbstractCrossSpaceCompactionTask)
-                && !(o2 instanceof AbstractCrossSpaceCompactionTask)))
-        && config.getCompactionPriority() != CompactionPriority.BALANCE) {
+    if (((o1 instanceof AbstractInnerSpaceCompactionTask) ^ (o2 instanceof AbstractInnerSpaceCompactionTask))
+            && config.getCompactionPriority() != CompactionPriority.BALANCE) {
       // the two task is different type, and the compaction priority is not balance
       if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
         return o1 instanceof AbstractInnerSpaceCompactionTask ? 1 : -1;
@@ -46,20 +45,54 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     }
     if (o1 instanceof AbstractInnerSpaceCompactionTask) {
       return compareInnerSpaceCompactionTask(
-          (AbstractInnerSpaceCompactionTask) o1, (AbstractInnerSpaceCompactionTask) o2);
+              (AbstractInnerSpaceCompactionTask) o1, (AbstractInnerSpaceCompactionTask) o2);
     } else {
       return comparefCrossSpaceCompactionTask(
-          (AbstractCrossSpaceCompactionTask) o1, (AbstractCrossSpaceCompactionTask) o2);
+              (AbstractCrossSpaceCompactionTask) o1, (AbstractCrossSpaceCompactionTask) o2);
     }
   }
 
   private int compareInnerSpaceCompactionTask(
-      AbstractInnerSpaceCompactionTask o1, AbstractInnerSpaceCompactionTask o2) {
-    return -1;
+          AbstractInnerSpaceCompactionTask o1, AbstractInnerSpaceCompactionTask o2) {
+    if (o1.isSequence() ^ o2.isSequence()) {
+      // prioritize sequence file compaction
+      return o1.isSequence() ? 1 : -1;
+    }
+    List<TsFileResource> selectedFilesOfO1 = o1.getSelectedTsFileResourceList();
+    List<TsFileResource> selectedFilesOfO2 = o2.getSelectedTsFileResourceList();
+
+    // if the number of selected files are different
+    // we prefer to execute task with more files
+    if (selectedFilesOfO1.size() != selectedFilesOfO2.size()) {
+      return selectedFilesOfO1.size() - selectedFilesOfO2.size();
+    }
+
+    // if the size of selected files are different
+    // we prefer to execute task with smaller file size
+    // because small files can be compacted quickly
+    if (o1.getSelectedFileSize() != o2.getSelectedFileSize()) {
+      return (int) (o2.getSelectedFileSize() - o1.getSelectedFileSize());
+    }
+
+    // if the sum of compaction count of the selected files are different
+    // we prefer to execute task with smaller compaction count
+    // this can reduce write amplification
+    if (o1.getSumOfCompactionCount() != o2.getSumOfCompactionCount()) {
+      return o2.getSumOfCompactionCount() - o1.getSumOfCompactionCount();
+    }
+
+    // if the max file version of o1 and o2 are different
+    // we prefer to execute task with greater file version
+    // because we want to compact newly written files
+    if (o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
+      return o1.getMaxFileVersion() > o2.getMaxFileVersion() ? 1 : -1;
+    }
+
+    return 0;
   }
 
   private int comparefCrossSpaceCompactionTask(
-      AbstractCrossSpaceCompactionTask o1, AbstractCrossSpaceCompactionTask o2) {
+          AbstractCrossSpaceCompactionTask o1, AbstractCrossSpaceCompactionTask o2) {
     return -1;
   }
 }
