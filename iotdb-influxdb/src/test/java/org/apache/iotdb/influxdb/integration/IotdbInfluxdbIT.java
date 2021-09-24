@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
-public class IotdbInfluxdbTest {
+public class IotdbInfluxdbIT {
 
   @Rule
   public GenericContainer IotDB =
