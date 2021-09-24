@@ -870,48 +870,52 @@ public class MManager {
 
   // region Interfaces for level Node info Query
   /**
-   * Get all nodes matching the given path from the given level. The level of the path should match
-   * the nodeLevel. 1. The given level equals the path level with out **, e.g. give path root.*.d.*
-   * and the level should be 4. 2. The given level is greater than path level with **, e.g. give
-   * path root.** and the level could be 2 or 3.
+   * Get all nodes matching the given path pattern in the given level. The level of the path should
+   * match the nodeLevel. 1. The given level equals the path level with out **, e.g. give path
+   * root.*.d.* and the level should be 4. 2. The given level is greater than path level with **,
+   * e.g. give path root.** and the level could be 2 or 3.
    *
-   * @param path can be a pattern of a full path.
+   * @param pathPattern can be a pattern of a full path.
    * @param nodeLevel the level should match the level of the path
    * @return A List instance which stores all node at given level
    */
-  public List<PartialPath> getNodesListInGivenLevel(PartialPath path, int nodeLevel)
+  public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
       throws MetadataException {
-    return getNodesListInGivenLevel(path, nodeLevel, null);
+    return getNodesListInGivenLevel(pathPattern, nodeLevel, null);
   }
 
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-    return mtree.getNodesListInGivenLevel(path, nodeLevel, filter);
+      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
   }
 
   /**
-   * Get child node path in the next level of the given path.
+   * Get child node path in the next level of the given path pattern.
+   *
+   * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
    * return [root.sg1.d1, root.sg1.d2]
    *
-   * @param path The given path
+   * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
-    return mtree.getChildNodePathInNextLevel(path);
+  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+    return mtree.getChildNodePathInNextLevel(pathPattern);
   }
 
   /**
-   * Get child node in the next level of the given path.
+   * Get child node in the next level of the given path pattern.
+   *
+   * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
    * return [d1, d2] given path = root.sg.d1 return [s1,s2]
    *
    * @return All child nodes of given seriesPath.
    */
-  public Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
-    return mtree.getChildNodeInNextLevel(path);
+  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
+    return mtree.getChildNodeNameInNextLevel(pathPattern);
   }
   // endregion
 
@@ -943,33 +947,34 @@ public class MManager {
     return mtree.getStorageGroupPath(path);
   }
 
-  /** Get all storage group paths */
-  public List<PartialPath> getAllStorageGroupPaths() {
-    return mtree.getAllStorageGroupPaths();
-  }
-
   /**
-   * Get all storage group matching given path.
+   * Get all storage group matching given path pattern.
    *
-   * @param path a pattern of a full path, may contain wildcard.
-   * @return A ArrayList instance which stores storage group paths matching given path.
+   * @param pathPattern a pattern of a full path
+   * @return A ArrayList instance which stores storage group paths matching given path pattern.
    */
-  public List<PartialPath> getStorageGroupPaths(PartialPath path) throws MetadataException {
-    return mtree.getStorageGroupPaths(path);
+  public List<PartialPath> getStorageGroupPaths(PartialPath pathPattern) throws MetadataException {
+    return mtree.getStorageGroupPaths(pathPattern);
   }
 
   /**
-   * Get the storage group that given path matches or belongs to. The path may contain wildcard.
+   * Get the storage group that given path pattern matches or belongs to.
    *
    * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
    * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
    * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
    *
-   * @param path a path pattern or a full path, may contain wildcard
-   * @return a list contains all storage groups related to given path
+   * @param pathPattern a path pattern or a full path
+   * @return a list contains all storage groups related to given path pattern
    */
-  public List<PartialPath> getAllRelatedStorageGroups(PartialPath path) throws MetadataException {
-    return mtree.getAllRelatedStorageGroups(path);
+  public List<PartialPath> getAllRelatedStorageGroups(PartialPath pathPattern)
+      throws MetadataException {
+    return mtree.getAllRelatedStorageGroups(pathPattern);
+  }
+
+  /** Get all storage group paths */
+  public List<PartialPath> getAllStorageGroupPaths() {
+    return mtree.getAllStorageGroupPaths();
   }
 
   /**
@@ -1056,37 +1061,13 @@ public class MManager {
 
   // region Interfaces for timeseries, measurement and schema info Query
   /**
-   * Get series type for given seriesPath.
-   *
-   * @param path full path
-   */
-  public TSDataType getSeriesType(PartialPath path) throws MetadataException {
-    if (path.equals(SQLConstant.TIME_PATH)) {
-      return TSDataType.INT64;
-    }
-
-    IMeasurementSchema schema = mtree.getSchema(path);
-    if (schema instanceof MeasurementSchema) {
-      return schema.getType();
-    } else {
-      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
-        return TSDataType.VECTOR;
-      } else {
-        String subSensor = ((VectorPartialPath) path).getSubSensor(0);
-        List<String> measurements = schema.getSubMeasurementsList();
-        return schema.getSubMeasurementsTSDataTypeList().get(measurements.indexOf(subSensor));
-      }
-    }
-  }
-
-  /**
    * Return all paths for given path if the path is abstract. Or return the path itself. Regular
    * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
    *
-   * @param path can be a pattern or a full path of timeseries.
+   * @param pathPattern can be a pattern or a full path of timeseries.
    */
-  public List<PartialPath> getAllTimeseriesPath(PartialPath path) throws MetadataException {
-    return mtree.getAllTimeseriesPath(path);
+  public List<PartialPath> getAllTimeseriesPath(PartialPath pathPattern) throws MetadataException {
+    return mtree.getAllTimeseriesPath(pathPattern);
   }
 
   /**
@@ -1094,8 +1075,8 @@ public class MManager {
    * limit and offset.
    */
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
-      PartialPath path, int limit, int offset) throws MetadataException {
-    return mtree.getAllTimeseriesPathWithAlias(path, limit, offset);
+      PartialPath pathPattern, int limit, int offset) throws MetadataException {
+    return mtree.getAllTimeseriesPathWithAlias(pathPattern, limit, offset);
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
@@ -1196,6 +1177,30 @@ public class MManager {
   }
 
   /**
+   * Get series type for given seriesPath.
+   *
+   * @param fullPath full path
+   */
+  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
+    if (fullPath.equals(SQLConstant.TIME_PATH)) {
+      return TSDataType.INT64;
+    }
+
+    IMeasurementSchema schema = mtree.getSchema(fullPath);
+    if (schema instanceof MeasurementSchema) {
+      return schema.getType();
+    } else {
+      if (((VectorPartialPath) fullPath).getSubSensorsList().size() != 1) {
+        return TSDataType.VECTOR;
+      } else {
+        String subSensor = ((VectorPartialPath) fullPath).getSubSensor(0);
+        List<String> measurements = schema.getSubMeasurementsList();
+        return schema.getSubMeasurementsTSDataTypeList().get(measurements.indexOf(subSensor));
+      }
+    }
+  }
+
+  /**
    * get MeasurementSchema or VectorMeasurementSchema which contains the measurement
    *
    * @param device device path
@@ -1291,11 +1296,11 @@ public class MManager {
   }
 
   // attention: this path must be a device node
-  public List<IMeasurementSchema> getAllMeasurementByDevicePath(PartialPath path)
+  public List<IMeasurementSchema> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException {
     Set<IMeasurementSchema> res = new HashSet<>();
     try {
-      IMNode node = mNodeCache.get(path);
+      IMNode node = mNodeCache.get(devicePath);
       Template template = node.getUpperTemplate();
 
       for (IMNode child : node.getChildren().values()) {
@@ -1310,7 +1315,7 @@ public class MManager {
         res.addAll(template.getSchemaMap().values());
       }
     } catch (CacheException e) {
-      throw new PathNotExistException(path.getFullPath());
+      throw new PathNotExistException(devicePath.getFullPath());
     }
 
     return new ArrayList<>(res);
@@ -1602,14 +1607,14 @@ public class MManager {
   // region Interfaces only for Cluster module usage
 
   /**
-   * Collect the timeseries schemas under "startingPath".
+   * Collect the timeseries schemas under "prefixPath".
    *
    * @apiNote :for cluster
    */
-  public void collectSeries(PartialPath startingPath, List<IMeasurementSchema> measurementSchemas) {
+  public void collectSeries(PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
     IMNode node;
     try {
-      node = getNodeByPath(startingPath);
+      node = getNodeByPath(prefixPath);
     } catch (MetadataException e) {
       return;
     }

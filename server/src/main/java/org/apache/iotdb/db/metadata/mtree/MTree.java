@@ -770,30 +770,31 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all storage group that the given path matches.
+   * Get all storage group that the given path pattern matches.
    *
-   * @param path a path pattern or a full path, may contain wildcard
-   * @return a list contains all storage group names under give path
+   * @param pathPattern a path pattern or a full path
+   * @return a list contains all storage group names under given path pattern
    */
-  public List<PartialPath> getStorageGroupPaths(PartialPath path) throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
+  public List<PartialPath> getStorageGroupPaths(PartialPath pathPattern) throws MetadataException {
+    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, pathPattern);
     collector.setCollectInternal(false);
     collector.traverse();
     return collector.getResult();
   }
 
   /**
-   * Get the storage group that given path matches or belongs to. The path may contain wildcard.
+   * Get the storage group that given path pattern matches or belongs to.
    *
    * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
    * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
    * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
    *
-   * @param path a path pattern or a full path, may contain wildcard
+   * @param pathPattern a path pattern or a full path
    * @return a list contains all storage groups related to given path
    */
-  public List<PartialPath> getAllRelatedStorageGroups(PartialPath path) throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, path);
+  public List<PartialPath> getAllRelatedStorageGroups(PartialPath pathPattern)
+      throws MetadataException {
+    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, pathPattern);
     collector.setCollectInternal(true);
     collector.traverse();
     return collector.getResult();
@@ -813,14 +814,14 @@ public class MTree implements Serializable {
 
   // region Interfaces for Device info Query
   /**
-   * Get all devices matching the given path. If isPrefixMatch, then the devices under the given
-   * path will be collected too.
+   * Get all devices matching the given path pattern. If isPrefixMatch, then the devices under the
+   * paths matching given path pattern will be collected too.
    *
    * @return a list contains all distinct devices names
    */
-  public Set<PartialPath> getDevices(PartialPath path, boolean isPrefixMatch)
+  public Set<PartialPath> getDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    EntityPathCollector collector = new EntityPathCollector(root, path);
+    EntityPathCollector collector = new EntityPathCollector(root, pathPattern);
     collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     return collector.getResult();
@@ -854,30 +855,31 @@ public class MTree implements Serializable {
   /**
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
-  public IMeasurementSchema getSchema(PartialPath path) throws MetadataException {
-    IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(path);
+  public IMeasurementSchema getSchema(PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(fullPath);
     return node.getSchema();
   }
 
   /**
    * Get all timeseries matching the given path pattern
    *
-   * @param path a path pattern or a full path, may contain wildcard.
+   * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
-  public List<PartialPath> getAllTimeseriesPath(PartialPath path) throws MetadataException {
-    return getAllTimeseriesPathWithAlias(path, 0, 0).left;
+  public List<PartialPath> getAllTimeseriesPath(PartialPath pathPattern) throws MetadataException {
+    return getAllTimeseriesPathWithAlias(pathPattern, 0, 0).left;
   }
 
   /**
    * Get all timeseries paths matching the given path pattern
    *
-   * @param path a path pattern or a full path, may contain wildcard
+   * @param pathPattern a path pattern or a full path, may contain wildcard
    * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
    *     if we don't set offset.
    */
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
-      PartialPath path, int limit, int offset) throws MetadataException {
-    MeasurementPathCollector collector = new MeasurementPathCollector(root, path, limit, offset);
+      PartialPath pathPattern, int limit, int offset) throws MetadataException {
+    MeasurementPathCollector collector =
+        new MeasurementPathCollector(root, pathPattern, limit, offset);
     collector.traverse();
     offset = collector.getCurOffset() + 1;
     List<PartialPath> res = collector.getResult();
@@ -929,18 +931,20 @@ public class MTree implements Serializable {
 
   // region Interfaces for Level Node info Query
   /**
-   * Get child node path in the next level of the given path.
+   * Get child node path in the next level of the given path pattern.
+   *
+   * <p>give pathPattern and the child nodes is those matching pathPattern.*.
    *
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
    * return [root.sg1.d1, root.sg1.d2]
    *
-   * @param path The given path
+   * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
+  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, path.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+          new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
             @Override
             protected void transferToResult(IMNode node) {
               resultSet.add(node.getFullPath());
@@ -950,7 +954,7 @@ public class MTree implements Serializable {
       collector.traverse();
       return collector.getResult();
     } catch (IllegalPathException e) {
-      throw new IllegalPathException(path.getFullPath());
+      throw new IllegalPathException(pathPattern.getFullPath());
     }
   }
 
@@ -963,13 +967,13 @@ public class MTree implements Serializable {
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
    * return [s1, s2]
    *
-   * @param path Path
+   * @param pathPattern Path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
+  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, path.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+          new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
             @Override
             protected void transferToResult(IMNode node) {
               resultSet.add(node.getName());
@@ -979,15 +983,15 @@ public class MTree implements Serializable {
       collector.traverse();
       return collector.getResult();
     } catch (IllegalPathException e) {
-      throw new IllegalPathException(path.getFullPath());
+      throw new IllegalPathException(pathPattern.getFullPath());
     }
   }
 
   /** Get all paths from root to the given level */
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     MNodeCollector<List<PartialPath>> collector =
-        new MNodeCollector<List<PartialPath>>(root, path) {
+        new MNodeCollector<List<PartialPath>>(root, pathPattern) {
           @Override
           protected void transferToResult(IMNode node) {
             resultSet.add(node.getPartialPath());

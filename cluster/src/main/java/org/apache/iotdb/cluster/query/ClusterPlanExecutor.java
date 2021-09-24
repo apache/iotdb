@@ -426,7 +426,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getChildNodeInNextLevel(path);
+      return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
     } catch (MetadataException e) {
       logger.error("Cannot not get next children nodes of {} from {} locally", path, group);
       return Collections.emptySet();

@@ -183,25 +183,25 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public TSDataType getSeriesType(PartialPath path) throws MetadataException {
+  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
 
-    if (path.equals(SQLConstant.TIME_PATH)) {
+    if (fullPath.equals(SQLConstant.TIME_PATH)) {
       return TSDataType.INT64;
     }
 
-    String measurement = path.getMeasurement();
-    if (path instanceof VectorPartialPath) {
-      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
+    String measurement = fullPath.getMeasurement();
+    if (fullPath instanceof VectorPartialPath) {
+      if (((VectorPartialPath) fullPath).getSubSensorsList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        measurement = ((VectorPartialPath) path).getSubSensor(0);
+        measurement = ((VectorPartialPath) fullPath).getSubSensor(0);
       }
     }
 
     // try remote cache first
     try {
       cacheLock.readLock().lock();
-      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(path);
+      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(fullPath);
       if (measurementMNode != null) {
         return measurementMNode.getDataType(measurement);
       }
@@ -212,11 +212,11 @@ public class CMManager extends MManager {
     // try local MTree
     TSDataType seriesType;
     try {
-      seriesType = super.getSeriesType(path);
+      seriesType = super.getSeriesType(fullPath);
     } catch (PathNotExistException e) {
       // pull from remote node
       List<IMeasurementSchema> schemas =
-          metaPuller.pullMeasurementSchemas(Collections.singletonList(path));
+          metaPuller.pullMeasurementSchemas(Collections.singletonList(fullPath));
       if (!schemas.isEmpty()) {
         IMeasurementSchema measurementSchema = schemas.get(0);
         IMeasurementMNode measurementMNode =
@@ -224,16 +224,17 @@ public class CMManager extends MManager {
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
           for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
-            cacheMeta(((VectorPartialPath) path).getPathWithSubSensor(i), measurementMNode, false);
+            cacheMeta(
+                ((VectorPartialPath) fullPath).getPathWithSubSensor(i), measurementMNode, false);
           }
           cacheMeta(
-              new PartialPath(path.getDevice(), measurementSchema.getMeasurementId()),
+              new PartialPath(fullPath.getDevice(), measurementSchema.getMeasurementId()),
               measurementMNode,
               true);
         } else {
-          cacheMeta(path, measurementMNode, true);
+          cacheMeta(fullPath, measurementMNode, true);
         }
-        return measurementMNode.getDataType(path.getMeasurement());
+        return measurementMNode.getDataType(fullPath.getMeasurement());
       } else {
         throw e;
       }
@@ -1220,14 +1221,14 @@ public class CMManager extends MManager {
   /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
   @Override
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
-      PartialPath path, int limit, int offset) throws MetadataException {
+      PartialPath pathPattern, int limit, int offset) throws MetadataException {
 
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
     // "root.**" will be translated into:
     // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
-    Map<String, String> sgPathMap = resolvePathByStorageGroup(path);
+    Map<String, String> sgPathMap = resolvePathByStorageGroup(pathPattern);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);
 
     int skippedOffset = 0;
@@ -1242,7 +1243,7 @@ public class CMManager extends MManager {
     if (limit > 0 && result.size() > limit) {
       result = result.subList(0, limit);
     }
-    logger.debug("The paths of path {} are {}", path, result);
+    logger.debug("The paths of path {} are {}", pathPattern, result);
 
     return new Pair<>(result, skippedOffset);
   }
@@ -1349,7 +1350,7 @@ public class CMManager extends MManager {
   }
 
   public Set<String> getChildNodeInNextLevel(String path) throws MetadataException {
-    return getChildNodeInNextLevel(new PartialPath(path));
+    return getChildNodeNameInNextLevel(new PartialPath(path));
   }
 
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {

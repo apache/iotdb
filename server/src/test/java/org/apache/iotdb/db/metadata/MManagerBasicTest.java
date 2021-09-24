@@ -607,9 +607,10 @@ public class MManagerBasicTest {
       Set<String> nodes2 = new HashSet<>(Arrays.asList("laptop"));
       Set<String> nodes3 = new HashSet<>(Arrays.asList("d1", "d2"));
       Set<String> nexLevelNodes1 =
-          manager.getChildNodeInNextLevel(new PartialPath("root.laptop.d1"));
-      Set<String> nexLevelNodes2 = manager.getChildNodeInNextLevel(new PartialPath("root"));
-      Set<String> nexLevelNodes3 = manager.getChildNodeInNextLevel(new PartialPath("root.laptop"));
+          manager.getChildNodeNameInNextLevel(new PartialPath("root.laptop.d1"));
+      Set<String> nexLevelNodes2 = manager.getChildNodeNameInNextLevel(new PartialPath("root"));
+      Set<String> nexLevelNodes3 =
+          manager.getChildNodeNameInNextLevel(new PartialPath("root.laptop"));
       // usual condition
       assertEquals(nodes, nexLevelNodes1);
       assertEquals(nodes2, nexLevelNodes2);
