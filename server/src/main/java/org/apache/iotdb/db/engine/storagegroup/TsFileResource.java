@@ -547,7 +547,7 @@ public class TsFileResource {
   }
 
   public void doSettle() throws WriteProcessException {
-    // SettleService.getINSTANCE().submitSettleTask(new SettleTask(this));
+    //SettleService.getINSTANCE().submitSettleTask(new SettleTask(this));
     try {
       SettleService.getINSTANCE().settleTsFile(new SettleTask(this));
     } catch (WriteProcessException | IllegalPathException | IOException e) {

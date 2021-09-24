@@ -18,6 +18,38 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -64,6 +96,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
@@ -85,42 +118,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
@@ -665,11 +664,17 @@ public class StorageGroupProcessor {
 
   private void addSettleFilesToList() {
     for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+      if (!resource.isClosed()) {
+        continue;
+      }
       if (!settleSeqFileList.containsKey(resource.getTsFilePath())) {
         settleSeqFileList.put(resource.getTsFile().getName(), resource);
       }
     }
     for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
+      if (!resource.isClosed()) {
+        continue;
+      }
       if (!settleUnseqFileList.containsKey(resource.getTsFilePath())) {
         settleUnseqFileList.put(resource.getTsFile().getName(), resource);
       }
@@ -2347,7 +2352,6 @@ public class StorageGroupProcessor {
   /** Settle All TsFiles and mods belonging to this storage group */
   public void settle() throws org.apache.iotdb.tsfile.exception.write.WriteProcessException {
     for (Map.Entry<String, TsFileResource> entry : settleSeqFileList.entrySet()) {
-      System.out.println("-------------------------------------------------");
       TsFileResource seqTsFileResource = entry.getValue();
       seqTsFileResource.readLock();
       seqTsFileResource.setSeq(true);
@@ -2363,41 +2367,33 @@ public class StorageGroupProcessor {
       unSeqTsFileResource.doSettle();
       unSeqTsFileResource.readUnlock();
     }
-    System.out.println("-----------------Finish-------------------");
     settleSeqFileList.clear();
     settleUnseqFileList.clear();
   }
 
   /**
-   * insert into root.ln.wf01.wt01(timestamp,status) values(1600,false); select * from root.*.*.*;
-   * delete from root.*.*.*.* where time>800; After finishing settling tsfile, we need to do 3
-   * things : (1) move the new tsfile to the correct folder (2) write the deletions produced during
-   * the settling process to its corresponding new mods file (3) update the relevant data of this
-   * old tsFile in memory , eg: TsFileResource, TsFileProcessor, etc.
+   * After finishing settling tsfile, we need to do 3 things : (1) move the new tsfile to the
+   * correct folder (2) write the deletions produced during the settling process to its
+   * corresponding new mods file (3) update the relevant data of this old tsFile in memory ,eg:
+   * FileSequenceReader, TsFileManagement, cache, etc.
    */
   private void settleTsFileCallBack(
       TsFileResource oldTsFileResource, TsFileResource newTsFileResource) throws IOException {
     oldTsFileResource.readUnlock();
     oldTsFileResource.writeLock();
-//        try {
-//          logger.info("writeLock");
-//          Thread.sleep(5500);
-//        } catch (InterruptedException e) {
-//          e.printStackTrace();
-//        }
     TsFileRewriteTool.moveNewTsFile(oldTsFileResource, newTsFileResource);
     if (TsFileAndModSettleTool.recoverSettleFileMap.size() != 0) {
       TsFileAndModSettleTool.recoverSettleFileMap.remove(oldTsFileResource.getTsFilePath());
     }
     // clear Cache , including chunk cache and timeseriesMetadata cache
-    ChunkCache.getInstance().clear(); // Todo:???
+    ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
 
     // if old tsfile is being deleted in the process due to its all data's being deleted.
     if (!oldTsFileResource.getTsFile().exists()) {
       tsFileManagement.remove(oldTsFileResource, oldTsFileResource.isSeq());
     }
-    // Todo: update partionLatestFlushedTime,etc
+    FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFilePath());
 
     SettleService.getFilesToBeSettledCount().addAndGet(-1);
     oldTsFileResource.writeUnlock();

@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.service;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
@@ -79,6 +80,11 @@ public class SettleService implements IService {
   }
 
   private void settleAll() throws WriteProcessException, StorageEngineException {
+    logger.info("Totally find "
+        + getFilesToBeSettledCount()
+        + " tsFiles to be settled, including "
+        + TsFileAndModSettleTool.recoverSettleFileMap.size()
+        + " tsFiles to be recovered.");
     StorageEngine.getInstance().settleAll(getStorageGroupPath());
   }
 

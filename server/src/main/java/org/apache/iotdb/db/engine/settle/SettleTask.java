@@ -18,7 +18,7 @@ import java.io.IOException;
 public class SettleTask extends WrappedRunnable {
 
   private static final Logger logger = LoggerFactory.getLogger(SettleTask.class);
-  private TsFileResource resourceToBeSettled; // 待升级旧的TsFile文件的TsFileResource
+  private TsFileResource resourceToBeSettled;
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public SettleTask(TsFileResource resourceToBeSettled) {
@@ -36,7 +36,11 @@ public class SettleTask extends WrappedRunnable {
 
   public void settleTsFile() throws IOException, WriteProcessException, IllegalPathException {
     TsFileResource settledResource = null;
-    // tsFileAndModSettleTool.addSettleFileToList(resourceToBeSettled);
+    if (!resourceToBeSettled.isClosed()) {
+      logger.warn(
+          "The tsFile {} should be sealed when settling.", resourceToBeSettled.getTsFilePath());
+      return;
+    }
     if (TsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
       logger.info("find settled file for {}", resourceToBeSettled.getTsFile());
       settledResource = TsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
@@ -70,8 +74,7 @@ public class SettleTask extends WrappedRunnable {
         resourceToBeSettled.getTsFilePath(),
         SettleService.getFilesToBeSettledCount().get());
 
-    if (SettleService.getFilesToBeSettledCount().get()
-        == 0) { // delete settle log when finishing settling all files
+    if (SettleService.getFilesToBeSettledCount().get() == 0) {
       SettleLog.closeLogWriter();
       fsFactory.getFile(SettleLog.getSettleLogPath()).delete();
       SettleService.getINSTANCE().stop();
