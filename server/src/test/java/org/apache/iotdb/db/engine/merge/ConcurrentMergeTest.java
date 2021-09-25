@@ -105,6 +105,11 @@ public class ConcurrentMergeTest {
     }
     while (processor.getTsFileManagement().isSeqMerging) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (Exception e) {
+
+      }
     }
 
     QueryDataSource queryDataSource =
