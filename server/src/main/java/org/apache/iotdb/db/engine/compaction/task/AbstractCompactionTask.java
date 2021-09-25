@@ -44,13 +44,13 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
     this.currentTaskNum = currentTaskNum;
-    this.currentTaskNum.getAndIncrement();
   }
 
   protected abstract void doCompaction() throws Exception;
 
   @Override
   public Void call() throws Exception {
+    currentTaskNum.incrementAndGet();
     try {
       doCompaction();
     } catch (Exception e) {

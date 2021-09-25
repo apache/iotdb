@@ -22,7 +22,10 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -33,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
@@ -170,7 +174,53 @@ public class CompactionTaskManager implements IService {
     }
   }
 
-  public synchronized void submitTaskFromTaskQueue() {}
+  public synchronized void submitTaskFromTaskQueue() {
+    while (currentTaskNum.get()
+            < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+        && compactionTaskQueue.size() > 0) {
+      AbstractCompactionTask task = compactionTaskQueue.poll();
+      submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
+    }
+  }
+
+  private boolean checkTheTaskIfIsValid(AbstractCompactionTask compactionTask) {
+    if (compactionTask instanceof AbstractInnerSpaceCompactionTask) {
+      AbstractInnerSpaceCompactionTask inspaceCompactionTask =
+          (AbstractInnerSpaceCompactionTask) compactionTask;
+      List<TsFileResource> selectedFiles = inspaceCompactionTask.getSelectedTsFileResourceList();
+      for (TsFileResource file : selectedFiles) {
+        if (file.isMerging() || !file.isClosed()) {
+          return false;
+        }
+      }
+      for (TsFileResource file : selectedFiles) {
+        file.setMerging(true);
+      }
+    } else {
+      AbstractCrossSpaceCompactionTask crossSpaceCompactionTask =
+          (AbstractCrossSpaceCompactionTask) compactionTask;
+      List<TsFileResource> selectedSeqFiles = crossSpaceCompactionTask.getSelectedSequenceFiles();
+      List<TsFileResource> selectedUnseqFiles =
+          crossSpaceCompactionTask.getSelectedUnsequenceFiles();
+      for (TsFileResource file : selectedSeqFiles) {
+        if (file.isMerging() || !file.isClosed()) {
+          return false;
+        }
+      }
+      for (TsFileResource file : selectedUnseqFiles) {
+        if (file.isMerging() || !file.isClosed()) {
+          return false;
+        }
+      }
+      for (TsFileResource file : selectedSeqFiles) {
+        file.setMerging(true);
+      }
+      for (TsFileResource file : selectedUnseqFiles) {
+        file.setMerging(true);
+      }
+    }
+    return true;
+  }
 
   public synchronized void submitTask(
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
