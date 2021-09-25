@@ -190,7 +190,7 @@ public class MetaFileTest {
     endTime = System.currentTimeMillis();
     System.out.println("MTree persistence time: " + (endTime - startTime) + "ms.");
 
-    PersistenceInfo persistenceInfo = root.getPersistenceInfo();
+    IPersistenceInfo persistenceInfo = root.getPersistenceInfo();
     root = null;
     sg = null;
     device = null;

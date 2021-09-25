@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.Map;
 
 /** this interface provides operations on mtree */
-public interface MetadataAccess {
+public interface IMetadataAccess {
 
   /** get root mnode of the mtree */
   IMNode getRoot() throws MetadataException;

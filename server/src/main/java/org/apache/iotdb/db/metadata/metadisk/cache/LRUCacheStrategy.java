@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class LRUCacheStrategy implements CacheStrategy {
+public class LRUCacheStrategy implements ICacheStrategy {
 
   private volatile int size = 0;
   private CacheEntry first;

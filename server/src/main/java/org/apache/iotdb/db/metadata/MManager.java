@@ -128,7 +128,7 @@ public class MManager {
   private final long mtreeSnapshotThresholdTime;
   // the log file seriesPath
   private String logFilePath;
-  private MTreeInterface mtree;
+  private IMTree mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
   private boolean isRecovering;

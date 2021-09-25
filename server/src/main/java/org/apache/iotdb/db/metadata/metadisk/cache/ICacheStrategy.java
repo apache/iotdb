@@ -23,7 +23,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import java.util.List;
 
 /** this interface provides operations on cache */
-public interface CacheStrategy {
+public interface ICacheStrategy {
 
   /** get the size of the current cache */
   int getSize();

@@ -2,7 +2,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import java.nio.ByteBuffer;
 
-public interface MNodeSerializer {
+public interface IMNodeSerializer {
 
   int INTERNAL_MNODE = 0;
   int STORAGE_GROUP_MNODE = 1;

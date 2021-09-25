@@ -26,7 +26,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MockMetaFile implements MetaFileAccess {
+public class MockMetaFile implements IMetaFileAccess {
 
   private final Map<Long, IMNode> positionFile = new ConcurrentHashMap<>();
   private final long rootPosition = 0;
@@ -40,7 +40,7 @@ public class MockMetaFile implements MetaFileAccess {
   }
 
   @Override
-  public IMNode read(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode read(IPersistenceInfo persistenceInfo) throws IOException {
     return positionFile.get(persistenceInfo.getPosition());
   }
 
@@ -48,9 +48,9 @@ public class MockMetaFile implements MetaFileAccess {
   public void write(IMNode mNode) throws IOException {
     if (!mNode.isPersisted()) {
       if (mNode.getFullPath().equals("root")) {
-        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(rootPosition));
+        mNode.setPersistenceInfo(IPersistenceInfo.createPersistenceInfo(rootPosition));
       } else {
-        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(freePosition++));
+        mNode.setPersistenceInfo(IPersistenceInfo.createPersistenceInfo(freePosition++));
       }
     }
     IMNode persistedMNode = mNode.clone();
@@ -70,7 +70,7 @@ public class MockMetaFile implements MetaFileAccess {
   }
 
   @Override
-  public void remove(PersistenceInfo persistenceInfo) throws IOException {
+  public void remove(IPersistenceInfo persistenceInfo) throws IOException {
     positionFile.remove(persistenceInfo.getPosition());
   }
 

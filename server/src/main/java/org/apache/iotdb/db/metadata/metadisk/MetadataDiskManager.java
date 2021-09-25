@@ -5,11 +5,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.metadisk.cache.CacheStrategy;
+import org.apache.iotdb.db.metadata.metadisk.cache.ICacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.cache.LRUCacheStrategy;
+import org.apache.iotdb.db.metadata.metadisk.metafile.IMetaFileAccess;
+import org.apache.iotdb.db.metadata.metadisk.metafile.IPersistenceInfo;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFile;
-import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFileAccess;
-import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -30,14 +30,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * this class is an instance of MetadataAccess, provides operations on a disk-based mtree. user of
  * this class has no need to consider whether the operated mnode is in memory or in disk.
  */
-public class MetadataDiskManager implements MetadataAccess {
+public class MetadataDiskManager implements IMetadataAccess {
 
   private static final Logger logger = LoggerFactory.getLogger(MetadataDiskManager.class);
 
   private int capacity;
-  private CacheStrategy cacheStrategy;
+  private ICacheStrategy cacheStrategy;
 
-  private MetaFileAccess metaFile;
+  private IMetaFileAccess metaFile;
   private String metaFilePath;
   private String mtreeSnapshotPath;
   private String mtreeSnapshotTmpPath;
@@ -536,7 +536,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   /** get mnode from disk */
-  private IMNode getMNodeFromDisk(PersistenceInfo persistenceInfo) throws MetadataException {
+  private IMNode getMNodeFromDisk(IPersistenceInfo persistenceInfo) throws MetadataException {
     try {
       return metaFile.read(persistenceInfo);
     } catch (IOException e) {

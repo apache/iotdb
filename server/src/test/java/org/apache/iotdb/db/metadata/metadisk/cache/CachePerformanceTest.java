@@ -64,11 +64,11 @@ public class CachePerformanceTest {
   @Test
   public void singleTimeComparison() throws Exception {
     System.gc();
-    MTreeInterface mTreeMem = testMTreeMem();
+    IMTree mTreeMem = testMTreeMem();
     mTreeMem.clear();
     mTreeMem = null;
     System.gc();
-    MTreeInterface mTreeDisk = testMTreeDisk();
+    IMTree mTreeDisk = testMTreeDisk();
     mTreeDisk.clear();
     //    mTreeDisk=null;
     //    System.out.println(ObjectSizeCalculator.getObjectSize(paths));
@@ -79,15 +79,15 @@ public class CachePerformanceTest {
     //        while (true) {}
   }
 
-  private MTreeInterface testMTreeMem() throws Exception {
-    MTreeInterface mTreeMem = new MTree();
+  private IMTree testMTreeMem() throws Exception {
+    IMTree mTreeMem = new MTree();
     System.out.println("MTreeMem TS creation time cost: " + generateMTree(mTreeMem) + "ms");
     System.out.println("MTreeMem TS access time cost: " + accessMTree(mTreeMem) + "ms");
     return mTreeMem;
   }
 
-  private MTreeInterface testMTreeDisk() throws Exception {
-    MTreeInterface mTreeDisk = new MTreeDiskBased(NODE_NUM, METAFILE_FILEPATH);
+  private IMTree testMTreeDisk() throws Exception {
+    IMTree mTreeDisk = new MTreeDiskBased(NODE_NUM, METAFILE_FILEPATH);
     System.out.println("MTreeDisk TS creation time cost: " + generateMTree(mTreeDisk) + "ms");
     System.out.println("MTreeDisk TS access time cost: " + accessMTree(mTreeDisk) + "ms");
     return mTreeDisk;
@@ -136,7 +136,7 @@ public class CachePerformanceTest {
             + "ms");
   }
 
-  private long generateMTree(MTreeInterface mTree) throws Exception {
+  private long generateMTree(IMTree mTree) throws Exception {
     long startTime, endTime;
     mTree.setStorageGroup(new PartialPath("root.t1.v1"));
     startTime = System.currentTimeMillis();
@@ -156,7 +156,7 @@ public class CachePerformanceTest {
     return endTime - startTime;
   }
 
-  private long accessMTree(MTreeInterface mTree) throws Exception {
+  private long accessMTree(IMTree mTree) throws Exception {
     long startTime = System.currentTimeMillis();
     int missNum = 0;
     //    for (int i = 0; i < DEVICE_NUM; i++) {

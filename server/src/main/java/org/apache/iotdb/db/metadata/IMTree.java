@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.Set;
 
 /** Operations on the hierarchical struct of the Metadata Tree is defined in this interface. */
-public interface MTreeInterface extends Serializable {
+public interface IMTree extends Serializable {
 
   /**
    * Create a timeseries with a full path from root to leaf node Before creating a timeseries, the

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.metadisk.MetadataAccess;
+import org.apache.iotdb.db.metadata.metadisk.IMetadataAccess;
 import org.apache.iotdb.db.metadata.metadisk.MetadataDiskManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -58,14 +58,14 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
 
-public class MTreeDiskBased implements MTreeInterface {
+public class MTreeDiskBased implements IMTree {
 
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final Logger logger = LoggerFactory.getLogger(MTreeDiskBased.class);
   private static final String NO_CHILDNODE_MSG = " does not have the child node ";
 
   private final String rootName = PATH_ROOT;
-  private MetadataAccess metadataDiskManager;
+  private IMetadataAccess metadataDiskManager;
   private static final int DEFAULT_MAX_CAPACITY =
       IoTDBDescriptor.getInstance().getConfig().getMetaDiskMNodeCacheSize();
 

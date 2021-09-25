@@ -45,8 +45,8 @@ public class MTreeFile {
   private static final byte MEASUREMENT_NODE = (byte) 0xB0;
   private static final byte EXTENSION_NODE = (byte) 0xC0;
 
-  private final MNodeSerializer mNodeSerializer = new MNodePersistenceSerializer();
-  private final SlottedFileAccess fileAccess;
+  private final IMNodeSerializer mNodeSerializer = new MNodePersistenceSerializer();
+  private final ISlottedFileAccess fileAccess;
 
   private int headerLength;
   private short nodeLength;
@@ -115,7 +115,7 @@ public class MTreeFile {
   }
 
   private void fileCheck() throws IOException {
-    PersistenceInfo persistenceInfo = PersistenceInfo.createPersistenceInfo(rootPosition);
+    IPersistenceInfo persistenceInfo = IPersistenceInfo.createPersistenceInfo(rootPosition);
     IMNode mNode = read(persistenceInfo);
   }
 
@@ -124,7 +124,7 @@ public class MTreeFile {
     if (!nodes[0].equals("root")) {
       return null;
     }
-    IMNode mNode = read(PersistenceInfo.createPersistenceInfo(rootPosition));
+    IMNode mNode = read(IPersistenceInfo.createPersistenceInfo(rootPosition));
     for (int i = 1; i < nodes.length; i++) {
       if (!mNode.hasChild(nodes[i])) {
         return null;
@@ -134,7 +134,7 @@ public class MTreeFile {
     return mNode;
   }
 
-  public IMNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode readRecursively(IPersistenceInfo persistenceInfo) throws IOException {
     IMNode mNode = read(persistenceInfo);
     Map<String, IMNode> children = mNode.getChildren();
     IMNode child;
@@ -147,7 +147,7 @@ public class MTreeFile {
     return mNode;
   }
 
-  public IMNode read(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode read(IPersistenceInfo persistenceInfo) throws IOException {
     long position = persistenceInfo.getPosition();
     Pair<Byte, ByteBuffer> mNodeData = readBytesFromFile(position);
     byte nodeType = mNodeData.left;
@@ -234,9 +234,9 @@ public class MTreeFile {
 
     if (mNode.getPersistenceInfo() == null) {
       if (mNode.getName().equals("root")) {
-        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(rootPosition));
+        mNode.setPersistenceInfo(IPersistenceInfo.createPersistenceInfo(rootPosition));
       } else {
-        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(getFreePos()));
+        mNode.setPersistenceInfo(IPersistenceInfo.createPersistenceInfo(getFreePos()));
       }
     }
 
@@ -331,7 +331,7 @@ public class MTreeFile {
     return rootPosition;
   }
 
-  public void remove(PersistenceInfo persistenceInfo) throws IOException {
+  public void remove(IPersistenceInfo persistenceInfo) throws IOException {
     long position = persistenceInfo.getPosition();
     ByteBuffer buffer = ByteBuffer.allocate(17);
     while (position != 0) {

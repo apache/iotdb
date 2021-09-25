@@ -20,9 +20,9 @@ package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
-public interface PersistenceInfo {
+public interface IPersistenceInfo {
 
-  static PersistenceInfo createPersistenceInfo(long position) {
+  static IPersistenceInfo createPersistenceInfo(long position) {
     return new PersistenceMNode(position);
   }
 

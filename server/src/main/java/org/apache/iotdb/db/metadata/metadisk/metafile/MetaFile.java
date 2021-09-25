@@ -24,7 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import java.io.IOException;
 import java.util.*;
 
-public class MetaFile implements MetaFileAccess {
+public class MetaFile implements IMetaFileAccess {
 
   private final MTreeFile mTreeFile;
 
@@ -34,11 +34,11 @@ public class MetaFile implements MetaFileAccess {
 
   @Override
   public IMNode readRoot() throws IOException {
-    return mTreeFile.read(PersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
+    return mTreeFile.read(IPersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
   }
 
   @Override
-  public IMNode read(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode read(IPersistenceInfo persistenceInfo) throws IOException {
     return mTreeFile.read(persistenceInfo);
   }
 
@@ -56,7 +56,7 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
-  public void remove(PersistenceInfo persistenceInfo) throws IOException {
+  public void remove(IPersistenceInfo persistenceInfo) throws IOException {
     mTreeFile.remove(persistenceInfo);
   }
 
@@ -74,7 +74,7 @@ public class MetaFile implements MetaFileAccess {
     return mTreeFile.read(path);
   }
 
-  public IMNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode readRecursively(IPersistenceInfo persistenceInfo) throws IOException {
     return mTreeFile.readRecursively(persistenceInfo);
   }
 
@@ -100,9 +100,9 @@ public class MetaFile implements MetaFileAccess {
       }
       if (mNode.getName().equals("root")) {
         mNode.setPersistenceInfo(
-            PersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
+            IPersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
       } else {
-        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(mTreeFile.getFreePos()));
+        mNode.setPersistenceInfo(IPersistenceInfo.createPersistenceInfo(mTreeFile.getFreePos()));
       }
     }
   }

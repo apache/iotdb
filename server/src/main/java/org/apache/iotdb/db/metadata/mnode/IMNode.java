@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mnode;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
-import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
+import org.apache.iotdb.db.metadata.metadisk.metafile.IPersistenceInfo;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -118,9 +118,9 @@ public interface IMNode extends Serializable {
   boolean isPersisted();
 
   /** get the information about the mnode on disk */
-  PersistenceInfo getPersistenceInfo();
+  IPersistenceInfo getPersistenceInfo();
 
-  void setPersistenceInfo(PersistenceInfo persistenceInfo);
+  void setPersistenceInfo(IPersistenceInfo persistenceInfo);
 
   /** get the information about the mnode in cache */
   CacheEntry getCacheEntry();

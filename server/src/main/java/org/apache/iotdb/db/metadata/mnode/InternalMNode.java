@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
-import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
+import org.apache.iotdb.db.metadata.metadisk.metafile.IPersistenceInfo;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.io.IOException;
@@ -360,12 +360,12 @@ public class InternalMNode implements IMNode {
   }
 
   @Override
-  public PersistenceInfo getPersistenceInfo() {
+  public IPersistenceInfo getPersistenceInfo() {
     return persistenceMNode;
   }
 
   @Override
-  public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
+  public void setPersistenceInfo(IPersistenceInfo persistenceInfo) {
     if (persistenceInfo == null) {
       persistenceMNode = null;
     } else if (persistenceMNode == null) {

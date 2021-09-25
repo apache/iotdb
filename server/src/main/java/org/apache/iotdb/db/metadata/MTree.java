@@ -65,7 +65,7 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
-public class MTree implements MTreeInterface {
+public class MTree implements IMTree {
 
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final long serialVersionUID = -4200394435237291964L;

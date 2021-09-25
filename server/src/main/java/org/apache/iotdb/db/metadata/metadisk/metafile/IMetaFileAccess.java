@@ -18,34 +18,25 @@
  */
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.Collection;
 
-/**
- * this interface provides operations on a certain file which is consisted of a header and a series
- * of slot/record with fixed length
- *
- * <p>the data is read in form of block which consists of several continuous records
- */
-public interface SlottedFileAccess {
+/** this interface provides mnode IO operation on a file/disk */
+public interface IMetaFileAccess {
 
-  long getFileLength() throws IOException;
+  IMNode readRoot() throws IOException;
 
-  int getHeaderLength();
+  IMNode read(IPersistenceInfo persistenceInfo) throws IOException;
 
-  int getBlockSize();
+  void write(IMNode mNode) throws IOException;
 
-  ByteBuffer readHeader() throws IOException;
+  void write(Collection<IMNode> mNodes) throws IOException;
 
-  void writeHeader(ByteBuffer buffer) throws IOException;
-
-  ByteBuffer readBytes(long position, int length) throws IOException;
-
-  void readBytes(long position, ByteBuffer buffer) throws IOException;
-
-  void writeBytes(long position, ByteBuffer buffer) throws IOException;
-
-  void sync() throws IOException;
+  void remove(IPersistenceInfo persistenceInfo) throws IOException;
 
   void close() throws IOException;
+
+  void sync() throws IOException;
 }

@@ -24,7 +24,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-public class SlottedFile implements SlottedFileAccess {
+public class SlottedFile implements ISlottedFileAccess {
 
   private final RandomAccessFile file;
   private final FileChannel channel;

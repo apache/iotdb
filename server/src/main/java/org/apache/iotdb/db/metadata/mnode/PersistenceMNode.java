@@ -21,13 +21,13 @@ package org.apache.iotdb.db.metadata.mnode;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
-import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
+import org.apache.iotdb.db.metadata.metadisk.metafile.IPersistenceInfo;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
-public class PersistenceMNode implements PersistenceInfo, IMNode {
+public class PersistenceMNode implements IPersistenceInfo, IMNode {
 
   /** offset in metafile */
   private long position;
@@ -38,7 +38,7 @@ public class PersistenceMNode implements PersistenceInfo, IMNode {
     this.position = position;
   }
 
-  public PersistenceMNode(PersistenceInfo persistenceInfo) {
+  public PersistenceMNode(IPersistenceInfo persistenceInfo) {
     position = persistenceInfo.getPosition();
   }
 
@@ -73,12 +73,12 @@ public class PersistenceMNode implements PersistenceInfo, IMNode {
   }
 
   @Override
-  public PersistenceInfo getPersistenceInfo() {
+  public IPersistenceInfo getPersistenceInfo() {
     return this;
   }
 
   @Override
-  public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
+  public void setPersistenceInfo(IPersistenceInfo persistenceInfo) {
     if (persistenceInfo == null) {
       position = -1;
     } else {
