@@ -85,6 +85,24 @@ git push origin fix
 
 更多 git 使用方法请访问：[git 使用](https://www.atlassian.com/git/tutorials/setting-up-a-repository)，这里不赘述。
 
+### Git提交注意事项
+
+在Git上提交代码时需要注意：
+
+- 保持仓库的整洁：
+
+    - 不要上传二进制文件，保证仓库的大小只因为代码字符串的改动而增大。
+
+    - 不要上传生成的代码。
+
+- 日志要有含义：
+
+    - 题目用jira编号：[IOTDB-jira号]
+
+    - 题目用github的ISSUE编号：[ISSUE-issue号]
+
+        - 内容里要写#XXXX用于关联
+
 ### 创建 PR
 
 在浏览器切换到自己的 github 仓库页面，切换分支到提交的分支 <your_branch_name> ，依次点击 `New pull request` 和 `Create pull request` 按钮进行创建，如果您解决的是 [issues](https://issues.apache.org/jira/projects/IOTDB/issues)，需要在开头加上 [IOTDB-xxx]，如下图所示：
