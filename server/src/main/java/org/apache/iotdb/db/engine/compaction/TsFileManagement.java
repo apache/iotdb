@@ -42,9 +42,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
@@ -76,6 +78,8 @@ public abstract class TsFileManagement {
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
   private final int maxOpenFileNumInEachUnseqCompaction =
       IoTDBDescriptor.getInstance().getConfig().getMaxSelectUnseqFileNumInEachUnseqCompaction();
+
+  protected ReentrantLock compactionSelectionLock = new ReentrantLock();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -243,6 +247,14 @@ public abstract class TsFileManagement {
           isUnseqMerging = false;
           return false;
         }
+        compactionSelectionLock.lock();
+        try {
+          if (!checkAndSetFilesMergingIfNotSet(mergeFiles[0], mergeFiles[1])) {
+            return false;
+          }
+        } finally {
+          compactionSelectionLock.unlock();
+        }
         // avoid pending tasks holds the metadata and streams
         mergeResource.clear();
         String taskName = storageGroupName + "-" + System.currentTimeMillis();
@@ -250,7 +262,6 @@ public abstract class TsFileManagement {
         // cached during selection
         mergeResource.setCacheDeviceMeta(true);
 
-        long mergeStartTime = System.currentTimeMillis();
         MergeTask mergeTask =
             new MergeTask(
                 mergeResource,
@@ -454,5 +465,44 @@ public abstract class TsFileManagement {
     } else {
       return cmp;
     }
+  }
+
+  /**
+   * Check if the TsFiles are begin merged. If all of the TsFiles are not being merged, set their
+   * merging flag.
+   *
+   * @param seqFiles Collections of the seqFiles, can be null
+   * @param unseqFiles Collections of the unseqFiles, can be null
+   * @return true if all the TsFiles is not being merged, else false
+   */
+  protected boolean checkAndSetFilesMergingIfNotSet(
+      Collection<TsFileResource> seqFiles, Collection<TsFileResource> unseqFiles) {
+    if (seqFiles != null) {
+      for (TsFileResource seqFile : seqFiles) {
+        if (seqFile.isMerging()) {
+          logger.warn("return because {} is merging", seqFile.getTsFile());
+          return false;
+        }
+      }
+    }
+    if (unseqFiles != null) {
+      for (TsFileResource unseqFile : unseqFiles) {
+        if (unseqFile.isMerging()) {
+          logger.warn("return because {} is merging", unseqFile.getTsFile());
+          return false;
+        }
+      }
+    }
+    if (seqFiles != null) {
+      for (TsFileResource seqFile : seqFiles) {
+        seqFile.setMerging(true);
+      }
+    }
+    if (unseqFiles != null) {
+      for (TsFileResource unseqFile : unseqFiles) {
+        unseqFile.setMerging(true);
+      }
+    }
+    return true;
   }
 }
