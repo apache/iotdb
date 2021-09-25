@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,10 +54,13 @@ public class CompactionTaskManager implements IService {
   private ScheduledThreadPoolExecutor pool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
-  private Queue<AbstractCompactionTask> compactionTaskQueue = new PriorityQueue<>();
+  private Queue<AbstractCompactionTask> compactionTaskQueue =
+      new PriorityQueue<>(new CompactionTaskComparator());
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
+  private ScheduledExecutorService compactionTaskSubmissionThreadPool;
+  private final long TASK_SUBMIT_INTERVAL = 20_000;
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -72,6 +76,13 @@ public class CompactionTaskManager implements IService {
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
       currentTaskNum = new AtomicInteger(0);
+      compactionTaskSubmissionThreadPool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
+      compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
+          this::submitTaskFromTaskQueue,
+          TASK_SUBMIT_INTERVAL,
+          TASK_SUBMIT_INTERVAL,
+          TimeUnit.MILLISECONDS);
     }
     logger.info("Compaction task manager started.");
   }
@@ -153,7 +164,13 @@ public class CompactionTaskManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
-  public synchronized void addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {}
+  public synchronized void addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
+    if (!compactionTaskQueue.contains(compactionTask)) {
+      compactionTaskQueue.add(compactionTask);
+    }
+  }
+
+  public synchronized void submitTaskFromTaskQueue() {}
 
   public synchronized void submitTask(
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)

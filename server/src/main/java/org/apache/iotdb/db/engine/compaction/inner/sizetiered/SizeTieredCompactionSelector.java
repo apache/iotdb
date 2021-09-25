@@ -196,17 +196,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
             tsFileResources,
             selectedFileList,
             sequence);
-    for (TsFileResource resource : selectedFileList) {
-      resource.setMerging(true);
-      LOGGER.info(
-          "{}-{} [Compaction] start to compact TsFile {}",
-          logicalStorageGroupName,
-          virtualStorageGroupName,
-          resource);
-    }
-    CompactionTaskManager.getInstance()
-        .submitTask(
-            logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
+    CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
     LOGGER.info(
         "{}-{} [Compaction] submit a inner compaction task of {} files",
         logicalStorageGroupName,
