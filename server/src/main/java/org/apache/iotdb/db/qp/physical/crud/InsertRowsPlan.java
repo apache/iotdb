@@ -60,6 +60,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   private Map<Integer, TSStatus> results = new HashMap<>();
 
   private List<PartialPath> paths;
+  private List<PartialPath> prefixPaths;
 
   public InsertRowsPlan() {
     super(OperatorType.BATCH_INSERT_ROWS);
@@ -93,11 +94,14 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
 
   @Override
   public List<PartialPath> getPrefixPaths() {
-    Set<PartialPath> result = new HashSet<>();
-    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      result.add(insertRowPlan.getPrefixPath());
+    if (prefixPaths != null) {
+      return prefixPaths;
     }
-    return new ArrayList<>(result);
+    prefixPaths = new ArrayList<>(insertRowPlanList.size());
+    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      prefixPaths.add(insertRowPlan.getPrefixPath());
+    }
+    return prefixPaths;
   }
 
   @Override
