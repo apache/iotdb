@@ -97,9 +97,9 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
    * there's no need to validate rowPlans.
    */
   public InsertRowsOfOneDevicePlan(
-      PartialPath deviceId, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
+      PartialPath prefixPath, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
     this();
-    this.prefixPath = deviceId;
+    this.prefixPath = prefixPath;
     this.rowPlans = rowPlans;
     this.rowPlanIndexList = rowPlanIndexList;
   }

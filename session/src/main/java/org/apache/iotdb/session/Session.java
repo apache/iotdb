@@ -448,8 +448,8 @@ public class Session {
   }
 
   public void createAlignedTimeseries(
-      String prefixPath,
-      List<String> measurements,
+      String multiSeriesId,
+      List<String> multiMeasurementComponents,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       CompressionType compressor,
@@ -457,7 +457,12 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     TSCreateAlignedTimeseriesReq request =
         getTSCreateAlignedTimeseriesReq(
-            prefixPath, measurements, dataTypes, encodings, compressor, measurementAliasList);
+            multiSeriesId,
+            multiMeasurementComponents,
+            dataTypes,
+            encodings,
+            compressor,
+            measurementAliasList);
     defaultSessionConnection.createAlignedTimeseries(request);
   }
 
@@ -709,23 +714,11 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
-      boolean isAligned,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values), isAligned);
+        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values), false);
     insertRecord(deviceId, request);
-  }
-
-  public void insertRecord(
-      String deviceId,
-      long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      Object... values)
-      throws IoTDBConnectionException, StatementExecutionException {
-    // not vector by default
-    insertRecord(deviceId, time, measurements, types, false, values);
   }
 
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
@@ -873,23 +866,23 @@ public class Session {
    * insert aligned data in one row, if you want improve your performance, please use
    * insertAlignedRecords method or insertTablet method.
    *
-   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecord(
-      String prefixPath,
+      String multiSeriesId,
       long time,
-      List<String> subMeasurements,
+      List<String> multiMeasurementComponents,
       List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
-        genTSInsertRecordReq(prefixPath, time, subMeasurements, types, values, true);
-    insertRecord(prefixPath, request);
+        genTSInsertRecordReq(multiSeriesId, time, multiMeasurementComponents, types, values, true);
+    insertRecord(multiSeriesId, request);
   }
 
   private TSInsertRecordReq genTSInsertRecordReq(
-      String deviceId,
+      String prefixPath,
       long time,
       List<String> measurements,
       List<TSDataType> types,
@@ -897,7 +890,7 @@ public class Session {
       boolean isAligned)
       throws IoTDBConnectionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
-    request.setPrefixPath(deviceId);
+    request.setPrefixPath(prefixPath);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
     ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
@@ -926,15 +919,15 @@ public class Session {
    * insert aligned data in one row, if you want improve your performance, please use
    * insertAlignedRecords method or insertTablet method.
    *
-   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecord(
-      String prefixPath, long time, List<String> subMeasurements, List<String> values)
+      String multiSeriesId, long time, List<String> multiMeasurementComponents, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertStringRecordReq request =
-        genTSInsertStringRecordReq(prefixPath, time, subMeasurements, values, true);
-    insertRecord(prefixPath, request);
+        genTSInsertStringRecordReq(multiSeriesId, time, multiMeasurementComponents, values, true);
+    insertRecord(multiSeriesId, request);
   }
 
   private TSInsertStringRecordReq genTSInsertStringRecordReq(
@@ -996,21 +989,25 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecords(
-      List<String> prefixPaths,
+      List<String> multiSeriesIds,
       List<Long> times,
-      List<List<String>> subMeasurementsList,
+      List<List<String>> multiMeasurementComponentsList,
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    int len = prefixPaths.size();
-    if (len != times.size() || len != subMeasurementsList.size() || len != valuesList.size()) {
+    int len = multiSeriesIds.size();
+    if (len != times.size()
+        || len != multiMeasurementComponentsList.size()
+        || len != valuesList.size()) {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
     if (enableCacheLeader) {
-      insertStringRecordsWithLeaderCache(prefixPaths, times, subMeasurementsList, valuesList, true);
+      insertStringRecordsWithLeaderCache(
+          multiSeriesIds, times, multiMeasurementComponentsList, valuesList, true);
     } else {
       TSInsertStringRecordsReq request =
-          genTSInsertStringRecordsReq(prefixPaths, times, subMeasurementsList, valuesList, true);
+          genTSInsertStringRecordsReq(
+              multiSeriesIds, times, multiMeasurementComponentsList, valuesList, true);
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
@@ -1139,24 +1136,26 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecords(
-      List<String> prefixPaths,
+      List<String> multiSeriesIds,
       List<Long> times,
-      List<List<String>> subMeasurementsList,
+      List<List<String>> multiMeasurementComponentsList,
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    int len = prefixPaths.size();
-    if (len != times.size() || len != subMeasurementsList.size() || len != valuesList.size()) {
+    int len = multiSeriesIds.size();
+    if (len != times.size()
+        || len != multiMeasurementComponentsList.size()
+        || len != valuesList.size()) {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
     if (enableCacheLeader) {
       insertRecordsWithLeaderCache(
-          prefixPaths, times, subMeasurementsList, typesList, valuesList, true);
+          multiSeriesIds, times, multiMeasurementComponentsList, typesList, valuesList, true);
     } else {
       TSInsertRecordsReq request =
           genTSInsertRecordsReq(
-              prefixPaths, times, subMeasurementsList, typesList, valuesList, true);
+              multiSeriesIds, times, multiMeasurementComponentsList, typesList, valuesList, true);
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
@@ -1227,14 +1226,14 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecordsOfOneDevice(
-      String prefixPath,
+      String multiSeriesId,
       List<Long> times,
-      List<List<String>> subMeasurementsList,
+      List<List<String>> multiMeasurementComponentsList,
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     insertAlignedRecordsOfOneDevice(
-        prefixPath, times, subMeasurementsList, typesList, valuesList, false);
+        multiSeriesId, times, multiMeasurementComponentsList, typesList, valuesList, false);
   }
 
   /**
@@ -1248,25 +1247,31 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecordsOfOneDevice(
-      String prefixPath,
+      String multiSeriesId,
       List<Long> times,
-      List<List<String>> subMeasurementsList,
+      List<List<String>> multiMeasurementComponentsList,
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList,
       boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
     int len = times.size();
-    if (len != subMeasurementsList.size() || len != valuesList.size()) {
+    if (len != multiMeasurementComponentsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
     }
     TSInsertRecordsOfOneDeviceReq request =
         genTSInsertRecordsOfOneDeviceReq(
-            prefixPath, times, subMeasurementsList, typesList, valuesList, haveSorted, true);
+            multiSeriesId,
+            times,
+            multiMeasurementComponentsList,
+            typesList,
+            valuesList,
+            haveSorted,
+            true);
     try {
-      getSessionConnection(prefixPath).insertRecordsOfOneDevice(request);
+      getSessionConnection(multiSeriesId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
-      handleRedirection(prefixPath, e.getEndPoint());
+      handleRedirection(multiSeriesId, e.getEndPoint());
     }
   }
 
@@ -1586,7 +1591,9 @@ public class Session {
   private TSInsertTabletsReq genTSInsertTabletsReq(List<Tablet> tablets, boolean sorted)
       throws BatchExecutionException {
     TSInsertTabletsReq request = new TSInsertTabletsReq();
-
+    if (tablets.isEmpty()) {
+      throw new BatchExecutionException("No tablet is inserting!");
+    }
     boolean isFirstTabletAligned = tablets.get(0).isAligned();
     for (Tablet tablet : tablets) {
       if (isFirstTabletAligned != tablet.isAligned()) {

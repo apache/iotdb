@@ -529,16 +529,17 @@ public class SessionPool {
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecords(
-      List<String> deviceIds,
+      List<String> multiSeriesIds,
       List<Long> times,
-      List<List<String>> measurementsList,
+      List<List<String>> multiMeasurementComponentsList,
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
+        session.insertAlignedRecords(
+            multiSeriesIds, times, multiMeasurementComponentsList, typesList, valuesList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -724,15 +725,16 @@ public class SessionPool {
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecords(
-      List<String> deviceIds,
+      List<String> multiSeriesIds,
       List<Long> times,
-      List<List<String>> measurementsList,
+      List<List<String>> multiMeasurementComponentsList,
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertAlignedRecords(deviceIds, times, measurementsList, valuesList);
+        session.insertAlignedRecords(
+            multiSeriesIds, times, multiMeasurementComponentsList, valuesList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -781,20 +783,20 @@ public class SessionPool {
    * insert aligned data in one row, if you want improve your performance, please use insertRecords
    * method or insertTablet method.
    *
-   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecord(
-      String deviceId,
+      String multiSeriesId,
       long time,
-      List<String> measurements,
+      List<String> multiMeasurementComponents,
       List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertAlignedRecord(deviceId, time, measurements, types, values);
+        session.insertAlignedRecord(multiSeriesId, time, multiMeasurementComponents, types, values);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -839,16 +841,16 @@ public class SessionPool {
    * insert aligned data in one row, if you want improve your performance, please use
    * insertAlignedRecords method or insertTablet method.
    *
-   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecord(
-      String prefixPath, long time, List<String> subMeasurements, List<String> values)
+      String multiSeriesId, long time, List<String> multiMeasurementComponents, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertAlignedRecord(prefixPath, time, subMeasurements, values);
+        session.insertAlignedRecord(multiSeriesId, time, multiMeasurementComponents, values);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
