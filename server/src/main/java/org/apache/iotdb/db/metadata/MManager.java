@@ -1040,13 +1040,13 @@ public class MManager {
    * To reduce the String number in memory, use the deviceId from MManager instead of the deviceId
    * read from disk
    *
-   * @param path read from disk
+   * @param devicePath read from disk
    * @return deviceId
    */
-  public String getDeviceId(PartialPath path) {
+  public String getDeviceId(PartialPath devicePath) {
     String device = null;
     try {
-      IMNode deviceNode = getDeviceNode(path);
+      IMNode deviceNode = getDeviceNode(devicePath);
       device = deviceNode.getFullPath();
     } catch (MetadataException | NullPointerException e) {
       // Cannot get deviceId from MManager, return the input deviceId
