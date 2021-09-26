@@ -570,7 +570,7 @@ void Session::insertRecord(const string &deviceId, int64_t time,
                            const vector <string> &values) {
     TSInsertStringRecordReq req;
     req.__set_sessionId(sessionId);
-    req.__set_deviceId(deviceId);
+    req.__set_prefixPath(deviceId);
     req.__set_timestamp(time);
     req.__set_measurements(measurements);
     req.__set_values(values);
@@ -616,7 +616,7 @@ void Session::insertRecords(const vector <string> &deviceIds,
     }
     TSInsertStringRecordsReq request;
     request.__set_sessionId(sessionId);
-    request.__set_deviceIds(deviceIds);
+    request.__set_prefixPaths(deviceIds);
     request.__set_timestamps(times);
     request.__set_measurementsList(measurementsList);
     request.__set_valuesList(valuesList);
@@ -643,7 +643,7 @@ void Session::insertRecords(const vector <string> &deviceIds,
     }
     TSInsertRecordsReq request;
     request.__set_sessionId(sessionId);
-    request.__set_deviceIds(deviceIds);
+    request.__set_prefixPaths(deviceIds);
     request.__set_timestamps(times);
     request.__set_measurementsList(measurementsList);
     vector <string> bufferList;
@@ -697,7 +697,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
     }
     TSInsertRecordsOfOneDeviceReq request;
     request.__set_sessionId(sessionId);
-    request.__set_deviceId(deviceId);
+    request.__set_prefixPath(deviceId);
     request.__set_timestamps(times);
     request.__set_measurementsList(measurementsList);
     vector <string> bufferList;
@@ -780,7 +780,7 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
             sortTablet(*(item.second));
         }
 
-        request.deviceIds.push_back(item.second->deviceId);
+        request.prefixPaths.push_back(item.second->deviceId);
         vector <string> measurements;
         vector<int> dataTypes;
         for (pair <string, TSDataType::TSDataType> schema: item.second->schemas) {
@@ -808,7 +808,7 @@ void Session::testInsertRecord(const string &deviceId, int64_t time, const vecto
                                const vector <string> &values) {
     shared_ptr <TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
     req->__set_sessionId(sessionId);
-    req->__set_deviceId(deviceId);
+    req->__set_prefixPath(deviceId);
     req->__set_timestamp(time);
     req->__set_measurements(measurements);
     req->__set_values(values);
@@ -855,7 +855,7 @@ void Session::testInsertRecords(const vector <string> &deviceIds,
     }
     shared_ptr <TSInsertStringRecordsReq> request(new TSInsertStringRecordsReq());
     request->__set_sessionId(sessionId);
-    request->__set_deviceIds(deviceIds);
+    request->__set_prefixPaths(deviceIds);
     request->__set_timestamps(times);
     request->__set_measurementsList(measurementsList);
     request->__set_valuesList(valuesList);

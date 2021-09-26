@@ -1355,7 +1355,7 @@ public class PlanExecutor implements IPlanExecutor {
         getSeriesSchemas(plan);
         // we do not need to infer data type for insertRowsOfOneDevicePlan
         if (plan.isAligned()) {
-          plan.setPrefixPath(plan.getPrefixPath().getDevicePath());
+          plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
         }
       }
       // ok, we can begin to write data into the engine..
@@ -1495,7 +1495,8 @@ public class PlanExecutor implements IPlanExecutor {
           new IMeasurementMNode[insertTabletPlan.getMeasurements().length]);
       getSeriesSchemas(insertTabletPlan);
       if (insertTabletPlan.isAligned()) {
-        insertTabletPlan.setPrefixPath(insertTabletPlan.getPrefixPath().getDevicePath());
+        insertTabletPlan.setPrefixPathForAlignTimeSeries(
+            insertTabletPlan.getPrefixPath().getDevicePath());
       }
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {

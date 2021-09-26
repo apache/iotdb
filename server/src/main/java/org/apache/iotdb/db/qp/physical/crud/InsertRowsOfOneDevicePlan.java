@@ -59,30 +59,32 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   public InsertRowsOfOneDevicePlan(
-      PartialPath deviceId,
+      PartialPath prefixPath,
       Long[] insertTimes,
       List<List<String>> measurements,
-      ByteBuffer[] insertValues)
+      ByteBuffer[] insertValues,
+      boolean isAligned)
       throws QueryProcessException {
     this();
-    this.prefixPath = deviceId;
+    this.prefixPath = prefixPath;
     rowPlans = new InsertRowPlan[insertTimes.length];
     rowPlanIndexList = new int[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
       rowPlans[i] =
           new InsertRowPlan(
-              deviceId,
+              prefixPath,
               insertTimes[i],
               measurements.get(i).toArray(new String[0]),
-              insertValues[i]);
+              insertValues[i],
+              isAligned);
       if (rowPlans[i].getMeasurements().length == 0) {
         throw new QueryProcessException(
-            "The measurements are null, deviceId:" + deviceId + ", time:" + insertTimes[i]);
+            "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes[i]);
       }
       if (rowPlans[i].getValues().length == 0) {
         throw new QueryProcessException(
             "The size of values in InsertRowsOfOneDevicePlan is 0, deviceId:"
-                + deviceId
+                + prefixPath
                 + ", time:"
                 + insertTimes[i]);
       }
@@ -95,9 +97,9 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
    * there's no need to validate rowPlans.
    */
   public InsertRowsOfOneDevicePlan(
-      PartialPath deviceId, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
+      PartialPath prefixPath, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
     this();
-    this.prefixPath = deviceId;
+    this.prefixPath = prefixPath;
     this.rowPlans = rowPlans;
     this.rowPlanIndexList = rowPlanIndexList;
   }
