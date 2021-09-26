@@ -29,8 +29,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class LRUCacheStrategy implements ICacheStrategy {
 
   private volatile int size = 0;
-  private CacheEntry first;
-  private CacheEntry last;
+  private LRUCacheEntry first;
+  private LRUCacheEntry last;
 
   private final Lock lock = new ReentrantLock();
 
@@ -46,9 +46,9 @@ public class LRUCacheStrategy implements ICacheStrategy {
     }
     try {
       lock.lock();
-      CacheEntry entry = mNode.getCacheEntry();
+      LRUCacheEntry entry = getCacheEntryFromMNode(mNode);
       if (entry == null) {
-        entry = new CacheEntry(mNode);
+        entry = new LRUCacheEntry(mNode);
       }
       if (mNode.getParent() != null && !mNode.isLockedInMemory()) {
         increaseLock(mNode.getParent().getCacheEntry());
@@ -60,13 +60,14 @@ public class LRUCacheStrategy implements ICacheStrategy {
   }
 
   private void increaseLock(CacheEntry entry) {
-    if (!entry.isLocked() && isInCacheList(entry)) {
-      removeOne(entry);
+    LRUCacheEntry lruCacheEntry = (LRUCacheEntry) entry;
+    if (!entry.isLocked() && isInCacheList(lruCacheEntry)) {
+      removeOne(lruCacheEntry);
     }
     entry.increaseLock();
   }
 
-  private boolean isInCacheList(CacheEntry entry) {
+  private boolean isInCacheList(LRUCacheEntry entry) {
     return entry.pre != null || entry.next != null || first == entry || last == entry;
   }
 
@@ -77,7 +78,7 @@ public class LRUCacheStrategy implements ICacheStrategy {
     }
     try {
       lock.lock();
-      CacheEntry entry = mNode.getCacheEntry();
+      LRUCacheEntry entry = getCacheEntryFromMNode(mNode);
       if (entry == null || !entry.isLocked()) {
         return;
       }
@@ -97,7 +98,7 @@ public class LRUCacheStrategy implements ICacheStrategy {
     }
     entry.decreaseLock();
     if (!entry.isLocked()) {
-      moveToFirst(entry);
+      moveToFirst((LRUCacheEntry) entry);
     }
   }
 
@@ -111,9 +112,9 @@ public class LRUCacheStrategy implements ICacheStrategy {
       if (mNode.getParent() != null && !mNode.getParent().isCached()) {
         return;
       }
-      CacheEntry entry = mNode.getCacheEntry();
+      LRUCacheEntry entry = getCacheEntryFromMNode(mNode);
       if (entry == null) {
-        entry = new CacheEntry(mNode);
+        entry = new LRUCacheEntry(mNode);
       }
       if (!entry.isLocked()) {
         moveToFirst(entry);
@@ -131,7 +132,7 @@ public class LRUCacheStrategy implements ICacheStrategy {
     mNode.getCacheEntry().setModified(modified);
   }
 
-  private void moveToFirst(CacheEntry entry) {
+  private void moveToFirst(LRUCacheEntry entry) {
 
     if (!isInCacheList(entry)) {
       size++;
@@ -175,7 +176,7 @@ public class LRUCacheStrategy implements ICacheStrategy {
     }
   }
 
-  private void removeOne(CacheEntry entry) {
+  private void removeOne(LRUCacheEntry entry) {
     if (entry.pre != null) {
       entry.pre.next = entry.next;
     }
@@ -194,7 +195,7 @@ public class LRUCacheStrategy implements ICacheStrategy {
   }
 
   private void removeRecursively(IMNode mNode) {
-    CacheEntry entry = mNode.getCacheEntry();
+    LRUCacheEntry entry = getCacheEntryFromMNode(mNode);
     if (entry == null) {
       return;
     }
@@ -218,7 +219,7 @@ public class LRUCacheStrategy implements ICacheStrategy {
 
       IMNode mNode = last.value;
       IMNode parent = mNode.getParent();
-      while (parent != null && parent.getCacheEntry().isModified) {
+      while (parent != null && parent.getCacheEntry().isModified()) {
         mNode = parent;
         parent = mNode.getParent();
       }
@@ -265,13 +266,17 @@ public class LRUCacheStrategy implements ICacheStrategy {
     for (IMNode child : mNode.getChildren().values()) {
       collectModifiedRecursively(child, mNodeCollection);
     }
-    if (cacheEntry.isModified) {
+    if (cacheEntry.isModified()) {
       mNodeCollection.add(mNode);
     }
   }
 
+  private LRUCacheEntry getCacheEntryFromMNode(IMNode mNode) {
+    return (LRUCacheEntry) mNode.getCacheEntry();
+  }
+
   private void showCachedMNode() {
-    CacheEntry entry = first;
+    LRUCacheEntry entry = first;
     while (entry != null) {
       System.out.print(entry.value);
       System.out.print(entry.getMNode().getCacheEntry() == null);

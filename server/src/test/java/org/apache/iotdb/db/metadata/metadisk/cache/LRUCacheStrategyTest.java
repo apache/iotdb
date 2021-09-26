@@ -19,7 +19,7 @@ public class LRUCacheStrategyTest {
     lruEviction.applyChange(root.getChild("s2"));
     lruEviction.applyChange(root.getChild("s1").getChild("t2"));
     StringBuilder stringBuilder = new StringBuilder();
-    CacheEntry entry = root.getCacheEntry();
+    LRUCacheEntry entry = (LRUCacheEntry) root.getCacheEntry();
     while (entry != null) {
       stringBuilder.append(entry.getMNode().getFullPath()).append("\r\n");
       entry = entry.getPre();
@@ -29,7 +29,7 @@ public class LRUCacheStrategyTest {
 
     lruEviction.remove(root.getChild("s1"));
     stringBuilder = new StringBuilder();
-    entry = root.getCacheEntry();
+    entry = (LRUCacheEntry) root.getCacheEntry();
     while (entry != null) {
       stringBuilder.append(entry.getMNode().getFullPath()).append("\r\n");
       entry = entry.getPre();
