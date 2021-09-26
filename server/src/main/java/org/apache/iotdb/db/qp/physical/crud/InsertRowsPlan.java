@@ -29,7 +29,13 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public class InsertRowsPlan extends InsertPlan implements BatchPlan {
 
@@ -53,6 +59,8 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   /** record the result of insert rows */
   private Map<Integer, TSStatus> results = new HashMap<>();
 
+  private List<PartialPath> paths;
+
   public InsertRowsPlan() {
     super(OperatorType.BATCH_INSERT_ROWS);
     insertRowPlanList = new ArrayList<>();
@@ -72,11 +80,15 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    List<PartialPath> result = new ArrayList<>();
-    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      result.addAll(insertRowPlan.getPaths());
+    if (paths != null) {
+      return paths;
     }
-    return result;
+    Set<PartialPath> pathSet = new HashSet<>();
+    for (InsertRowPlan plan : insertRowPlanList) {
+      pathSet.addAll(plan.getPaths());
+    }
+    paths = new ArrayList<>(pathSet);
+    return paths;
   }
 
   @Override

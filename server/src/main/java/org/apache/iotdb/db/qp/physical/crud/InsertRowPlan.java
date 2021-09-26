@@ -64,6 +64,7 @@ public class InsertRowPlan extends InsertPlan {
   private boolean isNeedInferType = false;
 
   private List<Object> failedValues;
+  private List<PartialPath> paths;
 
   public InsertRowPlan() {
     super(OperatorType.INSERT);
@@ -331,12 +332,15 @@ public class InsertRowPlan extends InsertPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    List<PartialPath> ret = new ArrayList<>();
+    if (paths != null) {
+      return paths;
+    }
+    paths = new ArrayList<>(measurements.length);
     for (String m : measurements) {
       PartialPath fullPath = prefixPath.concatNode(m);
-      ret.add(fullPath);
+      paths.add(fullPath);
     }
-    return ret;
+    return paths;
   }
 
   public Object[] getValues() {
