@@ -950,11 +950,6 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.**" will be translated into:
-    // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
     Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
     Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
@@ -1222,12 +1217,6 @@ public class CMManager extends MManager {
   @Override
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.**" will be translated into:
-    // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
     Map<String, String> sgPathMap = groupPathByStorageGroup(pathPattern);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);
 
@@ -1255,11 +1244,6 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.**" will be translated into:
-    // "root.group1" -> "root.group1.**", "root.group2" -> "root.group2.**" ...
     Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
     List<PartialPath> ret = getMatchedPaths(sgPathMap, false);
     logger.debug("The paths of path {} are {}", originPath, ret);
