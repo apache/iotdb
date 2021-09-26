@@ -468,9 +468,7 @@ Known Implementation UDF Libraries:
 
 + [IoTDB-Quality](https://thulab.github.io/iotdb-quality), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
 
-### Nested Query (Subquery)
-
-"Nested query" is also called "subquery", that is, in a SQL statement, the result of the "inner query" can be used as the input of the "outer query".
+### Nested Expressions
 
 IoTDB supports the execution of arbitrary nested expressions consisting of **time series, arithmetic expressions, and time series generation functions (including user-defined functions)** in the `select` clause.
 
