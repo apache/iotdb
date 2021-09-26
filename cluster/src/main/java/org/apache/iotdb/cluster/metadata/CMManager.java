@@ -572,7 +572,7 @@ public class CMManager extends MManager {
     List<PartialPath> originalPaths = plan.getPrefixPaths();
     for (int i = 0; i < originalPaths.size(); i++) {
       // has permission to create sg
-      if (plan.getResults().containsKey(i)) {
+      if (!plan.getResults().containsKey(i)) {
         paths.add(originalPaths.get(i));
       }
     }
