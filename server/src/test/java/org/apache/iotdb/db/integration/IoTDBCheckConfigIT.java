@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -37,14 +38,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.security.AccessControlException;
-import java.security.Permission;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBCheckConfigIT {
   private File propertiesFile =
@@ -67,15 +67,15 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
-    final SecurityManager securityManager =
-        new SecurityManager() {
-          public void checkPermission(Permission permission) {
-            if (permission.getName().startsWith("exitVM")) {
-              throw new AccessControlException("Wrong system config");
-            }
-          }
-        };
-    System.setSecurityManager(securityManager);
+    //    final SecurityManager securityManager =
+    //        new SecurityManager() {
+    //          public void checkPermission(Permission permission) {
+    //            if (permission.getName().startsWith("exitVM")) {
+    //              throw new AccessControlException("Wrong system config");
+    //            }
+    //          }
+    //        };
+    //    System.setSecurityManager(securityManager);
     bytes = new ByteArrayOutputStream();
     console = System.out;
     System.setOut(new PrintStream(bytes));
@@ -100,12 +100,7 @@ public class IoTDBCheckConfigIT {
 
   @Test
   public void testSaveTimeEncoderToSystemProperties() throws Exception {
-    try {
-      IoTDBConfigCheck.getInstance().checkConfig();
-    } finally {
-      System.setSecurityManager(null);
-    }
-
+    IoTDBConfigCheck.getInstance().checkConfig();
     // read properties from system.properties
     try (FileInputStream inputStream = new FileInputStream(propertiesFile);
         InputStreamReader inputStreamReader =
@@ -126,12 +121,12 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.reactiveDaemon();
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
-    } catch (Throwable t) {
-      assertEquals("Wrong system config", t.getMessage());
-    } finally {
-      System.setSecurityManager(null);
+    } catch (ConfigurationException t) {
+      assertEquals(t.getParameter(), "time_encoder");
+      assertEquals(t.getCorrectValue(), "REGULAR");
+      return;
     }
-    assertTrue(bytes.toString().contains("Wrong time_encoder, please set as: REGULAR"));
+    fail("should detect configration errors");
   }
 
   @Test
@@ -145,9 +140,7 @@ public class IoTDBCheckConfigIT {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
     } catch (Throwable t) {
-      assertTrue(false);
-    } finally {
-      System.setSecurityManager(null);
+      fail("should have no configration errors");
     }
   }
 

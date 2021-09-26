@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -164,7 +165,7 @@ public class IoTDBConfigCheck {
    * <p>When upgrading the system.properties: (1) create system.properties.tmp (2) delete
    * system.properties (3) rename system.properties.tmp to system.properties
    */
-  public void checkConfig() throws IOException {
+  public void checkConfig() throws ConfigurationException, IOException {
     propertiesFile =
         SystemFileFactory.INSTANCE.getFile(
             IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
@@ -296,7 +297,7 @@ public class IoTDBConfigCheck {
   }
 
   /** Check all immutable properties */
-  private void checkProperties() throws IOException {
+  private void checkProperties() throws ConfigurationException, IOException {
     for (Entry<String, String> entry : systemProperties.entrySet()) {
       if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
@@ -305,41 +306,41 @@ public class IoTDBConfigCheck {
     }
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
-      printErrorLogAndExit(TIMESTAMP_PRECISION_STRING);
+      throwException(TIMESTAMP_PRECISION_STRING, timestampPrecision);
     }
 
     if (Boolean.parseBoolean(properties.getProperty(ENABLE_PARTITION_STRING)) != enablePartition) {
-      printErrorLogAndExit(ENABLE_PARTITION_STRING);
+      throwException(ENABLE_PARTITION_STRING, enablePartition);
     }
 
     if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
-      printErrorLogAndExit(PARTITION_INTERVAL_STRING);
+      throwException(PARTITION_INTERVAL_STRING, partitionInterval);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {
-      printErrorLogAndExit(TSFILE_FILE_SYSTEM_STRING);
+      throwException(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     }
 
     if (!(properties.getProperty(TAG_ATTRIBUTE_SIZE_STRING).equals(tagAttributeTotalSize))) {
-      printErrorLogAndExit(TAG_ATTRIBUTE_SIZE_STRING);
+      throwException(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     }
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
-      printErrorLogAndExit(MAX_DEGREE_OF_INDEX_STRING);
+      throwException(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     }
 
     if (!(properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM).equals(virtualStorageGroupNum))) {
-      printErrorLogAndExit(VIRTUAL_STORAGE_GROUP_NUM);
+      throwException(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
     }
 
     if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
-      printErrorLogAndExit(TIME_ENCODER_KEY);
+      throwException(TIME_ENCODER_KEY, timeEncoderValue);
     }
   }
 
-  private void printErrorLogAndExit(String property) {
-    logger.error("Wrong {}, please set as: {} !", property, properties.getProperty(property));
-    System.exit(-1);
+  private void throwException(String parameter, Object badValue) throws ConfigurationException {
+    throw new ConfigurationException(
+        parameter, String.valueOf(badValue), properties.getProperty(parameter));
   }
 
   /** ensure all TsFiles are closed when starting 0.12 */

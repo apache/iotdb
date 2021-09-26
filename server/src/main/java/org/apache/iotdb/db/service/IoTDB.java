@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -64,8 +65,9 @@ public class IoTDB implements IoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
-    } catch (IOException e) {
+    } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
+      System.exit(1);
     }
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();

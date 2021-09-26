@@ -52,6 +52,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
@@ -213,7 +214,12 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
     ClusterIoTDB cluster = ClusterIoTDBHolder.INSTANCE;
     // check config of iotdb,and set some configs in cluster mode
-    if (!cluster.serverCheckAndInit()) {
+    try {
+      if (!cluster.serverCheckAndInit()) {
+        return;
+      }
+    } catch (ConfigurationException | IOException e) {
+      logger.error("meet error when doing start checking", e);
       return;
     }
     String mode = args[0];
@@ -238,12 +244,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
-  private boolean serverCheckAndInit() {
-    try {
-      IoTDBConfigCheck.getInstance().checkConfig();
-    } catch (IOException e) {
-      logger.error("meet error when doing start checking", e);
-    }
+  private boolean serverCheckAndInit() throws ConfigurationException, IOException {
+    IoTDBConfigCheck.getInstance().checkConfig();
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
