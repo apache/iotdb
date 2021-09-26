@@ -82,9 +82,7 @@ public class TsFileResourceManager {
    * threshold.
    */
   private void chooseTsFileResourceToDegrade() {
-    while (BigDecimal.valueOf(totalTimeIndexMemCost)
-            .compareTo(BigDecimal.valueOf(TIME_INDEX_MEMORY_THRESHOLD))
-        > 0) {
+    while (totalTimeIndexMemCost > TIME_INDEX_MEMORY_THRESHOLD) {
       TsFileResource tsFileResource = sealedTsFileResources.poll();
       if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
           == TimeIndexLevel.FILE_TIME_INDEX) {
