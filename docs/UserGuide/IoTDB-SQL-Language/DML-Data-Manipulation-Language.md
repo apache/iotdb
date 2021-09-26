@@ -423,11 +423,11 @@ Total line number = 5
 It costs 0.014s
 ```
 
-#### Constant Timeseries Generation Functions
+#### Constant Timeseries Generating Functions
 
 The constant timeseries generating function is used to generate a timeseries in which the values of all data points are the same.
 
-The constant timeseries generation function accepts one or more timeseries inputs, and the timestamp set of the output data points is the union of the timestamp sets of the input timeseries.
+The constant timeseries generating function accepts one or more timeseries inputs, and the timestamp set of the output data points is the union of the timestamp sets of the input timeseries.
 
 Currently, IoTDB supports the following constant timeseries generating functions:
 
@@ -470,7 +470,7 @@ Known Implementation UDF Libraries:
 
 ### Nested Expressions
 
-IoTDB supports the execution of arbitrary nested expressions consisting of **time series, arithmetic expressions, and time series generation functions (including user-defined functions)** in the `select` clause.
+IoTDB supports the execution of arbitrary nested expressions consisting of **time series, arithmetic expressions, and time series generating functions (including user-defined functions)** in the `select` clause.
 
 #### Syntax
 
