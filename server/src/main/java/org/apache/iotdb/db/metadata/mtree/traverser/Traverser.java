@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -155,8 +156,16 @@ public abstract class Traverser {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     for (IMNode child : node.getChildren().values()) {
-      if (!Pattern.matches(targetNameRegex, child.getName())) {
-        continue;
+      if (child.isMeasurement()) {
+        String alias = ((IMeasurementMNode) child).getAlias();
+        if (!Pattern.matches(targetNameRegex, child.getName())
+            && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
+          continue;
+        }
+      } else {
+        if (!Pattern.matches(targetNameRegex, child.getName())) {
+          continue;
+        }
       }
       traverse(child, idx + 1, level + 1);
     }

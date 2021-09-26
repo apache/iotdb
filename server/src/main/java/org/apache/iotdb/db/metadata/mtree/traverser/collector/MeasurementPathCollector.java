@@ -44,6 +44,7 @@ public class MeasurementPathCollector extends MeasurementCollector<List<PartialP
   protected void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException {
     PartialPath path = node.getPartialPath();
     if (nodes[nodes.length - 1].equals(node.getAlias())) {
+      // only when user query with alias, the alias in path will be set
       path.setMeasurementAlias(node.getAlias());
     }
     resultSet.add(path);
