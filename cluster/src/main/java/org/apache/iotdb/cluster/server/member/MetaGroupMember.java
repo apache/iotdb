@@ -312,16 +312,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   }
 
   @Override
-  public void waitAndStop(long milliseconds) {
-    IService.super.waitAndStop(milliseconds);
-  }
-
-  @Override
-  public void shutdown(long milliseconds) throws ShutdownException {
-    IService.super.shutdown(milliseconds);
-  }
-
-  @Override
   public ServiceType getID() {
     return ServiceType.CLUSTER_META_ENGINE;
   }
