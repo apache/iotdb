@@ -780,8 +780,8 @@ public class SessionPool {
   }
 
   /**
-   * insert aligned data in one row, if you want improve your performance, please use insertRecords
-   * method or insertTablet method.
+   * insert aligned data in one row, if you want improve your performance, please use
+   * insertAlignedRecords method or insertTablet method.
    *
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
