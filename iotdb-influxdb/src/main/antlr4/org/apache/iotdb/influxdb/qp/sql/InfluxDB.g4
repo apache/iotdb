@@ -46,8 +46,6 @@ expression
    | (PLUS | MINUS) unary=expression
    | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
    | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-//   | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-//   | suffixPath
    | functionName=nodeName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
    | nodeName
    | literal=SINGLE_QUOTE_STRING_LITERAL
@@ -58,17 +56,7 @@ functionAttribute
    ;
 
 
-
-compressor
-    : UNCOMPRESSED
-    | SNAPPY
-    | LZ4
-    | GZIP
-    ;
-
-
 whereClause
-//    : WHERE (orExpression | indexPredicateClause)
     : WHERE orExpression
     ;
 
@@ -83,14 +71,11 @@ andExpression
 
 predicate
     : (TIME | TIMESTAMP | nodeName ) comparisonOperator constant
-//    : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
-//    | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
 
 fromClause
-//    : FROM prefixPath (COMMA prefixPath)*
     : FROM nodeName (COMMA nodeName)*
     ;
 
@@ -102,24 +87,6 @@ comparisonOperator
     | type = OPERATOR_EQ
     | type = OPERATOR_NEQ
     ;
-
-
-
-propertyValue
-    : INT
-    | ID
-    | stringLiteral
-    | constant
-    ;
-
-//fullPath
-//    : ROOT (DOT nodeNameWithoutStar)*
-//    ;
-//
-//
-//suffixPath
-//    : nodeName (DOT nodeName)*
-//    ;
 
 nodeName
     : ID STAR?
@@ -218,110 +185,6 @@ nodeName
     | TRACING
     | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
-    | compressor
-    | GLOBAL
-    | PARTITION
-    | DESC
-    | ASC
-    ;
-
-nodeNameWithoutStar
-    : ID
-    | DOUBLE_QUOTE_STRING_LITERAL
-    | DURATION
-    | encoding
-    | dataType
-    | dateExpression
-    | MINUS? ( EXPONENT | INT)
-    | booleanClause
-    | CREATE
-    | INSERT
-    | UPDATE
-    | DELETE
-    | SELECT
-    | SHOW
-    | GRANT
-    | INTO
-    | SET
-    | WHERE
-    | FROM
-    | TO
-    | BY
-    | DEVICE
-    | CONFIGURATION
-    | DESCRIBE
-    | SLIMIT
-    | LIMIT
-    | UNLINK
-    | OFFSET
-    | SOFFSET
-    | FILL
-    | LINEAR
-    | PREVIOUS
-    | PREVIOUSUNTILLAST
-    | METADATA
-    | TIMESERIES
-    | TIMESTAMP
-    | PROPERTY
-    | WITH
-    | DATATYPE
-    | COMPRESSOR
-    | STORAGE
-    | GROUP
-    | LABEL
-    | ADD
-    | UPSERT
-    | VALUES
-    | NOW
-    | LINK
-    | INDEX
-    | USING
-    | ON
-    | DROP
-    | MERGE
-    | LIST
-    | USER
-    | PRIVILEGES
-    | ROLE
-    | ALL
-    | OF
-    | ALTER
-    | PASSWORD
-    | REVOKE
-    | LOAD
-    | WATERMARK_EMBEDDING
-    | UNSET
-    | TTL
-    | FLUSH
-    | TASK
-    | INFO
-    | VERSION
-    | REMOVE
-    | MOVE
-    | CHILD
-    | PATHS
-    | DEVICES
-    | COUNT
-    | NODES
-    | LEVEL
-    | LAST
-    | DISABLE
-    | ALIGN
-    | COMPRESSION
-    | TIME
-    | ATTRIBUTES
-    | TAGS
-    | RENAME
-    | FULL
-    | CLEAR
-    | CACHE
-    | SNAPSHOT
-    | FOR
-    | SCHEMA
-    | TRACING
-    | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
-    | compressor
     | GLOBAL
     | PARTITION
     | DESC
@@ -335,7 +198,6 @@ dataType
 dateFormat
 //暂不支持datetime
 //    : DATETIME
-//    | NOW LR_BRACKET RR_BRACKET
     : NOW LR_BRACKET RR_BRACKET
     ;
 
