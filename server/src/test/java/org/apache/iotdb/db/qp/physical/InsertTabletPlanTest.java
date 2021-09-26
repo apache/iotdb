@@ -309,6 +309,7 @@ public class InsertTabletPlanTest {
 
     InsertTabletPlan plan2 = new InsertTabletPlan();
     plan2.deserialize(byteBuffer);
+    executor.insertTablet(plan2);
 
     Assert.assertEquals(plan1, plan2);
   }
@@ -317,9 +318,9 @@ public class InsertTabletPlanTest {
   public void testInsertTabletWithBitMapsSerialization()
       throws IllegalPathException, QueryProcessException {
     InsertTabletPlan plan1 = getInsertTabletPlan();
-    plan1.setBitMaps(new BitMap[6]);
+    plan1.setBitMaps(new BitMap[3]);
     BitMap[] bitMaps = plan1.getBitMaps();
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 3; i++) {
       if (bitMaps[i] == null) {
         bitMaps[i] = new BitMap(4);
       }
@@ -336,6 +337,7 @@ public class InsertTabletPlanTest {
 
     InsertTabletPlan plan2 = new InsertTabletPlan();
     plan2.deserialize(byteBuffer);
+    executor.insertTablet(plan2);
 
     Assert.assertEquals(plan1, plan2);
   }
@@ -347,7 +349,7 @@ public class InsertTabletPlanTest {
     dataTypes.add(TSDataType.FLOAT.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    Object[] columns = new Object[6];
+    Object[] columns = new Object[3];
     columns[0] = new double[4];
     columns[1] = new float[4];
     columns[2] = new long[4];
