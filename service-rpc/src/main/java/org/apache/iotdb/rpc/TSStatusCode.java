@@ -93,7 +93,10 @@ public enum TSStatusCode {
   CONSISTENCY_FAILURE(705),
   NO_CONNECTION(706),
   NEED_REDIRECTION(707),
-  PARSE_LOG_ERROR(708);
+  PARSE_LOG_ERROR(708),
+
+  // configuration
+  CONFIG_ERROR(800);
 
   private int statusCode;
 
