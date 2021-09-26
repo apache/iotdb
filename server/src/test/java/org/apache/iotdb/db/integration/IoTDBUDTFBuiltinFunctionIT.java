@@ -307,25 +307,59 @@ public class IoTDBUDTFBuiltinFunctionIT {
     };
 
     try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();
-        ResultSet resultSet =
-            statement.executeQuery(
-                "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.sg.d1")) {
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")) {
 
-      assertEquals(1 + 5, resultSet.getMetaData().getColumnCount());
+      try (Statement statement = connection.createStatement();
+          ResultSet resultSet =
+              statement.executeQuery(
+                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.sg.d1")) {
+        assertEquals(1 + 5, resultSet.getMetaData().getColumnCount());
 
-      for (int i = 0; i < INSERTION_SQLS.length; ++i) {
-        resultSet.next();
-        StringBuilder actual = new StringBuilder();
-        for (int j = 0; j < 1 + 5; ++j) {
-          actual.append(resultSet.getString(1 + j)).append(", ");
+        for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+          resultSet.next();
+          StringBuilder actual = new StringBuilder();
+          for (int j = 0; j < 1 + 5; ++j) {
+            actual.append(resultSet.getString(1 + j)).append(", ");
+          }
+          assertEquals(expected[i], actual.toString());
         }
-        assertEquals(expected[i], actual.toString());
+
+        assertFalse(resultSet.next());
       }
 
-      assertFalse(resultSet.next());
+      try (Statement statement = connection.createStatement();
+          ResultSet ignored =
+              statement.executeQuery("select const(s7, 'value'='1024') from root.sg.d1")) {
+        fail();
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("attribute \"type\" is required but was not provided"));
+      }
+
+      try (Statement statement = connection.createStatement();
+          ResultSet ignored =
+              statement.executeQuery("select const(s8, 'type'='INT64') from root.sg.d1")) {
+        fail();
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("attribute \"value\" is required but was not provided"));
+      }
+
+      try (Statement statement = connection.createStatement();
+          ResultSet ignored =
+              statement.executeQuery(
+                  "select const(s8, 'value'='1024', 'type'='long') from root.sg.d1")) {
+        fail();
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("the given value type is not supported"));
+      }
+
+      try (Statement statement = connection.createStatement();
+          ResultSet ignored =
+              statement.executeQuery(
+                  "select const(s8, 'value'='1024e', 'type'='INT64') from root.sg.d1")) {
+        fail();
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("java.lang.NumberFormatException"));
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

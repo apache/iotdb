@@ -62,7 +62,7 @@ public class UDTFConst implements UDTF {
         .validateRequiredAttribute("type")
         .validate(
             type -> VALID_TYPES.contains((String) type),
-            "The given value type is not supported.",
+            "the given value type is not supported.",
             validator.getParameters().getString("type"));
   }
 
