@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -55,11 +55,12 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
  *
  * <p>ResultSet: StorageGroupName-FullPath pairs
  */
-public class PathGrouperByStorageGroup extends CollectorTraverser<Map<String, String>> {
+public class PathGrouperByStorageGroup extends Traverser {
+
+  private Map<String, String> resultSet = new HashMap<>();
 
   public PathGrouperByStorageGroup(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    this.resultSet = new HashMap<>();
   }
 
   @Override
@@ -94,5 +95,9 @@ public class PathGrouperByStorageGroup extends CollectorTraverser<Map<String, St
       pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(MULTI_LEVEL_PATH_WILDCARD);
     }
     resultSet.put(sgName, pathWithKnownSG.toString());
+  }
+
+  public Map<String, String> getResult() {
+    return resultSet;
   }
 }
