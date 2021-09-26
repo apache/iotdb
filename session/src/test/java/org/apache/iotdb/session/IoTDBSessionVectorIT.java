@@ -68,7 +68,7 @@ public class IoTDBSessionVectorIT {
     try {
       insertTabletWithAlignedTimeseriesMethod();
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1");
+      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector");
       assertEquals(dataSet.getColumnNames().size(), 3);
       assertEquals(dataSet.getColumnNames().get(0), "Time");
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s1");
@@ -93,7 +93,7 @@ public class IoTDBSessionVectorIT {
     try {
       insertAlignedRecord(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
+      SessionDataSet dataSet = selectTest("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
@@ -115,7 +115,7 @@ public class IoTDBSessionVectorIT {
     try {
       insertAlignedStringRecord(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
+      SessionDataSet dataSet = selectTest("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(ROOT_SG1_D1_VECTOR1 + ".s2", dataSet.getColumnNames().get(1));
@@ -205,7 +205,7 @@ public class IoTDBSessionVectorIT {
       insertTabletWithAlignedTimeseriesMethod();
       insertNonAlignedRecord(ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
+      SessionDataSet dataSet = selectTest("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");

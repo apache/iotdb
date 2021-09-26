@@ -931,7 +931,7 @@ public class TSServiceImpl implements TSIService.Iface {
         for (int i = 0; i < resultColumns.size(); ++i) {
           if (isJdbcQuery) {
             String sgName =
-                IoTDB.metaManager.getStorageGroupPath(plan.getPaths().get(i)).getFullPath();
+                IoTDB.metaManager.getBelongedStorageGroup(plan.getPaths().get(i)).getFullPath();
             respSgColumns.add(sgName);
             if (resultColumns.get(i).getAlias() == null) {
               respColumns.add(

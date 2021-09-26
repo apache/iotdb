@@ -529,7 +529,7 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(prefixPath);
       } else {
-        getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
+        getCMManager().collectTimeseriesSchema(new PartialPath(prefixPath), timeseriesSchemas);
       }
     }
 
