@@ -103,7 +103,6 @@ public class FileReaderManager implements IService {
   }
 
   private void clearUnUsedFilesInFixTime() {
-
     long examinePeriod = IoTDBDescriptor.getInstance().getConfig().getCacheFileReaderClearPeriod();
     executorService.scheduleAtFixedRate(
         () -> {

@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.tools;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -25,6 +28,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
@@ -59,8 +63,7 @@ public class TsFileAndModSettleToolTest {
   private final boolean newEnablePartition = true;
   private final long newPartitionInterval = 3600_000;
   protected final long maxTimestamp = 50000L; // 100000000L;
-  protected final String folder =
-      "C:\\IOTDB\\sourceCode\\choubenson\\iotdb\\data\\data\\sequence\\root.sg_0\\0\\0";
+  protected final String folder = "target" + File.separator + "settle";
   protected final String STORAGE_GROUP = "root.sg_0";
   protected final String DEVICE1 = STORAGE_GROUP + ".device_1";
   protected final String DEVICE2 = STORAGE_GROUP + ".device_2";
@@ -97,12 +100,25 @@ public class TsFileAndModSettleToolTest {
 
   @After
   public void tearDown() {
+    File[] fileLists = FSFactoryProducer.getFSFactory().listFilesBySuffix(folder, TSFILE_SUFFIX);
+    for (File f : fileLists) {
+      if (f.exists()) {
+        boolean deleteSuccess = f.delete();
+        Assert.assertTrue(deleteSuccess);
+      }
+    }
     config.setEnablePartition(originEnablePartition);
     config.setPartitionInterval(originPartitionInterval);
 
     StorageEngine.setEnablePartition(originEnablePartition);
     StorageEngine.setTimePartitionInterval(originPartitionInterval);
 
+    File directory = new File(folder);
+    try {
+      FileUtils.deleteDirectory(directory);
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
     try {
       EnvironmentUtils.cleanEnv();
     } catch (Exception e) {
@@ -111,20 +127,7 @@ public class TsFileAndModSettleToolTest {
   }
 
   @Test
-  public void onlineSettleTest() {
-    try {
-      List<TsFileResource> oldResources = createFiles();
-      for (TsFileResource resource : oldResources) {
-        TsFileAndModSettleTool.recoverSettleFileMap.put(resource.getTsFilePath(), new Integer(1));
-      }
-      // new RegisterManager().register(SettleService.getINSTANCE());
-    } catch (IOException | InterruptedException e) {
-      Assert.fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void settleTsFilesAndModsTest() {
+  public void settleTsFilesAndModsTest() {  //offline settle test
     try {
       List<TsFileResource> resourcesToBeSettled = createFiles();
       for (TsFileResource oldResource : resourcesToBeSettled) {
@@ -201,47 +204,6 @@ public class TsFileAndModSettleToolTest {
     }
   }
 
-  private void createOneTsFileWithOnlyOnePage(HashMap<String, List<String>> deviceSensorsMap) {
-    try {
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
-      TsFileWriter tsFileWriter = new TsFileWriter(f);
-      // add measurements into file schema
-      try {
-        for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-          String device = entry.getKey();
-          for (String sensor : entry.getValue()) {
-            tsFileWriter.registerTimeseries(
-                new Path(device, sensor),
-                new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
-          }
-        }
-      } catch (WriteProcessException e) {
-        Assert.fail(e.getMessage());
-      }
-
-      int count = 0;
-      for (long timestamp = 1; ; timestamp += newPartitionInterval) {
-        if (count == 2) {
-          break;
-        }
-        count++;
-        for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-          String device = entry.getKey();
-          TSRecord tsRecord = new TSRecord(timestamp, device);
-          for (String sensor : entry.getValue()) {
-            DataPoint dataPoint = new LongDataPoint(sensor, timestamp + VALUE_OFFSET);
-            tsRecord.addTuple(dataPoint);
-          }
-          tsFileWriter.write(tsRecord);
-        }
-        tsFileWriter.flushAllChunkGroups();
-      }
-      tsFileWriter.close();
-    } catch (Throwable e) {
-      Assert.fail(e.getMessage());
-    }
-  }
-
   protected void createOneTsFile(HashMap<String, List<String>> deviceSensorsMap) {
     try {
       File f = FSFactoryProducer.getFSFactory().getFile(path);
@@ -278,49 +240,4 @@ public class TsFileAndModSettleToolTest {
     }
   }
 
-  private void createOneTsFileWithTwoPages(String device, String sensor) {
-    TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();
-    int originMaxNumberOfPointsInPage = fileConfig.getMaxNumberOfPointsInPage();
-    fileConfig.setMaxNumberOfPointsInPage(2);
-    try {
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
-      TsFileWriter tsFileWriter = new TsFileWriter(f);
-      // add measurements into file schema
-      try {
-        tsFileWriter.registerTimeseries(
-            new Path(device, sensor),
-            new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
-      } catch (WriteProcessException e) {
-        Assert.fail(e.getMessage());
-      }
-
-      long timestamp = 1;
-      // First page is crossing time partitions
-      // Time stamp (1, 3600001)
-      TSRecord tsRecord = new TSRecord(timestamp, device);
-      DataPoint dataPoint = new LongDataPoint(sensor, timestamp);
-      tsRecord.addTuple(dataPoint);
-      tsFileWriter.write(tsRecord);
-      timestamp += newPartitionInterval;
-      tsRecord = new TSRecord(timestamp, device);
-      dataPoint = new LongDataPoint(sensor, timestamp);
-      tsRecord.addTuple(dataPoint);
-      tsFileWriter.write(tsRecord);
-      // Second page is in one time partition
-      // Time stamp (3600002, 3600003)
-      for (int i = 0; i < 2; i++) {
-        timestamp++;
-        tsRecord = new TSRecord(timestamp, device);
-        dataPoint = new LongDataPoint(sensor, timestamp);
-        tsRecord.addTuple(dataPoint);
-        tsFileWriter.write(tsRecord);
-      }
-      tsFileWriter.flushAllChunkGroups();
-      tsFileWriter.close();
-      fileConfig.setMaxNumberOfPointsInPage(originMaxNumberOfPointsInPage);
-    } catch (Throwable e) {
-      Assert.fail(e.getMessage());
-      fileConfig.setMaxNumberOfPointsInPage(originMaxNumberOfPointsInPage);
-    }
-  }
 }
