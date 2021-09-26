@@ -21,7 +21,7 @@ public class LRUCacheStrategyTest {
     StringBuilder stringBuilder = new StringBuilder();
     CacheEntry entry = root.getCacheEntry();
     while (entry != null) {
-      stringBuilder.append(entry.getValue().getFullPath()).append("\r\n");
+      stringBuilder.append(entry.getMNode().getFullPath()).append("\r\n");
       entry = entry.getPre();
     }
     Assert.assertEquals(
@@ -31,7 +31,7 @@ public class LRUCacheStrategyTest {
     stringBuilder = new StringBuilder();
     entry = root.getCacheEntry();
     while (entry != null) {
-      stringBuilder.append(entry.getValue().getFullPath()).append("\r\n");
+      stringBuilder.append(entry.getMNode().getFullPath()).append("\r\n");
       entry = entry.getPre();
     }
     Assert.assertEquals("root\r\n" + "root.s2\r\n", stringBuilder.toString());

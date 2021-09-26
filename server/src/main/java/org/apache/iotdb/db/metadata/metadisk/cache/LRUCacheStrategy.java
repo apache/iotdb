@@ -274,7 +274,7 @@ public class LRUCacheStrategy implements ICacheStrategy {
     CacheEntry entry = first;
     while (entry != null) {
       System.out.print(entry.value);
-      System.out.print(entry.getValue().getCacheEntry() == null);
+      System.out.print(entry.getMNode().getCacheEntry() == null);
       System.out.print("->");
       entry = entry.next;
     }

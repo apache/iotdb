@@ -38,20 +38,12 @@ public class CacheEntry {
     mNode.setCacheEntry(this);
   }
 
-  public void setMNode(IMNode mNode) {
-    value = mNode;
-  }
-
   CacheEntry getPre() {
     return pre;
   }
 
   CacheEntry getNext() {
     return next;
-  }
-
-  IMNode getValue() {
-    return value;
   }
 
   void setPre(CacheEntry pre) {
@@ -62,15 +54,19 @@ public class CacheEntry {
     this.next = next;
   }
 
-  void setValue(IMNode mNode) {
+  public IMNode getMNode() {
+    return value;
+  }
+
+  public void setMNode(IMNode mNode) {
     value = mNode;
   }
 
-  boolean isModified() {
+  public boolean isModified() {
     return isModified;
   }
 
-  void setModified(boolean modified) {
+  public void setModified(boolean modified) {
     isModified = modified;
   }
 
