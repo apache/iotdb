@@ -1,4 +1,4 @@
-`<!--
+<!--
 
     Licensed to the Apache Software Foundation (ASF) under one
     or more contributor license agreements.  See the NOTICE file
@@ -18,7 +18,8 @@
     under the License.
 
 -->
-`# IotDB-InfluxDB适配器
+
+# IoTDB-InfluxDB适配器
 
 
 ## 1.背景
@@ -27,23 +28,24 @@ InfluxDB是当前世界排名第一的时序数据库，具有繁荣的生态系
 
 ## 2.目标 
 
-开发一套Java版本的适配器可以使IotDB兼容InfluxDB协议，完善IotDB的功能。
+开发一套Java版本的适配器可以使IoTDB兼容InfluxDB协议，完善IoTDB的功能。
 
-1. IotDB-InfluxDB：支持InfluxDB写入；支持InfluxDB部分查询；支持完整的InfluxDB查询。
+1. IoTDB-InfluxDB：支持InfluxDB写入；支持InfluxDB部分查询；支持完整的InfluxDB查询。
 2. 对正确性和性能的测试，不仅要适配InfluxDB，也要知道在繁重的负载下是否可以很好的工作，例如：以非常高的频率生成数据
-   1. 正确性测试：通过适配器以influxb的协议插入数据，然后查询IotDB数据库，将我们认为发送的内容与我们希望存储的内容进行比较。进行正确性测试
+   1. 正确性测试：通过适配器以influxdb的协议插入数据，然后查询IoTDB数据库，将我们认为发送的内容与我们希望存储的内容进行比较。进行正确性测试
    2. 性能测试：以多线程的方式或者以Fiber多协程方式并发写入和读取，进行性能测试，类似的 demo：https://github.com/Tencent/TencentKona-8/tree/KonaFiber/demo/fiber/iotdb-sync-stress-demo
 
 
 ## 3.方案一
 
-### 3.1 IotDB-InfluxDb适配器
+### 3.1 IoTDB-InfluxDb适配器
 
-适配器是一个继承至InfluxDB基类的子类，实现了InfluxDB主要的写入和查询方法，用户通过改变代码中InfluxDB的实现类，从而使InfluxDB原有的操作函数没有改变，但是会以IotDB的协议写入IotDB数据库中。
+适配器是一个继承至InfluxDB基类的子类，实现了InfluxDB主要的写入和查询方法，用户通过改变代码中InfluxDB的实现类，从而使InfluxDB原有的操作函数没有改变，但是会以IoTDB的协议写入IoTDB数据库中。
 
-![image-20210725001005079](image/image-20210725001005079.png)
+![architecture-design](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
 
-### 3.2 将InfluxDB的数据格式转换成IotDB的数据格式
+
+### 3.2 将InfluxDB的数据格式转换成IoTDB的数据格式
 
 #### 3.2.1问题
 
@@ -51,19 +53,19 @@ InfluxDB是当前世界排名第一的时序数据库，具有繁荣的生态系
 
    a. InfluxDB的时序构成
 
-   ​	i. measurement
+      i. measurement
 
-   ​	ii.tag key tag value
+      ii.tag key tag value
 
-   ​	iii. field key field value
+      iii. field key field value
 
-   b. IotDB的时序构成
+   b. IoTDB的时序构成
 
-   ​	i. storage group
+      i. storage group
 
-   ​	ii. path(time series ID)
+      ii. path(time series ID)
 
-   ​	iii. measurement
+      iii. measurement
 
 2. 关键点：需要记录每个tag对应的顺序，确保InfluxDB中label顺序不同的同一条时序对应到IoTDB中也是一条时序
 3. 需要解决的事情
@@ -93,7 +95,7 @@ a. 添加时序
 
    3.  (1)对应的记录tag顺序的table为
 
-      ​	
+          
 
       | database_measurement | tag_key | order |
       | -------------------- | ------- | ----- |
@@ -103,7 +105,7 @@ a. 添加时序
 
       (2)对应的记录tag顺序的table为
 
-      ​	
+          
 
       | database_measurement | tag_key | order |
       | -------------------- | ------- | ----- |
@@ -114,7 +116,7 @@ a. 添加时序
 
       (3)对应的记录tag顺序的table为
 
-      ​	
+          
 
       | database_measurement | tag_key | order |
       | -------------------- | ------- | ----- |
@@ -123,11 +125,11 @@ a. 添加时序
       | testdatabase_student | sex     | 2     |
       | testdatabase_student | address | 3     |
 
-4. (1)对应IotDB时序为root._testdatabase_student.A.B.C
+4. (1)对应IoTDB时序为root.testdatabase.student.A.B.C
 
-   (2)对应IotDB时序为root._testdatabase_student.ph.ph.ph.D(其中ph表示占位符)
+   (2)对应IoTDB时序为root.testdatabase.student.ph.ph.ph.D(其中ph表示占位符)
 
-   (3)对应IotDB时序为root._testdatabase_student.A.B.C.D
+   (3)对应IoTDB时序为root.testdatabase.student.A.B.C.D
 
 5. 为了重启时候对table的恢复，在IoTDB中记录数据
 
@@ -140,9 +142,9 @@ a. 添加时序
 
 b. 查询数据
 
-	1. 查询student中phone=B的数据。在testdatabase_student中phone的顺序为1，order最大值是3，对应到IotDB的查询为：select * from root.testdatabase_student.*.B
- 	2. 查询student中phone=B且存储的socre>97的数据，对应到IotDB的查询为：select * from root.testdatabase_student.*.B where socre>98
- 	3. 查询student中phone=B且存储的socre>97且时间在最近七天内的的数据，对应到IotDB的查询为：select * from root.testdatabase_student.*.B where socre>98 and time > now()-7d
+   1. 查询student中phone=B的数据。在testdatabase_student中phone的顺序为1，order最大值是3，对应到IoTDB的查询为：select * from root.testdatabase.student.*.B
+   2. 查询student中phone=B且存储的socre>97的数据，对应到IoTDB的查询为：select * from root.testdatabase.student.*.B where socre>98
+   3. 查询student中phone=B且存储的socre>97且时间在最近七天内的的数据，对应到IoTDB的查询为：select * from root.testdatabase.student.*.B where socre>98 and time > now()-7d
 
 ## 4.方案二
 
@@ -154,7 +156,7 @@ b. 查询数据
 2. measurement
 3. tag key tag value.  field key field value
 
-#### 4.1.2iotdb
+#### 4.1.2IoTDB
 
 1. storage group
 2. device
@@ -166,23 +168,23 @@ b. 查询数据
 
 #### 4.2.1写入
 
-inlfuxbd的写入语句分别为（默认database=testdata）
+influxdb的写入语句分别为（默认database=testdata）
 
 1. insert cpu,host=serverA,region=us value=0.64（tag为host、region）
 2. insert cpu,host=serverA,region=us,sex=n value=0.64（tag为host、region、sex）
 
 最终写入情况为：
 
-![image-20210730203234012](image/image-20210730203234012.png)
+![influxdb-write](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-write.png?raw=true)
 
-iotdb的写入数据为
+IoTDB的写入数据为
 
 1. insert into root.testdata.cpu(timestamp,host,region,value) values(now(),"serverA","us",0.64)
 2. insert into root.testdata.cpu(timestamp,host,region,sex,value) values(now(),"serverA","us","n",0.64)
 
 最终写入情况为：
 
-![image-20210730203439752](image/image-20210730203439752.png)
+![iotdb-write](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/iotdb-write.png?raw=true)
 
 我们可以发现，二者实际存储对表面形式也比较类似。
 
@@ -210,7 +212,7 @@ iotdb的写入数据为
 
    influxdb中group by可以按照tag分组展示
 
-   ![image-20210730205021636](image/image-20210730205021636.png)
+   ![influxdb-group-by](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-group-by.png?raw=true)
 
    inflxudb中的group by功能不太类似，因此实现方法是：先获取所有的数据，然后在列表中以hash的方式手动分组，理论上复杂度为O（n），复杂度可以接受。
 
@@ -218,13 +220,13 @@ iotdb的写入数据为
 
 ### 5.1存储情况
 
-1. influxdb的tag和filed均当作iotdb的timeseries
+1. influxdb的tag和filed均当作IoTDB的timeseries
 
-![](image/image-20210731162118756.png)
+![influxdb-test1](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test1.png?raw=true)
 
 2. influxdb的tag当作路径
 
-![image-20210731162233942](image/image-20210731162233942.png)
+![influxdb-test2](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test2.png?raw=true)
 
 ### 5.2查询情况
 
@@ -244,7 +246,7 @@ iotdb的写入数据为
 
 ### 5.3特殊说明
 
-1. 为了存储的方便，第二种情况的存储，没有把tag的value存入路径中，即直接把tag的key存入路径中。其表现为![image-20210731162539251](image/image-20210731162539251.png)
+1. 为了存储的方便，第二种情况的存储，没有把tag的value存入路径中，即直接把tag的key存入路径中。其表现为![influxdb-test-result](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test-result.png?raw=true)
 
    前面累积的path都是相同的，这样最后会导致的结果是：会加快根据path过滤的查找，如：
 
@@ -260,26 +262,26 @@ iotdb的写入数据为
 
 同时如果第二种查找的时候，在较靠前的路径使用*，(select * from root.teststress.test2.* where A=1 and B=1 )会导致需要查找的path过多，报错信息如下
 
-```log
+​```log
 Too many paths in one query! Currently allowed max deduplicated path number is 715, this query contains 1000 deduplicated path. Please use slimit to choose what you real want or adjust max_deduplicated_path_num in iotdb-engine.properties.
-```
+​```
 
 综上所述，建议采取第二种方案（把tag放在path中存储）(同时需要解决上述提到的问题:Too many paths in one query)。
 
 ## 6.查询优化
 为了尽可能的降低session查询的次数，应将一些可以合并的过滤条件进行合并，从而减少查询的次数。
 
-同时需要注意的是，由于tag过滤是通过path进行过滤，而filed过滤是通过iotdb的where值过滤，因此二者的**or**过滤无法合并成一次过滤。即where tag1=value1 or field1=value2这种情况，无法合并成一次过滤。因此下文中尝试解决就是把可以合并的情况进行合并，即将**and**过滤进行合并。为了减少查询的次数，该算法使用递归的方法，对子树进行判断并尝试合并。
+同时需要注意的是，由于tag过滤是通过path进行过滤，而filed过滤是通过IoTDB的where值过滤，因此二者的**or**过滤无法合并成一次过滤。即where tag1=value1 or field1=value2这种情况，无法合并成一次过滤。因此下文中尝试解决就是把可以合并的情况进行合并，即将**and**过滤进行合并。为了减少查询的次数，该算法使用递归的方法，对子树进行判断并尝试合并。
 
 举例如下：
 
-```sql
+​```sql
 select * from cpu where (host = 'serverA' and regions='us') or (regions = 'us' and value=0.77)
-```
+​```
 
 InfluxDB语法解析器生成的语法树如下图所示：
 
-![image-20210810002026474](image/image-20210810001602511.png)
+![influxdb-syntax-tree](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-syntax-tree.png?raw=true)
 此时我们由两种解决思路：
 
 1. 分别进行四次查询，host=serverA ；regions=us;regions=us和value=0.77四次查询，然后分别按照树的token，即or或者and进行合并。
@@ -295,21 +297,21 @@ InfluxDB语法解析器生成的语法树如下图所示：
 
 #### 语法描述
 
-```
+​```
 COUNT(field_key)
-```
+​```
 
 返回field key对应的field values的数目。
 
-```
+​```
 COUNT(/regular_expression/)
-```
+​```
 
 返回匹配正则表达式的field key对应的field values的数目。
 
-```
+​```
 COUNT(*)
-```
+​```
 
 返回measurement中的每个field key对应的field value的数目。
 
@@ -320,21 +322,21 @@ COUNT(*)
 
 ### 语法描述
 
-```
+​```
 DISTINCT(field_key)
-```
+​```
 
 返回field key对应的不同field values。
 
-```
+​```
 DISTINCT(/regular_expression/)
-```
+​```
 
 返回匹配正则表达式的field key对应的不同field values。
 
-```
+​```
 DISTINCT(*)
-```
+​```
 
 返回measurement中的每个field key对应的不同field value。
 
@@ -349,21 +351,21 @@ DISTINCT(*)
 
 InfluxDB计算字段曲线下的面积，并将这些结果转换为每`unit`的总和面积。`unit`参数是一个整数，后跟一个时间字符串，它是可选的。如果查询未指定单位，则单位默认为1秒（`1s`）。
 
-```
+​```
 INTEGRAL(field_key)
-```
+​```
 
 返回field key关联的值之下的面积。
 
-```
+​```
 INTEGRAL(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key关联的值之下的面积。
 
-```
+​```
 INTEGRAL(*)
-```
+​```
 
 返回measurement中每个field key关联的值之下的面积。
 
@@ -376,21 +378,21 @@ INTEGRAL(*)
 
 #### 语法描述
 
-```
+​```
 MEAN(field_key)
-```
+​```
 
 返回field key关联的值的平均值。
 
-```
+​```
 MEAN(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key关联的值的平均值。
 
-```
+​```
 MEAN(*)
-```
+​```
 
 返回measurement中每个field key关联的值的平均值。
 
@@ -403,21 +405,21 @@ MEAN(*)
 
 #### 语法描述
 
-```
+​```
 MEDIAN(field_key)
-```
+​```
 
 返回field key关联的值的中位数。
 
-```
+​```
 MEDIAN(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key关联的值的中位数。
 
-```
+​```
 MEDIAN(*)
-```
+​```
 
 返回measurement中每个field key关联的值的中位数。
 
@@ -432,21 +434,21 @@ MEDIAN(*)
 
 #### 语法描述
 
-```
+​```
 MODE(field_key)
-```
+​```
 
 返回field key关联的值的出现频率最高的值。
 
-```
+​```
 MODE(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key关联的值的出现频率最高的值。
 
-```
+​```
 MODE(*)
-```
+​```
 
 返回measurement中每个field key关联的值的出现频率最高的值。
 
@@ -460,21 +462,21 @@ MODE(*)
 
 #### 语法描述
 
-```
+​```
 SPREAD(field_key)
-```
+​```
 
 返回field key最大和最小值的差值。
 
-```
+​```
 SPREAD(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key最大和最小值的差值。
 
-```
+​```
 SPREAD(*)
-```
+​```
 
 返回measurement中每个field key最大和最小值的差值。
 
@@ -487,21 +489,21 @@ SPREAD(*)
 
 #### 语法描述
 
-```
+​```
 STDDEV(field_key)
-```
+​```
 
 返回field key的标准差。
 
-```
+​```
 STDDEV(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key的标准差。
 
-```
+​```
 STDDEV(*)
-```
+​```
 
 返回measurement中每个field key的标准差。
 
@@ -514,21 +516,21 @@ STDDEV(*)
 
 #### 语法描述
 
-```
+​```
 SUM(field_key)
-```
+​```
 
 返回field key的值的和。
 
-```
+​```
 SUM(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key的值的和。
 
-```
+​```
 SUM(*)
-```
+​```
 
 返回measurement中每个field key的值的和。
 
@@ -541,21 +543,21 @@ SUM(*)
 
 #### 语法描述
 
-```
+​```
 BOTTOM(field_key,N)
-```
+​```
 
 返回field key的最小的N个field value。
 
-```
+​```
 BOTTOM(field_key,tag_key(s),N)
-```
+​```
 
 返回某个tag key的N个tag value的最小的field value。
 
-```
+​```
 BOTTOM(field_key,N),tag_key(s),field_key(s)
-```
+​```
 
 返回括号里的字段的最小N个field value，以及相关的tag或field，或者两者都有。
 
@@ -573,27 +575,27 @@ BOTTOM(field_key,N),tag_key(s),field_key(s)
 
 #### 语法描述
 
-```
+​```
 FIRST(field_key)
-```
+​```
 
 返回field key时间戳最早的值。
 
-```
+​```
 FIRST(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key的时间戳最早的值。
 
-```
+​```
 FIRST(*)
-```
+​```
 
 返回measurement中每个field key的时间戳最早的值。
 
-```
+​```
 FIRST(field_key),tag_key(s),field_key(s)
-```
+​```
 
 返回括号里的字段的时间戳最早的值，以及相关联的tag或field，或者两者都有。
 
@@ -606,27 +608,27 @@ FIRST(field_key),tag_key(s),field_key(s)
 
 #### 语法描述
 
-```
+​```
 LAST(field_key)
-```
+​```
 
 返回field key时间戳最近的值。
 
-```
+​```
 LAST(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key的时间戳最近的值。
 
-```
+​```
 LAST(*)
-```
+​```
 
 返回measurement中每个field key的时间戳最近的值。
 
-```
+​```
 LAST(field_key),tag_key(s),field_key(s)
-```
+​```
 
 返回括号里的字段的时间戳最近的值，以及相关联的tag或field，或者两者都有。
 
@@ -639,27 +641,27 @@ LAST(field_key),tag_key(s),field_key(s)
 
 #### 语法描述
 
-```
+​```
 MAX(field_key)
-```
+​```
 
 返回field key的最大值。
 
-```
+​```
 MAX(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key的最大值。
 
-```
+​```
 MAX(*)
-```
+​```
 
 返回measurement中每个field key的最大值。
 
-```
+​```
 MAX(field_key),tag_key(s),field_key(s)
-```
+​```
 
 返回括号里的字段的最大值，以及相关联的tag或field，或者两者都有。
 
@@ -672,27 +674,27 @@ MAX(field_key),tag_key(s),field_key(s)
 
 #### 语法描述
 
-```
+​```
 MIN(field_key)
-```
+​```
 
 返回field key的最小值。
 
-```
+​```
 MIN(/regular_expression/)
-```
+​```
 
 返回满足正则表达式的每个field key的最小值。
 
-```
+​```
 MIN(*)
-```
+​```
 
 返回measurement中每个field key的最小值。
 
-```
+​```
 MIN(field_key),tag_key(s),field_key(s)
-```
+​```
 
 返回括号里的字段的最小值，以及相关联的tag或field，或者两者都有。
 
@@ -705,27 +707,27 @@ MIN(field_key),tag_key(s),field_key(s)
 
 #### 语法描述
 
-```
+​```
 PERCENTILE(field_key,N)
-```
+​```
 
 返回field key较大的百分之N的值。
 
-```
+​```
 PERCENTILE(/regular_expression/,N)
-```
+​```
 
 返回满足正则表达式的每个field key较大的百分之N的值。
 
-```
+​```
 PERCENTILE(*,N)
-```
+​```
 
 返回measurement中每个field key较大的百分之N的值。
 
-```
+​```
 PERCENTILE(field_key,N),tag_key(s),field_key(s)
-```
+​```
 
 返回括号里的字段较大的百分之N的值，以及相关联的tag或field，或者两者都有。
 
@@ -736,31 +738,31 @@ PERCENTILE(field_key,N),tag_key(s),field_key(s)
 
 ### 16.SAMPLE()
 
-返回`N`个随机抽样的字段值。`SAMPLE()`使用[reservoir sampling](https://en.wikipedia.org/wiki/Reservoir_sampling)来生成随机点。
+返回`N`个随机抽样的字段值。`SAMPLE()`使用reservoir sampling来生成随机点。
 
 #### 语法描述
 
-```
+​```
 SAMPLE(field_key,N)
-```
+​```
 
 返回field key的N个随机抽样的字段值。
 
-```
+​```
 SAMPLE(/regular_expression/,N)
-```
+​```
 
 返回满足正则表达式的每个field key的N个随机抽样的字段值。
 
-```
+​```
 SAMPLE(*,N)
-```
+​```
 
 返回measurement中每个field key的N个随机抽样的字段值。
 
-```
+​```
 SAMPLE(field_key,N),tag_key(s),field_key(s)
-```
+​```
 
 返回括号里的字段的N个随机抽样的字段值，以及相关联的tag或field，或者两者都有。
 
@@ -775,21 +777,21 @@ SAMPLE(field_key,N),tag_key(s),field_key(s)
 
 #### 语法描述
 
-```
+​```
 TOP(field_key,N)
-```
+​```
 
 返回field key的最大的N个field value。
 
-```
+​```
 TOP(field_key,tag_key(s),N)
-```
+​```
 
 返回某个tag key的N个tag value的最大的field value。
 
-```
+​```
 TOP(field_key,N),tag_key(s),field_key(s)
-```
+​```
 
 返回括号里的字段的最大N个field value，以及相关的tag或field，或者两者都有。
 
@@ -804,39 +806,39 @@ TOP(field_key,N),tag_key(s),field_key(s)
 ## 8. 支持的函数
 
 1. first()
-先利用iotdb中的first_value函数，然后对每一个device中的first值再重回iotdb中查询，指定path和where限定条件，查询出对应的time
+先利用IoTDB中的first_value函数，然后对每一个device中的first值再重回IoTDB中查询，指定path和where限定条件，查询出对应的time
 4. last()
-先利用iotdb中的last_value函数，然后对每一个device中的last值再重回iotdb中查询，指定path和where限定条件，查询出对应的time
+先利用IoTDB中的last_value函数，然后对每一个device中的last值再重回IoTDB中查询，指定path和where限定条件，查询出对应的time
 5. max()
-通过利用iotdb中的max_value函数，对多个device对最大值再求最大值，找到最大值后，指定path和where限定条件，再重回iotdb中查询对应的time
+通过利用IoTDB中的max_value函数，对多个device对最大值再求最大值，找到最大值后，指定path和where限定条件，再重回IoTDB中查询对应的time
 6. min()
-通过利用iotdb中的min_value函数，对多个device对最小值再求最小值，找到最小值后，指定path和where限定条件，再重回iotdb中查询对应的time
+通过利用IoTDB中的min_value函数，对多个device对最小值再求最小值，找到最小值后，指定path和where限定条件，再重回IoTDB中查询对应的time
 7. count()
-通过利用iotdb中的count函数,将多个设备的count值求和
+通过利用IoTDB中的count函数,将多个设备的count值求和
 8. sum()
-通过利用iotdb中的sum函数，对多个device的求和值再进行求和
+通过利用IoTDB中的sum函数，对多个device的求和值再进行求和
 9. mean()
-通过利用iotdb中的avg和count函数，对多个device的数量乘以avg之和再除以总数量
+通过利用IoTDB中的avg和count函数，对多个device的数量乘以avg之和再除以总数量
 10. spread()
-通过利用iotdb中的max_value和min_value函数，对多个device查找最大值和最小值，进行求和
+通过利用IoTDB中的max_value和min_value函数，对多个device查找最大值和最小值，进行求和
 
 ## 9.切换方案
 
  - 原版本
-```java
+​```java
 influxDB = InfluxDBFactory.connect(openurl, username, password);
 influxDB.createDatabase(database);
 influxDB.insert(ponit);
 influxDB.query(query);
-```
+​```
 
 - 迁移版本
-```java
+​```java
 influxDB = IotDBInfluxDBFactory.connect(openurl, username, password);
 influxDB.createDatabase(database);
 influxDB.insert(ponit);
 influxDB.query(query);
-```        
+​```        
 
 只需要把
 InfluxDBFactory.connect(openurl, username, password);
@@ -850,3 +852,4 @@ InfluxDBFactory.connect(openurl, username, password);
 
 1. https://summer.iscas.ac.cn/#/org/orgdetail/apacheiotdb
 2. https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=165224300#Prometheus%E8%BF%9E%E6%8E%A5%E5%99%A8-3.4%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3
+
