@@ -431,11 +431,11 @@ The constant timeseries generating function accepts one or more timeseries input
 
 Currently, IoTDB supports the following constant timeseries generating functions:
 
-| Function Name | Allowed Input Series Data Types                 | Required Attributes                                          | Output Series Data Type                      | Description                                                  |
-| ------------- | ----------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------ |
-| CONST         | INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | `value`: the value of the output data point <br />`type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Output the user-specified constant timeseries according to the  attributes `value` and `type`. |
-| PI            | INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | None                                                         | DOUBLE                                       | Data point value: a double value that is closer than any other to `pi`, the ratio of the circumference of a circle to its diameter. |
-| E             | INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | None                                                         | DOUBLE                                       | Data point value: a double value that is closer than any other to `e`, the base of the natural logarithms. |
+| Function Name | Required Attributes                                          | Output Series Data Type                      | Description                                                  |
+| ------------- | ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------ |
+| CONST         | `value`: the value of the output data point <br />`type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Output the user-specified constant timeseries according to the  attributes `value` and `type`. |
+| PI            | None                                                         | DOUBLE                                       | Data point value: a double value that is closer than any other to `pi`, the ratio of the circumference of a circle to its diameter. |
+| E             | None                                                         | DOUBLE                                       | Data point value: a double value that is closer than any other to `e`, the base of the natural logarithms. |
 
 Example:
 
