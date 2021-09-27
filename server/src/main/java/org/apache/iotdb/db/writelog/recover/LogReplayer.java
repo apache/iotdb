@@ -21,6 +21,8 @@ package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -40,7 +42,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
@@ -124,14 +125,23 @@ public class LogReplayer {
         logger.error("Cannot close the modifications file {}", modFile.getFilePath(), e);
       }
     }
-    tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
-    tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
+
+    Map<String, Map<String, IWritableMemChunk>> memTableMap = recoverMemTable.getMemTableMap();
+    for (Map.Entry<String, Map<String, IWritableMemChunk>> deviceEntry : memTableMap.entrySet()) {
+      String deviceId = deviceEntry.getKey();
+      for (Map.Entry<String, IWritableMemChunk> measurementEntry :
+          deviceEntry.getValue().entrySet()) {
+        WritableMemChunk memChunk = (WritableMemChunk) measurementEntry.getValue();
+        currentTsFileResource.updateStartTime(deviceId, memChunk.getFirstPoint());
+        currentTsFileResource.updateEndTime(deviceId, memChunk.getLastPoint());
+      }
+    }
   }
 
   private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      for (PartialPath device : IoTDB.metaManager.getDevices(path.getDevicePath())) {
+      for (PartialPath device : IoTDB.metaManager.getBelongedDevices(path)) {
         recoverMemTable.delete(
             path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
@@ -155,18 +165,22 @@ public class LogReplayer {
         minTime = ((InsertTabletPlan) plan).getMinTime();
         maxTime = ((InsertTabletPlan) plan).getMaxTime();
       }
+      String deviceId =
+          plan.isAligned()
+              ? plan.getPrefixPath().getDevicePath().getFullPath()
+              : plan.getPrefixPath().getFullPath();
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = currentTsFileResource.getEndTime(plan.getPrefixPath().getFullPath());
+      long lastEndTime = currentTsFileResource.getEndTime(deviceId);
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(plan.getPrefixPath().getFullPath());
+      Long startTime = tempStartTimeMap.get(deviceId);
       if (startTime == null || startTime > minTime) {
-        tempStartTimeMap.put(plan.getPrefixPath().getFullPath(), minTime);
+        tempStartTimeMap.put(deviceId, minTime);
       }
-      Long endTime = tempEndTimeMap.get(plan.getPrefixPath().getFullPath());
+      Long endTime = tempEndTimeMap.get(deviceId);
       if (endTime == null || endTime < maxTime) {
-        tempEndTimeMap.put(plan.getPrefixPath().getFullPath(), maxTime);
+        tempEndTimeMap.put(deviceId, maxTime);
       }
     }
     IMeasurementMNode[] mNodes;
@@ -177,6 +191,10 @@ public class LogReplayer {
     }
     // set measurementMNodes, WAL already serializes the real data type, so no need to infer type
     plan.setMeasurementMNodes(mNodes);
+
+    if (plan.isAligned()) {
+      plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
+    }
     // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
@@ -188,7 +206,6 @@ public class LogReplayer {
   }
 
   private void checkDataTypeAndMarkFailed(final IMeasurementMNode[] mNodes, InsertPlan tPlan) {
-    int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
       if (mNodes[i] == null) {
         tPlan.markFailedMeasurementInsertion(
@@ -197,32 +214,20 @@ public class LogReplayer {
                 tPlan.getPrefixPath().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
-        columnIndex++;
-      } else if (tPlan.isAligned()) {
-        List<TSDataType> datatypes = mNodes[i].getSchema().getSubMeasurementsTSDataTypeList();
-        for (int j = 0; j < datatypes.size(); j++) {
-          if (tPlan.getDataTypes()[columnIndex] == null) {
-            tPlan.getDataTypes()[columnIndex] = datatypes.get(j);
-          } else if (datatypes.get(j) != tPlan.getDataTypes()[columnIndex]) {
-            tPlan.markFailedMeasurementInsertion(
-                i,
-                new DataTypeMismatchException(
-                    mNodes[i].getSchema().getSubMeasurementsList().get(j),
-                    tPlan.getDataTypes()[columnIndex],
-                    datatypes.get(j)));
-          }
-          columnIndex++;
-        }
-      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[columnIndex]) {
+      } else if (!tPlan.isAligned() && mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
         tPlan.markFailedMeasurementInsertion(
             i,
             new DataTypeMismatchException(
-                mNodes[i].getName(),
-                tPlan.getDataTypes()[columnIndex],
-                mNodes[i].getSchema().getType()));
-        columnIndex++;
-      } else {
-        columnIndex++;
+                mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
+      } else if (tPlan.isAligned()
+          && mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)
+              != tPlan.getDataTypes()[i]) {
+        tPlan.markFailedMeasurementInsertion(
+            i,
+            new DataTypeMismatchException(
+                mNodes[i].getName() + "." + mNodes[i].getSchema().getSubMeasurementsList().get(i),
+                tPlan.getDataTypes()[i],
+                mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)));
       }
     }
   }

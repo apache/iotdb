@@ -401,7 +401,7 @@ public class IoTDBMetadataFetchIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"COUNT TIMESERIES root.ln", "COUNT TIMESERIES"};
+      String[] sqls = new String[] {"COUNT TIMESERIES root.ln.**", "COUNT TIMESERIES"};
       String[] standards = new String[] {"2,\n", "2,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -438,7 +438,9 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "COUNT DEVICES root.ln", "COUNT DEVICES", "COUNT DEVICES root.ln.wf01.wt01.temperature"
+            "COUNT DEVICES root.ln.**",
+            "COUNT DEVICES",
+            "COUNT DEVICES root.ln.wf01.wt01.temperature"
           };
       String[] standards = new String[] {"1,\n", "1,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
@@ -476,7 +478,7 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "count storage group root.ln",
+            "count storage group root.ln.**",
             "count storage group",
             "count storage group root.ln.wf01.wt01.status"
           };
@@ -547,7 +549,7 @@ public class IoTDBMetadataFetchIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"COUNT NODES root level=1"};
+      String[] sqls = new String[] {"COUNT NODES root.** level=1"};
       String[] standards = new String[] {"3,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];

@@ -479,7 +479,7 @@ public class QueryOperator extends Operator {
   }
 
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getDevices(path);
+    return IoTDB.metaManager.getMatchedDevices(path);
   }
 
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {

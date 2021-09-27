@@ -160,7 +160,11 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(DataOutputStream stream) throws IOException {
-    putString(stream, prefixPath.getFullPath());
+    if (isAligned && originalPrefixPath != null) {
+      putString(stream, originalPrefixPath.getFullPath());
+    } else {
+      putString(stream, prefixPath.getFullPath());
+    }
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -222,7 +226,11 @@ public class InsertTabletPlan extends InsertPlan {
           stream.writeBoolean(false);
         } else {
           stream.writeBoolean(true);
-          stream.write(bitMap.getByteArray());
+          if (isExecuting) {
+            stream.write(bitMap.copyOfRange(start, end).getByteArray());
+          } else {
+            stream.write(bitMap.getByteArray());
+          }
         }
       }
     }
@@ -247,7 +255,11 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(ByteBuffer buffer) {
-    putString(buffer, prefixPath.getFullPath());
+    if (isAligned && originalPrefixPath != null) {
+      putString(buffer, originalPrefixPath.getFullPath());
+    } else {
+      putString(buffer, prefixPath.getFullPath());
+    }
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
@@ -308,7 +320,11 @@ public class InsertTabletPlan extends InsertPlan {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
-          buffer.put(bitMap.getByteArray());
+          if (isExecuting) {
+            buffer.put(bitMap.copyOfRange(start, end).getByteArray());
+          } else {
+            buffer.put(bitMap.getByteArray());
+          }
         }
       }
     }
@@ -593,6 +609,8 @@ public class InsertTabletPlan extends InsertPlan {
         + ","
         + times[times.length - 1]
         + "]"
+        + ", isAligned:"
+        + isAligned
         + '}';
   }
 
@@ -631,11 +649,13 @@ public class InsertTabletPlan extends InsertPlan {
     InsertTabletPlan that = (InsertTabletPlan) o;
 
     return rowCount == that.rowCount
+        && Objects.equals(prefixPath, that.prefixPath)
         && Arrays.equals(times, that.times)
         && Objects.equals(timeBuffer, that.timeBuffer)
         && Objects.equals(valueBuffer, that.valueBuffer)
         && Objects.equals(paths, that.paths)
-        && Objects.equals(range, that.range);
+        && Objects.equals(range, that.range)
+        && Objects.equals(isAligned, that.isAligned);
   }
 
   @Override

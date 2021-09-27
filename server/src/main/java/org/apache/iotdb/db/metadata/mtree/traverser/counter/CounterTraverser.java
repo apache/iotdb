@@ -16,36 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-package org.apache.iotdb.db.query.udf.datastructure.primitive;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
-public class WrappedIntArray implements IntList {
+// This class define the count as traversal result.
+public abstract class CounterTraverser extends Traverser {
 
-  private final int[] list;
-  private int size;
+  protected int count;
 
-  public WrappedIntArray(int capacity) {
-    list = new int[capacity];
-    size = 0;
+  public CounterTraverser(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
   }
 
-  @Override
-  public int size() {
-    return size;
-  }
-
-  @Override
-  public int get(int index) {
-    return list[index];
-  }
-
-  @Override
-  public void put(int value) {
-    list[size++] = value;
-  }
-
-  @Override
-  public void clear() {
-    size = 0;
+  public int getCount() {
+    return count;
   }
 }

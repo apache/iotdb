@@ -181,7 +181,7 @@ public class IoTDBSessionSimpleIT {
     expected.add(TSDataType.TEXT.name());
 
     Set<String> actual = new HashSet<>();
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
     while (dataSet.hasNext()) {
       actual.add(dataSet.next().getFields().get(3).getStringValue());
     }
@@ -284,7 +284,7 @@ public class IoTDBSessionSimpleIT {
     expected.add(TSDataType.TEXT.name());
 
     Set<String> actual = new HashSet<>();
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
     while (dataSet.hasNext()) {
       actual.add(dataSet.next().getFields().get(3).getStringValue());
     }
@@ -367,7 +367,7 @@ public class IoTDBSessionSimpleIT {
       }
     }
 
-    SessionDataSet dataSet = session.executeQueryStatement("select * from root.存储组1");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.存储组1.*");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;

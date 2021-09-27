@@ -16,18 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-package org.apache.iotdb.db.query.udf.datastructure.primitive;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import java.io.IOException;
+// This class implements the entity count function.
+public class EntityCounter extends CounterTraverser {
 
-public interface IntList {
+  public EntityCounter(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+  }
 
-  int size();
+  @Override
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
+  }
 
-  int get(int index) throws IOException;
-
-  void put(int value) throws IOException;
-
-  void clear();
+  @Override
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isEntity()) {
+      count++;
+    }
+    return false;
+  }
 }

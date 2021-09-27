@@ -58,7 +58,7 @@ public class PrecisionTest {
 
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
+      ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**");
 
       String str = "1.2345678";
       while (resultSet.next()) {
@@ -82,7 +82,7 @@ public class PrecisionTest {
 
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
+      ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**");
 
       String str = "1.23";
       while (resultSet.next()) {
@@ -106,7 +106,7 @@ public class PrecisionTest {
 
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
+      ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**");
 
       String str = "1.2345678";
       while (resultSet.next()) {
@@ -130,7 +130,7 @@ public class PrecisionTest {
 
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
+      ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**");
 
       String str = "1.23";
       while (resultSet.next()) {

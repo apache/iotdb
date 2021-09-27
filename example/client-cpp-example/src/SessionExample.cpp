@@ -222,8 +222,7 @@ void query() {
     }
     cout << endl;
     dataSet->setBatchSize(1024);
-    while (dataSet->hasNext())
-    {
+    while (dataSet->hasNext()) {
       cout << dataSet->next()->toString();
     }
 
