@@ -171,7 +171,9 @@ public class SyncClient implements ISyncClient {
    * @param lockFile lock file
    */
   private boolean lockInstance(File lockFile) {
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw")) {
+    RandomAccessFile randomAccessFile = null;
+    try {
+      randomAccessFile = new RandomAccessFile(lockFile, "rw");
       final FileLock fileLock = randomAccessFile.getChannel().tryLock();
       if (fileLock != null) {
         Runtime.getRuntime()
@@ -189,6 +191,10 @@ public class SyncClient implements ISyncClient {
       }
     } catch (Exception e) {
       logger.error("Unable to create and/or lock file: {}", lockFile, e);
+    } finally {
+      if (randomAccessFile != null) {
+        randomAccessFile.close();
+      }
     }
     return false;
   }
