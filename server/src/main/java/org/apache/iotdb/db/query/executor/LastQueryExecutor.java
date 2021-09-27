@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -58,6 +59,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
@@ -92,8 +94,10 @@ public class LastQueryExecutor {
     ListDataSet dataSet =
         new ListDataSet(
             Arrays.asList(
-                new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+                new PartialPath(COLUMN_TIMESERIES, false),
+                new PartialPath(COLUMN_VALUE, false),
+                new PartialPath(COLUMN_TIMESERIES_DATATYPE, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
 
     List<Pair<Boolean, TimeValuePair>> lastPairList =
         calculateLastPairForSeries(selectedSeries, dataTypes, context, expression, lastQueryPlan);
@@ -111,6 +115,10 @@ public class LastQueryExecutor {
         Field valueField = new Field(TSDataType.TEXT);
         valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
         resultRecord.addField(valueField);
+
+        Field typeField = new Field(TSDataType.TEXT);
+        typeField.setBinaryV(new Binary(lastTimeValuePair.getValue().getDataType().name()));
+        resultRecord.addField(typeField);
 
         dataSet.putRecord(resultRecord);
       }
@@ -263,7 +271,16 @@ public class LastQueryExecutor {
       try {
         node = (IMeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
       } catch (MetadataException e) {
-        TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(path);
+        TimeValuePair timeValuePair;
+        // cluster mode may not get remote node
+        if (path instanceof VectorPartialPath) {
+          // the seriesPath has been transformed to vector path
+          // here needs subSensor path
+          timeValuePair =
+              IoTDB.metaManager.getLastCache(((VectorPartialPath) path).getPathWithSubSensor(0));
+        } else {
+          timeValuePair = IoTDB.metaManager.getLastCache(path);
+        }
         if (timeValuePair != null) {
           return timeValuePair;
         }
@@ -272,11 +289,29 @@ public class LastQueryExecutor {
       if (node == null) {
         return null;
       }
-      return node.getCachedLast();
+
+      if (path instanceof VectorPartialPath) {
+        // the seriesPath has been transformed to vector path
+        // here needs subSensor path
+        return IoTDB.metaManager.getLastCache(node, ((VectorPartialPath) path).getSubSensor(0));
+      } else {
+        return IoTDB.metaManager.getLastCache(node);
+      }
     }
 
     public void write(TimeValuePair pair) {
-      IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE, node);
+      if (node == null) {
+        IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE);
+      } else {
+        if (path instanceof VectorPartialPath) {
+          // the seriesPath has been transformed to vector path
+          // here needs subSensor path
+          IoTDB.metaManager.updateLastCache(
+              node, ((VectorPartialPath) path).getSubSensor(0), pair, false, Long.MIN_VALUE);
+        } else {
+          IoTDB.metaManager.updateLastCache(node, pair, false, Long.MIN_VALUE);
+        }
+      }
     }
   }
 

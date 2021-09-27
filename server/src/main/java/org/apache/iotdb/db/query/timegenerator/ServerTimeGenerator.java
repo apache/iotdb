@@ -22,7 +22,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -94,12 +93,6 @@ public class ServerTimeGenerator extends TimeGenerator {
   @Override
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {
-    try {
-      expression.setSeriesPath(
-          IoTDB.metaManager.transformPath((PartialPath) expression.getSeriesPath()));
-    } catch (MetadataException e) {
-      throw new IOException(e);
-    }
     Filter valueFilter = expression.getFilter();
     PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;

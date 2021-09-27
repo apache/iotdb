@@ -86,6 +86,8 @@ statement
     | KILL QUERY INT? #killQuery
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
+    | SET SYSTEM TO READONLY #setSystemToReadOnly
+    | SET SYSTEM TO WRITABLE #setSystemToWritable
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT DEVICES prefixPath? #countDevices
     | COUNT STORAGE GROUP prefixPath? #countStorageGroup
@@ -93,12 +95,12 @@ statement
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD stringLiteral loadFilesClause?#loadFiles
     | REMOVE stringLiteral #removeFile
-    | MOVE stringLiteral stringLiteral #moveFile
+    | UNLOAD stringLiteral stringLiteral #unloadFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
-    | CREATE TEMPORARY? FUNCTION udfName=ID AS className=stringLiteral #createFunction
+    | CREATE FUNCTION udfName=ID AS className=stringLiteral #createFunction
     | DROP FUNCTION udfName=ID #dropFunction
-    | SHOW TEMPORARY? FUNCTIONS #showFunctions
+    | SHOW FUNCTIONS #showFunctions
     | CREATE TRIGGER triggerName=ID triggerEventClause ON fullPath
       AS className=stringLiteral triggerAttributeClause? #createTrigger
     | DROP TRIGGER triggerName=ID #dropTrigger
@@ -122,13 +124,18 @@ resultColumn
     ;
 
 expression
-    : LR_BRACKET unary=expression RR_BRACKET
-    | (PLUS | MINUS) unary=expression
+    : LR_BRACKET unaryInBracket=expression RR_BRACKET
+    | (PLUS | MINUS) unaryAfterSign=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-    | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPath
     | literal=SINGLE_QUOTE_STRING_LITERAL
+    ;
+
+functionName
+    : ID
+    | COUNT
     ;
 
 functionAttribute
@@ -211,7 +218,7 @@ predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
-    | (suffixPath | fullPath) LIKE stringLiteral
+    | (suffixPath | fullPath) (REGEXP | LIKE) stringLiteral
     ;
 
 inClause
@@ -312,7 +319,7 @@ groupByLevelClause
 typeClause
     : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET valueClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET specificValueClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
@@ -324,8 +331,8 @@ previousClause
     : PREVIOUS (COMMA DURATION)?
     ;
 
-valueClause
-    : VALUE (COMMA constant)?
+specificValueClause
+    : constant?
     ;
 
 previousUntilLastClause
@@ -512,7 +519,7 @@ nodeName
     | INFO
     | VERSION
     | REMOVE
-    | MOVE
+    | UNLOAD
     | CHILD
     | PATHS
     | DEVICES
@@ -535,6 +542,9 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
@@ -614,7 +624,7 @@ nodeNameWithoutStar
     | INFO
     | VERSION
     | REMOVE
-    | MOVE
+    | UNLOAD
     | CHILD
     | PATHS
     | DEVICES
@@ -636,6 +646,9 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
@@ -823,10 +836,6 @@ LINEAR
     : L I N E A R
     ;
 
-VALUE
-    : V A L U E
-    ;
-
 PREVIOUS
     : P R E V I O U S
     ;
@@ -983,6 +992,18 @@ OFF
     : O F F
     ;
 
+SYSTEM
+    : S Y S T E M
+    ;
+
+READONLY
+    : R E A D O N L Y
+    ;
+
+WRITABLE
+    : W R I T A B L E
+    ;
+
 DROP
     : D R O P
     ;
@@ -1062,8 +1083,8 @@ VERSION
 REMOVE
     : R E M O V E
     ;
-MOVE
-    : M O V E
+UNLOAD
+    : U N L O A D
     ;
 
 CHILD
@@ -1207,10 +1228,6 @@ SGLEVEL
     : S G L E V E L
     ;
 
-TEMPORARY
-    : T E M P O R A R Y
-    ;
-
 FUNCTION
     : F U N C T I O N
     ;
@@ -1268,6 +1285,10 @@ CONCAT
 
 LIKE
     : L I K E
+    ;
+
+REGEXP
+    : R E G E X P
     ;
 
 TOLERANCE
@@ -1335,7 +1356,7 @@ LOCK
 //============================
 COMMA : ',';
 
-STAR : '*';
+STAR : '*' | '**';
 
 OPERATOR_EQ : '=' | '==';
 

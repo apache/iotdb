@@ -202,7 +202,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
                 generateRandomString(
                     byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
       }
-      LayerPointReader reader = tvList.getPointReaderUsingEvictionStrategy();
+      LayerPointReader reader = tvList.constructPointReaderUsingTrivialEvictionStrategy();
       while (reader.next()) {
         int length = reader.currentBinary().getLength();
         assertTrue(byteLengthMin <= length && length < byteLengthMax);

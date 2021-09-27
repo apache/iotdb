@@ -47,11 +47,36 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   private Like() {}
 
+  /**
+   * The main idea of this part comes from
+   * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
+   */
   public Like(String value, FilterType filterType) {
     this.value = value;
     this.filterType = filterType;
     try {
-      this.pattern = Pattern.compile(this.value);
+      String unescapeValue = unescapeString(value);
+      String specialRegexStr = ".^$*+?{}[]|()";
+      StringBuilder patternStrBuild = new StringBuilder();
+      patternStrBuild.append("^");
+      for (int i = 0; i < unescapeValue.length(); i++) {
+        String ch = String.valueOf(unescapeValue.charAt(i));
+        if (specialRegexStr.contains(ch)) ch = "\\" + unescapeValue.charAt(i);
+        if ((i == 0)
+            || (i > 0 && !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1))))
+            || (i >= 2
+                && "\\\\"
+                    .equals(
+                        patternStrBuild.substring(
+                            patternStrBuild.length() - 2, patternStrBuild.length())))) {
+          String replaceStr = ch.replace("%", ".*?").replace("_", ".");
+          patternStrBuild.append(replaceStr);
+        } else {
+          patternStrBuild.append(ch);
+        }
+      }
+      patternStrBuild.append("$");
+      this.pattern = Pattern.compile(patternStrBuild.toString());
     } catch (PatternSyntaxException e) {
       throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
     }
@@ -110,5 +135,28 @@ public class Like<T extends Comparable<T>> implements Filter {
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.LIKE;
+  }
+
+  /**
+   * This Method is for unescaping strings except '\' before special string '%', '_', '\', because
+   * we need to use '\' to judege whether to replace this to regexp string
+   */
+  public String unescapeString(String value) {
+    String out = "";
+    for (int i = 0; i < value.length(); i++) {
+      String ch = String.valueOf(value.charAt(i));
+      if (ch.equals("\\")) {
+        if (i < value.length() - 1) {
+          String nextChar = String.valueOf(value.charAt(i + 1));
+          if (nextChar.equals("%") || nextChar.equals("_") || nextChar.equals("\\")) {
+            out = out + ch;
+          }
+          if (nextChar.equals("\\")) i++;
+        }
+      } else {
+        out = out + ch;
+      }
+    }
+    return out;
   }
 }

@@ -193,7 +193,10 @@ public class TsFileRewriteTool implements AutoCloseable {
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
               boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
               needToDecodeInfo.add(needToDecode);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              ByteBuffer pageData =
+                  !needToDecode
+                      ? reader.readCompressedPage(pageHeader)
+                      : reader.readPage(pageHeader, header.getCompressionType());
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
               dataSize -= pageHeader.getSerializedPageSize();
@@ -306,7 +309,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     for (Entry<Long, ChunkWriterImpl> entry : partitionChunkWriterMap.entrySet()) {
       long partitionId = entry.getKey();
       TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partitionId);
-      if (firstChunkInChunkGroup) {
+      if (firstChunkInChunkGroup || !tsFileIOWriter.isWritingChunkGroup()) {
         tsFileIOWriter.startChunkGroup(deviceId);
       }
       // write chunks to their own upgraded tsFiles
@@ -421,6 +424,12 @@ public class TsFileRewriteTool implements AutoCloseable {
       }
       batchData.next();
     }
+    partitionChunkWriterMap
+        .values()
+        .forEach(
+            writer -> {
+              writer.sealCurrentPage();
+            });
   }
 
   /** check if the file has correct magic strings and version number */

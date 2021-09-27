@@ -20,12 +20,10 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -95,13 +93,7 @@ public class RawDataQueryPlan extends QueryPlan {
       }
     }
 
-    // TODO Maybe we should get VectorPartialPath above from MTree
-    // Currently, the above processing will only produce PartialPath instead of VectorPartialPath
-    // even if the queried time series is vector
-    // So, we need to transform the PartialPath to VectorPartialPath if is is a vector.
-    if (!isRawQuery()) {
-      transformPaths(IoTDB.metaManager);
-    } else {
+    if (isRawQuery()) {
       // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
       // vector into one VectorPartialPath
       transformVectorPaths(physicalGenerator, columnForDisplaySet);
@@ -139,9 +131,7 @@ public class RawDataQueryPlan extends QueryPlan {
               deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
           set.add(path.getMeasurement());
           if (path instanceof VectorPartialPath) {
-            ((VectorPartialPath) path)
-                .getSubSensorsPathList()
-                .forEach(subSensor -> set.add(subSensor.getMeasurement()));
+            set.addAll(((VectorPartialPath) path).getSubSensorsList());
           }
         });
     this.deduplicatedPaths = deduplicatedPaths;
@@ -177,15 +167,6 @@ public class RawDataQueryPlan extends QueryPlan {
     return deviceToMeasurements;
   }
 
-  public void transformPaths(MManager mManager) throws MetadataException {
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      PartialPath path = mManager.transformPath(deduplicatedPaths.get(i));
-      if (path instanceof VectorPartialPath) {
-        deduplicatedPaths.set(i, path);
-      }
-    }
-  }
-
   /**
    * Group all the subSensors of one vector into one VectorPartialPath save the grouped
    * VectorPartialPath in deduplicatedVectorPaths and deduplicatedVectorDataTypes instead of putting
@@ -205,11 +186,12 @@ public class RawDataQueryPlan extends QueryPlan {
     setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
 
     Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
-    Map<String, Integer> pathToIndex = new HashMap<>();
+    Map<String, Integer> vectorPathToIndex = new HashMap<>();
     for (String columnForDisplay : columnForDisplaySet) {
-      pathToIndex.put(columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
+      vectorPathToIndex.put(
+          columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
     }
-    setVectorPathToIndex(pathToIndex);
+    setVectorPathToIndex(vectorPathToIndex);
   }
 
   public List<PartialPath> getDeduplicatedVectorPaths() {

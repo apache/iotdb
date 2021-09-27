@@ -63,7 +63,7 @@ IoTDB 模型结构涉及的基本概念在下文将做详细叙述。
 
 存储组节点名只支持中英文字符、数字、下划线和中划线的组合。例如`root. 存储组_1-组1` 。
 
-* 路径
+* 路径（Path）
 
 在 IoTDB 中，路径是指符合以下约束的表达式：
 
@@ -72,7 +72,7 @@ path: LayerName (DOT LayerName)+
 LayerName: Identifier | STAR
 ```
 
-其中 STAR 为“*”，DOT 为“.”。
+其中 STAR 为 `*` 或 `**`，DOT 为 `.`。
 
 我们称一个路径中在两个“.”中间的部分叫做一个层级，则`root.a.b.c`为一个层级为 4 的路径。
 
@@ -90,27 +90,15 @@ LayerName: Identifier | STAR
 
 > 注意：storage group 中的 LayerName 只支持数字，字母，汉字，下划线和中划线。另外，如果在 Windows 系统上部署，存储组层级名称是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
-* 前缀路径
+* 路径模式（Path Pattern）
+  
+为了使得在表达多个时间序列的时候更加方便快捷，IoTDB 为用户提供带通配符`*`或`**`的路径。用户可以利用两种通配符构造出期望的路径模式。通配符可以出现在路径中的任何层。
 
-前缀路径是指一个时间序列的前缀所在的路径，一个前缀路径包含以该路径为前缀的所有时间序列。例如当前我们有`root.vehicle.device1.sensor1`, `root.vehicle.device1.sensor2`, `root.vehicle.device2.sensor1`三个传感器，则`root.vehicle.device1`前缀路径包含`root.vehicle.device1.sensor1`、`root.vehicle.device1.sensor2`两个时间序列，而不包含`root.vehicle.device2.sensor1`。
+`*`在路径中表示一层。例如`root.vehicle.*.sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次等于 4 层的路径。
 
-* 带`*`路径
-  为了使得在表达多个时间序列或表达前缀路径的时候更加方便快捷，IoTDB 为用户提供带`*`路径。`*`可以出现在路径中的任何层。按照`*`出现的位置，带`*`路径可以分为两种：
+`**`在路径中表示是（`*`）+，即为一层或多层`*`。例如`root.vehicle.device1.**`代表的是`root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`等所有以`root.vehicle.device1`为前缀路径的大于等于 4 层的路径；`root.vehicle.**.sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次大于等于 4 层的路径。
 
-`*`出现在路径的结尾；
-
-`*`出现在路径的中间；
-
-当`*`出现在路径的结尾时，其代表的是（`*`）+，即为一层或多层`*`。例如`root.vehicle.device1.*`代表的是`root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`等所有以`root.vehicle.device1`为前缀路径的大于等于 4 层的路径。
-
-当`*`出现在路径的中间，其代表的是`*`本身，即为一层。例如`root.vehicle.*.sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次等于 4 层的路径。
-
-> 注意：`*`不能放在路径开头。
-
-> 注意：`*`放在末尾时与前缀路径表意相同，例如`root.vehicle.*`与`root.vehicle`为相同含义。
-
-> 注意：`*`create 创建时，后面的路径同时不能含有`*`。 
-
+> 注意：`*`和`**`不能放在路径开头。
 
 
 ### 一元、多元时间序列
@@ -150,6 +138,4 @@ LayerName: Identifier | STAR
 
 * 物理量模板（Measurement template，v0.13 起支持）
 
-实际应用中有许多实体所采集的物理量相同，即具有相同的工况名称和类型，可以声明一个**物理量模板**来定义可采集的物理量集合。将物理量模版挂在树形数据模式的任意节点上，表示该节点下的所有实体具有相同的物理量集合。
-
-目前每一条路径节点仅允许挂载一个物理量模板，即当一个节点被挂载物理量模板后，它的祖先节点和后代节点都不能再挂载物理量模板。实体将使用其自身或祖先的物理量模板作为有效模板。
+实际应用中有许多实体所采集的物理量相同，即具有相同的工况名称和类型，可以声明一个**物理量模板**来定义可采集的物理量集合。在实践中，物理量模板的使用可帮助减少元数据的资源占用，详细内容参见物理量模板文档。

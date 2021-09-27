@@ -105,11 +105,29 @@ public class VirtualStorageGroupManager {
     }
   }
 
-  /** push check memtable flush interval down to all sg */
-  public void timedFlushMemTable() {
+  /** push check sequence memtable flush interval down to all sg */
+  public void timedFlushSeqMemTable() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.timedFlushMemTable();
+        storageGroupProcessor.timedFlushSeqMemTable();
+      }
+    }
+  }
+
+  /** push check unsequence memtable flush interval down to all sg */
+  public void timedFlushUnseqMemTable() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedFlushUnseqMemTable();
+      }
+    }
+  }
+
+  /** push check TsFileProcessor close interval down to all sg */
+  public void timedCloseTsFileProcessor() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedCloseTsFileProcessor();
       }
     }
   }
@@ -281,11 +299,16 @@ public class VirtualStorageGroupManager {
   }
 
   /** push delete operation down to all virtual storage group processors */
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.delete(path, startTime, endTime, planIndex);
+        storageGroupProcessor.delete(path, startTime, endTime, planIndex, timePartitionFilter);
       }
     }
   }

@@ -131,6 +131,9 @@ public class TsFileProcessor {
   /** working memtable */
   private IMemTable workMemTable;
 
+  /** last flush time to flush the working memtable */
+  private long lastWorkMemtableFlushTime;
+
   /** this callback is called before the workMemtable is added into the flushingMemTables. */
   private final UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
@@ -336,13 +339,14 @@ public class TsFileProcessor {
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
         // ChunkMetadataIncrement
         IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
-        if (schema.getType() == TSDataType.VECTOR) {
+        if (insertRowPlan.isAligned()) {
           chunkMetadataIncrement +=
-              schema.getValueTSDataTypeList().size()
+              schema.getSubMeasurementsTSDataTypeList().size()
                   * ChunkMetadata.calculateRamSize(
-                      schema.getValueMeasurementIdList().get(0),
-                      schema.getValueTSDataTypeList().get(0));
-          memTableIncrement += TVList.vectorTvListArrayMemSize(schema.getValueTSDataTypeList());
+                      schema.getSubMeasurementsList().get(0),
+                      schema.getSubMeasurementsTSDataTypeList().get(0));
+          memTableIncrement +=
+              TVList.vectorTvListArrayMemSize(schema.getSubMeasurementsTSDataTypeList());
         } else {
           chunkMetadataIncrement +=
               ChunkMetadata.calculateRamSize(
@@ -383,8 +387,8 @@ public class TsFileProcessor {
       if (insertTabletPlan.isAligned()) {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
-        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+        Object[] columns = new Object[vectorSchema.getSubMeasurementsList().size()];
+        for (int j = 0; j < vectorSchema.getSubMeasurementsList().size(); j++) {
           columns[j] = insertTabletPlan.getColumns()[columnIndex++];
         }
         updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
@@ -456,8 +460,8 @@ public class TsFileProcessor {
       Object[] columns) {
     // memIncrements = [memTable, text, chunk metadata] respectively
 
-    List<String> measurementIds = vectorSchema.getValueMeasurementIdList();
-    List<TSDataType> dataTypes = vectorSchema.getValueTSDataTypeList();
+    List<String> measurementIds = vectorSchema.getSubMeasurementsList();
+    List<TSDataType> dataTypes = vectorSchema.getSubMeasurementsTSDataTypeList();
     if (workMemTable.checkIfChunkDoesNotExist(deviceId, vectorSchema.getMeasurementId())) {
       // ChunkMetadataIncrement
       memIncrements[2] +=
@@ -542,11 +546,6 @@ public class TsFileProcessor {
         for (PartialPath device : devicePaths) {
           workMemTable.delete(
               deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
-          logger.info(
-              "[Deletion] Delete in-memory data with deletion path: {}, time:{}-{}.",
-              deletion.getPath(),
-              deletion.getStartTime(),
-              deletion.getEndTime());
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
@@ -835,6 +834,7 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
+    lastWorkMemtableFlushTime = System.currentTimeMillis();
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
@@ -1253,8 +1253,8 @@ public class TsFileProcessor {
         List<ChunkMetadata> timeChunkMetadataList =
             writer.getVisibleMetadataList(deviceId, measurementId, schema.getType());
         List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-        List<String> valueMeasurementIdList = schema.getValueMeasurementIdList();
-        List<TSDataType> valueDataTypeList = schema.getValueTSDataTypeList();
+        List<String> valueMeasurementIdList = schema.getSubMeasurementsList();
+        List<TSDataType> valueDataTypeList = schema.getSubMeasurementsTSDataTypeList();
         for (int i = 0; i < valueMeasurementIdList.size(); i++) {
           valueChunkMetadataList.add(
               writer.getVisibleMetadataList(
@@ -1336,6 +1336,10 @@ public class TsFileProcessor {
   /** Return Long.MAX_VALUE if workMemTable is null */
   public long getWorkMemTableCreatedTime() {
     return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
+  }
+
+  public long getLastWorkMemtableFlushTime() {
+    return lastWorkMemtableFlushTime;
   }
 
   public boolean isSequence() {

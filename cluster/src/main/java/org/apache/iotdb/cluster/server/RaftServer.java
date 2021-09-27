@@ -57,6 +57,13 @@ import java.util.concurrent.atomic.AtomicLong;
 public abstract class RaftServer implements RaftService.AsyncIface, RaftService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftServer.class);
+
+  // Heartbeat client connection timeout should not be larger than heartbeat interval, otherwise
+  // the thread pool of sending heartbeats or requesting votes may be used up by waiting for
+  // establishing connection with some slow or dead nodes.
+  private static final int heartbeatClientConnTimeoutMs =
+      Math.min((int) RaftServer.getHeartbeatIntervalMs(), RaftServer.getConnectionTimeoutInMS());
+
   private static int connectionTimeoutInMS =
       ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
   private static int readOperationTimeoutMS =
@@ -64,7 +71,10 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
   private static int writeOperationTimeoutMS =
       ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS();
   private static int syncLeaderMaxWaitMs = 20 * 1000;
-  private static long heartBeatIntervalMs = 1000L;
+  private static long heartbeatIntervalMs =
+      ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs();
+  private static long electionTimeoutMs =
+      ClusterDescriptor.getInstance().getConfig().getElectionTimeoutMs();
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the socket poolServer will listen to
@@ -120,12 +130,24 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     RaftServer.syncLeaderMaxWaitMs = syncLeaderMaxWaitMs;
   }
 
-  public static long getHeartBeatIntervalMs() {
-    return heartBeatIntervalMs;
+  public static long getHeartbeatIntervalMs() {
+    return heartbeatIntervalMs;
   }
 
-  public static void setHeartBeatIntervalMs(long heartBeatIntervalMs) {
-    RaftServer.heartBeatIntervalMs = heartBeatIntervalMs;
+  public static void setHeartbeatIntervalMs(long heartbeatIntervalMs) {
+    RaftServer.heartbeatIntervalMs = heartbeatIntervalMs;
+  }
+
+  public static long getElectionTimeoutMs() {
+    return electionTimeoutMs;
+  }
+
+  public static void setElectionTimeoutMs(long electionTimeoutMs) {
+    RaftServer.electionTimeoutMs = electionTimeoutMs;
+  }
+
+  public static int getHeartbeatClientConnTimeoutMs() {
+    return heartbeatClientConnTimeoutMs;
   }
 
   /**

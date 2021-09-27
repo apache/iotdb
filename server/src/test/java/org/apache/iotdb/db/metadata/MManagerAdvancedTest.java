@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
@@ -148,19 +149,19 @@ public class MManagerAdvancedTest {
       // test filename by seriesPath
       assertEquals(
           new PartialPath("root.vehicle.d0"),
-          mmanager.getStorageGroupPath(new PartialPath("root.vehicle.d0.s1")));
+          mmanager.getBelongedStorageGroup(new PartialPath("root.vehicle.d0.s1")));
       List<PartialPath> pathList =
-          mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d1.*"));
+          mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d1.**"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d0"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d0.**"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d*"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d*.**"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.ve*.*"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.ve*.**"));
       assertEquals(12, pathList.size());
       pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle*.d*.s1"));
       assertEquals(2, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d2"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d2.**"));
       assertEquals(0, pathList.size());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -218,13 +219,12 @@ public class MManagerAdvancedTest {
     TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
-    IMNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.d2.s0"));
-    ((IMeasurementMNode) node).updateCachedLast(tv1, true, Long.MIN_VALUE);
-    ((IMeasurementMNode) node).updateCachedLast(tv2, true, Long.MIN_VALUE);
-    Assert.assertEquals(
-        tv2.getTimestamp(), ((IMeasurementMNode) node).getCachedLast().getTimestamp());
-    ((IMeasurementMNode) node).updateCachedLast(tv3, true, Long.MIN_VALUE);
-    Assert.assertEquals(
-        tv2.getTimestamp(), ((IMeasurementMNode) node).getCachedLast().getTimestamp());
+    PartialPath path = new PartialPath("root.vehicle.d2.s0");
+    IMeasurementMNode node = (IMeasurementMNode) mmanager.getNodeByPath(path);
+    LastCacheManager.updateLastCache(path, tv1, true, Long.MIN_VALUE, node);
+    LastCacheManager.updateLastCache(path, tv2, true, Long.MIN_VALUE, node);
+    Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());
+    LastCacheManager.updateLastCache(path, tv3, true, Long.MIN_VALUE, node);
+    Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());
   }
 }

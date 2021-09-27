@@ -143,7 +143,7 @@ Same as above, at the beginning of each operation, it will try to obatin the wri
 
 ## MTree
 
-* org.apache.iotdb.db.metadata.MTree
+* org.apache.iotdb.db.metadata.mtree.MTree
 
 There three types of nodes in MTree: StorageGroupMNode、InternalMNode(Non-leaf node)、LeafMNode(leaf node), they all extend to MNode.
 
@@ -295,9 +295,9 @@ Schema operation examples and the corresponding parsed mlog record:
     > format: 61,path                                                                                                              
 
 ## TLog
-* org.apache.iotdb.db.metadata.logfile.TagLogFile
+* org.apache.iotdb.db.metadata.tag.TagLogFile
 
-All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/mlog.bin.
+All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/tlog.txt.
 
 * Total number of bytes of persistence for tags and attributes of each time series is L, which can be configured in the iotdb-engine.properties
 

@@ -268,7 +268,7 @@ public class IoTDBSessionComplexIT {
 
     session.testInsertRecords(deviceIds, timestamps, measurementsList, valuesList);
 
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -447,7 +447,7 @@ public class IoTDBSessionComplexIT {
 
     insertTablet("root.sg5.d1");
 
-    SessionDataSet dataSet = session.executeQueryStatement("select * from root group by device");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.** group by device");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -621,7 +621,7 @@ public class IoTDBSessionComplexIT {
     while (sessionDataSet.hasNext()) {
       count++;
       List<Field> fields = sessionDataSet.next().getFields();
-      Assert.assertEquals("[root.sg1.d2.s1, 1]", fields.toString());
+      Assert.assertEquals("[root.sg1.d2.s1,1,INT64]", fields.toString().replace(" ", ""));
     }
     Assert.assertEquals(1, count);
     sessionDataSet.closeOperationHandle();
@@ -821,7 +821,7 @@ public class IoTDBSessionComplexIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
+      ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
       for (int i = 0; i < colCount; i++) {

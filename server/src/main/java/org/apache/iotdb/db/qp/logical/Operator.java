@@ -140,7 +140,7 @@ public abstract class Operator {
 
     LOAD_FILES,
     REMOVE_FILE,
-    MOVE_FILE,
+    UNLOAD_FILE,
 
     CREATE_TRIGGER,
     DROP_TRIGGER,
@@ -170,6 +170,7 @@ public abstract class Operator {
 
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
-    SHOW_CONTINUOUS_QUERIES
+    SHOW_CONTINUOUS_QUERIES,
+    SET_SYSTEM_MODE
   }
 }

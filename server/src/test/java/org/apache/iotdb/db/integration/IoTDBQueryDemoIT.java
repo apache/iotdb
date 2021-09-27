@@ -164,7 +164,7 @@ public class IoTDBQueryDemoIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root where time>10");
+      boolean hasResultSet = statement.execute("select * from root.** where time>10");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -227,7 +227,8 @@ public class IoTDBQueryDemoIT {
       // test 1: fetchSize < limitNumber
       statement.setFetchSize(4);
       Assert.assertEquals(4, statement.getFetchSize());
-      boolean hasResultSet = statement.execute("select * from root where time>10 limit 5 offset 3");
+      boolean hasResultSet =
+          statement.execute("select * from root.** where time>10 limit 5 offset 3");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -267,7 +268,7 @@ public class IoTDBQueryDemoIT {
       // test 1: fetchSize > limitNumber
       statement.setFetchSize(10000);
       Assert.assertEquals(10000, statement.getFetchSize());
-      hasResultSet = statement.execute("select * from root where time>10 limit 5 offset 3");
+      hasResultSet = statement.execute("select * from root.** where time>10 limit 5 offset 3");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -331,7 +332,7 @@ public class IoTDBQueryDemoIT {
       Assert.assertEquals(4, statement.getFetchSize());
       boolean hasResultSet =
           statement.execute(
-              "select * from root where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+              "select * from root.** where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -378,7 +379,7 @@ public class IoTDBQueryDemoIT {
           };
       hasResultSet =
           statement.execute(
-              "select * from root where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+              "select * from root.** where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -423,7 +424,7 @@ public class IoTDBQueryDemoIT {
           };
       hasResultSet =
           statement.execute(
-              "select * from root where ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
+              "select * from root.** where root.ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -547,7 +548,7 @@ public class IoTDBQueryDemoIT {
   }
 
   @Test
-  public void LikeTest() throws ClassNotFoundException {
+  public void RegexpTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
           "1509465600000,v2,true,", "1509465660000,v2,true,", "1509465720000,v1,false,",
@@ -564,7 +565,7 @@ public class IoTDBQueryDemoIT {
       // Matches a string consisting of one lowercase letter and one digit. such as: "v1","v2"
       boolean hasResultSet =
           statement.execute(
-              "select hardware,status from root.ln.wf02.wt02 where hardware like '^[a-z][0-9]$' and time < 1509465780000");
+              "select hardware,status from root.ln.wf02.wt02 where hardware regexp '^[a-z][0-9]$' and time < 1509465780000");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -608,7 +609,7 @@ public class IoTDBQueryDemoIT {
           };
       hasResultSet =
           statement.execute(
-              "select hardware,status from root.ln.wf02.wt02 where hardware like 'v*' ");
+              "select hardware,status from root.ln.wf02.wt02 where hardware regexp 'v*' ");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -644,7 +645,7 @@ public class IoTDBQueryDemoIT {
   }
 
   @Test
-  public void LikeNonExistTest() throws ClassNotFoundException {
+  public void RegexpNonExistTest() throws ClassNotFoundException {
 
     // Match nonexistent string.'s.' is indicates that the starting with s and the last is any
     // single character
@@ -669,7 +670,7 @@ public class IoTDBQueryDemoIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select hardware,status from root.ln.wf02.wt02 where hardware like 's.' ");
+              "select hardware,status from root.ln.wf02.wt02 where hardware regexp 's.' ");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
