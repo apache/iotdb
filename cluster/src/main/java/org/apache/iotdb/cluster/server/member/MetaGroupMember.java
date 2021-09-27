@@ -77,7 +77,6 @@ import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -305,16 +304,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   public void stop() {
     super.stop();
     logger.info("{}: stopped", name);
-  }
-
-  @Override
-  public void waitAndStop(long milliseconds) {
-    IService.super.waitAndStop(milliseconds);
-  }
-
-  @Override
-  public void shutdown(long milliseconds) throws ShutdownException {
-    IService.super.shutdown(milliseconds);
   }
 
   @Override
