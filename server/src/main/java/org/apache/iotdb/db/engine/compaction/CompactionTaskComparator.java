@@ -39,16 +39,16 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
         && config.getCompactionPriority() != CompactionPriority.BALANCE) {
       // the two task is different type, and the compaction priority is not balance
       if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
-        return o1 instanceof AbstractInnerSpaceCompactionTask ? 1 : -1;
+        return o1 instanceof AbstractInnerSpaceCompactionTask ? -1 : 1;
       } else {
-        return o1 instanceof AbstractCrossSpaceCompactionTask ? 1 : -1;
+        return o1 instanceof AbstractCrossSpaceCompactionTask ? -1 : 1;
       }
     }
     if (o1 instanceof AbstractInnerSpaceCompactionTask) {
       return compareInnerSpaceCompactionTask(
           (AbstractInnerSpaceCompactionTask) o1, (AbstractInnerSpaceCompactionTask) o2);
     } else {
-      return comparefCrossSpaceCompactionTask(
+      return compareCrossSpaceCompactionTask(
           (AbstractCrossSpaceCompactionTask) o1, (AbstractCrossSpaceCompactionTask) o2);
     }
   }
@@ -57,7 +57,7 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
       AbstractInnerSpaceCompactionTask o1, AbstractInnerSpaceCompactionTask o2) {
     if (o1.isSequence() ^ o2.isSequence()) {
       // prioritize sequence file compaction
-      return o1.isSequence() ? 1 : -1;
+      return o1.isSequence() ? -1 : 1;
     }
     List<TsFileResource> selectedFilesOfO1 = o1.getSelectedTsFileResourceList();
     List<TsFileResource> selectedFilesOfO2 = o2.getSelectedTsFileResourceList();
@@ -65,38 +65,42 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     // if the number of selected files are different
     // we prefer to execute task with more files
     if (selectedFilesOfO1.size() != selectedFilesOfO2.size()) {
-      return selectedFilesOfO1.size() - selectedFilesOfO2.size();
+      return selectedFilesOfO2.size() - selectedFilesOfO1.size();
     }
 
     // if the size of selected files are different
     // we prefer to execute task with smaller file size
     // because small files can be compacted quickly
     if (o1.getSelectedFileSize() != o2.getSelectedFileSize()) {
-      return (int) (o2.getSelectedFileSize() - o1.getSelectedFileSize());
+      return (int) (o1.getSelectedFileSize() - o2.getSelectedFileSize());
     }
 
     // if the sum of compaction count of the selected files are different
     // we prefer to execute task with smaller compaction count
     // this can reduce write amplification
     if (o1.getSumOfCompactionCount() != o2.getSumOfCompactionCount()) {
-      return o2.getSumOfCompactionCount() - o1.getSumOfCompactionCount();
+      return o1.getSumOfCompactionCount() - o2.getSumOfCompactionCount();
     }
 
     // if the max file version of o1 and o2 are different
     // we prefer to execute task with greater file version
     // because we want to compact newly written files
     if (o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
-      return o1.getMaxFileVersion() > o2.getMaxFileVersion() ? 1 : -1;
+      return o2.getMaxFileVersion() > o1.getMaxFileVersion() ? 1 : -1;
     }
 
     return 0;
   }
 
-  private int comparefCrossSpaceCompactionTask(
+  private int compareCrossSpaceCompactionTask(
       AbstractCrossSpaceCompactionTask o1, AbstractCrossSpaceCompactionTask o2) {
-    if (o1.getSelectedUnsequenceFiles().size() != o2.getSelectedUnsequenceFiles().size()) {
-      return o1.getSelectedUnsequenceFiles().size() - o2.getSelectedUnsequenceFiles().size();
+    if (o1.getSelectedSequenceFiles().size() != o2.getSelectedSequenceFiles().size()) {
+      // we prefer the task with fewer sequence files
+      // because this type of tasks consume fewer memory during execution
+      return o1.getSelectedSequenceFiles().size() - o2.getSelectedSequenceFiles().size();
     }
-    return o2.getSelectedSequenceFiles().size() - o1.getSelectedSequenceFiles().size();
+    // we prefer the task with more unsequence files
+    // because this type of tasks reduce more unsequence files
+    return o1.getSelectedUnsequenceFiles().size() - o2.getSelectedUnsequenceFiles().size();
   }
 }
