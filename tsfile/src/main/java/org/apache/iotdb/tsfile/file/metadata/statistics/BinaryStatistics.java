@@ -109,7 +109,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Binary> stats) {
     BinaryStatistics stringStats = (BinaryStatistics) stats;
     if (isEmpty) {
       initializeStats(stringStats.getFirstValue(), stringStats.getLastValue());

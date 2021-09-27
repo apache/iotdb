@@ -158,7 +158,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Boolean> stats) {
     BooleanStatistics boolStats = (BooleanStatistics) stats;
     if (isEmpty) {
       initializeStats(boolStats.getFirstValue(), boolStats.getLastValue(), boolStats.sumValue);

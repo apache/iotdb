@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -191,7 +192,7 @@ public class TsFileIOWriter {
       CompressionType compressionCodecName,
       TSDataType tsDataType,
       TSEncoding encodingType,
-      Statistics<?> statistics,
+      Statistics<? extends Serializable> statistics,
       int dataSize,
       int numOfPages,
       int mask)
