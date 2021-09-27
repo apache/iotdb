@@ -269,7 +269,7 @@ public class LastQueryExecutor {
 
     public TimeValuePair read() {
       try {
-        node = IoTDB.metaManager.getNodeByPath(path).getAsMeasurementMNode();
+        node = IoTDB.metaManager.getMeasurementMNode(path);
       } catch (MetadataException e) {
         TimeValuePair timeValuePair;
         // cluster mode may not get remote node

@@ -863,7 +863,7 @@ public class MTree implements Serializable {
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
   public IMeasurementSchema getSchema(PartialPath fullPath) throws MetadataException {
-    return getNodeByPath(fullPath).getAsMeasurementMNode().getSchema();
+    return getMeasurementMNode(fullPath).getSchema();
   }
 
   /**
@@ -1186,6 +1186,10 @@ public class MTree implements Serializable {
       }
     }
     return ret;
+  }
+
+  public IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException {
+    return getNodeByPath(path).getAsMeasurementMNode();
   }
   // endregion
 

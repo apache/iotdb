@@ -635,7 +635,7 @@ public class MManager {
 
       // for not support deleting part of aligned timeseies
       // should be removed after partial deletion is supported
-      IMNode lastNode = getNodeByPath(allTimeseries.get(0));
+      IMNode lastNode = mtree.getNodeByPath(allTimeseries.get(0));
       if (lastNode.isMeasurement()) {
         IMeasurementSchema schema = lastNode.getAsMeasurementMNode().getSchema();
         if (schema instanceof VectorMeasurementSchema) {
@@ -1263,7 +1263,7 @@ public class MManager {
    * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode leaf = mtree.getNodeByPath(fullPath).getAsMeasurementMNode();
+    IMeasurementMNode leaf = mtree.getMeasurementMNode(fullPath);
     return getSeriesSchema(fullPath, leaf);
   }
 
@@ -1316,7 +1316,7 @@ public class MManager {
         pathIndex.put(path.getFullPathWithAlias(), i);
       }
 
-      IMeasurementMNode node = getMeasurementMNode(path);
+      IMeasurementMNode node = mtree.getMeasurementMNode(path);
       if (!nodeToPartialPath.containsKey(node)) {
         nodeToPartialPath.put(node, path.copy());
       } else {
@@ -1361,11 +1361,6 @@ public class MManager {
   // endregion
 
   // region Interfaces and methods for MNode query
-  /** Get node by path */
-  public IMNode getNodeByPath(PartialPath path) throws MetadataException {
-    return mtree.getNodeByPath(path);
-  }
-
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
    * device], return the MNode of root.sg Get storage group node by path. If storage group is not
@@ -1401,7 +1396,7 @@ public class MManager {
     IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
       try {
-        mNodes[i] = getNodeByPath(deviceId.concatNode(measurements[i])).getAsMeasurementMNode();
+        mNodes[i] = mtree.getMeasurementMNode(deviceId.concatNode(measurements[i]));
       } catch (PathNotExistException ignored) {
         logger.warn("{} does not exist in {}", measurements[i], deviceId);
       }
@@ -1412,8 +1407,8 @@ public class MManager {
     return mNodes;
   }
 
-  protected IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    return getNodeByPath(fullPath).getAsMeasurementMNode();
+  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+    return mtree.getMeasurementMNode(fullPath);
   }
 
   /**
@@ -1446,11 +1441,11 @@ public class MManager {
    * @param offset offset in the tag file
    */
   public void changeOffset(PartialPath path, long offset) throws MetadataException {
-    mtree.getNodeByPath(path).getAsMeasurementMNode().setOffset(offset);
+    mtree.getMeasurementMNode(path).setOffset(offset);
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
-    IMeasurementMNode leafMNode = mtree.getNodeByPath(path).getAsMeasurementMNode();
+    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
     if (leafMNode.getAlias() != null) {
       leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
     }
@@ -1651,7 +1646,7 @@ public class MManager {
   public void collectSeries(PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
     IMNode node;
     try {
-      node = getNodeByPath(prefixPath);
+      node = mtree.getNodeByPath(prefixPath);
     } catch (MetadataException e) {
       return;
     }
@@ -1677,7 +1672,7 @@ public class MManager {
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
     IMNode node;
     try {
-      node = getNodeByPath(prefixPath);
+      node = mtree.getNodeByPath(prefixPath);
     } catch (MetadataException e) {
       return;
     }
@@ -1780,7 +1775,7 @@ public class MManager {
       Long latestFlushedTime) {
     IMeasurementMNode node;
     try {
-      node = mtree.getNodeByPath(seriesPath).getAsMeasurementMNode();
+      node = mtree.getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
       return;
@@ -1857,7 +1852,7 @@ public class MManager {
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {
-      node = mtree.getNodeByPath(seriesPath).getAsMeasurementMNode();
+      node = mtree.getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
       return null;
@@ -1909,7 +1904,7 @@ public class MManager {
   public void resetLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {
-      node = mtree.getNodeByPath(seriesPath).getAsMeasurementMNode();
+      node = mtree.getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
       return;

@@ -248,7 +248,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  protected IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     IMeasurementMNode node = null;
     // try remote cache first
     try {
@@ -264,7 +264,7 @@ public class CMManager extends MManager {
     if (node == null) {
       // try local MTree
       try {
-        node = super.getNodeByPath(fullPath).getAsMeasurementMNode();
+        node = super.getMeasurementMNode(fullPath);
       } catch (PathNotExistException e) {
         // pull from remote node
         List<IMeasurementSchema> schemas =

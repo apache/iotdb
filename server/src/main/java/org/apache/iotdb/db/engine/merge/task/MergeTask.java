@@ -149,7 +149,7 @@ public class MergeTask implements Callable<Void> {
     Map<PartialPath, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<PartialPath> unmergedSeries = new ArrayList<>();
     for (PartialPath device : devices) {
-      IMNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
+      IMNode deviceNode = IoTDB.metaManager.getDeviceNode(device);
       // todo add template merge logic
       for (Entry<String, IMNode> entry : deviceNode.getChildren().entrySet()) {
         PartialPath path = device.concatNode(entry.getKey());
