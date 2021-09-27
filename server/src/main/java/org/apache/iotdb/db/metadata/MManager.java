@@ -93,12 +93,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1391,7 +1389,7 @@ public class MManager {
     }
   }
 
-  public IMeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
+  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
@@ -1639,64 +1637,23 @@ public class MManager {
   // region Interfaces only for Cluster module usage
 
   /**
-   * Collect the timeseries schemas under "prefixPath".
+   * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
    *
    * @apiNote :for cluster
    */
-  public void collectSeries(PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
-    IMNode node;
-    try {
-      node = mtree.getNodeByPath(prefixPath);
-    } catch (MetadataException e) {
-      return;
-    }
-    collectMeasurementSchema(node, measurementSchemas);
+  public void collectMeasurementSchema(
+      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
+    mtree.collectMeasurementSchema(prefixPath, measurementSchemas);
   }
 
-  private void collectMeasurementSchema(
-      IMNode startingNode, Collection<IMeasurementSchema> measurementSchemas) {
-    Deque<IMNode> nodeDeque = new ArrayDeque<>();
-    nodeDeque.addLast(startingNode);
-    while (!nodeDeque.isEmpty()) {
-      IMNode node = nodeDeque.removeFirst();
-      if (node.isMeasurement()) {
-        IMeasurementSchema nodeSchema = node.getAsMeasurementMNode().getSchema();
-        measurementSchemas.add(nodeSchema);
-      } else if (!node.getChildren().isEmpty()) {
-        nodeDeque.addAll(node.getChildren().values());
-      }
-    }
-  }
-
+  /**
+   * Collect the timeseries schemas as TimeseriesSchema under "prefixPath".
+   *
+   * @apiNote :for cluster
+   */
   public void collectTimeseriesSchema(
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
-    IMNode node;
-    try {
-      node = mtree.getNodeByPath(prefixPath);
-    } catch (MetadataException e) {
-      return;
-    }
-    collectTimeseriesSchema(node, timeseriesSchemas);
-  }
-
-  private void collectTimeseriesSchema(
-      IMNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
-    Deque<IMNode> nodeDeque = new ArrayDeque<>();
-    nodeDeque.addLast(startingNode);
-    while (!nodeDeque.isEmpty()) {
-      IMNode node = nodeDeque.removeFirst();
-      if (node.isMeasurement()) {
-        IMeasurementSchema nodeSchema = node.getAsMeasurementMNode().getSchema();
-        timeseriesSchemas.add(
-            new TimeseriesSchema(
-                node.getFullPath(),
-                nodeSchema.getType(),
-                nodeSchema.getEncodingType(),
-                nodeSchema.getCompressor()));
-      } else if (!node.getChildren().isEmpty()) {
-        nodeDeque.addAll(node.getChildren().values());
-      }
-    }
+    mtree.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
   }
 
   /**

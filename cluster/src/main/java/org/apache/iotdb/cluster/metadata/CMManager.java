@@ -292,10 +292,10 @@ public class CMManager extends MManager {
    * @param measurements the measurements.
    */
   @Override
-  public IMeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
+  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     try {
-      return super.getMNodes(deviceId, measurements);
+      return super.getMeasurementMNodes(deviceId, measurements);
     } catch (MetadataException e) {
       // some measurements not exist in local
       // try cache

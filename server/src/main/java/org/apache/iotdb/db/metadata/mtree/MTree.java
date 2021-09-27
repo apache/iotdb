@@ -43,6 +43,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.PathGrouperByStorageGroup;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupPathCollector;
@@ -69,6 +70,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import com.google.gson.Gson;
@@ -84,6 +86,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
@@ -933,6 +936,69 @@ public class MTree implements Serializable {
     collector.traverse();
     return collector.getResult();
   }
+
+  /**
+   * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
+   *
+   * @apiNote :for cluster
+   */
+  public void collectMeasurementSchema(
+      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
+    try {
+      MeasurementCollector<List<IMeasurementSchema>> collector =
+          new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
+            @Override
+            protected void collectUnaryMeasurement(IMeasurementMNode node) {
+              measurementSchemas.add(node.getSchema());
+            }
+
+            @Override
+            protected void collectVectorMeasurement(IMeasurementMNode node, int index) {
+              if (measurementSchemas.contains(node.getSchema())) {
+                measurementSchemas.add(node.getSchema());
+              }
+            }
+          };
+      collector.setPrefixMatch(true);
+      collector.traverse();
+    } catch (MetadataException ignored) {
+
+    }
+  }
+
+  /**
+   * Collect the timeseries schemas as TimeseriesSchema under "prefixPath".
+   *
+   * @apiNote :for cluster
+   */
+  public void collectTimeseriesSchema(
+      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
+    try {
+      MeasurementCollector<Collection<TimeseriesSchema>> collector =
+          new MeasurementCollector<Collection<TimeseriesSchema>>(root, prefixPath) {
+            @Override
+            protected void collectUnaryMeasurement(IMeasurementMNode node) {
+              IMeasurementSchema nodeSchema = node.getAsMeasurementMNode().getSchema();
+              timeseriesSchemas.add(
+                  new TimeseriesSchema(
+                      node.getFullPath(),
+                      nodeSchema.getType(),
+                      nodeSchema.getEncodingType(),
+                      nodeSchema.getCompressor()));
+            }
+
+            @Override
+            protected void collectVectorMeasurement(IMeasurementMNode node, int index) {
+              // todo implement vector case according to the scenario in cluster
+            }
+          };
+      collector.setPrefixMatch(true);
+      collector.traverse();
+    } catch (MetadataException ignored) {
+
+    }
+  }
+
   // endregion
 
   // region Interfaces for Level Node info Query
