@@ -27,7 +27,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class IotDBInfluxDBUtilsTest {
+public class IoTDBInfluxDBUtilsTest {
 
   @Test
   public void testGetSame() throws IoTDBConnectionException, StatementExecutionException { // 测试数据查询

@@ -213,10 +213,6 @@ TEXT
     : T E X T
     ;
 
-ENCODING
-    : E N C O D I N G
-    ;
-
 
 AS
     : A S
@@ -232,12 +228,9 @@ NOW
     : N O W
     ;
 
-
-
 TIME
     : T I M E
     ;
-
 
 TRUE
     : T R U E
@@ -246,15 +239,6 @@ TRUE
 FALSE
     : F A L S E
     ;
-
-FUNCTION
-    : F U N C T I O N
-    ;
-
-FUNCTIONS
-    : F U N C T I O N S
-    ;
-
 
 //============================
 // End of the keywords list
