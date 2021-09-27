@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -55,8 +54,6 @@ public interface IMNode extends Serializable {
   void deleteChild(String name);
 
   void replaceChild(String oldChildName, IMNode newChildNode);
-
-  IMNode getChildOfAlignedTimeseries(String name) throws MetadataException;
 
   Map<String, IMNode> getChildren();
 

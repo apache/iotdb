@@ -419,7 +419,7 @@ public class ClientMain {
       insertReq.setValues(values);
 
       for (String device : DEVICES) {
-        insertReq.setDeviceId(device);
+        insertReq.setPrefixPath(device);
         if (logger.isInfoEnabled()) {
           logger.info(insertReq.toString());
           logger.info(client.insertStringRecord(insertReq).toString());

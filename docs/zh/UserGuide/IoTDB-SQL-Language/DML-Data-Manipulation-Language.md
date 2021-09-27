@@ -213,7 +213,7 @@ It costs 0.014s
 IoTDB 在 0.11 版本开始支持 'order by time' 语句，用于对结果按照时间进行降序展示。例如，SQL 语句为：
 
 ```sql
-select * from root.ln where time > 1 order by time desc limit 10;
+select * from root.ln.** where time > 1 order by time desc limit 10;
 ```
 
 语句执行的结果为：
@@ -1616,13 +1616,13 @@ It costs 0.005s
 * 如果结果集中，任意一列为 null，则过滤掉该行；即获得的结果集不包含任何空值
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * 在降采样查询中，如果结果集的某一行所有列都为 null，则过滤掉该行；即获得的结果集不包含所有值都为 null 的行
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 ### 其他对齐方式的结果集
@@ -1634,7 +1634,7 @@ IoTDB 支持另外两种结果返回形式：按设备时间对齐 'align by dev
 'align by device' 对齐方式下，设备 ID 会单独作为一列出现。在 select 子句中写了多少列，最终结果就会有该列数+2 （时间列和设备名字列）。SQL 形如：
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 align by device
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device
 ```
 
 结果如下：
@@ -1661,7 +1661,7 @@ It costs 0.012s
 SQL 形如：
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 disable align
+select * from root.ln.** where time <= 2017-11-01T00:01:00 disable align
 ```
 
 结果如下：
@@ -1727,13 +1727,8 @@ delete from root.ln.wf02.status
 
 ### 多传感器时间序列值删除    
 
-当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [前缀路径或带`*`路径](../Data-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL 语句为：
+当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [路径模式（Path Pattern）](../Data-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL 语句为：
 
-```sql
-delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
-```
-
-或
 
 ```sql
 delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;

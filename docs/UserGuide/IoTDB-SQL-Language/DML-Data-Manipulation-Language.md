@@ -207,7 +207,7 @@ IoTDB supports the 'order by time' statement since 0.11, it's used to display re
 For example, the SQL statement is:
 
 ```sql
-select * from root.ln where time > 1 order by time desc limit 10;
+select * from root.ln.** where time > 1 order by time desc limit 10;
 ```
 The execution result of this SQL statement is as follows:
 

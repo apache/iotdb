@@ -53,17 +53,17 @@ It costs 0.417s
 ``` SQL
 SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: FullPath can not include `*`
+Note: FullPath can not include wildcard `*` or `**`
 ```
 
 * Delete Storage Group
 
 ```
-DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
+DELETE STORAGE GROUP <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
-Eg: IoTDB > DELETE STORAGE GROUP root.*
+Eg: IoTDB > DELETE STORAGE GROUP root.**
 ```
 
 * Create Timeseries Statement
@@ -128,7 +128,7 @@ Eg: set schema template temp1 to root.beijing
 * Delete Timeseries Statement
 
 ```
-DELETE TIMESERIES <PrefixPath> [COMMA <PrefixPath>]*
+DELETE TIMESERIES <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
@@ -171,18 +171,18 @@ Note: This statement can only be used in IoTDB Client. If you need to show all t
 
 ```
 SHOW TIMESERIES <Path>
-Eg: IoTDB > SHOW TIMESERIES root
-Eg: IoTDB > SHOW TIMESERIES root.ln
+Eg: IoTDB > SHOW TIMESERIES root.**
+Eg: IoTDB > SHOW TIMESERIES root.ln.**
 Eg: IoTDB > SHOW TIMESERIES root.ln.*.*.status
 Eg: IoTDB > SHOW TIMESERIES root.ln.wf01.wt01.status
-Note: The path can be prefix path, star path or timeseries path
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * Show Specific Timeseries Statement with where clause
 
 ```
-SHOW TIMESERIES prefixPath? showWhereClause?
+SHOW TIMESERIES pathPattern? showWhereClause?
 showWhereClause
     : WHERE (property | containsExpression)
     ;
@@ -190,14 +190,14 @@ containsExpression
     : name=ID OPERATOR_CONTAINS value=propertyValue
     ;
 
-Eg: show timeseries root.ln where unit='c'
-Eg: show timeseries root.ln where description contains 'test1'
+Eg: show timeseries root.ln.** where unit='c'
+Eg: show timeseries root.ln.** where description contains 'test1'
 ```
 
 * Show Specific Timeseries Statement with where clause start from offset and limit the total number of result
 
 ```
-SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
+SHOW TIMESERIES pathPattern? showWhereClause? limitClause?
 
 showWhereClause
     : WHERE (property | containsExpression)
@@ -210,9 +210,9 @@ limitClause
     | offsetClause? LIMIT INT
     ;
     
-Eg: show timeseries root.ln where unit='c'
-Eg: show timeseries root.ln where description contains 'test1'
-Eg: show timeseries root.ln where unit='c' limit 10 offset 10
+Eg: show timeseries root.ln.** where unit='c'
+Eg: show timeseries root.ln.** where description contains 'test1'
+Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
 ```
 
 * Show Storage Group Statement
@@ -226,10 +226,10 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * Show Specific Storage Group Statement
 
 ```
-SHOW STORAGE GROUP <PrefixPath>
+SHOW STORAGE GROUP <Path>
 Eg: IoTDB > SHOW STORAGE GROUP root.*
 Eg: IoTDB > SHOW STORAGE GROUP root.ln
-Note: The path can be prefix path or star path.
+Note: The path can be full path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -245,20 +245,20 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT TIMESERIES <Path>
-Eg: IoTDB > COUNT TIMESERIES root
-Eg: IoTDB > COUNT TIMESERIES root.ln
+Eg: IoTDB > COUNT TIMESERIES root.**
+Eg: IoTDB > COUNT TIMESERIES root.ln.**
 Eg: IoTDB > COUNT TIMESERIES root.ln.*.*.status
 Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
-Note: The path can be prefix path, star path or timeseries path.
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 ```
 COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>
-Eg: IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
-Eg: IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-Eg: IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
-Note: The path can be prefix path or timeseries path.
+Eg: IoTDB > COUNT TIMESERIES root.** GROUP BY LEVEL=1
+Eg: IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=3
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -266,11 +266,11 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT NODES <Path> LEVEL=<INTEGER>
-Eg: IoTDB > COUNT NODES root LEVEL=2
-Eg: IoTDB > COUNT NODES root.ln LEVEL=2
+Eg: IoTDB > COUNT NODES root.** LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.** LEVEL=2
 Eg: IoTDB > COUNT NODES root.ln.* LEVEL=3
 Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
-Note: The path can be prefix path or timeseries path.
+Note: The path can be full path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -286,13 +286,12 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * Show Specific Devices Statement
 
 ```
-SHOW DEVICES <PrefixPath> (WITH STORAGE GROUP)? limitClause?
-Eg: IoTDB > SHOW DEVICES root
-Eg: IoTDB > SHOW DEVICES root.ln
+SHOW DEVICES <PathPattern> (WITH STORAGE GROUP)? limitClause?
+Eg: IoTDB > SHOW DEVICES root.**
+Eg: IoTDB > SHOW DEVICES root.ln.**
 Eg: IoTDB > SHOW DEVICES root.*.wf01
 Eg: IoTDB > SHOW DEVICES root.ln WITH STORAGE GROUP
 Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
-Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -305,12 +304,11 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 * Show Child Paths Statement
 ```
-SHOW CHILD PATHS <Path>
+SHOW CHILD PATHS <PathPattern>
 Eg: IoTDB > SHOW CHILD PATHS root
 Eg: IoTDB > SHOW CHILD PATHS root.ln
 Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
-Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
-Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf* 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -338,7 +336,7 @@ Note: The order of Sensor and PointValue need one-to-one correspondence
 * Delete Record Statement
 
 ```
-DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* [WHERE <WhereClause>]?
+DELETE FROM <PathPattern> [COMMA <PathPattern>]* [WHERE <WhereClause>]?
 WhereClause : <Condition> [(AND) <Condition>]*
 Condition  : <TimeExpr> [(AND) <TimeExpr>]*
 TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
@@ -363,7 +361,8 @@ RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
 RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
-Eg. IoTDB > SELECT * FROM root
+Eg. IoTDB > SELECT ** FROM root
+Eg. IoTDB > SELECT * FROM root.**
 Eg. IoTDB > SELECT * FROM root where time > now() - 5m
 Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
@@ -477,10 +476,10 @@ SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByCl
 orderByTimeClause: order by time (asc | desc)?
 
 Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS]) order by time desc
-Eg: SELECT * from root order by time desc
-Eg: SELECT * from root order by time desc align by device 
-Eg: SELECT * from root order by time desc disable align
-Eg: SELECT last * from root order by time desc
+Eg: SELECT * from root.** order by time desc
+Eg: SELECT * from root.** order by time desc align by device 
+Eg: SELECT * from root.** order by time desc disable align
+Eg: SELECT last * from root.** order by time desc
 ```
 
 * Limit Statement
@@ -519,18 +518,18 @@ AlignbyDeviceClause : ALIGN BY DEVICE
 
 Rules:  
 1. Both uppercase and lowercase are ok.  
-Correct example: select * from root.sg1 align by device  
-Correct example: select * from root.sg1 ALIGN BY DEVICE  
+Correct example: select * from root.sg1.* align by device  
+Correct example: select * from root.sg1.* ALIGN BY DEVICE  
 
 2. AlignbyDeviceClause can only be used at the end of a query statement.  
-Correct example: select * from root.sg1 where time > 10 align by device  
-Wrong example: select * from root.sg1 align by device where time > 10  
+Correct example: select * from root.sg1.* where time > 10 align by device  
+Wrong example: select * from root.sg1.* align by device where time > 10  
 
 3. The paths of the SELECT clause can only be single level. In other words, the paths of the SELECT clause can only be measurements or STAR, without DOT.
 Correct example: select s0,s1 from root.sg1.* align by device  
 Correct example: select s0,s1 from root.sg1.d0, root.sg1.d1 align by device  
 Correct example: select * from root.sg1.* align by device  
-Correct example: select * from root align by device  
+Correct example: select * from root.** align by device  
 Correct example: select s0,s1,* from root.*.* align by device  
 Wrong example: select d0.s1, d0.s2, d1.s0 from root.sg1 align by device  
 Wrong example: select *.s0, *.s1 from root.* align by device  
@@ -582,16 +581,16 @@ For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "s
 - select * from root.sg.d0 where root.sg.d0.s0 = 15 align by device
 
 9. More correct examples:
-   - select * from root.vehicle align by device
+   - select * from root.vehicle.* align by device
    - select s0,s0,s1 from root.vehicle.* align by device
    - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
-   - select * from root.vehicle slimit 10 soffset 2 align by device
-   - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle.* slimit 10 soffset 2 align by device
+   - select * from root.vehicle.* where time > 10 align by device
    - select * from root.vehicle.* where time < 10 AND s0 > 25 align by device
-   - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
+   - select * from root.vehicle.* where root.vehicle.d0.s0>0 align by device
    - select count(*) from root.vehicle align by device
-   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
-   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
+   - select sum(*) from root.vehicle.* GROUP BY (20ms,0,[2,50]) align by device
+   - select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 * Disable Align Statement
 
@@ -600,19 +599,19 @@ Disable Align Clause: DISABLE ALIGN
 
 Rules:  
 1. Both uppercase and lowercase are ok.  
-Correct example: select * from root.sg1 disable align  
-Correct example: select * from root.sg1 DISABLE ALIGN  
+Correct example: select * from root.sg1.* disable align  
+Correct example: select * from root.sg1.* DISABLE ALIGN  
 
 2. Disable Align Clause can only be used at the end of a query statement.  
-Correct example: select * from root.sg1 where time > 10 disable align 
-Wrong example: select * from root.sg1 disable align where time > 10 
+Correct example: select * from root.sg1.* where time > 10 disable align 
+Wrong example: select * from root.sg1.* disable align where time > 10 
 
 3. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements.
-Correct example: select * from root.sg1 limit 3 offset 2 disable align
-Correct example: select * from root.sg1 slimit 3 soffset 2 disable align
+Correct example: select * from root.sg1.* limit 3 offset 2 disable align
+Correct example: select * from root.sg1.* slimit 3 soffset 2 disable align
 Wrong example: select count(s0),count(s1) from root.sg1.d1 disable align
-Wrong example: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
-Wrong example: select * from root.vehicle align by device disable align
+Wrong example: select * from root.vehicle.* where root.vehicle.d0.s0>0 disable align
+Wrong example: select * from root.vehicle.* align by device disable align
 
 4. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
 
@@ -625,11 +624,11 @@ You could expect a table like:
 |      |               |      |               | 900  | 8000          |
 
 5. More correct examples: 
-   - select * from root.vehicle disable align
+   - select * from root.vehicle.* disable align
    - select s0,s0,s1 from root.vehicle.* disable align
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
-   - select * from root.vehicle slimit 10 soffset 2 disable align
-   - select * from root.vehicle where time > 10 disable align
+   - select * from root.vehicle.* slimit 10 soffset 2 disable align
+   - select * from root.vehicle.* where time > 10 disable align
 
 ```
 

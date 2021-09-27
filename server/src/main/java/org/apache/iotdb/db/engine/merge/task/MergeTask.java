@@ -145,7 +145,8 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
+    Set<PartialPath> devices =
+        IoTDB.metaManager.getDevicesByPrefix(new PartialPath(storageGroupName));
     Map<PartialPath, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<PartialPath> unmergedSeries = new ArrayList<>();
     for (PartialPath device : devices) {

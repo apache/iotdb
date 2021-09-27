@@ -195,7 +195,7 @@ public class UDFRegistrationService implements IService {
 
   public void deregister(String functionName) throws UDFRegistrationException {
     functionName = functionName.toUpperCase();
-    UDFRegistrationInformation information = registrationInformation.remove(functionName);
+    UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information == null) {
       String errorMessage = String.format("UDF %s does not exist.", functionName);
       logger.warn(errorMessage);
@@ -211,8 +211,8 @@ public class UDFRegistrationService implements IService {
 
     try {
       appendDeregistrationLog(functionName);
+      registrationInformation.remove(functionName);
     } catch (IOException e) {
-      registrationInformation.put(functionName, information);
       String errorMessage =
           String.format(
               "Failed to append UDF log when deregistering UDF %s, because %s", functionName, e);
