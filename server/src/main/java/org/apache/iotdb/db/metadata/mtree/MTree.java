@@ -489,17 +489,13 @@ public class MTree implements Serializable {
    */
   public Pair<PartialPath, IMeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(
       PartialPath path) throws MetadataException {
-    IMNode curNode = getNodeByPath(path);
-    if (!(curNode.isMeasurement())) {
-      throw new PathNotExistException(path.getFullPath());
-    }
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    IMeasurementMNode deletedNode = curNode.getAsMeasurementMNode();
-
+    IMeasurementMNode deletedNode = getMeasurementMNode(path);
+    IMNode curNode = deletedNode;
     // delete the last node of path
     curNode.getParent().deleteChild(path.getMeasurement());
     if (deletedNode.getAlias() != null) {
@@ -1255,7 +1251,12 @@ public class MTree implements Serializable {
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException {
-    return getNodeByPath(path).getAsMeasurementMNode();
+    IMNode node = getNodeByPath(path);
+    if (node.isMeasurement()) {
+      return node.getAsMeasurementMNode();
+    } else {
+      throw new PathNotExistException(path.getFullPath());
+    }
   }
   // endregion
 

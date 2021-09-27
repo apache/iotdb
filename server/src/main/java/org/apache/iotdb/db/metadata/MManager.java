@@ -1467,11 +1467,7 @@ public class MManager {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    IMNode node = mtree.getNodeByPath(fullPath);
-    if (!(node.isMeasurement())) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
+    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     // upsert alias
     upsertAlias(alias, fullPath, leafMNode);
 
@@ -1517,11 +1513,7 @@ public class MManager {
    */
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMNode node = mtree.getNodeByPath(fullPath);
-    if (!(node.isMeasurement())) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
+    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
@@ -1541,11 +1533,7 @@ public class MManager {
    */
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMNode node = mtree.getNodeByPath(fullPath);
-    if (!(node.isMeasurement())) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
+    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
@@ -1568,11 +1556,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMNode node = mtree.getNodeByPath(fullPath);
-    if (!(node.isMeasurement())) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
+    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, just do nothing.
     if (leafMNode.getOffset() < 0) {
       return;
@@ -1589,11 +1573,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMNode node = mtree.getNodeByPath(fullPath);
-    if (!(node.isMeasurement())) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
+    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
           String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
@@ -1613,11 +1593,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMNode node = mtree.getNodeByPath(fullPath);
-    if (!(node.isMeasurement())) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
+    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
           String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
