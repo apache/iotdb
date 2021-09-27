@@ -434,8 +434,8 @@ Currently, IoTDB supports the following constant timeseries generating functions
 | Function Name | Required Attributes                                          | Output Series Data Type                      | Description                                                  |
 | ------------- | ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------ |
 | CONST         | `value`: the value of the output data point <br />`type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Output the user-specified constant timeseries according to the  attributes `value` and `type`. |
-| PI            | None                                                         | DOUBLE                                       | Data point value: a double value that is closer than any other to `pi`, the ratio of the circumference of a circle to its diameter. |
-| E             | None                                                         | DOUBLE                                       | Data point value: a double value that is closer than any other to `e`, the base of the natural logarithms. |
+| PI            | None                                                         | DOUBLE                                       | Data point value: a `double` value of  `π`, the ratio of the circumference of a circle to its diameter, which is equals to `Math.PI` in the *Java Standard Library*. |
+| E             | None                                                         | DOUBLE                                       | Data point value: a `double` value of  `e`, the base of the natural logarithms, which is equals to `Math.E` in the *Java Standard Library*. |
 
 Example:
 
