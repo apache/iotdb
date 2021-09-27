@@ -26,6 +26,7 @@
 * [IOTDB-1275] Fix backgroup exec for cli -e function causes an infinite loop
 * [IOTDB-1287] Fix C++ class Session has 2 useless sort()
 * [IOTDB-1289] fix CPP mem-leak in SessionExample.cpp insertRecords()
+* [IOTDB-1484] fix auto create schema in cluster
 * [IOTDB-1578] Set unsequnce when loading TsFile with the same establish time
 * [IOTDB-1619] Fix an error msg when restart iotdb-cluster
 * [IOTDB-1629] fix the NPE when using value fill in cluster mode
