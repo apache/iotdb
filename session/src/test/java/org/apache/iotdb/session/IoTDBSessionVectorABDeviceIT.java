@@ -94,7 +94,8 @@ public class IoTDBSessionVectorABDeviceIT {
   public void vectorAlignByDeviceTest() {
     try {
       SessionDataSet dataSet =
-          session.executeQueryStatement("select vector1 from root.sg1.d1 limit 1 align by device");
+          session.executeQueryStatement(
+              "select vector1.* from root.sg1.d1 limit 1 align by device");
       assertEquals(4, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals("Device", dataSet.getColumnNames().get(1));
@@ -121,7 +122,7 @@ public class IoTDBSessionVectorABDeviceIT {
   public void vectorAlignByDeviceWithWildcardTest() {
     try {
       SessionDataSet dataSet =
-          session.executeQueryStatement("select * from root.sg1.d1 limit 1 align by device");
+          session.executeQueryStatement("select ** from root.sg1.d1 limit 1 align by device");
       assertEquals(7, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals("Device", dataSet.getColumnNames().get(1));
@@ -154,7 +155,7 @@ public class IoTDBSessionVectorABDeviceIT {
   public void vectorAggregationAlignByDeviceTest() {
     try {
       SessionDataSet dataSet =
-          session.executeQueryStatement("select count(vector1) from root.sg1.d1 align by device");
+          session.executeQueryStatement("select count(vector1.*) from root.sg1.d1 align by device");
       assertEquals(3, dataSet.getColumnNames().size());
       assertEquals("Device", dataSet.getColumnNames().get(0));
       assertEquals("count(vector1.s1)", dataSet.getColumnNames().get(1));
@@ -204,7 +205,7 @@ public class IoTDBSessionVectorABDeviceIT {
       List<Object> values = new ArrayList<>();
       values.add(time + 1);
       values.add(time + 2);
-      session.insertRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values, true);
+      session.insertAlignedRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values);
     }
   }
 

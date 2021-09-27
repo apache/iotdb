@@ -169,7 +169,7 @@ public class IoTDBSessionVectorAggregationWithUnSeqIT {
       List<Object> values = new ArrayList<>();
       values.add(time + 1);
       values.add(time + 2);
-      session.insertRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values, true);
+      session.insertAlignedRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values);
     }
     session.executeNonQueryStatement("flush");
 
@@ -177,7 +177,7 @@ public class IoTDBSessionVectorAggregationWithUnSeqIT {
       List<Object> values = new ArrayList<>();
       values.add(time + 1);
       values.add(time + 2);
-      session.insertRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values, true);
+      session.insertAlignedRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values);
     }
     session.executeNonQueryStatement("flush");
 
@@ -185,7 +185,7 @@ public class IoTDBSessionVectorAggregationWithUnSeqIT {
       List<Object> values = new ArrayList<>();
       values.add(time + 1);
       values.add(time + 2);
-      session.insertRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values, true);
+      session.insertAlignedRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values);
     }
     session.executeNonQueryStatement("flush");
   }
