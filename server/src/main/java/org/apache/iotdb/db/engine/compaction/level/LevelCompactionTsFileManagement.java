@@ -484,9 +484,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           } else {
             writer.close();
           }
-          tsFileResourceManager.registerSealedTsFileResource(targetTsFileResource);
           // complete compaction and delete source file
           deleteAllSubLevelFiles(isSeq, timePartition);
+          
+          tsFileResourceManager.registerSealedTsFileResource(targetTsFileResource);
         } else {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
           TsFileResource targetResource = getRecoverTsFileResource(targetFile, isSeq);
