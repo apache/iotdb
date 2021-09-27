@@ -198,7 +198,7 @@ public class MManagerAdvancedTest {
 
     IMNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.d0"));
     Assert.assertEquals(
-        TSDataType.INT32, ((IMeasurementMNode) node.getChild("s0")).getSchema().getType());
+        TSDataType.INT32, node.getChild("s0").getAsMeasurementMNode().getSchema().getType());
 
     try {
       mmanager.getNodeByPath(new PartialPath("root.vehicle.d100"));
@@ -220,7 +220,7 @@ public class MManagerAdvancedTest {
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
     PartialPath path = new PartialPath("root.vehicle.d2.s0");
-    IMeasurementMNode node = (IMeasurementMNode) mmanager.getNodeByPath(path);
+    IMeasurementMNode node = mmanager.getNodeByPath(path).getAsMeasurementMNode();
     LastCacheManager.updateLastCache(path, tv1, true, Long.MIN_VALUE, node);
     LastCacheManager.updateLastCache(path, tv2, true, Long.MIN_VALUE, node);
     Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());

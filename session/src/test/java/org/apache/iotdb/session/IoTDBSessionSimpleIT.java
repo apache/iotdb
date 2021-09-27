@@ -324,7 +324,9 @@ public class IoTDBSessionSimpleIT {
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
     IMeasurementMNode mNode =
-        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d1.s1"));
+        MManager.getInstance()
+            .getNodeByPath(new PartialPath("root.sg1.d1.s1"))
+            .getAsMeasurementMNode();
     assertNull(mNode.getSchema().getProps());
 
     session.close();

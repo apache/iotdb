@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -154,7 +153,7 @@ public class MergeTask implements Callable<Void> {
       // todo add template merge logic
       for (Entry<String, IMNode> entry : deviceNode.getChildren().entrySet()) {
         PartialPath path = device.concatNode(entry.getKey());
-        measurementSchemaMap.put(path, ((IMeasurementMNode) entry.getValue()).getSchema());
+        measurementSchemaMap.put(path, entry.getValue().getAsMeasurementMNode().getSchema());
         unmergedSeries.add(path);
       }
     }

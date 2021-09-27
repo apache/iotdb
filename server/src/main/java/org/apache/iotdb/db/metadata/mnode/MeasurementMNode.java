@@ -24,9 +24,7 @@ import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -62,20 +60,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   /** @param alias alias of measurementName */
   public MeasurementMNode(
-      IMNode parent,
-      String measurementName,
-      String alias,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType type,
-      Map<String, String> props) {
-    super(parent, measurementName);
-    this.schema = new MeasurementSchema(measurementName, dataType, encoding, type, props);
-    this.alias = alias;
-  }
-
-  public MeasurementMNode(
-      IMNode parent, String measurementName, IMeasurementSchema schema, String alias) {
+      IEntityMNode parent, String measurementName, IMeasurementSchema schema, String alias) {
     super(parent, measurementName);
     this.schema = schema;
     this.alias = alias;
@@ -83,7 +68,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public IEntityMNode getParent() {
-    return (IEntityMNode) parent;
+    return parent.getAsEntityMNode();
   }
 
   @Override

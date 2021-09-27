@@ -46,7 +46,7 @@ public class MeasurementCounter extends CounterTraverser {
     if (!node.isMeasurement() || idx != nodes.length - 2) {
       return false;
     }
-    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+    IMeasurementSchema schema = node.getAsMeasurementMNode().getSchema();
     if (schema instanceof VectorMeasurementSchema) {
       List<String> measurements = schema.getSubMeasurementsList();
       String regex = nodes[idx + 1].replace("*", ".*");
@@ -64,7 +64,8 @@ public class MeasurementCounter extends CounterTraverser {
     if (!node.isMeasurement()) {
       return false;
     }
-    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+    IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
+    IMeasurementSchema schema = measurementMNode.getSchema();
     if (schema instanceof MeasurementSchema) {
       count++;
     } else if (schema instanceof VectorMeasurementSchema) {
@@ -72,7 +73,7 @@ public class MeasurementCounter extends CounterTraverser {
         return true;
       }
       // only when idx > nodes.length or nodes ends with **
-      count += ((IMeasurementMNode) node).getMeasurementCount();
+      count += measurementMNode.getMeasurementCount();
     }
     return true;
   }

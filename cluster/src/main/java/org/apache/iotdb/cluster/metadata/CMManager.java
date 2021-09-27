@@ -264,7 +264,7 @@ public class CMManager extends MManager {
     if (node == null) {
       // try local MTree
       try {
-        node = (IMeasurementMNode) super.getNodeByPath(fullPath);
+        node = super.getNodeByPath(fullPath).getAsMeasurementMNode();
       } catch (PathNotExistException e) {
         // pull from remote node
         List<IMeasurementSchema> schemas =

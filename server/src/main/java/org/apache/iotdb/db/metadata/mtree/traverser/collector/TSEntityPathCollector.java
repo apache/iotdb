@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -48,7 +47,7 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
     if (!node.isMeasurement() || idx != nodes.length - 2) {
       return false;
     }
-    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+    IMeasurementSchema schema = node.getAsMeasurementMNode().getSchema();
     if (schema instanceof VectorMeasurementSchema) {
       List<String> measurements = schema.getSubMeasurementsList();
       String regex = nodes[idx + 1].replace("*", ".*");
@@ -67,7 +66,7 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
     if (!node.isMeasurement()) {
       return false;
     }
-    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+    IMeasurementSchema schema = node.getAsMeasurementMNode().getSchema();
     if (schema instanceof MeasurementSchema) {
       resultSet.add(node.getParent().getPartialPath());
     } else if (schema instanceof VectorMeasurementSchema) {

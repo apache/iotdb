@@ -51,7 +51,8 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     if (!node.isMeasurement() || idx != nodes.length - 2) {
       return false;
     }
-    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+    IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
+    IMeasurementSchema schema = measurementMNode.getSchema();
     if (schema instanceof VectorMeasurementSchema) {
       List<String> measurements = schema.getSubMeasurementsList();
       String targetNameRegex = nodes[idx + 1].replace("*", ".*");
@@ -65,7 +66,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             break;
           }
         }
-        collectVectorMeasurement((IMeasurementMNode) node, i);
+        collectVectorMeasurement(measurementMNode, i);
         if (hasLimit) {
           count += 1;
         }
@@ -80,7 +81,8 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     if (!node.isMeasurement()) {
       return false;
     }
-    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+    IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
+    IMeasurementSchema schema = measurementMNode.getSchema();
     if (schema instanceof MeasurementSchema) {
       if (hasLimit) {
         curOffset += 1;
@@ -88,7 +90,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
           return true;
         }
       }
-      collectUnaryMeasurement((IMeasurementMNode) node);
+      collectUnaryMeasurement(measurementMNode);
       if (hasLimit) {
         count += 1;
       }
@@ -107,7 +109,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             return true;
           }
         }
-        collectVectorMeasurement((IMeasurementMNode) node, i);
+        collectVectorMeasurement(measurementMNode, i);
         if (hasLimit) {
           count += 1;
         }

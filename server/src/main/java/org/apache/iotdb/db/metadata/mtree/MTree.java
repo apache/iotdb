@@ -68,6 +68,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import com.google.gson.Gson;
@@ -254,9 +255,9 @@ public class MTree implements Serializable {
               if (!node.isEntity()) {
                 node = IEntityMNode.setToEntity(node);
               }
-              String alias = ((IMeasurementMNode) child).getAlias();
+              String alias = child.getAsMeasurementMNode().getAlias();
               if (alias != null) {
-                ((IEntityMNode) node).addAlias(alias, (IMeasurementMNode) child);
+                node.getAsEntityMNode().addAlias(alias, child.getAsMeasurementMNode());
               }
             }
             child.setParent(node);
@@ -294,7 +295,7 @@ public class MTree implements Serializable {
         jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
       }
     } else if (node.isMeasurement()) {
-      IMeasurementMNode leafMNode = (IMeasurementMNode) node;
+      IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
       jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
       jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
       jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
@@ -388,7 +389,11 @@ public class MTree implements Serializable {
       IEntityMNode entityMNode = IEntityMNode.setToEntity(cur);
 
       IMeasurementMNode measurementMNode =
-          new MeasurementMNode(entityMNode, leafName, alias, dataType, encoding, compressor, props);
+          new MeasurementMNode(
+              entityMNode,
+              leafName,
+              new MeasurementSchema(leafName, dataType, encoding, compressor, props),
+              alias);
       entityMNode.addChild(leafName, measurementMNode);
       // link alias to LeafMNode
       if (alias != null) {
@@ -490,12 +495,12 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    IMeasurementMNode deletedNode = (IMeasurementMNode) curNode;
+    IMeasurementMNode deletedNode = curNode.getAsMeasurementMNode();
 
     // delete the last node of path
     curNode.getParent().deleteChild(path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      deletedNode.getParent().deleteAliasChild(((IMeasurementMNode) curNode).getAlias());
+      deletedNode.getParent().deleteAliasChild((curNode.getAsMeasurementMNode().getAlias()));
     }
     curNode = curNode.getParent();
     // delete all empty ancestors except storage group and MeasurementMNode
@@ -634,7 +639,7 @@ public class MTree implements Serializable {
       IMNode node = queue.poll();
       for (IMNode child : node.getChildren().values()) {
         if (child.isMeasurement()) {
-          leafMNodes.add((IMeasurementMNode) child);
+          leafMNodes.add(child.getAsMeasurementMNode());
         } else {
           queue.add(child);
         }
@@ -673,9 +678,9 @@ public class MTree implements Serializable {
         if (i == nodeNames.length - 1) {
           return true;
         }
-        if (((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
-          return i == nodeNames.length - 2
-              && ((IMeasurementMNode) cur).getSchema().containsSubMeasurement(nodeNames[i + 1]);
+        IMeasurementSchema schema = cur.getAsMeasurementMNode().getSchema();
+        if (schema instanceof VectorMeasurementSchema) {
+          return i == nodeNames.length - 2 && schema.containsSubMeasurement(nodeNames[i + 1]);
         } else {
           return false;
         }
@@ -858,8 +863,7 @@ public class MTree implements Serializable {
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
   public IMeasurementSchema getSchema(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(fullPath);
-    return node.getSchema();
+    return getNodeByPath(fullPath).getAsMeasurementMNode().getSchema();
   }
 
   /**
@@ -1068,7 +1072,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (cur.isMeasurement()) {
         if (i == nodes.length - 1
-            || ((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+            || cur.getAsMeasurementMNode().getSchema() instanceof VectorMeasurementSchema) {
           return cur;
         } else {
           throw new PathNotExistException(path.getFullPath(), true);
@@ -1088,7 +1092,8 @@ public class MTree implements Serializable {
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);
         }
-        return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
+        return new MeasurementMNode(
+            cur.getAsEntityMNode(), schema.getMeasurementId(), schema, null);
       }
       cur = next;
     }
@@ -1138,7 +1143,7 @@ public class MTree implements Serializable {
       throws MetadataException {
     IMNode node = getNodeByPath(path);
     if (node.isStorageGroup()) {
-      return (IStorageGroupMNode) node;
+      return node.getAsStorageGroupMNode();
     } else {
       throw new StorageGroupNotSetException(path.getFullPath(), true);
     }
@@ -1161,7 +1166,7 @@ public class MTree implements Serializable {
         break;
       }
       if (cur.isStorageGroup()) {
-        return (IStorageGroupMNode) cur;
+        return cur.getAsStorageGroupMNode();
       }
     }
     throw new StorageGroupNotSetException(path.getFullPath());
@@ -1175,7 +1180,7 @@ public class MTree implements Serializable {
     while (!nodeStack.isEmpty()) {
       IMNode current = nodeStack.pop();
       if (current.isStorageGroup()) {
-        ret.add((IStorageGroupMNode) current);
+        ret.add(current.getAsStorageGroupMNode());
       } else {
         nodeStack.addAll(current.getChildren().values());
       }

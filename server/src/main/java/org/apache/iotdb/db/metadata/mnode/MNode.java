@@ -134,6 +134,33 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public IStorageGroupMNode getAsStorageGroupMNode() {
+    if (isStorageGroup()) {
+      return (IStorageGroupMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
+  public IEntityMNode getAsEntityMNode() {
+    if (isEntity()) {
+      return (IEntityMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
+  public IMeasurementMNode getAsMeasurementMNode() {
+    if (isMeasurement()) {
+      return (IMeasurementMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

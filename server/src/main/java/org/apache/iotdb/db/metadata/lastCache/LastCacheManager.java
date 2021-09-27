@@ -183,13 +183,13 @@ public class LastCacheManager {
    */
   public static void deleteLastCacheByDevice(IEntityMNode node) {
     // process lastCache of timeseries represented by measurementNode
-    for (IMNode measurementNode : node.getChildren().values()) {
-      if (measurementNode != null) {
-        ((IMeasurementMNode) measurementNode).getLastCacheContainer().resetLastCache();
+    for (IMNode child : node.getChildren().values()) {
+      if (child.isMeasurement()) {
+        child.getAsMeasurementMNode().getLastCacheContainer().resetLastCache();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
-              measurementNode.getFullPath());
+              child.getFullPath());
         }
       }
     }
@@ -226,7 +226,7 @@ public class LastCacheManager {
         continue;
       }
       path = child.getPartialPath();
-      measurementMNode = (IMeasurementMNode) child;
+      measurementMNode = child.getAsMeasurementMNode();
       if (originalPath.matchFullPath(path)) {
         lastCacheContainer = measurementMNode.getLastCacheContainer();
         if (lastCacheContainer == null) {
