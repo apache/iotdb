@@ -1,4 +1,35 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.integration;
+
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -7,17 +38,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class IoTDBSettleIT {
   private static List<String> sqls = new ArrayList<>();
@@ -38,8 +58,8 @@ public class IoTDBSettleIT {
   }
 
   @Test
-  public void onlineSettleTest(){
-    PartialPath sg= null;
+  public void onlineSettleTest() {
+    PartialPath sg = null;
     try {
       sg = new PartialPath("root.st1");
       StorageEngine.getInstance().settleAll(sg);
@@ -61,8 +81,8 @@ public class IoTDBSettleIT {
   private static void initCreateSQLStatement() {
     sqls.add("SET STORAGE GROUP TO root.st1");
     sqls.add("CREATE TIMESERIES root.st1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-    for(int i=1;i<=10;i++){
-      sqls.add("insert into root.st1.wf01.wt01(timestamp,status) values("+100*i+",false)");
+    for (int i = 1; i <= 10; i++) {
+      sqls.add("insert into root.st1.wf01.wt01(timestamp,status) values(" + 100 * i + ",false)");
     }
     sqls.add("flush");
     sqls.add("delete from root.st1.wf01.wt01.* where time<500");
@@ -80,6 +100,4 @@ public class IoTDBSettleIT {
 
     statement.close();
   }
-
-
 }
