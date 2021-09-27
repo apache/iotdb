@@ -79,6 +79,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     PriorityQueue<Pair<List<TsFileResource>, Long>> notFullCompactionQueue =
         new PriorityQueue<>(10, new SizeTieredCompactionTaskComparator());
+    boolean meetBigFile = false;
 
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
@@ -129,19 +130,22 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
+          if (selectedFileList.size() > 1 && meetBigFile) {
+            // if current seek didn't meet a big file
+            // we should not submit a not full compaction task to avoid write amplification
+            notFullCompactionQueue.add(
+                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+          }
+          selectedFileList.clear();
+          selectedFileSize = 0L;
           if (currentFile.getTsFileSize() >= targetCompactionFileSize) {
+            meetBigFile = true;
             LOGGER.debug("Selected file list is clear because current file is too large");
           } else {
             LOGGER.debug(
                 "Selected file list is clear because current file is {}",
                 currentFile.isMerging() ? "merging" : "not closed");
           }
-          if (selectedFileList.size() > 1) {
-            notFullCompactionQueue.add(
-                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-          }
-          selectedFileList.clear();
-          selectedFileSize = 0L;
           continue;
         }
         selectedFileList.add(currentFile);
@@ -166,7 +170,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           selectedFileSize = 0L;
         }
       }
-      if (selectedFileList.size() > 1) {
+      if (selectedFileList.size() > 1 && meetBigFile) {
         notFullCompactionQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
       }
       if (config.isEnableNotFullCompaction()) {

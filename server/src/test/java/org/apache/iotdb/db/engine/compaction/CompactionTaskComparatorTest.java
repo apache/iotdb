@@ -216,6 +216,11 @@ public class CompactionTaskComparatorTest {
 
     @Override
     protected void doCompaction() throws Exception {}
+
+    @Override
+    public boolean equalsOtherTask(AbstractCompactionTask other) {
+      return false;
+    }
   }
 
   private static class FakeCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
@@ -236,6 +241,11 @@ public class CompactionTaskComparatorTest {
 
     @Override
     protected void doCompaction() throws Exception {}
+
+    @Override
+    public boolean equalsOtherTask(AbstractCompactionTask other) {
+      return false;
+    }
   }
 
   private static class FakedTsFileResource extends TsFileResource {

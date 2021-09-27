@@ -71,4 +71,13 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   public long getTimePartition() {
     return timePartition;
   }
+
+  public abstract boolean equalsOtherTask(AbstractCompactionTask otherTask);
+
+  public boolean equals(Object other) {
+    if (other instanceof AbstractCompactionTask) {
+      return equalsOtherTask((AbstractCompactionTask) other);
+    }
+    return false;
+  }
 }

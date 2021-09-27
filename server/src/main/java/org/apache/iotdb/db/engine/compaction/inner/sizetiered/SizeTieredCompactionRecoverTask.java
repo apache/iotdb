@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -129,5 +130,18 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         }
       }
     }
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask other) {
+    if (other instanceof SizeTieredCompactionRecoverTask) {
+      SizeTieredCompactionRecoverTask otherTask = (SizeTieredCompactionRecoverTask) other;
+      if (!compactionLogFile.equals(otherTask.compactionLogFile)
+          || !dataDir.equals(otherTask.dataDir)) {
+        return false;
+      }
+      return true;
+    }
+    return false;
   }
 }
