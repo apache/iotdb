@@ -122,8 +122,6 @@ public class TriggerRegistrationService implements IService {
       return IoTDB.metaManager.getMeasurementMNode(plan.getFullPath());
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
-    } catch (ClassCastException e) {
-      throw new TriggerManagementException("Triggers can only be registered on MeasurementMNode.");
     }
   }
 

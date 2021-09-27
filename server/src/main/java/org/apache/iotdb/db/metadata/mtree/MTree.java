@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -1207,7 +1208,8 @@ public class MTree implements Serializable {
     if (node.isStorageGroup()) {
       return node.getAsStorageGroupMNode();
     } else {
-      throw new StorageGroupNotSetException(path.getFullPath(), true);
+      throw new MNodeTypeMismatchException(
+          path.getFullPath(), MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
     }
   }
 
@@ -1255,7 +1257,8 @@ public class MTree implements Serializable {
     if (node.isMeasurement()) {
       return node.getAsMeasurementMNode();
     } else {
-      throw new PathNotExistException(path.getFullPath());
+      throw new MNodeTypeMismatchException(
+          path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
     }
   }
   // endregion

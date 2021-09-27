@@ -68,6 +68,9 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public IEntityMNode getParent() {
+    if (parent == null) {
+      return null;
+    }
     return parent.getAsEntityMNode();
   }
 
