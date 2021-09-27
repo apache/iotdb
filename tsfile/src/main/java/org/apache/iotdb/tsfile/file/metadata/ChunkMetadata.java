@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -68,6 +69,9 @@ public class ChunkMetadata {
   private boolean isSeq = true;
   private boolean isClosed;
   private String filePath;
+
+  // used for ChunkCache, Eg:"root.sg1/0/0"
+  private String partialFilePathForCache;
 
   private ChunkMetadata() {}
 
@@ -224,16 +228,12 @@ public class ChunkMetadata {
     ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader
         && version == that.version
-        && Objects.equals(measurementUid, that.measurementUid)
-        && tsDataType == that.tsDataType
-        && Objects.equals(deleteIntervalList, that.deleteIntervalList)
-        && Objects.equals(statistics, that.statistics);
+        && partialFilePathForCache.equals(that.partialFilePathForCache);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        measurementUid, deleteIntervalList, tsDataType, statistics, version, offsetOfChunkHeader);
+    return Objects.hash(partialFilePathForCache, version, offsetOfChunkHeader);
   }
 
   public boolean isModified() {
@@ -290,5 +290,16 @@ public class ChunkMetadata {
 
   public void setFilePath(String filePath) {
     this.filePath = filePath;
+
+    // set partialFilePathForCache
+    String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
+    String[] pathSegments = filePath.split(PATH_SPLIT_STRING);
+    partialFilePathForCache =
+        pathSegments[pathSegments.length - 4] // storage group name
+            + PATH_SPLIT_STRING
+            + pathSegments[pathSegments.length - 3] // virtual storage group Id
+            + PATH_SPLIT_STRING
+            + pathSegments[pathSegments.length - 2] // time partition Id
+    ;
   }
 }
