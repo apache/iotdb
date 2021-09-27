@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
-import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
+import org.apache.iotdb.influxdb.IoTDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.qp.utils.MathUtil;
 import org.apache.iotdb.influxdb.qp.utils.TypeUtil;
 import org.apache.iotdb.influxdb.query.expression.Expression;
@@ -61,14 +61,14 @@ public class MeanFunction extends Aggregate {
   }
 
   @Override
-  public FunctionValue calculateByIotdbFunc() {
+  public FunctionValue calculateByIoTDBFunc() {
 
     int sum = 0;
     int count = 0;
     try {
       SessionDataSet sessionDataSet =
           this.session.executeQueryStatement(
-              IotDBInfluxDBUtils.generateFunctionSql("count", getParmaName(), path));
+              IoTDBInfluxDBUtils.generateFunctionSql("count", getParmaName(), path));
       while (sessionDataSet.hasNext()) {
         RowRecord record = sessionDataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
@@ -79,7 +79,7 @@ public class MeanFunction extends Aggregate {
 
       sessionDataSet =
           this.session.executeQueryStatement(
-              IotDBInfluxDBUtils.generateFunctionSql("sum", getParmaName(), path));
+              IoTDBInfluxDBUtils.generateFunctionSql("sum", getParmaName(), path));
       while (sessionDataSet.hasNext()) {
         RowRecord record = sessionDataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();

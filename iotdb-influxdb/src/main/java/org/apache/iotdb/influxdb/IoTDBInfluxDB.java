@@ -50,7 +50,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class IotDBInfluxDB implements InfluxDB {
+public class IoTDBInfluxDB implements InfluxDB {
 
   private static Session session;
   // Database currently selected by influxdb
@@ -77,10 +77,10 @@ public class IotDBInfluxDB implements InfluxDB {
    * @param userName username
    * @param password user password
    */
-  public IotDBInfluxDB(String url, String userName, String password) {
+  public IoTDBInfluxDB(String url, String userName, String password) {
     try {
       URI uri = new URI(url);
-      new IotDBInfluxDB(uri.getHost(), uri.getPort(), userName, password);
+      new IoTDBInfluxDB(uri.getHost(), uri.getPort(), userName, password);
     } catch (URISyntaxException e) {
       e.printStackTrace();
       throw new IllegalArgumentException(e);
@@ -95,7 +95,7 @@ public class IotDBInfluxDB implements InfluxDB {
    * @param userName username
    * @param password user password
    */
-  public IotDBInfluxDB(String host, int rpcPort, String userName, String password) {
+  public IoTDBInfluxDB(String host, int rpcPort, String userName, String password) {
     session = new Session(host, rpcPort, userName, password);
     try {
       session.open(false);
@@ -214,7 +214,7 @@ public class IotDBInfluxDB implements InfluxDB {
       updateDatabase(database);
     }
     Operator operator = LogicalGenerator.generate(sql);
-    IotDBInfluxDBUtils.checkQueryOperator(operator);
+    IoTDBInfluxDBUtils.checkQueryOperator(operator);
     QueryOperator queryOperator = (QueryOperator) operator;
     // update relative data
     updateMeasurement(queryOperator.getFromComponent().getNodeName().get(0));
@@ -246,7 +246,7 @@ public class IotDBInfluxDB implements InfluxDB {
    * @param name database name
    */
   public void createDatabase(String name) {
-    IotDBInfluxDBUtils.checkNonEmptyString(name, "database name");
+    IoTDBInfluxDBUtils.checkNonEmptyString(name, "database name");
     try {
       session.setStorageGroup("root." + name);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
@@ -602,7 +602,7 @@ public class IotDBInfluxDB implements InfluxDB {
         // beginning and end
         curQueryPath
             .append(".")
-            .append(IotDBInfluxDBUtils.removeQuotation(realTagOrders.get(i).getLiteral()));
+            .append(IoTDBInfluxDBUtils.removeQuotation(realTagOrders.get(i).getLiteral()));
       } else {
         curQueryPath.append(".").append("*");
       }
@@ -681,7 +681,7 @@ public class IotDBInfluxDB implements InfluxDB {
   private QueryResult iotdbAlignByDeviceResultCvtToInfluxdbResult(SessionDataSet sessionDataSet)
       throws IoTDBConnectionException, StatementExecutionException {
     if (sessionDataSet == null) {
-      return IotDBInfluxDBUtils.getNullQueryResult();
+      return IoTDBInfluxDBUtils.getNullQueryResult();
     }
     // generate series
     QueryResult.Series series = new QueryResult.Series();
@@ -726,7 +726,7 @@ public class IotDBInfluxDB implements InfluxDB {
         }
       }
       for (int i = 1; i < fields.size(); i++) {
-        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(i));
+        Object o = IoTDBInfluxDBUtils.iotdbFiledCvt(fields.get(i));
         if (o != null) {
           // insert the value of filed into it
           value[fieldOrders.get(iotdbResultColumn.get(i + 1))] = o;
@@ -754,7 +754,7 @@ public class IotDBInfluxDB implements InfluxDB {
   private QueryResult iotdbResultCvtToInfluxdbResult(SessionDataSet sessionDataSet)
       throws IoTDBConnectionException, StatementExecutionException {
     if (sessionDataSet == null) {
-      return IotDBInfluxDBUtils.getNullQueryResult();
+      return IoTDBInfluxDBUtils.getNullQueryResult();
     }
     QueryResult.Series series = new QueryResult.Series();
     series.setName(measurement);
@@ -781,7 +781,7 @@ public class IotDBInfluxDB implements InfluxDB {
 
     List<String> iotdbResultColumn = sessionDataSet.getColumnNames();
     ArrayList<Integer> samePath =
-        IotDBInfluxDBUtils.getSamePathForList(
+        IoTDBInfluxDBUtils.getSamePathForList(
             iotdbResultColumn.subList(1, iotdbResultColumn.size()));
     while (sessionDataSet.hasNext()) {
       Object[] value = new Object[columns.size()];
@@ -794,13 +794,13 @@ public class IotDBInfluxDB implements InfluxDB {
       // record the current index of sameList
       int sameListIndex = 0;
       for (int i = 0; i < fields.size(); i++) {
-        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(i));
+        Object o = IoTDBInfluxDBUtils.iotdbFiledCvt(fields.get(i));
         if (o != null) {
           if (allNull) {
             allNull = false;
           }
           // insert the value of filed into it
-          value[fieldOrders.get(IotDBInfluxDBUtils.getFiledByPath(iotdbResultColumn.get(i + 1)))] =
+          value[fieldOrders.get(IoTDBInfluxDBUtils.getFiledByPath(iotdbResultColumn.get(i + 1)))] =
               o;
         }
         // the same path has been traversed
@@ -849,26 +849,26 @@ public class IotDBInfluxDB implements InfluxDB {
     if (operator instanceof BasicFunctionOperator) {
       List<Condition> conditions = new ArrayList<>();
       conditions.add(
-          IotDBInfluxDBUtils.getConditionForBasicFunctionOperator(
+          IoTDBInfluxDBUtils.getConditionForBasicFunctionOperator(
               (BasicFunctionOperator) operator));
       return queryByConditions(conditions);
     } else {
       FilterOperator leftOperator = operator.getChildOperators().get(0);
       FilterOperator rightOperator = operator.getChildOperators().get(1);
       if (operator.getFilterType() == FilterConstant.FilterType.KW_OR) {
-        return IotDBInfluxDBUtils.orQueryResultProcess(
+        return IoTDBInfluxDBUtils.orQueryResultProcess(
             queryExpr(leftOperator), queryExpr(rightOperator));
       } else if (operator.getFilterType() == FilterConstant.FilterType.KW_AND) {
-        if (IotDBInfluxDBUtils.canMergeOperator(leftOperator)
-            && IotDBInfluxDBUtils.canMergeOperator(rightOperator)) {
+        if (IoTDBInfluxDBUtils.canMergeOperator(leftOperator)
+            && IoTDBInfluxDBUtils.canMergeOperator(rightOperator)) {
           List<Condition> conditions1 =
-              IotDBInfluxDBUtils.getConditionsByFilterOperatorOperator(leftOperator);
+              IoTDBInfluxDBUtils.getConditionsByFilterOperatorOperator(leftOperator);
           List<Condition> conditions2 =
-              IotDBInfluxDBUtils.getConditionsByFilterOperatorOperator(rightOperator);
+              IoTDBInfluxDBUtils.getConditionsByFilterOperatorOperator(rightOperator);
           conditions1.addAll(conditions2);
           return queryByConditions(conditions1);
         } else {
-          return IotDBInfluxDBUtils.andQueryResultProcess(
+          return IoTDBInfluxDBUtils.andQueryResultProcess(
               queryExpr(leftOperator), queryExpr(rightOperator));
         }
       }
@@ -931,7 +931,7 @@ public class IotDBInfluxDB implements InfluxDB {
     List<Object> value = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     for (Function function : functions) {
-      FunctionValue functionValue = function.calculateByIotdbFunc();
+      FunctionValue functionValue = function.calculateByIoTDBFunc();
       if (value.size() == 0) {
         value.add(functionValue.getTimestamp());
       } else {
@@ -1078,8 +1078,8 @@ public class IotDBInfluxDB implements InfluxDB {
       }
       values = newValues;
     }
-    IotDBInfluxDBUtils.updateQueryResultColumnValue(
-        queryResult, IotDBInfluxDBUtils.removeDuplicate(newColumns), values);
+    IoTDBInfluxDBUtils.updateQueryResultColumnValue(
+        queryResult, IoTDBInfluxDBUtils.removeDuplicate(newColumns), values);
   }
 
   /**
@@ -1096,7 +1096,7 @@ public class IotDBInfluxDB implements InfluxDB {
     int tagOrderNums = tagOrders.size();
     while (result.hasNext()) {
       List<org.apache.iotdb.tsfile.read.common.Field> fields = result.next().getFields();
-      String filed = IotDBInfluxDBUtils.getFiledByPath(fields.get(0).getStringValue());
+      String filed = IoTDBInfluxDBUtils.getFiledByPath(fields.get(0).getStringValue());
       if (!fieldOrders.containsKey(filed)) {
         // The corresponding order of fields is 1 + tagnum (the first is timestamp, then all tags,
         // and finally all fields)

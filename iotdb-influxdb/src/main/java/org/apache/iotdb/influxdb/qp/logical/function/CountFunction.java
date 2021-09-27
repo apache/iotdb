@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
-import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
+import org.apache.iotdb.influxdb.IoTDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.query.expression.Expression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -53,12 +53,12 @@ public class CountFunction extends Aggregate {
   }
 
   @Override
-  public FunctionValue calculateByIotdbFunc() {
+  public FunctionValue calculateByIoTDBFunc() {
     int count = 0;
     try {
       SessionDataSet sessionDataSet =
           this.session.executeQueryStatement(
-              IotDBInfluxDBUtils.generateFunctionSql("count", getParmaName(), path));
+              IoTDBInfluxDBUtils.generateFunctionSql("count", getParmaName(), path));
       while (sessionDataSet.hasNext()) {
         RowRecord record = sessionDataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();

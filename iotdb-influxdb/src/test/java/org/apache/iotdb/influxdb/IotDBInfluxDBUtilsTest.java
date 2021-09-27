@@ -35,7 +35,7 @@ public class IotDBInfluxDBUtilsTest {
     ArrayList<String> columns = new ArrayList<>();
     columns.addAll(Arrays.asList("time", "root.111.1", "root.111.2", "root.222.1"));
     ArrayList<Integer> list =
-        IotDBInfluxDBUtils.getSamePathForList(columns.subList(1, columns.size()));
+        IoTDBInfluxDBUtils.getSamePathForList(columns.subList(1, columns.size()));
     assert list.get(0) == 1;
     assert list.get(1) == 2;
     assert list.size() == 2;

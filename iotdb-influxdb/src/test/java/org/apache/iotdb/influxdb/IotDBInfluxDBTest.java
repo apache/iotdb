@@ -30,7 +30,7 @@ import org.junit.Before;
 import java.util.*;
 
 public class IotDBInfluxDBTest {
-  private IotDBInfluxDB iotDBInfluxDB;
+  private IoTDBInfluxDB iotDBInfluxDB;
 
   private static final String LOCAL_HOST = "127.0.0.1";
   private static Session session;

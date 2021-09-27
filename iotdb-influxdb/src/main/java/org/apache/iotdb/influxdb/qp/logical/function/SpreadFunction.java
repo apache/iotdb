@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
-import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
+import org.apache.iotdb.influxdb.IoTDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.query.expression.Expression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -63,17 +63,17 @@ public class SpreadFunction extends Aggregate {
   }
 
   @Override
-  public FunctionValue calculateByIotdbFunc() {
+  public FunctionValue calculateByIoTDBFunc() {
     Double maxNumber = null;
     Double minNumber = null;
     try {
       SessionDataSet sessionDataSet =
           this.session.executeQueryStatement(
-              IotDBInfluxDBUtils.generateFunctionSql("max_value", getParmaName(), path));
+              IoTDBInfluxDBUtils.generateFunctionSql("max_value", getParmaName(), path));
       while (sessionDataSet.hasNext()) {
         RowRecord record = sessionDataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
-        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
+        Object o = IoTDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
         if ((o instanceof Number)) {
           double tmpValue = ((Number) o).doubleValue();
           if (maxNumber == null) {
@@ -85,11 +85,11 @@ public class SpreadFunction extends Aggregate {
       }
       sessionDataSet =
           this.session.executeQueryStatement(
-              IotDBInfluxDBUtils.generateFunctionSql("min_value", getParmaName(), path));
+              IoTDBInfluxDBUtils.generateFunctionSql("min_value", getParmaName(), path));
       while (sessionDataSet.hasNext()) {
         RowRecord record = sessionDataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
-        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
+        Object o = IoTDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
         if ((o instanceof Number)) {
           double tmpValue = ((Number) o).doubleValue();
           if (minNumber == null) {

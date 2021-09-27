@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
-import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
+import org.apache.iotdb.influxdb.IoTDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.query.expression.Expression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -61,17 +61,17 @@ public class LastFunction extends Selector {
   }
 
   @Override
-  public FunctionValue calculateByIotdbFunc() {
+  public FunctionValue calculateByIoTDBFunc() {
     Object LastValue = null;
     Long LastTime = null;
     try {
       SessionDataSet sessionDataSet =
           this.session.executeQueryStatement(
-              IotDBInfluxDBUtils.generateFunctionSql("last_value", getParmaName(), path));
+              IoTDBInfluxDBUtils.generateFunctionSql("last_value", getParmaName(), path));
       while (sessionDataSet.hasNext()) {
         RowRecord record = sessionDataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
-        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
+        Object o = IoTDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
         if (o != null) {
           String newPath =
               String.format(
@@ -83,11 +83,11 @@ public class LastFunction extends Selector {
             List<org.apache.iotdb.tsfile.read.common.Field> newFields = recordNew.getFields();
             Long time = recordNew.getTimestamp();
             if (LastValue == null && LastTime == null) {
-              LastValue = IotDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
+              LastValue = IoTDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
               LastTime = time;
             } else {
               if (time > LastTime) {
-                LastValue = IotDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
+                LastValue = IoTDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
                 LastTime = time;
               }
             }

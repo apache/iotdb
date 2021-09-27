@@ -21,20 +21,20 @@ package org.apache.iotdb.influxdb;
 
 import org.influxdb.InfluxDB;
 
-public enum IotDBInfluxDBFactory {
+public enum IoTDBInfluxDBFactory {
   INSTANCE;
 
-  private IotDBInfluxDBFactory() {}
+  private IoTDBInfluxDBFactory() {}
 
   public static InfluxDB connect(String url, String username, String password) {
-    IotDBInfluxDBUtils.checkNonEmptyString(url, "url");
-    IotDBInfluxDBUtils.checkNonEmptyString(username, "username");
-    return new IotDBInfluxDB(url, username, password);
+    IoTDBInfluxDBUtils.checkNonEmptyString(url, "url");
+    IoTDBInfluxDBUtils.checkNonEmptyString(username, "username");
+    return new IoTDBInfluxDB(url, username, password);
   }
 
   public static InfluxDB connect(String host, int rpcPort, String userName, String password) {
-    IotDBInfluxDBUtils.checkNonEmptyString(host, "host");
-    IotDBInfluxDBUtils.checkNonEmptyString(userName, "username");
-    return new IotDBInfluxDB(host, rpcPort, userName, password);
+    IoTDBInfluxDBUtils.checkNonEmptyString(host, "host");
+    IoTDBInfluxDBUtils.checkNonEmptyString(userName, "username");
+    return new IoTDBInfluxDB(host, rpcPort, userName, password);
   }
 }

@@ -13,7 +13,7 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: InfluxDB-IotDB Test
+name: InfluxDB-IoTDB Test
 
 on:
   push:
@@ -26,7 +26,6 @@ on:
     branches:
       - master
       - 'rel/*'
-      - cluster_new
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:

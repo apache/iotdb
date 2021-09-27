@@ -49,7 +49,7 @@ public abstract class Function {
   // 计算最后的结果
   public abstract FunctionValue calculate();
 
-  public abstract FunctionValue calculateByIotdbFunc();
+  public abstract FunctionValue calculateByIoTDBFunc();
 
   // 获取expressionList
   public List<Expression> getExpressions() {

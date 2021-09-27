@@ -72,7 +72,7 @@ public class ModeFunction extends Aggregate {
   }
 
   @Override
-  public FunctionValue calculateByIotdbFunc() {
+  public FunctionValue calculateByIoTDBFunc() {
     return null;
   }
 }

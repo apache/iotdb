@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.influxdb.qp.logical.function;
 
-import org.apache.iotdb.influxdb.IotDBInfluxDBUtils;
+import org.apache.iotdb.influxdb.IoTDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.query.expression.Expression;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -60,17 +60,17 @@ public class FirstFunction extends Selector {
   }
 
   @Override
-  public FunctionValue calculateByIotdbFunc() {
+  public FunctionValue calculateByIoTDBFunc() {
     Object firstValue = null;
     Long firstTime = null;
     try {
       SessionDataSet sessionDataSet =
           this.session.executeQueryStatement(
-              IotDBInfluxDBUtils.generateFunctionSql("first_value", getParmaName(), path));
+              IoTDBInfluxDBUtils.generateFunctionSql("first_value", getParmaName(), path));
       while (sessionDataSet.hasNext()) {
         RowRecord record = sessionDataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
-        Object o = IotDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
+        Object o = IoTDBInfluxDBUtils.iotdbFiledCvt(fields.get(1));
         if (o != null) {
           String newPath =
               String.format(
@@ -86,11 +86,11 @@ public class FirstFunction extends Selector {
             List<org.apache.iotdb.tsfile.read.common.Field> newFields = recordNew.getFields();
             Long time = recordNew.getTimestamp();
             if (firstValue == null && firstTime == null) {
-              firstValue = IotDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
+              firstValue = IoTDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
               firstTime = time;
             } else {
               if (time < firstTime) {
-                firstValue = IotDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
+                firstValue = IoTDBInfluxDBUtils.iotdbFiledCvt(newFields.get(0));
                 firstTime = time;
               }
             }

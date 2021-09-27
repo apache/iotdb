@@ -28,7 +28,7 @@ import org.influxdb.dto.QueryResult;
 
 import java.util.*;
 
-public final class IotDBInfluxDBUtils {
+public final class IoTDBInfluxDBUtils {
 
   /**
    * if the first and last of the current string are quotation marks, they are removed
