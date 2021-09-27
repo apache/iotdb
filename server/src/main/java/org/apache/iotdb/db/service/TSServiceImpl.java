@@ -2208,14 +2208,11 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private TSStatus onNPEOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
-    String message =
-        String.format("[%s] Exception occurred: %s failed. ", statusCode.name(), operation);
+    String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
     if (e instanceof NullPointerException) {
-      LOGGER.error("Status code: {}, MSG: {}", statusCode, message, e);
-    } else if (e instanceof UnSupportedDataTypeException) {
-      LOGGER.warn("Status code: {}, MSG: {}", statusCode, e.getMessage());
+      LOGGER.error("Status code: {}, operation: {} failed", statusCode, operation, e);
     } else {
-      LOGGER.warn("Status code: {}, MSG: {}", statusCode, message, e);
+      LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
@@ -2226,16 +2223,12 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   private TSStatus onIoTDBException(Exception e, String operation, int errorCode) {
-    String errorName = "IOTDBException";
-    for (TSStatusCode value : TSStatusCode.values()) {
-      if (value.getStatusCode() == errorCode) {
-        errorName = value.name();
-        break;
-      }
-    }
-    String message = String.format("[%s] Exception occurred: %s failed. ", errorName, operation);
-    LOGGER.warn("Status code: {}, MSG: {}", errorName, message, e);
-    return RpcUtils.getStatus(errorCode, message + e.getMessage());
+    TSStatusCode statusCode = TSStatusCode.representOf(errorCode);
+    String message =
+        String.format(
+            "[%s] Exception occurred: %s failed. %s", statusCode, operation, e.getMessage());
+    LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
+    return RpcUtils.getStatus(errorCode, message);
   }
 
   private TSStatus onIoTDBException(Exception e, OperationType operation, int errorCode) {
