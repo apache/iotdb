@@ -1037,16 +1037,6 @@ public class MManager {
   // region Interfaces for Entity/Device info Query
 
   /**
-   * Get all devices under given prefixPath.
-   *
-   * @param prefixPath a prefix of a full path or a pattern of the prefixPath.
-   * @return A HashSet instance which stores devices paths with given prefixPath.
-   */
-  public Set<PartialPath> getDevicesByPrefix(PartialPath prefixPath) throws MetadataException {
-    return mtree.getDevices(prefixPath, true);
-  }
-
-  /**
    * Get all devices that one of the timeseries, matching the given timeseries path pattern, belongs
    * to.
    *
@@ -1338,6 +1328,11 @@ public class MManager {
     }
 
     return new ArrayList<>(res);
+  }
+
+  public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
+      PartialPath prefixPath) throws MetadataException {
+    return mtree.getAllMeasurementSchemaByPrefix(prefixPath);
   }
   // endregion
   // endregion

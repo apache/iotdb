@@ -90,6 +90,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -934,6 +935,28 @@ public class MTree implements Serializable {
     return collector.getResult();
   }
 
+  public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
+      PartialPath prefixPath) throws MetadataException {
+    Map<PartialPath, IMeasurementSchema> result = new HashMap<>();
+    MeasurementCollector<List<IMeasurementSchema>> collector =
+        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
+          @Override
+          protected void collectUnaryMeasurement(IMeasurementMNode node) {
+            result.put(node.getPartialPath(), node.getSchema());
+          }
+
+          @Override
+          protected void collectVectorMeasurement(IMeasurementMNode node, int index) {
+            if (!result.containsKey(node.getPartialPath())) {
+              result.put(node.getPartialPath(), node.getSchema());
+            }
+          }
+        };
+    collector.setPrefixMatch(true);
+    collector.traverse();
+    return result;
+  }
+
   /**
    * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
    *
@@ -951,7 +974,7 @@ public class MTree implements Serializable {
 
             @Override
             protected void collectVectorMeasurement(IMeasurementMNode node, int index) {
-              if (measurementSchemas.contains(node.getSchema())) {
+              if (!measurementSchemas.contains(node.getSchema())) {
                 measurementSchemas.add(node.getSchema());
               }
             }

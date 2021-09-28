@@ -1103,8 +1103,8 @@ public class CMManager extends MManager {
   /**
    * Split the paths by the data group they belong to and query them from the groups separately.
    *
-   * @param sgPathMap the key is the storage group name and the value is the path to be queried with
-   *     storage group added
+   * @param sgPathMap the key is the storage group name and the value is the path pattern to be
+   *     queried with storage group added
    * @return a collection of all queried devices
    */
   private Set<PartialPath> getMatchedDevices(Map<String, String> sgPathMap)
@@ -1128,7 +1128,7 @@ public class CMManager extends MManager {
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
-        Set<PartialPath> allDevices = getDevicesByPrefix(pathUnderSG);
+        Set<PartialPath> allDevices = super.getMatchedDevices(pathUnderSG);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
             metaGroupMember.getName(),
