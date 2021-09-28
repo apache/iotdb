@@ -162,7 +162,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Long> stats) {
     LongStatistics longStats = (LongStatistics) stats;
     if (isEmpty) {
       initializeStats(
