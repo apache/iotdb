@@ -22,10 +22,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -292,17 +292,6 @@ public class ChunkMetadata {
     this.filePath = filePath;
 
     // set partialFilePathForCache
-    if (filePath == null) partialFilePathForCache = null;
-    else {
-      String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
-      String[] pathSegments = filePath.split(PATH_SPLIT_STRING);
-      partialFilePathForCache =
-          pathSegments[pathSegments.length - 4] // storage group name
-              + PATH_SPLIT_STRING
-              + pathSegments[pathSegments.length - 3] // virtual storage group Id
-              + PATH_SPLIT_STRING
-              + pathSegments[pathSegments.length - 2] // time partition Id
-      ;
-    }
+    partialFilePathForCache = FilePathUtils.getPartialFilePathForCache(filePath);
   }
 }
