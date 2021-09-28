@@ -84,45 +84,38 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
     IMeasurementSchema schema = measurementMNode.getSchema();
     if (schema instanceof MeasurementSchema) {
-      processUnaryMeasurementMNode(measurementMNode);
+      if (hasLimit) {
+        curOffset += 1;
+        if (curOffset < offset) {
+          return true;
+        }
+      }
+      collectUnaryMeasurement(measurementMNode);
+      if (hasLimit) {
+        count += 1;
+      }
     } else if (schema instanceof VectorMeasurementSchema) {
-      if (!(idx >= nodes.length - 1 && nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD))
+      if (idx >= nodes.length - 1
+          && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {
         return true;
       }
       // only when idx > nodes.length or nodes ends with ** or isPrefixMatch
-      processVectorMeasurementMNode(measurementMNode);
-    }
-    return true;
-  }
-
-  protected void processUnaryMeasurementMNode(IMeasurementMNode node) throws MetadataException {
-    if (hasLimit) {
-      curOffset += 1;
-      if (curOffset < offset) {
-        return;
-      }
-    }
-    collectUnaryMeasurement(node);
-    if (hasLimit) {
-      count += 1;
-    }
-  }
-
-  protected void processVectorMeasurementMNode(IMeasurementMNode node) throws MetadataException {
-    List<String> measurements = node.getSchema().getSubMeasurementsList();
-    for (int i = 0; i < measurements.size(); i++) {
-      if (hasLimit) {
-        curOffset += 1;
-        if (curOffset < offset) {
-          return;
+      List<String> measurements = schema.getSubMeasurementsList();
+      for (int i = 0; i < measurements.size(); i++) {
+        if (hasLimit) {
+          curOffset += 1;
+          if (curOffset < offset) {
+            return true;
+          }
+        }
+        collectVectorMeasurement(measurementMNode, i);
+        if (hasLimit) {
+          count += 1;
         }
       }
-      collectVectorMeasurement(node, i);
-      if (hasLimit) {
-        count += 1;
-      }
     }
+    return true;
   }
 
   /**
