@@ -40,15 +40,20 @@ public class TsFileMetadataTest {
 
   @Before
   public void setUp() {
-    File pathFile = new File(TestConstant.BASE_OUTPUT_PATH);
-    Assert.assertTrue(pathFile.mkdirs());
+    File file = new File(PATH);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
   }
 
   @After
   public void tearDown() {
     File file = new File(PATH);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
   }
 
