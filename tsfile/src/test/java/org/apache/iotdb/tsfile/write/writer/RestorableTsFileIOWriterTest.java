@@ -63,11 +63,11 @@ import static org.junit.Assert.assertTrue;
 public class RestorableTsFileIOWriterTest {
 
   private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
-  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Before
   public void setUp() {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     if (!file.getParentFile().exists()) {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
@@ -75,7 +75,7 @@ public class RestorableTsFileIOWriterTest {
 
   @After
   public void tearDown() {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
