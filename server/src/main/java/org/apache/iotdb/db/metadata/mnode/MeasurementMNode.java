@@ -202,6 +202,9 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public String getFullPath() {
+    if (fullPath != null) {
+      return fullPath;
+    }
     return concatFullPath();
   }
 

@@ -153,7 +153,7 @@ public class IoTDBTriggerManagementIT {
           "create trigger trigger-2 before insert on root.vehicle.d1 as \"org.apache.iotdb.db.engine.trigger.example.Accumulator\"");
     } catch (SQLException throwable) {
       assertTrue(
-          throwable.getMessage().contains("MNode [root.vehicle.d1] is not an MeasurementMNode."));
+          throwable.getMessage().contains("MNode [root.vehicle.d1] is not a MeasurementMNode."));
     }
   }
 
