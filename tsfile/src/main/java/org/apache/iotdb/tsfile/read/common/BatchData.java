@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -641,6 +640,11 @@ public class BatchData {
     return new BatchDataIterator();
   }
 
+  /** Only used for the batch data of vector time series. */
+  public IBatchDataIterator getBatchDataIterator(int subIndex) {
+    return new VectorBatchDataIterator(subIndex);
+  }
+
   /**
    * This method is used to reset batch data when more than one group by aggregation functions visit
    * the same batch data
@@ -661,72 +665,6 @@ public class BatchData {
 
   public int getReadCurArrayIndex() {
     return readCurArrayIndex;
-  }
-
-  /** Generate an array of subBatchData with certain data type from vector BatchData. */
-  public BatchData[] generateSubBatchData() throws IOException {
-    if (this.vectorRet == null) {
-      throw new IOException("SubBatchData can only be generated from VectorBatchData");
-    }
-    TsPrimitiveType[] firstValues = getVector();
-    int subSensorSize = firstValues.length;
-    BatchData[] subBatchData = new BatchData[subSensorSize];
-    // set data type for each subBatchData
-    for (int i = 0; i < subSensorSize; i++) {
-      TsPrimitiveType primitiveVal = firstValues[i];
-      switch (batchDataType) {
-        case Ordinary:
-          subBatchData[i] = new BatchData(primitiveVal.getDataType());
-          break;
-        case DescRead:
-          subBatchData[i] = new DescReadBatchData(primitiveVal.getDataType());
-          break;
-        case DescReadWrite:
-          subBatchData[i] = new DescReadWriteBatchData(primitiveVal.getDataType());
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("BatchData type %s is not supported.", batchDataType));
-      }
-    }
-
-    while (hasCurrent()) {
-      long currentTime = currentTime();
-      TsPrimitiveType[] currentValues = getVector();
-      for (int i = 0; i < currentValues.length; i++) {
-        TsPrimitiveType primitiveVal = currentValues[i];
-        switch (primitiveVal.getDataType()) {
-          case INT32:
-            subBatchData[i].putInt(currentTime, primitiveVal.getInt());
-            break;
-          case INT64:
-            subBatchData[i].putLong(currentTime, primitiveVal.getLong());
-            break;
-          case FLOAT:
-            subBatchData[i].putFloat(currentTime, primitiveVal.getFloat());
-            break;
-          case DOUBLE:
-            subBatchData[i].putDouble(currentTime, primitiveVal.getDouble());
-            break;
-          case BOOLEAN:
-            subBatchData[i].putBoolean(currentTime, primitiveVal.getBoolean());
-            break;
-          case TEXT:
-            subBatchData[i].putBinary(currentTime, primitiveVal.getBinary());
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", primitiveVal.getDataType()));
-        }
-      }
-      next();
-    }
-
-    resetBatchData();
-    for (int i = 0; i < subSensorSize; i++) {
-      subBatchData[i].flip();
-    }
-    return subBatchData;
   }
 
   /**
@@ -764,11 +702,41 @@ public class BatchData {
     }
   }
 
-  private class BatchDataIterator implements IPointReader {
+  private class BatchDataIterator implements IPointReader, IBatchDataIterator {
+
+    @Override
+    public boolean hasNext() {
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public void next() {
+      BatchData.this.next();
+    }
+
+    @Override
+    public long currentTime() {
+      return BatchData.this.currentTime();
+    }
+
+    @Override
+    public Object currentValue() {
+      return BatchData.this.currentValue();
+    }
+
+    @Override
+    public void reset() {
+      BatchData.this.resetBatchData();
+    }
+
+    @Override
+    public int totalLength() {
+      return BatchData.this.length();
+    }
 
     @Override
     public boolean hasNextTimeValuePair() {
-      return hasCurrent();
+      return hasNext();
     }
 
     @Override
@@ -785,5 +753,23 @@ public class BatchData {
 
     @Override
     public void close() {}
+  }
+
+  private class VectorBatchDataIterator extends BatchDataIterator {
+
+    private final int subIndex;
+
+    private VectorBatchDataIterator(int subIndex) {
+      this.subIndex = subIndex;
+    }
+
+    @Override
+    public Object currentValue() {
+      if (dataType == TSDataType.VECTOR) {
+        return getVector()[subIndex].getValue();
+      } else {
+        return null;
+      }
+    }
   }
 }

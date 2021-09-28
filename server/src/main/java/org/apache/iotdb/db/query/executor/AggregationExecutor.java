@@ -48,6 +48,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -495,10 +496,10 @@ public class AggregationExecutor {
         seriesReader.skipCurrentPage();
         continue;
       }
-      BatchData nextOverlappedPageData = seriesReader.nextPage();
+      IBatchDataIterator batchDataIterator = seriesReader.nextPage().getBatchDataIterator();
       remainingToCalculate =
           aggregateBatchData(
-              aggregateResultList, isCalculatedArray, remainingToCalculate, nextOverlappedPageData);
+              aggregateResultList, isCalculatedArray, remainingToCalculate, batchDataIterator);
     }
     return remainingToCalculate;
   }
@@ -531,14 +532,15 @@ public class AggregationExecutor {
       }
 
       BatchData nextOverlappedPageData = seriesReader.nextPage();
-      BatchData[] subBatchData = nextOverlappedPageData.generateSubBatchData();
       while (seriesReader.hasNextSubSeries()) {
+        int subIndex = seriesReader.getCurIndex();
+        IBatchDataIterator batchIterator = nextOverlappedPageData.getBatchDataIterator(subIndex);
         remainingToCalculate =
             aggregateBatchData(
-                aggregateResultList.get(seriesReader.getCurIndex()),
-                isCalculatedArray.get(seriesReader.getCurIndex()),
+                aggregateResultList.get(subIndex),
+                isCalculatedArray.get(subIndex),
                 remainingToCalculate,
-                subBatchData[seriesReader.getCurIndex()]);
+                batchIterator);
         if (remainingToCalculate == 0) {
           seriesReader.resetIndex();
           return 0;
@@ -553,14 +555,14 @@ public class AggregationExecutor {
       List<AggregateResult> aggregateResultList,
       boolean[] isCalculatedArray,
       int remainingToCalculate,
-      BatchData batchData)
+      IBatchDataIterator batchIterator)
       throws QueryProcessException, IOException {
     int newRemainingToCalculate = remainingToCalculate;
     for (int i = 0; i < aggregateResultList.size(); i++) {
       if (!isCalculatedArray[i]) {
         AggregateResult aggregateResult = aggregateResultList.get(i);
-        aggregateResult.updateResultFromPageData(batchData);
-        batchData.resetBatchData();
+        aggregateResult.updateResultFromPageData(batchIterator);
+        batchIterator.reset();
         if (aggregateResult.hasFinalResult()) {
           isCalculatedArray[i] = true;
           remainingToCalculate--;
