@@ -27,7 +27,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.PriorityQueue;
 import java.util.TreeSet;
 
 public class TsFileResourceManager {
