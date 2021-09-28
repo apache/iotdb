@@ -1035,23 +1035,6 @@ public class MManager {
   // endregion
 
   // region Interfaces for Entity/Device info Query
-  /**
-   * To reduce the String number in memory, use the deviceId from MManager instead of the deviceId
-   * read from disk
-   *
-   * @param devicePath read from disk
-   * @return deviceId
-   */
-  public String getDeviceId(PartialPath devicePath) {
-    String device = null;
-    try {
-      IMNode deviceNode = getDeviceNode(devicePath);
-      device = deviceNode.getFullPath();
-    } catch (MetadataException | NullPointerException e) {
-      // Cannot get deviceId from MManager, return the input deviceId
-    }
-    return device;
-  }
 
   /**
    * Get all devices under given prefixPath.
