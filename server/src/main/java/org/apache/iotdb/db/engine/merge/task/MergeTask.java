@@ -152,9 +152,11 @@ public class MergeTask implements Callable<Void> {
       IMNode deviceNode = IoTDB.metaManager.getDeviceNode(device);
       // todo add template merge logic
       for (Entry<String, IMNode> entry : deviceNode.getChildren().entrySet()) {
-        PartialPath path = device.concatNode(entry.getKey());
-        measurementSchemaMap.put(path, entry.getValue().getAsMeasurementMNode().getSchema());
-        unmergedSeries.add(path);
+        if (entry.getValue().isMeasurement()) {
+          PartialPath path = device.concatNode(entry.getKey());
+          measurementSchemaMap.put(path, entry.getValue().getAsMeasurementMNode().getSchema());
+          unmergedSeries.add(path);
+        }
       }
     }
     resource.setMeasurementSchemaMap(measurementSchemaMap);

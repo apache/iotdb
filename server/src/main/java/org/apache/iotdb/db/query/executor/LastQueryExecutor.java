@@ -270,11 +270,7 @@ public class LastQueryExecutor {
     public TimeValuePair read() {
       try {
         node = IoTDB.metaManager.getMeasurementMNode(path);
-      } catch (MetadataException ignored) {
-
-      }
-
-      if (node == null) {
+      } catch (MetadataException e) {
         TimeValuePair timeValuePair;
         // cluster mode may not get remote node
         if (path instanceof VectorPartialPath) {
@@ -285,7 +281,13 @@ public class LastQueryExecutor {
         } else {
           timeValuePair = IoTDB.metaManager.getLastCache(path);
         }
-        return timeValuePair;
+        if (timeValuePair != null) {
+          return timeValuePair;
+        }
+      }
+
+      if (node == null) {
+        return null;
       }
 
       if (path instanceof VectorPartialPath) {

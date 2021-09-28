@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -1395,8 +1396,8 @@ public class MManager {
     for (int i = 0; i < mNodes.length; i++) {
       try {
         mNodes[i] = mtree.getMeasurementMNode(deviceId.concatNode(measurements[i]));
-      } catch (PathNotExistException ignored) {
-        logger.warn("{} does not exist in {}", measurements[i], deviceId);
+      } catch (PathNotExistException | MNodeTypeMismatchException ignored) {
+        logger.warn("MeasurementMNode {} does not exist in {}", measurements[i], deviceId);
       }
       if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
