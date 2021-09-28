@@ -25,8 +25,10 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import java.io.File;
 
 public class TestConstant {
-
-  public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+  public static final String PARTIAL_PATH_STRING =
+      "root.sg1" + File.separator + "0" + File.separator + "0" + File.separator;
+  public static final String BASE_OUTPUT_PATH =
+      "target".concat(File.separator) + PARTIAL_PATH_STRING;
   public static final String OUTPUT_DATA_DIR =
       BASE_OUTPUT_PATH.concat("data").concat(File.separator);
 
