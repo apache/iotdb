@@ -22,9 +22,7 @@ package org.apache.iotdb.db.tools.settle;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
@@ -46,14 +44,10 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  * Offline Settle tool, which is used to settle TsFile and its corresponding mods file to a new
  * TsFile.
  */
-public class TsFileAndModSettleTool extends TsFileRewriteTool {
+public class TsFileAndModSettleTool {
   private static final Logger logger = LoggerFactory.getLogger(TsFileAndModSettleTool.class);
-  public static Map<String, Integer> recoverSettleFileMap =
-      new HashMap<>(); // FilePath -> SettleCheckStatus
-
-  public TsFileAndModSettleTool(TsFileResource resourceToBeRewritten) throws IOException {
-    super(resourceToBeRewritten);
-  }
+  // TsFilePath -> SettleCheckStatus
+  public static Map<String, Integer> recoverSettleFileMap = new HashMap<>();
 
   public static void main(String[] args) {
     Map<String, TsFileResource> oldTsFileResources = new HashMap<>();
@@ -124,11 +118,11 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
     }
     List<File> tsFiles = new ArrayList<>();
     tsFiles.addAll(
-        Arrays.asList(FSFactoryProducer.getFSFactory().listFilesBySuffix(dirPath, TSFILE_SUFFIX)));
+        Arrays.asList(FSFactoryProducer.getFSFactory().listFilesBySuffix(dirPath, suffix)));
     List<File> tmpFiles = Arrays.asList(dir.listFiles());
     for (File f : tmpFiles) {
       if (f.isDirectory()) {
-        tsFiles.addAll(getAllFilesInOneDirBySuffix(f.getAbsolutePath(), TSFILE_SUFFIX));
+        tsFiles.addAll(getAllFilesInOneDirBySuffix(f.getAbsolutePath(), suffix));
       }
     }
     return tsFiles;
@@ -149,8 +143,8 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
     for (Map.Entry<String, TsFileResource> entry : resourcesToBeSettled.entrySet()) {
       TsFileResource resourceToBeSettled = entry.getValue();
       TsFileResource newResource = null;
-      try (TsFileAndModSettleTool tsFileAndModSettleTool =
-          new TsFileAndModSettleTool(resourceToBeSettled)) {
+      try {
+        TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
         System.out.println("Start settling for tsFile : " + resourceToBeSettled.getTsFilePath());
         if (isSettledFileGenerated(resourceToBeSettled)) {
           newResource = findSettledFile(resourceToBeSettled);
@@ -178,7 +172,7 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
         System.out.println(
             "Finish settling successfully for tsFile : " + resourceToBeSettled.getTsFilePath());
         successCount++;
-      } catch (IOException | WriteProcessException | IllegalPathException e) {
+      } catch (Exception e) {
         System.out.println(
             "Meet error while settling the tsFile : " + resourceToBeSettled.getTsFilePath());
         e.printStackTrace();
@@ -197,8 +191,7 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
     return newTsFileResources;
   }
 
-  public TsFileResource settleOneTsFileAndMod(TsFileResource resourceToBeSettled)
-      throws WriteProcessException, IOException, IllegalPathException {
+  public TsFileResource settleOneTsFileAndMod(TsFileResource resourceToBeSettled) throws Exception {
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
           "The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
@@ -210,9 +203,8 @@ public class TsFileAndModSettleTool extends TsFileRewriteTool {
       return null;
     }
     List<TsFileResource> newResources = new ArrayList<>();
-    try (TsFileAndModSettleTool tsFileAndModSettleTool =
-        new TsFileAndModSettleTool(resourceToBeSettled)) {
-      tsFileAndModSettleTool.parseAndRewriteFile(newResources);
+    try (TsFileRewriteTool tsFileRewriteTool = new TsFileRewriteTool(resourceToBeSettled)) {
+      tsFileRewriteTool.parseAndRewriteFile(newResources);
     }
     if (newResources.size() == 0) { // if all the data in this tsfile has been deleted
       resourceToBeSettled.readUnlock();

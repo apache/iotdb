@@ -122,7 +122,7 @@ public class SettleService implements IService {
 
   /** This method is used to settle TsFile in the main thread. */
   public void settleTsFile(SettleTask settleTask)
-      throws WriteProcessException, IllegalPathException, IOException {
+      throws Exception {
     settleTask.settleTsFile();
   }
 

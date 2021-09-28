@@ -53,7 +53,7 @@ public class SettleTask extends WrappedRunnable {
     }
   }
 
-  public void settleTsFile() throws IOException, WriteProcessException, IllegalPathException {
+  public void settleTsFile() throws Exception {
     TsFileResource settledResource = null;
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
@@ -70,8 +70,7 @@ public class SettleTask extends WrappedRunnable {
           resourceToBeSettled.getTsFilePath()
               + SettleLog.COMMA_SEPERATOR
               + SettleCheckStatus.BEGIN_SETTLE_FILE);
-      try (TsFileAndModSettleTool tsFileAndModSettleTool =
-          new TsFileAndModSettleTool(resourceToBeSettled)) {
+      TsFileAndModSettleTool tsFileAndModSettleTool=new TsFileAndModSettleTool();
         settledResource = tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled);
       }
 
@@ -80,7 +79,6 @@ public class SettleTask extends WrappedRunnable {
           resourceToBeSettled.getTsFilePath()
               + SettleLog.COMMA_SEPERATOR
               + SettleCheckStatus.AFTER_SETTLE_FILE);
-    }
     resourceToBeSettled.getSettleTsFileCallBack().call(resourceToBeSettled, settledResource);
 
     // Write Settle Log, Status 3

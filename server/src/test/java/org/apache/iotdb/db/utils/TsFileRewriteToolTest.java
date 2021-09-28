@@ -199,20 +199,7 @@ public class TsFileRewriteToolTest {
     }
   }
 
-  @Test
-  public void settleTsFilesAndModsTest() {
-    try {
-      List<TsFileResource> resourcesToBeSettled = createFiles();
-      for (TsFileResource oldResource : resourcesToBeSettled) {
-        try (TsFileAndModSettleTool tsFileAndModSettleTool =
-            new TsFileAndModSettleTool(oldResource)) {
-          tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource);
-        }
-      }
-    } catch (WriteProcessException | IOException | IllegalPathException e) {
-      Assert.fail(e.getMessage());
-    }
-  }
+
 
   public List<TsFileResource> createFiles() throws IOException {
     List<TsFileResource> resourcesToBeSettled = new ArrayList<>();

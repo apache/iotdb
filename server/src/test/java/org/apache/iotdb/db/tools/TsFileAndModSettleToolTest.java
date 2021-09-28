@@ -124,16 +124,15 @@ public class TsFileAndModSettleToolTest {
   }
 
   @Test
-  public void settleTsFilesAndModsTest() { // offline settle test
+  public void settleTsFilesAndModsTest() { //offline settleTool test
     try {
       List<TsFileResource> resourcesToBeSettled = createFiles();
       for (TsFileResource oldResource : resourcesToBeSettled) {
-        try (TsFileAndModSettleTool tsFileAndModSettleTool =
-            new TsFileAndModSettleTool(oldResource)) {
-          tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource);
-        }
+        TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
+        tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource);
+
       }
-    } catch (WriteProcessException | InterruptedException | IllegalPathException | IOException e) {
+    } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
   }

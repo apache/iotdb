@@ -550,7 +550,7 @@ public class TsFileResource {
     // SettleService.getINSTANCE().submitSettleTask(new SettleTask(this));
     try {
       SettleService.getINSTANCE().settleTsFile(new SettleTask(this));
-    } catch (WriteProcessException | IllegalPathException | IOException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       throw new WriteProcessException("Meet error when settling tsFile : " + this.getTsFilePath());
     }
