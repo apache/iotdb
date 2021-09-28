@@ -292,14 +292,17 @@ public class ChunkMetadata {
     this.filePath = filePath;
 
     // set partialFilePathForCache
-    String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
-    String[] pathSegments = filePath.split(PATH_SPLIT_STRING);
-    partialFilePathForCache =
-        pathSegments[pathSegments.length - 4] // storage group name
-            + PATH_SPLIT_STRING
-            + pathSegments[pathSegments.length - 3] // virtual storage group Id
-            + PATH_SPLIT_STRING
-            + pathSegments[pathSegments.length - 2] // time partition Id
-    ;
+    if (filePath == null) partialFilePathForCache = null;
+    else {
+      String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
+      String[] pathSegments = filePath.split(PATH_SPLIT_STRING);
+      partialFilePathForCache =
+          pathSegments[pathSegments.length - 4] // storage group name
+              + PATH_SPLIT_STRING
+              + pathSegments[pathSegments.length - 3] // virtual storage group Id
+              + PATH_SPLIT_STRING
+              + pathSegments[pathSegments.length - 2] // time partition Id
+      ;
+    }
   }
 }

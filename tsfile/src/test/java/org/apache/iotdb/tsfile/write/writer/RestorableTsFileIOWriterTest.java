@@ -59,7 +59,7 @@ import static org.junit.Assert.assertTrue;
 @SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
 public class RestorableTsFileIOWriterTest {
 
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.ts");
+  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test(expected = NotCompatibleTsFileException.class)

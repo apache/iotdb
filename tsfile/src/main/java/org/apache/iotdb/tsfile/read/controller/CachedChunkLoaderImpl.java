@@ -58,6 +58,7 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
 
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
+    chunkMetaData.setFilePath(reader.getFileName());
     Chunk chunk = chunkCache.get(chunkMetaData);
     return new Chunk(
         chunk.getHeader(),

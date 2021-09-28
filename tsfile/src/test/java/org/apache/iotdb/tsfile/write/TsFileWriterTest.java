@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.write;
 
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -57,7 +58,8 @@ public class TsFileWriterTest {
   @Before
   public void setUp() {
     try {
-      writer = new TsFileWriter(new File("target/tsfileWriter-" + fileName));
+      writer =
+          new TsFileWriter(new File(TestConstant.BASE_OUTPUT_PATH + "tsfileWriter-" + fileName));
       addMeasurement();
     } catch (IOException e) {
       e.printStackTrace();
@@ -71,7 +73,8 @@ public class TsFileWriterTest {
       closeFile();
     }
     try {
-      Files.deleteIfExists(new File("target/tsfileWriter-" + fileName).toPath());
+      Files.deleteIfExists(
+          new File(TestConstant.BASE_OUTPUT_PATH + "tsfileWriter-" + fileName).toPath());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -270,7 +273,8 @@ public class TsFileWriterTest {
     // using TsFileReader for test
     try {
       ReadOnlyTsFile readOnlyTsFile =
-          new ReadOnlyTsFile(new TsFileSequenceReader("target/tsfileWriter-" + fileName));
+          new ReadOnlyTsFile(
+              new TsFileSequenceReader(TestConstant.BASE_OUTPUT_PATH + "tsfileWriter-" + fileName));
       QueryDataSet dataSet =
           readOnlyTsFile.query(
               QueryExpression.create()
@@ -291,7 +295,8 @@ public class TsFileWriterTest {
   private void readOneRow(int s2Value) {
     try {
       ReadOnlyTsFile readOnlyTsFile =
-          new ReadOnlyTsFile(new TsFileSequenceReader("target/tsfileWriter-" + fileName));
+          new ReadOnlyTsFile(
+              new TsFileSequenceReader(TestConstant.BASE_OUTPUT_PATH + "tsfileWriter-" + fileName));
       QueryDataSet dataSet =
           readOnlyTsFile.query(
               QueryExpression.create()
