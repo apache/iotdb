@@ -62,14 +62,18 @@ public class TsFileResourceManager {
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
     sealedTsFileResources.add(tsFileResource);
     totalTimeIndexMemCost += tsFileResource.calculateRamSize();
-    System.out.println("before: " + totalTimeIndexMemCost + " " + tsFileResource.calculateRamSize());
     chooseTsFileResourceToDegrade();
   }
 
   /** delete the TsFileResource in PriorityQueue when the source file is deleted */
   public synchronized void removeTsFileResource(TsFileResource tsFileResource) {
     sealedTsFileResources.remove(tsFileResource);
-    totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+    if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
+        == TimeIndexLevel.FILE_TIME_INDEX) {
+      totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+    } else {
+      totalTimeIndexMemCost -= tsFileResource.getRamSize();
+    }
   }
 
   /** once degradation is triggered, the total memory for timeIndex should reduce */
@@ -90,7 +94,6 @@ public class TsFileResourceManager {
         logger.error("Can't degrade any more");
         throw new RuntimeException("Can't degrade any more");
       }
-      System.out.println("poll: " + tsFileResource.calculateRamSize());
       long memoryReduce = tsFileResource.degradeTimeIndex();
       releaseTimeIndexMemCost(memoryReduce);
       // add the polled tsFileResource to the priority queue

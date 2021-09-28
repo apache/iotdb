@@ -155,6 +155,9 @@ public class TsFileResource {
 
   private long version = 0;
 
+  /** memory cost for the TsFileResource when it's calculated for the first time */
+  private long ramSize;
+
   public TsFileResource() {}
 
   public TsFileResource(TsFileResource other) throws IOException {
@@ -774,7 +777,12 @@ public class TsFileResource {
 
   /** @return resource map size */
   public long calculateRamSize() {
-    return timeIndex.calculateRamSize();
+    ramSize = timeIndex.calculateRamSize();
+    return ramSize;
+  }
+
+  public long getRamSize() {
+    return ramSize;
   }
 
   public void delete() throws IOException {
@@ -861,7 +869,6 @@ public class TsFileResource {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
     // if current timeIndex is FileTimeIndex, no need to degrade
     if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
-    long previousMemory = calculateRamSize();
     // get the minimum startTime
     long startTime = timeIndex.getMinStartTime();
     // get the maximum endTime
@@ -869,7 +876,7 @@ public class TsFileResource {
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
     timeIndexType = 0;
-    return previousMemory - timeIndex.calculateRamSize();
+    return ramSize - timeIndex.calculateRamSize();
   }
 
   // change tsFile name
