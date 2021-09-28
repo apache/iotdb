@@ -23,11 +23,10 @@ import java.io.File;
 import java.util.Random;
 
 public class TestConstant {
-  public static final String CURRENT_PATH_STRING = "." + File.separator;
   public static final String PARTIAL_PATH_STRING =
       "root.sg1" + File.separator + "0" + File.separator + "0" + File.separator;
   public static final String BASE_OUTPUT_PATH =
-      CURRENT_PATH_STRING + "target".concat(File.separator) + PARTIAL_PATH_STRING;
+      "target".concat(File.separator) + PARTIAL_PATH_STRING;
   public static final float float_min_delta = 0.00001f;
   public static final double double_min_delta = 0.00001d;
   public static final Random random = new Random(System.currentTimeMillis());

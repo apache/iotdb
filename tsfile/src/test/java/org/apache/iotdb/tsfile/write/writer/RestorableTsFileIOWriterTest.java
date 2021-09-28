@@ -43,6 +43,9 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -61,6 +64,22 @@ public class RestorableTsFileIOWriterTest {
 
   private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+  @Before
+  public void setUp() {
+    File file = fsFactory.getFile(FILE_NAME);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+  }
+
+  @After
+  public void tearDown() {
+    File file = fsFactory.getFile(FILE_NAME);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+  }
 
   @Test(expected = NotCompatibleTsFileException.class)
   public void testBadHeadMagic() throws Exception {
@@ -81,6 +100,7 @@ public class RestorableTsFileIOWriterTest {
   @Test
   public void testOnlyHeadMagic() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
+
     TsFileWriter writer = new TsFileWriter(file);
     writer.getIOWriter().close();
 

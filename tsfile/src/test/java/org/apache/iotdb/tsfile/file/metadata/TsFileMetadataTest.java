@@ -39,7 +39,10 @@ public class TsFileMetadataTest {
   final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("output1.tsfile");
 
   @Before
-  public void setUp() {}
+  public void setUp() {
+    File pathFile = new File(TestConstant.BASE_OUTPUT_PATH);
+    Assert.assertTrue(pathFile.mkdirs());
+  }
 
   @After
   public void tearDown() {
@@ -61,7 +64,7 @@ public class TsFileMetadataTest {
     FileInputStream fileInputStream = null;
     TsFileMetadata metaData = null;
     try {
-      fileInputStream = new FileInputStream(new File(PATH));
+      fileInputStream = new FileInputStream(PATH);
       FileChannel channel = fileInputStream.getChannel();
       ByteBuffer buffer = ByteBuffer.allocate((int) channel.size());
       channel.read(buffer);
