@@ -221,7 +221,7 @@ public class TestUtils {
             encoding,
             CompressionType.UNCOMPRESSED,
             Collections.emptyMap());
-    return new MeasurementMNode(
+    return MeasurementMNode.getMeasurementMNode(
         null, measurementSchema.getMeasurementId(), measurementSchema, null);
   }
 

@@ -22,7 +22,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -41,7 +42,7 @@ public class MeasurementPathCollector extends MeasurementCollector<List<PartialP
   }
 
   @Override
-  protected void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException {
+  protected void collectUnaryMeasurement(UnaryMeasurementMNode node) throws MetadataException {
     PartialPath path = node.getPartialPath();
     if (nodes[nodes.length - 1].equals(node.getAlias())) {
       // only when user query with alias, the alias in path will be set
@@ -51,10 +52,9 @@ public class MeasurementPathCollector extends MeasurementCollector<List<PartialP
   }
 
   @Override
-  protected void collectVectorMeasurement(IMeasurementMNode node, int index)
+  protected void collectVectorMeasurement(VectorMeasurementMNode node, int index)
       throws MetadataException {
     resultSet.add(
-        new VectorPartialPath(
-            node.getFullPath(), node.getSchema().getSubMeasurementsList().get(index)));
+        new VectorPartialPath(node.getFullPath(), node.getSubMeasurementList().get(index)));
   }
 }

@@ -22,9 +22,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -46,9 +43,10 @@ public class MeasurementCounter extends CounterTraverser {
     if (!node.isMeasurement() || idx != nodes.length - 2) {
       return false;
     }
-    IMeasurementSchema schema = node.getAsMeasurementMNode().getSchema();
-    if (schema instanceof VectorMeasurementSchema) {
-      List<String> measurements = schema.getSubMeasurementsList();
+    IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
+    if (measurementMNode.isVectorMeasurement()) {
+      List<String> measurements =
+          measurementMNode.getAsVectorMeasurementMNode().getSubMeasurementList();
       String regex = nodes[idx + 1].replace("*", ".*");
       for (String measurement : measurements) {
         if (Pattern.matches(regex, measurement)) {
@@ -65,10 +63,9 @@ public class MeasurementCounter extends CounterTraverser {
       return false;
     }
     IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
-    IMeasurementSchema schema = measurementMNode.getSchema();
-    if (schema instanceof MeasurementSchema) {
+    if (measurementMNode.isUnaryMeasurement()) {
       count++;
-    } else if (schema instanceof VectorMeasurementSchema) {
+    } else if (measurementMNode.isVectorMeasurement()) {
       if (idx >= nodes.length - 1 && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         return true;
       }

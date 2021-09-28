@@ -220,7 +220,7 @@ public class CMManager extends MManager {
       if (!schemas.isEmpty()) {
         IMeasurementSchema measurementSchema = schemas.get(0);
         IMeasurementMNode measurementMNode =
-            new MeasurementMNode(
+            MeasurementMNode.getMeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
           for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
@@ -272,7 +272,7 @@ public class CMManager extends MManager {
         if (!schemas.isEmpty()) {
           IMeasurementSchema measurementSchema = schemas.get(0);
           IMeasurementMNode measurementMNode =
-              new MeasurementMNode(
+              MeasurementMNode.getMeasurementMNode(
                   null, measurementSchema.getMeasurementId(), measurementSchema, null);
           cacheMeta(fullPath, measurementMNode, true);
           node = measurementMNode;
@@ -353,7 +353,7 @@ public class CMManager extends MManager {
       // TODO-Cluster: also pull alias?
       // take care, the pulled schema's measurement Id is only series name
       IMeasurementMNode measurementMNode =
-          new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
+          MeasurementMNode.getMeasurementMNode(null, schema.getMeasurementId(), schema, null);
       cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode, true);
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);

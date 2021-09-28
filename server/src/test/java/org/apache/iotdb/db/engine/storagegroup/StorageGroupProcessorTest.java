@@ -219,10 +219,10 @@ public class StorageGroupProcessorTest {
 
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
@@ -367,10 +367,10 @@ public class StorageGroupProcessorTest {
 
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
@@ -448,10 +448,10 @@ public class StorageGroupProcessorTest {
 
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
@@ -529,10 +529,10 @@ public class StorageGroupProcessorTest {
 
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
+        MeasurementMNode.getMeasurementMNode(
             null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =

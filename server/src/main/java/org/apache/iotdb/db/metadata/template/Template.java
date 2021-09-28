@@ -134,12 +134,12 @@ public class Template {
         IMeasurementMNode measurementMNode = null;
         if (measurementSchema instanceof MeasurementSchema) {
           measurementMNode =
-              new MeasurementMNode(
+              MeasurementMNode.getMeasurementMNode(
                   null, measurementSchema.getMeasurementId(), measurementSchema, null);
 
         } else if (measurementSchema instanceof VectorMeasurementSchema) {
           measurementMNode =
-              new MeasurementMNode(
+              MeasurementMNode.getMeasurementMNode(
                   null,
                   getMeasurementNodeName(measurementSchema.getMeasurementId()),
                   measurementSchema,

@@ -191,7 +191,7 @@ public class InsertRowPlan extends InsertPlan {
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
       measurementMNodes[i] =
-          new MeasurementMNode(
+          MeasurementMNode.getMeasurementMNode(
               null,
               measurements[i],
               new MeasurementSchema(

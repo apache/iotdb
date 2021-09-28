@@ -1104,7 +1104,7 @@ public class StorageGroupProcessor {
         if (plan.isAligned()) {
           // vector lastCache update need subMeasurement
           IoTDB.metaManager.updateLastCache(
-              mNodes[i],
+              mNodes[i].getAsVectorMeasurementMNode(),
               plan.getMeasurements()[i],
               plan.composeLastTimeValuePair(i),
               true,
@@ -1114,7 +1114,10 @@ public class StorageGroupProcessor {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+              mNodes[i].getAsUnaryMeasurementMNode(),
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
         }
       }
     }
@@ -1173,7 +1176,7 @@ public class StorageGroupProcessor {
         if (plan.isAligned()) {
           // vector lastCache update need subSensor path
           IoTDB.metaManager.updateLastCache(
-              mNodes[i],
+              mNodes[i].getAsVectorMeasurementMNode(),
               plan.getMeasurements()[i],
               plan.composeTimeValuePair(i),
               true,
@@ -1182,7 +1185,10 @@ public class StorageGroupProcessor {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
+              mNodes[i].getAsUnaryMeasurementMNode(),
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
         }
       }
     }

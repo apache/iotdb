@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -62,7 +64,7 @@ public class MeasurementSchemaCollector
   }
 
   @Override
-  protected void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException {
+  protected void collectUnaryMeasurement(UnaryMeasurementMNode node) throws MetadataException {
     IMeasurementSchema measurementSchema = node.getSchema();
     String[] tsRow = new String[7];
     tsRow[0] = node.getAlias();
@@ -77,7 +79,7 @@ public class MeasurementSchemaCollector
   }
 
   @Override
-  protected void collectVectorMeasurement(IMeasurementMNode node, int index)
+  protected void collectVectorMeasurement(VectorMeasurementMNode node, int index)
       throws MetadataException {
     IMeasurementSchema schema = node.getSchema();
     List<String> measurements = schema.getSubMeasurementsList();

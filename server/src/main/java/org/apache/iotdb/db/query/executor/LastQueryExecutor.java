@@ -293,9 +293,10 @@ public class LastQueryExecutor {
       if (path instanceof VectorPartialPath) {
         // the seriesPath has been transformed to vector path
         // here needs subSensor path
-        return IoTDB.metaManager.getLastCache(node, ((VectorPartialPath) path).getSubSensor(0));
+        return IoTDB.metaManager.getLastCache(
+            node.getAsVectorMeasurementMNode(), ((VectorPartialPath) path).getSubSensor(0));
       } else {
-        return IoTDB.metaManager.getLastCache(node);
+        return IoTDB.metaManager.getLastCache(node.getAsUnaryMeasurementMNode());
       }
     }
 
@@ -307,9 +308,14 @@ public class LastQueryExecutor {
           // the seriesPath has been transformed to vector path
           // here needs subSensor path
           IoTDB.metaManager.updateLastCache(
-              node, ((VectorPartialPath) path).getSubSensor(0), pair, false, Long.MIN_VALUE);
+              node.getAsVectorMeasurementMNode(),
+              ((VectorPartialPath) path).getSubSensor(0),
+              pair,
+              false,
+              Long.MIN_VALUE);
         } else {
-          IoTDB.metaManager.updateLastCache(node, pair, false, Long.MIN_VALUE);
+          IoTDB.metaManager.updateLastCache(
+              node.getAsUnaryMeasurementMNode(), pair, false, Long.MIN_VALUE);
         }
       }
     }

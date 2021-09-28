@@ -219,8 +219,12 @@ public class MManagerAdvancedTest {
     IMeasurementMNode node = mmanager.getMeasurementMNode(path);
     LastCacheManager.updateLastCache(path, tv1, true, Long.MIN_VALUE, node);
     LastCacheManager.updateLastCache(path, tv2, true, Long.MIN_VALUE, node);
-    Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());
+    Assert.assertEquals(
+        tv2.getTimestamp(),
+        mmanager.getLastCache(node.getAsUnaryMeasurementMNode()).getTimestamp());
     LastCacheManager.updateLastCache(path, tv3, true, Long.MIN_VALUE, node);
-    Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());
+    Assert.assertEquals(
+        tv2.getTimestamp(),
+        mmanager.getLastCache(node.getAsUnaryMeasurementMNode()).getTimestamp());
   }
 }

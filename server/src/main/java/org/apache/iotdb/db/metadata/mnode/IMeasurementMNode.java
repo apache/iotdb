@@ -31,8 +31,6 @@ public interface IMeasurementMNode extends IMNode {
 
   IMeasurementSchema getSchema();
 
-  void setSchema(IMeasurementSchema schema);
-
   TSDataType getDataType(String measurementId);
 
   int getMeasurementCount();
@@ -52,4 +50,12 @@ public interface IMeasurementMNode extends IMNode {
   ILastCacheContainer getLastCacheContainer();
 
   void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
+
+  boolean isUnaryMeasurement();
+
+  boolean isVectorMeasurement();
+
+  UnaryMeasurementMNode getAsUnaryMeasurementMNode();
+
+  VectorMeasurementMNode getAsVectorMeasurementMNode();
 }

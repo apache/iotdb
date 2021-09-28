@@ -262,8 +262,8 @@ public class LogReplayerTest {
     String deviceId = "root.sg.device5";
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    mNodes[0] = new MeasurementMNode(null, "sensor0", null, null);
-    mNodes[1] = new MeasurementMNode(null, "sensor1", null, null);
+    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", null, null);
+    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", null, null);
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(deviceId), measurements, dataTypes);

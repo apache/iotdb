@@ -121,7 +121,7 @@ public class SchemaUtils {
         new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
 
     IMeasurementMNode measurementMNode =
-        new MeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
+        MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
     IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
   }
 

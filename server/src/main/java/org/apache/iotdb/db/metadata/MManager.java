@@ -41,6 +41,8 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -636,9 +638,10 @@ public class MManager {
       // should be removed after partial deletion is supported
       IMNode lastNode = mtree.getNodeByPath(allTimeseries.get(0));
       if (lastNode.isMeasurement()) {
-        IMeasurementSchema schema = lastNode.getAsMeasurementMNode().getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-          if (schema.getSubMeasurementsList().size() != allTimeseries.size()) {
+        IMeasurementMNode measurementMNode = lastNode.getAsMeasurementMNode();
+        if (measurementMNode.isVectorMeasurement()) {
+          if (measurementMNode.getAsVectorMeasurementMNode().getSubMeasurementList().size()
+              != allTimeseries.size()) {
             throw new AlignedTimeseriesException(
                 "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
           } else {
@@ -689,13 +692,13 @@ public class MManager {
     Pair<PartialPath, IMeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
     // if one of the aligned timeseries is deleted, pair.right could be null
-    IMeasurementSchema schema = pair.right.getSchema();
+    IMeasurementMNode measurementMNode = pair.right;
     int timeseriesNum = 0;
-    if (schema instanceof MeasurementSchema) {
-      removeFromTagInvertedIndex(pair.right);
+    if (measurementMNode.isUnaryMeasurement()) {
+      removeFromTagInvertedIndex(measurementMNode);
       timeseriesNum = 1;
-    } else if (schema instanceof VectorMeasurementSchema) {
-      timeseriesNum += schema.getSubMeasurementsTSDataTypeList().size();
+    } else if (measurementMNode.isVectorMeasurement()) {
+      timeseriesNum += measurementMNode.getSchema().getSubMeasurementsTSDataTypeList().size();
     }
     PartialPath storageGroupPath = pair.left;
 
@@ -1710,13 +1713,10 @@ public class MManager {
    * @param latestFlushedTime latest flushed time
    */
   public void updateLastCache(
-      IMeasurementMNode node,
+      UnaryMeasurementMNode node,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    if (node.getSchema() instanceof VectorMeasurementSchema) {
-      throw new UnsupportedOperationException("Must provide subMeasurement for vector measurement");
-    }
     LastCacheManager.updateLastCache(
         node.getPartialPath(), timeValuePair, highPriorityUpdate, latestFlushedTime, node);
   }
@@ -1734,15 +1734,11 @@ public class MManager {
    * @param latestFlushedTime latest flushed time
    */
   public void updateLastCache(
-      IMeasurementMNode node,
+      VectorMeasurementMNode node,
       String subMeasurement,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
-      throw new UnsupportedOperationException(
-          "Can't update lastCache of subMeasurement in unary measurement");
-    }
     LastCacheManager.updateLastCache(
         node.getPartialPath().concatNode(subMeasurement),
         timeValuePair,
@@ -1781,10 +1777,7 @@ public class MManager {
    * @param node the measurementMNode holding the lastCache, must be unary measurement
    * @return the last cache value
    */
-  public TimeValuePair getLastCache(IMeasurementMNode node) {
-    if (node.getSchema() instanceof VectorMeasurementSchema) {
-      throw new UnsupportedOperationException("Must provide subMeasurement for vector measurement");
-    }
+  public TimeValuePair getLastCache(UnaryMeasurementMNode node) {
     return LastCacheManager.getLastCache(node.getPartialPath(), node);
   }
 
@@ -1798,11 +1791,7 @@ public class MManager {
    * @param subMeasurement the subMeasurement of aligned timeseries
    * @return the last cache value
    */
-  public TimeValuePair getLastCache(IMeasurementMNode node, String subMeasurement) {
-    if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
-      throw new UnsupportedOperationException(
-          "Can't get lastCache of subMeasurement from unary measurement");
-    }
+  public TimeValuePair getLastCache(VectorMeasurementMNode node, String subMeasurement) {
     return LastCacheManager.getLastCache(node.getPartialPath().concatNode(subMeasurement), node);
   }
 
@@ -2063,9 +2052,11 @@ public class MManager {
 
       if (schema != null) {
         if (schema instanceof MeasurementSchema) {
-          return new MeasurementMNode(deviceMNode.getAsEntityMNode(), measurement, schema, null);
+          return MeasurementMNode.getMeasurementMNode(
+              deviceMNode.getAsEntityMNode(), measurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(deviceMNode.getAsEntityMNode(), vectorId, schema, null);
+          return MeasurementMNode.getMeasurementMNode(
+              deviceMNode.getAsEntityMNode(), vectorId, schema, null);
         }
       }
       return null;

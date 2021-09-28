@@ -89,8 +89,8 @@ public class MemTableTestUtils {
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
     IMeasurementSchema schema =
         new VectorMeasurementSchema("vectorName", measurements, dataTypes, encodings);
-    mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
-    mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
+    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema, null);
+    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema, null);
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(

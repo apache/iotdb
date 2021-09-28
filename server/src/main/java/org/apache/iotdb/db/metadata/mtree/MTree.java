@@ -41,6 +41,8 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.PathGrouperByStorageGroup;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -394,7 +396,7 @@ public class MTree implements Serializable {
       IEntityMNode entityMNode = IEntityMNode.setToEntity(cur);
 
       IMeasurementMNode measurementMNode =
-          new MeasurementMNode(
+          MeasurementMNode.getMeasurementMNode(
               entityMNode,
               leafName,
               new MeasurementSchema(leafName, dataType, encoding, compressor, props),
@@ -470,7 +472,7 @@ public class MTree implements Serializable {
 
       // this measurementMNode could be a leaf or not.
       IMeasurementMNode measurementMNode =
-          new MeasurementMNode(
+          MeasurementMNode.getMeasurementMNode(
               entityMNode,
               leafName,
               new VectorMeasurementSchema(
@@ -941,12 +943,12 @@ public class MTree implements Serializable {
     MeasurementCollector<List<IMeasurementSchema>> collector =
         new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
           @Override
-          protected void collectUnaryMeasurement(IMeasurementMNode node) {
+          protected void collectUnaryMeasurement(UnaryMeasurementMNode node) {
             result.put(node.getPartialPath(), node.getSchema());
           }
 
           @Override
-          protected void collectVectorMeasurement(IMeasurementMNode node, int index) {
+          protected void collectVectorMeasurement(VectorMeasurementMNode node, int index) {
             if (!result.containsKey(node.getPartialPath())) {
               result.put(node.getPartialPath(), node.getSchema());
             }
@@ -968,12 +970,12 @@ public class MTree implements Serializable {
       MeasurementCollector<List<IMeasurementSchema>> collector =
           new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
             @Override
-            protected void collectUnaryMeasurement(IMeasurementMNode node) {
+            protected void collectUnaryMeasurement(UnaryMeasurementMNode node) {
               measurementSchemas.add(node.getSchema());
             }
 
             @Override
-            protected void collectVectorMeasurement(IMeasurementMNode node, int index) {
+            protected void collectVectorMeasurement(VectorMeasurementMNode node, int index) {
               if (!measurementSchemas.contains(node.getSchema())) {
                 measurementSchemas.add(node.getSchema());
               }
@@ -997,7 +999,7 @@ public class MTree implements Serializable {
       MeasurementCollector<Collection<TimeseriesSchema>> collector =
           new MeasurementCollector<Collection<TimeseriesSchema>>(root, prefixPath) {
             @Override
-            protected void collectUnaryMeasurement(IMeasurementMNode node) {
+            protected void collectUnaryMeasurement(UnaryMeasurementMNode node) {
               IMeasurementSchema nodeSchema = node.getAsMeasurementMNode().getSchema();
               timeseriesSchemas.add(
                   new TimeseriesSchema(
@@ -1008,7 +1010,7 @@ public class MTree implements Serializable {
             }
 
             @Override
-            protected void collectVectorMeasurement(IMeasurementMNode node, int index) {
+            protected void collectVectorMeasurement(VectorMeasurementMNode node, int index) {
               // todo implement vector case according to the scenario in cluster
             }
           };
@@ -1178,7 +1180,7 @@ public class MTree implements Serializable {
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);
         }
-        return new MeasurementMNode(
+        return MeasurementMNode.getMeasurementMNode(
             cur.getAsEntityMNode(), schema.getMeasurementId(), schema, null);
       }
       cur = next;

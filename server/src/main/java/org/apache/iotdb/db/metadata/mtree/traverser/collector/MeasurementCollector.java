@@ -22,9 +22,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -52,9 +51,10 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
       return false;
     }
     IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
-    IMeasurementSchema schema = measurementMNode.getSchema();
-    if (schema instanceof VectorMeasurementSchema) {
-      List<String> measurements = schema.getSubMeasurementsList();
+    if (measurementMNode.isVectorMeasurement()) {
+      VectorMeasurementMNode vectorMeasurementMNode =
+          measurementMNode.getAsVectorMeasurementMNode();
+      List<String> measurements = vectorMeasurementMNode.getSubMeasurementList();
       String targetNameRegex = nodes[idx + 1].replace("*", ".*");
       for (int i = 0; i < measurements.size(); i++) {
         if (!Pattern.matches(targetNameRegex, measurements.get(i))) {
@@ -66,7 +66,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             break;
           }
         }
-        collectVectorMeasurement(measurementMNode, i);
+        collectVectorMeasurement(vectorMeasurementMNode, i);
         if (hasLimit) {
           count += 1;
         }
@@ -82,26 +82,27 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
       return false;
     }
     IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
-    IMeasurementSchema schema = measurementMNode.getSchema();
-    if (schema instanceof MeasurementSchema) {
+    if (measurementMNode.isUnaryMeasurement()) {
       if (hasLimit) {
         curOffset += 1;
         if (curOffset < offset) {
           return true;
         }
       }
-      collectUnaryMeasurement(measurementMNode);
+      collectUnaryMeasurement(measurementMNode.getAsUnaryMeasurementMNode());
       if (hasLimit) {
         count += 1;
       }
-    } else if (schema instanceof VectorMeasurementSchema) {
+    } else if (measurementMNode.isVectorMeasurement()) {
       if (idx >= nodes.length - 1
           && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {
         return true;
       }
+      VectorMeasurementMNode vectorMeasurementMNode =
+          measurementMNode.getAsVectorMeasurementMNode();
       // only when idx > nodes.length or nodes ends with ** or isPrefixMatch
-      List<String> measurements = schema.getSubMeasurementsList();
+      List<String> measurements = vectorMeasurementMNode.getSubMeasurementList();
       for (int i = 0; i < measurements.size(); i++) {
         if (hasLimit) {
           curOffset += 1;
@@ -109,7 +110,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             return true;
           }
         }
-        collectVectorMeasurement(measurementMNode, i);
+        collectVectorMeasurement(vectorMeasurementMNode, i);
         if (hasLimit) {
           count += 1;
         }
@@ -123,7 +124,8 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
    *
    * @param node MeasurementMNode holding unary the measurement schema
    */
-  protected abstract void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException;
+  protected abstract void collectUnaryMeasurement(UnaryMeasurementMNode node)
+      throws MetadataException;
 
   /**
    * collect the information of target sub measurement of vector measurement
@@ -131,6 +133,6 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
    * @param node MeasurementMNode holding the vector measurement schema
    * @param index the index of target sub measurement
    */
-  protected abstract void collectVectorMeasurement(IMeasurementMNode node, int index)
+  protected abstract void collectVectorMeasurement(VectorMeasurementMNode node, int index)
       throws MetadataException;
 }

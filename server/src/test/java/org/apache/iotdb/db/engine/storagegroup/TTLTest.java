@@ -161,7 +161,7 @@ public class TTLTest {
     plan.setValues(new Object[] {1L});
     plan.setMeasurementMNodes(
         new IMeasurementMNode[] {
-          new MeasurementMNode(
+          MeasurementMNode.getMeasurementMNode(
               null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
         });
     plan.transferType();
@@ -194,7 +194,7 @@ public class TTLTest {
     plan.setValues(new Object[] {1L});
     plan.setMeasurementMNodes(
         new IMeasurementMNode[] {
-          new MeasurementMNode(
+          MeasurementMNode.getMeasurementMNode(
               null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
         });
     plan.transferType();

@@ -147,7 +147,8 @@ public abstract class Traverser {
     Template upperTemplate = node.getUpperTemplate();
     for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
       traverse(
-          new MeasurementMNode(node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
+          MeasurementMNode.getMeasurementMNode(
+              node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
           idx + 1,
           level + 1);
     }
@@ -186,14 +187,16 @@ public abstract class Traverser {
         continue;
       }
       traverse(
-          new MeasurementMNode(node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
+          MeasurementMNode.getMeasurementMNode(
+              node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
           idx + 1,
           level + 1);
     }
     if (multiLevelWildcard) {
       for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
         traverse(
-            new MeasurementMNode(node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
+            MeasurementMNode.getMeasurementMNode(
+                node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
             idx,
             level + 1);
       }
@@ -221,7 +224,7 @@ public abstract class Traverser {
     IMeasurementSchema targetSchema = upperTemplate.getSchemaMap().get(targetName);
     if (targetSchema != null) {
       traverse(
-          new MeasurementMNode(
+          MeasurementMNode.getMeasurementMNode(
               node.getAsEntityMNode(), targetSchema.getMeasurementId(), targetSchema, null),
           idx + 1,
           level + 1);
@@ -230,7 +233,8 @@ public abstract class Traverser {
     if (multiLevelWildcard) {
       for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
         traverse(
-            new MeasurementMNode(node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
+            MeasurementMNode.getMeasurementMNode(
+                node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
             idx,
             level + 1);
       }
