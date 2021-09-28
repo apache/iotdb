@@ -22,7 +22,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
@@ -638,7 +638,7 @@ public class BatchData {
   }
 
   public BatchDataIterator getBatchDataIterator() {
-    return new BatchDataIterator(this);
+    return new BatchDataIterator();
   }
 
   /**
@@ -762,5 +762,28 @@ public class BatchData {
           throw new IllegalArgumentException("Invalid input: " + type);
       }
     }
+  }
+
+  private class BatchDataIterator implements IPointReader {
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      return hasCurrent();
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      TimeValuePair timeValuePair = new TimeValuePair(currentTime(), currentTsPrimitiveType());
+      next();
+      return timeValuePair;
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return new TimeValuePair(currentTime(), currentTsPrimitiveType());
+    }
+
+    @Override
+    public void close() {}
   }
 }
