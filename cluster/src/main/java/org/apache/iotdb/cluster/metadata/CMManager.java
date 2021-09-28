@@ -53,7 +53,13 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -531,7 +537,7 @@ public class CMManager extends MManager {
     // for CreateMultiTimeSeriesPlan, use getPaths() to get all timeseries to get related storage
     // groups.
     if (plan instanceof BatchPlan) {
-      storageGroups.addAll(getStorageGroups(getValidStorageGroups(plan)));
+      storageGroups.addAll(getStorageGroups(getValidStorageGroups((BatchPlan) plan)));
     } else if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((InsertPlan) plan).getPrefixPath())));
@@ -563,12 +569,13 @@ public class CMManager extends MManager {
     }
   }
 
-  private List<PartialPath> getValidStorageGroups(PhysicalPlan plan) {
+  private List<PartialPath> getValidStorageGroups(BatchPlan plan) {
     List<PartialPath> paths = new ArrayList<>();
-    for (int i = 0; i < plan.getPaths().size(); i++) {
+    List<PartialPath> originalPaths = plan.getPrefixPaths();
+    for (int i = 0; i < originalPaths.size(); i++) {
       // has permission to create sg
-      if (!((BatchPlan) plan).getResults().containsKey(i)) {
-        paths.add(plan.getPaths().get(i));
+      if (!plan.getResults().containsKey(i)) {
+        paths.add(originalPaths.get(i));
       }
     }
     return paths;
