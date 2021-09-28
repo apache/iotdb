@@ -19,20 +19,18 @@
 
 package org.apache.iotdb.db.engine.settle;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class SettleTask extends WrappedRunnable {
 
@@ -54,15 +52,16 @@ public class SettleTask extends WrappedRunnable {
   }
 
   public void settleTsFile() throws Exception {
-    TsFileResource settledResource = null;
+    List<TsFileResource> settledResources = new ArrayList<>();
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
           "The tsFile {} should be sealed when settling.", resourceToBeSettled.getTsFilePath());
       return;
     }
-    if (TsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
+    TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
+    if (tsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
       logger.info("find settled file for {}", resourceToBeSettled.getTsFile());
-      settledResource = TsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
+      settledResources = tsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
     } else {
       logger.info("generate settled file for {}", resourceToBeSettled.getTsFile());
       // Write Settle Log, Status 1
@@ -70,16 +69,15 @@ public class SettleTask extends WrappedRunnable {
           resourceToBeSettled.getTsFilePath()
               + SettleLog.COMMA_SEPERATOR
               + SettleCheckStatus.BEGIN_SETTLE_FILE);
-      TsFileAndModSettleTool tsFileAndModSettleTool=new TsFileAndModSettleTool();
-        settledResource = tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled);
-      }
+      tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled,settledResources);
+    }
 
-      // Write Settle Log, Status 2
-      SettleLog.writeSettleLog(
-          resourceToBeSettled.getTsFilePath()
-              + SettleLog.COMMA_SEPERATOR
-              + SettleCheckStatus.AFTER_SETTLE_FILE);
-    resourceToBeSettled.getSettleTsFileCallBack().call(resourceToBeSettled, settledResource);
+    // Write Settle Log, Status 2
+    SettleLog.writeSettleLog(
+        resourceToBeSettled.getTsFilePath()
+            + SettleLog.COMMA_SEPERATOR
+            + SettleCheckStatus.AFTER_SETTLE_FILE);
+    resourceToBeSettled.getSettleTsFileCallBack().call(resourceToBeSettled, settledResources);
 
     // Write Settle Log, Status 3
     SettleLog.writeSettleLog(

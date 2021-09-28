@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -131,44 +132,50 @@ public class TsFileRewriteTool implements AutoCloseable {
    * folder.
    *
    * @param oldTsFileResource
-   * @param newTsFileResource if the old TsFile has not any deletions or all the data in which has
+   * @param newTsFileResources if the old TsFile has not any deletions or all the data in which has
    *     been deleted , then this param will be null.
    * @throws IOException
    */
   public static void moveNewTsFile(
-      TsFileResource oldTsFileResource, TsFileResource newTsFileResource) throws IOException {
+      TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources) throws IOException {
     // delete old mods
     oldTsFileResource.removeModFile();
-
     File newPartionDir =
         new File(
             oldTsFileResource.getTsFile().getParent()
                 + File.separator
                 + oldTsFileResource.getTimePartition());
     try {
-      FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-      if (newTsFileResource == null) {
+      if(newTsFileResources.size()==0){
         return;
       }
+      FSFactory fsFactory = FSFactoryProducer.getFSFactory();
       File oldTsFile = oldTsFileResource.getTsFile();
-      File newTsFile = newTsFileResource.getTsFile();
-
-      // move TsFile
       oldTsFile.delete();
-      fsFactory.moveFile(newTsFile, oldTsFile);
+      for (TsFileResource newTsFileResource : newTsFileResources) {
+        newPartionDir =
+            new File(
+                oldTsFileResource.getTsFile().getParent()
+                    + File.separator
+                    + newTsFileResource.getTimePartition());
+        File newTsFile = newTsFileResource.getTsFile();
 
-      // move .resource File
-      newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
-      newTsFileResource.setClosed(true);
-      try {
-        newTsFileResource.serialize();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-      File tmpResourceFile =
-          fsFactory.getFile(newPartionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
-      if (tmpResourceFile.exists()) {
-        tmpResourceFile.delete();
+        // move TsFile
+        fsFactory.moveFile(newTsFile, oldTsFile);
+
+        // move .resource File
+        newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
+        newTsFileResource.setClosed(true);
+        try {
+          newTsFileResource.serialize();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+        File tmpResourceFile =
+            fsFactory.getFile(newPartionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
+        if (tmpResourceFile.exists()) {
+          tmpResourceFile.delete();
+        }
       }
     } finally {
       if (newPartionDir.exists())
@@ -448,25 +455,33 @@ public class TsFileRewriteTool implements AutoCloseable {
     PageReader pageReader =
         new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder, null);
     // read delete time range from old modification file
-    List<TimeRange> deleteIntervalList = new ArrayList<>();
+    List<TimeRange> deleteIntervalList=getOldSortedDeleteIntervals(deviceId,schema,chunkHeaderOffset);
+    pageReader.setDeleteIntervalList(deleteIntervalList);
+    BatchData batchData = pageReader.getAllSatisfiedPageData();
+    rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
+  }
+
+  private List<TimeRange> getOldSortedDeleteIntervals(String deviceId,MeasurementSchema schema,long chunkHeaderOffset)
+      throws IllegalPathException {
     if (oldModification != null) {
+      ChunkMetadata chunkMetadata=new ChunkMetadata();
       modsIterator = oldModification.iterator();
       Deletion currentDeletion = null;
       while (modsIterator.hasNext()) {
         currentDeletion = (Deletion) modsIterator.next();
         // if deletion path match the chunkPath, then add the deletion to the list
         if (currentDeletion
-                .getPath()
-                .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
+            .getPath()
+            .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
-          deleteIntervalList.add(
-              new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));
+          chunkMetadata.insertIntoSortedDeletions(currentDeletion.getStartTime(),currentDeletion.getEndTime());
+//          deleteIntervalList.add(
+//              new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));
         }
       }
+      return chunkMetadata.getDeleteIntervalList();
     }
-    pageReader.setDeleteIntervalList(deleteIntervalList);
-    BatchData batchData = pageReader.getAllSatisfiedPageData();
-    rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
+    return null;
   }
 
   protected void rewritePageIntoFiles(

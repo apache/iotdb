@@ -32,7 +32,6 @@ import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
-import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -198,8 +197,6 @@ public class TsFileRewriteToolTest {
       Assert.fail(e.getMessage());
     }
   }
-
-
 
   public List<TsFileResource> createFiles() throws IOException {
     List<TsFileResource> resourcesToBeSettled = new ArrayList<>();

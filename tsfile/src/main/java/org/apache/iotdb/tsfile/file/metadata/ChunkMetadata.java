@@ -74,7 +74,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   private String filePath;
   private byte mask;
 
-  private ChunkMetadata() {}
+  public ChunkMetadata() {}
 
   /**
    * constructor of ChunkMetaData.

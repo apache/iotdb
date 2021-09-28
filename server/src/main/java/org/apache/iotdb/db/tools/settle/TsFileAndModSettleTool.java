@@ -129,41 +129,41 @@ public class TsFileAndModSettleTool {
   }
 
   /**
-   * This method is used to settle tsFiles and mods files, so that each old TsFile corresponds to a
-   * new TsFile. This method is only applicable to v0.12 TsFile, which data in one TsFile only
-   * belongs to one time partition.
+   * This method is used to settle tsFiles and mods files, so that each old TsFile corresponds to one or several
+   * new TsFiles. This method is only applicable to V3 TsFile.
    *
-   * @return Each old TsFile corresponds to a new TsFileResource of the new TsFile
+   * @return Each old TsFile corresponds to one or several new TsFileResources of the new TsFiles
    */
-  public static List<TsFileResource> settleTsFilesAndMods(
+  public static Map<String,List<TsFileResource>> settleTsFilesAndMods(
       Map<String, TsFileResource> resourcesToBeSettled) {
     int successCount = 0;
-    List<TsFileResource> newTsFileResources = new ArrayList<>();
+    Map<String,List<TsFileResource>> newTsFileResources = new HashMap<>();
     SettleLog.createSettleLog();
     for (Map.Entry<String, TsFileResource> entry : resourcesToBeSettled.entrySet()) {
       TsFileResource resourceToBeSettled = entry.getValue();
-      TsFileResource newResource = null;
+      List<TsFileResource> settledTsFileResources=new ArrayList<>();
       try {
         TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
         System.out.println("Start settling for tsFile : " + resourceToBeSettled.getTsFilePath());
-        if (isSettledFileGenerated(resourceToBeSettled)) {
-          newResource = findSettledFile(resourceToBeSettled);
+        if (tsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
+          settledTsFileResources=tsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
+          newTsFileResources.put(resourceToBeSettled.getTsFile().getName(),settledTsFileResources);
         } else {
           // Write Settle Log, Status 1
           SettleLog.writeSettleLog(
               resourceToBeSettled.getTsFilePath()
                   + SettleLog.COMMA_SEPERATOR
                   + SettleCheckStatus.BEGIN_SETTLE_FILE);
-          newResource = tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled);
+          tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled,settledTsFileResources);
           // Write Settle Log, Status 2
           SettleLog.writeSettleLog(
               resourceToBeSettled.getTsFilePath()
                   + SettleLog.COMMA_SEPERATOR
                   + SettleCheckStatus.AFTER_SETTLE_FILE);
-          newTsFileResources.add(newResource);
+          newTsFileResources.put(resourceToBeSettled.getTsFile().getName(),settledTsFileResources);
         }
 
-        TsFileRewriteTool.moveNewTsFile(resourceToBeSettled, newResource);
+        TsFileRewriteTool.moveNewTsFile(resourceToBeSettled, settledTsFileResources);
         // Write Settle Log, Status 3
         SettleLog.writeSettleLog(
             resourceToBeSettled.getTsFilePath()
@@ -191,30 +191,30 @@ public class TsFileAndModSettleTool {
     return newTsFileResources;
   }
 
-  public TsFileResource settleOneTsFileAndMod(TsFileResource resourceToBeSettled) throws Exception {
+  public void settleOneTsFileAndMod(TsFileResource resourceToBeSettled,List<TsFileResource> settledResources) throws Exception {
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
           "The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
-      return null;
+      return;
     }
+    // if no deletions to this tsfile, then return null.
     if (!resourceToBeSettled
         .getModFile()
-        .exists()) { // if no deletions to this tsfile, then return null.
-      return null;
+        .exists()) {
+      return;
     }
-    List<TsFileResource> newResources = new ArrayList<>();
     try (TsFileRewriteTool tsFileRewriteTool = new TsFileRewriteTool(resourceToBeSettled)) {
-      tsFileRewriteTool.parseAndRewriteFile(newResources);
+      tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
-    if (newResources.size() == 0) { // if all the data in this tsfile has been deleted
+    if (settledResources.size() == 0) { // if all the data in this tsfile has been deleted
       resourceToBeSettled.readUnlock();
       resourceToBeSettled.writeLock();
       resourceToBeSettled.delete();
       resourceToBeSettled.writeUnlock();
       resourceToBeSettled.readLock();
-      return null;
+      return;
     }
-    return newResources.get(0);
+    return;
   }
 
   public static void findFilesToBeRecovered() {
@@ -243,7 +243,7 @@ public class TsFileAndModSettleTool {
   }
 
   /** this method is used to check whether the new file is settled when recovering old tsFile. */
-  public static boolean isSettledFileGenerated(TsFileResource oldTsFileResource) {
+  public boolean isSettledFileGenerated(TsFileResource oldTsFileResource) {
     String oldFilePath = oldTsFileResource.getTsFilePath();
     return TsFileAndModSettleTool.recoverSettleFileMap.containsKey(oldFilePath)
         && TsFileAndModSettleTool.recoverSettleFileMap.get(oldFilePath)
@@ -251,33 +251,34 @@ public class TsFileAndModSettleTool {
   }
 
   /** when the new file is settled , we need to find and deserialize it. */
-  public static TsFileResource findSettledFile(TsFileResource resourceToBeSettled)
+  public List<TsFileResource> findSettledFile(TsFileResource resourceToBeSettled)
       throws IOException {
-    TsFileResource settledTsFileResource = null;
+    List<TsFileResource> settledTsFileResources = new ArrayList<>();
     SettleLog.writeSettleLog(
         resourceToBeSettled.getTsFilePath()
             + SettleLog.COMMA_SEPERATOR
             + SettleCheckStatus.BEGIN_SETTLE_FILE);
 
-    for (File tempPartitionDir : resourceToBeSettled.getTsFile().getParentFile().listFiles()) {
+    for(File tempPartitionDir : resourceToBeSettled.getTsFile().getParentFile().listFiles()){
       if (tempPartitionDir.isDirectory()
           && FSFactoryProducer.getFSFactory()
               .getFile(
                   tempPartitionDir,
                   resourceToBeSettled.getTsFile().getName() + TsFileResource.RESOURCE_SUFFIX)
               .exists()) {
-        settledTsFileResource =
+        TsFileResource settledTsFileResource =
             new TsFileResource(
                 FSFactoryProducer.getFSFactory()
                     .getFile(tempPartitionDir, resourceToBeSettled.getTsFile().getName()));
         settledTsFileResource.deserialize();
+        settledTsFileResources.add(settledTsFileResource);
       }
     }
     SettleLog.writeSettleLog(
         resourceToBeSettled.getTsFilePath()
             + SettleLog.COMMA_SEPERATOR
             + SettleCheckStatus.AFTER_SETTLE_FILE);
-    return settledTsFileResource;
+    return settledTsFileResources;
   }
 
   public static void clearRecoverSettleFileMap() {

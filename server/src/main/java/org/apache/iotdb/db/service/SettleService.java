@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleTask;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -32,7 +31,6 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -121,8 +119,7 @@ public class SettleService implements IService {
   }
 
   /** This method is used to settle TsFile in the main thread. */
-  public void settleTsFile(SettleTask settleTask)
-      throws Exception {
+  public void settleTsFile(SettleTask settleTask) throws Exception {
     settleTask.settleTsFile();
   }
 
