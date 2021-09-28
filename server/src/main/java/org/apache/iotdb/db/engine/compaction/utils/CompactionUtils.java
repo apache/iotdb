@@ -431,7 +431,10 @@ public class CompactionUtils {
       writer.endFile();
       targetResource.close();
     } finally {
-      writer.close();
+      if (writer.canWrite()) {
+        // avoid double close
+        writer.close();
+      }
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
       }
