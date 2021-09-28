@@ -70,7 +70,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     public void runMayThrow() {
       try {
         // check the status of mainThread before next reading
-        QueryTimeManager.checkQueryAlive(queryId);
+        if (!QueryTimeManager.checkQueryAlive(queryId)) {
+          return;
+        }
 
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue

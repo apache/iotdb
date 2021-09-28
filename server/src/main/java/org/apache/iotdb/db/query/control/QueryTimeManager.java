@@ -116,14 +116,27 @@ public class QueryTimeManager implements IService {
     return plan instanceof ShowQueryProcesslistPlan ? null : unRegisterQuery(queryId);
   }
 
-  public static void checkQueryAlive(long queryId) {
+  /**
+   * Check given query is alive or not. We only throw the queryTimeoutRunTimeException once. If the
+   * runTimeException is thrown in main thread, it will quit directly while the return value will be
+   * used to ask sub query threads to quit. Else if it's thrown in one sub thread, other sub threads
+   * will quit by reading the return value, and main thread will catch and throw the same exception
+   * by reading the ExceptionBatchData.
+   *
+   * @return True if alive.
+   */
+  public static boolean checkQueryAlive(long queryId) {
     QueryInfo queryInfo = getInstance().queryInfoMap.get(queryId);
-    if (queryInfo != null && queryInfo.isInterrupted()) {
+    if (queryInfo == null) {
+      return false;
+    } else if (queryInfo.isInterrupted()) {
       if (getInstance().unRegisterQuery(queryId).get()) {
         throw new QueryTimeoutRuntimeException(
             QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
       }
+      return false;
     }
+    return true;
   }
 
   public Map<Long, QueryInfo> getQueryInfoMap() {
