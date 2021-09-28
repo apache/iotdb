@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.influxdb;
 
-public class util {
+public class Util {
   public static String generateWord(int index) {
     if (index == 0) {
       return "A";

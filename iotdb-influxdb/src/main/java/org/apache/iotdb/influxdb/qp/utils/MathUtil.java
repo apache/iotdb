@@ -23,10 +23,10 @@ import java.util.List;
 
 public class MathUtil {
   /**
-   * 计算double列表的和
+   * calculate sum of list
    *
-   * @param data 需要计算的列表
-   * @return 列表之和
+   * @param data need to calculate list
+   * @return sum of list
    */
   public static double Sum(List<Double> data) {
     double sum = 0;
@@ -35,10 +35,10 @@ public class MathUtil {
   }
 
   /**
-   * 计算double列表的平均值
+   * calculate mean of list
    *
-   * @param data 需要计算的列表
-   * @return 列表平均值
+   * @param data need to calculate list
+   * @return mean of list
    */
   public static double Mean(List<Double> data) {
     double mean = 0;
@@ -47,10 +47,10 @@ public class MathUtil {
   }
 
   /**
-   * 计算double列表的总体方差
+   * calculate pop variance of list
    *
-   * @param data 需要计算的列表
-   * @return 列表总体方差
+   * @param data need to calculate list
+   * @return pop variance of list
    */
   public static double POP_Variance(List<Double> data) {
     double variance = 0;
@@ -62,10 +62,10 @@ public class MathUtil {
   }
 
   /**
-   * 计算double列表的总体标准差
+   * calculate pop std dev of list
    *
-   * @param data 需要计算的列表
-   * @return 列表总体标准差
+   * @param data need to calculate list
+   * @return pop std dev of list
    */
   public static double POP_STD_dev(List<Double> data) {
     double std_dev;

@@ -631,14 +631,14 @@ public class IoTDBInfluxDB implements InfluxDB {
     realQuerySql += " align by device";
     SessionDataSet sessionDataSet = session.executeQueryStatement(realQuerySql);
     return iotdbAlignByDeviceResultCvtToInfluxdbResult(sessionDataSet);
-    // 下面的注释内容是采用非align by device的方案
+    // The following comments refer to the scheme of non align by device
     //        if (realIotDBCondition.isEmpty()) {
     //            realQuerySql = ("select * from " + curQueryPath);
     //            SessionDataSet sessionDataSet = session.executeQueryStatement(realQuerySql);
     //            queryResult = iotdbResultCvtToInfluxdbResult(sessionDataSet);
     //            System.out.println(sessionDataSet.toString());
     //        } else {
-    //            //有了过滤条件，只能多次遍历
+    //            //With filter conditions, we can only traverse multiple times
     //            QueryResult lastQueryResult = null;
     //            for (int i = currentQueryMaxTagNum; i <= measurementTagNum; i++) {
     //                if (i != currentQueryMaxTagNum) {
@@ -651,19 +651,20 @@ public class IoTDBInfluxDB implements InfluxDB {
     //                    sessionDataSet = session.executeQueryStatement(realQuerySql);
     //                } catch (StatementExecutionException e) {
     //                    if (e.getStatusCode() == 411) {
-    //                        //where的timeseries没有匹配的话，会抛出411的错误，将其拦截打印
+    //                        //If the timeseries of where do not match, an error of 411 will be
+    // thrown and blocked for printing
     //                        System.out.println(e.getMessage());
     //                    } else {
     //                        throw e;
     //                    }
     //                }
-    //                //暂时的转换结果
+    //                //Temporary conversion results
     //                QueryResult tmpQueryResult = iotdbResultCvtToInfluxdbResult(sessionDataSet);
-    //                //如果是第一次，则直接赋值，不需要or操作
+    //                //If it is the first time, it is assigned directly without or operation
     //                if (i == currentQueryMaxTagNum) {
     //                    lastQueryResult = tmpQueryResult;
     //                } else {
-    //                    //进行add操作
+    //                    //Perform the add operation
     //                    lastQueryResult =
     // IotDBInfluxDBUtils.addQueryResultProcess(lastQueryResult, tmpQueryResult);
     //                }
@@ -673,7 +674,7 @@ public class IoTDBInfluxDB implements InfluxDB {
   }
 
   /**
-   * cConvert align by device query result of iotdb to the query result of influxdb
+   * Convert align by device query result of iotdb to the query result of influxdb
    *
    * @param sessionDataSet iotdb query results to be converted
    * @return query results in influxdb format

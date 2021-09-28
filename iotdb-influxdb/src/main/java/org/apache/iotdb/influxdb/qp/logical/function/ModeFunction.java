@@ -41,7 +41,7 @@ public class ModeFunction extends Aggregate {
   public void updateValue(FunctionValue functionValue) {
     Object value = functionValue.getValue();
     Long timestamp = functionValue.getTimestamp();
-    // 更新新的数据
+    // update new data
     if (!valueOrders.containsKey(value)) {
       valueOrders.put(value, 1);
       valueLastTimestamp.put(value, timestamp);
@@ -51,7 +51,7 @@ public class ModeFunction extends Aggregate {
         valueLastTimestamp.put(value, timestamp);
       }
     }
-    // 判断新的数据是否处于满足条件的情况
+    // Judge whether the new data meets the conditions
     if (maxObject == null) {
       maxObject = value;
       maxNumber = 1;

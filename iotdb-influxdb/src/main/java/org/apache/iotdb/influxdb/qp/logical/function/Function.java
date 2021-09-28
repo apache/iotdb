@@ -27,7 +27,7 @@ import java.util.List;
 
 public abstract class Function {
 
-  // 包含了可能存在参数
+  // contain possible parameters
   private List<Expression> expressionList;
 
   protected Session session;
@@ -46,12 +46,11 @@ public abstract class Function {
 
   public Function() {}
 
-  // 计算最后的结果
+  // calculate result
   public abstract FunctionValue calculate();
 
   public abstract FunctionValue calculateByIoTDBFunc();
 
-  // 获取expressionList
   public List<Expression> getExpressions() {
     return this.expressionList;
   }

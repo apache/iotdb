@@ -29,8 +29,11 @@ import org.junit.Before;
 
 import java.util.*;
 
-public class IoTDBInfluxDBTest {
-  private IoTDBInfluxDB iotDBInfluxDB;
+/**
+ * The purpose of this class is to test the performance of two design schemes, store and read
+ * large-scale data for the two schemes respectively, and compare the reading efficiency
+ */
+public class DesignSchemePerformanceTest {
 
   private static final String LOCAL_HOST = "127.0.0.1";
   private static Session session;
@@ -39,7 +42,8 @@ public class IoTDBInfluxDBTest {
 
   @Before
   public void setUp() throws IoTDBConnectionException {
-    // 创建 连接
+    // create session
+    //
     session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
 
@@ -54,12 +58,12 @@ public class IoTDBInfluxDBTest {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     for (int i = 0; i < fieldNum; i++) {
-      measurements.add(util.generateWord(i));
+      measurements.add(Util.generateWord(i));
       types.add(TSDataType.INT64);
     }
     for (int i = 0; i < tagNum; i++) {
       int baseline = 300;
-      String tmpTag = util.generateWord(i + baseline);
+      String tmpTag = Util.generateWord(i + baseline);
       System.out.println("tag:" + tmpTag);
       measurements.add(tmpTag);
       types.add(TSDataType.INT64);
@@ -82,10 +86,10 @@ public class IoTDBInfluxDBTest {
       List<String> measurements = new ArrayList<>();
       List<TSDataType> types = new ArrayList<>();
       int baseline = 300;
-      String tmpTag = util.generateWord(i + baseline);
+      String tmpTag = Util.generateWord(i + baseline);
       deviceId += "." + tmpTag;
       for (int j = 0; j < fieldNum; j++) {
-        measurements.add(util.generateWord(j));
+        measurements.add(Util.generateWord(j));
         types.add(TSDataType.INT64);
       }
 

@@ -26,7 +26,7 @@ import java.util.List;
 
 public abstract class Selector extends Function {
 
-  // 值对应的时间戳
+  // The timestamp corresponding to the value
   private Long timestamp;
 
   private List<Object> relatedValues;
