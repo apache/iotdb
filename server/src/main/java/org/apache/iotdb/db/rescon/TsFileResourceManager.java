@@ -27,8 +27,8 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.util.PriorityQueue;
+import java.util.TreeSet;
 
 public class TsFileResourceManager {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceManager.class);
@@ -40,8 +40,8 @@ public class TsFileResourceManager {
       CONFIG.getAllocateMemoryForRead() * CONFIG.getTimeIndexMemoryProportion();
 
   /** store the sealed TsFileResource, sorted by priority of TimeIndex */
-  private PriorityQueue<TsFileResource> sealedTsFileResources =
-      new PriorityQueue<>(TsFileResource::compareIndexDegradePriority);
+  private final TreeSet<TsFileResource> sealedTsFileResources =
+      new TreeSet<>(TsFileResource::compareIndexDegradePriority);
 
   /** total used memory for TimeIndex */
   private long totalTimeIndexMemCost;
@@ -63,6 +63,7 @@ public class TsFileResourceManager {
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
     sealedTsFileResources.add(tsFileResource);
     totalTimeIndexMemCost += tsFileResource.calculateRamSize();
+    System.out.println("before: " + totalTimeIndexMemCost + " " + tsFileResource.calculateRamSize());
     chooseTsFileResourceToDegrade();
   }
 
@@ -73,7 +74,7 @@ public class TsFileResourceManager {
   }
 
   /** once degradation is triggered, the total memory for timeIndex should reduce */
-  public synchronized void releaseTimeIndexMemCost(long memCost) {
+  private void releaseTimeIndexMemCost(long memCost) {
     totalTimeIndexMemCost -= memCost;
   }
 
@@ -83,12 +84,14 @@ public class TsFileResourceManager {
    */
   private void chooseTsFileResourceToDegrade() {
     while (totalTimeIndexMemCost > TIME_INDEX_MEMORY_THRESHOLD) {
-      TsFileResource tsFileResource = sealedTsFileResources.poll();
-      if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
-          == TimeIndexLevel.FILE_TIME_INDEX) {
+      TsFileResource tsFileResource = sealedTsFileResources.pollFirst();
+      if (tsFileResource == null
+          || TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
+              == TimeIndexLevel.FILE_TIME_INDEX) {
         logger.error("Can't degrade any more");
         throw new RuntimeException("Can't degrade any more");
       }
+      System.out.println("poll: " + tsFileResource.calculateRamSize());
       long memoryReduce = tsFileResource.degradeTimeIndex();
       releaseTimeIndexMemCost(memoryReduce);
       // add the polled tsFileResource to the priority queue

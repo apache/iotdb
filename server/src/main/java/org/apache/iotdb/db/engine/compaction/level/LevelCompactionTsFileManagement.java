@@ -486,7 +486,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
           // complete compaction and delete source file
           deleteAllSubLevelFiles(isSeq, timePartition);
-          
+
           tsFileResourceManager.registerSealedTsFileResource(targetTsFileResource);
         } else {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
@@ -518,7 +518,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 modifications);
             // complete compaction and delete source file
             writeLock();
-            tsFileResourceManager.registerSealedTsFileResource(targetResource);
             try {
               if (Thread.currentThread().isInterrupted()) {
                 throw new InterruptedException(
@@ -533,6 +532,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 unSequenceRecoverTsFileResources.clear();
               }
               deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
+              tsFileResourceManager.registerSealedTsFileResource(targetResource);
             } finally {
               writeUnlock();
             }
@@ -714,7 +714,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 i,
                 toMergeTsFiles.size());
             writeLock();
-            tsFileResourceManager.registerSealedTsFileResource(newResource);
             try {
               if (Thread.currentThread().isInterrupted()) {
                 throw new InterruptedException(
@@ -727,6 +726,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
               }
               deleteLevelFilesInList(timePartition, toMergeTsFiles, i, sequence);
+              tsFileResourceManager.registerSealedTsFileResource(newResource);
               if (mergeResources.size() > i + 1) {
                 mergeResources.get(i + 1).add(newResource);
               }

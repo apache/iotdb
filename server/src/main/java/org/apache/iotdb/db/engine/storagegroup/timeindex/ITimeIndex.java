@@ -164,10 +164,19 @@ public interface ITimeIndex {
   long getMinStartTime();
 
   /**
+   * get max end time of device
+   *
+   * @return max end time
+   */
+  long getMaxEndTime();
+
+  /**
    * compare the priority of two ITimeIndex
    *
    * @param timeIndex another timeIndex
-   * @return true if the priority of this timeIndex is higher than the argument
+   * @return value is less than 0 if the priority of this timeIndex is higher than the argument,
+   *     value is equal to 0 if the priority of this timeIndex is equal to the argument, value is
+   *     larger than 0 if the priority of this timeIndex is less than the argument
    */
   int compareDegradePriority(ITimeIndex timeIndex);
 }

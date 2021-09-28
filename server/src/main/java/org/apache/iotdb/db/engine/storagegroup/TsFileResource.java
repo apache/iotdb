@@ -864,11 +864,8 @@ public class TsFileResource {
     long previousMemory = calculateRamSize();
     // get the minimum startTime
     long startTime = timeIndex.getMinStartTime();
-    long endTime = Long.MIN_VALUE;
     // get the maximum endTime
-    for (String devicesId : timeIndex.getDevices(file.getPath())) {
-      endTime = Math.max(endTime, timeIndex.getEndTime(devicesId));
-    }
+    long endTime = timeIndex.getMaxEndTime();
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
     timeIndexType = 0;

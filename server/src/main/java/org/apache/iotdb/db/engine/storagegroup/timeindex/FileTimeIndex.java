@@ -183,6 +183,11 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long getMaxEndTime() {
+    return endTime;
+  }
+
+  @Override
   public boolean checkDeviceIdExist(String deviceId) {
     return true;
   }
@@ -192,6 +197,9 @@ public class FileTimeIndex implements ITimeIndex {
     if (timeIndex instanceof DeviceTimeIndex) {
       return 1;
     } else if (timeIndex instanceof FileTimeIndex) {
+      if (getMinStartTime() == timeIndex.getMinStartTime()) {
+        return -1;
+      }
       return Long.compare(startTime, timeIndex.getMinStartTime());
     } else {
       logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());

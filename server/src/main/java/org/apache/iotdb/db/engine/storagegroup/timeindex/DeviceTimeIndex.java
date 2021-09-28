@@ -58,6 +58,12 @@ public class DeviceTimeIndex implements ITimeIndex {
    */
   protected long[] endTimes;
 
+  /** min start time */
+  private long minStartTime = Long.MAX_VALUE;
+
+  /** max end time */
+  private long maxEndTime = Long.MIN_VALUE;
+
   /** device -> index of start times array and end times array */
   protected Map<String, Integer> deviceToIndex;
 
@@ -101,13 +107,15 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public DeviceTimeIndex deserialize(InputStream inputStream) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
-    Map<String, Integer> deviceMap = new ConcurrentHashMap<>();
-    long[] startTimesArray = new long[deviceNum];
-    long[] endTimesArray = new long[deviceNum];
+
+    startTimes = new long[deviceNum];
+    endTimes = new long[deviceNum];
 
     for (int i = 0; i < deviceNum; i++) {
-      startTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
-      endTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
+      startTimes[i] = ReadWriteIOUtils.readLong(inputStream);
+      endTimes[i] = ReadWriteIOUtils.readLong(inputStream);
+      minStartTime = Math.min(minStartTime, startTimes[i]);
+      maxEndTime = Math.max(maxEndTime, endTimes[i]);
     }
 
     for (int i = 0; i < deviceNum; i++) {
@@ -116,21 +124,22 @@ public class DeviceTimeIndex implements ITimeIndex {
       // use the deviceId from memory instead of the deviceId read from disk
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       int index = ReadWriteIOUtils.readInt(inputStream);
-      deviceMap.put(cachedPath, index);
+      deviceToIndex.put(cachedPath, index);
     }
-    return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
+    return this;
   }
 
   @Override
   public DeviceTimeIndex deserialize(ByteBuffer buffer) {
     int deviceNum = buffer.getInt();
-    Map<String, Integer> deviceMap = new ConcurrentHashMap<>(deviceNum);
-    long[] startTimesArray = new long[deviceNum];
-    long[] endTimesArray = new long[deviceNum];
+    startTimes = new long[deviceNum];
+    endTimes = new long[deviceNum];
 
     for (int i = 0; i < deviceNum; i++) {
-      startTimesArray[i] = buffer.getLong();
-      endTimesArray[i] = buffer.getLong();
+      startTimes[i] = buffer.getLong();
+      endTimes[i] = buffer.getLong();
+      minStartTime = Math.min(minStartTime, startTimes[i]);
+      maxEndTime = Math.max(maxEndTime, endTimes[i]);
     }
 
     for (int i = 0; i < deviceNum; i++) {
@@ -139,9 +148,9 @@ public class DeviceTimeIndex implements ITimeIndex {
       // use the deviceId from memory instead of the deviceId read from disk
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       int index = buffer.getInt();
-      deviceMap.put(cachedPath, index);
+      deviceToIndex.put(cachedPath, index);
     }
-    return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
+    return this;
   }
 
   @Override
@@ -268,6 +277,7 @@ public class DeviceTimeIndex implements ITimeIndex {
       int index = getDeviceIndex(deviceId);
       startTimes[index] = time;
     }
+    minStartTime = Math.min(minStartTime, time);
   }
 
   @Override
@@ -277,18 +287,21 @@ public class DeviceTimeIndex implements ITimeIndex {
       int index = getDeviceIndex(deviceId);
       endTimes[index] = time;
     }
+    maxEndTime = Math.max(maxEndTime, time);
   }
 
   @Override
   public void putStartTime(String deviceId, long time) {
     int index = getDeviceIndex(deviceId);
     startTimes[index] = time;
+    minStartTime = Math.min(minStartTime, time);
   }
 
   @Override
   public void putEndTime(String deviceId, long time) {
     int index = getDeviceIndex(deviceId);
     endTimes[index] = time;
+    maxEndTime = Math.max(maxEndTime, time);
   }
 
   @Override
@@ -314,16 +327,20 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public long getMinStartTime() {
-    long minStartTime = Long.MAX_VALUE;
-    for (int i = 0; i < deviceToIndex.size(); i++) {
-      minStartTime = Math.min(minStartTime, startTimes[i]);
-    }
     return minStartTime;
+  }
+
+  @Override
+  public long getMaxEndTime() {
+    return maxEndTime;
   }
 
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
     if (timeIndex instanceof DeviceTimeIndex) {
+      if (getMinStartTime() == timeIndex.getMinStartTime()) {
+        return -1;
+      }
       return Long.compare(getMinStartTime(), timeIndex.getMinStartTime());
     } else if (timeIndex instanceof FileTimeIndex) {
       return -1;
