@@ -34,7 +34,13 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * create multiple timeSeries, could be split to several sub Plans to execute in different DataGroup
@@ -42,6 +48,7 @@ import java.util.*;
 public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan {
 
   private List<PartialPath> paths;
+  private List<PartialPath> prefixPaths;
   private List<TSDataType> dataTypes;
   private List<TSEncoding> encodings;
   private List<CompressionType> compressors;
@@ -141,7 +148,11 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
 
   @Override
   public List<PartialPath> getPrefixPaths() {
-    return Collections.emptyList();
+    if (prefixPaths != null) {
+      return prefixPaths;
+    }
+    prefixPaths = paths.stream().map(PartialPath::getDevicePath).collect(Collectors.toList());
+    return prefixPaths;
   }
 
   public TSStatus[] getFailingStatus() {
