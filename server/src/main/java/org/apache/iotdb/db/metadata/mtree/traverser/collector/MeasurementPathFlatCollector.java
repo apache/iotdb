@@ -29,13 +29,13 @@ import java.util.LinkedList;
 import java.util.List;
 
 // This class implements the measurement path collection function.
-public class MeasurementPathCollector extends MeasurementCollector<List<PartialPath>> {
+public class MeasurementPathFlatCollector extends MeasurementFlatCollector<List<PartialPath>> {
 
-  public MeasurementPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public MeasurementPathFlatCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
   }
 
-  public MeasurementPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public MeasurementPathFlatCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
     this.resultSet = new LinkedList<>();

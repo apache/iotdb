@@ -36,20 +36,21 @@ import java.util.List;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 // This class implements the measurement collection function.
-public class MeasurementSchemaCollector
-    extends MeasurementCollector<List<Pair<PartialPath, String[]>>> {
+public class MeasurementSchemaFlatCollector
+    extends MeasurementFlatCollector<List<Pair<PartialPath, String[]>>> {
 
   // whether show timeseries with last value
   protected boolean needLast = false;
   // queryContext helps get last value
   protected QueryContext queryContext;
 
-  public MeasurementSchemaCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public MeasurementSchemaFlatCollector(IMNode startNode, PartialPath path)
+      throws MetadataException {
     super(startNode, path);
     this.resultSet = new LinkedList<>();
   }
 
-  public MeasurementSchemaCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public MeasurementSchemaFlatCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
     this.resultSet = new LinkedList<>();

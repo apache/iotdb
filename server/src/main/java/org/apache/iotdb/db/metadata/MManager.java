@@ -1602,7 +1602,11 @@ public class MManager {
    */
   public void collectMeasurementSchema(
       PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
-    mtree.collectMeasurementSchema(prefixPath, measurementSchemas);
+    try {
+      mtree.collectMeasurementSchema(prefixPath, measurementSchemas);
+    } catch (MetadataException ignored) {
+      // do nothing
+    }
   }
 
   /**
@@ -1612,7 +1616,11 @@ public class MManager {
    */
   public void collectTimeseriesSchema(
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
-    mtree.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
+    try {
+      mtree.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
+    } catch (MetadataException ignored) {
+      // do nothing
+    }
   }
 
   /**
