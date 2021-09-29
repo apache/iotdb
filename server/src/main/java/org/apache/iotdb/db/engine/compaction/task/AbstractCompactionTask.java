@@ -74,7 +74,13 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
 
   public abstract boolean equalsOtherTask(AbstractCompactionTask otherTask);
 
-  public abstract boolean isValid();
+  /**
+   * Check if the compaction task is valid (selected files are not merging, closed and exist). If
+   * the task is valid, then set the merging status of selected files to true.
+   *
+   * @return true if the task is valid else false
+   */
+  public abstract boolean checkValidAndSetMerging();
 
   public boolean equals(Object other) {
     if (other instanceof AbstractCompactionTask) {

@@ -134,8 +134,8 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
               storageGroupDir,
               sequenceFileList,
               unsequenceFileList,
-              mergeResource.getSeqFiles(),
-              mergeResource.getUnseqFiles(),
+              mergeFiles[0],
+              mergeFiles[1],
               fileSelector.getConcurrentMergeNum());
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
       taskSubmitted = true;

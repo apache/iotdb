@@ -91,11 +91,15 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   }
 
   @Override
-  public boolean isValid() {
+  public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
       if (resource.isMerging() | !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
       }
+    }
+
+    for (TsFileResource resource : selectedTsFileResourceList) {
+      resource.setMerging(true);
     }
     return true;
   }

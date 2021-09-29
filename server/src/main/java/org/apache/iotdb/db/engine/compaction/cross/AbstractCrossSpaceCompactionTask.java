@@ -57,7 +57,7 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   }
 
   @Override
-  public boolean isValid() {
+  public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedSequenceFiles) {
       if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
@@ -68,6 +68,14 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
       if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
       }
+    }
+
+    for (TsFileResource resource : selectedSequenceFiles) {
+      resource.setMerging(true);
+    }
+
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      resource.setMerging(true);
     }
 
     return true;

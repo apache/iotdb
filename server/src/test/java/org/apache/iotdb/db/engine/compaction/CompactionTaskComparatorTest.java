@@ -223,7 +223,7 @@ public class CompactionTaskComparatorTest {
     }
 
     @Override
-    public boolean isValid() {
+    public boolean checkValidAndSetMerging() {
       return true;
     }
   }
@@ -253,7 +253,7 @@ public class CompactionTaskComparatorTest {
     }
 
     @Override
-    public boolean isValid() {
+    public boolean checkValidAndSetMerging() {
       return true;
     }
   }

@@ -146,7 +146,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   }
 
   @Override
-  public boolean isValid() {
+  public boolean checkValidAndSetMerging() {
     return compactionLogFile.exists();
   }
 }
