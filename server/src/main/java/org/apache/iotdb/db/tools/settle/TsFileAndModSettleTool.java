@@ -207,12 +207,7 @@ public class TsFileAndModSettleTool {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
     if (settledResources.size() == 0) { // if all the data in this tsfile has been deleted
-      resourceToBeSettled.readUnlock();
-      resourceToBeSettled.writeLock();
       resourceToBeSettled.delete();
-      resourceToBeSettled.writeUnlock();
-      resourceToBeSettled.readLock();
-      return;
     }
     return;
   }

@@ -2342,19 +2342,19 @@ public class StorageGroupProcessor {
   public void settle() throws org.apache.iotdb.tsfile.exception.write.WriteProcessException {
     for (Map.Entry<String, TsFileResource> entry : settleSeqFileList.entrySet()) {
       TsFileResource seqTsFileResource = entry.getValue();
-      seqTsFileResource.readLock();
+      seqTsFileResource.writeLock();
       seqTsFileResource.setSeq(true);
       seqTsFileResource.setSettleTsFileCallBack(this::settleTsFileCallBack);
       seqTsFileResource.doSettle();
-      seqTsFileResource.readUnlock();
+      seqTsFileResource.writeUnlock();
     }
     for (Map.Entry<String, TsFileResource> entry : settleUnseqFileList.entrySet()) {
       TsFileResource unSeqTsFileResource = entry.getValue();
-      unSeqTsFileResource.readLock();
+      unSeqTsFileResource.writeLock();
       unSeqTsFileResource.setSeq(false);
       unSeqTsFileResource.setSettleTsFileCallBack(this::settleTsFileCallBack);
       unSeqTsFileResource.doSettle();
-      unSeqTsFileResource.readUnlock();
+      unSeqTsFileResource.writeUnlock();
     }
     settleSeqFileList.clear();
     settleUnseqFileList.clear();
@@ -2368,8 +2368,6 @@ public class StorageGroupProcessor {
    */
   private void settleTsFileCallBack(
       TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources) throws IOException {
-    oldTsFileResource.readUnlock();
-    oldTsFileResource.writeLock();
     TsFileRewriteTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
     if (TsFileAndModSettleTool.recoverSettleFileMap.size() != 0) {
       TsFileAndModSettleTool.recoverSettleFileMap.remove(oldTsFileResource.getTsFilePath());
@@ -2385,8 +2383,6 @@ public class StorageGroupProcessor {
     FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFilePath());
 
     SettleService.getFilesToBeSettledCount().addAndGet(-1);
-    oldTsFileResource.writeUnlock();
-    oldTsFileResource.readLock();
   }
 
   private void loadUpgradedResources(List<TsFileResource> resources, boolean isseq) {

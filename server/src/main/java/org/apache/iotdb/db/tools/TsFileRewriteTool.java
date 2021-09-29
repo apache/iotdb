@@ -138,8 +138,6 @@ public class TsFileRewriteTool implements AutoCloseable {
    */
   public static void moveNewTsFile(
       TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources) throws IOException {
-    // delete old mods
-    oldTsFileResource.removeModFile();
     File newPartionDir =
         new File(
             oldTsFileResource.getTsFile().getParent()
@@ -303,7 +301,8 @@ public class TsFileRewriteTool implements AutoCloseable {
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
         rewrittenResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
-      // deleteOldModificationFile();
+      // delete old mods
+      oldTsFileResource.removeModFile();
 
     } catch (IOException e2) {
       throw new IOException(
@@ -316,11 +315,6 @@ public class TsFileRewriteTool implements AutoCloseable {
         reader.close();
       }
     }
-  }
-
-  /** this method is used to delete the old modification file after finishing rewriting. */
-  public void deleteOldModificationFile() throws IOException {
-    oldTsFileResource.removeModFile();
   }
 
   /**
@@ -475,8 +469,6 @@ public class TsFileRewriteTool implements AutoCloseable {
             .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           chunkMetadata.insertIntoSortedDeletions(currentDeletion.getStartTime(),currentDeletion.getEndTime());
-//          deleteIntervalList.add(
-//              new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));
         }
       }
       return chunkMetadata.getDeleteIntervalList();
