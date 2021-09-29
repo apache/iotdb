@@ -338,9 +338,6 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
     if (timeIndex instanceof DeviceTimeIndex) {
-      if (getMinStartTime() == timeIndex.getMinStartTime()) {
-        return -1;
-      }
       return Long.compare(getMinStartTime(), timeIndex.getMinStartTime());
     } else if (timeIndex instanceof FileTimeIndex) {
       return -1;

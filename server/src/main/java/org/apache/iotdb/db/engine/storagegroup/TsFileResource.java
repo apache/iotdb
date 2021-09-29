@@ -861,7 +861,8 @@ public class TsFileResource {
   }
 
   public int compareIndexDegradePriority(TsFileResource tsFileResource) {
-    return timeIndex.compareDegradePriority(tsFileResource.timeIndex);
+    int cmp = timeIndex.compareDegradePriority(tsFileResource.timeIndex);
+    return cmp == 0 ? file.getAbsolutePath().compareTo(tsFileResource.file.getAbsolutePath()) : cmp;
   }
 
   /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
