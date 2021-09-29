@@ -132,8 +132,7 @@ public class ModificationFile implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
-    File f = FSFactoryProducer.getFSFactory().getFile(filePath);
-    if (f.exists()) f.delete();
+    FSFactoryProducer.getFSFactory().getFile(filePath).delete();
   }
 
   public boolean exists() {
