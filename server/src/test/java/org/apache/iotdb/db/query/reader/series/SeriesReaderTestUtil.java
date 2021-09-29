@@ -59,7 +59,7 @@ public class SeriesReaderTestUtil {
   private static long ptNum = 100;
   private static long flushInterval = 20;
   private static TSEncoding encoding = TSEncoding.PLAIN;
-  private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
+  private static final String SERIES_READER_TEST_SG = "root.sg1";
 
   public static void setUp(
       List<MeasurementSchema> measurementSchemas,
@@ -94,12 +94,12 @@ public class SeriesReaderTestUtil {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  i
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                  "seq"
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
+                      + (i + 1)
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
                       + ".tsfile"));
@@ -107,7 +107,7 @@ public class SeriesReaderTestUtil {
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
-      tsFileResource.setVersion(i);
+      tsFileResource.setVersion(i + 1);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0, measurementSchemas, deviceIds);
     }
@@ -115,12 +115,12 @@ public class SeriesReaderTestUtil {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  i
-                      + "unseq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                  "unseq"
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
+                      + (i + seqFileNum + 1)
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
                       + ".tsfile"));
@@ -128,7 +128,7 @@ public class SeriesReaderTestUtil {
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
-      tsFileResource.setVersion(i + seqFileNum);
+      tsFileResource.setVersion(i + seqFileNum + 1);
       unseqResources.add(tsFileResource);
       prepareFile(
           tsFileResource,
@@ -142,12 +142,12 @@ public class SeriesReaderTestUtil {
     File file =
         new File(
             TestConstant.OUTPUT_DATA_DIR.concat(
-                unseqFileNum
-                    + "unseq"
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                "unseq"
                     + unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
+                    + (seqFileNum + unseqFileNum + 1)
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
                     + ".tsfile"));
@@ -155,7 +155,7 @@ public class SeriesReaderTestUtil {
     tsFileResource.setClosed(true);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
-    tsFileResource.setVersion(seqFileNum + unseqFileNum);
+    tsFileResource.setVersion(seqFileNum + unseqFileNum + 1);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * 2, 20000, measurementSchemas, deviceIds);
   }

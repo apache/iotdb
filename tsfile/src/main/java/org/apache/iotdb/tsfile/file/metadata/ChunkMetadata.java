@@ -71,7 +71,7 @@ public class ChunkMetadata {
   private String filePath;
 
   // used for ChunkCache, Eg:"root.sg1/0/0"
-  private String partialFilePathForCache;
+  private String tsFilePrefixPath;
 
   private ChunkMetadata() {}
 
@@ -228,12 +228,13 @@ public class ChunkMetadata {
     ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader
         && version == that.version
-        && partialFilePathForCache.equals(that.partialFilePathForCache);
+        && tsFilePrefixPath.equals(that.tsFilePrefixPath)
+        && deleteIntervalList.equals(that.deleteIntervalList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(partialFilePathForCache, version, offsetOfChunkHeader);
+    return Objects.hash(deleteIntervalList, tsFilePrefixPath, version, offsetOfChunkHeader);
   }
 
   public boolean isModified() {
@@ -291,7 +292,7 @@ public class ChunkMetadata {
   public void setFilePath(String filePath) {
     this.filePath = filePath;
 
-    // set partialFilePathForCache
-    partialFilePathForCache = FilePathUtils.getPartialFilePathForCache(filePath);
+    // set tsFilePrefixPath
+    tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(filePath);
   }
 }

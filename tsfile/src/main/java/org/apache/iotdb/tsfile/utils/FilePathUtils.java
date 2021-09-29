@@ -24,14 +24,16 @@ import java.io.File;
 public class FilePathUtils {
   public static String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
 
-  public static String getPartialFilePathForCache(String filePath) {
+  public static String getTsFilePrefixPath(String filePath) {
     if (filePath == null) return null;
     String[] pathSegments = filePath.split(PATH_SPLIT_STRING);
-    return pathSegments[pathSegments.length - 4] // storage group name
+    int pathLength = pathSegments.length;
+    if (pathLength < 4) return null;
+    return pathSegments[pathLength - 4] // storage group name
         + PATH_SPLIT_STRING
-        + pathSegments[pathSegments.length - 3] // virtual storage group Id
+        + pathSegments[pathLength - 3] // virtual storage group Id
         + PATH_SPLIT_STRING
-        + pathSegments[pathSegments.length - 2] // time partition Id
+        + pathSegments[pathLength - 2] // time partition Id
     ;
   }
 }

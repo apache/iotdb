@@ -124,6 +124,16 @@ public class FilePathUtils {
     return tsFileAbsolutePath.split(PATH_SPLIT_STRING);
   }
 
+  public static String getTsFilePrefixPath(String filePath) {
+    String[] pathSegments = splitTsFilePath(filePath);
+    int pathLength = pathSegments.length;
+    return pathSegments[pathLength - 4]
+        + File.separator
+        + pathSegments[pathLength - 3]
+        + File.separator
+        + pathSegments[pathLength - 2];
+  }
+
   /**
    * Transform an originalPath to a partial path that satisfies given level. Path nodes exceed the
    * given level will be replaced by "*", e.g. generatePartialPathByLevel("root.sg.dh.d1.s1", 2)
@@ -255,5 +265,15 @@ public class FilePathUtils {
       return 0;
     }
     return Long.parseLong(names[1]);
+  }
+
+  public static String getTsFileSuffixPath(String filePath) {
+    String[] pathSegments = splitTsFilePath(filePath);
+    String tsFileName = pathSegments[pathSegments.length - 1];
+    String[] names = tsFileName.split("[.\\" + FILE_NAME_SEPARATOR + "]");
+    if (names.length != 5) {
+      return null;
+    }
+    return names[1] + FILE_NAME_SEPARATOR + names[2] + FILE_NAME_SEPARATOR + names[3];
   }
 }

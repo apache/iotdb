@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -209,8 +210,9 @@ public class TimeSeriesMetadataCache {
   }
 
   public static class TimeSeriesMetadataCacheKey {
-
     private final String filePath;
+    private final String tsFilePrefixPath;
+    private final String tsFileSuffixPath;
     private final String device;
     private final String measurement;
 
@@ -218,6 +220,8 @@ public class TimeSeriesMetadataCache {
 
     public TimeSeriesMetadataCacheKey(String filePath, String device, String measurement) {
       this.filePath = filePath;
+      this.tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(filePath);
+      this.tsFileSuffixPath = FilePathUtils.getTsFileSuffixPath(filePath);
       this.device = device;
       this.measurement = measurement;
     }
@@ -231,14 +235,15 @@ public class TimeSeriesMetadataCache {
         return false;
       }
       TimeSeriesMetadataCacheKey that = (TimeSeriesMetadataCacheKey) o;
-      return Objects.equals(filePath, that.filePath)
-          && Objects.equals(device, that.device)
-          && Objects.equals(measurement, that.measurement);
+      return device.equals(that.device)
+          && measurement.equals(that.measurement)
+          && tsFileSuffixPath.equals(that.tsFileSuffixPath)
+          && tsFilePrefixPath.equals(that.tsFilePrefixPath);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(filePath, device, measurement);
+      return Objects.hash(tsFilePrefixPath, tsFileSuffixPath, device, measurement);
     }
   }
 
