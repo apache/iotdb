@@ -1160,6 +1160,11 @@ public class MManager {
         path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel());
   }
 
+  public Pair<IMNode, Template> getDeviceNodeWithAutoCreate(PartialPath path, boolean isLock)
+          throws MetadataException, IOException {
+    return getDeviceNodeWithAutoCreateWithoutReturnProcess(path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel(), false);
+  }
+
   @TestOnly
   // attention: this path must be a device node
   public List<MeasurementSchema> getAllMeasurementByDevicePath(PartialPath path)
@@ -1985,7 +1990,7 @@ public class MManager {
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node
-    Pair<IMNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
+    Pair<IMNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId, true);
     if (deviceMNode.left.getDeviceTemplate() != null) {
       deviceMNode.right = deviceMNode.left.getDeviceTemplate();
     }
@@ -2080,7 +2085,11 @@ public class MManager {
   }
 
   public IMNode getMNode(IMNode deviceMNode, String measurementName) throws MetadataException {
-    return mtree.getChildMNodeInDeviceWithMemoryLock(deviceMNode, measurementName);
+    try {
+      return mtree.getChildMNodeInDeviceWithMemoryLock(deviceMNode, measurementName);
+    }catch (PathNotExistException e){
+      return null;
+    }
   }
 
   private MeasurementMNode findTemplate(Pair<IMNode, Template> deviceMNode, String measurement)

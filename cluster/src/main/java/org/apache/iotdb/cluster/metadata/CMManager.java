@@ -451,7 +451,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+  public Pair<IMNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path,
