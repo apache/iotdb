@@ -28,7 +28,7 @@ public abstract class AbstractDataRaftService extends AbstractRaftService {
 
   @Override
   public void initSyncedServiceImpl(Object serviceImpl) {
-    if (impl != null) {
+    if (serviceImpl != null) {
       impl = (DataGroupServiceImpls) serviceImpl;
     }
     super.initSyncedServiceImpl(serviceImpl);
@@ -36,7 +36,7 @@ public abstract class AbstractDataRaftService extends AbstractRaftService {
 
   @Override
   public void initAsyncedServiceImpl(Object serviceImpl) {
-    if (impl != null) {
+    if (serviceImpl != null) {
       impl = (DataGroupServiceImpls) serviceImpl;
     }
     super.initAsyncedServiceImpl(serviceImpl);
