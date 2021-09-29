@@ -229,7 +229,7 @@ public class ChunkMetadata {
     return offsetOfChunkHeader == that.offsetOfChunkHeader
         && version == that.version
         && tsFilePrefixPath.equals(that.tsFilePrefixPath)
-        && deleteIntervalList.equals(that.deleteIntervalList);
+        && Objects.equals(deleteIntervalList, that.deleteIntervalList);
   }
 
   @Override
