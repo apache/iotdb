@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
@@ -134,6 +135,8 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((CreateAlignedTimeSeriesPlan) plan);
     } else if (plan instanceof InsertRowPlan) {
       return splitAndRoutePlan((InsertRowPlan) plan);
+    } else if (plan instanceof InsertRowsOfOneDevicePlan) {
+      return splitAndRoutePlan((InsertRowsOfOneDevicePlan) plan);
     } else if (plan instanceof AlterTimeSeriesPlan) {
       return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
     } else if (plan instanceof CreateMultiTimeSeriesPlan) {
@@ -503,5 +506,38 @@ public class ClusterPlanRouter {
     }
     subPlan.setIndexes(new ArrayList<>());
     return subPlan;
+  }
+
+  /**
+   * @param plan InsertRowsOfOneDevicePlan
+   * @return key is InsertRowsOfOneDevicePlan, value is the partition group the plan belongs to. All
+   *     InsertRowPlans in InsertRowsOfOneDevicePlan belong to one same storage group.
+   */
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowsOfOneDevicePlan plan)
+      throws MetadataException {
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+    Map<PartitionGroup, List<InsertRowPlan>> groupPlanMap = new HashMap<>();
+    Map<PartitionGroup, List<Integer>> groupPlanIndexMap = new HashMap<>();
+    PartialPath storageGroup = getMManager().getStorageGroupPath(plan.getPrefixPath());
+    for (int i = 0; i < plan.getRowPlans().length; i++) {
+      InsertRowPlan p = plan.getRowPlans()[i];
+      PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), p.getTime());
+      List<InsertRowPlan> groupedPlans =
+          groupPlanMap.computeIfAbsent(group, k -> new ArrayList<>());
+      List<Integer> groupedPlanIndex =
+          groupPlanIndexMap.computeIfAbsent(group, k -> new ArrayList<>());
+      groupedPlans.add(p);
+      groupedPlanIndex.add(plan.getRowPlanIndexList()[i]);
+    }
+
+    for (Entry<PartitionGroup, List<InsertRowPlan>> entry : groupPlanMap.entrySet()) {
+      PhysicalPlan reducedPlan =
+          new InsertRowsOfOneDevicePlan(
+              plan.getPrefixPath(),
+              entry.getValue().toArray(new InsertRowPlan[0]),
+              groupPlanIndexMap.get(entry.getKey()).stream().mapToInt(i -> i).toArray());
+      result.put(reducedPlan, entry.getKey());
+    }
+    return result;
   }
 }

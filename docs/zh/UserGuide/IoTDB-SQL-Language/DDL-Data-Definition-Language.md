@@ -265,31 +265,34 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 
 ```
 IoTDB> COUNT TIMESERIES root GROUP BY LEVEL=1
-+---------+-----+
-|   column|count|
-+---------+-----+
-|  root.ln|    4|
-|root.sgcc|    2|
-+---------+-----+
-Total line number = 2
-It costs 0.103s
++------------+-----+
+|      column|count|
++------------+-----+
+|   root.sgcc|    2|
+|root.turbine|    1|
+|     root.ln|    4|
++------------+-----+
+Total line number = 3
+It costs 0.002s
+
 IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-+--------------+-----+
-|        column|count|
-+--------------+-----+
-|  root.ln.wf02|    1|
-|  root.ln.wf01|    3|
-+--------------+-----+
++------------+-----+
+|      column|count|
++------------+-----+
+|root.ln.wf02|    2|
+|root.ln.wf01|    2|
++------------+-----+
 Total line number = 2
-It costs 0.003s
+It costs 0.002s
+
 IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
-+--------------+-----+
-|        column|count|
-+--------------+-----+
-|  root.ln.wf01|    4|
-+--------------+-----+
++------------+-----+
+|      column|count|
++------------+-----+
+|root.ln.wf01|    2|
++------------+-----+
 Total line number = 1
-It costs 0.001s
+It costs 0.002s
 ```
 
 > 注意：时间序列的路径只是过滤条件，与 level 的定义无关。
@@ -394,7 +397,7 @@ SHOW CHILD NODES prefixPath
 +------------+
 ```
 
-* 查询 root.vehicle 的下一层 ：show child nodes root.ln
+* 查询 root.ln 的下一层 ：show child nodes root.ln
 
 ```
 +------------+

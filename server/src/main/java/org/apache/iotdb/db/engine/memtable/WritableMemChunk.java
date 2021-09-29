@@ -230,6 +230,18 @@ public class WritableMemChunk implements IWritableMemChunk {
     return list.getMinTime();
   }
 
+  public Long getFirstPoint() {
+    if (list.size() == 0) return Long.MAX_VALUE;
+    return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
+  }
+
+  public Long getLastPoint() {
+    if (list.size() == 0) return Long.MIN_VALUE;
+    return getSortedTvListForQuery()
+        .getTimeValuePair(getSortedTvListForQuery().size() - 1)
+        .getTimestamp();
+  }
+
   @Override
   public int delete(long lowerBound, long upperBound) {
     return list.delete(lowerBound, upperBound);
@@ -243,15 +255,31 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public String toString() {
-    int size = getSortedTvListForQuery().size();
+    int size = list.size();
+    int firstIndex = 0;
+    int lastIndex = size - 1;
+    long minTime = Long.MAX_VALUE;
+    long maxTime = Long.MIN_VALUE;
+    for (int i = 0; i < size; i++) {
+      long currentTime = list.getTime(i);
+      if (currentTime < minTime) {
+        firstIndex = i;
+        minTime = currentTime;
+      }
+      if (currentTime >= maxTime) {
+        lastIndex = i;
+        maxTime = currentTime;
+      }
+    }
+
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
       out.append("Data type:").append(schema.getType()).append(System.lineSeparator());
       out.append("First point:")
-          .append(getSortedTvListForQuery().getTimeValuePair(0))
+          .append(list.getTimeValuePair(firstIndex))
           .append(System.lineSeparator());
       out.append("Last point:")
-          .append(getSortedTvListForQuery().getTimeValuePair(size - 1))
+          .append(list.getTimeValuePair(lastIndex))
           .append(System.lineSeparator());
     }
     return out.toString();

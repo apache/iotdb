@@ -22,9 +22,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
@@ -53,7 +53,7 @@ public abstract class AbstractMemTable implements IMemTable {
   protected boolean disableMemControl = true;
 
   private boolean shouldFlush = false;
-  private int avgSeriesPointNumThreshold =
+  private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   /** memory size of data points, including TEXT values */
   private long memSize = 0;
@@ -112,7 +112,8 @@ public abstract class AbstractMemTable implements IMemTable {
         schema.getMeasurementId(),
         k -> {
           seriesNumber++;
-          totalPointsNumThreshold += avgSeriesPointNumThreshold;
+          totalPointsNumThreshold +=
+              ((long) avgSeriesPointNumThreshold * schema.getSubMeasurementsCount());
           return genMemSeries(schema);
         });
   }
@@ -131,14 +132,14 @@ public abstract class AbstractMemTable implements IMemTable {
       if (measurementMNode != null) {
         // write vector
         Object[] vectorValue =
-            new Object[measurementMNode.getSchema().getValueTSDataTypeList().size()];
+            new Object[measurementMNode.getSchema().getSubMeasurementsTSDataTypeList().size()];
         for (int j = 0; j < vectorValue.length; j++) {
           vectorValue[j] = values[columnIndex];
           columnIndex++;
         }
         memSize +=
             MemUtils.getVectorRecordSize(
-                measurementMNode.getSchema().getValueTSDataTypeList(),
+                measurementMNode.getSchema().getSubMeasurementsTSDataTypeList(),
                 vectorValue,
                 disableMemControl);
         write(
@@ -209,9 +210,9 @@ public abstract class AbstractMemTable implements IMemTable {
       if (insertTabletPlan.isAligned()) {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
-        BitMap[] bitMaps = new BitMap[vectorSchema.getValueMeasurementIdList().size()];
-        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+        Object[] columns = new Object[vectorSchema.getSubMeasurementsList().size()];
+        BitMap[] bitMaps = new BitMap[vectorSchema.getSubMeasurementsList().size()];
+        for (int j = 0; j < vectorSchema.getSubMeasurementsList().size(); j++) {
           columns[j] = insertTabletPlan.getColumns()[columnIndex];
           if (insertTabletPlan.getBitMaps() != null) {
             bitMaps[j] = insertTabletPlan.getBitMaps()[columnIndex];
@@ -321,11 +322,11 @@ public abstract class AbstractMemTable implements IMemTable {
         return null;
       }
 
-      List<String> measurementIdList = partialVectorSchema.getValueMeasurementIdList();
+      List<String> measurementIdList = partialVectorSchema.getSubMeasurementsList();
       List<Integer> columns = new ArrayList<>();
       IMeasurementSchema vectorSchema = vectorMemChunk.getSchema();
       for (String queryingMeasurement : measurementIdList) {
-        columns.add(vectorSchema.getValueMeasurementIdList().indexOf(queryingMeasurement));
+        columns.add(vectorSchema.getSubMeasurementsList().indexOf(queryingMeasurement));
       }
       // get sorted tv list is synchronized so different query can get right sorted list reference
       TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(columns);
@@ -376,7 +377,7 @@ public abstract class AbstractMemTable implements IMemTable {
       // for vector type
       else if (schema.getType() == TSDataType.VECTOR) {
         List<String> measurements = MetaUtils.getMeasurementsInPartialPath(originalPath);
-        if (measurements.containsAll(schema.getValueMeasurementIdList())) {
+        if (measurements.containsAll(schema.getSubMeasurementsList())) {
           if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
             iter.remove();
           }
@@ -393,13 +394,23 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void releaseTVListRamCost(long cost) {
+    this.tvListRamCost -= cost;
+  }
+
+  @Override
   public long getTVListsRamCost() {
     return tvListRamCost;
   }
 
   @Override
-  public void addTextDataSize(long testDataSize) {
-    this.memSize += testDataSize;
+  public void addTextDataSize(long textDataSize) {
+    this.memSize += textDataSize;
+  }
+
+  @Override
+  public void releaseTextDataSize(long textDataSize) {
+    this.memSize -= textDataSize;
   }
 
   @Override

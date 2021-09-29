@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 public class Adder implements UDTF {
 
   private static final Logger logger = LoggerFactory.getLogger(Adder.class);
@@ -66,7 +68,7 @@ public class Adder implements UDTF {
         row.getTime(), (long) (extractDoubleValue(row, 0) + extractDoubleValue(row, 1) + addend));
   }
 
-  private double extractDoubleValue(Row row, int index) {
+  private double extractDoubleValue(Row row, int index) throws IOException {
     double value;
     switch (row.getDataType(index)) {
       case INT32:

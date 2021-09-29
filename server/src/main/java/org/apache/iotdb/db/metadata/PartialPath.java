@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -44,6 +45,7 @@ public class PartialPath extends Path implements Comparable<Path> {
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   protected String measurementAlias = "";
 
+  public PartialPath() {}
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
    * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
@@ -166,6 +168,15 @@ public class PartialPath extends Path implements Comparable<Path> {
       fullPath = s.toString();
       return fullPath;
     }
+  }
+
+  public PartialPath copy() {
+    PartialPath result = new PartialPath();
+    result.nodes = nodes;
+    result.fullPath = fullPath;
+    result.device = device;
+    result.measurementAlias = measurementAlias;
+    return result;
   }
 
   @Override
@@ -303,14 +314,7 @@ public class PartialPath extends Path implements Comparable<Path> {
    * If the partialPath is VectorPartialPath and it has only one sub sensor, return the sub sensor's
    * full path. Otherwise, return the partialPath's fullPath
    */
-  public static String getExactFullPath(PartialPath partialPath) {
-    String fullPath = partialPath.getFullPath();
-    if (partialPath instanceof VectorPartialPath) {
-      VectorPartialPath vectorPartialPath = (VectorPartialPath) partialPath;
-      if (vectorPartialPath.getSubSensorsPathList().size() == 1) {
-        fullPath = vectorPartialPath.getSubSensorsPathList().get(0).getFullPath();
-      }
-    }
-    return fullPath;
+  public String getExactFullPath() {
+    return getFullPath();
   }
 }

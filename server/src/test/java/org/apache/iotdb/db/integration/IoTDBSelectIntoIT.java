@@ -148,9 +148,10 @@ public class IoTDBSelectIntoIT {
 
   @Test // TODO: check values
   public void selectIntoSameDevice() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
           "select s1, s2, s3, s4, s5, s6 into s7, s8, s9, s10, s11, s12 from root.sg.d1");
 
@@ -176,9 +177,10 @@ public class IoTDBSelectIntoIT {
 
   @Test // TODO: check values
   public void selectIntoDifferentDevices() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
           "select s1, s2, s3, s4, s5, s6 into pre_${2}_suf.s1, pre_${2}_suf.s2, pre_${2}_suf.s3, pre_${2}_suf.s4, pre_${2}_suf.s5, pre_${2}_suf.s6 from root.sg.d1");
 
@@ -205,9 +207,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void selectFromEmptySourcePath() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select empty into target from root.sg.d1");
 
       try (ResultSet resultSet = statement.executeQuery("select target from root.sg.d1")) {
@@ -221,9 +224,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void selectIntoFullTargetPath() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into root.${2}.${1}.s1 from root.sg.d1 where time>0");
 
       try (ResultSet resultSet = statement.executeQuery("select sg.d1.s1, d1.sg.s1 from root")) {
@@ -244,9 +248,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void selectSameTimeSeries() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1, s1 into s1s2, s1s3 from root.sg.d1");
 
       try (ResultSet resultSet = statement.executeQuery("select s1s2, s1s3 from root.sg.d1")) {
@@ -268,9 +273,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testLargeData() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into large_s1 from root.sg.d3");
 
       try (ResultSet resultSet = statement.executeQuery("select large_s1 from root.sg.d3")) {
@@ -293,9 +299,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testUDFQuery() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
           "select s1, sin(s1), s1 + s1 into ${2}.s2, ${2}.s3, ${2}.s4 from root.sg.d1");
 
@@ -322,10 +329,42 @@ public class IoTDBSelectIntoIT {
   }
 
   @Test
+  public void testNestedQuery() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "select s1 * sin(s1) + cos(s1), sin(s1) / s1 + s1, s1 into ${2}.n2, ${2}.n3, ${2}.n4 from root.sg.d1");
+
+      try (ResultSet resultSet = statement.executeQuery("select n2, n3, n4 from root.sg.d1.d1")) {
+        assertEquals(1 + 3, resultSet.getMetaData().getColumnCount());
+
+        for (int i = 1; i < INSERTION_SQLS.length; ++i) {
+          assertTrue(resultSet.next());
+          for (int j = 0; j < 2 + 1; ++j) {
+            double s2 = Double.parseDouble(resultSet.getString(2));
+            double s3 = Double.parseDouble(resultSet.getString(3));
+            double s4 = Double.parseDouble(resultSet.getString(4));
+            assertEquals(i * Math.sin(i) + Math.cos(i), s2, 0);
+            assertEquals(Math.sin(i) / i + i, s3, 0);
+            assertEquals(i, s4, 0);
+          }
+        }
+
+        assertFalse(resultSet.next());
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
   public void testGroupByQuery() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select count(s1) into count_s1 from root.sg.d1 group by ([1, 5),1ms);");
 
       try (ResultSet resultSet = statement.executeQuery("select count_s1 from root.sg.d1")) {
@@ -348,9 +387,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testGroupByFillQuery() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
           "select last_value(s1) into gbf_s1 from root.sg.d1 group by ([1, 10),1ms) fill (float[PREVIOUS]);");
 
@@ -374,9 +414,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testFillQuery() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
           "select s1 into fill_s1 from root.sg.d1 where time = 10 fill(float [linear, 1ms, 1ms])");
 
@@ -396,9 +437,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testDifferentNumbersOfSourcePathsAndTargetPaths() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1, s2 into target from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
@@ -409,9 +451,10 @@ public class IoTDBSelectIntoIT {
                   "the number of source paths and the number of target paths should be the same"));
     }
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into target from root.sg.*");
       fail();
     } catch (SQLException throwable) {
@@ -422,9 +465,10 @@ public class IoTDBSelectIntoIT {
                   "the number of source paths and the number of target paths should be the same"));
     }
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select * into target from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
@@ -438,9 +482,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testMultiPrefixPathsInFromClause() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into target from root.sg.d1, root.sg.d2");
       fail();
     } catch (SQLException throwable) {
@@ -453,9 +498,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testLeveledPathNodePatternLimit() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into root.${100}.s1 from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
@@ -466,9 +512,10 @@ public class IoTDBSelectIntoIT {
                   "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix."));
     }
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into root.${0}.s1 from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
@@ -479,9 +526,10 @@ public class IoTDBSelectIntoIT {
                   "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix."));
     }
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into root.${wrong}.s1 from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
@@ -491,9 +539,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testAlignByDevice() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into root.${1}.s1 from root.sg.d1 align by device");
       fail();
     } catch (SQLException throwable) {
@@ -503,9 +552,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testDisableDevice() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1 into root.${1}.s1 from root.sg.d1 disable align");
       fail();
     } catch (SQLException throwable) {
@@ -515,9 +565,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testLastQuery() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select last s1 into root.${1}.s1 from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
@@ -527,9 +578,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testSlimit() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1, s2 into ${1}.s1, ${2}.s1 from root.sg.d1 slimit 1");
       fail();
     } catch (SQLException throwable) {
@@ -539,9 +591,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testDescending() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1, s2 into ${1}.s1, ${2}.s1 from root.sg.d1 order by time desc");
       fail();
     } catch (SQLException throwable) {
@@ -551,9 +604,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testSameTargetPaths() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select s1, s2 into ${1}.s1, ${1}.s1 from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
@@ -564,9 +618,10 @@ public class IoTDBSelectIntoIT {
 
   @Test
   public void testContainerCase() throws SQLException {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       for (int i = 0; i < 10; i++) {
         statement.execute(
