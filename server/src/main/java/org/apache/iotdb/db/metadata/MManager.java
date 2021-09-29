@@ -1678,7 +1678,8 @@ public class MManager {
    * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
    * during last Query
    *
-   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
+   * @param seriesPath the PartialPath of full path from root to UnaryMeasurement or the
+   *     VectorPartialPath contains target subMeasurement
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
@@ -1740,7 +1741,7 @@ public class MManager {
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
     LastCacheManager.updateLastCache(
-        node.getPartialPath().concatNode(subMeasurement),
+        new VectorPartialPath(node.getPartialPath(), subMeasurement),
         timeValuePair,
         highPriorityUpdate,
         latestFlushedTime,
@@ -1753,8 +1754,8 @@ public class MManager {
    *
    * <p>Invoking scenario: last cache read during last Query
    *
-   * @param seriesPath the full path from root to measurement of timeseries or subMeasurement of
-   *     aligned timeseries
+   * @param seriesPath the PartialPath of full path from root to UnaryMeasurement or the
+   *     VectorPartialPath contains target subMeasurement
    * @return the last cache value
    */
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -1792,15 +1793,16 @@ public class MManager {
    * @return the last cache value
    */
   public TimeValuePair getLastCache(VectorMeasurementMNode node, String subMeasurement) {
-    return LastCacheManager.getLastCache(node.getPartialPath().concatNode(subMeasurement), node);
+    return LastCacheManager.getLastCache(
+        new VectorPartialPath(node.getPartialPath(), subMeasurement), node);
   }
 
   /**
    * Reset the last cache value of time series of given seriesPath. MManager will use the seriesPath
    * to search the node.
    *
-   * @param seriesPath the path from root to measurement of timeseries or subMeasurement of aligned
-   *     timeseries
+   * @param seriesPath the PartialPath of full path from root to UnaryMeasurement or the
+   *     VectorPartialPath contains target subMeasurement
    */
   public void resetLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;

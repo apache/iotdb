@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.lastCache;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -63,18 +64,17 @@ public class LastCacheManager {
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
       return lastCacheContainer.getCachedLast();
-    } else {
-      String measurementId = seriesPath.getMeasurement();
-      if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        return lastCacheContainer.getCachedLast();
-      } else {
-        IMeasurementSchema schema = node.getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-          return lastCacheContainer.getCachedLast(
-              schema.getSubMeasurementIndex(seriesPath.getMeasurement()));
-        }
-        return null;
+    } else if (seriesPath instanceof VectorPartialPath) {
+      IMeasurementSchema schema = node.getSchema();
+      if (schema instanceof VectorMeasurementSchema) {
+        return lastCacheContainer.getCachedLast(
+            node.getSchema()
+                .getSubMeasurementIndex(
+                    ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)));
       }
+      return null;
+    } else {
+      return lastCacheContainer.getCachedLast();
     }
   }
 
@@ -103,23 +103,21 @@ public class LastCacheManager {
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
       lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } else {
-      String measurementId = seriesPath.getMeasurement();
-      if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-      } else {
-        IMeasurementSchema schema = node.getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-          if (lastCacheContainer.isEmpty()) {
-            lastCacheContainer.init(schema.getSubMeasurementsCount());
-          }
-          lastCacheContainer.updateCachedLast(
-              schema.getSubMeasurementIndex(seriesPath.getMeasurement()),
-              timeValuePair,
-              highPriorityUpdate,
-              latestFlushedTime);
+    } else if (seriesPath instanceof VectorPartialPath) {
+      IMeasurementSchema schema = node.getSchema();
+      if (schema instanceof VectorMeasurementSchema) {
+        if (lastCacheContainer.isEmpty()) {
+          lastCacheContainer.init(schema.getSubMeasurementsCount());
         }
+        lastCacheContainer.updateCachedLast(
+            schema.getSubMeasurementIndex(
+                ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)),
+            timeValuePair,
+            highPriorityUpdate,
+            latestFlushedTime);
       }
+    } else {
+      lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
     }
   }
 
@@ -140,20 +138,18 @@ public class LastCacheManager {
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
       lastCacheContainer.resetLastCache();
-    } else {
-      String measurementId = seriesPath.getMeasurement();
-      if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        lastCacheContainer.resetLastCache();
-      } else {
-        IMeasurementSchema schema = node.getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-          if (lastCacheContainer.isEmpty()) {
-            lastCacheContainer.init(schema.getSubMeasurementsCount());
-          }
-          lastCacheContainer.resetLastCache(
-              schema.getSubMeasurementIndex(seriesPath.getMeasurement()));
+    } else if (seriesPath instanceof VectorPartialPath) {
+      IMeasurementSchema schema = node.getSchema();
+      if (schema instanceof VectorMeasurementSchema) {
+        if (lastCacheContainer.isEmpty()) {
+          lastCacheContainer.init(schema.getSubMeasurementsCount());
         }
+        lastCacheContainer.resetLastCache(
+            schema.getSubMeasurementIndex(
+                ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)));
       }
+    } else {
+      lastCacheContainer.resetLastCache();
     }
   }
 

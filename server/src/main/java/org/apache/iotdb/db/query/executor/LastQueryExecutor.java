@@ -271,16 +271,9 @@ public class LastQueryExecutor {
       try {
         node = IoTDB.metaManager.getMeasurementMNode(path);
       } catch (MetadataException e) {
-        TimeValuePair timeValuePair;
         // cluster mode may not get remote node
-        if (path instanceof VectorPartialPath) {
-          // the seriesPath has been transformed to vector path
-          // here needs subSensor path
-          timeValuePair =
-              IoTDB.metaManager.getLastCache(((VectorPartialPath) path).getPathWithSubSensor(0));
-        } else {
-          timeValuePair = IoTDB.metaManager.getLastCache(path);
-        }
+        TimeValuePair timeValuePair;
+        timeValuePair = IoTDB.metaManager.getLastCache(path);
         if (timeValuePair != null) {
           return timeValuePair;
         }
