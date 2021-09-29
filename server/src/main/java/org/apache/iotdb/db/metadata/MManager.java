@@ -1074,8 +1074,8 @@ public class MManager {
   // region Interfaces for timeseries, measurement and schema info Query
 
   /**
-   * PartialPath of aligned time series will be organized to one VectorPartialPath.
-   * BEFORE this method, all the aligned time series is NOT united. For example,
+   * PartialPath of aligned time series will be organized to one VectorPartialPath. BEFORE this
+   * method, all the aligned time series is NOT united. For example,
    * VectorMeasurementSchema(root.sg.d1.vector1 [s1,s2]) will be * root.sg.d1.vector1[s1],
    * root.sg.d1.vector1[s2]
    *
@@ -1096,7 +1096,7 @@ public class MManager {
         if (!existPath.equals(path)) {
           // could be VectorPartialPath
           ((VectorPartialPath) existPath)
-                  .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
+              .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
         }
       }
     }
