@@ -1072,6 +1072,37 @@ public class MManager {
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
+
+  /**
+   * PartialPath of aligned time series will be organized to one VectorPartialPath.
+   * BEFORE this method, all the aligned time series is NOT united. For example,
+   * VectorMeasurementSchema(root.sg.d1.vector1 [s1,s2]) will be * root.sg.d1.vector1[s1],
+   * root.sg.d1.vector1[s2]
+   *
+   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
+   *     series.
+   * @return Size of partial path list could NOT equal to the input list size. For example, the
+   *     VectorMeasurementSchema (s1,s2) would be returned once.
+   */
+  public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
+    Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    for (PartialPath path : fullPaths) {
+      IMeasurementMNode node = mtree.getMeasurementMNode(path);
+      if (!nodeToPartialPath.containsKey(node)) {
+        nodeToPartialPath.put(node, path.copy());
+      } else {
+        // if nodeToPartialPath contains node
+        PartialPath existPath = nodeToPartialPath.get(node);
+        if (!existPath.equals(path)) {
+          // could be VectorPartialPath
+          ((VectorPartialPath) existPath)
+                  .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
+        }
+      }
+    }
+    return new ArrayList<>(nodeToPartialPath.values());
+  }
+
   /**
    * Return all paths for given path if the path is abstract. Or return the path itself. Regular
    * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
@@ -1266,36 +1297,6 @@ public class MManager {
     }
     return new VectorMeasurementSchema(
         schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
-  }
-
-  /**
-   * Get schema of partialPaths, in which aligned time series should only organized to one schema.
-   * BEFORE this method, all the aligned time series is NOT united. For example,
-   * VectorMeasurementSchema(root.sg.d1.vector1 [s1,s2]) will be * root.sg.d1.vector1[s1],
-   * root.sg.d1.vector1[s2]
-   *
-   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
-   *     series.
-   * @return Size of partial path list could NOT equal to the input list size. For example, the
-   *     VectorMeasurementSchema (s1,s2) would be returned once.
-   */
-  public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
-    Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
-    for (PartialPath path : fullPaths) {
-      IMeasurementMNode node = mtree.getMeasurementMNode(path);
-      if (!nodeToPartialPath.containsKey(node)) {
-        nodeToPartialPath.put(node, path.copy());
-      } else {
-        // if nodeToPartialPath contains node
-        PartialPath existPath = nodeToPartialPath.get(node);
-        if (!existPath.equals(path)) {
-          // could be VectorPartialPath
-          ((VectorPartialPath) existPath)
-              .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
-        }
-      }
-    }
-    return new ArrayList<>(nodeToPartialPath.values());
   }
 
   // attention: this path must be a device node
