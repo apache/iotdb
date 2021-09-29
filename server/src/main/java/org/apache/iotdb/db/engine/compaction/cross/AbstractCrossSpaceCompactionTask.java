@@ -55,4 +55,21 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   public List<TsFileResource> getSelectedUnsequenceFiles() {
     return selectedUnsequenceFiles;
   }
+
+  @Override
+  public boolean isValid() {
+    for (TsFileResource resource : selectedSequenceFiles) {
+      if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
+        return false;
+      }
+    }
+
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

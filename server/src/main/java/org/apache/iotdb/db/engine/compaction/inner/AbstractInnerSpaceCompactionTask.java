@@ -89,4 +89,14 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   public long getMaxFileVersion() {
     return maxFileVersion;
   }
+
+  @Override
+  public boolean isValid() {
+    for (TsFileResource resource : selectedTsFileResourceList) {
+      if (resource.isMerging() | !resource.isClosed() || !resource.getTsFile().exists()) {
+        return false;
+      }
+    }
+    return true;
+  }
 }

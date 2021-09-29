@@ -221,6 +221,11 @@ public class CompactionTaskComparatorTest {
     public boolean equalsOtherTask(AbstractCompactionTask other) {
       return false;
     }
+
+    @Override
+    public boolean isValid() {
+      return true;
+    }
   }
 
   private static class FakeCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
@@ -245,6 +250,11 @@ public class CompactionTaskComparatorTest {
     @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {
       return false;
+    }
+
+    @Override
+    public boolean isValid() {
+      return true;
     }
   }
 

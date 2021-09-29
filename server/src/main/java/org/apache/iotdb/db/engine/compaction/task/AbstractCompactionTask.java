@@ -74,6 +74,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
 
   public abstract boolean equalsOtherTask(AbstractCompactionTask otherTask);
 
+  public abstract boolean isValid();
+
   public boolean equals(Object other) {
     if (other instanceof AbstractCompactionTask) {
       return equalsOtherTask((AbstractCompactionTask) other);

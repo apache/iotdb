@@ -144,4 +144,9 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
     }
     return false;
   }
+
+  @Override
+  public boolean isValid() {
+    return compactionLogFile.exists();
+  }
 }
