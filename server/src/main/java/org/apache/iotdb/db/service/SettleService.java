@@ -109,7 +109,7 @@ public class SettleService implements IService {
     return filesToBeSettledCount;
   }
 
-  private static void countSettleFiles() {
+  private static void countSettleFiles() throws StorageEngineException {
     filesToBeSettledCount.addAndGet(
         StorageEngine.getInstance().countSettleFiles(getStorageGroupPath()));
   }
