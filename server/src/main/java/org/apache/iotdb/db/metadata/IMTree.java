@@ -70,7 +70,8 @@ public interface IMTree extends Serializable {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  Pair<IMNode, Template> getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel) throws MetadataException;
+  Pair<IMNode, Template> getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
+      throws MetadataException;
 
   /**
    * Check whether the given path exists.
@@ -117,9 +118,11 @@ public interface IMTree extends Serializable {
    * Get node by path with storage group check If storage group is not set,
    * StorageGroupNotSetException will be thrown
    */
-  Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException;
+  Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path)
+      throws MetadataException;
 
-  Pair<IMNode, Template> getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException;
+  Pair<IMNode, Template> getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
+      throws MetadataException;
 
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,

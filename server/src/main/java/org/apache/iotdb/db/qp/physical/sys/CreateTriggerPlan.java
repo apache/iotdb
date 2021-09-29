@@ -37,11 +37,11 @@ public class CreateTriggerPlan extends PhysicalPlan {
   private final Map<String, String> attributes;
 
   public CreateTriggerPlan(
-          String triggerName,
-          TriggerEvent event,
-          PartialPath fullPath,
-          String className,
-          Map<String, String> attributes) {
+      String triggerName,
+      TriggerEvent event,
+      PartialPath fullPath,
+      String className,
+      Map<String, String> attributes) {
     super(false, OperatorType.CREATE_TRIGGER);
     this.triggerName = triggerName;
     this.event = event;

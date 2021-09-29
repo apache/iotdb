@@ -488,7 +488,8 @@ public class MTreeDiskBased implements IMTree {
   }
 
   @Override
-  public Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException {
+  public Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path)
+      throws MetadataException {
     boolean storageGroupChecked = false;
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
@@ -1614,9 +1615,7 @@ public class MTreeDiskBased implements IMTree {
   }
 
   @Override
-  public void checkTemplateOnPath(PartialPath path) throws MetadataException {
-
-  }
+  public void checkTemplateOnPath(PartialPath path) throws MetadataException {}
 
   @Override
   public void updateMNode(IMNode mNode) throws MetadataException {

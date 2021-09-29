@@ -180,9 +180,7 @@ public class PersistenceMNode implements IPersistenceInfo, IMNode {
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {
-
-  }
+  public void setUseTemplate(boolean useTemplate) {}
 
   @Override
   public Template getDeviceTemplate() {
@@ -190,9 +188,7 @@ public class PersistenceMNode implements IPersistenceInfo, IMNode {
   }
 
   @Override
-  public void setDeviceTemplate(Template deviceTemplate) {
-
-  }
+  public void setDeviceTemplate(Template deviceTemplate) {}
 
   @Override
   public Template getUpperTemplate() {

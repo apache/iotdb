@@ -1085,7 +1085,8 @@ public class MManagerDiskBasedTest {
     }
   }
 
-  private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException, IOException {
+  private void doCacheTest(String deviceId, List<String> measurementList)
+      throws MetadataException, IOException {
     IMNode node = manager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId)).left;
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
