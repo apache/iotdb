@@ -23,6 +23,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -120,14 +121,12 @@ public class DeviceStringTest {
   }
 
   @Test
-  public void testDeviceString() throws IOException, MetadataException {
+  public void testDeviceString() throws IOException, IllegalPathException {
     resource = new TsFileResource(tsF);
     resource.deserialize();
     assertFalse(resource.getDevices().isEmpty());
     for (String device : resource.getDevices()) {
-      assertSame(
-          device,
-          mManager.getMatchedDevices(new PartialPath(device)).iterator().next().getFullPath());
+      assertSame(device, mManager.getDeviceId(new PartialPath(device)));
     }
   }
 }

@@ -1353,7 +1353,7 @@ public class MManager {
     return mtree.getAllStorageGroupNodes();
   }
 
-  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
+  IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
       node = mNodeCache.get(path);
@@ -2148,6 +2148,25 @@ public class MManager {
   // endregion
 
   // region TestOnly Interfaces
+  /**
+   * To reduce the String number in memory, use the deviceId from MManager instead of the deviceId
+   * read from disk
+   *
+   * @param devicePath read from disk
+   * @return deviceId
+   */
+  @TestOnly
+  public String getDeviceId(PartialPath devicePath) {
+    String device = null;
+    try {
+      IMNode deviceNode = getDeviceNode(devicePath);
+      device = deviceNode.getFullPath();
+    } catch (MetadataException | NullPointerException e) {
+      // Cannot get deviceId from MManager, return the input deviceId
+    }
+    return device;
+  }
+
   /**
    * Attention!!!!!, this method could only be used for Tests involving multiple mmanagers. The
    * singleton of templateManager and tagManager will cause interference between mmanagers if one of
