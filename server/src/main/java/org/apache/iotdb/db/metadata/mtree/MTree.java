@@ -54,6 +54,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.TSEntityPathCollec
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementComponentCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -1103,10 +1104,21 @@ public class MTree implements Serializable {
   /**
    * Get the count of timeseries matching the given path.
    *
-   * @param path a path pattern or a full path, may contain wildcard
+   * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(root, path);
+  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+    CounterTraverser counter = new MeasurementCounter(root, pathPattern);
+    counter.traverse();
+    return counter.getCount();
+  }
+
+  /**
+   * Get the count of timeseries component matching the given path.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   */
+  public int getAllTimeseriesFlatCount(PartialPath pathPattern) throws MetadataException {
+    CounterTraverser counter = new MeasurementComponentCounter(root, pathPattern);
     counter.traverse();
     return counter.getCount();
   }
@@ -1114,10 +1126,10 @@ public class MTree implements Serializable {
   /**
    * Get the count of devices matching the given path.
    *
-   * @param path a path pattern or a full path, may contain wildcard
+   * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  public int getDevicesNum(PartialPath path) throws MetadataException {
-    CounterTraverser counter = new EntityCounter(root, path);
+  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
+    CounterTraverser counter = new EntityCounter(root, pathPattern);
     counter.traverse();
     return counter.getCount();
   }
@@ -1125,17 +1137,18 @@ public class MTree implements Serializable {
   /**
    * Get the count of storage group matching the given path.
    *
-   * @param path a path pattern or a full path, may contain wildcard.
+   * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
-  public int getStorageGroupNum(PartialPath path) throws MetadataException {
-    CounterTraverser counter = new StorageGroupCounter(root, path);
+  public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
+    CounterTraverser counter = new StorageGroupCounter(root, pathPattern);
     counter.traverse();
     return counter.getCount();
   }
 
   /** Get the count of nodes in the given level matching the given path. */
-  public int getNodesCountInGivenLevel(PartialPath path, int level) throws MetadataException {
-    MNodeLevelCounter counter = new MNodeLevelCounter(root, path, level);
+  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
+      throws MetadataException {
+    MNodeLevelCounter counter = new MNodeLevelCounter(root, pathPattern, level);
     counter.traverse();
     return counter.getCount();
   }

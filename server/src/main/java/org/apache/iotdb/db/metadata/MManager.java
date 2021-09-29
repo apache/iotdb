@@ -880,28 +880,37 @@ public class MManager {
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
    * path, may contain wildcard.
    */
-  public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
-    return mtree.getAllTimeseriesCount(path);
+  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+    return mtree.getAllTimeseriesCount(pathPattern);
+  }
+
+  /**
+   * To calculate the count of timeseries component matching given path. The path could be a pattern
+   * of a full path, may contain wildcard.
+   */
+  public int getAllTimeseriesFlatCount(PartialPath pathPattern) throws MetadataException {
+    return mtree.getAllTimeseriesFlatCount(pathPattern);
   }
 
   /** To calculate the count of devices for given path pattern. */
-  public int getDevicesNum(PartialPath path) throws MetadataException {
-    return mtree.getDevicesNum(path);
+  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
+    return mtree.getDevicesNum(pathPattern);
   }
 
   /** To calculate the count of storage group for given path pattern. */
-  public int getStorageGroupNum(PartialPath path) throws MetadataException {
-    return mtree.getStorageGroupNum(path);
+  public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
+    return mtree.getStorageGroupNum(pathPattern);
   }
 
   /**
    * To calculate the count of nodes in the given level for given path pattern.
    *
-   * @param path a path pattern or a full path
+   * @param pathPattern a path pattern or a full path
    * @param level the level should match the level of the path
    */
-  public int getNodesCountInGivenLevel(PartialPath path, int level) throws MetadataException {
-    return mtree.getNodesCountInGivenLevel(path, level);
+  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
+      throws MetadataException {
+    return mtree.getNodesCountInGivenLevel(pathPattern, level);
   }
 
   // endregion
