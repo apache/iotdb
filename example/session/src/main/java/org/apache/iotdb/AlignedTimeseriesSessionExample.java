@@ -144,6 +144,13 @@ public class AlignedTimeseriesSessionExample {
     }
 
     dataSet.closeOperationHandle();
+    dataSet = session.executeQueryStatement("select count(*) from root.sg_1.d1.vector");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
     dataSet =
         session.executeQueryStatement(
             "select sum(*) from root.sg_1.d1.vector where time > 50 and s1 > 0 and s2 > 10000");

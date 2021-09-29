@@ -31,7 +31,7 @@ import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -120,10 +120,10 @@ public class SeriesAggregateReaderTest {
             }
 
             while (seriesReader.hasNextPage()) {
-              BatchData nextOverlappedPageData = seriesReader.nextPage();
-              aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-              nextOverlappedPageData.resetBatchData();
-              assertTrue(nextOverlappedPageData.hasCurrent());
+              IBatchDataIterator batchDataIterator = seriesReader.nextPage().getBatchDataIterator();
+              aggregateResult.updateResultFromPageData(batchDataIterator);
+              batchDataIterator.reset();
+              assertTrue(batchDataIterator.hasNext());
             }
             loopTime++;
           }
