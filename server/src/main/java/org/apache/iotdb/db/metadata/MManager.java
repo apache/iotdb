@@ -1277,20 +1277,11 @@ public class MManager {
    * @param fullPaths full path list without uniting the sub measurement under the same aligned time
    *     series.
    * @return Size of partial path list could NOT equal to the input list size. For example, the
-   *     VectorMeasurementSchema (s1,s2) would be returned once; Size of integer list must equal to
-   *     the input list size. It indicates the index of elements of original list in the result list
+   *     VectorMeasurementSchema (s1,s2) would be returned once.
    */
-  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
-      throws MetadataException {
+  public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
     Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
-    Map<String, Integer> pathIndex = new LinkedHashMap<>();
-    for (int i = 0; i < fullPaths.size(); i++) {
-      PartialPath path = fullPaths.get(i);
-      pathIndex.put(path.getExactFullPath(), i);
-      if (path.isMeasurementAliasExists()) {
-        pathIndex.put(path.getFullPathWithAlias(), i);
-      }
-
+    for (PartialPath path : fullPaths) {
       IMeasurementMNode node = mtree.getMeasurementMNode(path);
       if (!nodeToPartialPath.containsKey(node)) {
         nodeToPartialPath.put(node, path.copy());
@@ -1304,7 +1295,7 @@ public class MManager {
         }
       }
     }
-    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), pathIndex);
+    return new ArrayList<>(nodeToPartialPath.values());
   }
 
   // attention: this path must be a device node

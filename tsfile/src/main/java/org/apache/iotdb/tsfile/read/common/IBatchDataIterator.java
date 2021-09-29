@@ -16,37 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.executor.fill.IFill;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+package org.apache.iotdb.tsfile.read.common;
 
-import java.util.Map;
+public interface IBatchDataIterator {
 
-public class FillQueryPlan extends RawDataQueryPlan {
+  boolean hasNext();
 
-  private long queryTime;
-  private Map<TSDataType, IFill> fillType;
+  void next();
 
-  public FillQueryPlan() {
-    super();
-    setOperatorType(Operator.OperatorType.FILL);
-  }
+  long currentTime();
 
-  public long getQueryTime() {
-    return queryTime;
-  }
+  Object currentValue();
 
-  public void setQueryTime(long queryTime) {
-    this.queryTime = queryTime;
-  }
+  void reset();
 
-  public Map<TSDataType, IFill> getFillType() {
-    return fillType;
-  }
-
-  public void setFillType(Map<TSDataType, IFill> fillType) {
-    this.fillType = fillType;
-  }
+  int totalLength();
 }

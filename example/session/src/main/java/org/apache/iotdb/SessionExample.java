@@ -28,6 +28,7 @@ import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -74,6 +75,7 @@ public class SessionExample {
     createMultiTimeseries();
     insertRecord();
     insertTablet();
+    insertTabletWithNullValues();
     insertTablets();
     insertRecords();
     selectInto();
@@ -419,6 +421,87 @@ public class SessionExample {
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
+        sensor[row] = i;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+  }
+
+  private static void insertTabletWithNullValues()
+      throws IoTDBConnectionException, StatementExecutionException {
+    /*
+     * A Tablet example:
+     *      device1
+     * time s1,   s2,   s3
+     * 1,   null, 1,    1
+     * 2,   2,    null, 2
+     * 3,   3,    3,    null
+     */
+    // The schema of measurements of one device
+    // only measurementId and data type in MeasurementSchema take effects in Tablet
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
+
+    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
+
+    // Method 1 to add tablet data
+    tablet.bitMaps = new BitMap[schemaList.size()];
+    for (int s = 0; s < 3; s++) {
+      tablet.bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
+    }
+
+    long timestamp = System.currentTimeMillis();
+    for (long row = 0; row < 100; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      for (int s = 0; s < 3; s++) {
+        long value = new Random().nextLong();
+        // mark null value
+        if (row % 3 == s) {
+          tablet.bitMaps[s].mark((int) row);
+        }
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
+    // Method 2 to add tablet data
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
+    BitMap[] bitMaps = new BitMap[schemaList.size()];
+    for (int s = 0; s < 3; s++) {
+      bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
+    }
+    tablet.bitMaps = bitMaps;
+
+    for (long time = 0; time < 100; time++) {
+      int row = tablet.rowSize++;
+      timestamps[row] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor = (long[]) values[i];
+        // mark null value
+        if (row % 3 == i) {
+          bitMaps[i].mark(row);
+        }
         sensor[row] = i;
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {

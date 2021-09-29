@@ -16,37 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.executor.fill.IFill;
+package org.apache.iotdb.db.query.udf.builtin;
+
+import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.Map;
+public class UDTFConstE implements UDTF {
 
-public class FillQueryPlan extends RawDataQueryPlan {
-
-  private long queryTime;
-  private Map<TSDataType, IFill> fillType;
-
-  public FillQueryPlan() {
-    super();
-    setOperatorType(Operator.OperatorType.FILL);
+  @Override
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+    configurations
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.DOUBLE);
   }
 
-  public long getQueryTime() {
-    return queryTime;
-  }
-
-  public void setQueryTime(long queryTime) {
-    this.queryTime = queryTime;
-  }
-
-  public Map<TSDataType, IFill> getFillType() {
-    return fillType;
-  }
-
-  public void setFillType(Map<TSDataType, IFill> fillType) {
-    this.fillType = fillType;
+  @Override
+  public void transform(Row row, PointCollector collector) throws Exception {
+    collector.putDouble(row.getTime(), Math.E);
   }
 }

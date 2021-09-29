@@ -667,24 +667,6 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
-  public void errorCaseTest1() throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("select d0.s1, d0.s2, d1.s0 from root.vehicle align by device");
-      fail("No exception thrown.");
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage()
-              .contains(
-                  "The paths of the SELECT clause can only be single level. In other words, "
-                      + "the paths of the SELECT clause can only be measurements or STAR, without DOT."));
-    }
-  }
-
-  @Test
   public void errorCaseTest3() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =

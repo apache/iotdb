@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -40,7 +41,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /** use session interface to IT for vector timeseries insert and select Black-box Testing */
-public class IoTDBSessionVectorIT {
+public class IoTDBSessionVectorInsertIT {
   private static final String ROOT_SG1_D1_VECTOR1 = "root.sg_1.d1.vector";
   private static final String ROOT_SG1_D1 = "root.sg_1.d1";
   private static final String ROOT_SG1_D2 = "root.sg_1.d2";
@@ -64,7 +65,7 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
-  public void alignedTabletTest() {
+  public void testInsertAlignedTablet() {
     try {
       insertTabletWithAlignedTimeseriesMethod();
       session.executeNonQueryStatement("flush");
@@ -89,7 +90,7 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
-  public void alignedSingleSelectTest() {
+  public void testInsertAlignedRecord() {
     try {
       insertAlignedRecord(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
@@ -111,7 +112,7 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
-  public void alignedStringSingleSelectTest() {
+  public void testInsertAlignedStringRecord() {
     try {
       insertAlignedStringRecord(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
@@ -133,7 +134,7 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
-  public void alignedStringRecordsSingleSelectTest() {
+  public void testInsertAlignedStringRecords() {
     try {
       insertAlignedStringRecords(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
@@ -155,7 +156,7 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
-  public void alignedRecordsSingleSelectTest() {
+  public void testInsertAlignedRecords() {
     try {
       insertAlignedRecords(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
@@ -177,7 +178,7 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
-  public void alignedRecordsOfOneDeviceSingleSelectTest() {
+  public void testInsertAlignedRecordsOfOneDevice() {
     try {
       insertAlignedRecordsOfOneDevice(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");

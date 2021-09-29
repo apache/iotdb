@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -419,6 +420,58 @@ public class IoTDBSessionSimpleIT {
       Assert.assertEquals(10L, rowRecord.getFields().get(0).getLongV());
       Assert.assertEquals(10L, rowRecord.getFields().get(1).getLongV());
       Assert.assertEquals(10L, rowRecord.getFields().get(2).getLongV());
+    }
+    session.close();
+  }
+
+  @Test
+  public void testInsertTabletWithNullValues()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
+
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList);
+    for (long time = 0; time < 10; time++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, time);
+
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
+      tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
+      tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
+      tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+      tablet.addValue(
+          schemaList.get(5).getMeasurementId(), rowIndex, new Binary(String.valueOf(time)));
+    }
+
+    BitMap[] bitMaps = new BitMap[schemaList.size()];
+    for (int i = 0; i < schemaList.size(); i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(10);
+      }
+      bitMaps[i].mark(i);
+    }
+    tablet.bitMaps = bitMaps;
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
+    SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      Assert.assertEquals(6L, rowRecord.getFields().size());
+      for (Field field : rowRecord.getFields()) {
+        Assert.assertEquals(9L, field.getLongV());
+      }
     }
     session.close();
   }
