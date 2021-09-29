@@ -38,7 +38,7 @@ InfluxDB是当前世界排名第一的时序数据库，具有繁荣的生态系
 
 ## 3.方案一
 
-### 3.1 IoTDB-InfluxDb适配器
+### 3.1 IoTDB-InfluxDB适配器
 
 适配器是一个继承至InfluxDB基类的子类，实现了InfluxDB主要的写入和查询方法，用户通过改变代码中InfluxDB的实现类，从而使InfluxDB原有的操作函数没有改变，但是会以IoTDB的协议写入IoTDB数据库中。
 
