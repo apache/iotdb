@@ -247,8 +247,9 @@ public class TsFileProcessor {
   }
 
   /**
-   * insert batch data of insertTabletPlan into the workingMemtable The rows to be inserted are in
-   * the range [start, end)
+   * insert batch data of insertTabletPlan into the workingMemtable. The rows to be inserted are in
+   * the range [start, end). Null value in each column values will be replaced by the subsequent
+   * non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletPlan insert a tablet of a device
    * @param start start index of rows to be inserted in insertTabletPlan

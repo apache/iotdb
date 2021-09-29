@@ -124,6 +124,13 @@ public class BitMap {
     return res.toString();
   }
 
+  @Override
+  public BitMap clone() {
+    byte[] cloneBytes = new byte[this.bits.length];
+    System.arraycopy(this.bits, 0, cloneBytes, 0, this.bits.length);
+    return new BitMap(this.size, cloneBytes);
+  }
+
   /** Copies the specified range of the BitMap into a new BitMap. */
   public BitMap copyOfRange(int from, int to) {
     int newLength = to - from;

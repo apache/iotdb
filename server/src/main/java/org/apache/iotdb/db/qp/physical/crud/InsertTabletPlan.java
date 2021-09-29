@@ -534,37 +534,53 @@ public class InsertTabletPlan extends InsertPlan {
     if (measurementIndex >= columns.length) {
       return null;
     }
+
+    // get non-null value
+    int lastIdx = rowCount - 1;
+    if (bitMaps != null && bitMaps[measurementIndex] != null) {
+      BitMap bitMap = bitMaps[measurementIndex];
+      while (lastIdx >= 0) {
+        if (!bitMap.isMarked(lastIdx)) {
+          break;
+        }
+        lastIdx--;
+      }
+    }
+    if (lastIdx < 0) {
+      return null;
+    }
+
     TsPrimitiveType value;
     switch (dataTypes[measurementIndex]) {
       case INT32:
         int[] intValues = (int[]) columns[measurementIndex];
-        value = new TsInt(intValues[rowCount - 1]);
+        value = new TsInt(intValues[lastIdx]);
         break;
       case INT64:
         long[] longValues = (long[]) columns[measurementIndex];
-        value = new TsLong(longValues[rowCount - 1]);
+        value = new TsLong(longValues[lastIdx]);
         break;
       case FLOAT:
         float[] floatValues = (float[]) columns[measurementIndex];
-        value = new TsFloat(floatValues[rowCount - 1]);
+        value = new TsFloat(floatValues[lastIdx]);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) columns[measurementIndex];
-        value = new TsDouble(doubleValues[rowCount - 1]);
+        value = new TsDouble(doubleValues[lastIdx]);
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) columns[measurementIndex];
-        value = new TsBoolean(boolValues[rowCount - 1]);
+        value = new TsBoolean(boolValues[lastIdx]);
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
-        value = new TsBinary(binaryValues[rowCount - 1]);
+        value = new TsBinary(binaryValues[lastIdx]);
         break;
       default:
         throw new UnSupportedDataTypeException(
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
-    return new TimeValuePair(times[rowCount - 1], value);
+    return new TimeValuePair(times[lastIdx], value);
   }
 
   public long[] getTimes() {

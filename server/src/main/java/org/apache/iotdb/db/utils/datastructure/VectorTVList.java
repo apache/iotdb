@@ -34,12 +34,21 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class VectorTVList extends TVList {
 
+  // data types of this vector
   private List<TSDataType> dataTypes;
 
+  // data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
+  // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   private List<List<Object>> values;
 
+  // list of index array, add 1 when expanded -> data point index array
+  // index relation: arrayIndex -> elementIndex
+  // used in sort method, sort only changes indices
   private List<int[]> indices;
 
+  // data type list -> list of BitMap, add 1 when expanded -> BitMap(maybe null), marked means the
+  // value is null
+  // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   private List<List<BitMap>> bitMaps;
 
   private int[][] sortedIndices;
@@ -135,47 +144,52 @@ public class VectorTVList extends TVList {
     int arrayIndex = valueIndex / ARRAY_SIZE;
     int elementIndex = valueIndex % ARRAY_SIZE;
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
-    for (int i = 0; i < values.size(); i++) {
-      List<Object> columnValues = values.get(i);
+    for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+      List<Object> columnValues = values.get(columnIndex);
       if (validIndexesForTimeDuplicatedRows != null) {
-        arrayIndex = validIndexesForTimeDuplicatedRows[i] / ARRAY_SIZE;
-        elementIndex = validIndexesForTimeDuplicatedRows[i] % ARRAY_SIZE;
+        arrayIndex = validIndexesForTimeDuplicatedRows[columnIndex] / ARRAY_SIZE;
+        elementIndex = validIndexesForTimeDuplicatedRows[columnIndex] % ARRAY_SIZE;
       }
       if (bitMaps != null
-          && bitMaps.get(i) != null
-          && bitMaps.get(i).get(arrayIndex).isMarked(elementIndex)) {
+          && bitMaps.get(columnIndex) != null
+          && isValueMarked(valueIndex, columnIndex)) {
         continue;
       }
-      switch (dataTypes.get(i)) {
+      switch (dataTypes.get(columnIndex)) {
         case TEXT:
-          vector[i] =
+          vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(i), ((Binary[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((Binary[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case FLOAT:
-          vector[i] =
+          vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(i), ((float[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((float[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case INT32:
-          vector[i] =
+          vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(i), ((int[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex), ((int[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case INT64:
-          vector[i] =
+          vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(i), ((long[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((long[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case DOUBLE:
-          vector[i] =
+          vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(i), ((double[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((double[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case BOOLEAN:
-          vector[i] =
+          vector[columnIndex] =
               TsPrimitiveType.getByType(
-                  dataTypes.get(i), ((boolean[]) columnValues.get(arrayIndex))[elementIndex]);
+                  dataTypes.get(columnIndex),
+                  ((boolean[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         default:
           throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
@@ -306,7 +320,9 @@ public class VectorTVList extends TVList {
     if (rowIndex >= size) {
       return false;
     }
-    if (bitMaps == null || bitMaps.get(columnIndex) == null) {
+    if (bitMaps == null
+        || bitMaps.get(columnIndex) == null
+        || bitMaps.get(columnIndex).get(rowIndex / ARRAY_SIZE) == null) {
       return false;
     }
     int arrayIndex = rowIndex / ARRAY_SIZE;
@@ -343,6 +359,7 @@ public class VectorTVList extends TVList {
       for (Object valueArray : columnValues) {
         cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
       }
+      // clone bitmap in columnIndex
       if (bitMaps != null && bitMaps.get(i) != null) {
         List<BitMap> columnBitMaps = bitMaps.get(i);
         if (cloneList.bitMaps == null) {
@@ -353,10 +370,10 @@ public class VectorTVList extends TVList {
         }
         if (cloneList.bitMaps.get(i) == null) {
           List<BitMap> cloneColumnBitMaps = new ArrayList<>();
+          for (BitMap bitMap : columnBitMaps) {
+            cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
+          }
           cloneList.bitMaps.set(i, cloneColumnBitMaps);
-        }
-        for (BitMap bitMap : columnBitMaps) {
-          cloneList.bitMaps.get(i).add(cloneBitMap(bitMap));
         }
       }
     }
@@ -367,12 +384,6 @@ public class VectorTVList extends TVList {
     int[] cloneArray = new int[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
     return cloneArray;
-  }
-
-  private BitMap cloneBitMap(BitMap bitMap) {
-    byte[] cloneBytes = new byte[bitMap.getByteArray().length];
-    System.arraycopy(bitMap.getByteArray(), 0, cloneBytes, 0, bitMap.getByteArray().length);
-    return new BitMap(bitMap.getSize(), cloneBytes);
   }
 
   private Object cloneValue(TSDataType type, Object value) {
@@ -497,10 +508,10 @@ public class VectorTVList extends TVList {
   protected void expandValues() {
     indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     for (int i = 0; i < dataTypes.size(); i++) {
-      if (bitMaps != null && bitMaps.get(i) != null) {
-        bitMaps.get(i).add(new BitMap(ARRAY_SIZE));
-      }
       values.get(i).add(getPrimitiveArraysByType(dataTypes.get(i)));
+      if (bitMaps != null && bitMaps.get(i) != null) {
+        bitMaps.get(i).add(null);
+      }
     }
   }
 
@@ -590,7 +601,7 @@ public class VectorTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putVectors(long[] time, BitMap[] bitMaps, Object[] value, int start, int end) {
+  public void putVectors(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
     checkExpansion();
     int idx = start;
 
@@ -686,9 +697,14 @@ public class VectorTVList extends TVList {
     if (bitMaps.get(columnIndex) == null) {
       List<BitMap> columnBitMaps = new ArrayList<>();
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
-        columnBitMaps.add(new BitMap(ARRAY_SIZE));
+        columnBitMaps.add(null);
       }
       bitMaps.set(columnIndex, columnBitMaps);
+    }
+
+    // if the bitmap in arrayIndex is null, init the bitmap
+    if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
+      bitMaps.get(columnIndex).set(arrayIndex, new BitMap(ARRAY_SIZE));
     }
 
     // mark the null value in the current bitmap
