@@ -1410,7 +1410,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public AsyncClient getSendLogAsyncClient(Node node) {
     try {
-      return clientManager.borrowAsyncClient(node, ClientCategory.SINGLE_MASTER);
+      return clientManager.borrowAsyncClient(node, ClientCategory.DATA_ASYNC_APPEND_CLIENT);
     } catch (Exception e) {
       logger.error("borrow send log async client fail", e);
       return null;

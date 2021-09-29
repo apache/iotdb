@@ -46,7 +46,7 @@ public class ClientUtils {
       case META_HEARTBEAT:
         port = node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET;
         break;
-      case SINGLE_MASTER:
+      case DATA_ASYNC_APPEND_CLIENT:
         // special data client type
         port = node.getDataPort();
         break;

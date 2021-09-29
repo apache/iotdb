@@ -96,7 +96,7 @@ public class ClientManager implements IClientManager {
             ClientCategory.DATA_HEARTBEAT,
             clientPoolFactory.createAsyncDataPool(ClientCategory.DATA_HEARTBEAT));
         asyncClientPoolMap.put(
-            ClientCategory.SINGLE_MASTER, clientPoolFactory.createSingleManagerAsyncDataPool());
+            ClientCategory.DATA_ASYNC_APPEND_CLIENT, clientPoolFactory.createSingleManagerAsyncDataPool());
         break;
       default:
         logger.warn("unsupported ClientManager type: {}", type);

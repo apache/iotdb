@@ -24,7 +24,7 @@ public enum ClientCategory {
   META_HEARTBEAT("MetaHeartbeatClient"),
   DATA("DataClient"),
   DATA_HEARTBEAT("DataHeartbeatClient"),
-  SINGLE_MASTER("SingleMasterClient");
+  DATA_ASYNC_APPEND_CLIENT("DataAsyncAppendClient");
 
   private String name;
 
