@@ -12,6 +12,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
   public MeasurementCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
+    isMeasurementTraverser = true;
   }
 
   @Override
