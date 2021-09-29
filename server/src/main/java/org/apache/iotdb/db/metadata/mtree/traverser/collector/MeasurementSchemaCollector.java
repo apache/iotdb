@@ -79,7 +79,7 @@ public class MeasurementSchemaCollector
   }
 
   @Override
-  protected void collectVectorMeasurement(MultiMeasurementMNode node, int index)
+  protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index)
       throws MetadataException {
     IMeasurementSchema schema = node.getSchema();
     List<String> measurements = schema.getSubMeasurementsList();

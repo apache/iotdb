@@ -948,7 +948,7 @@ public class MTree implements Serializable {
           }
 
           @Override
-          protected void collectVectorMeasurement(MultiMeasurementMNode node, int index) {
+          protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index) {
             if (!result.containsKey(node.getPartialPath())) {
               result.put(node.getPartialPath(), node.getSchema());
             }
@@ -975,7 +975,7 @@ public class MTree implements Serializable {
             }
 
             @Override
-            protected void collectVectorMeasurement(MultiMeasurementMNode node, int index) {
+            protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index) {
               if (!measurementSchemas.contains(node.getSchema())) {
                 measurementSchemas.add(node.getSchema());
               }
@@ -1010,7 +1010,7 @@ public class MTree implements Serializable {
             }
 
             @Override
-            protected void collectVectorMeasurement(MultiMeasurementMNode node, int index) {
+            protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index) {
               // todo implement vector case according to the scenario in cluster
             }
           };

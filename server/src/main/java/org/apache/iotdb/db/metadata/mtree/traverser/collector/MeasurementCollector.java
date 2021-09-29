@@ -65,7 +65,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             break;
           }
         }
-        collectVectorMeasurement(multiMeasurementMNode, i);
+        collectMultiMeasurementComponent(multiMeasurementMNode, i);
         if (hasLimit) {
           count += 1;
         }
@@ -108,7 +108,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             return true;
           }
         }
-        collectVectorMeasurement(multiMeasurementMNode, i);
+        collectMultiMeasurementComponent(multiMeasurementMNode, i);
         if (hasLimit) {
           count += 1;
         }
@@ -131,6 +131,6 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
    * @param node MeasurementMNode holding the vector measurement schema
    * @param index the index of target sub measurement
    */
-  protected abstract void collectVectorMeasurement(MultiMeasurementMNode node, int index)
+  protected abstract void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index)
       throws MetadataException;
 }
