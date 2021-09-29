@@ -46,9 +46,9 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
       return false;
     }
     IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
-    if (measurementMNode.isVectorMeasurement()) {
+    if (measurementMNode.isMultiMeasurement()) {
       List<String> measurements =
-          measurementMNode.getAsVectorMeasurementMNode().getSubMeasurementList();
+          measurementMNode.getAsMultiMeasurementMNode().getSubMeasurementList();
       String regex = nodes[idx + 1].replace("*", ".*");
       for (String measurement : measurements) {
         if (!Pattern.matches(regex, measurement)) {
@@ -68,7 +68,7 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
     IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
     if (measurementMNode.isUnaryMeasurement()) {
       resultSet.add(node.getParent().getPartialPath());
-    } else if (measurementMNode.isVectorMeasurement()) {
+    } else if (measurementMNode.isMultiMeasurement()) {
       if (idx >= nodes.length - 1
           && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {

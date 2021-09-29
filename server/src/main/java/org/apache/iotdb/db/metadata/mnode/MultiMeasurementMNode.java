@@ -23,12 +23,12 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.List;
 
-public class VectorMeasurementMNode extends MeasurementMNode {
+public class MultiMeasurementMNode extends MeasurementMNode {
 
   /** measurement's Schema for one aligned timeseries represented by current leaf node */
   private VectorMeasurementSchema schema;
 
-  VectorMeasurementMNode(
+  MultiMeasurementMNode(
       IEntityMNode parent, String measurementName, VectorMeasurementSchema schema, String alias) {
     super(parent, measurementName, alias);
     this.schema = schema;
@@ -59,7 +59,7 @@ public class VectorMeasurementMNode extends MeasurementMNode {
   }
 
   @Override
-  public boolean isVectorMeasurement() {
+  public boolean isMultiMeasurement() {
     return true;
   }
 }

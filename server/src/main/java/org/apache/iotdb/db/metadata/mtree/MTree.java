@@ -40,9 +40,9 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.PathGrouperByStorageGroup;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -948,7 +948,7 @@ public class MTree implements Serializable {
           }
 
           @Override
-          protected void collectVectorMeasurement(VectorMeasurementMNode node, int index) {
+          protected void collectVectorMeasurement(MultiMeasurementMNode node, int index) {
             if (!result.containsKey(node.getPartialPath())) {
               result.put(node.getPartialPath(), node.getSchema());
             }
@@ -975,7 +975,7 @@ public class MTree implements Serializable {
             }
 
             @Override
-            protected void collectVectorMeasurement(VectorMeasurementMNode node, int index) {
+            protected void collectVectorMeasurement(MultiMeasurementMNode node, int index) {
               if (!measurementSchemas.contains(node.getSchema())) {
                 measurementSchemas.add(node.getSchema());
               }
@@ -1010,7 +1010,7 @@ public class MTree implements Serializable {
             }
 
             @Override
-            protected void collectVectorMeasurement(VectorMeasurementMNode node, int index) {
+            protected void collectVectorMeasurement(MultiMeasurementMNode node, int index) {
               // todo implement vector case according to the scenario in cluster
             }
           };

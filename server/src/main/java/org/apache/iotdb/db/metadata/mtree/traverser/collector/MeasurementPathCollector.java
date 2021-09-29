@@ -22,8 +22,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -52,7 +52,7 @@ public class MeasurementPathCollector extends MeasurementCollector<List<PartialP
   }
 
   @Override
-  protected void collectVectorMeasurement(VectorMeasurementMNode node, int index)
+  protected void collectVectorMeasurement(MultiMeasurementMNode node, int index)
       throws MetadataException {
     resultSet.add(
         new VectorPartialPath(node.getFullPath(), node.getSubMeasurementList().get(index)));

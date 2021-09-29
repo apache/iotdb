@@ -53,9 +53,9 @@ public interface IMeasurementMNode extends IMNode {
 
   boolean isUnaryMeasurement();
 
-  boolean isVectorMeasurement();
+  boolean isMultiMeasurement();
 
   UnaryMeasurementMNode getAsUnaryMeasurementMNode();
 
-  VectorMeasurementMNode getAsVectorMeasurementMNode();
+  MultiMeasurementMNode getAsMultiMeasurementMNode();
 }

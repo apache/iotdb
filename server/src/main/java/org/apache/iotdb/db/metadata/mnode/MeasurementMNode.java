@@ -61,7 +61,7 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
     } else if (schema instanceof MeasurementSchema) {
       return new UnaryMeasurementMNode(parent, measurementName, (MeasurementSchema) schema, alias);
     } else if (schema instanceof VectorMeasurementSchema) {
-      return new VectorMeasurementMNode(
+      return new MultiMeasurementMNode(
           parent, measurementName, (VectorMeasurementSchema) schema, alias);
     } else {
       throw new RuntimeException("Undefined schema type.");
@@ -169,7 +169,7 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
   }
 
   @Override
-  public boolean isVectorMeasurement() {
+  public boolean isMultiMeasurement() {
     return false;
   }
 
@@ -183,11 +183,11 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
   }
 
   @Override
-  public VectorMeasurementMNode getAsVectorMeasurementMNode() {
-    if (isVectorMeasurement()) {
-      return (VectorMeasurementMNode) this;
+  public MultiMeasurementMNode getAsMultiMeasurementMNode() {
+    if (isMultiMeasurement()) {
+      return (MultiMeasurementMNode) this;
     } else {
-      throw new UnsupportedOperationException("This is not an VectorMeasurementMNode");
+      throw new UnsupportedOperationException("This is not an MultiMeasurementMNode");
     }
   }
 

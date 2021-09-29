@@ -41,8 +41,8 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -639,8 +639,8 @@ public class MManager {
       IMNode lastNode = mtree.getNodeByPath(allTimeseries.get(0));
       if (lastNode.isMeasurement()) {
         IMeasurementMNode measurementMNode = lastNode.getAsMeasurementMNode();
-        if (measurementMNode.isVectorMeasurement()) {
-          if (measurementMNode.getAsVectorMeasurementMNode().getSubMeasurementList().size()
+        if (measurementMNode.isMultiMeasurement()) {
+          if (measurementMNode.getAsMultiMeasurementMNode().getSubMeasurementList().size()
               != allTimeseries.size()) {
             throw new AlignedTimeseriesException(
                 "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
@@ -697,7 +697,7 @@ public class MManager {
     if (measurementMNode.isUnaryMeasurement()) {
       removeFromTagInvertedIndex(measurementMNode);
       timeseriesNum = 1;
-    } else if (measurementMNode.isVectorMeasurement()) {
+    } else if (measurementMNode.isMultiMeasurement()) {
       timeseriesNum += measurementMNode.getSchema().getSubMeasurementsTSDataTypeList().size();
     }
     PartialPath storageGroupPath = pair.left;
@@ -1727,7 +1727,7 @@ public class MManager {
    * @param latestFlushedTime latest flushed time
    */
   public void updateLastCache(
-      VectorMeasurementMNode node,
+      MultiMeasurementMNode node,
       String subMeasurement,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
@@ -1784,7 +1784,7 @@ public class MManager {
    * @param subMeasurement the subMeasurement of aligned timeseries
    * @return the last cache value
    */
-  public TimeValuePair getLastCache(VectorMeasurementMNode node, String subMeasurement) {
+  public TimeValuePair getLastCache(MultiMeasurementMNode node, String subMeasurement) {
     return LastCacheManager.getLastCache(
         new VectorPartialPath(node.getPartialPath(), subMeasurement), node);
   }

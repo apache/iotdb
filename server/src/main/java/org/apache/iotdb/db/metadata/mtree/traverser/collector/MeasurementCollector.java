@@ -22,8 +22,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.VectorMeasurementMNode;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -51,10 +51,9 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
       return false;
     }
     IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
-    if (measurementMNode.isVectorMeasurement()) {
-      VectorMeasurementMNode vectorMeasurementMNode =
-          measurementMNode.getAsVectorMeasurementMNode();
-      List<String> measurements = vectorMeasurementMNode.getSubMeasurementList();
+    if (measurementMNode.isMultiMeasurement()) {
+      MultiMeasurementMNode multiMeasurementMNode = measurementMNode.getAsMultiMeasurementMNode();
+      List<String> measurements = multiMeasurementMNode.getSubMeasurementList();
       String targetNameRegex = nodes[idx + 1].replace("*", ".*");
       for (int i = 0; i < measurements.size(); i++) {
         if (!Pattern.matches(targetNameRegex, measurements.get(i))) {
@@ -66,7 +65,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             break;
           }
         }
-        collectVectorMeasurement(vectorMeasurementMNode, i);
+        collectVectorMeasurement(multiMeasurementMNode, i);
         if (hasLimit) {
           count += 1;
         }
@@ -93,16 +92,15 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
       if (hasLimit) {
         count += 1;
       }
-    } else if (measurementMNode.isVectorMeasurement()) {
+    } else if (measurementMNode.isMultiMeasurement()) {
       if (idx >= nodes.length - 1
           && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {
         return true;
       }
-      VectorMeasurementMNode vectorMeasurementMNode =
-          measurementMNode.getAsVectorMeasurementMNode();
+      MultiMeasurementMNode multiMeasurementMNode = measurementMNode.getAsMultiMeasurementMNode();
       // only when idx > nodes.length or nodes ends with ** or isPrefixMatch
-      List<String> measurements = vectorMeasurementMNode.getSubMeasurementList();
+      List<String> measurements = multiMeasurementMNode.getSubMeasurementList();
       for (int i = 0; i < measurements.size(); i++) {
         if (hasLimit) {
           curOffset += 1;
@@ -110,7 +108,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
             return true;
           }
         }
-        collectVectorMeasurement(vectorMeasurementMNode, i);
+        collectVectorMeasurement(multiMeasurementMNode, i);
         if (hasLimit) {
           count += 1;
         }
@@ -133,6 +131,6 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
    * @param node MeasurementMNode holding the vector measurement schema
    * @param index the index of target sub measurement
    */
-  protected abstract void collectVectorMeasurement(VectorMeasurementMNode node, int index)
+  protected abstract void collectVectorMeasurement(MultiMeasurementMNode node, int index)
       throws MetadataException;
 }

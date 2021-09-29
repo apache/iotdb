@@ -1113,7 +1113,7 @@ public class StorageGroupProcessor {
         if (plan.isAligned()) {
           // vector lastCache update need subMeasurement
           IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsVectorMeasurementMNode(),
+              mNodes[i].getAsMultiMeasurementMNode(),
               plan.getMeasurements()[i],
               plan.composeLastTimeValuePair(i),
               true,
@@ -1192,7 +1192,7 @@ public class StorageGroupProcessor {
         if (plan.isAligned()) {
           // vector lastCache update need subSensor path
           IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsVectorMeasurementMNode(),
+              mNodes[i].getAsMultiMeasurementMNode(),
               plan.getMeasurements()[i],
               plan.composeTimeValuePair(i),
               true,

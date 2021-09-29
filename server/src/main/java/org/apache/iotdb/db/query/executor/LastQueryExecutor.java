@@ -287,7 +287,7 @@ public class LastQueryExecutor {
         // the seriesPath has been transformed to vector path
         // here needs subSensor path
         return IoTDB.metaManager.getLastCache(
-            node.getAsVectorMeasurementMNode(), ((VectorPartialPath) path).getSubSensor(0));
+            node.getAsMultiMeasurementMNode(), ((VectorPartialPath) path).getSubSensor(0));
       } else {
         return IoTDB.metaManager.getLastCache(node.getAsUnaryMeasurementMNode());
       }
@@ -301,7 +301,7 @@ public class LastQueryExecutor {
           // the seriesPath has been transformed to vector path
           // here needs subSensor path
           IoTDB.metaManager.updateLastCache(
-              node.getAsVectorMeasurementMNode(),
+              node.getAsMultiMeasurementMNode(),
               ((VectorPartialPath) path).getSubSensor(0),
               pair,
               false,
