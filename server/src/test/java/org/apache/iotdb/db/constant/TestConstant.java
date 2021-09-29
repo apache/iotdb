@@ -29,8 +29,7 @@ public class TestConstant {
       "root.sg1" + File.separator + "0" + File.separator + "0" + File.separator;
   public static final String BASE_OUTPUT_PATH =
       "target".concat(File.separator) + PARTIAL_PATH_STRING;
-  public static final String OUTPUT_DATA_DIR =
-      BASE_OUTPUT_PATH.concat("data").concat(File.separator);
+  public static final String OUTPUT_DATA_DIR = BASE_OUTPUT_PATH;
 
   public static final String d0 = "root.vehicle.d0";
   public static final String s0 = "s0";

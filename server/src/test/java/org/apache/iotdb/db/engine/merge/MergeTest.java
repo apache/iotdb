@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
 import java.io.File;
@@ -203,7 +204,11 @@ abstract class MergeTest {
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
       throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
+    File tsfile = tsFileResource.getTsFile();
+    if (!tsfile.getParentFile().exists()) {
+      Assert.assertTrue(tsfile.getParentFile().mkdirs());
+    }
+    TsFileWriter fileWriter = new TsFileWriter(tsfile);
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(

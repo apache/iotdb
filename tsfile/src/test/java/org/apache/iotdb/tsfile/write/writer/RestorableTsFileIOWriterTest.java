@@ -69,11 +69,8 @@ public class RestorableTsFileIOWriterTest {
   @Before
   public void setUp() throws IOException {
     File file = new File(FILE_NAME);
-    if (!file.exists()) {
-      if (!file.getParentFile().exists()) {
-        Assert.assertTrue(file.getParentFile().mkdirs());
-      }
-      Assert.assertTrue(file.createNewFile());
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
     }
   }
 

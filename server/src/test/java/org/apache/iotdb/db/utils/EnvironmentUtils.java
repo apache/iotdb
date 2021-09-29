@@ -46,6 +46,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -325,6 +326,8 @@ public class EnvironmentUtils {
 
   private static void createDir(String dir) {
     File file = new File(dir);
-    file.mkdirs();
+    if (!file.exists()) {
+      Assert.assertTrue(file.mkdirs());
+    }
   }
 }
