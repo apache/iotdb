@@ -74,21 +74,13 @@ public class RestorableTsFileIOWriterTest {
   }
 
   @After
-  public void tearDown() {
-    File file = new File(FILE_NAME);
-    if (file.exists()) {
-      Assert.assertTrue(file.delete());
-    }
-  }
+  public void tearDown() {}
 
   @Test(expected = NotCompatibleTsFileException.class)
   public void testBadHeadMagic() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
-    FileWriter fWriter = new FileWriter(file);
-    try {
+    File file = new File(FILE_NAME);
+    try (FileWriter fWriter = new FileWriter(file)) {
       fWriter.write("Tsfile");
-    } finally {
-      fWriter.close();
     }
     try {
       new RestorableTsFileIOWriter(file);
@@ -99,7 +91,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOnlyHeadMagic() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
 
     TsFileWriter writer = new TsFileWriter(file);
     writer.getIOWriter().close();
@@ -118,7 +110,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOnlyFirstMask() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     // we have to flush using inner API.
     writer.getIOWriter().out.write(new byte[] {MetaMarker.CHUNK_HEADER});
@@ -132,7 +124,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOnlyOneIncompleteChunkHeader() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
 
     TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
 
@@ -169,7 +161,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOnlyOneChunkHeaderAndSomePage() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -208,7 +200,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOnlyOneChunkGroup() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -250,7 +242,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOnlyOneChunkGroupAndOneMarker() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -282,7 +274,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testTwoChunkGroupAndMore() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -330,7 +322,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testNoSeperatorMask() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -378,7 +370,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testHavingSomeFileMetadata() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -427,7 +419,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOpenCompleteFile() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -460,7 +452,7 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testAppendDataOnCompletedFile() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
+    File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
