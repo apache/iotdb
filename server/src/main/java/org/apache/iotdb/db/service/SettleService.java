@@ -24,9 +24,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleTask;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,7 +95,7 @@ public class SettleService implements IService {
     return ServiceType.SETTLE_SERVICE;
   }
 
-  private void settleAll() throws WriteProcessException, StorageEngineException {
+  private void settleAll() throws StorageEngineException, WriteProcessException {
     logger.info(
         "Totally find "
             + getFilesToBeSettledCount()

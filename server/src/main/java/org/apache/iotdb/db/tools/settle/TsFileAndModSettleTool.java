@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,7 +164,7 @@ public class TsFileAndModSettleTool {
           newTsFileResources.put(resourceToBeSettled.getTsFile().getName(), settledTsFileResources);
         }
 
-        TsFileRewriteTool.moveNewTsFile(resourceToBeSettled, settledTsFileResources);
+        moveNewTsFile(resourceToBeSettled, settledTsFileResources);
         // Write Settle Log, Status 3
         SettleLog.writeSettleLog(
             resourceToBeSettled.getTsFilePath()
@@ -191,6 +192,11 @@ public class TsFileAndModSettleTool {
     return newTsFileResources;
   }
 
+  /**
+   * The size of settledResources will be 0 in one of the following conditions: (1) old TsFile is
+   * not closed (2) old ModFile is not existed (3) all data in the old tsfile is being deleted after
+   * settling
+   */
   public void settleOneTsFileAndMod(
       TsFileResource resourceToBeSettled, List<TsFileResource> settledResources) throws Exception {
     if (!resourceToBeSettled.isClosed()) {
@@ -198,7 +204,7 @@ public class TsFileAndModSettleTool {
           "The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
       return;
     }
-    // if no deletions to this tsfile, then return null.
+    // if no deletions to this tsfile, then return.
     if (!resourceToBeSettled.getModFile().exists()) {
       return;
     }
@@ -206,7 +212,11 @@ public class TsFileAndModSettleTool {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
     if (settledResources.size() == 0) { // if all the data in this tsfile has been deleted
+      resourceToBeSettled.readUnlock();
+      resourceToBeSettled.writeLock();
       resourceToBeSettled.delete();
+      resourceToBeSettled.writeUnlock();
+      resourceToBeSettled.readLock();
     }
     return;
   }
@@ -273,6 +283,68 @@ public class TsFileAndModSettleTool {
             + SettleLog.COMMA_SEPERATOR
             + SettleCheckStatus.AFTER_SETTLE_FILE);
     return settledTsFileResources;
+  }
+
+  /**
+   * This method is used to move a new TsFile and its corresponding resource file to the correct
+   * folder.
+   *
+   * @param oldTsFileResource
+   * @param newTsFileResources if the old TsFile has not any deletions or all the data in which has
+   *     been deleted or its modFile does not exist, then this size will be 0.
+   * @throws IOException
+   */
+  public static void moveNewTsFile(
+      TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
+      throws IOException {
+    // delete old mods
+    oldTsFileResource.removeModFile();
+
+    File newPartionDir =
+        new File(
+            oldTsFileResource.getTsFile().getParent()
+                + File.separator
+                + oldTsFileResource.getTimePartition());
+    if (newTsFileResources.size() == 0) { // if the oldTsFile has no mods, it should not be deleted.
+      if (newPartionDir.exists()) newPartionDir.delete();
+      return;
+    }
+    FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+    File oldTsFile = oldTsFileResource.getTsFile();
+    boolean isOldFileExisted = oldTsFile.exists();
+    oldTsFile.delete();
+    for (TsFileResource newTsFileResource : newTsFileResources) {
+      newPartionDir =
+          new File(
+              oldTsFileResource.getTsFile().getParent()
+                  + File.separator
+                  + newTsFileResource.getTimePartition());
+      // if old TsFile has been deleted by other threads, then delete its new TsFile.
+      if (!isOldFileExisted) {
+        newTsFileResource.remove();
+      } else {
+        File newTsFile = newTsFileResource.getTsFile();
+
+        // move TsFile
+        fsFactory.moveFile(newTsFile, oldTsFile);
+
+        // move .resource File
+        newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
+        newTsFileResource.setClosed(true);
+        try {
+          newTsFileResource.serialize();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+        File tmpResourceFile =
+            fsFactory.getFile(newPartionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
+        if (tmpResourceFile.exists()) {
+          tmpResourceFile.delete();
+        }
+      }
+      // if the newPartition folder is empty, then it will be deleted
+      if (newPartionDir.exists()) newPartionDir.delete();
+    }
   }
 
   public static void clearRecoverSettleFileMap() {

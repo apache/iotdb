@@ -44,6 +44,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -142,7 +143,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -1158,6 +1158,9 @@ public class PlanExecutor implements IPlanExecutor {
             "try to split the tsFile={} du to it spans multi partitions",
             tsFileResource.getTsFile().getPath());
         TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+        tsFileResource.writeLock();
+        tsFileResource.removeModFile();
+        tsFileResource.writeUnlock();
         logger.info(
             "after split, the old tsFile was split to {} new tsFiles", splitResources.size());
       }

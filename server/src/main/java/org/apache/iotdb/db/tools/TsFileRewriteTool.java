@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -124,61 +123,6 @@ public class TsFileRewriteTool implements AutoCloseable {
     if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
       oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
       modsIterator = oldModification.iterator();
-    }
-  }
-
-  /**
-   * This method is used to move a new TsFile and its corresponding resource file to the correct
-   * folder.
-   *
-   * @param oldTsFileResource
-   * @param newTsFileResources if the old TsFile has not any deletions or all the data in which has
-   *     been deleted , then this param will be null.
-   * @throws IOException
-   */
-  public static void moveNewTsFile(
-      TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
-      throws IOException {
-    File newPartionDir =
-        new File(
-            oldTsFileResource.getTsFile().getParent()
-                + File.separator
-                + oldTsFileResource.getTimePartition());
-    try {
-      if (newTsFileResources.size() == 0) {
-        return;
-      }
-      FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-      File oldTsFile = oldTsFileResource.getTsFile();
-      oldTsFile.delete();
-      for (TsFileResource newTsFileResource : newTsFileResources) {
-        newPartionDir =
-            new File(
-                oldTsFileResource.getTsFile().getParent()
-                    + File.separator
-                    + newTsFileResource.getTimePartition());
-        File newTsFile = newTsFileResource.getTsFile();
-
-        // move TsFile
-        fsFactory.moveFile(newTsFile, oldTsFile);
-
-        // move .resource File
-        newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
-        newTsFileResource.setClosed(true);
-        try {
-          newTsFileResource.serialize();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-        File tmpResourceFile =
-            fsFactory.getFile(newPartionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
-        if (tmpResourceFile.exists()) {
-          tmpResourceFile.delete();
-        }
-      }
-    } finally {
-      if (newPartionDir.exists())
-        newPartionDir.delete(); // if the folder is empty, then it will be deleted
     }
   }
 
@@ -302,8 +246,6 @@ public class TsFileRewriteTool implements AutoCloseable {
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
         rewrittenResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
-      // delete old mods
-      oldTsFileResource.removeModFile();
 
     } catch (IOException e2) {
       throw new IOException(

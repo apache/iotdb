@@ -67,7 +67,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -2339,22 +2338,22 @@ public class StorageGroupProcessor {
   }
 
   /** Settle All TsFiles and mods belonging to this storage group */
-  public void settle() throws org.apache.iotdb.tsfile.exception.write.WriteProcessException {
+  public void settle() throws WriteProcessException {
     for (Map.Entry<String, TsFileResource> entry : settleSeqFileList.entrySet()) {
       TsFileResource seqTsFileResource = entry.getValue();
-      seqTsFileResource.writeLock();
+      seqTsFileResource.readLock();
       seqTsFileResource.setSeq(true);
       seqTsFileResource.setSettleTsFileCallBack(this::settleTsFileCallBack);
       seqTsFileResource.doSettle();
-      seqTsFileResource.writeUnlock();
+      seqTsFileResource.readUnlock();
     }
     for (Map.Entry<String, TsFileResource> entry : settleUnseqFileList.entrySet()) {
       TsFileResource unSeqTsFileResource = entry.getValue();
-      unSeqTsFileResource.writeLock();
+      unSeqTsFileResource.readLock();
       unSeqTsFileResource.setSeq(false);
       unSeqTsFileResource.setSettleTsFileCallBack(this::settleTsFileCallBack);
       unSeqTsFileResource.doSettle();
-      unSeqTsFileResource.writeUnlock();
+      unSeqTsFileResource.readUnlock();
     }
     settleSeqFileList.clear();
     settleUnseqFileList.clear();
@@ -2369,7 +2368,9 @@ public class StorageGroupProcessor {
   private void settleTsFileCallBack(
       TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
       throws IOException {
-    TsFileRewriteTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
+    oldTsFileResource.readUnlock();
+    oldTsFileResource.writeLock();
+    TsFileAndModSettleTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
     if (TsFileAndModSettleTool.recoverSettleFileMap.size() != 0) {
       TsFileAndModSettleTool.recoverSettleFileMap.remove(oldTsFileResource.getTsFilePath());
     }
@@ -2384,6 +2385,8 @@ public class StorageGroupProcessor {
     FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFilePath());
 
     SettleService.getFilesToBeSettledCount().addAndGet(-1);
+    oldTsFileResource.writeUnlock();
+    oldTsFileResource.readLock();
   }
 
   private void loadUpgradedResources(List<TsFileResource> resources, boolean isseq) {
@@ -3332,7 +3335,7 @@ public class StorageGroupProcessor {
   public interface SettleTsFileCallBack {
 
     void call(TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
-        throws IOException;
+        throws IOException, WriteProcessException;
   }
 
   @FunctionalInterface
