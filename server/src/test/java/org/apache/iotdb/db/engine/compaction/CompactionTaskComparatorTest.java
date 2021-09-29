@@ -156,7 +156,7 @@ public class CompactionTaskComparatorTest {
 
     for (int i = 0; i < 100; i++) {
       AbstractCompactionTask currentTask = compactionTaskQueue.poll();
-      assertTrue(currentTask == crossCompactionTasks[i]);
+      assertTrue(currentTask == crossCompactionTasks[99 - i]);
     }
   }
 

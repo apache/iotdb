@@ -59,6 +59,14 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
       // prioritize sequence file compaction
       return o1.isSequence() ? -1 : 1;
     }
+
+    // if the sum of compaction count of the selected files are different
+    // we prefer to execute task with smaller compaction count
+    // this can reduce write amplification
+    if (o1.getSumOfCompactionCount() != o2.getSumOfCompactionCount()) {
+      return o1.getSumOfCompactionCount() - o2.getSumOfCompactionCount();
+    }
+
     List<TsFileResource> selectedFilesOfO1 = o1.getSelectedTsFileResourceList();
     List<TsFileResource> selectedFilesOfO2 = o2.getSelectedTsFileResourceList();
 
@@ -73,13 +81,6 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     // because small files can be compacted quickly
     if (o1.getSelectedFileSize() != o2.getSelectedFileSize()) {
       return (int) (o1.getSelectedFileSize() - o2.getSelectedFileSize());
-    }
-
-    // if the sum of compaction count of the selected files are different
-    // we prefer to execute task with smaller compaction count
-    // this can reduce write amplification
-    if (o1.getSumOfCompactionCount() != o2.getSumOfCompactionCount()) {
-      return o1.getSumOfCompactionCount() - o2.getSumOfCompactionCount();
     }
 
     // if the max file version of o1 and o2 are different
