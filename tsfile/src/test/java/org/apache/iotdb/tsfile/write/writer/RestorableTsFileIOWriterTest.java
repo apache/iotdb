@@ -50,6 +50,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,10 +67,13 @@ public class RestorableTsFileIOWriterTest {
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Before
-  public void setUp() {
+  public void setUp() throws IOException {
     File file = new File(FILE_NAME);
-    if (!file.getParentFile().exists()) {
-      Assert.assertTrue(file.getParentFile().mkdirs());
+    if (!file.exists()) {
+      if (!file.getParentFile().exists()) {
+        Assert.assertTrue(file.getParentFile().mkdirs());
+      }
+      Assert.assertTrue(file.createNewFile());
     }
   }
 
