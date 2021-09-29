@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.influxdb.qp.logical.crud;
 
-import org.apache.iotdb.influxdb.qp.constant.SQLConstant;
 import org.apache.iotdb.influxdb.qp.logical.Operator;
 
 public class QueryOperator extends Operator {
@@ -27,11 +26,6 @@ public class QueryOperator extends Operator {
   protected SelectComponent selectComponent;
   protected FromComponent fromComponent;
   protected WhereComponent whereComponent;
-
-  public QueryOperator() {
-    super(SQLConstant.TOK_QUERY);
-    operatorType = Operator.OperatorType.QUERY;
-  }
 
   public SelectComponent getSelectComponent() {
     return selectComponent;
