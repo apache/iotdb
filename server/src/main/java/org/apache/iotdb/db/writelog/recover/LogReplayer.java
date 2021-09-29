@@ -183,9 +183,13 @@ public class LogReplayer {
         tempEndTimeMap.put(deviceId, maxTime);
       }
     }
-    IMeasurementMNode[] mNodes;
+    String[] measurements = plan.getMeasurements();
+    IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
     try {
-      mNodes = IoTDB.metaManager.getMeasurementMNodes(plan.getPrefixPath(), plan.getMeasurements());
+      for (int i = 0; i < measurements.length; i++) {
+        mNodes[i] =
+            IoTDB.metaManager.getMeasurementMNode(plan.getPrefixPath().concatNode(measurements[i]));
+      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

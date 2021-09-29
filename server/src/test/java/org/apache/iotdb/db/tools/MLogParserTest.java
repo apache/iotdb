@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.mlog.MLogParser;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -105,8 +106,9 @@ public class MLogParserTest {
       SetSchemaTemplatePlan setSchemaTemplatePlan =
           new SetSchemaTemplatePlan("template1", "root.sg");
       IoTDB.metaManager.setSchemaTemplate(setSchemaTemplatePlan);
-      IoTDB.metaManager.getDeviceNodeWithAutoCreate(new PartialPath("root.sg.d1"), true, true, 1);
-    } catch (MetadataException | IOException e) {
+      IoTDB.metaManager.setUsingSchemaTemplate(
+          new SetUsingSchemaTemplatePlan(new PartialPath("root.sg.d1")));
+    } catch (MetadataException e) {
       e.printStackTrace();
     }
   }
@@ -161,7 +163,7 @@ public class MLogParserTest {
         lineNum++;
         lines.add(line);
       }
-      if (lineNum != 113) {
+      if (lineNum != 114) {
         // First, we prepare 2 storage groups, each one has 5 devices, and every device has 10
         // measurements.
         // So, mlog records 2 * 5 * 10 = 100 CreateTimeSeriesPlan, and 2 SetStorageGroupPlan.
@@ -170,13 +172,14 @@ public class MLogParserTest {
         // The final operation changeAlias only change the mtree in memory, so it will not write
         // record to mlog.
         // Then, we set 1 more storage group, create a template with 2 measurements, set
-        // the template to this storage group and create 1 device using template.
-        // Finally, the mlog should have 100 + 2 + 6 + 1 + 2 + 1 + 1 = 113 records
+        // the template to this storage group and set 1 device using template. The device will be
+        // auto created.
+        // Finally, the mlog should have 100 + 2 + 6 + 1 + 2 + 1 + 1 + 1 = 114 records
         for (String content : lines) {
           System.out.println(content);
         }
       }
-      Assert.assertEquals(113, lineNum);
+      Assert.assertEquals(114, lineNum);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
@@ -214,7 +217,8 @@ public class MLogParserTest {
         // Next, we do 4 operations which will be record in mtree, include set 2 sgs, delete
         // timeseries, delete sg.
         // Then, we set 1 more storage group, create a template with 2 measurements and set
-        // the template to this storage group and create 1 device using template.
+        // the template to this storage group and set 1 device using template. The device will be
+        // auto created.
         // The snapshot should have 100 + 2 + 5 * 2 + 2 - 1 - 1 + 1 + 1 = 114 records,
         // and we have root record,
         // so we have 114 + 1 = 115 records finally.

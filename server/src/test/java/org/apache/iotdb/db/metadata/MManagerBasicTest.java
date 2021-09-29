@@ -889,13 +889,11 @@ public class MManagerBasicTest {
 
     assertTrue(allSchema.isEmpty());
 
-    IMeasurementMNode[] mNodes =
-        manager.getMeasurementMNodes(new PartialPath("root.sg1.d1"), new String[] {"s11"});
-    assertNotNull(mNodes[0]);
-    assertEquals(mNodes[0].getSchema(), s11);
+    IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
+    assertNotNull(mNode);
+    assertEquals(mNode.getSchema(), s11);
 
-    mNodes = manager.getMeasurementMNodes(new PartialPath("root.sg1.d1"), new String[] {"s100"});
-    assertNull(mNodes[0]);
+    assertNull(manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100")));
   }
 
   private CreateTemplatePlan getCreateTemplatePlan() {

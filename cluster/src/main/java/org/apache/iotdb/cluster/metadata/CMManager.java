@@ -34,7 +34,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -111,7 +110,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
@@ -290,43 +288,6 @@ public class CMManager extends MManager {
     return node;
   }
 
-  /**
-   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier)} will call
-   * this to get schema after restart we should retry to get schema util we get the schema.
-   *
-   * @param deviceId the device id.
-   * @param measurements the measurements.
-   */
-  @Override
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    try {
-      return super.getMeasurementMNodes(deviceId, measurements);
-    } catch (MetadataException e) {
-      // some measurements not exist in local
-      // try cache
-      IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[measurements.length];
-      int failedMeasurementIndex = getMNodesLocally(deviceId, measurements, measurementMNodes);
-      if (failedMeasurementIndex == -1) {
-        return measurementMNodes;
-      }
-
-      // will retry util get schema
-      pullSeriesSchemas(deviceId, measurements);
-
-      // try again
-      failedMeasurementIndex = getMNodesLocally(deviceId, measurements, measurementMNodes);
-      if (failedMeasurementIndex != -1) {
-        throw new MetadataException(
-            deviceId.getFullPath()
-                + IoTDBConstant.PATH_SEPARATOR
-                + measurements[failedMeasurementIndex]
-                + " is not found");
-      }
-      return measurementMNodes;
-    }
-  }
-
   /** @return -1 if all schemas are found, or the first index of the non-exist schema */
   private int getMNodesLocally(
       PartialPath deviceId, String[] measurements, IMeasurementMNode[] measurementMNodes) {
@@ -485,7 +446,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
+  protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path,

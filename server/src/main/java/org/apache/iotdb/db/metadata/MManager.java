@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -799,7 +798,7 @@ public class MManager {
    *     needs to make the Meta group aware of the creation of an SG, so an exception needs to be
    *     thrown here
    */
-  public IMNode getDeviceNodeWithAutoCreate(
+  protected IMNode getDeviceNodeWithAutoCreate(
       PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
       throws IOException, MetadataException {
     IMNode node;
@@ -843,14 +842,13 @@ public class MManager {
     }
   }
 
-  /** !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method. */
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
+  protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel());
   }
 
-  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+  private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
   }
   // endregion
@@ -1370,22 +1368,6 @@ public class MManager {
     } catch (CacheException e) {
       throw new PathNotExistException(path.getFullPath());
     }
-  }
-
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
-    for (int i = 0; i < mNodes.length; i++) {
-      try {
-        mNodes[i] = mtree.getMeasurementMNode(deviceId.concatNode(measurements[i]));
-      } catch (PathNotExistException | MNodeTypeMismatchException ignored) {
-        logger.warn("MeasurementMNode {} does not exist in {}", measurements[i], deviceId);
-      }
-      if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-        throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
-      }
-    }
-    return mNodes;
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
@@ -2054,11 +2036,6 @@ public class MManager {
       IMeasurementSchema schema = curTemplateMap.get(schemaName);
       if (!deviceMNode.isUseTemplate()) {
         deviceMNode = setUsingSchemaTemplate(deviceMNode);
-        try {
-          logWriter.setUsingSchemaTemplate(deviceMNode.getPartialPath());
-        } catch (IOException e) {
-          throw new MetadataException(e);
-        }
       }
 
       if (schema != null) {
@@ -2140,25 +2117,35 @@ public class MManager {
     }
   }
 
-  private void setUsingSchemaTemplate(SetUsingSchemaTemplatePlan plan) throws MetadataException {
+  public void setUsingSchemaTemplate(SetUsingSchemaTemplatePlan plan) throws MetadataException {
     try {
       setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
     } catch (PathNotExistException e) {
       // the order of SetUsingSchemaTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
       // when writing concurrently, so we need a auto-create mechanism here
-      mtree.getDeviceNodeWithAutoCreating(
-          plan.getPrefixPath(), config.getDefaultStorageGroupLevel());
+      try {
+        getDeviceNodeWithAutoCreate(plan.getPrefixPath());
+      } catch (IOException ioException) {
+        throw new MetadataException(ioException);
+      }
       setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
     }
   }
 
-  IEntityMNode setUsingSchemaTemplate(IMNode node) {
+  IEntityMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
     IEntityMNode entityMNode = mtree.setToEntity(node);
     entityMNode.setUseTemplate(true);
     if (node != entityMNode) {
       mNodeCache.removeObject(entityMNode.getPartialPath());
+    }
+    if (!isRecovering) {
+      try {
+        logWriter.setUsingSchemaTemplate(node.getPartialPath());
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
     }
     return entityMNode;
   }
