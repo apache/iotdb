@@ -677,11 +677,11 @@ public class MTreeTest {
           null,
           null);
 
-      assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.laptop")));
-      assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
+      assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.laptop"), -1));
+      assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1"), -1));
       PartialPath partialPath = new PartialPath("root.laptop.d1.s3");
       try {
-        root.getAllTimeseriesCount(partialPath);
+        root.getAllTimeseriesCount(partialPath, -1);
         fail("Expected exception");
       } catch (MetadataException e) {
         assertEquals("Path [root.laptop.d1.s3] does not exist", e.getMessage());
@@ -719,7 +719,7 @@ public class MTreeTest {
         null);
 
     assertEquals(2, root.getDevices(new PartialPath("root")).size());
-    assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root")));
+    assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root"), -1));
     assertEquals(2, root.getAllTimeseriesPath(new PartialPath("root")).size());
     assertEquals(2, root.getAllTimeseriesPathWithAlias(new PartialPath("root"), 0, 0).left.size());
   }

@@ -712,7 +712,8 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber.addAndGet(-mtree.getAllTimeseriesCount(storageGroup));
+        totalSeriesNumber.addAndGet(
+            -mtree.getAllTimeseriesCount(storageGroup, (int) totalSeriesNumber.get()));
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -884,7 +885,7 @@ public class MManager {
 
   /** To calculate the count of timeseries for given prefix path. */
   public int getAllTimeseriesCount(PartialPath prefixPath) throws MetadataException {
-    return mtree.getAllTimeseriesCount(prefixPath);
+    return mtree.getAllTimeseriesCount(prefixPath, (int) totalSeriesNumber.get());
   }
 
   /** To calculate the count of devices for given prefix path. */

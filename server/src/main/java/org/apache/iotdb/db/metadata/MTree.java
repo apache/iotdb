@@ -88,8 +88,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
@@ -981,11 +980,17 @@ public class MTree implements Serializable {
    * throw PathNotExistException()
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
+   * @param totalSeriesNumber MManger generated total series number under the root path , if MManger
+   *     don't generated, can transmission - 1
    */
-  int getAllTimeseriesCount(PartialPath prefixPath) throws MetadataException {
+  int getAllTimeseriesCount(PartialPath prefixPath, int totalSeriesNumber)
+      throws MetadataException {
     String[] nodes = prefixPath.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
+    } else if (totalSeriesNumber >= 0
+        && (nodes.length == 1 || (nodes.length == 2 && nodes[1].equals(PATH_WILDCARD)))) {
+      return totalSeriesNumber;
     }
     try {
       return getCount(root, nodes, 1, false);
