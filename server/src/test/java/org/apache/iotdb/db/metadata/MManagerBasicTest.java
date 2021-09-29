@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -893,7 +894,12 @@ public class MManagerBasicTest {
     assertNotNull(mNode);
     assertEquals(mNode.getSchema(), s11);
 
-    assertNull(manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100")));
+    try {
+      manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
+      fail();
+    } catch (PathNotExistException e) {
+      assertEquals("Path [root.sg1.d1.s100] does not exist", e.getMessage());
+    }
   }
 
   private CreateTemplatePlan getCreateTemplatePlan() {
