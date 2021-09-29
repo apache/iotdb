@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -1184,7 +1183,6 @@ public class PhysicalPlanTest {
     CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals("trigger1", plan.getTriggerName());
-    Assert.assertEquals(TriggerEvent.BEFORE_INSERT, plan.getEvent());
     Assert.assertEquals("root.sg1.d1.s1", plan.getFullPath().getFullPath());
     Assert.assertEquals("org.apache.iotdb.engine.trigger.Example", plan.getClassName());
   }
@@ -1198,7 +1196,6 @@ public class PhysicalPlanTest {
     CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals("trigger2", plan.getTriggerName());
-    Assert.assertEquals(TriggerEvent.AFTER_INSERT, plan.getEvent());
     Assert.assertEquals("root.sg1.d1.s2", plan.getFullPath().getFullPath());
     Assert.assertEquals("org.apache.iotdb.engine.trigger.Example", plan.getClassName());
     Map<String, String> expectedAttributes = new HashMap<>();

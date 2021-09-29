@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
@@ -93,8 +92,7 @@ public class EnvironmentUtils {
     // deregister all user defined classes
     try {
       UDFRegistrationService.getInstance().deregisterAll();
-      TriggerRegistrationService.getInstance().deregisterAll();
-    } catch (UDFRegistrationException | TriggerManagementException e) {
+    } catch (UDFRegistrationException e) {
       fail(e.getMessage());
     }
 
@@ -227,8 +225,6 @@ public class EnvironmentUtils {
     cleanDir(config.getTracingDir());
     // delete ulog
     cleanDir(config.getUdfDir());
-    // delete tlog
-    cleanDir(config.getTriggerDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -69,7 +70,7 @@ public interface IMTree extends Serializable {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel) throws MetadataException;
+  Pair<IMNode, Template> getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel) throws MetadataException;
 
   /**
    * Check whether the given path exists.
@@ -116,9 +117,9 @@ public interface IMTree extends Serializable {
    * Get node by path with storage group check If storage group is not set,
    * StorageGroupNotSetException will be thrown
    */
-  IMNode getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException;
+  Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException;
 
-  IMNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException;
+  Pair<IMNode, Template> getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException;
 
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
@@ -308,6 +309,8 @@ public interface IMTree extends Serializable {
   int getMeasurementMNodeCount(PartialPath path) throws MetadataException;
 
   Collection<MeasurementMNode> collectMeasurementMNode(IMNode startingNode);
+
+  void checkTemplateOnPath(PartialPath path) throws MetadataException;
 
   void updateMNode(IMNode mNode) throws MetadataException;
 

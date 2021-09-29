@@ -22,6 +22,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.metadisk.metafile.IPersistenceInfo;
+import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -172,6 +173,31 @@ public class PersistenceMNode implements IPersistenceInfo, IMNode {
 
   @Override
   public void replaceChild(String measurement, IMNode newChildNode) {}
+
+  @Override
+  public boolean isUseTemplate() {
+    return false;
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {
+
+  }
+
+  @Override
+  public Template getDeviceTemplate() {
+    return null;
+  }
+
+  @Override
+  public void setDeviceTemplate(Template deviceTemplate) {
+
+  }
+
+  @Override
+  public Template getUpperTemplate() {
+    return null;
+  }
 
   @Override
   public CacheEntry getCacheEntry() {

@@ -19,30 +19,20 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
 public class StopTriggerPlan extends PhysicalPlan {
 
-  private String triggerName;
-
-  public StopTriggerPlan() {
-    super(false, OperatorType.STOP_TRIGGER);
-    canBeSplit = false;
-  }
+  private final String triggerName;
 
   public StopTriggerPlan(String triggerName) {
     super(false, OperatorType.STOP_TRIGGER);
     this.triggerName = triggerName;
-    canBeSplit = false;
   }
 
   public String getTriggerName() {
@@ -52,24 +42,5 @@ public class StopTriggerPlan extends PhysicalPlan {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
-  }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.STOP_TRIGGER.ordinal());
-
-    putString(stream, triggerName);
-  }
-
-  @Override
-  public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.STOP_TRIGGER.ordinal());
-
-    putString(buffer, triggerName);
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    triggerName = readString(buffer);
   }
 }

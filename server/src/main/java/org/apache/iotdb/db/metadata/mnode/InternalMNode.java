@@ -363,12 +363,12 @@ public class InternalMNode implements IMNode {
    * @return upper template
    */
   public Template getUpperTemplate() {
-    MNode cur = this;
+    IMNode cur = this;
     while (cur != null) {
       if (cur.getDeviceTemplate() != null) {
-        return cur.deviceTemplate;
+        return cur.getDeviceTemplate();
       }
-      cur = cur.parent;
+      cur = cur.getParent();
     }
 
     return null;
@@ -382,7 +382,7 @@ public class InternalMNode implements IMNode {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    MNode mNode = (MNode) o;
+    IMNode mNode = (IMNode) o;
     if (fullPath == null) {
       return Objects.equals(getFullPath(), mNode.getFullPath());
     } else {

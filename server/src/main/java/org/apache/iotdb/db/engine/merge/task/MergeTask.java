@@ -149,7 +149,7 @@ public class MergeTask implements Callable<Void> {
     Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<PartialPath> unmergedSeries = new ArrayList<>();
     for (PartialPath device : devices) {
-      MNode deviceNode = IoTDB.metaManager.getDeviceNode(device);
+      IMNode deviceNode = IoTDB.metaManager.getDeviceNode(device);
       for (Entry<String, IMNode> entry : deviceNode.getChildren().entrySet()) {
         if (entry.getValue() instanceof MeasurementMNode) {
           // under some situation, the children of a device node may be another device node

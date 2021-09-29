@@ -194,15 +194,6 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void setIndex(long index) {
-    super.setIndex(index);
-    for (InsertRowPlan plan : rowPlans) {
-      // use the InsertRowsOfOneDevicePlan's index as the sub InsertRowPlan's index
-      plan.setIndex(index);
-    }
-  }
-
-  @Override
   public String toString() {
     return "deviceId: " + deviceId + ", times: " + rowPlans.length;
   }

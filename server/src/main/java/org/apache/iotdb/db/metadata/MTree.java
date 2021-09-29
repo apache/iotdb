@@ -69,6 +69,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -236,7 +237,7 @@ public class MTree implements IMTree {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    checkTimeseries(path.getFullPath());
+    checkTimeseries(path);
     IMNode cur = root;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getDeviceTemplate();
@@ -379,7 +380,7 @@ public class MTree implements IMTree {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  Pair<IMNode, Template> getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
+  public Pair<IMNode, Template> getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
       throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
@@ -589,7 +590,7 @@ public class MTree implements IMTree {
    * Get node by path with storage group check If storage group is not set,
    * StorageGroupNotSetException will be thrown
    */
-  Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path)
+  public Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path)
       throws MetadataException {
     boolean storageGroupChecked = false;
     String[] nodes = path.getNodes();
@@ -622,7 +623,7 @@ public class MTree implements IMTree {
   }
 
   @Override
-  public IMNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
+  public Pair<IMNode, Template> getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
       throws MetadataException {
     return getNodeByPathWithStorageGroupCheck(path);
   }
@@ -687,7 +688,7 @@ public class MTree implements IMTree {
       if (cur.getDeviceTemplate() != null) {
         upperTemplate = cur.getDeviceTemplate();
       }
-      MNode next = cur.getChild(nodes[i]);
+      IMNode next = cur.getChild(nodes[i]);
       if (next == null) {
         if (upperTemplate == null) {
           throw new PathNotExistException(path.getFullPath(), true);
@@ -1251,7 +1252,7 @@ public class MTree implements IMTree {
     }
 
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      MNode next = node.getChild(nodeReg);
+      IMNode next = node.getChild(nodeReg);
       if (next != null) {
         findPath(
             next,
@@ -1264,7 +1265,7 @@ public class MTree implements IMTree {
             upperTemplate);
       }
     } else {
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
@@ -1303,7 +1304,7 @@ public class MTree implements IMTree {
   }
 
   private void addMeasurementSchema(
-      MNode node,
+      IMNode node,
       List<Pair<PartialPath, String[]>> timeseriesSchemaList,
       boolean needLast,
       QueryContext queryContext,
@@ -1323,27 +1324,6 @@ public class MTree implements IMTree {
           needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
       Pair<PartialPath, String[]> temp = new Pair<>(nodePath, tsRow);
       timeseriesSchemaList.add(temp);
-
-      if (hasLimit) {
-        count.set(count.get() + 1);
-      }
-    }
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!nodeReg.contains(PATH_WILDCARD)) {
-      IMNode next = node.getChild(nodeReg);
-      if (next != null) {
-        findPath(next, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-      }
-    } else {
-      for (IMNode child : node.getChildren().values()) {
-        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-          continue;
-        }
-        findPath(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
-          return;
-        }
-      }
     }
   }
 
@@ -1908,9 +1888,9 @@ public class MTree implements IMTree {
    * check whether there is template on given path and the subTree has template return true,
    * otherwise false
    */
-  void checkTemplateOnPath(PartialPath path) throws MetadataException {
+  public void checkTemplateOnPath(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    MNode cur = root;
+    IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return;
     }
@@ -1931,8 +1911,8 @@ public class MTree implements IMTree {
   }
 
   // traverse  all the  descendant of the given path node
-  private void checkTemplateOnSubtree(MNode node) throws MetadataException {
-    for (MNode child : node.getChildren().values()) {
+  private void checkTemplateOnSubtree(IMNode node) throws MetadataException {
+    for (IMNode child : node.getChildren().values()) {
       if (child.getDeviceTemplate() != null) {
         throw new MetadataException("Template already exists on " + child.getFullPath());
       }

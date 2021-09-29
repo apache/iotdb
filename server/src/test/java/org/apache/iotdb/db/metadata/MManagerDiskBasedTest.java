@@ -22,6 +22,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -1015,7 +1016,7 @@ public class MManagerDiskBasedTest {
   }
 
   @Test
-  public void improveTest_improveTest() throws MetadataException {
+  public void improveTest_improveTest() throws IOException, MetadataException {
     beforeImproveTest();
 
     String[] deviceIdList = new String[DEVICE_NUM];
@@ -1084,8 +1085,8 @@ public class MManagerDiskBasedTest {
     }
   }
 
-  private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
-    IMNode node = manager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
+  private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException, IOException {
+    IMNode node = manager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId)).left;
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
       MeasurementMNode measurementNode =

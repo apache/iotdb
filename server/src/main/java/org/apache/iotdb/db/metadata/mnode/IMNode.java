@@ -22,6 +22,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.metadisk.metafile.IPersistenceInfo;
+import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -101,6 +102,16 @@ public interface IMNode extends Serializable {
   void serializeTo(MLogWriter logWriter) throws IOException;
 
   void replaceChild(String measurement, IMNode newChildNode);
+
+  boolean isUseTemplate();
+
+  void setUseTemplate(boolean useTemplate);
+
+  Template getDeviceTemplate();
+
+  void setDeviceTemplate(Template deviceTemplate);
+
+  Template getUpperTemplate();
 
   /** whether this is an instance of StorageGroupMNode */
   boolean isStorageGroup();

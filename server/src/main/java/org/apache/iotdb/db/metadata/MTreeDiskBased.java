@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -256,7 +257,7 @@ public class MTreeDiskBased implements IMTree {
   }
 
   @Override
-  public IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
+  public Pair<IMNode, Template> getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
       throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
     if (nodeNames.length <= 1 || !nodeNames[0].equals(rootName)) {
@@ -282,7 +283,7 @@ public class MTreeDiskBased implements IMTree {
       }
     }
     unlockMNodePath(cur.getParent());
-    return cur;
+    return new Pair<>(cur, null);
   }
 
   @Override
@@ -487,7 +488,7 @@ public class MTreeDiskBased implements IMTree {
   }
 
   @Override
-  public IMNode getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException {
+  public Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException {
     boolean storageGroupChecked = false;
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
@@ -513,11 +514,11 @@ public class MTreeDiskBased implements IMTree {
     if (!storageGroupChecked) {
       throw new StorageGroupNotSetException(path.getFullPath());
     }
-    return cur;
+    return new Pair<>(cur, null);
   }
 
   @Override
-  public IMNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
+  public Pair<IMNode, Template> getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
       throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
@@ -544,7 +545,7 @@ public class MTreeDiskBased implements IMTree {
       throw new StorageGroupNotSetException(path.getFullPath());
     }
     unlockMNodePath(cur.getParent());
-    return cur;
+    return new Pair<>(cur, null);
   }
 
   @Override
@@ -1610,6 +1611,11 @@ public class MTreeDiskBased implements IMTree {
       }
     }
     return measurementMNodes;
+  }
+
+  @Override
+  public void checkTemplateOnPath(PartialPath path) throws MetadataException {
+
   }
 
   @Override
