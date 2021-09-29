@@ -129,7 +129,7 @@ abstract class MergeTest {
     for (int i = 0; i < seqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
+              TestConstant.OUTPUT_DATA_DIR.concat(
                   i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
@@ -149,7 +149,7 @@ abstract class MergeTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
+              TestConstant.OUTPUT_DATA_DIR.concat(
                   (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + (10000 + i)
@@ -169,7 +169,7 @@ abstract class MergeTest {
 
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + unseqFileNum

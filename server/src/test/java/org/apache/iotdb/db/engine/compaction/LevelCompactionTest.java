@@ -127,7 +127,7 @@ abstract class LevelCompactionTest {
     for (int i = 0; i < seqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
+              TestConstant.OUTPUT_DATA_DIR.concat(
                   i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
@@ -148,7 +148,7 @@ abstract class LevelCompactionTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
+              TestConstant.OUTPUT_DATA_DIR.concat(
                   (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + (10000 + i)
@@ -169,7 +169,7 @@ abstract class LevelCompactionTest {
 
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + unseqFileNum
@@ -244,7 +244,7 @@ abstract class LevelCompactionTest {
     // prepare file 1
     File file1 =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 System.nanoTime()
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -270,7 +270,7 @@ abstract class LevelCompactionTest {
     // prepare file 2
     File file2 =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 System.nanoTime()
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 1

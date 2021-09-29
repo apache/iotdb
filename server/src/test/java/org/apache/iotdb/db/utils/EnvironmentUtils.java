@@ -223,6 +223,7 @@ public class EnvironmentUtils {
     // delete tracing
     cleanDir(config.getTracingDir());
     // delete data files
+    cleanDir(TestConstant.OUTPUT_DATA_DIR);
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
     }
@@ -312,6 +313,7 @@ public class EnvironmentUtils {
     createDir(config.getQueryDir());
     createDir(TestConstant.BASE_OUTPUT_PATH);
     // create data
+    createDir(TestConstant.OUTPUT_DATA_DIR);
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
     }

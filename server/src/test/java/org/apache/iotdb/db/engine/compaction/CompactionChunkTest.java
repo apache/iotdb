@@ -63,7 +63,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH);
+    tempSGDir = new File(TestConstant.OUTPUT_DATA_DIR);
     if (!tempSGDir.exists()) {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
@@ -82,7 +82,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -161,7 +161,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0

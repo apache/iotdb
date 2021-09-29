@@ -61,7 +61,7 @@ public class TsFileProcessorTest {
   private final String storageGroup = "storage_group1";
   private final StorageGroupInfo sgInfo = new StorageGroupInfo(null);
   private final String filePath =
-      TestConstant.BASE_OUTPUT_PATH.concat("testUnsealedTsFileProcessor.tsfile");
+      TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private final String deviceId = "root.vehicle.d0";
   private final String measurementId = "s0";
   private final TSDataType dataType = TSDataType.INT32;
@@ -87,7 +87,7 @@ public class TsFileProcessorTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir(TestConstant.BASE_OUTPUT_PATH);
+    EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
 
   @Test

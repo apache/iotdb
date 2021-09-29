@@ -47,7 +47,7 @@ public class LevelCompactionLogTest extends LevelCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
+    tempSGDir = new File(TestConstant.OUTPUT_DATA_DIR.concat("tempSG"));
     tempSGDir.mkdirs();
   }
 

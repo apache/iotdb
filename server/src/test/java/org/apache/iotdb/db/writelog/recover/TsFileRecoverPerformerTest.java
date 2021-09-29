@@ -63,7 +63,10 @@ public class TsFileRecoverPerformerTest {
     // generate a completed tsfile
     File tempTsFile =
         FSFactoryProducer.getFSFactory()
-            .getFile(TestConstant.BASE_OUTPUT_PATH.concat("temp.tsfile"));
+            .getFile(TestConstant.OUTPUT_DATA_DIR.concat("temp1.tsfile"));
+    if (!tempTsFile.getParentFile().exists()) {
+      Assert.assertTrue(tempTsFile.getParentFile().mkdirs());
+    }
     if (tempTsFile.exists() && !tempTsFile.delete()) {
       throw new RuntimeException("cannot delete exists file " + tempTsFile.getAbsolutePath());
     }
@@ -141,7 +144,10 @@ public class TsFileRecoverPerformerTest {
     // generate a completed tsfile
     File tempTsFile =
         FSFactoryProducer.getFSFactory()
-            .getFile(TestConstant.BASE_OUTPUT_PATH.concat("temp.tsfile"));
+            .getFile(TestConstant.OUTPUT_DATA_DIR.concat("temp2.tsfile"));
+    if (!tempTsFile.getParentFile().exists()) {
+      Assert.assertTrue(tempTsFile.getParentFile().mkdirs());
+    }
     if (tempTsFile.exists() && !tempTsFile.delete()) {
       throw new RuntimeException("cannot delete exists file " + tempTsFile.getAbsolutePath());
     }
