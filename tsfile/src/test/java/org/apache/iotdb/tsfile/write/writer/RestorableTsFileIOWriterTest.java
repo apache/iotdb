@@ -58,42 +58,44 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
 public class RestorableTsFileIOWriterTest {
 
   private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
-  private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Before
   public void setUp() throws IOException {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     if (!file.getParentFile().exists()) {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
   }
 
   @After
-  public void tearDown() {}
+  public void tearDown() {
+    File file = fsFactory.getFile(FILE_NAME);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+  }
 
   @Test(expected = NotCompatibleTsFileException.class)
   public void testBadHeadMagic() throws Exception {
-    File file = new File(FILE_NAME);
-    try (FileWriter fWriter = new FileWriter(file)) {
-      fWriter.write("Tsfile");
-    }
+    File file = fsFactory.getFile(FILE_NAME);
+    FileWriter fWriter = new FileWriter(file);
     try {
-      new RestorableTsFileIOWriter(file);
+      fWriter.write("Tsfile");
     } finally {
-      assertTrue(file.delete());
+      fWriter.close();
     }
+    new RestorableTsFileIOWriter(file);
   }
 
   @Test
   public void testOnlyHeadMagic() throws Exception {
-    File file = new File(FILE_NAME);
-
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.getIOWriter().close();
 
@@ -106,12 +108,11 @@ public class RestorableTsFileIOWriterTest {
     assertEquals(TsFileCheckStatus.COMPLETE_FILE, rWriter.getTruncatedSize());
     assertFalse(rWriter.canWrite());
     rWriter.close();
-    assertTrue(file.delete());
   }
 
   @Test
   public void testOnlyFirstMask() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     // we have to flush using inner API.
     writer.getIOWriter().out.write(new byte[] {MetaMarker.CHUNK_HEADER});
@@ -120,25 +121,22 @@ public class RestorableTsFileIOWriterTest {
     writer = new TsFileWriter(rWriter);
     writer.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
-    assertTrue(file.delete());
   }
 
   @Test
   public void testOnlyOneIncompleteChunkHeader() throws Exception {
-    File file = new File(FILE_NAME);
-
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
 
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     TsFileWriter writer = new TsFileWriter(rWriter);
     writer.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
-    assertTrue(file.delete());
   }
 
   @Test
   public void testOnlyOneChunkHeader() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.getIOWriter().startChunkGroup("root.sg1.d1");
     writer
@@ -157,12 +155,11 @@ public class RestorableTsFileIOWriterTest {
     writer = new TsFileWriter(rWriter);
     writer.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
-    assertTrue(file.delete());
   }
 
   @Test
   public void testOnlyOneChunkHeaderAndSomePage() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -196,12 +193,11 @@ public class RestorableTsFileIOWriterTest {
     writer.close();
     // truncate version marker and version
     assertEquals(pos1, rWriter.getTruncatedSize());
-    assertTrue(file.delete());
   }
 
   @Test
   public void testOnlyOneChunkGroup() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -238,12 +234,11 @@ public class RestorableTsFileIOWriterTest {
     assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001);
     readOnlyTsFile.close();
     assertFalse(dataSet.hasNext());
-    assertTrue(file.delete());
   }
 
   @Test
   public void testOnlyOneChunkGroupAndOneMarker() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -270,12 +265,11 @@ public class RestorableTsFileIOWriterTest {
     chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
-    assertTrue(file.delete());
   }
 
   @Test
   public void testTwoChunkGroupAndMore() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -318,12 +312,11 @@ public class RestorableTsFileIOWriterTest {
     chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
-    assertTrue(file.delete());
   }
 
   @Test
   public void testNoSeperatorMask() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -366,12 +359,11 @@ public class RestorableTsFileIOWriterTest {
     chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
-    assertTrue(file.delete());
   }
 
   @Test
   public void testHavingSomeFileMetadata() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -415,12 +407,11 @@ public class RestorableTsFileIOWriterTest {
     chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
-    assertTrue(file.delete());
   }
 
   @Test
   public void testOpenCompleteFile() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -448,12 +439,11 @@ public class RestorableTsFileIOWriterTest {
     chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
-    assertTrue(file.delete());
   }
 
   @Test
   public void testAppendDataOnCompletedFile() throws Exception {
-    File file = new File(FILE_NAME);
+    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -475,6 +465,5 @@ public class RestorableTsFileIOWriterTest {
     TsFileWriter write = new TsFileWriter(rWriter);
     write.close();
     assertEquals(size, file.length());
-    assertTrue(file.delete());
   }
 }
