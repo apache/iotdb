@@ -111,9 +111,9 @@ public class IoTDBRestartIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,3)");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1.0)");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2.0)");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,3.0)");
     }
 
     long time = 0;

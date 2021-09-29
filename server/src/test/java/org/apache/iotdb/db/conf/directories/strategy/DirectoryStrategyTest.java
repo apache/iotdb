@@ -54,7 +54,7 @@ public class DirectoryStrategyTest {
   public void setUp() throws IOException {
     dataDirList = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      dataDirList.add(TestConstant.BASE_OUTPUT_PATH + i);
+      dataDirList.add(TestConstant.OUTPUT_DATA_DIR + i);
     }
 
     fullDirIndexSet = new HashSet<>();
