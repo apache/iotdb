@@ -97,7 +97,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
         levelCompactionTsFileManagement
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
-    compactionMergeTask.run();
+    compactionMergeTask.call();
     while (compactionMergeWorking) {
       // wait
     }
@@ -120,7 +120,8 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
   }
 
   /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack() {
+  private void closeCompactionMergeCallBack(
+      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
     this.compactionMergeWorking = false;
   }
 }

@@ -23,34 +23,38 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -336,17 +340,29 @@ public abstract class PhysicalPlan {
         case BATCH_INSERT_ROWS:
           plan = new InsertRowsPlan();
           break;
-        case CREATE_TRIGGER:
-          plan = new CreateTriggerPlan();
+        case BATCH_INSERT_ONE_DEVICE:
+          plan = new InsertRowsOfOneDevicePlan();
           break;
-        case DROP_TRIGGER:
-          plan = new DropTriggerPlan();
+        case CREATE_TEMPLATE:
+          plan = new CreateTemplatePlan();
           break;
-        case START_TRIGGER:
-          plan = new StartTriggerPlan();
+        case SET_DEVICE_TEMPLATE:
+          plan = new SetDeviceTemplatePlan();
           break;
-        case STOP_TRIGGER:
-          plan = new StopTriggerPlan();
+        case SET_USING_DEVICE_TEMPLATE:
+          plan = new SetUsingDeviceTemplatePlan();
+          break;
+        case AUTO_CREATE_DEVICE_MNODE:
+          plan = new AutoCreateDeviceMNodePlan();
+          break;
+        case CREATE_FUNCTION:
+          plan = new CreateFunctionPlan();
+          break;
+        case DROP_FUNCTION:
+          plan = new DropFunctionPlan();
+          break;
+        case SET_SYSTEM_MODE:
+          plan = new SetSystemModePlan();
           break;
         default:
           throw new IOException("unrecognized log type " + type);
@@ -394,10 +410,13 @@ public abstract class PhysicalPlan {
     MULTI_BATCH_INSERT,
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
-    CREATE_TRIGGER,
-    DROP_TRIGGER,
-    START_TRIGGER,
-    STOP_TRIGGER
+    CREATE_TEMPLATE,
+    SET_DEVICE_TEMPLATE,
+    SET_USING_DEVICE_TEMPLATE,
+    AUTO_CREATE_DEVICE_MNODE,
+    CREATE_FUNCTION,
+    DROP_FUNCTION,
+    SET_SYSTEM_MODE
   }
 
   public long getIndex() {

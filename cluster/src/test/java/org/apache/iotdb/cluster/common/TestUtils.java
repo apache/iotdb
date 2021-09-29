@@ -377,7 +377,7 @@ public class TestUtils {
                       + File.separator
                       + 0
                       + File.separator
-                      + "0-%d-0"
+                      + "0-%d-0-0"
                       + TsFileConstant.TSFILE_SUFFIX,
                   i);
       if (asHardLink) {

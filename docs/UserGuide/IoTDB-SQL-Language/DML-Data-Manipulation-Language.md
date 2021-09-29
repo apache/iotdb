@@ -837,21 +837,23 @@ which means: Query and return the last data points of timeseries prefixPath.path
 
 Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
 
-The result will be returned in a three column table format.
+The result will be returned in a four column table format.
 
 ```
-| Time | Path | Value |
++----+----------+-----+----+
+|Time|timeseries|value|type|
++----+----------+-----+----+
 ```
 
 Example 1: get the last point of root.ln.wf01.wt01.status:
 
 ```
 IoTDB> select last status from root.ln.wf01.wt01
-+-----------------------------+------------------------+-----+
-|                         Time|              timeseries|value|
-+-----------------------------+------------------------+-----+
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false|
-+-----------------------------+------------------------+-----+
++-----------------------------+------------------------+-----+-------+
+|                         Time|              timeseries|value|   type|
++-----------------------------+------------------------+-----+-------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false|BOOLEAN|
++-----------------------------+------------------------+-----+-------+
 Total line number = 1
 It costs 0.000s
 ```
@@ -861,17 +863,91 @@ whose timestamp larger or equal to 2017-11-07T23:50:00。
 
 ```
 IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+---------+
-|                         Time|                   timeseries|    value|
-+-----------------------------+-----------------------------+---------+
-|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false|
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|
-+-----------------------------+-----------------------------+---------+
++-----------------------------+-----------------------------+---------+-------+
+|                         Time|                   timeseries|    value|   type|
++-----------------------------+-----------------------------+---------+-------+
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false|BOOLEAN|
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368| DOUBLE|
++-----------------------------+-----------------------------+---------+-------+
 Total line number = 2
 It costs 0.002s
 ```
 
+### Fuzzy query
 
+Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of TEXT type data.
+
+Like statement:
+
+Example 1: Query data containing `'cc'` in `value` under `root.sg.device`. 
+The percentage (`%`) wildcard matches any string of zero or more characters.
+
+
+```
+IoTDB> select * from root.sg.device where value like '%cc%'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.device`.
+The underscore (`_`) wildcard matches any single character.
+```
+IoTDB> select * from root.sg.device where value like '_b_'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|                 abc| 
++-----------------------------+--------------------+
+Total line number = 1
+It costs 0.002s
+```
+
+Regexp statement：
+
+The filter conditions that need to be passed in are regular expressions in the Java standard library style
+
+Example 1: Query a string composed of 26 English characters for the value under root.sg.device
+```
+IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Example 2: Query root.sg.device where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
+```
+IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Examples of common regular matching:
+
+```
+All characters with a length of 3-20: ^.{3,20}$
+Uppercase english characters: ^[A-Z]+$
+Numbers and English characters: ^[A-Za-z0-9]+$
+Beginning with a: ^a.*
+```
+
+For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
 ### Automated Fill
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
@@ -979,6 +1055,48 @@ Total line number = 1
 It costs 0.017s
 ```
 
+* Value Method
+
+When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+
+```
+select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
+```
+Detailed descriptions of all parameters are given in Table 3-6.
+
+<center>**Table 3-6 Specific value fill paramter list**
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
+|constant|represents given fill value|
+</center>
+
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the specific fill value.
+
+Here we give an example of filling null values using the value method. The SQL statement is as follows:
+
+```
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses given specific value 2.0 to fill
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                            2.0|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
+```
+
 #### Correspondence between Data Type and Fill Method
 
 Data types and the supported fill methods are shown in Table 3-6.
@@ -987,11 +1105,11 @@ Data types and the supported fill methods are shown in Table 3-6.
 
 |Data Type|Supported Fill Methods|
 |:---|:---|
-|boolean|previous|
-|int32|previous, linear|
-|int64|previous, linear|
-|float|previous, linear|
-|double|previous, linear|
+|boolean|previous, value|
+|int32|previous, linear, value|
+|int64|previous, linear, value|
+|float|previous, linear, value|
+|double|previous, linear, value|
 |text|previous|
 </center>
 
@@ -1291,6 +1409,20 @@ The result is shown below:
 +-----------------------------+-----------------------------+------------------------+
 Total line number = 10
 It costs 0.009s
+```
+
+#### Null Value Control over Query Results
+
+* IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
+
+```
+select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+```
+
+* In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
+
+```
+select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 ### Use Alias

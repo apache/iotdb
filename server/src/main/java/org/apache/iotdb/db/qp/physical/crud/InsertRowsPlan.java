@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -30,11 +31,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
-public class InsertRowsPlan extends InsertPlan {
+public class InsertRowsPlan extends InsertPlan implements BatchPlan {
 
   /**
    * Suppose there is an InsertRowsPlan, which contains 5 InsertRowPlans,
@@ -51,8 +54,13 @@ public class InsertRowsPlan extends InsertPlan {
   /** the InsertRowsPlan list */
   private List<InsertRowPlan> insertRowPlanList;
 
+  boolean[] isExecuted;
+
   /** record the result of insert rows */
   private Map<Integer, TSStatus> results = new HashMap<>();
+
+  private List<PartialPath> paths;
+  private List<PartialPath> prefixPaths;
 
   public InsertRowsPlan() {
     super(OperatorType.BATCH_INSERT_ROWS);
@@ -73,11 +81,27 @@ public class InsertRowsPlan extends InsertPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    List<PartialPath> result = new ArrayList<>();
-    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      result.addAll(insertRowPlan.getPaths());
+    if (paths != null) {
+      return paths;
     }
-    return result;
+    Set<PartialPath> pathSet = new HashSet<>();
+    for (InsertRowPlan plan : insertRowPlanList) {
+      pathSet.addAll(plan.getPaths());
+    }
+    paths = new ArrayList<>(pathSet);
+    return paths;
+  }
+
+  @Override
+  public List<PartialPath> getPrefixPaths() {
+    if (prefixPaths != null) {
+      return prefixPaths;
+    }
+    prefixPaths = new ArrayList<>(insertRowPlanList.size());
+    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      prefixPaths.add(insertRowPlan.getDeviceId());
+    }
+    return prefixPaths;
   }
 
   @Override
@@ -233,5 +257,39 @@ public class InsertRowsPlan extends InsertPlan {
 
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowPlanList.size());
+  }
+
+  @Override
+  public void setIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = true;
+  }
+
+  @Override
+  public boolean isExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    return isExecuted[i];
+  }
+
+  @Override
+  public int getBatchSize() {
+    return insertRowPlanList.size();
+  }
+
+  @Override
+  public void unsetIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = false;
+    if (insertRowPlanIndexList != null && !insertRowPlanIndexList.isEmpty()) {
+      results.remove(insertRowPlanIndexList.get(i));
+    } else {
+      results.remove(i);
+    }
   }
 }

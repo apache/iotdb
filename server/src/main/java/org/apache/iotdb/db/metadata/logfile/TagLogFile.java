@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
@@ -46,7 +47,9 @@ public class TagLogFile implements AutoCloseable {
   private static final int MAX_LENGTH =
       IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
 
-  private static final byte FILL_BYTE = 0;
+  private static final int RECORD_FLUSH_INTERVAL =
+      IoTDBDescriptor.getInstance().getConfig().getTagAttributeFlushInterval();
+  private int unFlushedRecordNum = 0;
 
   public TagLogFile(String schemaDir, String logFileName) throws IOException {
 
@@ -66,8 +69,7 @@ public class TagLogFile implements AutoCloseable {
             logFile.toPath(),
             StandardOpenOption.READ,
             StandardOpenOption.WRITE,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.DSYNC);
+            StandardOpenOption.CREATE);
     // move the current position to the tail of the file
     this.fileChannel.position(fileChannel.size());
   }
@@ -93,71 +95,58 @@ public class TagLogFile implements AutoCloseable {
 
   public long write(Map<String, String> tagMap, Map<String, String> attributeMap)
       throws IOException, MetadataException {
-    long offset = fileChannel.position();
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
-    fileChannel.write(byteBuffer);
-    return offset;
+    return write(byteBuffer, -1);
   }
 
   /** This method does not modify this file's current position. */
   public void write(Map<String, String> tagMap, Map<String, String> attributeMap, long position)
       throws IOException, MetadataException {
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
+    write(byteBuffer, position);
+  }
+
+  /**
+   * @param byteBuffer the data of record to be persisted
+   * @param position the target position to store the record in tagFile
+   * @return beginning position of the record in tagFile
+   */
+  private synchronized long write(ByteBuffer byteBuffer, long position) throws IOException {
+    if (position < 0) {
+      // append the record to file tail
+      position = fileChannel.size();
+    }
     fileChannel.write(byteBuffer, position);
+    unFlushedRecordNum++;
+    if (unFlushedRecordNum >= RECORD_FLUSH_INTERVAL) {
+      fileChannel.force(true);
+      unFlushedRecordNum = 0;
+    }
+    return position;
   }
 
   private ByteBuffer convertMapToByteBuffer(
       Map<String, String> tagMap, Map<String, String> attributeMap) throws MetadataException {
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
-    int length = serializeMap(tagMap, byteBuffer, 0);
-    length = serializeMap(attributeMap, byteBuffer, length);
+    serializeMap(tagMap, byteBuffer);
+    serializeMap(attributeMap, byteBuffer);
 
-    // fill the remaining space
-    for (int i = length + 1; i <= MAX_LENGTH; i++) {
-      byteBuffer.put(FILL_BYTE);
-    }
-
-    // persist to the disk
-    byteBuffer.flip();
+    // set position to 0 and the content in this buffer could be read
+    byteBuffer.position(0);
     return byteBuffer;
   }
 
-  private int serializeMap(Map<String, String> map, ByteBuffer byteBuffer, int length)
+  private void serializeMap(Map<String, String> map, ByteBuffer byteBuffer)
       throws MetadataException {
-    if (map == null) {
-      length += Integer.BYTES;
-      if (length > MAX_LENGTH) {
-        throw new MetadataException(LENGTH_EXCEED_MSG);
+    try {
+      if (map == null) {
+        ReadWriteIOUtils.write(0, byteBuffer);
+      } else {
+        ReadWriteIOUtils.write(map, byteBuffer);
       }
-      ReadWriteIOUtils.write(0, byteBuffer);
-      return length;
-    }
-    length += Integer.BYTES;
-    if (length > MAX_LENGTH) {
+    } catch (BufferOverflowException e) {
       throw new MetadataException(LENGTH_EXCEED_MSG);
     }
-    ReadWriteIOUtils.write(map.size(), byteBuffer);
-    byte[] bytes;
-    for (Map.Entry<String, String> entry : map.entrySet()) {
-      // serialize key
-      bytes = entry.getKey().getBytes();
-      length += (4 + bytes.length);
-      if (length > MAX_LENGTH) {
-        throw new MetadataException(LENGTH_EXCEED_MSG);
-      }
-      ReadWriteIOUtils.write(bytes.length, byteBuffer);
-      byteBuffer.put(bytes);
-
-      // serialize value
-      bytes = entry.getValue().getBytes();
-      length += (4 + bytes.length);
-      if (length > MAX_LENGTH) {
-        throw new MetadataException(LENGTH_EXCEED_MSG);
-      }
-      ReadWriteIOUtils.write(bytes.length, byteBuffer);
-      byteBuffer.put(bytes);
-    }
-    return length;
   }
 
   @Override

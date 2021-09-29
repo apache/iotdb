@@ -81,7 +81,8 @@ public class MergeResource {
   private boolean filterResource(TsFileResource res) {
     return res.getTsFile().exists()
         && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(timeLowerBound));
+        && (!res.isClosed() || res.stillLives(timeLowerBound))
+        && !res.isMerging();
   }
 
   public MergeResource(
@@ -136,7 +137,7 @@ public class MergeResource {
   public List<ChunkMetadata> queryChunkMetadata(PartialPath path, TsFileResource seqFile)
       throws IOException {
     TsFileSequenceReader sequenceReader = getFileReader(seqFile);
-    return sequenceReader.getChunkMetadataList(path);
+    return sequenceReader.getChunkMetadataList(path, true);
   }
 
   /**

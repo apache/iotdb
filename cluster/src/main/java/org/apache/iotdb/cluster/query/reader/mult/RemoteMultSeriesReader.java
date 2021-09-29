@@ -80,7 +80,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
   }
 
   @Override
-  public boolean hasNextTimeValuePair(String fullPath) throws IOException {
+  public synchronized boolean hasNextTimeValuePair(String fullPath) throws IOException {
     BatchData batchData = currentBatchDatas.get(fullPath);
     if (batchData != null && batchData.hasCurrent()) {
       return true;
@@ -89,7 +89,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     return checkPathBatchData(fullPath);
   }
 
-  private boolean checkPathBatchData(String fullPath) {
+  private synchronized boolean checkPathBatchData(String fullPath) {
     BatchData batchData = cachedBatchs.get(fullPath).peek();
     if (batchData != null && !batchData.isEmpty()) {
       return true;
@@ -181,15 +181,18 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
   }
 
   private Map<String, ByteBuffer> fetchResultSync(List<String> paths) throws IOException {
-
     try (SyncDataClient curSyncClient =
-        sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS()); ) {
-
-      return curSyncClient.fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
-    } catch (TException e) {
-      logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
-      return null;
+        sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS())) {
+      try {
+        return curSyncClient.fetchMultSeries(
+            sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        curSyncClient.getInputProtocol().getTransport().close();
+        logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
+      }
     }
+    return null;
   }
 
   /** select path, which could batch-fetch result */

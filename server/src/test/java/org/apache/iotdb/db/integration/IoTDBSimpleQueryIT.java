@@ -35,8 +35,10 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -1238,6 +1240,79 @@ public class IoTDBSimpleQueryIT {
 
     } catch (SQLException e) {
       fail();
+    }
+  }
+
+  @Test
+  public void testStorageGroupWithHyphenInName() throws ClassNotFoundException, MetadataException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.group-with-hyphen");
+    } catch (SQLException e) {
+      fail();
+    }
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("SHOW STORAGE GROUP");
+      if (hasResultSet) {
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i));
+            }
+            Assert.assertEquals(builder.toString(), "root.group-with-hyphen");
+          }
+        }
+      }
+    } catch (SQLException e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testDisableAlign() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=BOOLEAN");
+      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1 disable align");
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BIGINT, Types.BOOLEAN};
+      int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        Assert.assertEquals(types[i], metaData.getColumnType(i + 1));
+      }
+    }
+  }
+
+  @Test
+  public void testEnableAlign() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=BOOLEAN");
+      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1");
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BOOLEAN};
+      int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        Assert.assertEquals(types[i], metaData.getColumnType(i + 1));
+      }
     }
   }
 }

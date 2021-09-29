@@ -41,6 +41,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -97,7 +99,7 @@ public class TsFileRecoverPerformer {
     // remove corrupted part of the TsFile
     RestorableTsFileIOWriter restorableTsFileIOWriter;
     try {
-      restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
+      restorableTsFileIOWriter = new RestorableTsFileIOWriter(file, needRedoWal);
     } catch (NotCompatibleTsFileException e) {
       boolean result = file.delete();
       logger.warn("TsFile {} is incompatible. Delete it successfully {}", filePath, result);
@@ -156,7 +158,7 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromFile() throws IOException {
     try {
       tsFileResource.deserialize();
-    } catch (IOException e) {
+    } catch (Exception e) {
       logger.warn(
           "Cannot deserialize TsFileResource {}, construct it using " + "TsFileSequenceReader",
           tsFileResource.getTsFile(),
@@ -188,13 +190,24 @@ public class TsFileRecoverPerformer {
     for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
       String deviceId = entry.getKey();
       List<ChunkMetadata> chunkMetadataList = entry.getValue();
-      TSDataType dataType = entry.getValue().get(entry.getValue().size() - 1).getDataType();
-      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
-        if (!chunkMetaData.getDataType().equals(dataType)) {
-          continue;
+
+      Map<String, List<ChunkMetadata>> measurementToChunkMetadatas = new HashMap<>();
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        List<ChunkMetadata> list =
+            measurementToChunkMetadatas.computeIfAbsent(
+                chunkMetadata.getMeasurementUid(), n -> new ArrayList<>());
+        list.add(chunkMetadata);
+      }
+
+      for (List<ChunkMetadata> metadataList : measurementToChunkMetadatas.values()) {
+        TSDataType dataType = metadataList.get(metadataList.size() - 1).getDataType();
+        for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+          if (!chunkMetaData.getDataType().equals(dataType)) {
+            continue;
+          }
+          tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
+          tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
         }
-        tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
-        tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }
     }
     tsFileResource.updatePlanIndexes(restorableTsFileIOWriter.getMinPlanIndex());

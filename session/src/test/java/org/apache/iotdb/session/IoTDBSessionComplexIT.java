@@ -20,9 +20,6 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.example.Counter;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -805,54 +802,37 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
-  public void testInsertTabletWithTriggers()
-      throws StatementExecutionException, IoTDBConnectionException, TriggerManagementException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
+  public void testSessionCluster() throws IoTDBConnectionException, StatementExecutionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    nodeList.add("127.0.0.1:6669");
+    nodeList.add("127.0.0.1:6667");
+    nodeList.add("127.0.0.1:6668");
+    session = new Session(nodeList, "root", "root");
     session.open();
+
     session.setStorageGroup("root.sg1");
+
     createTimeseries();
+    insertByStr();
 
-    session.executeNonQueryStatement(
-        "create trigger d1s1 after insert on root.sg1.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
-    session.executeNonQueryStatement(
-        "create trigger d1s2 before insert on root.sg1.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+    insertViaSQL();
+    queryByDevice("root.sg1.d1");
 
-    assertEquals(
-        Counter.BASE,
-        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s1"))
-            .getCounter());
-    assertEquals(
-        Counter.BASE,
-        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s2"))
-            .getCounter());
+    session.close();
+  }
+
+  @Test
+  public void testErrorSessionCluster() throws IoTDBConnectionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    // test Format error
+    nodeList.add("127.0.0.16669");
+    nodeList.add("127.0.0.1:6667");
+    session = new Session(nodeList, "root", "root");
     try {
-      int counter =
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s3"))
-              .getCounter();
-      fail(String.valueOf(counter - Counter.BASE));
-    } catch (TriggerManagementException e) {
-      assertEquals("Trigger d1s3 does not exist.", e.getMessage());
+      session.open();
+    } catch (Exception e) {
+      Assert.assertEquals("NodeUrl Incorrect format", e.getMessage());
     }
-
-    insertTablet("root.sg1.d1");
-
-    assertEquals(
-        Counter.BASE + 200,
-        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s1"))
-            .getCounter());
-    assertEquals(
-        Counter.BASE + 200,
-        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s2"))
-            .getCounter());
-    try {
-      int counter =
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s3"))
-              .getCounter();
-      fail(String.valueOf(counter - Counter.BASE));
-    } catch (TriggerManagementException e) {
-      assertEquals("Trigger d1s3 does not exist.", e.getMessage());
-    }
-
     session.close();
   }
 }

@@ -127,6 +127,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         List<Pair<Boolean, TimeValuePair>> timeValuePairs = groupFuture.get();
         for (int i = 0; i < timeValuePairs.size(); i++) {
           if (timeValuePairs.get(i) != null
+              && timeValuePairs.get(i).right != null
               && timeValuePairs.get(i).right.getTimestamp() > results.get(i).right.getTimestamp()) {
             results.get(i).right = timeValuePairs.get(i).right;
           }
@@ -243,6 +244,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
                 .getClientProvider()
                 .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       } catch (IOException e) {
+        logger.warn("can not get client for node= {}", node);
         return null;
       }
       buffer =
@@ -257,19 +259,21 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     }
 
     private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
-      try (SyncDataClient syncDataClient =
+      try (SyncDataClient client =
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        return syncDataClient.last(
+        return client.last(
             new LastQueryRequest(
                 PartialPath.toStringList(seriesPaths),
                 dataTypeOrdinals,
                 context.getQueryId(),
                 queryPlan.getDeviceToMeasurements(),
                 group.getHeader(),
-                syncDataClient.getNode()));
+                client.getNode()));
+      } catch (IOException e) {
+        logger.warn("can not get client for node= {}", node);
+        return null;
       }
     }
   }

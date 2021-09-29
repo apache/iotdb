@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -28,23 +29,30 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.logfile.TagLogFile;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -52,13 +60,14 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
-import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -86,12 +95,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -117,8 +125,6 @@ public class MManager {
   private static final String PREVIOUS_CONDITION =
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
-  private static final int UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 5000;
-
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
   /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
@@ -133,14 +139,10 @@ public class MManager {
   private TagLogFile tagLogFile;
   private boolean isRecovering;
   // device -> DeviceMNode
-  private RandomDeleteCache<PartialPath, IMNode> mNodeCache;
+  private RandomDeleteCache<PartialPath, Pair<IMNode, Template>> mNodeCache;
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  // data type -> number
-  private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
-  // reported total series number
-  private long reportedDataTypeTotalNum;
   private AtomicLong totalSeriesNumber = new AtomicLong();
   private boolean initialized;
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -155,6 +157,9 @@ public class MManager {
   private boolean allowToCreateNewSeries = true;
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
+
+  // template name -> template
+  private Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
   private byte MTreeType = MTREE_DISK_BASED;
 
@@ -198,10 +203,10 @@ public class MManager {
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
-        new RandomDeleteCache<PartialPath, IMNode>(cacheSize) {
+        new RandomDeleteCache<PartialPath, Pair<IMNode, Template>>(cacheSize) {
 
           @Override
-          public IMNode loadObjectByKey(PartialPath key) throws CacheException {
+          public Pair<IMNode, Template> loadObjectByKey(PartialPath key) throws CacheException {
             try {
               return mtree.getNodeByPathWithStorageGroupCheck(key);
             } catch (MetadataException e) {
@@ -212,8 +217,8 @@ public class MManager {
 
     if (config.isEnableMTreeSnapshot()) {
       timedCreateMTreeSnapshotThread =
-          Executors.newSingleThreadScheduledExecutor(
-              r -> new Thread(r, "timedCreateMTreeSnapshotThread"));
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedCreateMTreeSnapshotThread");
+
       timedCreateMTreeSnapshotThread.scheduleAtFixedRate(
           this::checkMTreeModified,
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
@@ -249,20 +254,14 @@ public class MManager {
         mtree = new MTreeDiskBased();
       }
       int lineNumber = initFromLog(logFile);
-      List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
-      for (PartialPath sg : storageGroups) {
-        IMNode node = mtree.getNodeByPath(sg);
-        totalSeriesNumber.addAndGet(node.getMeasurementMNodeCount());
-      }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
-    } catch (IOException | MetadataException e) {
+    } catch (IOException e) {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
-    reportedDataTypeTotalNum = 0L;
     initialized = true;
   }
 
@@ -289,18 +288,22 @@ public class MManager {
 
   private int applyMlog(MLogReader mLogReader) {
     int idx = 0;
+    PhysicalPlan plan;
     while (mLogReader.hasNext()) {
-      PhysicalPlan plan = null;
       try {
         plan = mLogReader.next();
-        if (plan == null) {
-          continue;
-        }
-        operation(plan);
         idx++;
       } catch (Exception e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+        logger.error("Parse mlog error at lineNumber {} because:", idx, e);
+        break;
+      }
+      if (plan == null) {
+        continue;
+      }
+      try {
+        operation(plan);
+      } catch (MetadataException | IOException e) {
+        logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
       }
     }
     return idx;
@@ -313,6 +316,7 @@ public class MManager {
       this.mNodeCache.clear();
       this.tagIndex.clear();
       this.totalSeriesNumber.set(0);
+      this.templateMap.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -321,8 +325,6 @@ public class MManager {
         tagLogFile.close();
         tagLogFile = null;
       }
-      this.schemaDataTypeNumMap.clear();
-      this.reportedDataTypeTotalNum = 0L;
       initialized = false;
       if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
@@ -367,6 +369,22 @@ public class MManager {
       case CHANGE_TAG_OFFSET:
         ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
+        break;
+      case CREATE_TEMPLATE:
+        CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
+        createDeviceTemplate(createTemplatePlan);
+        break;
+      case SET_DEVICE_TEMPLATE:
+        SetDeviceTemplatePlan setDeviceTemplatePlan = (SetDeviceTemplatePlan) plan;
+        setDeviceTemplate(setDeviceTemplatePlan);
+        break;
+      case SET_USING_DEVICE_TEMPLATE:
+        SetUsingDeviceTemplatePlan setUsingDeviceTemplatePlan = (SetUsingDeviceTemplatePlan) plan;
+        setUsingDeviceTemplate(setUsingDeviceTemplatePlan);
+        break;
+      case AUTO_CREATE_DEVICE_MNODE:
+        AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
+        autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -423,7 +441,7 @@ public class MManager {
           }
           tagIndex
               .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+              .computeIfAbsent(entry.getValue(), v -> Collections.synchronizedSet(new HashSet<>()))
               .add(leafMNode);
         }
       }
@@ -434,7 +452,6 @@ public class MManager {
         logger.warn("Current series number {} is too large...", totalSeriesNumber);
         allowToCreateNewSeries = false;
       }
-      updateSchemaDataTypeNumMap(type, 1);
 
       try {
         // write log
@@ -588,12 +605,6 @@ public class MManager {
     removeFromTagInvertedIndex(pair.right);
     PartialPath storageGroupPath = pair.left;
 
-    // update statistics in schemaDataTypeNumMap
-    updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
-
-    // drop trigger with no exceptions
-    TriggerEngine.drop(pair.right);
-
     // TODO: delete the path node and all its ancestors
     mNodeCache.clear();
     totalSeriesNumber.addAndGet(-1);
@@ -632,7 +643,7 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber.addAndGet(mtree.getAllTimeseriesCount(storageGroup));
+        totalSeriesNumber.addAndGet(-mtree.getAllTimeseriesCount(storageGroup));
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -645,8 +656,6 @@ public class MManager {
         List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
         for (MeasurementMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
-          // update statistics in schemaDataTypeNumMap
-          updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
         // drop triggers with no exceptions
@@ -663,31 +672,6 @@ public class MManager {
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
-    }
-  }
-
-  /**
-   * update statistics in schemaDataTypeNumMap
-   *
-   * @param type data type
-   * @param num 1 for creating timeseries and -1 for deleting timeseries
-   */
-  private synchronized void updateSchemaDataTypeNumMap(TSDataType type, int num) {
-    // add an array of the series type
-    schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + num);
-    // add an array of time
-    schemaDataTypeNumMap.put(
-        TSDataType.INT64, schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
-
-    // total current DataType Total Num (twice of number of time series)
-    // used in primitive array manager
-    long currentDataTypeTotalNum = totalSeriesNumber.get() * 2;
-
-    if (num > 0
-        && currentDataTypeTotalNum - reportedDataTypeTotalNum
-            >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
-      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap, currentDataTypeTotalNum);
-      reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
   }
 
@@ -716,12 +700,12 @@ public class MManager {
 
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
-    //    MNode deviceNode = getNodeByPath(deviceId);
-    Map<String, IMNode> deviceChildren = mtree.getChildrenOfNodeByPath(deviceId);
     MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
-      //      mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
-      mNodes[i] = ((MeasurementMNode) deviceChildren.get(measurements[i]));
+      try {
+        mNodes[i] = (MeasurementMNode) getNodeByPath(deviceId.concatNode(measurements[i]));
+      } catch (PathNotExistException ignored) {
+      }
       if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
       }
@@ -1014,15 +998,26 @@ public class MManager {
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    IMNode node = mtree.getNodeByPath(device);
-    IMNode leaf = node.getChild(measurement);
-    if (!leaf.isLoaded()) {
-      leaf = mtree.getNodeByPath(device.concatNode(measurement));
+    IMNode deviceMNode = getDeviceNode(device);
+    MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
+    if (measurementMNode == null) {
+      return getSeriesSchema(device.concatNode(measurement));
     }
-    if (leaf != null) {
-      return ((MeasurementMNode) leaf).getSchema();
+    if (!measurementMNode.isLoaded()) {
+      measurementMNode = mtree.getNodeByPath(device.concatNode(measurement));
     }
-    return null;
+    return measurementMNode.getSchema();
+  }
+
+  /**
+   * Get schema of paritialPath
+   *
+   * @param fullPath ParitialPath
+   * @return MeasurementSchema
+   */
+  public MeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
+    MeasurementMNode leaf = (MeasurementMNode) mtree.getNodeByPath(fullPath);
+    return leaf.getSchema();
   }
 
   /**
@@ -1092,18 +1087,18 @@ public class MManager {
    *
    * @param path path
    */
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
-      throws MetadataException {
-    IMNode node =
+  public Pair<IMNode, Template> getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
+      throws IOException, MetadataException {
+    Pair<IMNode, Template> node =
         getDeviceNodeWithAutoCreateWithoutReturnProcess(path, autoCreateSchema, sgLevel, false);
-    node = processMNodeForExternChildrenCheck(node);
+    node.left = processMNodeForExternChildrenCheck(node.left);
     return node;
   }
 
-  private IMNode getDeviceNodeWithAutoCreateWithoutReturnProcess(
+  private Pair<IMNode, Template> getDeviceNodeWithAutoCreateWithoutReturnProcess(
       PartialPath path, boolean autoCreateSchema, int sgLevel, boolean isLocked)
-      throws MetadataException {
-    IMNode node;
+      throws IOException, MetadataException {
+    Pair<IMNode, Template> node;
     boolean shouldSetStorageGroup;
     if (MTreeType == MTREE_DISK_BASED && isLocked) {
       try {
@@ -1129,34 +1124,78 @@ public class MManager {
 
     try {
       if (shouldSetStorageGroup) {
-        PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
-        setStorageGroup(storageGroupPath);
+        if (allowCreateSg) {
+          PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
+          setStorageGroup(storageGroupPath);
+        } else {
+          throw new StorageGroupNotSetException(path.getFullPath());
+        }
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+      if (!(node.left instanceof StorageGroupMNode)) {
+        logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
+      }
       if (!isLocked) {
-        unlockNode(node);
+        unlockNode(node.left);
       }
       return node;
     } catch (StorageGroupAlreadySetException e) {
+      if (e.isHasChild()) {
+        // if setStorageGroup failure is because of child, the deviceNode should not be created.
+        // Timeseries can't be create under a deviceNode without storageGroup.
+        throw e;
+      }
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+      if (!(node.left instanceof StorageGroupMNode)) {
+        logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
+      }
       if (!isLocked) {
-        unlockNode(node);
+        unlockNode(node.left);
       }
       return node;
     }
   }
 
   /** !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method. */
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path) throws MetadataException {
+  public Pair<IMNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+      throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
-        path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
+        path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel());
+  }
+
+  @TestOnly
+  // attention: this path must be a device node
+  public List<MeasurementSchema> getAllMeasurementByDevicePath(PartialPath path)
+      throws PathNotExistException {
+    Set<MeasurementSchema> res = new HashSet<>();
+    try {
+      Pair<MNode, Template> mNodeTemplatePair = mNodeCache.get(path);
+      if (mNodeTemplatePair.left.getDeviceTemplate() != null) {
+        mNodeTemplatePair.right = mNodeTemplatePair.left.getDeviceTemplate();
+      }
+
+      for (MNode mNode : mNodeTemplatePair.left.getChildren().values()) {
+        if (mNode instanceof MeasurementMNode) {
+          res.add(((MeasurementMNode) mNode).getSchema());
+        }
+      }
+
+      // template
+      if (mNodeTemplatePair.left.isUseTemplate() && mNodeTemplatePair.right != null) {
+        res.addAll(mNodeTemplatePair.right.getSchemaMap().values());
+      }
+    } catch (CacheException e) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+
+    return new ArrayList<>(res);
   }
 
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
-      node = getMNodeFromCache(path);
+      node = getMNodeFromCache(path).left;
       node = processMNodeForExternChildrenCheck(node);
       return node;
     } catch (CacheException e) {
@@ -1334,26 +1373,26 @@ public class MManager {
         logWriter.changeAlias(fullPath, alias);
       }
 
-      if (tagsMap == null && attributesMap == null) {
-        return;
-      }
-      // no tag or attribute, we need to add a new record in log
-      if (leafMNode.getOffset() < 0) {
-        long offset = tagLogFile.write(tagsMap, attributesMap);
-        logWriter.changeOffset(fullPath, offset);
-        leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode);
-        // update inverted Index map
-        if (tagsMap != null) {
-          for (Entry<String, String> entry : tagsMap.entrySet()) {
-            tagIndex
-                .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-                .add(leafMNode);
-          }
+    if (tagsMap == null && attributesMap == null) {
+      return;
+    }
+    // no tag or attribute, we need to add a new record in log
+    if (leafMNode.getOffset() < 0) {
+      long offset = tagLogFile.write(tagsMap, attributesMap);
+      logWriter.changeOffset(fullPath, offset);
+      leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
+      // update inverted Index map
+      if (tagsMap != null) {
+        for (Entry<String, String> entry : tagsMap.entrySet()) {
+          tagIndex
+              .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> Collections.synchronizedSet(new HashSet<>()))
+              .add(leafMNode);
         }
-        return;
       }
+      return;
+    }
 
       Pair<Map<String, String>, Map<String, String>> pair =
           tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
@@ -1396,16 +1435,16 @@ public class MManager {
             }
           }
 
-          // if the key doesn't exist or the value is not equal to the new one
-          // we should add a new key-value to inverted index map
-          if (beforeValue == null || !beforeValue.equals(value)) {
-            tagIndex
-                .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
-                .add(leafMNode);
-          }
+        // if the key doesn't exist or the value is not equal to the new one
+        // we should add a new key-value to inverted index map
+        if (beforeValue == null || !beforeValue.equals(value)) {
+          tagIndex
+              .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(value, v -> Collections.synchronizedSet(new HashSet<>()))
+              .add(leafMNode);
         }
       }
+    }
 
       if (attributesMap != null) {
         pair.right.putAll(attributesMap);
@@ -1471,25 +1510,25 @@ public class MManager {
       throws MetadataException, IOException {
     IMNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
     try {
-      if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath.getFullPath());
+    if (!(mNode instanceof MeasurementMNode)) {
+      throw new PathNotExistException(fullPath.getFullPath());
+    }
+    MeasurementMNode leafMNode = (MeasurementMNode) mNode;
+    // no tag or attribute, we need to add a new record in log
+    if (leafMNode.getOffset() < 0) {
+      long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
+      logWriter.changeOffset(fullPath, offset);
+      leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
+      // update inverted Index map
+      for (Entry<String, String> entry : tagsMap.entrySet()) {
+        tagIndex
+            .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+            .computeIfAbsent(entry.getValue(), v -> Collections.synchronizedSet(new HashSet<>()))
+            .add(leafMNode);
       }
-      MeasurementMNode leafMNode = (MeasurementMNode) mNode;
-      // no tag or attribute, we need to add a new record in log
-      if (leafMNode.getOffset() < 0) {
-        long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
-        logWriter.changeOffset(fullPath, offset);
-        leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode);
-        // update inverted Index map
-        for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex
-              .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-              .add(leafMNode);
-        }
-        return;
-      }
+      return;
+    }
 
       Pair<Map<String, String>, Map<String, String>> pair =
           tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
@@ -1507,17 +1546,16 @@ public class MManager {
       // persist the change to disk
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
-      // update tag inverted map
-      tagsMap.forEach(
-          (key, value) ->
-              tagIndex
-                  .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-                  .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
-                  .add(leafMNode));
-    } finally {
+    // update tag inverted map
+    tagsMap.forEach(
+        (key, value) ->
+            tagIndex
+                .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(value, v -> Collections.synchronizedSet(new HashSet<>()))
+                .add(leafMNode));
+  } finally {
       mtree.unlockMNode(mNode);
     }
-  }
 
   /**
    * drop tags or attributes of the timeseries
@@ -1675,7 +1713,7 @@ public class MManager {
       }
       tagIndex
           .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(currentValue, k -> new CopyOnWriteArraySet<>())
+          .computeIfAbsent(currentValue, k -> Collections.synchronizedSet(new HashSet<>()))
           .add(leafMNode);
     }
   }
@@ -1746,7 +1784,7 @@ public class MManager {
       }
       tagIndex
           .computeIfAbsent(newKey, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(value, k -> new CopyOnWriteArraySet<>())
+          .computeIfAbsent(value, k -> Collections.synchronizedSet(new HashSet<>()))
           .add(leafMNode);
     } else if (pair.right.containsKey(oldKey)) {
       // check attribute map
@@ -1943,42 +1981,47 @@ public class MManager {
 
   /** get schema for device. Attention!!! Only support insertPlan */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
+  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
+      throws MetadataException, IOException {
 
     PartialPath deviceId = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node
-    IMNode deviceMNode =
-        getDeviceNodeWithAutoCreateWithoutReturnProcess(
+    Pair<IMNode, Template> deviceMNode = getDeviceNodeWithAutoCreateWithoutReturnProcess(
             deviceId,
             config.isAutoCreateSchemaEnabled(),
             config.getDefaultStorageGroupLevel(),
             true);
-    try {
-      // 2. get schema of each measurement
-      // if do not has measurement
-      MeasurementMNode measurementMNode;
-      TSDataType dataType;
-      for (int i = 0; i < measurementList.length; i++) {
-        try {
-          IMNode child = getMNode(deviceMNode, measurementList[i]);
-          if (child instanceof MeasurementMNode) {
-            measurementMNode = (MeasurementMNode) child;
-          } else if (child instanceof StorageGroupMNode) {
-            throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+    if (deviceMNode.left.getDeviceTemplate() != null) {
+      deviceMNode.right = deviceMNode.left.getDeviceTemplate();
+    }
+      try {
+    // 2. get schema of each measurement
+    // if do not has measurement
+    MeasurementMNode measurementMNode;
+    TSDataType dataType;
+    for (int i = 0; i < measurementList.length; i++) {
+      try {
+        IMNode child = getMNode(deviceMNode.left, measurementList[i]);
+        if (child instanceof MeasurementMNode) {
+          measurementMNode = (MeasurementMNode) child;
+        } else if (child instanceof StorageGroupMNode) {
+          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+        } else if ((measurementMNode = findTemplate(deviceMNode, measurementList[i])) != null) {
+          // empty
+        } else {
+          if (!config.isAutoCreateSchemaEnabled()) {
+            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
           } else {
-            if (!config.isAutoCreateSchemaEnabled()) {
-              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
-            } else {
-              // child is null or child is type of MNode
-              dataType = getTypeInLoc(plan, i);
-              // create it, may concurrent created by multiple thread
-              internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-              measurementMNode = (MeasurementMNode) getMNode(deviceMNode, measurementList[i]);
-            }
+            // child is null or child is type of MNode
+            dataType = getTypeInLoc(plan, i);
+            // create it, may concurrent created by multiple thread
+            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
+            measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurementList[i]);
           }
+        }
 
           // check type is match
           TSDataType insertDataType = null;
@@ -2016,28 +2059,59 @@ public class MManager {
           // set measurementName instead of alias
           measurementList[i] = measurementMNode.getName();
 
-        } catch (MetadataException e) {
+      } catch (MetadataException e) {
+        if (IoTDB.isClusterMode()) {
+          logger.debug(
+              "meet error when check {}.{}, message: {}",
+              deviceId,
+              measurementList[i],
+              e.getMessage());
+        } else {
           logger.warn(
               "meet error when check {}.{}, message: {}",
               deviceId,
               measurementList[i],
               e.getMessage());
-          if (config.isEnablePartialInsert()) {
-            // mark failed measurement
-            plan.markFailedMeasurementInsertion(i, e);
-          } else {
-            throw e;
-          }
+        }
+        if (config.isEnablePartialInsert()) {
+          // mark failed measurement
+          plan.markFailedMeasurementInsertion(i, e);
+        } else {
+          throw e;
         }
       }
     } finally {
       mtree.unlockMNode(deviceMNode);
     }
-    return deviceMNode;
+
+    return deviceMNode.left;
   }
 
   public IMNode getMNode(IMNode deviceMNode, String measurementName) throws MetadataException {
     return mtree.getChildMNodeInDeviceWithMemoryLock(deviceMNode, measurementName);
+  }
+
+  private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement)
+      throws MetadataException {
+    if (deviceMNode.right != null) {
+      Map<String, MeasurementSchema> curTemplateMap = deviceMNode.right.getSchemaMap();
+
+      MeasurementSchema schema = curTemplateMap.get(measurement);
+      if (!deviceMNode.left.isUseTemplate()) {
+        deviceMNode.left.setUseTemplate(true);
+        try {
+          logWriter.setUsingDeviceTemplate(deviceMNode.left.getPartialPath());
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+
+      if (schema != null) {
+        return new MeasurementMNode(deviceMNode.left, measurement, schema, null);
+      }
+      return null;
+    }
+    return null;
   }
 
   /** create timeseries with ignore PathAlreadyExistException */
@@ -2076,6 +2150,94 @@ public class MManager {
   public interface StorageGroupFilter {
 
     boolean satisfy(String storageGroup);
+  }
+
+  public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
+    try {
+      checkTemplateSchemaNames(plan.getSchemaNames());
+
+      Template template = new Template(plan);
+
+      if (templateMap.putIfAbsent(plan.getName(), template) != null) {
+        // already have template
+        throw new DuplicatedTemplateException(plan.getName());
+      }
+
+      // write wal
+      if (!isRecovering) {
+        logWriter.createDeviceTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  private void checkTemplateSchemaNames(List<String> schemaNames) throws MetadataException {
+    // check schema name.
+    String processedName;
+    for (String schemaName : schemaNames) {
+      processedName = schemaName.trim().toLowerCase(Locale.ENGLISH);
+      if ("time".equals(processedName)
+          || "timestamp".equals(processedName)
+          || (schemaName.contains(".")
+              && !(schemaName.startsWith("\"") && schemaName.endsWith("\"")))) {
+        throw new MetadataException(String.format("%s is an illegal schema name", schemaName));
+      }
+    }
+  }
+
+  public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {
+    try {
+      Template template = templateMap.get(plan.getTemplateName());
+
+      if (template == null) {
+        throw new UndefinedTemplateException(plan.getTemplateName());
+      }
+      PartialPath path = new PartialPath(plan.getPrefixPath());
+      // get mnode and update template should be atomic
+      synchronized (this) {
+        mtree.checkTemplateOnPath(path);
+
+        Pair<MNode, Template> node = getDeviceNodeWithAutoCreate(path);
+
+        if (node.left.getDeviceTemplate() != null) {
+          if (node.left.getDeviceTemplate().equals(template)) {
+            throw new DuplicatedTemplateException(template.getName());
+          } else {
+            throw new MetadataException("Specified node already has template");
+          }
+        }
+
+        node.left.setDeviceTemplate(template);
+      }
+
+      // write wal
+      if (!isRecovering) {
+        logWriter.setDeviceTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+    mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
+  }
+
+  private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
+    try {
+      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+    } catch (PathNotExistException e) {
+      // the order of SetUsingDeviceTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
+      // during writing currently, so we need a auto-create mechanism here
+      mtree.getDeviceNodeWithAutoCreating(
+          plan.getPrefixPath(), config.getDefaultStorageGroupLevel());
+      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+    }
+  }
+
+  public long getTotalSeriesNumber() {
+    return totalSeriesNumber.get();
   }
 
   public void unlockNode(IMNode mNode) {

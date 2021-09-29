@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
@@ -45,6 +46,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -219,9 +221,18 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
   protected Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
     try {
-      //      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
-      IMNode deviceNode = IoTDB.metaManager.getDeviceNode(device);
-      return deviceNode.getChildren().keySet();
+      MNode deviceNode = IoTDB.metaManager.getDeviceNode(device);
+      Set<String> res = new HashSet<>(deviceNode.getChildren().keySet());
+      for (MNode mnode : deviceNode.getChildren().values()) {
+        res.addAll(mnode.getChildren().keySet());
+      }
+
+      Template template = deviceNode.getUpperTemplate();
+      if (template != null) {
+        res.addAll(template.getSchemaMap().keySet());
+      }
+
+      return res;
     } catch (MetadataException e) {
       throw new IOException("Cannot get node from " + device, e);
     }
@@ -236,6 +247,9 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     Field deviceField = new Field(TSDataType.TEXT);
     deviceField.setBinaryV(new Binary(currentDevice.getFullPath()));
     rowRecord.addField(deviceField);
+    // device field should not be considered as a value field it should affect the WITHOUT NULL
+    // judgement
+    rowRecord.resetNullFlag();
 
     List<Field> measurementFields = originRowRecord.getFields();
     Map<String, Field> currentColumnMap = new HashMap<>();

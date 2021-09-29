@@ -35,6 +35,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -136,13 +137,17 @@ public class MManagerImproveTest {
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
-    IMNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
-    for (String s : measurementList) {
-      assertTrue(node.hasChild(s));
-      MeasurementMNode measurementNode =
-          (MeasurementMNode) mManager.getNodeByPath(new PartialPath(deviceId + "." + s));
-      TSDataType dataType = measurementNode.getSchema().getType();
-      assertEquals(TSDataType.TEXT, dataType);
+    try {
+      IMNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId)).left;
+      for (String s : measurementList) {
+        assertTrue(node.hasChild(s));
+        MeasurementMNode measurementNode =
+                (MeasurementMNode) mManager.getNodeByPath(new PartialPath(deviceId + "." + s));
+        TSDataType dataType = measurementNode.getSchema().getType();
+        assertEquals(TSDataType.TEXT, dataType);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
 

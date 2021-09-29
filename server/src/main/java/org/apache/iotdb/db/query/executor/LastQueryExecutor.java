@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
@@ -91,8 +92,10 @@ public class LastQueryExecutor {
     ListDataSet dataSet =
         new ListDataSet(
             Arrays.asList(
-                new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+                new PartialPath(COLUMN_TIMESERIES, false),
+                new PartialPath(COLUMN_VALUE, false),
+                new PartialPath(COLUMN_TIMESERIES_DATATYPE, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
 
     List<Pair<Boolean, TimeValuePair>> lastPairList =
         calculateLastPairForSeries(selectedSeries, dataTypes, context, expression, lastQueryPlan);
@@ -116,6 +119,10 @@ public class LastQueryExecutor {
         Field valueField = new Field(TSDataType.TEXT);
         valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
         resultRecord.addField(valueField);
+
+        Field typeField = new Field(TSDataType.TEXT);
+        typeField.setBinaryV(new Binary(lastTimeValuePair.getValue().getDataType().name()));
+        resultRecord.addField(typeField);
 
         dataSet.putRecord(resultRecord);
       }
@@ -152,7 +159,13 @@ public class LastQueryExecutor {
     List<TSDataType> nonCachedDataTypes = new ArrayList<>();
     List<Pair<Boolean, TimeValuePair>> resultContainer =
         readLastPairsFromCache(
-            seriesPaths, dataTypes, filter, cacheAccessors, nonCachedPaths, nonCachedDataTypes);
+            seriesPaths,
+            dataTypes,
+            filter,
+            cacheAccessors,
+            nonCachedPaths,
+            nonCachedDataTypes,
+            context.isDebug());
     if (nonCachedPaths.isEmpty()) {
       return resultContainer;
     }
@@ -189,10 +202,12 @@ public class LastQueryExecutor {
           resultContainer.get(i).left = true;
           if (CACHE_ENABLED) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
-            DEBUG_LOGGER.info(
-                "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
-                seriesPaths,
-                resultContainer.get(i).right.getTimestamp());
+            if (context.isDebug()) {
+              DEBUG_LOGGER.info(
+                  "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
+                  seriesPaths,
+                  resultContainer.get(i).right.getTimestamp());
+            }
           }
         }
       }
@@ -209,7 +224,8 @@ public class LastQueryExecutor {
       Filter filter,
       List<LastCacheAccessor> cacheAccessors,
       List<PartialPath> restPaths,
-      List<TSDataType> restDataType) {
+      List<TSDataType> restDataType,
+      boolean debugOn) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
@@ -230,16 +246,20 @@ public class LastQueryExecutor {
         restDataType.add(dataTypes.get(i));
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
-        DEBUG_LOGGER.info(
-            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
-            seriesPaths.get(i),
-            tvPair.getTimestamp());
+        if (debugOn) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
+        }
       } else {
         resultContainer.add(new Pair<>(true, tvPair));
-        DEBUG_LOGGER.info(
-            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
-            seriesPaths.get(i),
-            tvPair.getTimestamp());
+        if (debugOn) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
+        }
       }
     }
     return resultContainer;

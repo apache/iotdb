@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.sync.conf;
 
+import org.apache.iotdb.rpc.RpcUtils;
+
 public class SyncConstant {
 
   private SyncConstant() {}
@@ -35,7 +37,8 @@ public class SyncConstant {
   public static final String SYNC_DIR_NAME_SEPARATOR = "_";
 
   /** Split data file, block size at each transmission */
-  public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
+  public static final int DATA_CHUNK_SIZE =
+      Math.min(64 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);
 
   // sender section
 

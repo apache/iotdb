@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : EXPLAIN? statement (';')? EOF
+    : DEBUG? statement (';')? EOF
     ;
 
 /*
@@ -37,6 +37,7 @@ statement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | CREATE STORAGE GROUP prefixPath #createStorageGroup
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
@@ -76,6 +77,7 @@ statement
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
+    | SHOW LOCK INFO prefixPath? #showLockInfo
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW CHILD NODES prefixPath? #showChildNodes
     | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
@@ -84,12 +86,14 @@ statement
     | KILL QUERY INT? #killQuery
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
+    | SET SYSTEM TO READONLY #setSystemToReadOnly
+    | SET SYSTEM TO WRITABLE #setSystemToWritable
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT DEVICES prefixPath? #countDevices
     | COUNT STORAGE GROUP prefixPath? #countStorageGroup
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
-    | LOAD stringLiteral autoCreateSchema?#loadFiles
+    | LOAD stringLiteral loadFilesClause?#loadFiles
     | REMOVE stringLiteral #removeFile
     | MOVE stringLiteral stringLiteral #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
@@ -236,6 +240,7 @@ predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
+    | (suffixPath | fullPath) (REGEXP | LIKE) stringLiteral
     ;
 
 inClause
@@ -251,15 +256,19 @@ specialClause
     | orderByTimeClause specialLimit? #orderByTimeStatement
     | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
     | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
-    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceStatementOrDisableAlignInSpecialClause
     | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
     ;
 
 specialLimit
     : limitClause slimitClause? alignByDeviceClauseOrDisableAlign? #limitStatement
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignInSpecialLimit
+    | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
+    ;
+
+withoutNullClause
+    : WITHOUT NULL (ALL | ANY)
     ;
 
 orderByTimeClause
@@ -331,6 +340,7 @@ groupByLevelClause
 typeClause
     : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET specificValueClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
@@ -340,6 +350,10 @@ linearClause
 
 previousClause
     : PREVIOUS (COMMA DURATION)?
+    ;
+
+specificValueClause
+    : constant?
     ;
 
 previousUntilLastClause
@@ -529,6 +543,9 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
@@ -640,6 +657,9 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
@@ -689,9 +709,10 @@ property
     : name=ID OPERATOR_EQ value=propertyValue
     ;
 
-autoCreateSchema
-    : booleanClause
-    | booleanClause INT
+loadFilesClause
+    : AUTOREGISTER OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
+    | SGLEVEL OPERATOR_EQ INT (COMMA loadFilesClause)?
+    | VERIFY OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
     ;
 
 triggerEventClause
@@ -975,6 +996,18 @@ OFF
     : O F F
     ;
 
+SYSTEM
+    : S Y S T E M
+    ;
+
+READONLY
+    : R E A D O N L Y
+    ;
+
+WRITABLE
+    : W R I T A B L E
+    ;
+
 DROP
     : D R O P
     ;
@@ -1021,6 +1054,18 @@ REVOKE
 
 LOAD
     : L O A D
+    ;
+
+AUTOREGISTER
+    : A U T O R E G I S T E R
+    ;
+
+VERIFY
+    : V E R I F Y
+    ;
+
+SGLEVEL
+    : S G L E V E L
     ;
 
 WATERMARK_EMBEDDING
@@ -1282,12 +1327,36 @@ LIKE
     : L I K E
     ;
 
+REGEXP
+    : R E G E X P
+    ;
+
 TOLERANCE
     : T O L E R A N C E
     ;
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+DEBUG
+    : D E B U G
+    ;
+
+NULL
+    : N U L L
+    ;
+
+WITHOUT
+    : W I T H O U T
+    ;
+
+ANY
+    : A N Y
+    ;
+
+LOCK
+    : L O C K
     ;
 
 //============================

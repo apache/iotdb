@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
+import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -56,6 +57,7 @@ import java.util.stream.Collectors;
 
 public class SeriesReader {
 
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   // inner class of SeriesReader for order purpose
   private TimeOrderUtils orderUtils;
 
@@ -294,12 +296,16 @@ public class SeriesReader {
       /*
        * first time series metadata is already unpacked, consume cached ChunkMetadata
        */
-      if (!cachedChunkMetadata.isEmpty()) {
-        firstChunkMetadata = cachedChunkMetadata.poll();
+      while (!cachedChunkMetadata.isEmpty()) {
+        firstChunkMetadata = cachedChunkMetadata.peek();
         unpackAllOverlappedTsFilesToTimeSeriesMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
+        if (firstChunkMetadata.equals(cachedChunkMetadata.peek())) {
+          firstChunkMetadata = cachedChunkMetadata.poll();
+          break;
+        }
       }
     }
 
@@ -336,20 +342,13 @@ public class SeriesReader {
 
     // try to calculate the total number of chunk and time-value points in chunk
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-      QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
-      queryResourceManager
-          .getChunkNumMap()
-          .compute(
-              context.getQueryId(),
-              (k, v) -> v == null ? chunkMetadataList.size() : v + chunkMetadataList.size());
-
-      long totalChunkSize =
+      long totalChunkPointsNum =
           chunkMetadataList.stream()
               .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
               .sum();
-      queryResourceManager
-          .getChunkSizeMap()
-          .compute(context.getQueryId(), (k, v) -> v == null ? totalChunkSize : v + totalChunkSize);
+      TracingManager.getInstance()
+          .getTracingInfo(context.getQueryId())
+          .addChunkInfo(chunkMetadataList.size(), totalChunkPointsNum);
     }
 
     cachedChunkMetadata.addAll(chunkMetadataList);
@@ -370,6 +369,7 @@ public class SeriesReader {
   }
 
   boolean currentChunkModified() throws IOException {
+
     if (firstChunkMetadata == null) {
       throw new IOException("no first chunk");
     }
@@ -480,7 +480,7 @@ public class SeriesReader {
                     firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
             || (mergeReader.hasNextTimeValuePair()
                 && mergeReader.currentTimeValuePair().getTimestamp()
-                    > firstPageReader.getStatistics().getStartTime()));
+                    >= firstPageReader.getStatistics().getStartTime()));
   }
 
   private void unpackAllOverlappedChunkMetadataToPageReaders(long endpointTime, boolean init)
@@ -490,6 +490,7 @@ public class SeriesReader {
       unpackOneChunkMetaData(firstChunkMetadata);
       firstChunkMetadata = null;
     }
+
     // In case unpacking too many sequence chunks
     boolean hasMeetSeq = false;
     while (!cachedChunkMetadata.isEmpty()
@@ -509,37 +510,44 @@ public class SeriesReader {
   }
 
   private void unpackOneChunkMetaData(ChunkMetadata chunkMetaData) throws IOException {
-    FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter)
-        .forEach(
-            pageReader -> {
-              if (chunkMetaData.isSeq()) {
-                // addLast for asc; addFirst for desc
-                if (orderUtils.getAscending()) {
-                  seqPageReaders.add(
-                      new VersionPageReader(
-                          chunkMetaData.getVersion(),
-                          chunkMetaData.getOffsetOfChunkHeader(),
-                          pageReader,
-                          true));
-                } else {
-                  seqPageReaders.add(
-                      0,
-                      new VersionPageReader(
-                          chunkMetaData.getVersion(),
-                          chunkMetaData.getOffsetOfChunkHeader(),
-                          pageReader,
-                          true));
-                }
+    List<IPageReader> pageReaderList =
+        FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
+    if (CONFIG.isEnablePerformanceTracing()) {
+      addTotalPageNumInTracing(pageReaderList.size());
+    }
+    pageReaderList.forEach(
+        pageReader -> {
+          if (chunkMetaData.isSeq()) {
+            // addLast for asc; addFirst for desc
+            if (orderUtils.getAscending()) {
+              seqPageReaders.add(
+                  new VersionPageReader(
+                      chunkMetaData.getVersion(),
+                      chunkMetaData.getOffsetOfChunkHeader(),
+                      pageReader,
+                      true));
+            } else {
+              seqPageReaders.add(
+                  0,
+                  new VersionPageReader(
+                      chunkMetaData.getVersion(),
+                      chunkMetaData.getOffsetOfChunkHeader(),
+                      pageReader,
+                      true));
+            }
+          } else {
+            unSeqPageReaders.add(
+                new VersionPageReader(
+                    chunkMetaData.getVersion(),
+                    chunkMetaData.getOffsetOfChunkHeader(),
+                    pageReader,
+                    false));
+          }
+        });
+  }
 
-              } else {
-                unSeqPageReaders.add(
-                    new VersionPageReader(
-                        chunkMetaData.getVersion(),
-                        chunkMetaData.getOffsetOfChunkHeader(),
-                        pageReader,
-                        false));
-              }
-            });
+  private void addTotalPageNumInTracing(int pageNum) {
+    TracingManager.getInstance().getTracingInfo(context.getQueryId()).addTotalPageNum(pageNum);
   }
 
   /**
@@ -683,6 +691,9 @@ public class SeriesReader {
           unpackAllOverlappedChunkMetadataToPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
 
+          // update if there are unpacked unSeqPageReaders
+          timeValuePair = mergeReader.currentTimeValuePair();
+
           // from now, the unsequence reader is all unpacked, so we don't need to consider it
           // we has first page reader now
           if (firstPageReader != null) {
@@ -693,6 +704,7 @@ public class SeriesReader {
                 || (!orderUtils.getAscending()
                     && timeValuePair.getTimestamp()
                         < firstPageReader.getStatistics().getStartTime())) {
+              cachedBatchData.flip();
               hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
               return hasCachedNextOverlappedPage;
             } else {
@@ -703,7 +715,8 @@ public class SeriesReader {
                       .getAllSatisfiedPageData(orderUtils.getAscending())
                       .getBatchDataIterator(),
                   firstPageReader.version,
-                  orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
+                  orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()),
+                  context);
               currentPageEndPointTime =
                   updateEndPointTime(currentPageEndPointTime, firstPageReader);
               firstPageReader = null;
@@ -718,6 +731,7 @@ public class SeriesReader {
                 || (!orderUtils.getAscending()
                     && timeValuePair.getTimestamp()
                         < seqPageReaders.get(0).getStatistics().getStartTime())) {
+              cachedBatchData.flip();
               hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
               return hasCachedNextOverlappedPage;
             } else {
@@ -727,7 +741,8 @@ public class SeriesReader {
                       .getAllSatisfiedPageData(orderUtils.getAscending())
                       .getBatchDataIterator(),
                   pageReader.version,
-                  orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
+                  orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
+                  context);
               currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, pageReader);
             }
           }
@@ -831,7 +846,8 @@ public class SeriesReader {
     mergeReader.addReader(
         pageReader.getAllSatisfiedPageData(orderUtils.getAscending()).getBatchDataIterator(),
         pageReader.version,
-        orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
+        orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
+        context);
   }
 
   private BatchData nextOverlappedPage() throws IOException {
@@ -1196,5 +1212,10 @@ public class SeriesReader {
 
   public TimeOrderUtils getOrderUtils() {
     return orderUtils;
+  }
+
+  @TestOnly
+  public Filter getValueFilter() {
+    return valueFilter;
   }
 }

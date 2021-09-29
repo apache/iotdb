@@ -399,7 +399,9 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   @Override
   public ResultSetMetaData getMetaData() {
     return new IoTDBResultMetadata(
-        ioTDBRpcDataSet.columnNameList, columnTypeList, ioTDBRpcDataSet.ignoreTimeStamp);
+        ioTDBRpcDataSet.columnNameList,
+        ioTDBRpcDataSet.columnTypeList,
+        ioTDBRpcDataSet.ignoreTimeStamp);
   }
 
   @Override

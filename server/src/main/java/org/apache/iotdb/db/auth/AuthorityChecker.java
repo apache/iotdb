@@ -22,6 +22,7 @@ import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 
@@ -32,7 +33,7 @@ import java.util.List;
 
 public class AuthorityChecker {
 
-  private static final String SUPER_USER = IoTDBConstant.ADMIN_NAME;
+  private static final String SUPER_USER = IoTDBDescriptor.getInstance().getConfig().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
   private AuthorityChecker() {}
@@ -137,6 +138,7 @@ public class AuthorityChecker {
       case INSERT:
       case LOADDATA:
       case CREATE_INDEX:
+      case BATCHINSERT:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:

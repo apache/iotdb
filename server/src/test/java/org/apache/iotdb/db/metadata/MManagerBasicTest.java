@@ -21,12 +21,24 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,6 +56,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -810,6 +823,612 @@ public class MManagerBasicTest {
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTemplate() throws MetadataException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+
+    MManager manager = IoTDB.metaManager;
+    manager.createDeviceTemplate(plan);
+
+    // set device template
+    SetDeviceTemplatePlan setDeviceTemplatePlan =
+        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+
+    manager.setDeviceTemplate(setDeviceTemplatePlan);
+
+    MNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
+    node.setUseTemplate(true);
+
+    MeasurementSchema s11 =
+        new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    assertNotNull(node.getDeviceTemplate());
+    assertEquals(node.getDeviceTemplate().getSchemaMap().get("s11"), s11);
+
+    Set<MeasurementSchema> allSchema =
+        new HashSet<>(node.getDeviceTemplate().getSchemaMap().values());
+    for (MeasurementSchema schema :
+        manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1"))) {
+      allSchema.remove(schema);
+    }
+
+    assertTrue(allSchema.isEmpty());
+  }
+
+  private CreateTemplatePlan getCreateTemplatePlan() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s11"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(CompressionType.SNAPPY);
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s11");
+
+    return new CreateTemplatePlan(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+  }
+
+  @Test
+  public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+    MManager manager = IoTDB.metaManager;
+    manager.createDeviceTemplate(plan);
+
+    // set device template
+    SetDeviceTemplatePlan setDeviceTemplatePlan =
+        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+
+    manager.setDeviceTemplate(setDeviceTemplatePlan);
+
+    CreateTimeSeriesPlan createTimeSeriesPlan =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.s20"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    manager.createTimeseries(createTimeSeriesPlan);
+
+    CreateTimeSeriesPlan createTimeSeriesPlan2 =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.s11"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    try {
+      manager.createTimeseries(createTimeSeriesPlan2);
+      fail();
+    } catch (Exception e) {
+      assertEquals(
+          "Path [root.sg1.d1.s11 ( which is incompatible with template )] already exist",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testSetDeviceTemplate() throws MetadataException {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s11"));
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      measurements.add("s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 11; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s11");
+    schemaNames.add("test_vector");
+
+    CreateTemplatePlan plan1 =
+        new CreateTemplatePlan(
+            "template1",
+            new ArrayList<>(schemaNames),
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
+
+    measurementList.add(Collections.singletonList("s12"));
+    schemaNames.add("s12");
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    compressionTypes.add(CompressionType.SNAPPY);
+
+    CreateTemplatePlan plan2 =
+        new CreateTemplatePlan(
+            "template2",
+            new ArrayList<>(schemaNames),
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
+
+    measurementList.get(1).add("s13");
+    dataTypeList.get(1).add(TSDataType.INT64);
+    encodingList.get(1).add(TSEncoding.RLE);
+
+    SetDeviceTemplatePlan setPlan1 = new SetDeviceTemplatePlan("template1", "root.sg1");
+    SetDeviceTemplatePlan setPlan2 = new SetDeviceTemplatePlan("template2", "root.sg2.d1");
+
+    SetDeviceTemplatePlan setPlan3 = new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+    SetDeviceTemplatePlan setPlan4 = new SetDeviceTemplatePlan("template2", "root.sg2");
+
+    SetDeviceTemplatePlan setPlan5 = new SetDeviceTemplatePlan("template2", "root.sg1.d1");
+
+    MManager manager = IoTDB.metaManager;
+
+    manager.createDeviceTemplate(plan1);
+    manager.createDeviceTemplate(plan2);
+
+    manager.setStorageGroup(new PartialPath("root.sg1"));
+    manager.setStorageGroup(new PartialPath("root.sg2"));
+    manager.setStorageGroup(new PartialPath("root.sg3"));
+
+    try {
+      manager.setDeviceTemplate(setPlan1);
+      manager.setDeviceTemplate(setPlan2);
+    } catch (MetadataException e) {
+      fail();
+    }
+
+    try {
+      manager.setDeviceTemplate(setPlan3);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg1", e.getMessage());
+    }
+
+    try {
+      manager.setDeviceTemplate(setPlan4);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg2.d1", e.getMessage());
+    }
+
+    try {
+      manager.setDeviceTemplate(setPlan5);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg1", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowTimeseriesWithTemplate() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+    measurementList.add(Collections.singletonList("s1"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      compressionTypes.add(compressionType);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s0");
+    schemaNames.add("s1");
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createDeviceTemplate(plan);
+
+      // set device template
+      SetDeviceTemplatePlan setDeviceTemplatePlan =
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+
+      // show timeseries root.laptop.d1.s0
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s0", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.vector.s1
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s1", result.get(0).getName());
+
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(2, result.size());
+      Set<String> set = new HashSet<>();
+      set.add("root.laptop.d1.s0");
+      set.add("root.laptop.d1.s1");
+
+      for (int i = 0; i < result.size(); i++) {
+        set.remove(result.get(i).getName());
+      }
+
+      assertTrue(set.isEmpty());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCountTimeseriesWithTemplate() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+    measurementList.add(Collections.singletonList("s1"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      compressionTypes.add(compressionType);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s0");
+    schemaNames.add("s1");
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createDeviceTemplate(plan);
+
+      // set device template
+      SetDeviceTemplatePlan setDeviceTemplatePlan =
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+
+      manager.createTimeseries(
+          new PartialPath("root.computer.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      setDeviceTemplatePlan = new SetDeviceTemplatePlan("template1", "root.computer");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.computer.d1")).setUseTemplate(true);
+
+      Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")));
+      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
+      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1")));
+      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer")));
+      Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root")));
+
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCountDeviceWithTemplate() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+    measurementList.add(Collections.singletonList("s1"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      compressionTypes.add(compressionType);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s0");
+    schemaNames.add("s1");
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.createDeviceTemplate(plan);
+      // set device template
+      SetDeviceTemplatePlan setDeviceTemplatePlan =
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d1")));
+      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d2")));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop")));
+
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTotalSeriesNumber() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1.t1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      assertEquals(6, manager.getTotalSeriesNumber());
+      EnvironmentUtils.restartDaemon();
+      assertEquals(6, manager.getTotalSeriesNumber());
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      assertEquals(5, manager.getTotalSeriesNumber());
+      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
+      assertEquals(0, manager.getTotalSeriesNumber());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testStorageGroupNameWithHyphen() throws IllegalPathException {
+    MManager manager = IoTDB.metaManager;
+    assertTrue(manager.isPathExist(new PartialPath("root")));
+
+    assertFalse(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.group-with-hyphen"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+  }
+
+  @Test
+  public void testGetStorageGroupNodeByPath() {
+    MManager manager = IoTDB.metaManager;
+    PartialPath partialPath = null;
+
+    try {
+      partialPath = new PartialPath("root.ln.sg1");
+    } catch (IllegalPathException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.setStorageGroup(partialPath);
+    } catch (MetadataException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      partialPath = new PartialPath("root.ln.sg2.device1.sensor1");
+    } catch (IllegalPathException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.getStorageGroupNodeByPath(partialPath);
+    } catch (StorageGroupNotSetException e) {
+      Assert.assertEquals(
+          "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
+          e.getMessage());
+    } catch (MetadataException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testMeasurementIdWhileInsert() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath deviceId = new PartialPath("root.sg.d");
+    InsertPlan insertPlan;
+
+    insertPlan = getInsertPlan("\"a.b\"");
+    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
+
+    String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    for (String measurementId : illegalMeasurementIds) {
+      insertPlan = getInsertPlan(measurementId);
+      try {
+        manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+        assertFalse(manager.isPathExist(deviceId.concatNode(measurementId)));
+      } catch (MetadataException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  private InsertPlan getInsertPlan(String measurementId) throws MetadataException {
+    PartialPath deviceId = new PartialPath("root.sg.d");
+    String[] measurementList = {measurementId};
+    String[] values = {"1"};
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[1];
+    InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
+    insertPlan.setMeasurementMNodes(measurementMNodes);
+    return insertPlan;
+  }
+
+  @Test
+  public void testTemplateNameCheckWhileCreate() {
+    MManager manager = IoTDB.metaManager;
+    String[] illegalSchemaNames = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    for (String schemaName : illegalSchemaNames) {
+      CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
+      try {
+        manager.createDeviceTemplate(plan);
+      } catch (MetadataException e) {
+        Assert.assertEquals(
+            String.format("%s is an illegal schema name", schemaName), e.getMessage());
+      }
+    }
+  }
+
+  private CreateTemplatePlan getCreateTemplatePlan(String schemaName) {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(compressionType);
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add(schemaName);
+
+    return new CreateTemplatePlan(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+  }
+
+  @Test
+  public void testDeviceNodeAfterAutoCreateTimeseriesFailure() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath sg1 = new PartialPath("root.a.sg");
+    manager.setStorageGroup(sg1);
+
+    PartialPath deviceId = new PartialPath("root.a.d");
+    String[] measurementList = {"s"};
+    String[] values = {"1"};
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[1];
+    InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
+    insertPlan.setMeasurementMNodes(measurementMNodes);
+
+    try {
+      manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+      fail();
+    } catch (MetadataException e) {
+      Assert.assertEquals(
+          "some children of root.a have already been set to storage group", e.getMessage());
+      Assert.assertFalse(manager.isPathExist(new PartialPath("root.a.d")));
     }
   }
 }

@@ -195,14 +195,21 @@ public class MergeMultiChunkTask {
     mergeLogger.logTSEnd();
   }
 
+  private String getMaxSensor(List<PartialPath> sensors) {
+    String maxSensor = sensors.get(0).getMeasurement();
+    for (int i = 1; i < sensors.size(); i++) {
+      if (maxSensor.compareTo(sensors.get(i).getMeasurement()) < 0) {
+        maxSensor = sensors.get(i).getMeasurement();
+      }
+    }
+    return maxSensor;
+  }
+
   private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders) throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
+    // all paths in one call are from the same device
     String deviceId = currMergingPaths.get(0).getDevice();
     long currDeviceMinTime = currTsFile.getStartTime(deviceId);
-    // all paths in one call are from the same device
-    if (currDeviceMinTime == Long.MAX_VALUE) {
-      return;
-    }
 
     for (PartialPath path : currMergingPaths) {
       mergeContext.getUnmergedChunkStartTimes().get(currTsFile).put(path, new ArrayList<>());
@@ -238,7 +245,7 @@ public class MergeMultiChunkTask {
       return;
     }
 
-    String lastSensor = currMergingPaths.get(currMergingPaths.size() - 1).getMeasurement();
+    String lastSensor = getMaxSensor(currMergingPaths);
     String currSensor = null;
     Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = new TreeMap<>();
     // find all sensor to merge in order, if exceed, then break
@@ -326,10 +333,8 @@ public class MergeMultiChunkTask {
     // series should also be written into a new chunk
     List<Integer> ret = new ArrayList<>();
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (seqChunkMeta[i] == null
-          || seqChunkMeta[i].isEmpty()
-              && !(seqFileIdx + 1 == resource.getSeqFiles().size()
-                  && currTimeValuePairs[i] != null)) {
+      if ((seqChunkMeta[i] == null || seqChunkMeta[i].isEmpty())
+          && !(seqFileIdx + 1 == resource.getSeqFiles().size() && currTimeValuePairs[i] != null)) {
         continue;
       }
       ret.add(i);
@@ -455,7 +460,6 @@ public class MergeMultiChunkTask {
       IChunkWriter chunkWriter,
       TsFileResource currFile)
       throws IOException {
-
     int unclosedChunkPoint = lastUnclosedChunkPoint;
     boolean chunkModified =
         (currMeta.getDeleteIntervalList() != null && !currMeta.getDeleteIntervalList().isEmpty());

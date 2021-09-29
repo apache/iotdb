@@ -129,7 +129,6 @@ public class AuthUtils {
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
-        case UPDATE_TIMESERIES:
           return;
         default:
           throw new AuthException(
@@ -142,7 +141,6 @@ public class AuthUtils {
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
-        case UPDATE_TIMESERIES:
           validatePath(path);
           return;
         default:

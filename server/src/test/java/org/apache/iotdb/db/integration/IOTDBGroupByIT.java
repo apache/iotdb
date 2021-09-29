@@ -931,6 +931,25 @@ public class IOTDBGroupByIT {
     }
   }
 
+  /**
+   * Test group by without aggregation function used in select clause. The expected situation is
+   * throwing an exception.
+   */
+  @Test
+  public void TestGroupByWithoutAggregationFunc() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("select temperature from root.ln.wf01.wt01 group by ([0, 100), 5ms)");
+
+      fail("No expected exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("There is no aggregation function with group by query"));
+    }
+  }
+
   private void prepareData() {
     try (Connection connection =
             DriverManager.getConnection(

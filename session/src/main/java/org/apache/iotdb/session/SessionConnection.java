@@ -24,9 +24,11 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -42,6 +44,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -55,7 +58,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class SessionConnection {
 
@@ -69,6 +74,7 @@ public class SessionConnection {
   private long statementId;
   private ZoneId zoneId;
   private EndPoint endPoint;
+  private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
 
   // TestOnly
@@ -78,18 +84,30 @@ public class SessionConnection {
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
+    endPointList.add(endPoint);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     init(endPoint);
+  }
+
+  public SessionConnection(Session session, ZoneId zoneId) throws IoTDBConnectionException {
+    this.session = session;
+    this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
+    this.endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
+    initClusterConn();
   }
 
   private void init(EndPoint endPoint) throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
-    transport =
-        RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs));
-
     try {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              // as there is a try-catch already, we do not need to use TSocket.wrap
+              new TSocket(
+                  TConfigurationConst.defaultTConfiguration,
+                  endPoint.getIp(),
+                  endPoint.getPort(),
+                  session.connectionTimeoutInMs));
       transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
@@ -133,6 +151,21 @@ public class SessionConnection {
     } catch (Exception e) {
       transport.close();
       throw new IoTDBConnectionException(e);
+    }
+  }
+
+  private void initClusterConn() throws IoTDBConnectionException {
+    for (EndPoint endPoint : endPointList) {
+      try {
+        session.defaultEndPoint = endPoint;
+        init(endPoint);
+      } catch (IoTDBConnectionException e) {
+        if (!reconnect()) {
+          logger.error("Cluster has no nodes to connect");
+          throw new IoTDBConnectionException(e);
+        }
+      }
+      break;
     }
   }
 
@@ -204,6 +237,44 @@ public class SessionConnection {
       if (reconnect()) {
         try {
           RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroups));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void createSchemaTemplate(TSCreateSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.createSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.createSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void setSchemaTemplate(TSSetSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.setSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.setSchemaTemplate(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -409,7 +480,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertRecords(request));
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertRecords(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -428,7 +500,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertStringRecords(request));
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertStringRecords(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -485,7 +558,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirectionForInsertTablets(client.insertTablets(request), request);
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertTablets(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -651,24 +725,38 @@ public class SessionConnection {
   }
 
   private boolean reconnect() {
-    boolean flag = false;
+    boolean connectedSuccess = false;
+    Random random = new Random();
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
-      try {
-        if (transport != null) {
-          close();
-          init(endPoint);
-          flag = true;
-        }
-      } catch (Exception e) {
-        try {
-          Thread.sleep(Config.RETRY_INTERVAL_MS);
-        } catch (InterruptedException e1) {
-          logger.error("reconnect is interrupted.", e1);
-          Thread.currentThread().interrupt();
+      if (transport != null) {
+        transport.close();
+        int currHostIndex = random.nextInt(endPointList.size());
+        int tryHostNum = 0;
+        for (int j = currHostIndex; j < endPointList.size(); j++) {
+          if (tryHostNum == endPointList.size()) {
+            break;
+          }
+          session.defaultEndPoint = endPointList.get(j);
+          this.endPoint = endPointList.get(j);
+          if (j == endPointList.size() - 1) {
+            j = -1;
+          }
+          tryHostNum++;
+          try {
+            init(endPoint);
+            connectedSuccess = true;
+          } catch (IoTDBConnectionException e) {
+            logger.error("The current node may have been down {},try next node", endPoint);
+            continue;
+          }
+          break;
         }
       }
+      if (connectedSuccess) {
+        break;
+      }
     }
-    return flag;
+    return connectedSuccess;
   }
 
   public boolean isEnableRedirect() {
@@ -685,5 +773,10 @@ public class SessionConnection {
 
   public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
+  }
+
+  @Override
+  public String toString() {
+    return "SessionConnection{" + " endPoint=" + endPoint + "}";
   }
 }

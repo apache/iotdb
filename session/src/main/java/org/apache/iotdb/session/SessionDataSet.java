@@ -110,7 +110,7 @@ public class SessionDataSet {
     return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
   }
 
-  public List<TSDataType> getColumnTypes() {
+  public List<String> getColumnTypes() {
     return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
   }
 

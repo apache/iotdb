@@ -16,18 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tool;
 
-import org.junit.Assert;
-import org.junit.Test;
+package org.apache.iotdb.db.exception.metadata;
 
-public class CsvLineSplitTest {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  @Test
-  public void testSplit() {
-    Assert.assertArrayEquals(
-        new String[] {"", "a", "b", "c", "\\\""}, ImportCsv.splitCsvLine(",a,b,c,\"\\\"\""));
-    Assert.assertArrayEquals(
-        new String[] {"", "a", "b", "\\'"}, ImportCsv.splitCsvLine(",a,b,\"\\'\""));
+public class DuplicatedTemplateException extends MetadataException {
+  public DuplicatedTemplateException(String path) {
+    super(
+        String.format("Failed to create duplicated template for path %s", path),
+        TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode(),
+        true);
   }
 }

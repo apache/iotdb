@@ -120,12 +120,12 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 ### List of Privileges Included in the System
 
-<center>**List of privileges Included in the System**
-
+**List of privileges Included in the System**
 
 |privilege Name|Interpretation|
 |:---|:---|
-|SET\_STORAGE\_GROUP|create timeseries; set storage groups; path dependent|
+|SET\_STORAGE\_GROUP|set storage groups; path dependent|
+|CREATE\_TIMESERIES|create timeseries; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|
@@ -148,7 +148,6 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |DROP_TRIGGER|drop triggers; path independent|
 |START_TRIGGER|start triggers; path independent|
 |STOP_TRIGGER|stop triggers; path independent|
-</center>
 
 ### Username Restrictions
 

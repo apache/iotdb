@@ -164,6 +164,10 @@ public class MergeFileTask {
 
     seqFile.writeLock();
     try {
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
+
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       resource.removeFileReader(seqFile);
@@ -203,7 +207,9 @@ public class MergeFileTask {
       mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
-      newFileWriter.getFile().delete();
+      if (!newFileWriter.getFile().delete()) {
+        logger.warn("fail to delete {}", newFileWriter.getFile());
+      }
       // change tsFile name
       File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
       fsFactory.moveFile(seqFile.getTsFile(), nextMergeVersionFile);
@@ -338,19 +344,25 @@ public class MergeFileTask {
     }
     updateStartTimeAndEndTime(seqFile, fileWriter);
     resource.removeFileReader(seqFile);
-    FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);
-    mergeLogger.logFileMergeEnd();
-    logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
     seqFile.writeLock();
     try {
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
+
       seqFile.serialize();
+      mergeLogger.logFileMergeEnd();
+      logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       // change tsFile name
-      seqFile.getTsFile().delete();
+      if (!seqFile.getTsFile().delete()) {
+        logger.warn("fail to delete {}", seqFile.getTsFile());
+      }
       File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
       fsFactory.moveFile(fileWriter.getFile(), nextMergeVersionFile);
       fsFactory.moveFile(

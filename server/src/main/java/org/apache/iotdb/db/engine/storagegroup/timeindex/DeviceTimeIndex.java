@@ -88,12 +88,17 @@ public class DeviceTimeIndex implements ITimeIndex {
       ReadWriteIOUtils.write(endTimes[i], outputStream);
     }
 
+    Map<String, Integer> stringMemoryReducedMap = new ConcurrentHashMap<>();
     for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
       String deviceName = stringIntegerEntry.getKey();
       int index = stringIntegerEntry.getValue();
+      // To reduce the String number in memory,
+      // use the deviceId from cached pool
+      stringMemoryReducedMap.put(cachedDevicePool.computeIfAbsent(deviceName, k -> k), index);
       ReadWriteIOUtils.write(deviceName, outputStream);
       ReadWriteIOUtils.write(index, outputStream);
     }
+    deviceToIndex = stringMemoryReducedMap;
   }
 
   @Override
@@ -182,24 +187,6 @@ public class DeviceTimeIndex implements ITimeIndex {
     return RamUsageEstimator.sizeOf(deviceToIndex)
         + RamUsageEstimator.sizeOf(startTimes)
         + RamUsageEstimator.sizeOf(endTimes);
-  }
-
-  @Override
-  public long estimateRamIncrement(String deviceToBeChecked) {
-    long ramIncrement = 0L;
-    if (!deviceToIndex.containsKey(deviceToBeChecked)) {
-      // 80 is the Map.Entry header ram size
-      if (deviceToIndex.isEmpty()) {
-        ramIncrement += 80;
-      }
-      // Map.Entry ram size
-      ramIncrement += RamUsageEstimator.sizeOf(deviceToBeChecked) + 16;
-      // if needs to extend the startTimes and endTimes arrays
-      if (deviceToIndex.size() >= startTimes.length) {
-        ramIncrement += startTimes.length * Long.BYTES;
-      }
-    }
-    return ramIncrement;
   }
 
   private int getDeviceIndex(String deviceId) {

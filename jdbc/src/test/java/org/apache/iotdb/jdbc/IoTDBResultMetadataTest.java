@@ -143,7 +143,7 @@ public class IoTDBResultMetadataTest {
       "root.a.b.double",
       "root.a.b.text"
     };
-    String[] typesString = {"BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
+    String[] typesString = {"TIMESTAMP", "BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
     int[] types = {
       Types.BOOLEAN, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.DOUBLE, Types.VARCHAR
     };

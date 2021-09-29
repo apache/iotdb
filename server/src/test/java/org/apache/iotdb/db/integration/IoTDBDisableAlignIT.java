@@ -410,7 +410,7 @@ public class IoTDBDisableAlignIT {
       String columnName = resultSetMetaData.getColumnName(i);
       Integer typeIndex = expectedHeaderToTypeIndexMap.get(columnName);
       if (typeIndex != null) {
-        Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(1 + i / 2));
+        Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
       }
       actualIndexToExpectedIndexList.add(expectedHeaderToColumnIndexMap.get(columnName));
     }

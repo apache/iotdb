@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RefreshReuqest;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
@@ -108,6 +109,7 @@ public class MetaClusterServer extends RaftServer
     metaHeartbeatServer.start();
     ioTDB = new IoTDB();
     IoTDB.setMetaManager(CMManager.getInstance());
+    IoTDB.setClusterMode();
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(member);
     ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
     ioTDB.active();
@@ -225,6 +227,11 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
+  public void refreshConnection(RefreshReuqest request, AsyncMethodCallback<Void> resultHandler) {
+    resultHandler.onComplete(null);
+  }
+
+  @Override
   public void requestCommitIndex(
       Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
     asyncService.requestCommitIndex(header, resultHandler);
@@ -331,6 +338,9 @@ public class MetaClusterServer extends RaftServer
   public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {
     return syncService.executeNonQueryPlan(request);
   }
+
+  @Override
+  public void refreshConnection(RefreshReuqest request) {}
 
   @Override
   public RequestCommitIndexResponse requestCommitIndex(Node header) throws TException {

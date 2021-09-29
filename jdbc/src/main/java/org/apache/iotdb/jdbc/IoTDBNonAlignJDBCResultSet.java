@@ -35,7 +35,11 @@ import org.apache.thrift.TException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.TIMESTAMP_STR;
@@ -77,6 +81,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     times = new byte[columnNameList.size()][Long.BYTES];
 
     ioTDBRpcDataSet.columnNameList = new ArrayList<>();
+    ioTDBRpcDataSet.columnTypeList = new ArrayList<>();
     // deduplicate and map
     ioTDBRpcDataSet.columnOrdinalMap = new HashMap<>();
     ioTDBRpcDataSet.columnOrdinalMap.put(TIMESTAMP_STR, 1);
@@ -89,6 +94,8 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       String name = columnNameList.get(i);
       ioTDBRpcDataSet.columnNameList.add(TIMESTAMP_STR + name);
       ioTDBRpcDataSet.columnNameList.add(name);
+      ioTDBRpcDataSet.columnTypeList.add(String.valueOf(TSDataType.INT64));
+      ioTDBRpcDataSet.columnTypeList.add(columnTypeList.get(i));
       if (!ioTDBRpcDataSet.columnOrdinalMap.containsKey(name)) {
         int index = columnNameIndex.get(name);
         ioTDBRpcDataSet.columnOrdinalMap.put(name, index + START_INDEX);
@@ -143,9 +150,12 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       }
       if (!resp.hasResultSet) {
         ioTDBRpcDataSet.emptyResultSet = true;
+        close();
       } else {
         tsQueryNonAlignDataSet = resp.getNonAlignQueryDataSet();
         if (tsQueryNonAlignDataSet == null) {
+          ioTDBRpcDataSet.emptyResultSet = true;
+          close();
           return false;
         }
       }

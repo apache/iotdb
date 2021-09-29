@@ -37,6 +37,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -208,6 +210,12 @@ public class ClientServer extends TSServiceImpl {
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       plan.checkIntegrity();
+      if (!(plan instanceof SetSystemModePlan)
+          && !(plan instanceof FlushPlan)
+          && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+        throw new QueryProcessException(
+            "Current system mode is read-only, does not support non-query operation");
+      }
     } catch (QueryProcessException e) {
       logger.warn("Illegal plan detected： {}", plan);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -317,7 +325,13 @@ public class ClientServer extends TSServiceImpl {
               try (SyncDataClient syncDataClient =
                   coordinator.getSyncDataClient(
                       queriedNode, RaftServer.getReadOperationTimeoutMS())) {
-                syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
+                try {
+                  syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
+                } catch (TException e) {
+                  // the connection may be broken, close it to avoid it being reused
+                  syncDataClient.getInputProtocol().getTransport().close();
+                  throw e;
+                }
               }
             }
           } catch (IOException | TException e) {

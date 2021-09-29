@@ -23,12 +23,16 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
@@ -36,6 +40,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -97,7 +102,11 @@ public class PartitionUtils {
         || plan instanceof AuthorPlan
         || plan instanceof DeleteStorageGroupPlan
         // DataAuthPlan is global because all nodes must have all user info
-        || plan instanceof DataAuthPlan;
+        || plan instanceof DataAuthPlan
+        || plan instanceof CreateTemplatePlan
+        || plan instanceof CreateFunctionPlan
+        || plan instanceof DropFunctionPlan
+        || plan instanceof SetSystemModePlan;
   }
 
   /**
@@ -112,7 +121,8 @@ public class PartitionUtils {
     plan instanceof DeletePlan
         || plan instanceof DeleteTimeSeriesPlan
         || plan instanceof MergePlan
-        || plan instanceof FlushPlan;
+        || plan instanceof FlushPlan
+        || plan instanceof SetDeviceTemplatePlan;
   }
 
   public static int calculateStorageGroupSlotByTime(

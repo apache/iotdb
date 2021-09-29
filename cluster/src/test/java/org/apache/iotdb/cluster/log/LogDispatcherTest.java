@@ -108,7 +108,10 @@ public class LogDispatcherTest {
               @Override
               public long appendEntry(AppendEntryRequest request) throws TException {
                 try {
-                  return mockedAppendEntry(request);
+                  if (!downNode.contains(node)) {
+                    return mockedAppendEntry(request);
+                  }
+                  return -1;
                 } catch (UnknownLogTypeException e) {
                   throw new TException(e);
                 }
@@ -117,7 +120,10 @@ public class LogDispatcherTest {
               @Override
               public long appendEntries(AppendEntriesRequest request) throws TException {
                 try {
-                  return mockedAppendEntries(request);
+                  if (!downNode.contains(node)) {
+                    return mockedAppendEntries(request);
+                  }
+                  return -1;
                 } catch (UnknownLogTypeException e) {
                   throw new TException(e);
                 }

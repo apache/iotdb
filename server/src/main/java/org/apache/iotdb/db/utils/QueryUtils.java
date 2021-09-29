@@ -75,10 +75,11 @@ public class QueryUtils {
               if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
                 return true;
               } else {
-                if (range.overlaps(new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+                if (!metaData.isModified()
+                    && range.overlaps(
+                        new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
                   metaData.setModified(true);
                 }
-                return false;
               }
             }
           }

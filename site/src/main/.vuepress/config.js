@@ -551,10 +551,10 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Native API'],
 							['API/Programming-Other-Languages','Other Languages'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)']
 						]
 					},
 					{
@@ -607,7 +607,8 @@ var config = {
 					{
 						title: 'Cluster Setup',
 						children: [
-							['Cluster/Cluster-Setup','Cluster Setup']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -687,10 +688,10 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Native API'],
 							['API/Programming-Other-Languages','Other Languages'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)']
 						]
 					},
 					{
@@ -746,7 +747,8 @@ var config = {
 					{
 						title: 'Cluster Setup',
 						children: [
-							['Cluster/Cluster-Setup','Cluster Setup']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -1342,10 +1344,10 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Java 原生接口'],
 							['API/Programming-Other-Languages','其他语言原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (不推荐)']
 						]
 					},
 					{
@@ -1398,7 +1400,8 @@ var config = {
 					{
 						title: '集群搭建',
 						children: [
-							['Cluster/Cluster-Setup','集群搭建']
+							['Cluster/Cluster-Setup','集群搭建'],
+							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -1472,10 +1475,10 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Java 原生接口'],
 							['API/Programming-Other-Languages','其他语言原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (不推荐)']
 						]
 					},
 					{
@@ -1531,7 +1534,8 @@ var config = {
 					{
 						title: '集群搭建',
 						children: [
-							['Cluster/Cluster-Setup','集群搭建']
+							['Cluster/Cluster-Setup','集群搭建'],
+							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{

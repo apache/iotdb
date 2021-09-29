@@ -261,6 +261,8 @@ struct GetAllPathsResult {
   2: optional list<string> aliasList
 }
 
+struct RefreshReuqest {}
+
 
 service RaftService {
   /**
@@ -336,7 +338,9 @@ service RaftService {
   * When a follower finds that it already has a file in a snapshot locally, it calls this
   * interface to notify the leader to remove the associated hardlink.
   **/
-  void removeHardLink(1: string hardLinkPath)
+  void removeHardLink(1:string hardLinkPath)
+
+  void refreshConnection(1:RefreshReuqest request)
 }
 
 

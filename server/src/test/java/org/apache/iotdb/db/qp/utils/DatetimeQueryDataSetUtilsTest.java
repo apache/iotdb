@@ -130,6 +130,34 @@ public class DatetimeQueryDataSetUtilsTest {
     Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7, "ns", "ns"));
   }
 
+  /** Test convert duration including natural month unit. Time includes: 1970-01-01 ~ 1970-12-01 */
+  @Test
+  public void getConvertDurationIncludingMonthUnit() {
+    Assert.assertEquals(31 * 86400000L, DatetimeUtils.convertDurationStrToLong(0, 1, "mo", "ms"));
+    Assert.assertEquals(
+        28 * 86400000L, DatetimeUtils.convertDurationStrToLong(2678400000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        31 * 86400000L, DatetimeUtils.convertDurationStrToLong(5097600000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        30 * 86400000L, DatetimeUtils.convertDurationStrToLong(7776000000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        31 * 86400000L, DatetimeUtils.convertDurationStrToLong(10368000000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        30 * 86400000L, DatetimeUtils.convertDurationStrToLong(13046400000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        31 * 86400000L, DatetimeUtils.convertDurationStrToLong(15638400000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        31 * 86400000L, DatetimeUtils.convertDurationStrToLong(18316800000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        30 * 86400000L, DatetimeUtils.convertDurationStrToLong(20995200000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        31 * 86400000L, DatetimeUtils.convertDurationStrToLong(23587200000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        30 * 86400000L, DatetimeUtils.convertDurationStrToLong(26265600000L, 1, "mo", "ms"));
+    Assert.assertEquals(
+        31 * 86400000L, DatetimeUtils.convertDurationStrToLong(28857600000L, 1, "mo", "ms"));
+  }
+
   public void testConvertDatetimeStrToLongWithoutMS(ZoneOffset zoneOffset, ZoneId zoneId, long res)
       throws LogicalOperatorException {
     String[] timeFormatWithoutMs =

@@ -27,14 +27,22 @@ import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
@@ -45,9 +53,13 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class MergeTaskTest extends MergeTest {
 
@@ -211,12 +223,15 @@ public class MergeTaskTest extends MergeTest {
             null,
             null,
             true);
+    long count = 0L;
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+      for (int t = 0; t < batchData.length(); t++) {
+        assertEquals(batchData.getTimeByIndex(t) + 20000.0, batchData.getDoubleByIndex(t), 0.001);
+        count++;
       }
     }
+    assertEquals(100, count);
     tsFilesReader.close();
   }
 
@@ -499,5 +514,219 @@ public class MergeTaskTest extends MergeTest {
       }
     }
     tsFilesReader.close();
+  }
+
+  @Test
+  public void testMergeWithFileWithoutSomeSensor() throws Exception {
+    File file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                10
+                    + "unseq"
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource unseqTsFileResourceWithoutSomeSensor = new TsFileResource(file);
+    unseqTsFileResourceWithoutSomeSensor.setClosed(true);
+    unseqTsFileResourceWithoutSomeSensor.setMinPlanIndex(10);
+    unseqTsFileResourceWithoutSomeSensor.setMaxPlanIndex(10);
+    unseqTsFileResourceWithoutSomeSensor.setVersion(10);
+    prepareFileWithLastSensor(unseqTsFileResourceWithoutSomeSensor, 0, 50, 0);
+    unseqResources.add(unseqTsFileResourceWithoutSomeSensor);
+
+    List<TsFileResource> testSeqResources = seqResources.subList(0, 1);
+    List<TsFileResource> testUnseqResources = new ArrayList<>();
+    testUnseqResources.add(unseqTsFileResourceWithoutSomeSensor);
+    MergeTask mergeTask =
+        new MergeTask(
+            new MergeResource(testSeqResources, testUnseqResources),
+            tempSGDir.getPath(),
+            (k, v, l) -> {
+              assertEquals(99, k.get(0).getEndTime("root.mergeTest.device1"));
+            },
+            "test",
+            false,
+            1,
+            MERGE_TEST_SG);
+    mergeTask.call();
+  }
+
+  /**
+   * merge 3 seqFile and 1 unseqFile seqFile1: d1.s1:0-100 d1.s2:0-100 seqFile2: d1.s1:100-200
+   * seqFile3: d2.s1:0-100 unseqFile1: d1.s3:0-100
+   */
+  @Test
+  public void testMergeWithSeqFileMissSomeSensorAndDevice() throws Exception {
+    List<TsFileResource> testSeqResources = new ArrayList<>();
+    List<TsFileResource> testUnseqResources = new ArrayList<>();
+
+    File file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                100
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 100
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource seqTsFile1 = new TsFileResource(file);
+    Map<Pair<String, MeasurementSchema>, Pair<Long, Long>> seqTsFile1Data = new HashMap<>();
+    seqTsFile1Data.put(new Pair<>(deviceIds[0], measurementSchemas[0]), new Pair<>(0L, 100L));
+    seqTsFile1Data.put(new Pair<>(deviceIds[0], measurementSchemas[1]), new Pair<>(0L, 100L));
+    prepareFileWithSensorAndTime(seqTsFile1, seqTsFile1Data);
+    testSeqResources.add(seqTsFile1);
+
+    file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                101
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 101
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource seqTsFile2 = new TsFileResource(file);
+    Map<Pair<String, MeasurementSchema>, Pair<Long, Long>> seqTsFileData2 = new HashMap<>();
+    seqTsFileData2.put(new Pair<>(deviceIds[0], measurementSchemas[0]), new Pair<>(100L, 200L));
+    prepareFileWithSensorAndTime(seqTsFile2, seqTsFileData2);
+    testSeqResources.add(seqTsFile2);
+
+    file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                102
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 102
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource seqTsFile3 = new TsFileResource(file);
+    Map<Pair<String, MeasurementSchema>, Pair<Long, Long>> seqTsFileData3 = new HashMap<>();
+    seqTsFileData3.put(new Pair<>(deviceIds[1], measurementSchemas[0]), new Pair<>(0L, 100L));
+    prepareFileWithSensorAndTime(seqTsFile3, seqTsFileData3);
+    testSeqResources.add(seqTsFile3);
+
+    file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource unseqTsFile = new TsFileResource(file);
+    Map<Pair<String, MeasurementSchema>, Pair<Long, Long>> unseqTsFileData = new HashMap<>();
+    unseqTsFileData.put(new Pair<>(deviceIds[0], measurementSchemas[2]), new Pair<>(0L, 100L));
+    prepareFileWithSensorAndTime(unseqTsFile, unseqTsFileData);
+    testUnseqResources.add(unseqTsFile);
+
+    MergeTask mergeTask =
+        new MergeTask(
+            new MergeResource(testSeqResources, testUnseqResources),
+            tempSGDir.getPath(),
+            (k, v, l) -> {
+              try (TsFileSequenceReader reader =
+                  new TsFileSequenceReader(k.get(2).getTsFilePath())) {
+                List<ChunkMetadata> chunkMetadataList =
+                    reader.getChunkMetadataList(
+                        new PartialPath(deviceIds[0], measurementSchemas[2].getMeasurementId()));
+                assertEquals(1, chunkMetadataList.size());
+              } catch (IOException | IllegalPathException e) {
+                e.printStackTrace();
+                fail();
+              }
+              for (TsFileResource tsFileResource : k) {
+                tsFileResource.remove();
+              }
+            },
+            "test",
+            false,
+            1,
+            MERGE_TEST_SG);
+    mergeTask.call();
+  }
+
+  /**
+   * @param tsFileResource The File to write
+   * @param generateMap map((device, measurement),(startTime, pointNum))
+   */
+  private void prepareFileWithSensorAndTime(
+      TsFileResource tsFileResource,
+      Map<Pair<String, MeasurementSchema>, Pair<Long, Long>> generateMap)
+      throws IOException, WriteProcessException {
+    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
+    for (Pair<String, MeasurementSchema> measurementSchemaPair : generateMap.keySet()) {
+      fileWriter.registerTimeseries(
+          new Path(measurementSchemaPair.left, measurementSchemaPair.right.getMeasurementId()),
+          measurementSchemaPair.right);
+    }
+
+    for (Entry<Pair<String, MeasurementSchema>, Pair<Long, Long>> generateEntry :
+        generateMap.entrySet()) {
+      Pair<String, MeasurementSchema> measurementSchemaPair = generateEntry.getKey();
+      String device = measurementSchemaPair.left;
+      MeasurementSchema measurementSchema = measurementSchemaPair.right;
+      Pair<Long, Long> startTimePointNumPair = generateEntry.getValue();
+      for (long i = 0; i < startTimePointNumPair.right; i++) {
+        TSRecord record = new TSRecord(i, device);
+        record.addTuple(
+            DataPoint.getDataPoint(
+                measurementSchema.getType(),
+                measurementSchema.getMeasurementId(),
+                String.valueOf(i + startTimePointNumPair.left)));
+        fileWriter.write(record);
+        tsFileResource.updateStartTime(device, i);
+        tsFileResource.updateEndTime(device, i);
+        if ((i + 1) % flushInterval == 0) {
+          fileWriter.flushAllChunkGroups();
+        }
+      }
+    }
+    fileWriter.close();
+  }
+
+  private void prepareFileWithLastSensor(
+      TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
+      throws IOException, WriteProcessException {
+    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
+    for (int i = 0; i < deviceIds.length - 1; i++) {
+      for (int j = 0; j < measurementSchemas.length - 1; j++) {
+        fileWriter.registerTimeseries(
+            new Path(deviceIds[i], measurementSchemas[j].getMeasurementId()),
+            measurementSchemas[j]);
+      }
+    }
+    for (long i = timeOffset; i < timeOffset + ptNum; i++) {
+      for (int j = 0; j < deviceNum - 1; j++) {
+        TSRecord record = new TSRecord(i, deviceIds[j]);
+        for (int k = 0; k < measurementNum - 1; k++) {
+          record.addTuple(
+              DataPoint.getDataPoint(
+                  measurementSchemas[k].getType(),
+                  measurementSchemas[k].getMeasurementId(),
+                  String.valueOf(i + valueOffset)));
+        }
+        fileWriter.write(record);
+        tsFileResource.updateStartTime(deviceIds[j], i);
+        tsFileResource.updateEndTime(deviceIds[j], i);
+      }
+      if ((i + 1) % flushInterval == 0) {
+        fileWriter.flushAllChunkGroups();
+      }
+    }
+    fileWriter.close();
   }
 }

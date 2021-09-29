@@ -31,12 +31,17 @@ public class IoTDBConstant {
       IoTDBConstant.class.getPackage().getImplementationVersion() != null
           ? IoTDBConstant.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
+  public static final String MAJOR_VERSION =
+      VERSION.equals("UNKNOWN")
+          ? "UNKNOWN"
+          : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
+  public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
   public static final String JMX_TYPE = "type";
 
   public static final long GB = 1024 * 1024 * 1024L;
@@ -50,8 +55,6 @@ public class IoTDBConstant {
 
   public static final String PATH_ROOT = "root";
   public static final char PATH_SEPARATOR = '.';
-  public static final String ADMIN_NAME = "root";
-  public static final String ADMIN_PW = "root";
   public static final String PROFILE_SUFFIX = ".profile";
   public static final String MAX_TIME = "max_time";
   public static final String MIN_TIME = "min_time";
@@ -82,6 +85,7 @@ public class IoTDBConstant {
   public static final String COLUMN_PRIVILEGE = "privilege";
 
   public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_LOCK_INFO = "lock holder";
   public static final String COLUMN_TTL = "ttl";
 
   public static final String COLUMN_TASK_NAME = "task name";

@@ -53,7 +53,7 @@ public class StartupChecks {
                   "Requires JDK version >= %d, current version is %d",
                   IoTDBConstant.MIN_SUPPORTED_JDK_VERSION, version));
         } else {
-          logger.info("JDK veriosn is {}.", version);
+          logger.info("JDK version is {}.", version);
         }
       };
   private final List<StartupCheck> preChecks = new ArrayList<>();

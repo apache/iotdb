@@ -28,6 +28,9 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -37,6 +40,7 @@ import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -151,6 +155,18 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
+  public void createDeviceTemplate(CreateTemplatePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws IOException {
+    putLog(plan);
+  }
+
   public void serializeMNode(IMNode node) throws IOException {
     int childSize = 0;
     if (node.getChildren() != null) {
@@ -178,6 +194,11 @@ public class MLogWriter implements AutoCloseable {
     }
     StorageGroupMNodePlan plan =
         new StorageGroupMNodePlan(node.getName(), node.getDataTTL(), childSize);
+    putLog(plan);
+  }
+
+  public void setUsingDeviceTemplate(PartialPath path) throws IOException {
+    SetUsingDeviceTemplatePlan plan = new SetUsingDeviceTemplatePlan(path);
     putLog(plan);
   }
 

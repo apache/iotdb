@@ -48,11 +48,13 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -172,6 +174,18 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
 
                       @Override
                       public void write(byte[] buf, int off, int len) {}
+
+                      @Override
+                      public TConfiguration getConfiguration() {
+                        return null;
+                      }
+
+                      @Override
+                      public void updateKnownMessageSize(long size) throws TTransportException {}
+
+                      @Override
+                      public void checkReadBytesAvailable(long numBytes)
+                          throws TTransportException {}
                     });
               }
             };

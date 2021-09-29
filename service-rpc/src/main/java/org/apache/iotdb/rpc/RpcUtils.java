@@ -22,7 +22,6 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.lang.reflect.Proxy;
@@ -37,8 +36,8 @@ import java.util.Map;
 
 public class RpcUtils {
 
-  /** How big should the default read and write buffers be? Defaults to 64KB */
-  public static final int THRIFT_DEFAULT_BUF_CAPACITY = 64 * 1024;
+  /** How big should the default read and write buffers be? Defaults to 1KB */
+  public static final int THRIFT_DEFAULT_BUF_CAPACITY = 1024;
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
    * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
@@ -82,6 +81,7 @@ public class RpcUtils {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       return;
     }
+
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new StatementExecutionException(status);
     }
@@ -95,9 +95,8 @@ public class RpcUtils {
     }
   }
 
-  public static void verifySuccessWithRedirectionForInsertTablets(
-      TSStatus status, TSInsertTabletsReq req)
-      throws StatementExecutionException, RedirectException {
+  public static void verifySuccessWithRedirectionForMultiDevices(
+      TSStatus status, List<String> devices) throws StatementExecutionException, RedirectException {
     verifySuccess(status);
     if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
@@ -105,7 +104,7 @@ public class RpcUtils {
       for (int i = 0; i < statusSubStatus.size(); i++) {
         TSStatus subStatus = statusSubStatus.get(i);
         if (subStatus.isSetRedirectNode()) {
-          deviceEndPointMap.put(req.getDeviceIds().get(i), subStatus.getRedirectNode());
+          deviceEndPointMap.put(devices.get(i), subStatus.getRedirectNode());
         }
       }
       throw new RedirectException(deviceEndPointMap);

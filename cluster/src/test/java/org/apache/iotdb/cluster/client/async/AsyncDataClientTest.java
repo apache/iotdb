@@ -6,6 +6,8 @@ package org.apache.iotdb.cluster.client.async;
 
 import org.apache.iotdb.cluster.client.async.AsyncDataClient.SingleManagerFactory;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
 
@@ -14,6 +16,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -24,6 +28,20 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class AsyncDataClientTest {
+
+  private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  private boolean isAsyncServer;
+
+  @Before
+  public void setUp() {
+    isAsyncServer = config.isUseAsyncServer();
+    config.setUseAsyncServer(true);
+  }
+
+  @After
+  public void tearDown() {
+    config.setUseAsyncServer(isAsyncServer);
+  }
 
   @Test
   public void test() throws IOException, TException {

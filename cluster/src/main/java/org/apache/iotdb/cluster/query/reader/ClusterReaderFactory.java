@@ -62,6 +62,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -236,11 +237,10 @@ public class ClusterReaderFactory {
     for (PartialPath partialPath : paths) {
       List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(timeFilter, partialPath);
       partitionGroups.forEach(
-          partitionGroup -> {
-            partitionGroupListMap
-                .computeIfAbsent(partitionGroup, n -> new ArrayList<>())
-                .add(partialPath);
-          });
+          partitionGroup ->
+              partitionGroupListMap
+                  .computeIfAbsent(partitionGroup, n -> new ArrayList<>())
+                  .add(partialPath));
     }
 
     List<AbstractMultPointReader> multPointReaders = Lists.newArrayList();
@@ -365,7 +365,12 @@ public class ClusterReaderFactory {
         metaGroupMember.getName(),
         path,
         partitionGroups.size());
-    ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
+    PriorityMergeReader mergeReader;
+    if (ascending) {
+      mergeReader = new ManagedPriorityMergeReader(dataType);
+    } else {
+      mergeReader = new ManagedDescPriorityMergeReader(dataType);
+    }
     try {
       // build a reader for each group and merge them
       for (PartitionGroup partitionGroup : partitionGroups) {
@@ -384,7 +389,9 @@ public class ClusterReaderFactory {
     } catch (IOException | QueryProcessException e) {
       throw new StorageEngineException(e);
     }
-    return mergeReader;
+    // The instance of merge reader is either ManagedPriorityMergeReader or
+    // ManagedDescPriorityMergeReader, which is safe to cast type.
+    return (ManagedSeriesReader) mergeReader;
   }
 
   /**
@@ -513,6 +520,7 @@ public class ClusterReaderFactory {
         ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header);
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+    valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     return new SeriesReader(
         path,
         allSensors,
@@ -584,7 +592,7 @@ public class ClusterReaderFactory {
       return new MultEmptyReader(fullPaths);
     }
     throw new StorageEngineException(
-        new RequestTimeOutException("Query " + paths + " in " + partitionGroup));
+        new RequestTimeOutException("Query multi-series: " + paths + " in " + partitionGroup));
   }
 
   /**
@@ -666,10 +674,7 @@ public class ClusterReaderFactory {
         });
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
-    dataTypes.forEach(
-        dataType -> {
-          dataTypeOrdinals.add(dataType.ordinal());
-        });
+    dataTypes.forEach(dataType -> dataTypeOrdinals.add(dataType.ordinal()));
 
     request.setPath(fullPaths);
     request.setHeader(partitionGroup.getHeader());
@@ -899,7 +904,13 @@ public class ClusterReaderFactory {
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
 
-        executorId = syncDataClient.getGroupByExecutor(request);
+        try {
+          executorId = syncDataClient.getGroupByExecutor(request);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
+        }
       }
     }
     return executorId;
@@ -971,7 +982,7 @@ public class ClusterReaderFactory {
       QueryContext context,
       DataGroupMember dataGroupMember,
       boolean ascending)
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryProcessException {
     // pull the newest data
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);

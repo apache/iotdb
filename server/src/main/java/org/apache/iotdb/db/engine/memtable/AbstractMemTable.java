@@ -50,6 +50,7 @@ public abstract class AbstractMemTable implements IMemTable {
    */
   protected boolean disableMemControl = true;
 
+  private boolean shouldFlush = false;
   private int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   /** memory size of data points, including TEXT values */
@@ -69,6 +70,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private long maxPlanIndex = Long.MIN_VALUE;
 
   private long minPlanIndex = Long.MAX_VALUE;
+
+  private long createdTime = System.currentTimeMillis();
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -303,13 +306,33 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void releaseTVListRamCost(long cost) {
+    this.tvListRamCost -= cost;
+  }
+
+  @Override
   public long getTVListsRamCost() {
     return tvListRamCost;
   }
 
   @Override
-  public void addTextDataSize(long testDataSize) {
-    this.memSize += testDataSize;
+  public void addTextDataSize(long textDataSize) {
+    this.memSize += textDataSize;
+  }
+
+  @Override
+  public void releaseTextDataSize(long textDataSize) {
+    this.memSize -= textDataSize;
+  }
+
+  @Override
+  public void setShouldFlush() {
+    shouldFlush = true;
+  }
+
+  @Override
+  public boolean shouldFlush() {
+    return shouldFlush;
   }
 
   @Override
@@ -337,5 +360,10 @@ public abstract class AbstractMemTable implements IMemTable {
   void updatePlanIndexes(long index) {
     maxPlanIndex = Math.max(index, maxPlanIndex);
     minPlanIndex = Math.min(index, minPlanIndex);
+  }
+
+  @Override
+  public long getCreatedTime() {
+    return createdTime;
   }
 }

@@ -112,6 +112,47 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
   }
 
+  public RestorableTsFileIOWriter(File file, boolean truncate) throws IOException {
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} is opened.", file.getName());
+    }
+    this.file = file;
+    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
+
+    // file doesn't exist
+    if (file.length() == 0) {
+      startFile();
+      crashed = true;
+      canWrite = true;
+      return;
+    }
+
+    if (file.exists()) {
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+
+        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
+        minPlanIndex = reader.getMinPlanIndex();
+        maxPlanIndex = reader.getMaxPlanIndex();
+        if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
+          crashed = false;
+          canWrite = false;
+          out.close();
+        } else if (truncatedSize == TsFileCheckStatus.INCOMPATIBLE_FILE) {
+          out.close();
+          throw new NotCompatibleTsFileException(
+              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+        } else {
+          crashed = true;
+          canWrite = true;
+          // remove broken data
+          if (truncate) {
+            out.truncate(truncatedSize);
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Given a TsFile, generate a writable RestorableTsFileIOWriter. That is, for a complete TsFile,
    * the function erases all FileMetadata and supports writing new data; For a incomplete TsFile,
@@ -240,5 +281,13 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   @Override
   public long getMaxPlanIndex() {
     return maxPlanIndex;
+  }
+
+  public boolean dropLastChunkGroupMetadata() {
+    if (chunkGroupMetadataList.size() < 1) {
+      return false;
+    }
+    chunkGroupMetadataList.remove(chunkGroupMetadataList.size() - 1);
+    return true;
   }
 }

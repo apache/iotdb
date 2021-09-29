@@ -59,7 +59,8 @@ public class LevelCompactionSelectorTest extends LevelCompactionTest {
 
   /** just compaction once */
   @Test
-  public void testCompactionSelector() throws NoSuchFieldException, IllegalAccessException {
+  public void testCompactionSelector()
+      throws NoSuchFieldException, IllegalAccessException, IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);

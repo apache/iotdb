@@ -61,7 +61,7 @@ Once a prefix path is set as a storage group, the storage group settings cannot 
 
 After a storage group is set, all parent and child layers of the corresponding prefix path are not allowed to be set up again (for example, after `root.ln` is set as the storage group, the root layer and `root.ln.wf01` are not allowed to be set as storage groups).
 
-The Layer Name of storage group can only consist of characters, numbers and underscores, like `root.storagegroup_1`.
+The Layer Name of storage group can only consist of characters, numbers, underscores and hyphen, like `root.storagegroup_1-sg1`.
 
 * Path
 
@@ -89,7 +89,7 @@ The characters supported in LayerName without double quotes are as below:
 
 '-' and ':' cannot be the first character. '+' cannot use alone.
 
-> Note: the LayerName of storage group can only be characters, numbers and underscores. 
+> Note: the LayerName of storage group can only be characters, numbers, underscores and hyphen. 
 > 
 > Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 

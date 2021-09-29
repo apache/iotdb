@@ -126,7 +126,7 @@ Msg: The statement is executed successfully.
 
 ### 系统所含权限列表
 
-<center>**系统所含权限列表**
+**系统所含权限列表**
 
 |权限名称|说明|
 |:---|:---|
@@ -154,7 +154,6 @@ Msg: The statement is executed successfully.
 |DROP_TRIGGER|卸载触发器。路径无关|
 |START_TRIGGER|启动触发器。路径无关|
 |STOP_TRIGGER|停止触发器。路径无关|
-</center>
 
 ### 用户名限制
 

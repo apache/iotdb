@@ -73,8 +73,6 @@ public class AuthorityCheckerTest {
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal());
     authorizer.grantPrivilegeToUser(
-        user.getName(), nodeName, PrivilegeType.UPDATE_TIMESERIES.ordinal());
-    authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.GRANT_USER_PRIVILEGE.ordinal());
