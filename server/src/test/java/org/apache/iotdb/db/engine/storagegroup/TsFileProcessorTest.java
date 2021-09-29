@@ -44,6 +44,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,17 +58,17 @@ import static org.junit.Assert.assertFalse;
 public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
-  private String storageGroup = "storage_group1";
-  private StorageGroupInfo sgInfo = new StorageGroupInfo(null);
-  private String filePath =
-      TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
-  private String deviceId = "root.vehicle.d0";
-  private String measurementId = "s0";
-  private TSDataType dataType = TSDataType.INT32;
-  private TSEncoding encoding = TSEncoding.RLE;
-  private Map<String, String> props = Collections.emptyMap();
+  private final String storageGroup = "storage_group1";
+  private final StorageGroupInfo sgInfo = new StorageGroupInfo(null);
+  private final String filePath =
+      TestConstant.BASE_OUTPUT_PATH.concat("testUnsealedTsFileProcessor.tsfile");
+  private final String deviceId = "root.vehicle.d0";
+  private final String measurementId = "s0";
+  private final TSDataType dataType = TSDataType.INT32;
+  private final TSEncoding encoding = TSEncoding.RLE;
+  private final Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
-  private static Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
 
   protected static final int INIT_ARRAY_SIZE = 64;
 
@@ -76,12 +77,17 @@ public class TsFileProcessorTest {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
+
+    File file = new File(filePath);
+    if (!file.getParentFile().exists()) {
+      assertTrue(file.getParentFile().mkdirs());
+    }
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
+    EnvironmentUtils.cleanDir(TestConstant.BASE_OUTPUT_PATH);
   }
 
   @Test
@@ -223,7 +229,11 @@ public class TsFileProcessorTest {
         assertEquals(entry1.getValue().size(), entry2.getValue().size());
         for (int i = 0; i < entry1.getValue().size(); i++) {
           ChunkMetadata chunkMetaData = entry1.getValue().get(i);
+          chunkMetaData.setFilePath(filePath);
+
           ChunkMetadata chunkMetadataRestore = entry2.getValue().get(i);
+          chunkMetadataRestore.setFilePath(filePath);
+
           assertEquals(chunkMetaData, chunkMetadataRestore);
         }
       }

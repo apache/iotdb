@@ -309,7 +309,7 @@ public class EnvironmentUtils {
     createDir(config.getWalDir());
     // create query
     createDir(config.getQueryDir());
-    createDir(TestConstant.OUTPUT_DATA_DIR);
+    createDir(TestConstant.BASE_OUTPUT_PATH);
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);

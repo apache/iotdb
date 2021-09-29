@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
 import java.io.File;
@@ -135,6 +136,9 @@ abstract class LevelCompactionTest {
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
                       + ".tsfile"));
+      if (!file.getParentFile().exists()) {
+        Assert.assertTrue(file.getParentFile().mkdirs());
+      }
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes((long) i);
@@ -153,6 +157,9 @@ abstract class LevelCompactionTest {
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
                       + ".tsfile"));
+      if (!file.getParentFile().exists()) {
+        Assert.assertTrue(file.getParentFile().mkdirs());
+      }
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
