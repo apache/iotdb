@@ -175,7 +175,7 @@ influxdb的写入语句分别为（默认database=testdata）
 
 最终写入情况为：
 
-![influxdb-write](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-write.png?raw=true)
+![influxdb-write](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-write.png?raw=true)
 
 IoTDB的写入数据为
 
@@ -184,7 +184,7 @@ IoTDB的写入数据为
 
 最终写入情况为：
 
-![iotdb-write](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/iotdb-write.png?raw=true)
+![iotdb-write](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/iotdb-write.png?raw=true)
 
 我们可以发现，二者实际存储对表面形式也比较类似。
 
@@ -212,7 +212,7 @@ IoTDB的写入数据为
 
    influxdb中group by可以按照tag分组展示
 
-   ![influxdb-group-by](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-group-by.png?raw=true)
+   ![influxdb-group-by](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-group-by.png?raw=true)
 
    inflxudb中的group by功能不太类似，因此实现方法是：先获取所有的数据，然后在列表中以hash的方式手动分组，理论上复杂度为O（n），复杂度可以接受。
 
@@ -222,11 +222,11 @@ IoTDB的写入数据为
 
 1. influxdb的tag和filed均当作IoTDB的timeseries
 
-![influxdb-test1](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test1.png?raw=true)
+![influxdb-test1](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test1.png?raw=true)
 
 2. influxdb的tag当作路径
 
-![influxdb-test2](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test2.png?raw=true)
+![influxdb-test2](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test2.png?raw=true)
 
 ### 5.2查询情况
 
@@ -246,7 +246,7 @@ IoTDB的写入数据为
 
 ### 5.3特殊说明
 
-1. 为了存储的方便，第二种情况的存储，没有把tag的value存入路径中，即直接把tag的key存入路径中。其表现为![influxdb-test-result](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test-result.png?raw=true)
+1. 为了存储的方便，第二种情况的存储，没有把tag的value存入路径中，即直接把tag的key存入路径中。其表现为![influxdb-test-result](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test-result.png?raw=true)
 
    前面累积的path都是相同的，这样最后会导致的结果是：会加快根据path过滤的查找，如：
 
@@ -281,7 +281,7 @@ select * from cpu where (host = 'serverA' and regions='us') or (regions = 'us' a
 
 InfluxDB语法解析器生成的语法树如下图所示：
 
-![influxdb-syntax-tree](image/https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-syntax-tree.png?raw=true)
+![influxdb-syntax-tree](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-syntax-tree.png?raw=true)
 此时我们由两种解决思路：
 
 1. 分别进行四次查询，host=serverA ；regions=us;regions=us和value=0.77四次查询，然后分别按照树的token，即or或者and进行合并。
