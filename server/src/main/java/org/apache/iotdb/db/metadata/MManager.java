@@ -746,7 +746,8 @@ public class MManager {
     try {
       for (PartialPath storageGroup : storageGroups) {
         totalSeriesNumber.addAndGet(
-            -mtree.getAllTimeseriesCount(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
+            -mtree.getAllTimeseriesCount(
+                storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD), (int) totalSeriesNumber.get()));
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -879,7 +880,7 @@ public class MManager {
    * path, may contain wildcard.
    */
   public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
-    return mtree.getAllTimeseriesCount(path);
+    return mtree.getAllTimeseriesCount(path, (int) totalSeriesNumber.get());
   }
 
   /** To calculate the count of devices for given path pattern. */

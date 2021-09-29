@@ -686,9 +686,9 @@ public class MTreeTest {
           null,
           null);
 
-      assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.laptop.**")));
-      assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
-      assertEquals(0, root.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3")));
+      assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.laptop.**"), -1));
+      assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1"), -1));
+      assertEquals(0, root.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3"), -1));
 
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 2));
       assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 3));
@@ -723,7 +723,7 @@ public class MTreeTest {
 
     assertEquals(2, root.getDevices(new PartialPath("root"), true).size());
     assertEquals(2, root.getDevices(new PartialPath("root.**"), false).size());
-    assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.**")));
+    assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.**"), -1));
     assertEquals(2, root.getAllTimeseriesPath(new PartialPath("root.**")).size());
     assertEquals(
         2, root.getAllTimeseriesPathWithAlias(new PartialPath("root.**"), 0, 0).left.size());

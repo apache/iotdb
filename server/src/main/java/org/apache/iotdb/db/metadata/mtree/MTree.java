@@ -96,6 +96,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
@@ -1012,8 +1013,20 @@ public class MTree implements Serializable {
    * Get the count of timeseries matching the given path.
    *
    * @param path a path pattern or a full path, may contain wildcard
+   * @param totalSeriesNumber MManger generated total series number under the root path , if MManger
+   *     don't generated, can transmission - 1
    */
-  public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
+  public int getAllTimeseriesCount(PartialPath path, int totalSeriesNumber)
+      throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (totalSeriesNumber >= 0) {
+      if (nodes.length == 1
+          || (nodes.length == 2
+              && (nodes[1].equals(ONE_LEVEL_PATH_WILDCARD)
+                  || nodes[1].equals(MULTI_LEVEL_PATH_WILDCARD)))) {
+        return totalSeriesNumber;
+      }
+    }
     CounterTraverser counter = new MeasurementCounter(root, path);
     counter.traverse();
     return counter.getCount();
