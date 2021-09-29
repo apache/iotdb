@@ -781,8 +781,9 @@ public class StorageEngine implements IService {
   }
 
   public int countSettleFiles(PartialPath storageGroupProcessor) throws StorageEngineException {
-    if(processorMap.get(storageGroupProcessor)==null){
-      throw new StorageEngineException("The Storage Group "+storageGroupProcessor.toString()+" is not existed.");
+    if (processorMap.get(storageGroupProcessor) == null) {
+      throw new StorageEngineException(
+          "The Storage Group " + storageGroupProcessor.toString() + " is not existed.");
     }
     return processorMap.get(storageGroupProcessor).countSettleFiles();
   }

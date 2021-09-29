@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.settle;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -31,6 +29,9 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SettleTask extends WrappedRunnable {
 
@@ -69,7 +70,7 @@ public class SettleTask extends WrappedRunnable {
           resourceToBeSettled.getTsFilePath()
               + SettleLog.COMMA_SEPERATOR
               + SettleCheckStatus.BEGIN_SETTLE_FILE);
-      tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled,settledResources);
+      tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled, settledResources);
     }
 
     // Write Settle Log, Status 2

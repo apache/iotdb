@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -572,11 +571,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitSettle(SqlBaseParser.SettleContext ctx) {
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
-    if(path.toString().contains(TSFILE_SUFFIX)){
-      String filePath=path.toString();
-      filePath=filePath.substring(1,filePath.length()-2);
+    if (path.toString().contains(TSFILE_SUFFIX)) {
+      String filePath = path.toString();
+      filePath = filePath.substring(1, filePath.length() - 2);
       try {
-        path=new PartialPath(filePath);
+        path = new PartialPath(filePath);
       } catch (IllegalPathException e) {
         e.printStackTrace();
       }

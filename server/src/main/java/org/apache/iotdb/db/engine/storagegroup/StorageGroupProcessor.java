@@ -2367,7 +2367,8 @@ public class StorageGroupProcessor {
    * FileSequenceReader, TsFileManagement, cache, etc.
    */
   private void settleTsFileCallBack(
-      TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources) throws IOException {
+      TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
+      throws IOException {
     TsFileRewriteTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
     if (TsFileAndModSettleTool.recoverSettleFileMap.size() != 0) {
       TsFileAndModSettleTool.recoverSettleFileMap.remove(oldTsFileResource.getTsFilePath());

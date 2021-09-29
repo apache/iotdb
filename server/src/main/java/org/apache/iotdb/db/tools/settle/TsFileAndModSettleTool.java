@@ -129,38 +129,38 @@ public class TsFileAndModSettleTool {
   }
 
   /**
-   * This method is used to settle tsFiles and mods files, so that each old TsFile corresponds to one or several
-   * new TsFiles. This method is only applicable to V3 TsFile.
+   * This method is used to settle tsFiles and mods files, so that each old TsFile corresponds to
+   * one or several new TsFiles. This method is only applicable to V3 TsFile.
    *
    * @return Each old TsFile corresponds to one or several new TsFileResources of the new TsFiles
    */
-  public static Map<String,List<TsFileResource>> settleTsFilesAndMods(
+  public static Map<String, List<TsFileResource>> settleTsFilesAndMods(
       Map<String, TsFileResource> resourcesToBeSettled) {
     int successCount = 0;
-    Map<String,List<TsFileResource>> newTsFileResources = new HashMap<>();
+    Map<String, List<TsFileResource>> newTsFileResources = new HashMap<>();
     SettleLog.createSettleLog();
     for (Map.Entry<String, TsFileResource> entry : resourcesToBeSettled.entrySet()) {
       TsFileResource resourceToBeSettled = entry.getValue();
-      List<TsFileResource> settledTsFileResources=new ArrayList<>();
+      List<TsFileResource> settledTsFileResources = new ArrayList<>();
       try {
         TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
         System.out.println("Start settling for tsFile : " + resourceToBeSettled.getTsFilePath());
         if (tsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
-          settledTsFileResources=tsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
-          newTsFileResources.put(resourceToBeSettled.getTsFile().getName(),settledTsFileResources);
+          settledTsFileResources = tsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
+          newTsFileResources.put(resourceToBeSettled.getTsFile().getName(), settledTsFileResources);
         } else {
           // Write Settle Log, Status 1
           SettleLog.writeSettleLog(
               resourceToBeSettled.getTsFilePath()
                   + SettleLog.COMMA_SEPERATOR
                   + SettleCheckStatus.BEGIN_SETTLE_FILE);
-          tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled,settledTsFileResources);
+          tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled, settledTsFileResources);
           // Write Settle Log, Status 2
           SettleLog.writeSettleLog(
               resourceToBeSettled.getTsFilePath()
                   + SettleLog.COMMA_SEPERATOR
                   + SettleCheckStatus.AFTER_SETTLE_FILE);
-          newTsFileResources.put(resourceToBeSettled.getTsFile().getName(),settledTsFileResources);
+          newTsFileResources.put(resourceToBeSettled.getTsFile().getName(), settledTsFileResources);
         }
 
         TsFileRewriteTool.moveNewTsFile(resourceToBeSettled, settledTsFileResources);
@@ -191,16 +191,15 @@ public class TsFileAndModSettleTool {
     return newTsFileResources;
   }
 
-  public void settleOneTsFileAndMod(TsFileResource resourceToBeSettled,List<TsFileResource> settledResources) throws Exception {
+  public void settleOneTsFileAndMod(
+      TsFileResource resourceToBeSettled, List<TsFileResource> settledResources) throws Exception {
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
           "The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
       return;
     }
     // if no deletions to this tsfile, then return null.
-    if (!resourceToBeSettled
-        .getModFile()
-        .exists()) {
+    if (!resourceToBeSettled.getModFile().exists()) {
       return;
     }
     try (TsFileRewriteTool tsFileRewriteTool = new TsFileRewriteTool(resourceToBeSettled)) {
@@ -254,7 +253,7 @@ public class TsFileAndModSettleTool {
             + SettleLog.COMMA_SEPERATOR
             + SettleCheckStatus.BEGIN_SETTLE_FILE);
 
-    for(File tempPartitionDir : resourceToBeSettled.getTsFile().getParentFile().listFiles()){
+    for (File tempPartitionDir : resourceToBeSettled.getTsFile().getParentFile().listFiles()) {
       if (tempPartitionDir.isDirectory()
           && FSFactoryProducer.getFSFactory()
               .getFile(

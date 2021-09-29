@@ -137,14 +137,15 @@ public class TsFileRewriteTool implements AutoCloseable {
    * @throws IOException
    */
   public static void moveNewTsFile(
-      TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources) throws IOException {
+      TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
+      throws IOException {
     File newPartionDir =
         new File(
             oldTsFileResource.getTsFile().getParent()
                 + File.separator
                 + oldTsFileResource.getTimePartition());
     try {
-      if(newTsFileResources.size()==0){
+      if (newTsFileResources.size() == 0) {
         return;
       }
       FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -449,26 +450,29 @@ public class TsFileRewriteTool implements AutoCloseable {
     PageReader pageReader =
         new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder, null);
     // read delete time range from old modification file
-    List<TimeRange> deleteIntervalList=getOldSortedDeleteIntervals(deviceId,schema,chunkHeaderOffset);
+    List<TimeRange> deleteIntervalList =
+        getOldSortedDeleteIntervals(deviceId, schema, chunkHeaderOffset);
     pageReader.setDeleteIntervalList(deleteIntervalList);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
   }
 
-  private List<TimeRange> getOldSortedDeleteIntervals(String deviceId,MeasurementSchema schema,long chunkHeaderOffset)
+  private List<TimeRange> getOldSortedDeleteIntervals(
+      String deviceId, MeasurementSchema schema, long chunkHeaderOffset)
       throws IllegalPathException {
     if (oldModification != null) {
-      ChunkMetadata chunkMetadata=new ChunkMetadata();
+      ChunkMetadata chunkMetadata = new ChunkMetadata();
       modsIterator = oldModification.iterator();
       Deletion currentDeletion = null;
       while (modsIterator.hasNext()) {
         currentDeletion = (Deletion) modsIterator.next();
         // if deletion path match the chunkPath, then add the deletion to the list
         if (currentDeletion
-            .getPath()
-            .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
+                .getPath()
+                .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
-          chunkMetadata.insertIntoSortedDeletions(currentDeletion.getStartTime(),currentDeletion.getEndTime());
+          chunkMetadata.insertIntoSortedDeletions(
+              currentDeletion.getStartTime(), currentDeletion.getEndTime());
         }
       }
       return chunkMetadata.getDeleteIntervalList();

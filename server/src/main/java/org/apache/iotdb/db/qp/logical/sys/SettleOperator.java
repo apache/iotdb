@@ -26,7 +26,7 @@ import org.apache.iotdb.db.qp.physical.sys.SettlePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class SettleOperator extends Operator {
-  PartialPath path; //maybe a storageGroup Path or a tsfile path
+  PartialPath path; // maybe a storageGroup Path or a tsfile path
 
   public SettleOperator(int tokenIntType) {
     super(tokenIntType);
