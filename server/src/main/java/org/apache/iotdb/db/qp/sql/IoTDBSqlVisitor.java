@@ -20,8 +20,10 @@ package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.index.common.IndexUtils;
@@ -289,6 +291,7 @@ import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
 import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
@@ -569,8 +572,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitSettle(SqlBaseParser.SettleContext ctx) {
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
-    settleOperator.setStorageGroupPath(path);
-    // Operator o=super.visitSettle(ctx);
+    if(path.toString().contains(TSFILE_SUFFIX)){
+      String filePath=path.toString();
+      filePath=filePath.substring(1,filePath.length()-2);
+      try {
+        path=new PartialPath(filePath);
+      } catch (IllegalPathException e) {
+        e.printStackTrace();
+      }
+    }
+    settleOperator.setPath(path);
     return settleOperator;
   }
 
