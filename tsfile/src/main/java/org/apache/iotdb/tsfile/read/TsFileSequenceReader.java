@@ -57,6 +57,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -1060,7 +1061,8 @@ public class TsFileSequenceReader implements AutoCloseable {
                     chunkHeader.getCompressionType());
             measurementSchemaList.add(measurementSchema);
             dataType = chunkHeader.getDataType();
-            Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
+            Statistics<? extends Serializable> chunkStatistics =
+                Statistics.getStatsByType(dataType);
             int dataSize = chunkHeader.getDataSize();
             if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
               while (dataSize > 0) {

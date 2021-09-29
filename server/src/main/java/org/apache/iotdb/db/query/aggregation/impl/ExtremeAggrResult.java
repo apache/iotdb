@@ -25,7 +25,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -93,20 +93,21 @@ public class ExtremeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
+  public void updateResultFromPageData(IBatchDataIterator batchIterator) {
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+  public void updateResultFromPageData(
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
     Comparable<Object> extVal = null;
 
-    while (dataInThisPage.hasCurrent()
-        && dataInThisPage.currentTime() < maxBound
-        && dataInThisPage.currentTime() >= minBound) {
+    while (batchIterator.hasNext()
+        && batchIterator.currentTime() < maxBound
+        && batchIterator.currentTime() >= minBound) {
 
-      extVal = getExtremeValue(extVal, (Comparable<Object>) dataInThisPage.currentValue());
-      dataInThisPage.next();
+      extVal = getExtremeValue(extVal, (Comparable<Object>) batchIterator.currentValue());
+      batchIterator.next();
     }
     updateResult(extVal);
   }

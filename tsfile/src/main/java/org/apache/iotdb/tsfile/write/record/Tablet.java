@@ -197,9 +197,16 @@ public class Tablet {
     return maxRowNumber;
   }
 
-  /** Reset Tablet to the default state - set the rowSize to 0 */
+  /** Reset Tablet to the default state - set the rowSize to 0 and reset bitMaps */
   public void reset() {
     rowSize = 0;
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        if (bitMap != null) {
+          bitMap.reset();
+        }
+      }
+    }
   }
 
   private void createColumns() {

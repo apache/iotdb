@@ -85,6 +85,24 @@ git push origin fix
 
 For more on git usages, please visit[Git tutorial](https://www.atlassian.com/git/tutorials/setting-up-a-repository).
 
+### Submission Considerations
+
+When submitting code on git, you should pay attention to:
+
+- Keep the repository clean:
+
+    - Do not submit binary files, so that the size of the repository only increases due to changes in the code.
+
+    - Do not submit generated code.
+
+- The log should have meaning:
+
+    - Title is jira numbered: [IOTDB-jira number]
+
+    - Title is the issue number of GitHub: [ISSUE-issue number]
+
+        - Write #XXXX in the content for association.
+
 ### Create PR
 
 Goto your github page, find the apache/servicecomb-website project, swich to the branch you just pushed, click on `New pull request` and then `Create pull request`, see the image below:If you solve the [issues](https://issues.apache.org/jira/projects/IOTDB/issues), you need to add [IOTDB-xxx] at the beginning，see the image below:

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -248,11 +247,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public void replaceChild(String oldChildName, IMNode newChildNode) {}
-
-  @Override
-  public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
-    return null;
-  }
 
   @Override
   public Map<String, IMNode> getChildren() {

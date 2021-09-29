@@ -16,39 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader;
+package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-public class BatchDataIterator implements IPointReader {
+// This class implements the entity count function.
+public class EntityCounter extends CounterTraverser {
 
-  private BatchData batchData;
-
-  public BatchDataIterator(BatchData batchData) {
-    this.batchData = batchData;
+  public EntityCounter(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
   }
 
   @Override
-  public boolean hasNextTimeValuePair() {
-    return batchData.hasCurrent();
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
   }
 
   @Override
-  public TimeValuePair nextTimeValuePair() {
-    TimeValuePair timeValuePair =
-        new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
-    batchData.next();
-    return timeValuePair;
-  }
-
-  @Override
-  public TimeValuePair currentTimeValuePair() {
-    return new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
-  }
-
-  @Override
-  public void close() {
-    batchData = null;
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isEntity()) {
+      count++;
+    }
+    return false;
   }
 }

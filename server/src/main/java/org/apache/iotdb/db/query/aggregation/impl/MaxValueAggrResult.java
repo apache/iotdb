@@ -24,7 +24,7 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -49,21 +49,22 @@ public class MaxValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
+  public void updateResultFromPageData(IBatchDataIterator batchIterator) {
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+  public void updateResultFromPageData(
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
     Comparable<Object> maxVal = null;
 
-    while (dataInThisPage.hasCurrent()
-        && dataInThisPage.currentTime() < maxBound
-        && dataInThisPage.currentTime() >= minBound) {
-      if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
-        maxVal = (Comparable<Object>) dataInThisPage.currentValue();
+    while (batchIterator.hasNext()
+        && batchIterator.currentTime() < maxBound
+        && batchIterator.currentTime() >= minBound) {
+      if (maxVal == null || maxVal.compareTo(batchIterator.currentValue()) < 0) {
+        maxVal = (Comparable<Object>) batchIterator.currentValue();
       }
-      dataInThisPage.next();
+      batchIterator.next();
     }
     updateResult(maxVal);
   }
