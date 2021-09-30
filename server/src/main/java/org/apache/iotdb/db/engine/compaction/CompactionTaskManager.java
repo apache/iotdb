@@ -186,6 +186,7 @@ public class CompactionTaskManager implements IService {
             IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
       }
     }
+    compactionTaskQueue.clear();
   }
 
   public synchronized void submitTask(
