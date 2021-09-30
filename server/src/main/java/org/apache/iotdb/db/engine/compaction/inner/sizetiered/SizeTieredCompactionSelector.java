@@ -81,7 +81,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     PriorityQueue<Pair<List<TsFileResource>, Long>> notFullCompactionQueue =
         new PriorityQueue<>(10, new SizeTieredCompactionTaskComparator());
-    boolean meetBigFile = false;
+    boolean meetCompactedFile = false;
 
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
@@ -105,8 +105,11 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         TsFileResource currentFile = iterator.next();
         TsFileNameGenerator.TsFileName currentName =
             TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
+        if (currentName.getInnerCompactionCnt() > 0) {
+          meetCompactedFile = true;
+        }
         if (currentName.getInnerCompactionCnt() != currentCompactionCount) {
-          if (selectedFileList.size() > 1 && meetBigFile) {
+          if (selectedFileList.size() > 1 && meetCompactedFile) {
             notFullCompactionQueue.add(
                 new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
           }
@@ -144,7 +147,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
-          if (selectedFileList.size() > 1 && meetBigFile) {
+          if (selectedFileList.size() > 1 && meetCompactedFile) {
             // if current seek didn't meet a big file
             // we should not submit a not full compaction task to avoid write amplification
             notFullCompactionQueue.add(
@@ -153,7 +156,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           selectedFileList.clear();
           selectedFileSize = 0L;
           if (currentFile.getTsFileSize() >= targetCompactionFileSize) {
-            meetBigFile = true;
             LOGGER.debug("Selected file list is clear because current file is too large");
           } else {
             LOGGER.debug(
@@ -184,7 +186,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           selectedFileSize = 0L;
         }
       }
-      if (selectedFileList.size() > 1 && meetBigFile) {
+      if (selectedFileList.size() > 1 && meetCompactedFile) {
         notFullCompactionQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
       }
       if (config.isEnableNotFullCompaction()) {
