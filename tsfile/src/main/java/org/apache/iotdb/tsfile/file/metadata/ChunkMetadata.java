@@ -228,13 +228,12 @@ public class ChunkMetadata {
     ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader
         && version == that.version
-        && tsFilePrefixPath.equals(that.tsFilePrefixPath)
-        && Objects.equals(deleteIntervalList, that.deleteIntervalList);
+        && tsFilePrefixPath.equals(that.tsFilePrefixPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(deleteIntervalList, tsFilePrefixPath, version, offsetOfChunkHeader);
+    return Objects.hash(tsFilePrefixPath, version, offsetOfChunkHeader);
   }
 
   public boolean isModified() {

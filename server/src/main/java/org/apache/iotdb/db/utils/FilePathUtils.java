@@ -267,13 +267,8 @@ public class FilePathUtils {
     return Long.parseLong(names[1]);
   }
 
-  public static String getTsFileSuffixPath(String filePath) {
+  public static long getTsFileVersion(String filePath) {
     String[] pathSegments = splitTsFilePath(filePath);
-    String tsFileName = pathSegments[pathSegments.length - 1];
-    String[] names = tsFileName.split("[.\\" + FILE_NAME_SEPARATOR + "]");
-    if (names.length != 5) {
-      return null;
-    }
-    return names[1] + FILE_NAME_SEPARATOR + names[2] + FILE_NAME_SEPARATOR + names[3];
+    return splitAndGetTsFileVersion(pathSegments[pathSegments.length - 1]);
   }
 }
