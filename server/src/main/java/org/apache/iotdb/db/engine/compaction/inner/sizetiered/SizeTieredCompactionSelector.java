@@ -190,8 +190,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         notFullCompactionQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
       }
       if (config.isEnableNotFullCompaction()) {
-        while (CompactionTaskManager.currentTaskNum.get() < config.getConcurrentCompactionThread()
-            && notFullCompactionQueue.size() > 0) {
+        while (notFullCompactionQueue.size() > 0) {
           createAndSubmitTask(notFullCompactionQueue.poll().left);
           submitTaskNum++;
         }
