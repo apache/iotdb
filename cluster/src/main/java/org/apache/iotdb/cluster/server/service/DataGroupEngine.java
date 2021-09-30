@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.cluster.server.service;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -48,20 +42,28 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class DataGroupEngine implements IService, DataGroupEngineMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupEngine.class);
   // key: the header of a data group, value: the member representing this node in this group and
   // it is currently at service
-  private final static Map<RaftNode, DataGroupMember> headerGroupMap = new ConcurrentHashMap<>();
-  private final static Map<RaftNode, DataAsyncService> asyncServiceMap = new ConcurrentHashMap<>();
-  private final static Map<RaftNode, DataSyncService> syncServiceMap = new ConcurrentHashMap<>();
+  private static final Map<RaftNode, DataGroupMember> headerGroupMap = new ConcurrentHashMap<>();
+  private static final Map<RaftNode, DataAsyncService> asyncServiceMap = new ConcurrentHashMap<>();
+  private static final Map<RaftNode, DataSyncService> syncServiceMap = new ConcurrentHashMap<>();
   // key: the header of a data group, value: the member representing this node in this group but
   // it is out of service because another node has joined the group and expelled this node, or
   // the node itself is removed, but it is still stored to provide snapshot for other nodes
@@ -72,12 +74,10 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   private final Node thisNode = ClusterIoTDB.getInstance().getThisNode();
   private static TProtocolFactory protocolFactory;
 
-
   private DataGroupEngine() {
     dataMemberFactory = new DataGroupMember.Factory(protocolFactory, metaGroupMember);
     stoppedMemberManager = new StoppedMemberManager(dataMemberFactory);
   }
-
 
   public static DataGroupEngine getInstance() {
     if (metaGroupMember == null || protocolFactory == null) {
@@ -94,9 +94,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   }
 
   @Override
-  public void start() throws StartupException {
-
-  }
+  public void start() throws StartupException {}
 
   @Override
   public void stop() {
@@ -144,7 +142,8 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
    */
   public DataGroupMember addDataGroupMember(DataGroupMember dataGroupMember, RaftNode header) {
     synchronized (headerGroupMap) {
-      // TODO this method won't update headerMap if a new dataGroupMember comes with the same header ?
+      // TODO this method won't update headerMap if a new dataGroupMember comes with the same header
+      // ?
       if (headerGroupMap.containsKey(header)) {
         logger.debug("Group {} already exist.", dataGroupMember.getAllNodes());
         return headerGroupMap.get(header);
@@ -165,12 +164,11 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     syncServiceMap.remove(header);
   }
 
-
   /**
-   * @param header        the header of the group which the local node is in
+   * @param header the header of the group which the local node is in
    * @param resultHandler can be set to null if the request is an internal request
-   * @param request       the toString() of this parameter should explain what the request is and it
-   *                      is only used in logs for tracing
+   * @param request the toString() of this parameter should explain what the request is and it is
+   *     only used in logs for tracing
    * @return
    */
   public <T> DataGroupMember getDataMember(
@@ -342,14 +340,14 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     } else {
       if (dataGroupMember.getCharacter() != NodeCharacter.LEADER) {
         new Thread(
-            () -> {
-              try {
-                dataGroupMember.syncLeader(null);
-                dataGroupMember.stop();
-              } catch (CheckConsistencyException e) {
-                logger.warn("Failed to check consistency.", e);
-              }
-            })
+                () -> {
+                  try {
+                    dataGroupMember.syncLeader(null);
+                    dataGroupMember.stop();
+                  } catch (CheckConsistencyException e) {
+                    logger.warn("Failed to check consistency.", e);
+                  }
+                })
             .start();
       }
     }
@@ -470,9 +468,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     this.partitionTable = partitionTable;
   }
 
-  /**
-   * @return The reports of every DataGroupMember in this node.
-   */
+  /** @return The reports of every DataGroupMember in this node. */
   public List<DataMemberReport> genMemberReports() {
     List<DataMemberReport> dataMemberReports = new ArrayList<>();
     for (DataGroupMember value : headerGroupMap.values()) {

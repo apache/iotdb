@@ -158,7 +158,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     MetaPuller.getInstance().init(metaGroupEngine);
 
     // from the scope of the DataGroupEngine,it should be singleton pattern
-    // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in future commit.
+    // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in
+    // future commit.
     DataGroupEngine.setProtocolFactory(protocolFactory);
     DataGroupEngine.setMetaGroupMember(metaGroupEngine);
     dataGroupEngine = DataGroupEngine.getInstance();
