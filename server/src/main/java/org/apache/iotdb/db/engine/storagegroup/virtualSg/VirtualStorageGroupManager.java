@@ -326,11 +326,11 @@ public class VirtualStorageGroupManager {
     return totalUpgradeFileNum;
   }
 
-  public int countSettleFiles() {
+  public int countSettleFiles(String tsFilePath) {
     int totalSettleFileNum = 0;
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        totalSettleFileNum += storageGroupProcessor.countSettleFiles();
+        totalSettleFileNum += storageGroupProcessor.countSettleFiles(tsFilePath);
       }
     }
     return totalSettleFileNum;

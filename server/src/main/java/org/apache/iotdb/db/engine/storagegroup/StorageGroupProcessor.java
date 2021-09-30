@@ -661,21 +661,29 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void addSettleFilesToList() {
+  private void addSettleFilesToList(String tsFilePath) {
     for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
       if (!resource.isClosed()) {
         continue;
       }
-      if (!settleSeqFileList.containsKey(resource.getTsFilePath())) {
-        settleSeqFileList.put(resource.getTsFile().getName(), resource);
+      if (!settleSeqFileList.containsKey(resource.getTsFile().getName())) {
+        if (tsFilePath.equals("")) {
+          settleSeqFileList.put(resource.getTsFile().getName(), resource);
+        }else if(tsFilePath.equals(resource.getTsFile().getAbsolutePath())){
+            settleSeqFileList.put(resource.getTsFile().getName(), resource);
+        }
       }
     }
     for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
       if (!resource.isClosed()) {
         continue;
       }
-      if (!settleUnseqFileList.containsKey(resource.getTsFilePath())) {
-        settleUnseqFileList.put(resource.getTsFile().getName(), resource);
+      if (!settleUnseqFileList.containsKey(resource.getTsFile().getName())) {
+        if (tsFilePath.equals("")) {
+          settleUnseqFileList.put(resource.getTsFile().getName(), resource);
+        }else if(tsFilePath.equals(resource.getTsFile().getAbsolutePath())){
+          settleUnseqFileList.put(resource.getTsFile().getName(), resource);
+        }
       }
     }
   }
@@ -1934,8 +1942,7 @@ public class StorageGroupProcessor {
       throws IOException {
     // If there are still some old version tsfiles, the delete won't succeeded.
     if (upgradeFileCount.get()
-        != 0) { // Todo: Here can be optimized! Because the granularity is too large, what if the
-      // TsFile of this deletion is not in the upgrading File List?
+        != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files upgraded.");
     }
@@ -2277,9 +2284,9 @@ public class StorageGroupProcessor {
     return upgradeFileCount.get();
   }
 
-  public int countSettleFiles() {
+  public int countSettleFiles(String tsFilePath) {
     addRecoverSettleFilesToList();
-    addSettleFilesToList();
+    addSettleFilesToList(tsFilePath);
     return settleSeqFileList.size() + settleUnseqFileList.size();
   }
 

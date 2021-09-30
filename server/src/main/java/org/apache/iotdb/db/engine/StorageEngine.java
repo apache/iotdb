@@ -780,12 +780,12 @@ public class StorageEngine implements IService {
     return totalUpgradeFileNum;
   }
 
-  public int countSettleFiles(PartialPath storageGroupProcessor) throws StorageEngineException {
-    if (processorMap.get(storageGroupProcessor) == null) {
+  public int countSettleFiles(PartialPath storageGroupPath,String tsFilePath) throws StorageEngineException {
+    if (processorMap.get(storageGroupPath) == null) {
       throw new StorageEngineException(
-          "The Storage Group " + storageGroupProcessor.toString() + " is not existed.");
+          "The Storage Group " + storageGroupPath.toString() + " is not existed.");
     }
-    return processorMap.get(storageGroupProcessor).countSettleFiles();
+    return processorMap.get(storageGroupPath).countSettleFiles(tsFilePath);
   }
 
   /**

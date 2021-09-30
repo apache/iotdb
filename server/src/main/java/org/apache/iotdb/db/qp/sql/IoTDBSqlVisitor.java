@@ -573,9 +573,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if(ctx.pathOrString().prefixPath()!=null){
       PartialPath sgPath = parsePrefixPath(ctx.pathOrString().prefixPath());
       settleOperator.setSgPath(sgPath);
+      settleOperator.setIsSgPath(true);
     }else if(!ctx.pathOrString().stringLiteral().getText().equals("")){
       String tsFilePath=removeStringQuote(ctx.pathOrString().stringLiteral().getText());
       settleOperator.setTsFilePath(tsFilePath);
+      settleOperator.setIsSgPath(false);
     }else{
       //do nothing
     }

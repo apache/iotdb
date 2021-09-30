@@ -63,7 +63,7 @@ public class SettleLog {
   public static boolean writeSettleLog(String content) {
     settleLogFileLock.writeLock().lock();
     try {
-      settleLogWriter.write(content); // Todo:bug，settleLogWriter null
+      settleLogWriter.write(content);
       settleLogWriter.newLine();
       settleLogWriter.flush();
       return true;
@@ -93,7 +93,7 @@ public class SettleLog {
     SettleLog.settleLogPath = settleLogPath;
   }
 
-  public static enum SettleCheckStatus {
+  public enum SettleCheckStatus {
     BEGIN_SETTLE_FILE(1),
     AFTER_SETTLE_FILE(2),
     SETTLE_SUCCESS(3);

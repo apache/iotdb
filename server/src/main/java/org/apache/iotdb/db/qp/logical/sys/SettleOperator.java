@@ -41,7 +41,6 @@ public class SettleOperator extends Operator {
 
   public void setSgPath(PartialPath sgPath) {
     this.sgPath = sgPath;
-    setIsSgPath(true);
   }
 
   public String getTsFilePath() {
@@ -50,7 +49,6 @@ public class SettleOperator extends Operator {
 
   public void setTsFilePath(String tsFilePath) {
     this.tsFilePath = tsFilePath;
-    setIsSgPath(false);
   }
 
   public boolean getIsSgPath() {
@@ -58,7 +56,7 @@ public class SettleOperator extends Operator {
   }
 
   public void setIsSgPath(boolean isSgPath) {
-    isSgPath = isSgPath;
+    this.isSgPath = isSgPath;
   }
 
   @Override
