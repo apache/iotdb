@@ -1150,7 +1150,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
+      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
     }
 
     @Override
@@ -1159,7 +1159,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw getRedirectException(request.getDeviceIds());
+      throw getRedirectException(request.getPrefixPaths());
     }
 
     @Override
@@ -1168,7 +1168,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw getRedirectException(request.getDeviceIds());
+      throw getRedirectException(request.getPrefixPaths());
     }
 
     @Override
@@ -1177,7 +1177,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
+      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
     }
 
     @Override
@@ -1195,7 +1195,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw getRedirectException(request.getDeviceIds());
+      throw getRedirectException(request.getPrefixPaths());
     }
 
     private RedirectException getRedirectException(List<String> deviceIds) {

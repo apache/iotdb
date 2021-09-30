@@ -27,7 +27,6 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -37,7 +36,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -154,54 +152,6 @@ public class IoTDBAutoCreateSchemaIT {
     } catch (Exception e) {
       e.printStackTrace();
     }
-  }
-
-  /**
-   * insert data when the time series that is a prefix path of an existing time series hasn't been
-   * created
-   */
-  @Ignore // nested measurement has been forbidden
-  @Test
-  public void testInsertAutoCreate1() throws Exception {
-    String[] timeSeriesArray = {"root.sg1.a.a", "root.sg1.a", "root.sg1.a.a.a"};
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(
-          String.format("INSERT INTO %s(timestamp, a) values(123, \"aabb\")", timeSeries));
-    }
-
-    // ensure that insert data in cache is right.
-    insertAutoCreate1Tool();
-
-    statement.close();
-    connection.close();
-    EnvironmentUtils.stopDaemon();
-    setUp();
-
-    // ensure that insert data in cache is right after recovering.
-    insertAutoCreate1Tool();
-  }
-
-  private void insertAutoCreate1Tool() throws SQLException {
-    boolean hasResult = statement.execute("select * from root.sg1");
-    Assert.assertTrue(hasResult);
-
-    Set<String> strSet = new HashSet<>();
-    String[] valueList = {};
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        valueList =
-            new String[] {
-              resultSet.getString("root.sg1.a.a"),
-              resultSet.getString("root.sg1.a.a.a"),
-              resultSet.getString("root.sg1.a.a.a.a")
-            };
-        strSet = new HashSet<>(Arrays.asList(valueList));
-      }
-    }
-    Assert.assertEquals(3, valueList.length);
-    Assert.assertEquals(1, strSet.size());
-    Assert.assertTrue(strSet.contains("aabb"));
   }
 
   /**

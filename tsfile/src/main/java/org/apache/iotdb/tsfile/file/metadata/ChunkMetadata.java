@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +61,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   /** ChunkLoader of metadata, used to create ChunkReaderWrap */
   private IChunkLoader chunkLoader;
 
-  private Statistics statistics;
+  private Statistics<? extends Serializable> statistics;
 
   private boolean isFromOldTsFile = false;
 
@@ -85,7 +86,10 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
    * @param statistics value statistics
    */
   public ChunkMetadata(
-      String measurementUid, TSDataType tsDataType, long fileOffset, Statistics statistics) {
+      String measurementUid,
+      TSDataType tsDataType,
+      long fileOffset,
+      Statistics<? extends Serializable> statistics) {
     this.measurementUid = measurementUid;
     this.tsDataType = tsDataType;
     this.offsetOfChunkHeader = fileOffset;
@@ -118,7 +122,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return statistics;
   }
 
@@ -292,7 +296,8 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   }
 
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
-    this.statistics.mergeStatistics(chunkMetadata.getStatistics());
+    Statistics<? extends Serializable> statistics = chunkMetadata.getStatistics();
+    this.statistics.mergeStatistics(statistics);
     this.ramSize = calculateRamSize();
   }
 

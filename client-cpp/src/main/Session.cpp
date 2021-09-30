@@ -18,6 +18,7 @@
  */
 
 #include "Session.h"
+#include <algorithm>
 
 using namespace std;
 
@@ -387,6 +388,7 @@ void Session::sortTablet(Tablet &tablet) {
     }
 
     this->sortIndexByTimestamp(index, tablet.timestamps, tablet.rowSize);
+    tablet.timestamps = sortList(tablet.timestamps, index, tablet.rowSize);
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         tablet.values[i] = sortList(tablet.values[i], index, tablet.rowSize);
     }
@@ -395,23 +397,12 @@ void Session::sortTablet(Tablet &tablet) {
 }
 
 void Session::sortIndexByTimestamp(int *index, std::vector <int64_t> &timestamps, int length) {
-    // Use Insert Sort Algorithm
-    if (length >= 2) {
-        for (int i = 1; i < length; i++) {
-            int x = timestamps[i];
-            int tmpIndex = index[i];
-            int j = i - 1;
-
-            while (j >= 0 && timestamps[j] > x) {
-                timestamps[j + 1] = timestamps[j];
-                index[j + 1] = index[j];
-                j--;
-            }
-
-            timestamps[j + 1] = x;
-            index[j + 1] = tmpIndex;
-        }
+    if ( length <= 1 ) {
+        return;
     }
+
+    TsCompare tsCompareObj(timestamps);
+    std::sort(&index[0], &index[length], tsCompareObj);
 }
 
 /**
@@ -579,7 +570,7 @@ void Session::insertRecord(const string &deviceId, int64_t time,
                            const vector <string> &values) {
     TSInsertStringRecordReq req;
     req.__set_sessionId(sessionId);
-    req.__set_deviceId(deviceId);
+    req.__set_prefixPath(deviceId);
     req.__set_timestamp(time);
     req.__set_measurements(measurements);
     req.__set_values(values);
@@ -625,7 +616,7 @@ void Session::insertRecords(const vector <string> &deviceIds,
     }
     TSInsertStringRecordsReq request;
     request.__set_sessionId(sessionId);
-    request.__set_deviceIds(deviceIds);
+    request.__set_prefixPaths(deviceIds);
     request.__set_timestamps(times);
     request.__set_measurementsList(measurementsList);
     request.__set_valuesList(valuesList);
@@ -652,7 +643,7 @@ void Session::insertRecords(const vector <string> &deviceIds,
     }
     TSInsertRecordsReq request;
     request.__set_sessionId(sessionId);
-    request.__set_deviceIds(deviceIds);
+    request.__set_prefixPaths(deviceIds);
     request.__set_timestamps(times);
     request.__set_measurementsList(measurementsList);
     vector <string> bufferList;
@@ -698,6 +689,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
         }
 
         this->sortIndexByTimestamp(index, times, times.size());
+        times = sortList(times, index, times.size());
         measurementsList = sortList(measurementsList, index, times.size());
         typesList = sortList(typesList, index, times.size());
         valuesList = sortList(valuesList, index, times.size());
@@ -705,7 +697,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
     }
     TSInsertRecordsOfOneDeviceReq request;
     request.__set_sessionId(sessionId);
-    request.__set_deviceId(deviceId);
+    request.__set_prefixPath(deviceId);
     request.__set_timestamps(times);
     request.__set_measurementsList(measurementsList);
     vector <string> bufferList;
@@ -785,10 +777,10 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
                 throw BatchExecutionException("Times in Tablet are not in ascending order");
             }
         } else {
-            sortTablet(*(tablets[item.first]));
+            sortTablet(*(item.second));
         }
 
-        request.deviceIds.push_back(item.second->deviceId);
+        request.prefixPaths.push_back(item.second->deviceId);
         vector <string> measurements;
         vector<int> dataTypes;
         for (pair <string, TSDataType::TSDataType> schema: item.second->schemas) {
@@ -816,7 +808,7 @@ void Session::testInsertRecord(const string &deviceId, int64_t time, const vecto
                                const vector <string> &values) {
     shared_ptr <TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
     req->__set_sessionId(sessionId);
-    req->__set_deviceId(deviceId);
+    req->__set_prefixPath(deviceId);
     req->__set_timestamp(time);
     req->__set_measurements(measurements);
     req->__set_values(values);
@@ -863,7 +855,7 @@ void Session::testInsertRecords(const vector <string> &deviceIds,
     }
     shared_ptr <TSInsertStringRecordsReq> request(new TSInsertStringRecordsReq());
     request->__set_sessionId(sessionId);
-    request->__set_deviceIds(deviceIds);
+    request->__set_prefixPaths(deviceIds);
     request->__set_timestamps(times);
     request->__set_measurementsList(measurementsList);
     request->__set_valuesList(valuesList);

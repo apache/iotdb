@@ -75,9 +75,4 @@ public class LastQueryPlan extends RawDataQueryPlan {
     }
     return false;
   }
-
-  @Override
-  public boolean isRawQuery() {
-    return false;
-  }
 }

@@ -101,7 +101,7 @@ public class VectorPageReader implements IPageReader {
         pageData.putVector(timeBatch[i], v);
       }
     }
-    return pageData;
+    return pageData.flip();
   }
 
   public void setDeleteIntervalList(List<List<TimeRange>> list) {
@@ -115,6 +115,10 @@ public class VectorPageReader implements IPageReader {
     return valuePageReaderList.size() == 1
         ? valuePageReaderList.get(0).getStatistics()
         : timePageReader.getStatistics();
+  }
+
+  public Statistics getStatistics(int index) {
+    return valuePageReaderList.get(index).getStatistics();
   }
 
   @Override
