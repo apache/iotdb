@@ -2048,8 +2048,13 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void settle(SettlePlan plan) throws WriteProcessException, StorageEngineException {
-    PartialPath sgPath = plan.getSgPath();
-    SettleService.setStorageGroupPath(sgPath);
+    if(plan.isSgPath()){
+      PartialPath sgPath = plan.getSgPath();
+      SettleService.getINSTANCE().setStorageGroupPath(sgPath);
+    }else{
+      String tsFilePath=plan.getTsFilePath();
+    }
+
     SettleService.getINSTANCE().startSettling();
   }
 }

@@ -26,10 +26,27 @@ import java.util.List;
 
 public class SettlePlan extends PhysicalPlan {
   PartialPath sgPath;
+  String tsFilePath;
+  boolean isSgPath;
 
   public SettlePlan(PartialPath sgPath) {
     super(false, OperatorType.SETTLE);
     this.sgPath = sgPath;
+    setIsSgPath(true);
+  }
+
+  public SettlePlan(String tsFilePath) {
+    super(false, OperatorType.SETTLE);
+    this.tsFilePath = tsFilePath;
+    setIsSgPath(false);
+  }
+
+  public boolean isSgPath() {
+    return isSgPath;
+  }
+
+  public void setIsSgPath(boolean isSgPath) {
+    this.isSgPath = isSgPath;
   }
 
   @Override
@@ -39,5 +56,9 @@ public class SettlePlan extends PhysicalPlan {
 
   public PartialPath getSgPath() {
     return sgPath;
+  }
+
+  public String getTsFilePath() {
+    return tsFilePath;
   }
 }
