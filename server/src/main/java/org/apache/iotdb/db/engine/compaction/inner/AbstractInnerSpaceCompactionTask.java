@@ -55,6 +55,9 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     selectedFileSize = 0L;
     sumOfCompactionCount = 0;
     maxFileVersion = -1L;
+    if (selectedTsFileResourceList == null) {
+      return;
+    }
     for (TsFileResource resource : selectedTsFileResourceList) {
       try {
         selectedFileSize += resource.getTsFileSize();
