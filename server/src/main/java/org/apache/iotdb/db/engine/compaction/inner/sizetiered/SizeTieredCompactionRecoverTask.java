@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -123,10 +122,10 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
       LOGGER.error("recover inner space compaction error", e);
     } finally {
       if (compactionLogFile.exists()) {
-        try {
-          Files.delete(compactionLogFile.toPath());
-        } catch (IOException e) {
-          LOGGER.error("delete inner space compaction log file error", e);
+        if (!compactionLogFile.delete()) {
+          LOGGER.warn("fail to delete {}", compactionLogFile);
+        } else {
+          LOGGER.info("delete compaction log {}", compactionLogFile);
         }
       }
     }

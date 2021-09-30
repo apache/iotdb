@@ -103,4 +103,15 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     }
     return true;
   }
+
+  @Override
+  public String toString() {
+    return new StringBuilder()
+        .append(fullStorageGroupName)
+        .append("-")
+        .append(timePartition)
+        .append(" task file num is ")
+        .append(selectedTsFileResourceList.size())
+        .toString();
+  }
 }

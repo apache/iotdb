@@ -80,4 +80,17 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
 
     return true;
   }
+
+  @Override
+  public String toString() {
+    return new StringBuilder()
+        .append(fullStorageGroupName)
+        .append("-")
+        .append(timePartition)
+        .append(" task seq file num is ")
+        .append(selectedSequenceFiles.size())
+        .append(" , unseq file num is ")
+        .append(selectedUnsequenceFiles.size())
+        .toString();
+  }
 }

@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
-  private static final Logger logger = LoggerFactory.getLogger(CompactionTaskManager.class);
+  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
   private ScheduledThreadPoolExecutor taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
@@ -179,6 +179,11 @@ public class CompactionTaskManager implements IService {
       AbstractCompactionTask task = compactionTaskQueue.poll();
       if (task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
+        logger.info(
+            "submit a compaction task {}, current task num is {}, max task num is {}",
+            task,
+            currentTaskNum.get(),
+            IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
       }
     }
   }
