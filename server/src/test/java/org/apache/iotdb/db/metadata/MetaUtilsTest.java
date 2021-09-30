@@ -83,8 +83,7 @@ public class MetaUtilsTest {
     }
 
     try {
-      String[] nodes = MetaUtils.splitPathToDetachedPath("root.sg.d1.");
-      System.out.println(nodes[nodes.length - 1]);
+      MetaUtils.splitPathToDetachedPath("root.sg.d1.");
       fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root.sg.d1. is not a legal path", e.getMessage());
