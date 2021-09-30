@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -32,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -94,12 +96,24 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         CompactionTaskManager.getInstance().getTaskCount(),
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     int submitTaskNum = 0;
+    int currentCompactionCount = 0;
     try {
       // traverse the tsfile from new to old
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
       LOGGER.debug("Current file list is {}", tsFileResources.getArrayList());
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
+        TsFileNameGenerator.TsFileName currentName =
+            TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
+        if (currentName.getInnerCompactionCnt() != currentCompactionCount) {
+          if (selectedFileList.size() > 1 && meetBigFile) {
+            notFullCompactionQueue.add(
+                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+          }
+          selectedFileList.clear();
+          selectedFileSize = 0L;
+          currentCompactionCount = currentName.getInnerCompactionCnt();
+        }
         LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
         // if no available thread for new compaction task
         // or compaction of current type is disable
@@ -184,6 +198,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
           logicalStorageGroupName + "-" + virtualStorageGroupName,
           submitTaskNum);
+      return taskSubmitted;
+    } catch (IOException e) {
+      e.printStackTrace();
       return taskSubmitted;
     } finally {
       tsFileResources.readUnlock();
