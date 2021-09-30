@@ -19,7 +19,8 @@
 package org.apache.iotdb.cluster.query.reader.mult;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -30,6 +31,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -44,7 +46,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -183,10 +184,11 @@ public class RemoteMultSeriesReaderTest {
 
   private void setAsyncDataClient() {
     ClusterIoTDB.getInstance()
-        .setClientProvider(
-            new DataClientProvider(new Factory()) {
+        .setClientManager(
+            new IClientManager() {
               @Override
-              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
                 return new AsyncDataClient(null, null, node, null) {
                   @Override
                   public void fetchMultSeries(
@@ -233,15 +235,34 @@ public class RemoteMultSeriesReaderTest {
                   }
                 };
               }
+
+              @Override
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+                return null;
+              }
+
+              @Override
+              public void returnAsyncClient(
+                  RaftService.AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
             });
   }
 
   private void setSyncDataClient() {
     ClusterIoTDB.getInstance()
-        .setClientProvider(
-            new DataClientProvider(new Factory()) {
+        .setClientManager(
+            new IClientManager() {
               @Override
-              public SyncDataClient getSyncDataClient(Node node, int timeout) {
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
+                return null;
+              }
+
+              @Override
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
                 return new SyncDataClient(null) {
                   @Override
                   public Map<String, ByteBuffer> fetchMultSeries(
@@ -275,6 +296,14 @@ public class RemoteMultSeriesReaderTest {
                   }
                 };
               }
+
+              @Override
+              public void returnAsyncClient(
+                  RaftService.AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
             });
   }
 

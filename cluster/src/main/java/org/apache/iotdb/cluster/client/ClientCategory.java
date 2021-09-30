@@ -17,34 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.common;
+package org.apache.iotdb.cluster.client;
 
-import org.apache.iotdb.cluster.client.ClientCategory;
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+public enum ClientCategory {
+  META("MetaClient"),
+  META_HEARTBEAT("MetaHeartbeatClient"),
+  DATA("DataClient"),
+  DATA_HEARTBEAT("DataHeartbeatClient"),
+  DATA_ASYNC_APPEND_CLIENT("DataAsyncAppendClient");
 
-import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
+  private String name;
 
-import java.io.IOException;
-
-public class TestAsyncMetaClient extends AsyncMetaClient {
-
-  private Node node;
-
-  public TestAsyncMetaClient(
-      TProtocolFactory protocolFactory, TAsyncClientManager clientManager, Node node)
-      throws IOException {
-    super(protocolFactory, clientManager, node, ClientCategory.META);
-    this.node = node;
+  ClientCategory(String name) {
+    this.name = name;
   }
 
-  @Override
-  public Node getNode() {
-    return node;
-  }
-
-  public void setNode(Node node) {
-    this.node = node;
+  public String getName() {
+    return name;
   }
 }

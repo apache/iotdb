@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -138,6 +137,8 @@ public class RemoteSimpleSeriesReader implements IPointReader {
         Thread.currentThread().interrupt();
         logger.warn("Query {} interrupted", sourceInfo);
         return null;
+      } catch (Exception e) {
+        throw new IOException(e);
       }
     }
     return fetchResult.get();
@@ -157,10 +158,10 @@ public class RemoteSimpleSeriesReader implements IPointReader {
         return null;
       }
       return fetchResultSync();
+    } catch (Exception e) {
+      throw new IOException(e);
     } finally {
-      if (curSyncClient != null) {
-        ClientUtils.putBackSyncClient(curSyncClient);
-      }
+      if (curSyncClient != null) curSyncClient.returnSelf();
     }
   }
 

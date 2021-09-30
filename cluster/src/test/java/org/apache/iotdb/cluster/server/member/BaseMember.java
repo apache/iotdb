@@ -20,8 +20,7 @@
 package org.apache.iotdb.cluster.server.member;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.DataClientProvider;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
@@ -59,7 +58,6 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 
@@ -236,15 +234,6 @@ public class BaseMember {
           }
 
           @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            try {
-              return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException e) {
-              return null;
-            }
-          }
-
-          @Override
           public AsyncClient getSendLogAsyncClient(Node node) {
             return getAsyncClient(node);
           }
@@ -294,7 +283,7 @@ public class BaseMember {
           @Override
           public AsyncClient getAsyncClient(Node node) {
             try {
-              return new TestAsyncMetaClient(null, null, node, null) {
+              return new TestAsyncMetaClient(null, null, node) {
                 @Override
                 public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
                   new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
@@ -318,15 +307,12 @@ public class BaseMember {
     ret.setLeader(node);
     ret.setCharacter(NodeCharacter.LEADER);
     ret.setAppendLogThreadPool(testThreadPool);
-    // TODO fixme : 恢复正常的provider
+    // TODO fixme : restore normal provider
     ClusterIoTDB.getInstance()
-        .setClientProvider(
-            new DataClientProvider(new Factory()) {
-              @Override
-              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-                return new TestAsyncDataClient(node, dataGroupMemberMap);
-              }
-            });
+        .setClientManager(
+            new ClientManager(
+                ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+                ClientManager.Type.RequestForwardClient));
     return ret;
   }
 }

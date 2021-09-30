@@ -20,13 +20,15 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -35,7 +37,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,10 +51,11 @@ public class DatasourceInfoTest {
   public void setUp() {
     metaGroupMember = new TestMetaGroupMember();
     ClusterIoTDB.getInstance()
-        .setClientProvider(
-            new DataClientProvider(new Factory()) {
+        .setClientManager(
+            new IClientManager() {
               @Override
-              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
                 return new AsyncDataClient(null, null, TestUtils.getNode(0), null) {
                   @Override
                   public void querySingleSeries(
@@ -63,6 +65,19 @@ public class DatasourceInfoTest {
                   }
                 };
               }
+
+              @Override
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+                return null;
+              }
+
+              @Override
+              public void returnAsyncClient(
+                  RaftService.AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
             });
   }
 

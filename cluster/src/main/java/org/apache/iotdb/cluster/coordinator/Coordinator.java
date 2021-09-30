@@ -34,7 +34,6 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -68,7 +67,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -742,7 +740,7 @@ public class Coordinator {
         } else {
           status = forwardDataPlanSync(plan, node, group.getHeader());
         }
-      } catch (IOException e) {
+      } catch (Exception e) {
         status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
@@ -766,49 +764,31 @@ public class Coordinator {
    * @return a TSStatus indicating if the forwarding is successful.
    */
   private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
-      throws IOException {
-    RaftService.AsyncClient client =
+      throws Exception {
+    AsyncDataClient client =
         ClusterIoTDB.getInstance()
-            .getClientProvider()
             .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
     return this.metaGroupMember.forwardPlanAsync(plan, receiver, header, client);
   }
 
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
-      throws IOException {
-    RaftService.Client client;
+      throws Exception {
+    SyncDataClient client = null;
     try {
       client =
           ClusterIoTDB.getInstance()
-              .getClientProvider()
               .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
-    } catch (TException e) {
-      throw new IOException(e);
-    }
-    return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
-  }
 
-  /**
-   * Get a thrift client that will connect to "node" using the data port.
-   *
-   * @param node the node to be connected
-   * @param timeout timeout threshold of connection
-   */
-  public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-    return ClusterIoTDB.getInstance().getClientProvider().getAsyncDataClient(node, timeout);
+      return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
+    } catch (TException e) {
+      client.close();
+      throw e;
+    } finally {
+      if (client != null) client.returnSelf();
+    }
   }
 
   public Node getThisNode() {
     return thisNode;
-  }
-
-  /**
-   * Get a thrift client that will connect to "node" using the data port.
-   *
-   * @param node the node to be connected
-   * @param timeout timeout threshold of connection
-   */
-  public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
-    return ClusterIoTDB.getInstance().getClientProvider().getSyncDataClient(node, timeout);
   }
 }

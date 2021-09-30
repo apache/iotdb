@@ -20,9 +20,11 @@
 package org.apache.iotdb.cluster.server.member;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
-import org.apache.iotdb.cluster.client.sync.SyncClientPool;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -55,6 +57,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
@@ -202,15 +205,10 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
   /**
-   * the pool that provides reusable Thrift clients to connect to other RaftMembers and execute RPC
-   * requests. It will be initialized according to the implementation of the subclasses
+   * client manager that provides reusable Thrift clients to connect to other RaftMembers and
+   * execute RPC requests. It will be initialized according to the implementation of the subclasses
    */
-  private AsyncClientPool asyncClientPool;
-
-  private AsyncClientPool asyncSendLogClientPool;
-  private SyncClientPool syncClientPool;
-  private AsyncClientPool asyncHeartbeatClientPool;
-  private SyncClientPool syncHeartbeatClientPool;
+  private ClientManager clientManager;
   /**
    * when the commit progress is updated by a heartbeat, this object is notified so that we may know
    * if this node is up-to-date with the leader, and whether the given consistency is reached
@@ -246,33 +244,9 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   protected RaftMember() {}
 
-  protected RaftMember(
-      String name,
-      AsyncClientPool asyncPool,
-      SyncClientPool syncPool,
-      AsyncClientPool asyncHeartbeatPool,
-      SyncClientPool syncHeartbeatPool) {
+  protected RaftMember(String name, ClientManager clientManager) {
     this.name = name;
-    this.asyncClientPool = asyncPool;
-    this.syncClientPool = syncPool;
-    this.asyncHeartbeatClientPool = asyncHeartbeatPool;
-    this.syncHeartbeatClientPool = syncHeartbeatPool;
-    this.asyncSendLogClientPool = asyncClientPool;
-  }
-
-  protected RaftMember(
-      String name,
-      AsyncClientPool asyncPool,
-      SyncClientPool syncPool,
-      AsyncClientPool asyncHeartbeatPool,
-      SyncClientPool syncHeartbeatPool,
-      AsyncClientPool asyncSendLogClientPool) {
-    this.name = name;
-    this.asyncClientPool = asyncPool;
-    this.syncClientPool = syncPool;
-    this.asyncHeartbeatClientPool = asyncHeartbeatPool;
-    this.syncHeartbeatClientPool = syncHeartbeatPool;
-    this.asyncSendLogClientPool = asyncSendLogClientPool;
+    this.clientManager = clientManager;
   }
 
   /**
@@ -597,24 +571,6 @@ public abstract class RaftMember implements RaftMemberMBean {
     return localExecutor;
   }
 
-  /**
-   * Get an asynchronous heartbeat thrift client to the given node.
-   *
-   * @return an asynchronous thrift client or null if the caller tries to connect the local node.
-   */
-  public AsyncClient getAsyncHeartbeatClient(Node node) {
-    return getAsyncClient(node, asyncHeartbeatClientPool, false);
-  }
-
-  /**
-   * NOTICE: client.putBack() must be called after use.
-   *
-   * @return the heartbeat client for the node
-   */
-  public Client getSyncHeartbeatClient(Node node) {
-    return getSyncClient(syncHeartbeatClientPool, node, false);
-  }
-
   public void sendLogAsync(
       Log log,
       AtomicInteger voteCounter,
@@ -634,14 +590,6 @@ public abstract class RaftMember implements RaftMemberMBean {
         logger.warn("{} cannot append log to node {}", name, node, e);
       }
     }
-  }
-
-  private Client getSyncClient(SyncClientPool pool, Node node, boolean activatedOnly) {
-    if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
-      return null;
-    }
-
-    return pool.getClient(node, activatedOnly);
   }
 
   public NodeCharacter getCharacter() {
@@ -773,6 +721,8 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return A TSStatus indicating the execution result.
    */
   abstract TSStatus executeNonQueryPlan(PhysicalPlan plan);
+
+  abstract ClientCategory getClientCategory();
 
   /**
    * according to the consistency configuration, decide whether to execute syncLeader or not and
@@ -1426,6 +1376,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (TException e) {
+      client.getInputProtocol().getTransport().close();
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;
@@ -1449,42 +1400,94 @@ public abstract class RaftMember implements RaftMemberMBean {
    *     the node cannot be reached.
    */
   public AsyncClient getAsyncClient(Node node) {
-    return getAsyncClient(node, asyncClientPool, true);
-  }
-
-  public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-    return getAsyncClient(node, asyncClientPool, activatedOnly);
+    try {
+      return clientManager.borrowAsyncClient(node, getClientCategory());
+    } catch (Exception e) {
+      logger.error("borrow async client fail", e);
+      return null;
+    }
   }
 
   public AsyncClient getSendLogAsyncClient(Node node) {
-    return getAsyncClient(node, asyncSendLogClientPool, true);
-  }
-
-  private AsyncClient getAsyncClient(Node node, AsyncClientPool pool, boolean activatedOnly) {
-    if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
-      return null;
-    }
     try {
-      return pool.getClient(node, activatedOnly);
-    } catch (IOException e) {
-      logger.warn("{} cannot connect to node {}", name, node, e);
+      return clientManager.borrowAsyncClient(node, ClientCategory.DATA_ASYNC_APPEND_CLIENT);
+    } catch (Exception e) {
+      logger.error("borrow send log async client fail", e);
       return null;
     }
   }
 
   /**
-   * NOTICE: client.putBack() must be called after use. the caller needs to check to see if the
-   * return value is null
+   * NOTICE: ClientManager.returnClient() must be called after use. the caller needs to check to see
+   * if the return value is null
    *
    * @param node the node to connect
    * @return the client if node is available, otherwise null
    */
   public Client getSyncClient(Node node) {
-    return getSyncClient(syncClientPool, node, true);
+    try {
+      return clientManager.borrowSyncClient(node, getClientCategory());
+    } catch (Exception e) {
+      logger.error("borrow sync client fail", e);
+      return null;
+    }
   }
 
   public Client getSyncClient(Node node, boolean activatedOnly) {
-    return getSyncClient(syncClientPool, node, activatedOnly);
+    if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
+      return null;
+    }
+
+    if (activatedOnly && !NodeStatusManager.getINSTANCE().isActivated(node)) {
+      return null;
+    }
+
+    return getSyncClient(node);
+  }
+
+  /**
+   * Get an asynchronous heartbeat thrift client to the given node.
+   *
+   * @return an asynchronous thrift client or null if the caller tries to connect the local node.
+   */
+  public AsyncClient getAsyncHeartbeatClient(Node node) {
+    ClientCategory category =
+        ClientCategory.META == getClientCategory()
+            ? ClientCategory.META_HEARTBEAT
+            : ClientCategory.DATA_HEARTBEAT;
+
+    try {
+      return clientManager.borrowAsyncClient(node, category);
+    } catch (Exception e) {
+      logger.error("borrow async heartbeat client fail", e);
+      return null;
+    }
+  }
+
+  /**
+   * NOTICE: client.putBack() must be called after use.
+   *
+   * @return the heartbeat client for the node
+   */
+  public Client getSyncHeartbeatClient(Node node) {
+    ClientCategory category =
+        ClientCategory.META == getClientCategory()
+            ? ClientCategory.META_HEARTBEAT
+            : ClientCategory.DATA_HEARTBEAT;
+    try {
+      return clientManager.borrowSyncClient(node, category);
+    } catch (Exception e) {
+      logger.error("borrow sync heartbeat client fail", e);
+      return null;
+    }
+  }
+
+  public void returnSyncClient(Client client) {
+    if (ClientCategory.META == getClientCategory()) {
+      ((SyncMetaClient) client).returnSelf();
+    } else {
+      ((SyncDataClient) client).returnSelf();
+    }
   }
 
   public AtomicLong getTerm() {

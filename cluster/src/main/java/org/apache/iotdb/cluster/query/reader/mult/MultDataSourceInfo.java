@@ -118,10 +118,10 @@ public class MultDataSourceInfo {
             return false;
           }
         }
-      } catch (TException | IOException e) {
-        logger.error("Cannot query {} from {}", this.request.path, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        logger.error("Cannot query {} from {}", this.request.path, node, e);
+      } catch (Exception e) {
         logger.error("Cannot query {} from {}", this.request.path, node, e);
       }
       nextNodePos = (nextNodePos + 1) % this.nodes.size();
@@ -140,19 +140,16 @@ public class MultDataSourceInfo {
     return partialPaths;
   }
 
-  private Long getReaderId(Node node, long timestamp)
-      throws TException, InterruptedException, IOException {
+  private Long getReaderId(Node node, long timestamp) throws Exception {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return applyForReaderIdAsync(node, timestamp);
     }
     return applyForReaderIdSync(node, timestamp);
   }
 
-  private Long applyForReaderIdAsync(Node node, long timestamp)
-      throws TException, InterruptedException, IOException {
+  private Long applyForReaderIdAsync(Node node, long timestamp) throws Exception {
     AsyncDataClient client =
         ClusterIoTDB.getInstance()
-            .getClientProvider()
             .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
@@ -174,14 +171,14 @@ public class MultDataSourceInfo {
     return result.get();
   }
 
-  private Long applyForReaderIdSync(Node node, long timestamp) throws TException {
+  private Long applyForReaderIdSync(Node node, long timestamp) throws Exception {
 
     Long newReaderId;
-    try (SyncDataClient client =
-        ClusterIoTDB.getInstance()
-            .getClientProvider()
-            .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
-
+    SyncDataClient client = null;
+    try {
+      client =
+          ClusterIoTDB.getInstance()
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       Filter newFilter;
       // add timestamp to as a timeFilter to skip the data which has been read
       if (request.isSetTimeFilterBytes()) {
@@ -191,14 +188,14 @@ public class MultDataSourceInfo {
         newFilter = TimeFilter.gt(timestamp);
       }
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
-      try {
-        newReaderId = client.queryMultSeries(request);
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        client.getInputProtocol().getTransport().close();
-        throw e;
-      }
+      newReaderId = client.queryMultSeries(request);
       return newReaderId;
+    } catch (TException e) {
+      // the connection may be broken, close it to avoid it being reused
+      client.close();
+      throw e;
+    } finally {
+      if (client != null) client.returnSelf();
     }
   }
 
@@ -214,18 +211,16 @@ public class MultDataSourceInfo {
     return partitionGroup.getHeader();
   }
 
-  AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
+  AsyncDataClient getCurAsyncClient(int timeout) throws Exception {
     return isNoClient
         ? null
-        : ClusterIoTDB.getInstance()
-            .getClientProvider()
-            .getAsyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getAsyncDataClient(this.curSource, timeout);
   }
 
-  SyncDataClient getCurSyncClient(int timeout) throws TException {
+  SyncDataClient getCurSyncClient(int timeout) throws Exception {
     return isNoClient
         ? null
-        : ClusterIoTDB.getInstance().getClientProvider().getSyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {

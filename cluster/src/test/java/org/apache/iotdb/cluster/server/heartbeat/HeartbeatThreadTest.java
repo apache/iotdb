@@ -83,11 +83,6 @@ public class HeartbeatThreadTest {
       }
 
       @Override
-      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-        return getClient(node);
-      }
-
-      @Override
       public AsyncClient getAsyncHeartbeatClient(Node node) {
         return getClient(node);
       }

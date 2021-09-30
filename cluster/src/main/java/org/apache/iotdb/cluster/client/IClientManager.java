@@ -17,28 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client.sync;
+package org.apache.iotdb.cluster.client;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
-import org.apache.thrift.transport.TTransportException;
+public interface IClientManager {
+  RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category) throws Exception;
 
-import java.io.IOException;
+  RaftService.Client borrowSyncClient(Node node, ClientCategory category) throws Exception;
 
-public interface SyncClientFactory {
+  void returnAsyncClient(RaftService.AsyncClient client, Node node, ClientCategory category);
 
-  /**
-   * Get a client which will connect the given node and be cached in the given pool.
-   *
-   * @param node the cluster node the client will connect.
-   * @param pool the pool that will cache the client for reusing.
-   * @return
-   * @throws IOException
-   */
-  RaftService.Client getSyncClient(Node node, SyncClientPool pool) throws TTransportException;
-
-  default String nodeInfo(Node node) {
-    return node.toString();
-  }
+  void returnSyncClient(RaftService.Client client, Node node, ClientCategory category);
 }

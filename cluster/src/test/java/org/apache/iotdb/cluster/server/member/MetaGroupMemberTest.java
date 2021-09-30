@@ -20,10 +20,8 @@
 package org.apache.iotdb.cluster.server.member;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.DataClientProvider;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
-import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
@@ -110,7 +108,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
 import org.junit.Assert;
@@ -389,14 +386,9 @@ public class MetaGroupMemberTest extends BaseMember {
             return getClient(node);
           }
 
-          @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            return getClient(node);
-          }
-
           AsyncClient getClient(Node node) {
             try {
-              return new TestAsyncMetaClient(null, null, node, null) {
+              return new TestAsyncMetaClient(null, null, node) {
                 @Override
                 public void startElection(
                     ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
@@ -543,15 +535,12 @@ public class MetaGroupMemberTest extends BaseMember {
     metaGroupMember.setAllNodes(allNodes);
     metaGroupMember.setCharacter(NodeCharacter.LEADER);
     metaGroupMember.setAppendLogThreadPool(testThreadPool);
-    // TODO fixme : 恢复正常的provider
+    // TODO fixme : restore normal provider
     ClusterIoTDB.getInstance()
-        .setClientProvider(
-            new DataClientProvider(new TBinaryProtocol.Factory()) {
-              @Override
-              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-                return new TestAsyncDataClient(node, dataGroupMemberMap);
-              }
-            });
+        .setClientManager(
+            new ClientManager(
+                ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+                ClientManager.Type.RequestForwardClient));
     return metaGroupMember;
   }
 

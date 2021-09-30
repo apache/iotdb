@@ -17,34 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.common;
+package org.apache.iotdb.cluster.client;
 
-import org.apache.iotdb.cluster.client.ClientCategory;
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
-import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
+public abstract class MockClientManager implements IClientManager {
 
-import java.io.IOException;
+  RaftService.AsyncClient asyncClient;
+  RaftService.Client syncClient;
 
-public class TestAsyncMetaClient extends AsyncMetaClient {
+  public void setAsyncClient(RaftService.AsyncClient asyncClient) {
+    this.asyncClient = asyncClient;
+  }
 
-  private Node node;
-
-  public TestAsyncMetaClient(
-      TProtocolFactory protocolFactory, TAsyncClientManager clientManager, Node node)
-      throws IOException {
-    super(protocolFactory, clientManager, node, ClientCategory.META);
-    this.node = node;
+  public void setSyncClient(RaftService.Client client) {
+    this.syncClient = client;
   }
 
   @Override
-  public Node getNode() {
-    return node;
+  public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category) {
+    return null;
   }
 
-  public void setNode(Node node) {
-    this.node = node;
+  @Override
+  public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+    return null;
   }
 }

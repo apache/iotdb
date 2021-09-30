@@ -175,26 +175,26 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       } catch (TException | InterruptedException e) {
         logger.error("Failed to fetch result async, connect to {}", sourceInfo, e);
         return null;
+      } catch (Exception e) {
+        throw new IOException(e);
       }
     }
     return fetchResult.get();
   }
 
   private Map<String, ByteBuffer> fetchResultSync(List<String> paths) throws IOException {
-
-    try (SyncDataClient curSyncClient =
-        sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS()); ) {
-      try {
-        return curSyncClient.fetchMultSeries(
-            sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        curSyncClient.getInputProtocol().getTransport().close();
-        throw e;
-      }
+    SyncDataClient curSyncClient = null;
+    try {
+      curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
+      return curSyncClient.fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
     } catch (TException e) {
+      curSyncClient.close();
       logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
       return null;
+    } catch (Exception e) {
+      throw new IOException(e);
+    } finally {
+      if (curSyncClient != null) curSyncClient.returnSelf();
     }
   }
 

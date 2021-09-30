@@ -20,7 +20,8 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -29,6 +30,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -40,7 +42,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -72,12 +73,13 @@ public class RemoteSimpleSeriesReaderTest {
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember();
-    // TODO fixme : 恢复正常的provider
+    // TODO fixme : restore normal provider
     ClusterIoTDB.getInstance()
-        .setClientProvider(
-            new DataClientProvider(new Factory()) {
+        .setClientManager(
+            new IClientManager() {
               @Override
-              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
                 return new AsyncDataClient(null, null, node, null) {
                   @Override
                   public void fetchSingleSeries(
@@ -117,6 +119,19 @@ public class RemoteSimpleSeriesReaderTest {
                   }
                 };
               }
+
+              @Override
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+                return null;
+              }
+
+              @Override
+              public void returnAsyncClient(
+                  RaftService.AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
             });
   }
 

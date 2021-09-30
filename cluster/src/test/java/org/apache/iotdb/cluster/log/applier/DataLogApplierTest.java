@@ -20,13 +20,10 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.common.IoTDBTest;
-import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
-import org.apache.iotdb.cluster.common.TestDataGroupMember;
-import org.apache.iotdb.cluster.common.TestMetaGroupMember;
-import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.common.*;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -34,13 +31,8 @@ import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.*;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -79,7 +71,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import junit.framework.TestCase;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -126,14 +117,9 @@ public class DataLogApplierTest extends IoTDBTest {
         }
 
         @Override
-        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-          return getAsyncClient(node);
-        }
-
-        @Override
         public AsyncClient getAsyncClient(Node node) {
           try {
-            return new TestAsyncMetaClient(null, null, node, null) {
+            return new TestAsyncMetaClient(null, null, node) {
               @Override
               public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
                 new Thread(
@@ -183,75 +169,96 @@ public class DataLogApplierTest extends IoTDBTest {
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
     isPartitionEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
-    //    //TODO fixme : 恢复正常的provider
+    // TODO fixme: restore normal provider
     ClusterIoTDB.getInstance()
-        .setClientProvider(
-            new DataClientProvider(new Factory()) {
+        .setClientManager(
+            new IClientManager() {
               @Override
-              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-                return new AsyncDataClient(null, null, node, null) {
-                  @Override
-                  public void getAllPaths(
-                      RaftNode header,
-                      List<String> path,
-                      boolean withAlias,
-                      AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-                    new Thread(
-                            () ->
-                                new DataAsyncService(testDataGroupMember)
-                                    .getAllPaths(header, path, withAlias, resultHandler))
-                        .start();
-                  }
+              public AsyncClient borrowAsyncClient(Node node, ClientCategory category) {
+                try {
+                  AsyncDataClient dataClient =
+                      new AsyncDataClient(null, null, node, ClientCategory.DATA) {
+                        @Override
+                        public void getAllPaths(
+                            RaftNode header,
+                            List<String> path,
+                            boolean withAlias,
+                            AsyncMethodCallback<GetAllPathsResult> resultHandler) {
+                          new Thread(
+                                  () ->
+                                      new DataAsyncService(testDataGroupMember)
+                                          .getAllPaths(header, path, withAlias, resultHandler))
+                              .start();
+                        }
 
-                  @Override
-                  public void pullTimeSeriesSchema(
-                      PullSchemaRequest request,
-                      AsyncMethodCallback<PullSchemaResp> resultHandler) {
-                    new Thread(
-                            () -> {
-                              List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
-                              for (String path : request.prefixPaths) {
-                                if (path.startsWith(TestUtils.getTestSg(4))) {
-                                  for (int i = 0; i < 10; i++) {
-                                    timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(4, i));
-                                  }
-                                } else if (!path.startsWith(TestUtils.getTestSg(5))) {
-                                  resultHandler.onError(new StorageGroupNotSetException(path));
-                                  return;
-                                }
-                              }
-                              PullSchemaResp resp = new PullSchemaResp();
-                              // serialize the schemas
-                              ByteArrayOutputStream byteArrayOutputStream =
-                                  new ByteArrayOutputStream();
-                              DataOutputStream dataOutputStream =
-                                  new DataOutputStream(byteArrayOutputStream);
-                              try {
-                                dataOutputStream.writeInt(timeseriesSchemas.size());
-                                for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-                                  timeseriesSchema.serializeTo(dataOutputStream);
-                                }
-                              } catch (IOException ignored) {
-                                // unreachable for we are using a ByteArrayOutputStream
-                              }
-                              resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
-                              resultHandler.onComplete(resp);
-                            })
-                        .start();
-                  }
+                        @Override
+                        public void pullTimeSeriesSchema(
+                            PullSchemaRequest request,
+                            AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                          new Thread(
+                                  () -> {
+                                    List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
+                                    for (String path : request.prefixPaths) {
+                                      if (path.startsWith(TestUtils.getTestSg(4))) {
+                                        for (int i = 0; i < 10; i++) {
+                                          timeseriesSchemas.add(
+                                              TestUtils.getTestTimeSeriesSchema(4, i));
+                                        }
+                                      } else if (!path.startsWith(TestUtils.getTestSg(5))) {
+                                        resultHandler.onError(
+                                            new StorageGroupNotSetException(path));
+                                        return;
+                                      }
+                                    }
+                                    PullSchemaResp resp = new PullSchemaResp();
+                                    // serialize the schemas
+                                    ByteArrayOutputStream byteArrayOutputStream =
+                                        new ByteArrayOutputStream();
+                                    DataOutputStream dataOutputStream =
+                                        new DataOutputStream(byteArrayOutputStream);
+                                    try {
+                                      dataOutputStream.writeInt(timeseriesSchemas.size());
+                                      for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+                                        timeseriesSchema.serializeTo(dataOutputStream);
+                                      }
+                                    } catch (IOException ignored) {
+                                      // unreachable for we are using a ByteArrayOutputStream
+                                    }
+                                    resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
+                                    resultHandler.onComplete(resp);
+                                  })
+                              .start();
+                        }
 
-                  @Override
-                  public void pullMeasurementSchema(
-                      PullSchemaRequest request,
-                      AsyncMethodCallback<PullSchemaResp> resultHandler) {
-                    new Thread(
-                            () ->
-                                new DataAsyncService(testDataGroupMember)
-                                    .pullMeasurementSchema(request, resultHandler))
-                        .start();
-                  }
-                };
+                        @Override
+                        public void pullMeasurementSchema(
+                            PullSchemaRequest request,
+                            AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                          new Thread(
+                                  () ->
+                                      new DataAsyncService(testDataGroupMember)
+                                          .pullMeasurementSchema(request, resultHandler))
+                              .start();
+                        }
+                      };
+                  return dataClient;
+                } catch (Exception e) {
+                  return null;
+                }
               }
+
+              @Override
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+                return null;
+              }
+
+              @Override
+              public void returnAsyncClient(
+                  AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
             });
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(testMetaGroupMember);
     testDataGroupMember.setMetaGroupMember(testMetaGroupMember);

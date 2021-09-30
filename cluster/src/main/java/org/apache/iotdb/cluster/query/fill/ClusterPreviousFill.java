@@ -219,18 +219,10 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteAsyncPreviousFill(
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    AsyncDataClient asyncDataClient;
     try {
-      asyncDataClient =
+      AsyncDataClient asyncDataClient =
           ClusterIoTDB.getInstance()
-              .getClientProvider()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-    } catch (IOException e) {
-      logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
-      return null;
-    }
-
-    try {
       byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
     } catch (Exception e) {
       logger.error(
@@ -246,17 +238,22 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteSyncPreviousFill(
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    try (SyncDataClient syncDataClient =
-        ClusterIoTDB.getInstance()
-            .getClientProvider()
-            .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
-      try {
-        byteBuffer = syncDataClient.previousFill(request);
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        syncDataClient.getInputProtocol().getTransport().close();
-        throw e;
-      }
+    SyncDataClient syncDataClient = null;
+    try {
+      syncDataClient =
+          ClusterIoTDB.getInstance()
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      byteBuffer = syncDataClient.previousFill(request);
+
+    } catch (TException e) {
+      // the connection may be broken, close it to avoid it being reused
+      syncDataClient.close();
+      logger.error(
+          "{}: Cannot perform previous fill of {} to {}",
+          metaGroupMember.getName(),
+          arguments.getPath(),
+          node,
+          e);
     } catch (Exception e) {
       logger.error(
           "{}: Cannot perform previous fill of {} to {}",
@@ -264,6 +261,8 @@ public class ClusterPreviousFill extends PreviousFill {
           arguments.getPath(),
           node,
           e);
+    } finally {
+      if (syncDataClient != null) syncDataClient.returnSelf();
     }
     return byteBuffer;
   }

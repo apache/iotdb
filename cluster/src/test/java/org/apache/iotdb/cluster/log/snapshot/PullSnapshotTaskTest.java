@@ -96,11 +96,6 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     sourceMember =
         new TestDataGroupMember() {
           @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            return getAsyncClient(node);
-          }
-
-          @Override
           public AsyncClient getAsyncClient(Node node) {
             try {
               return new TestAsyncDataClient(node, null) {

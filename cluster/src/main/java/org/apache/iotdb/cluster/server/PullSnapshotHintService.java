@@ -135,15 +135,25 @@ public class PullSnapshotHintService {
   private boolean sendHintsAsync(Node receiver, PullSnapshotHint hint)
       throws TException, InterruptedException {
     AsyncDataClient asyncDataClient = (AsyncDataClient) member.getAsyncClient(receiver);
+    if (asyncDataClient == null) {
+      return false;
+    }
     return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.getHeader(), hint.slots);
   }
 
   private boolean sendHintSync(Node receiver, PullSnapshotHint hint) throws TException {
-    try (SyncDataClient syncDataClient = (SyncDataClient) member.getSyncClient(receiver)) {
+    SyncDataClient syncDataClient = null;
+    try {
+      syncDataClient = (SyncDataClient) member.getSyncClient(receiver);
       if (syncDataClient == null) {
         return false;
       }
       return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.slots);
+    } catch (TException e) {
+      syncDataClient.close();
+      throw e;
+    } finally {
+      if (syncDataClient != null) syncDataClient.returnSelf();
     }
   }
 

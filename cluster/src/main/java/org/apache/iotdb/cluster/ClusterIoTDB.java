@@ -18,9 +18,13 @@
  */
 package org.apache.iotdb.cluster;
 
-import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.ClientManager;
+import org.apache.iotdb.cluster.client.IClientManager;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -123,10 +127,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread;
 
-  // currently, dataClientProvider is only used for those instances who do not belong to any
+  // currently, clientManager is only used for those instances who do not belong to any
   // DataGroup..
-  // TODO: however, why not let all dataGroupMembers getting clients from dataClientProvider
-  private DataClientProvider dataClientProvider;
+  private IClientManager clientManager;
 
   private ClusterIoTDB() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -155,7 +158,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     MetaPuller.getInstance().init(metaGroupEngine);
 
     dataGroupEngine = new DataGroupServiceImpls(protocolFactory, metaGroupEngine);
-    dataClientProvider = new DataClientProvider(protocolFactory);
+    clientManager =
+        new ClientManager(
+            ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+            ClientManager.Type.RequestForwardClient);
     initTasks();
     try {
       // we need to check config after initLocalEngines.
@@ -532,11 +538,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
         });
   }
 
-  //  @TestOnly
-  //  public void setMetaClusterServer(MetaGroupMember RaftTSMetaServiceImpl) {
-  //    metaServer = RaftTSMetaServiceImpl;
-  //  }
-
   public void stop() {
     deactivate();
   }
@@ -568,13 +569,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
-  public DataClientProvider getClientProvider() {
-    return dataClientProvider;
-  }
-
   @TestOnly
-  public void setClientProvider(DataClientProvider dataClientProvider) {
-    this.dataClientProvider = dataClientProvider;
+  public void setClientManager(IClientManager clientManager) {
+    this.clientManager = clientManager;
   }
 
   public MetaGroupMember getMetaGroupEngine() {
@@ -633,6 +630,25 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   @Override
   public void disablePrintClientConnectionErrorStack() {
     printClientConnectionErrorStack = false;
+  }
+
+  public SyncDataClient getSyncDataClient(Node node, int readOperationTimeoutMS) throws Exception {
+    SyncDataClient dataClient =
+        (SyncDataClient) clientManager.borrowSyncClient(node, ClientCategory.DATA);
+    if (dataClient != null) {
+      dataClient.setTimeout(readOperationTimeoutMS);
+    }
+    return dataClient;
+  }
+
+  public AsyncDataClient getAsyncDataClient(Node node, int readOperationTimeoutMS)
+      throws Exception {
+    AsyncDataClient dataClient =
+        (AsyncDataClient) clientManager.borrowAsyncClient(node, ClientCategory.DATA);
+    if (dataClient != null) {
+      dataClient.setTimeout(readOperationTimeoutMS);
+    }
+    return dataClient;
   }
 
   private static class ClusterIoTDBHolder {

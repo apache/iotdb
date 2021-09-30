@@ -19,13 +19,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.SingleManagerFactory;
-import org.apache.iotdb.cluster.client.async.AsyncDataHeartbeatClient;
-import org.apache.iotdb.cluster.client.sync.SyncClientPool;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -208,11 +203,9 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "-raftId-"
             + nodes.getId()
             + "",
-        new AsyncClientPool(new AsyncDataClient.Factory(factory)),
-        new SyncClientPool(new SyncDataClient.Factory(factory)),
-        new AsyncClientPool(new AsyncDataHeartbeatClient.Factory(factory)),
-        new SyncClientPool(new SyncDataHeartbeatClient.Factory(factory)),
-        new AsyncClientPool(new SingleManagerFactory(factory)));
+        new ClientManager(
+            ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+            ClientManager.Type.DataGroupClient));
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     mbeanName =
@@ -768,6 +761,11 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
 
       return executeNonQueryPlanWithKnownLeader(plan);
     }
+  }
+
+  @Override
+  ClientCategory getClientCategory() {
+    return ClientCategory.DATA;
   }
 
   @Override
