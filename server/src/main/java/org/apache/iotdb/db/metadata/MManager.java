@@ -1173,7 +1173,7 @@ public class MManager {
         config.isAutoCreateSchemaEnabled(),
         true,
         config.getDefaultStorageGroupLevel(),
-        false);
+        isLock);
   }
 
   @TestOnly
