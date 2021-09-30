@@ -32,7 +32,6 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.RedirectException;
@@ -167,9 +166,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       }
 
       // for tracing: try to calculate the number of series paths
-      SessionManager sessionManager = SessionManager.getInstance();
-      long statementId = sessionManager.getStatementIdByQueryId(context.getQueryId());
-      if (sessionManager.isEnableTracing(statementId)) {
+      if (context.isEnableTracing()) {
         pathsNum += executeColumns.size();
       }
 

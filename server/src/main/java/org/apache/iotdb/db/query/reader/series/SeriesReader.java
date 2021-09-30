@@ -368,16 +368,17 @@ public class SeriesReader {
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
 
     // for tracing: try to calculate the number of chunk and time-value points in chunk
-    SessionManager sessionManager = SessionManager.getInstance();
-    long statementId = sessionManager.getStatementIdByQueryId(context.getQueryId());
-    if (sessionManager.isEnableTracing(statementId)) {
+    if (context.isEnableTracing()) {
       long totalChunkPointsNum =
           chunkMetadataList.stream()
               .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
               .sum();
       TracingManager.getInstance()
-          .getTracingInfo(statementId)
-          .addChunkInfo(chunkMetadataList.size(), totalChunkPointsNum, timeSeriesMetadata.isSeq());
+          .addChunkInfo(
+              context.getQueryId(),
+              chunkMetadataList.size(),
+              totalChunkPointsNum,
+              timeSeriesMetadata.isSeq());
     }
 
     cachedChunkMetadata.addAll(chunkMetadataList);
@@ -543,7 +544,7 @@ public class SeriesReader {
     // for tracing: try to calculate the number of pages
     SessionManager sessionManager = SessionManager.getInstance();
     long statementId = sessionManager.getStatementIdByQueryId(context.getQueryId());
-    if (sessionManager.isEnableTracing(statementId)) {
+    if (context.isEnableTracing()) {
       addTotalPageNumInTracing(statementId, pageReaderList.size());
     }
 
@@ -578,8 +579,8 @@ public class SeriesReader {
         });
   }
 
-  private void addTotalPageNumInTracing(long statementId, int pageNum) {
-    TracingManager.getInstance().getTracingInfo(statementId).addTotalPageNum(pageNum);
+  private void addTotalPageNumInTracing(long queryId, int pageNum) {
+    TracingManager.getInstance().addTotalPageNum(queryId, pageNum);
   }
 
   /**

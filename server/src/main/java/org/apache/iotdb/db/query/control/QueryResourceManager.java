@@ -94,12 +94,12 @@ public class QueryResourceManager {
         StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
 
     // for tracing: calculate the distinct number of seq and unseq tsfiles
-    SessionManager sessionManager = SessionManager.getInstance();
-    long statementId = sessionManager.getStatementIdByQueryId(context.getQueryId());
-    if (sessionManager.isEnableTracing(statementId)) {
+    if (context.isEnableTracing()) {
       TracingManager.getInstance()
-          .getTracingInfo(statementId)
-          .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
+          .addTsFileSet(
+              context.getQueryId(),
+              queryDataSource.getSeqResources(),
+              queryDataSource.getUnseqResources());
     }
     return queryDataSource;
   }

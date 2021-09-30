@@ -31,14 +31,12 @@ public abstract class Operator {
   protected int tokenIntType;
   // flag of "explain"
   protected boolean isDebug;
-  protected boolean enableTracing;
 
   protected OperatorType operatorType = OperatorType.NULL;
 
   protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
     this.isDebug = false;
-    this.enableTracing = false;
   }
 
   public OperatorType getType() {
@@ -63,14 +61,6 @@ public abstract class Operator {
 
   public void setDebug(boolean debug) {
     isDebug = debug;
-  }
-
-  public boolean isEnableTracing() {
-    return enableTracing;
-  }
-
-  public void setEnableTracing(boolean enableTracing) {
-    this.enableTracing = enableTracing;
   }
 
   @Override

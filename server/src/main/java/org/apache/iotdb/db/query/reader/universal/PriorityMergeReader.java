@@ -83,7 +83,7 @@ public class PriorityMergeReader implements IPointReader {
       // for tracing: try to calculate the number of overlapped pages
       SessionManager sessionManager = SessionManager.getInstance();
       long statementId = sessionManager.getStatementIdByQueryId(context.getQueryId());
-      if (sessionManager.isEnableTracing(statementId)) {
+      if (context.isEnableTracing()) {
         addOverlappedPageNum(statementId);
       }
     } else {
@@ -91,8 +91,8 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  private void addOverlappedPageNum(long statementId) {
-    TracingManager.getInstance().getTracingInfo(statementId).addOverlappedPageNum();
+  private void addOverlappedPageNum(long queryId) {
+    TracingManager.getInstance().addOverlappedPageNum(queryId);
   }
 
   public long getCurrentReadStopTime() {

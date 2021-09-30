@@ -66,13 +66,13 @@ public class TracingInfo {
     this.seriesPathNum = seriesPathNum;
   }
 
-  public void addChunkInfo(int totalChunkNum, long totalChunkPoints, boolean isSeq) {
+  public void addChunkInfo(int chunkNum, long pointsNum, boolean isSeq) {
     if (isSeq) {
-      sequenceChunkNum += totalChunkNum;
-      sequenceChunkPoints += totalChunkPoints;
+      sequenceChunkNum += chunkNum;
+      sequenceChunkPoints += pointsNum;
     } else {
-      unsequenceChunkNum += totalChunkNum;
-      unsequenceChunkPoints += totalChunkPoints;
+      unsequenceChunkNum += chunkNum;
+      unsequenceChunkPoints += pointsNum;
     }
   }
 
@@ -121,7 +121,7 @@ public class TracingInfo {
     this.overlappedPageNum++;
   }
 
-  public void registerActivity(String activity, long time) {
+  public void addActivity(String activity, long time) {
     activityList.add(new Pair<>(activity, time - startTime));
   }
 

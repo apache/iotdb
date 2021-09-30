@@ -64,9 +64,12 @@ public class QueryOperator extends Operator {
   protected Map<String, Object> props;
   protected IndexType indexType;
 
+  protected boolean enableTracing;
+
   public QueryOperator() {
     super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
+    enableTracing = false;
   }
 
   public QueryOperator(QueryOperator queryOperator) {
@@ -77,6 +80,7 @@ public class QueryOperator extends Operator {
     this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
     this.props = queryOperator.getProps();
     this.indexType = queryOperator.getIndexType();
+    this.enableTracing = queryOperator.isEnableTracing();
   }
 
   public SelectComponent getSelectComponent() {
@@ -180,6 +184,7 @@ public class QueryOperator extends Operator {
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
     rawDataQueryPlan.setPaths(selectComponent.getPaths());
     rawDataQueryPlan.setResultColumns(selectComponent.getResultColumns());
+    rawDataQueryPlan.setEnableTracing(enableTracing);
 
     // transform filter operator to expression
     if (whereComponent != null) {
@@ -318,6 +323,7 @@ public class QueryOperator extends Operator {
     alignByDevicePlan.setMeasurementInfoMap(measurementInfoMap);
     alignByDevicePlan.setDevices(devices);
     alignByDevicePlan.setPaths(paths);
+    alignByDevicePlan.setEnableTracing(enableTracing);
 
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
@@ -474,5 +480,13 @@ public class QueryOperator extends Operator {
 
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
+  }
+
+  public boolean isEnableTracing() {
+    return enableTracing;
+  }
+
+  public void setEnableTracing(boolean enableTracing) {
+    this.enableTracing = enableTracing;
   }
 }

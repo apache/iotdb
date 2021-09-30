@@ -53,8 +53,6 @@ public class SessionManager {
   private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
   // (queryId -> QueryDataSet)
   private final Map<Long, QueryDataSet> queryIdToDataSet = new ConcurrentHashMap<>();
-  // (statementId -> enableTracing)
-  private final Map<Long, Boolean> statementIdToEnableTracing = new ConcurrentHashMap<>();
 
   private SessionManager() {
     // singleton
@@ -212,17 +210,6 @@ public class SessionManager {
     if (statementIdToQueryId.containsKey(statementId)) {
       statementIdToQueryId.get(statementId).remove(queryId);
     }
-  }
-
-  public boolean isEnableTracing(long statementId) {
-    if (statementIdToEnableTracing.get(statementId) != null)
-      return statementIdToEnableTracing.get(statementId);
-    return false;
-  }
-
-  public void setEnableTracing(long statementId, boolean enableTracing) {
-    statementIdToEnableTracing.remove(statementId);
-    statementIdToEnableTracing.put(statementId, enableTracing);
   }
 
   public static SessionManager getInstance() {
