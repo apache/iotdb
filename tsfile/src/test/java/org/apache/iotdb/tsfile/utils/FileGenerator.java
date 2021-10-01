@@ -27,8 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -233,38 +233,39 @@ public class FileGenerator {
     schema = new Schema();
     schema.registerTimeseries(
         new Path("d1", "s1"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s1", TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1", "s2"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s2", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1", "s3"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d1", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+        new Path("d1", "s4"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+        new Path("d1", "s5"),
+        new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1", "s6"), new UnaryMeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d1", "s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+        new Path("d1", "s7"), new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
     schema.registerTimeseries(
         new Path("d2", "s1"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s1", TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d2", "s2"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s2", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d2", "s3"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+        new Path("d2", "s4"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
   }
 
   private static void generateTestSchema(int deviceNum, int measurementNum) {
@@ -273,7 +274,7 @@ public class FileGenerator {
       for (int j = 0; j < measurementNum; j++) {
         schema.registerTimeseries(
             new Path("d" + i, "s" + j),
-            new MeasurementSchema(
+            new UnaryMeasurementSchema(
                 "s" + j, TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
       }
     }

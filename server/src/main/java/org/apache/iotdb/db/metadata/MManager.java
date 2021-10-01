@@ -87,8 +87,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -1237,7 +1237,7 @@ public class MManager {
     }
 
     IMeasurementSchema schema = mtree.getSchema(fullPath);
-    if (schema instanceof MeasurementSchema) {
+    if (schema instanceof UnaryMeasurementSchema) {
       return schema.getType();
     } else {
       if (((VectorPartialPath) fullPath).getSubSensorsList().size() != 1) {
@@ -2055,7 +2055,7 @@ public class MManager {
       }
 
       if (schema != null) {
-        if (schema instanceof MeasurementSchema) {
+        if (schema instanceof UnaryMeasurementSchema) {
           return MeasurementMNode.getMeasurementMNode(
               deviceMNode.getAsEntityMNode(), measurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {

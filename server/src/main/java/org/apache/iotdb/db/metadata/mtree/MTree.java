@@ -71,8 +71,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import com.google.gson.Gson;
@@ -398,7 +398,7 @@ public class MTree implements Serializable {
           MeasurementMNode.getMeasurementMNode(
               entityMNode,
               leafName,
-              new MeasurementSchema(leafName, dataType, encoding, compressor, props),
+              new UnaryMeasurementSchema(leafName, dataType, encoding, compressor, props),
               alias);
       entityMNode.addChild(leafName, measurementMNode);
       // link alias to LeafMNode

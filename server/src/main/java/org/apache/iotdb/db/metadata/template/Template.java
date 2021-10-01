@@ -25,7 +25,7 @@ import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -77,7 +77,7 @@ public class Template {
       // normal measurement
       else {
         curSchema =
-            new MeasurementSchema(
+            new UnaryMeasurementSchema(
                 plan.getMeasurements().get(i).get(0),
                 plan.getDataTypes().get(i).get(0),
                 plan.getEncodings().get(i).get(0),
@@ -132,7 +132,7 @@ public class Template {
     for (IMeasurementSchema measurementSchema : schemaMap.values()) {
       if (deduplicateSchema.add(measurementSchema)) {
         IMeasurementMNode measurementMNode = null;
-        if (measurementSchema instanceof MeasurementSchema) {
+        if (measurementSchema instanceof UnaryMeasurementSchema) {
           measurementMNode =
               MeasurementMNode.getMeasurementMNode(
                   null, measurementSchema.getMeasurementId(), measurementSchema, null);

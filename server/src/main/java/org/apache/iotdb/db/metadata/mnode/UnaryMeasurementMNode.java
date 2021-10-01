@@ -19,26 +19,26 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 /** Represents an MNode which has a Measurement or Sensor attached to it. */
 public class UnaryMeasurementMNode extends MeasurementMNode {
 
   /** measurement's Schema for one timeseries represented by current leaf node */
-  private MeasurementSchema schema;
+  private UnaryMeasurementSchema schema;
 
   UnaryMeasurementMNode(
-      IEntityMNode parent, String measurementName, MeasurementSchema schema, String alias) {
+      IEntityMNode parent, String measurementName, UnaryMeasurementSchema schema, String alias) {
     super(parent, measurementName, alias);
     this.schema = schema;
   }
 
   @Override
-  public MeasurementSchema getSchema() {
+  public UnaryMeasurementSchema getSchema() {
     return schema;
   }
 
-  public void setSchema(MeasurementSchema schema) {
+  public void setSchema(UnaryMeasurementSchema schema) {
     this.schema = schema;
   }
 

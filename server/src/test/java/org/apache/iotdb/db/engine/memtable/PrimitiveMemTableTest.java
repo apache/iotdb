@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.Assert;
@@ -66,7 +66,7 @@ public class PrimitiveMemTableTest {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
         new WritableMemChunk(
-            new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -85,7 +85,7 @@ public class PrimitiveMemTableTest {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
         new WritableMemChunk(
-            new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
     int count = 100;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -121,14 +121,14 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
           dataSize - i - 1,
           i + 10);
     }
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
           i,
           i);
     }
@@ -136,7 +136,7 @@ public class PrimitiveMemTableTest {
         memTable.query(
             deviceId,
             measurementId[0],
-            new MeasurementSchema(
+            new UnaryMeasurementSchema(
                 measurementId[0],
                 TSDataType.INT32,
                 TSEncoding.RLE,
@@ -166,7 +166,7 @@ public class PrimitiveMemTableTest {
     for (TimeValuePair aRet : ret) {
       memTable.write(
           deviceId,
-          new MeasurementSchema(sensorId, dataType, encoding),
+          new UnaryMeasurementSchema(sensorId, dataType, encoding),
           aRet.getTimestamp(),
           aRet.getValue().getValue());
     }
@@ -175,7 +175,7 @@ public class PrimitiveMemTableTest {
             .query(
                 deviceId,
                 sensorId,
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     sensorId,
                     dataType,
                     encoding,

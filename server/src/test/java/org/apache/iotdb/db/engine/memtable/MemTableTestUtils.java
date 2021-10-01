@@ -28,8 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
@@ -47,7 +47,7 @@ public class MemTableTestUtils {
   static {
     schema.registerTimeseries(
         new Path(deviceId0, measurementId0),
-        new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
+        new UnaryMeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 
   public static void produceData(
@@ -62,7 +62,10 @@ public class MemTableTestUtils {
     }
     for (long l = startTime; l <= endTime; l++) {
       iMemTable.write(
-          deviceId, new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN), l, (int) l);
+          deviceId,
+          new UnaryMeasurementSchema(measurementId, dataType, TSEncoding.PLAIN),
+          l,
+          (int) l);
     }
   }
 

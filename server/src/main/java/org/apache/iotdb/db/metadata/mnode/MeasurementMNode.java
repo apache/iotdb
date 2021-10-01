@@ -26,7 +26,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -58,8 +58,9 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
       IEntityMNode parent, String measurementName, IMeasurementSchema schema, String alias) {
     if (schema == null) {
       return new UnaryMeasurementMNode(parent, measurementName, null, alias);
-    } else if (schema instanceof MeasurementSchema) {
-      return new UnaryMeasurementMNode(parent, measurementName, (MeasurementSchema) schema, alias);
+    } else if (schema instanceof UnaryMeasurementSchema) {
+      return new UnaryMeasurementMNode(
+          parent, measurementName, (UnaryMeasurementSchema) schema, alias);
     } else if (schema instanceof VectorMeasurementSchema) {
       return new MultiMeasurementMNode(
           parent, measurementName, (VectorMeasurementSchema) schema, alias);

@@ -50,7 +50,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -167,7 +167,7 @@ public class LogReplayerTest {
             memTable.query(
                 "root.sg.device" + i,
                 "sensor" + i,
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     "sensor" + i,
                     TSDataType.INT64,
                     TSEncoding.RLE,
@@ -206,7 +206,7 @@ public class LogReplayerTest {
             memTable.query(
                 "root.sg.device5",
                 "sensor" + i,
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     "sensor" + i,
                     TSDataType.INT64,
                     TSEncoding.PLAIN,
