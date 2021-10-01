@@ -218,7 +218,6 @@ public class TsFileAndModSettleTool {
       resourceToBeSettled.writeUnlock();
       resourceToBeSettled.readLock();
     }
-    return;
   }
 
   public static void findFilesToBeRecovered() {
@@ -230,7 +229,7 @@ public class TsFileAndModSettleTool {
         String line = null;
         while ((line = settleLogReader.readLine()) != null && !line.equals("")) {
           String oldFilePath = line.split(SettleLog.COMMA_SEPERATOR)[0];
-          Integer settleCheckStatus = Integer.parseInt(line.split(SettleLog.COMMA_SEPERATOR)[1]);
+          int settleCheckStatus = Integer.parseInt(line.split(SettleLog.COMMA_SEPERATOR)[1]);
           if (settleCheckStatus == SettleCheckStatus.SETTLE_SUCCESS.getCheckStatus()) {
             recoverSettleFileMap.remove(oldFilePath);
             continue;
@@ -300,13 +299,13 @@ public class TsFileAndModSettleTool {
     // delete old mods
     oldTsFileResource.removeModFile();
 
-    File newPartionDir =
+    File newPartitionDir =
         new File(
             oldTsFileResource.getTsFile().getParent()
                 + File.separator
                 + oldTsFileResource.getTimePartition());
     if (newTsFileResources.size() == 0) { // if the oldTsFile has no mods, it should not be deleted.
-      if (newPartionDir.exists()) newPartionDir.delete();
+      if (newPartitionDir.exists()) newPartitionDir.delete();
       return;
     }
     FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -314,7 +313,7 @@ public class TsFileAndModSettleTool {
     boolean isOldFileExisted = oldTsFile.exists();
     oldTsFile.delete();
     for (TsFileResource newTsFileResource : newTsFileResources) {
-      newPartionDir =
+      newPartitionDir =
           new File(
               oldTsFileResource.getTsFile().getParent()
                   + File.separator
@@ -337,13 +336,13 @@ public class TsFileAndModSettleTool {
           e.printStackTrace();
         }
         File tmpResourceFile =
-            fsFactory.getFile(newPartionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
+            fsFactory.getFile(newPartitionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
         if (tmpResourceFile.exists()) {
           tmpResourceFile.delete();
         }
       }
       // if the newPartition folder is empty, then it will be deleted
-      if (newPartionDir.exists()) newPartionDir.delete();
+      if (newPartitionDir.exists()) newPartitionDir.delete();
     }
   }
 

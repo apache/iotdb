@@ -28,10 +28,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <!--parent>
-<groupId>org.springframework.boot</groupId>
-<artifactId>spring-boot-starter-parent</artifactId>
-<version>1.5.4.RELEASE</version>
-<relativePath />
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-parent</artifactId>
+  <version>1.5.4.RELEASE</version>
+  <relativePath />
 </parent-->
     <artifactId>iotdb-grafana</artifactId>
     <packaging>war</packaging>
@@ -180,7 +180,7 @@
                     </executions>
                 </plugin>
                 <!--using `mvn test` to run UT, `mvn verify` to run ITs
-            Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
+                    Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>

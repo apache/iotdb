@@ -159,16 +159,16 @@
         <spotless.version>2.4.2</spotless.version>
     </properties>
     <!--
-      if we claim dependencies in dependencyManagement, then we do not claim
-      their version in sub-project's pom, but we have to claim themselves again
-      in sub-projects
-  -->
+        if we claim dependencies in dependencyManagement, then we do not claim
+        their version in sub-project's pom, but we have to claim themselves again
+        in sub-projects
+    -->
     <dependencyManagement>
         <dependencies>
             <!--
-          in the subprojects, you have to claim logback again, because maybe
-          someone in your dependences uses log4j lib.
-      -->
+                in the subprojects, you have to claim logback again, because maybe
+                someone in your dependences uses log4j lib.
+            -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>

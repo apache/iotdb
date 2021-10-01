@@ -58,12 +58,10 @@ public class IoTDBSettleIT {
   }
 
   @Test
-  public void onlineSettleTest() {
-    PartialPath sg = null;
-    try {
-      sg = new PartialPath("root.st1");
-      StorageEngine.getInstance().settleAll(sg);
-    } catch (IllegalPathException | StorageEngineException | WriteProcessException e) {
+  public void onlineSettleSGTest() {
+    try (Statement statement=connection.createStatement()){
+      statement.execute("settle root.st1");
+    } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
   }
@@ -92,12 +90,10 @@ public class IoTDBSettleIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     connection =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement statement = connection.createStatement();
-
-    for (String sql : sqls) {
-      statement.execute(sql);
+    try(Statement statement = connection.createStatement()){
+      for (String sql : sqls) {
+        statement.execute(sql);
+      }
     }
-
-    statement.close();
   }
 }

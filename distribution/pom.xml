@@ -59,8 +59,8 @@
                 </executions>
             </plugin>
             <!--
-        Create SHA512 checksum files for the release artifacts.
-      -->
+              Create SHA512 checksum files for the release artifacts.
+            -->
             <plugin>
                 <groupId>net.nicoulaj.maven.plugins</groupId>
                 <artifactId>checksum-maven-plugin</artifactId>

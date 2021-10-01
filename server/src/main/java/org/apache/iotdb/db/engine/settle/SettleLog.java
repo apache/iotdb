@@ -93,7 +93,7 @@ public class SettleLog {
     SettleLog.settleLogPath = settleLogPath;
   }
 
-  public static enum SettleCheckStatus {
+  public enum SettleCheckStatus {
     BEGIN_SETTLE_FILE(1),
     AFTER_SETTLE_FILE(2),
     SETTLE_SUCCESS(3);

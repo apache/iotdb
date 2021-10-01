@@ -36,8 +36,8 @@ import java.util.List;
 public class SettleTask extends WrappedRunnable {
 
   private static final Logger logger = LoggerFactory.getLogger(SettleTask.class);
-  private TsFileResource resourceToBeSettled;
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private final TsFileResource resourceToBeSettled;
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public SettleTask(TsFileResource resourceToBeSettled) {
     this.resourceToBeSettled = resourceToBeSettled;

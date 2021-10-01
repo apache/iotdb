@@ -198,35 +198,6 @@ public class TsFileRewriteToolTest {
     }
   }
 
-  public List<TsFileResource> createFiles() throws IOException {
-    List<TsFileResource> resourcesToBeSettled = new ArrayList<>();
-    HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
-    List<String> sensors = new ArrayList<>();
-
-    // first File
-    sensors.add(SENSOR1);
-    deviceSensorsMap.put(DEVICE1, sensors);
-    String timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR1;
-    createFile(resourcesToBeSettled, deviceSensorsMap, timeseriesPath);
-
-    // second file
-    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
-    sensors.add(SENSOR2);
-    deviceSensorsMap.put(DEVICE1, sensors);
-    timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR2;
-    createFile(resourcesToBeSettled, deviceSensorsMap, timeseriesPath);
-
-    // third file
-    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
-    createOneTsFile(deviceSensorsMap);
-    TsFileResource tsFileResource = new TsFileResource(new File(path));
-    tsFileResource.serialize();
-    tsFileResource.close();
-    resourcesToBeSettled.add(tsFileResource);
-
-    return resourcesToBeSettled;
-  }
-
   private void createFile(
       List<TsFileResource> resourcesToBeSettled,
       HashMap<String, List<String>> deviceSensorsMap,

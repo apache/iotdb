@@ -60,7 +60,7 @@
                     <artifactId>guava</artifactId>
                 </exclusion>
                 <!--commons-configuration uses  commons-lang:commons-lang:2.4
-        while others use commons-lang 2.6-->
+                while others use commons-lang 2.6-->
                 <exclusion>
                     <groupId>commons-configuration</groupId>
                     <artifactId>commons-configuration</artifactId>
@@ -80,14 +80,14 @@
             </exclusions>
         </dependency>
         <!-- many of hadoop dependencies use guava11, but org.apache.curator from hadoop-common uses
-    guava16 -->
+        guava16 -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>[${guava.version},)</version>
             <exclusions>
                 <!-- iotdb-server depends on com.github.ben-manes.caffeine:caffeine:2.9.1,
-        which depends on checker-qual 3.10.0 -->
+                which depends on checker-qual 3.10.0 -->
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
                     <artifactId>checker-qual</artifactId>

@@ -78,7 +78,7 @@
                             <element>BUNDLE</element>
                             <limits>　　
                                 <!-- Cover methodes >=30%. (the plugin does not support
-                ignore getter and setter and toString etc..) -->
+                                ignore getter and setter and toString etc..) -->
                                 <limit implementation="org.jacoco.report.check.Limit">
                                     <counter>METHOD</counter>
                                     <value>COVEREDRATIO</value>

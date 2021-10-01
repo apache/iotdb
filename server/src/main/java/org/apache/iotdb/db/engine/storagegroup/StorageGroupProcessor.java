@@ -1925,6 +1925,7 @@ public class StorageGroupProcessor {
    * @param path the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
+   * @param timePartitionFilter
    */
   public void delete(
       PartialPath path,

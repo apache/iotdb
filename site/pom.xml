@@ -40,16 +40,16 @@
     </distributionManagement>
     <profiles>
         <!--
-    Process:
-    1. download existing static website from github
-    2. copy and unpack it to a tmp folder
-    3. if site-compile-0.x is enabled, download files of 0.x from github,
-    (except the master branch). copy it to the source tmp folder
-    4. compiling...
-    5. if site-compile-0.x is disabled, copy existing static files from the tmp folder to the
-    target folder.
-    6. upload to github website
-    -->
+        Process:
+        1. download existing static website from github
+        2. copy and unpack it to a tmp folder
+        3. if site-compile-0.x is enabled, download files of 0.x from github,
+        (except the master branch). copy it to the source tmp folder
+        4. compiling...
+        5. if site-compile-0.x is disabled, copy existing static files from the tmp folder to the
+        target folder.
+        6. upload to github website
+        -->
         <profile>
             <id>download-site</id>
             <build>
@@ -157,8 +157,8 @@
         </profile>
         <profile>
             <!-- by default, only the master branch is compiled and uploaded.
-      Use -Dsite.download.existing.htmls=true to contain all other htmls (v0.8,v0.9 etc..)
-      -->
+            Use -Dsite.download.existing.htmls=true to contain all other htmls (v0.8,v0.9 etc..)
+            -->
             <id>compile-site</id>
             <build>
                 <plugins>
@@ -422,22 +422,22 @@
                         </configuration>
                     </plugin>
                     <!--<plugin>
-              <groupId>org.simplify4u.plugins</groupId>
-              <artifactId>sitemapxml-maven-plugin</artifactId>
-              <version>2.0.0</version>
-              <configuration>
-                  <siteOutputDirectory>${project.build.directory}/vue-source/src/.vuepress/dist</siteOutputDirectory>
-                  <maxDepth>5</maxDepth>
-              </configuration>
-              <executions>
-                  <execution>
-                      <phase>compile</phase>
-                      <goals>
-                          <goal>gen</goal>
-                      </goals>
-                  </execution>
-              </executions>
-          </plugin>-->
+                        <groupId>org.simplify4u.plugins</groupId>
+                        <artifactId>sitemapxml-maven-plugin</artifactId>
+                        <version>2.0.0</version>
+                        <configuration>
+                            <siteOutputDirectory>${project.build.directory}/vue-source/src/.vuepress/dist</siteOutputDirectory>
+                            <maxDepth>5</maxDepth>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>gen</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>-->
                 </plugins>
             </build>
         </profile>
