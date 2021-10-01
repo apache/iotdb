@@ -190,7 +190,7 @@
 
 * system\_dir
 
-|名字| system\_dirs |
+|名字| system\_dir |
 |:---:|:---|
 |描述| IoTDB 元数据存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。|
 |类型| String |
