@@ -780,7 +780,8 @@ public class StorageEngine implements IService {
     return totalUpgradeFileNum;
   }
 
-  public int countSettleFiles(PartialPath storageGroupPath,String tsFilePath) throws StorageEngineException {
+  public int countSettleFiles(PartialPath storageGroupPath, String tsFilePath)
+      throws StorageEngineException {
     if (processorMap.get(storageGroupPath) == null) {
       throw new StorageEngineException(
           "The Storage Group " + storageGroupPath.toString() + " is not existed.");

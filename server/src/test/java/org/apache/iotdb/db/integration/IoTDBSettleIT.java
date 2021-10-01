@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -59,7 +54,7 @@ public class IoTDBSettleIT {
 
   @Test
   public void onlineSettleSGTest() {
-    try (Statement statement=connection.createStatement()){
+    try (Statement statement = connection.createStatement()) {
       statement.execute("settle root.st1");
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
@@ -90,7 +85,7 @@ public class IoTDBSettleIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     connection =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    try(Statement statement = connection.createStatement()){
+    try (Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);
       }

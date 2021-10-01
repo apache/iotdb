@@ -190,8 +190,8 @@ public class StorageGroupProcessor {
   // upgrading unsequence TsFile resource list
   private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
 
-  private Map<String, TsFileResource> settleSeqFileList = new HashMap<>();
-  private Map<String, TsFileResource> settleUnseqFileList = new HashMap<>();
+  private Map<String, TsFileResource> settleSeqFileMap = new HashMap<>();
+  private Map<String, TsFileResource> settleUnseqFileMap = new HashMap<>();
 
   /** unsequence tsfile processors which are closing */
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor =
@@ -653,9 +653,9 @@ public class StorageGroupProcessor {
             .getParentFile()
             .getName()
             .equals("sequence")) {
-          settleSeqFileList.put(resource.getTsFile().getName(), resource);
+          settleSeqFileMap.put(resource.getTsFile().getName(), resource);
         } else {
-          settleUnseqFileList.put(resource.getTsFile().getName(), resource);
+          settleUnseqFileMap.put(resource.getTsFile().getName(), resource);
         }
       }
     }
@@ -666,11 +666,11 @@ public class StorageGroupProcessor {
       if (!resource.isClosed()) {
         continue;
       }
-      if (!settleSeqFileList.containsKey(resource.getTsFile().getName())) {
+      if (!settleSeqFileMap.containsKey(resource.getTsFile().getName())) {
         if (tsFilePath.equals("")) {
-          settleSeqFileList.put(resource.getTsFile().getName(), resource);
-        }else if(tsFilePath.equals(resource.getTsFile().getAbsolutePath())){
-            settleSeqFileList.put(resource.getTsFile().getName(), resource);
+          settleSeqFileMap.put(resource.getTsFile().getName(), resource);
+        } else if (tsFilePath.equals(resource.getTsFile().getAbsolutePath())) {
+          settleSeqFileMap.put(resource.getTsFile().getName(), resource);
         }
       }
     }
@@ -678,11 +678,11 @@ public class StorageGroupProcessor {
       if (!resource.isClosed()) {
         continue;
       }
-      if (!settleUnseqFileList.containsKey(resource.getTsFile().getName())) {
+      if (!settleUnseqFileMap.containsKey(resource.getTsFile().getName())) {
         if (tsFilePath.equals("")) {
-          settleUnseqFileList.put(resource.getTsFile().getName(), resource);
-        }else if(tsFilePath.equals(resource.getTsFile().getAbsolutePath())){
-          settleUnseqFileList.put(resource.getTsFile().getName(), resource);
+          settleUnseqFileMap.put(resource.getTsFile().getName(), resource);
+        } else if (tsFilePath.equals(resource.getTsFile().getAbsolutePath())) {
+          settleUnseqFileMap.put(resource.getTsFile().getName(), resource);
         }
       }
     }
@@ -1943,8 +1943,7 @@ public class StorageGroupProcessor {
       TimePartitionFilter timePartitionFilter)
       throws IOException {
     // If there are still some old version tsfiles, the delete won't succeeded.
-    if (upgradeFileCount.get()
-        != 0) {
+    if (upgradeFileCount.get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files upgraded.");
     }
@@ -2289,7 +2288,7 @@ public class StorageGroupProcessor {
   public int countSettleFiles(String tsFilePath) {
     addRecoverSettleFilesToList();
     addSettleFilesToList(tsFilePath);
-    return settleSeqFileList.size() + settleUnseqFileList.size();
+    return settleSeqFileMap.size() + settleUnseqFileMap.size();
   }
 
   /** upgrade all files belongs to this storage group */
@@ -2348,7 +2347,7 @@ public class StorageGroupProcessor {
 
   /** Settle All TsFiles and mods belonging to this storage group */
   public void settle() throws WriteProcessException {
-    for (Map.Entry<String, TsFileResource> entry : settleSeqFileList.entrySet()) {
+    for (Map.Entry<String, TsFileResource> entry : settleSeqFileMap.entrySet()) {
       TsFileResource seqTsFileResource = entry.getValue();
       seqTsFileResource.readLock();
       seqTsFileResource.setSeq(true);
@@ -2356,7 +2355,7 @@ public class StorageGroupProcessor {
       seqTsFileResource.doSettle();
       seqTsFileResource.readUnlock();
     }
-    for (Map.Entry<String, TsFileResource> entry : settleUnseqFileList.entrySet()) {
+    for (Map.Entry<String, TsFileResource> entry : settleUnseqFileMap.entrySet()) {
       TsFileResource unSeqTsFileResource = entry.getValue();
       unSeqTsFileResource.readLock();
       unSeqTsFileResource.setSeq(false);
@@ -2364,8 +2363,8 @@ public class StorageGroupProcessor {
       unSeqTsFileResource.doSettle();
       unSeqTsFileResource.readUnlock();
     }
-    settleSeqFileList.clear();
-    settleUnseqFileList.clear();
+    settleSeqFileMap.clear();
+    settleUnseqFileMap.clear();
   }
 
   /**
@@ -2381,7 +2380,8 @@ public class StorageGroupProcessor {
     oldTsFileResource.writeLock();
     TsFileAndModSettleTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
     if (TsFileAndModSettleTool.recoverSettleFileMap.size() != 0) {
-      TsFileAndModSettleTool.recoverSettleFileMap.remove(oldTsFileResource.getTsFilePath());
+      TsFileAndModSettleTool.recoverSettleFileMap.remove(
+          oldTsFileResource.getTsFile().getAbsolutePath());
     }
     // clear Cache , including chunk cache and timeseriesMetadata cache
     ChunkCache.getInstance().clear();

@@ -376,11 +376,11 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_CONTINUOUS_QUERY:
         return operateDropContinuousQuery((DropContinuousQueryPlan) plan);
       case SETTLE:
-     //   try {
-          settle((SettlePlan) plan);
-//        } catch (WriteProcessException e) {
-//          throw new QueryProcessException(e.getMessage());
-//        }
+        //   try {
+        settle((SettlePlan) plan);
+        //        } catch (WriteProcessException e) {
+        //          throw new QueryProcessException(e.getMessage());
+        //        }
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -2045,24 +2045,23 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void settle(SettlePlan plan) throws StorageEngineException {
-    try{
-      if(plan.isSgPath()){
+    try {
+      if (plan.isSgPath()) {
         PartialPath sgPath = plan.getSgPath();
         SettleService.getINSTANCE().setStorageGroupPath(sgPath);
-      }else{
-        String tsFilePath=plan.getTsFilePath();
-        if(new File(tsFilePath).isDirectory()){
+      } else {
+        String tsFilePath = plan.getTsFilePath();
+        if (new File(tsFilePath).isDirectory()) {
           throw new WriteProcessException("The file should not be a directory.");
-        }
-        else if(!new File(tsFilePath).exists()){
-          throw new WriteProcessException("The tsFile "+tsFilePath+" is not existed.");
+        } else if (!new File(tsFilePath).exists()) {
+          throw new WriteProcessException("The tsFile " + tsFilePath + " is not existed.");
         }
         SettleService.getINSTANCE().setTsFilePath(tsFilePath);
       }
       SettleService.getINSTANCE().startSettling();
-    }catch(WriteProcessException | StorageEngineException e){
+    } catch (WriteProcessException | StorageEngineException e) {
       throw new StorageEngineException(e.getMessage());
-    }finally{
+    } finally {
       SettleService.getINSTANCE().stop();
     }
   }

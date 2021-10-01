@@ -28,7 +28,7 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 public class SettleOperator extends Operator {
   PartialPath sgPath;
   String tsFilePath;
-  boolean isSgPath=false;
+  boolean isSgPath = false;
 
   public SettleOperator(int tokenIntType) {
     super(tokenIntType);
@@ -62,9 +62,9 @@ public class SettleOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    if(isSgPath){
+    if (isSgPath) {
       return new SettlePlan(getSgPath());
-    }else{
+    } else {
       return new SettlePlan(getTsFilePath());
     }
   }

@@ -48,7 +48,8 @@ public class SettleTask extends WrappedRunnable {
     try {
       settleTsFile();
     } catch (Exception e) {
-      logger.error("meet error when settling file:{}", resourceToBeSettled.getTsFilePath(), e);
+      logger.error(
+          "meet error when settling file:{}", resourceToBeSettled.getTsFile().getAbsolutePath(), e);
     }
   }
 
@@ -56,7 +57,8 @@ public class SettleTask extends WrappedRunnable {
     List<TsFileResource> settledResources = new ArrayList<>();
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
-          "The tsFile {} should be sealed when settling.", resourceToBeSettled.getTsFilePath());
+          "The tsFile {} should be sealed when settling.",
+          resourceToBeSettled.getTsFile().getAbsolutePath());
       return;
     }
     TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
@@ -67,7 +69,7 @@ public class SettleTask extends WrappedRunnable {
       logger.info("generate settled file for {}", resourceToBeSettled.getTsFile());
       // Write Settle Log, Status 1
       SettleLog.writeSettleLog(
-          resourceToBeSettled.getTsFilePath()
+          resourceToBeSettled.getTsFile().getAbsolutePath()
               + SettleLog.COMMA_SEPERATOR
               + SettleCheckStatus.BEGIN_SETTLE_FILE);
       tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled, settledResources);
@@ -75,19 +77,19 @@ public class SettleTask extends WrappedRunnable {
 
     // Write Settle Log, Status 2
     SettleLog.writeSettleLog(
-        resourceToBeSettled.getTsFilePath()
+        resourceToBeSettled.getTsFile().getAbsolutePath()
             + SettleLog.COMMA_SEPERATOR
             + SettleCheckStatus.AFTER_SETTLE_FILE);
     resourceToBeSettled.getSettleTsFileCallBack().call(resourceToBeSettled, settledResources);
 
     // Write Settle Log, Status 3
     SettleLog.writeSettleLog(
-        resourceToBeSettled.getTsFilePath()
+        resourceToBeSettled.getTsFile().getAbsolutePath()
             + SettleLog.COMMA_SEPERATOR
             + SettleCheckStatus.SETTLE_SUCCESS);
     logger.info(
         "Settle completes, file path:{} , the remaining file to be settled num: {}",
-        resourceToBeSettled.getTsFilePath(),
+        resourceToBeSettled.getTsFile().getAbsolutePath(),
         SettleService.getFilesToBeSettledCount().get());
 
     if (SettleService.getFilesToBeSettledCount().get() == 0) {

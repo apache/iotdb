@@ -336,7 +336,8 @@ public class TsFileAndModSettleTool {
           e.printStackTrace();
         }
         File tmpResourceFile =
-            fsFactory.getFile(newPartitionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
+            fsFactory.getFile(
+                newPartitionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
         if (tmpResourceFile.exists()) {
           tmpResourceFile.delete();
         }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.service;
 
-import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
@@ -33,6 +32,7 @@ import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -69,16 +69,15 @@ public class SettleService implements IService {
     }
   }
 
-  public void startSettling()
-      throws WriteProcessException, StorageEngineException {
-      TsFileAndModSettleTool.findFilesToBeRecovered();
-      boolean isSg=storageGroupPath==null?false:true;
-      countSettleFiles(isSg);
-      if (!SettleLog.createSettleLog() || filesToBeSettledCount.get() == 0) {
-        stop();
-        return;
-      }
-      settleAll();
+  public void startSettling() throws WriteProcessException, StorageEngineException {
+    TsFileAndModSettleTool.findFilesToBeRecovered();
+    boolean isSg = storageGroupPath == null ? false : true;
+    countSettleFiles(isSg);
+    if (!SettleLog.createSettleLog() || filesToBeSettledCount.get() == 0) {
+      stop();
+      return;
+    }
+    settleAll();
   }
 
   @Override
@@ -117,16 +116,22 @@ public class SettleService implements IService {
 
   private void countSettleFiles(boolean isSg) throws StorageEngineException {
     if (!isSg) {
-      PartialPath sgPath= null;
+      PartialPath sgPath = null;
       try {
-        sgPath = new PartialPath(new File(getTsFilePath()).getParentFile().getParentFile().getParentFile().getName());
+        sgPath =
+            new PartialPath(
+                new File(getTsFilePath())
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getName());
         setStorageGroupPath(sgPath);
       } catch (IllegalPathException e) {
         e.printStackTrace();
       }
     }
     filesToBeSettledCount.addAndGet(
-        StorageEngine.getInstance().countSettleFiles(getStorageGroupPath(),getTsFilePath()));
+        StorageEngine.getInstance().countSettleFiles(getStorageGroupPath(), getTsFilePath()));
   }
 
   public void submitSettleTask(SettleTask settleTask) {
@@ -138,7 +143,7 @@ public class SettleService implements IService {
     settleTask.settleTsFile();
   }
 
-  public  PartialPath getStorageGroupPath() {
+  public PartialPath getStorageGroupPath() {
     return storageGroupPath;
   }
 
