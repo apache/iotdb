@@ -1156,7 +1156,7 @@
 
 |名字| nan\_string\_infer\_type |
 |:---:|:---|
-|描述| NaN 字符串被推断为什么 |
+|描述| "NaN" 字符串被推断的数据类型 |
 |取值| DOUBLE, FLOAT or TEXT |
 |默认值| DOUBLE |
 |改后生效方式|重启服务生效|
