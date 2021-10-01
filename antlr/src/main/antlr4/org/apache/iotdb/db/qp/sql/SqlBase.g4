@@ -45,7 +45,7 @@ statement
     | DROP INDEX indexName=ID ON prefixPath #dropIndex //not support yet
     | MERGE #merge
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
-    | SETTLE prefixPath #settle
+    | SETTLE pathOrString #settle
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
     | CREATE USER userName=ID password= stringLiteral#createUser
@@ -1426,6 +1426,11 @@ NaN : 'NaN';
 stringLiteral
    : SINGLE_QUOTE_STRING_LITERAL
    | DOUBLE_QUOTE_STRING_LITERAL
+   ;
+
+pathOrString
+   : prefixPath
+   | stringLiteral
    ;
 
 INT : [0-9]+;

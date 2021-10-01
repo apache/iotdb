@@ -26,24 +26,46 @@ import org.apache.iotdb.db.qp.physical.sys.SettlePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class SettleOperator extends Operator {
-  PartialPath path; // maybe a storageGroup Path or a tsfile path
+  PartialPath sgPath;
+  String tsFilePath;
+  boolean isSgPath=false;
 
   public SettleOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.SETTLE;
   }
 
-  public PartialPath getPath() {
-    return path;
+  public PartialPath getSgPath() {
+    return sgPath;
   }
 
-  public void setPath(PartialPath path) {
-    this.path = path;
+  public void setSgPath(PartialPath sgPath) {
+    this.sgPath = sgPath;
+  }
+
+  public String getTsFilePath() {
+    return tsFilePath;
+  }
+
+  public void setTsFilePath(String tsFilePath) {
+    this.tsFilePath = tsFilePath;
+  }
+
+  public boolean getIsSgPath() {
+    return isSgPath;
+  }
+
+  public void setIsSgPath(boolean isSgPath) {
+    this.isSgPath = isSgPath;
   }
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new SettlePlan(getPath());
+    if(isSgPath){
+      return new SettlePlan(getSgPath());
+    }else{
+      return new SettlePlan(getTsFilePath());
+    }
   }
 }

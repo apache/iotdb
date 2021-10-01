@@ -63,7 +63,7 @@ public class SettleLog {
   public static boolean writeSettleLog(String content) {
     settleLogFileLock.writeLock().lock();
     try {
-      settleLogWriter.write(content); // Todo:bug，settleLogWriter null
+      settleLogWriter.write(content);
       settleLogWriter.newLine();
       settleLogWriter.flush();
       return true;

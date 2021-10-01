@@ -569,18 +569,20 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitSettle(SqlBaseParser.SettleContext ctx) {
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
     SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
-    if (path.toString().contains(TSFILE_SUFFIX)) {
-      String filePath = path.toString();
-      filePath = filePath.substring(1, filePath.length() - 2);
-      try {
-        path = new PartialPath(filePath);
-      } catch (IllegalPathException e) {
-        e.printStackTrace();
-      }
+    if(ctx.pathOrString().prefixPath()!=null){
+      PartialPath sgPath = parsePrefixPath(ctx.pathOrString().prefixPath());
+      settleOperator.setSgPath(sgPath);
+      settleOperator.setIsSgPath(true);
+    }else if(!ctx.pathOrString().stringLiteral().getText().equals("")){
+      String tsFilePath=removeStringQuote(ctx.pathOrString().stringLiteral().getText());
+      settleOperator.setTsFilePath(tsFilePath);
+      settleOperator.setIsSgPath(false);
+    }else{
+      //do nothing
     }
-    settleOperator.setPath(path);
+
+
     return settleOperator;
   }
 

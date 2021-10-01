@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.service;
 
+import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleTask;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 
@@ -41,7 +43,8 @@ public class SettleService implements IService {
   private AtomicInteger threadCnt = new AtomicInteger();
   private ExecutorService settleThreadPool;
   private static AtomicInteger filesToBeSettledCount = new AtomicInteger();
-  private static PartialPath storageGroupPath;
+  private PartialPath storageGroupPath;
+  private String tsFilePath;
 
   public static SettleService getINSTANCE() {
     return InstanceHolder.INSTANCE;
@@ -56,24 +59,26 @@ public class SettleService implements IService {
   @Override
   public void start() {
     try {
+      int settleThreadNum = IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
+      settleThreadPool =
+          Executors.newFixedThreadPool(
+              settleThreadNum, r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement()));
       startSettling();
     } catch (WriteProcessException | StorageEngineException e) {
       e.printStackTrace();
     }
   }
 
-  public void startSettling() throws WriteProcessException, StorageEngineException {
-    int settleThreadNum = IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
-    settleThreadPool =
-        Executors.newFixedThreadPool(
-            settleThreadNum, r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement()));
-    TsFileAndModSettleTool.findFilesToBeRecovered();
-    countSettleFiles();
-    if (!SettleLog.createSettleLog() || filesToBeSettledCount.get() == 0) {
-      stop();
-      return;
-    }
-    settleAll();
+  public void startSettling()
+      throws WriteProcessException, StorageEngineException {
+      TsFileAndModSettleTool.findFilesToBeRecovered();
+      boolean isSg=storageGroupPath==null?false:true;
+      countSettleFiles(isSg);
+      if (!SettleLog.createSettleLog() || filesToBeSettledCount.get() == 0) {
+        stop();
+        return;
+      }
+      settleAll();
   }
 
   @Override
@@ -81,6 +86,7 @@ public class SettleService implements IService {
     SettleLog.closeLogWriter();
     TsFileAndModSettleTool.clearRecoverSettleFileMap();
     setStorageGroupPath(null);
+    setTsFilePath("");
     filesToBeSettledCount.set(0);
     if (settleThreadPool != null) {
       settleThreadPool.shutdownNow();
@@ -109,9 +115,18 @@ public class SettleService implements IService {
     return filesToBeSettledCount;
   }
 
-  private static void countSettleFiles() throws StorageEngineException {
+  private void countSettleFiles(boolean isSg) throws StorageEngineException {
+    if (!isSg) {
+      PartialPath sgPath= null;
+      try {
+        sgPath = new PartialPath(new File(getTsFilePath()).getParentFile().getParentFile().getParentFile().getName());
+        setStorageGroupPath(sgPath);
+      } catch (IllegalPathException e) {
+        e.printStackTrace();
+      }
+    }
     filesToBeSettledCount.addAndGet(
-        StorageEngine.getInstance().countSettleFiles(getStorageGroupPath()));
+        StorageEngine.getInstance().countSettleFiles(getStorageGroupPath(),getTsFilePath()));
   }
 
   public void submitSettleTask(SettleTask settleTask) {
@@ -123,11 +138,19 @@ public class SettleService implements IService {
     settleTask.settleTsFile();
   }
 
-  public static PartialPath getStorageGroupPath() {
+  public  PartialPath getStorageGroupPath() {
     return storageGroupPath;
   }
 
-  public static void setStorageGroupPath(PartialPath storageGroupPath) {
-    SettleService.storageGroupPath = storageGroupPath;
+  public void setStorageGroupPath(PartialPath storageGroupPath) {
+    this.storageGroupPath = storageGroupPath;
+  }
+
+  public String getTsFilePath() {
+    return tsFilePath;
+  }
+
+  public void setTsFilePath(String tsFilePath) {
+    this.tsFilePath = tsFilePath;
   }
 }
