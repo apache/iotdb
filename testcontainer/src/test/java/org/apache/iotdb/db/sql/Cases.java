@@ -402,7 +402,7 @@ public abstract class Cases {
     // try to read data on each node. select .*
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.** where tag1=v1");
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -414,7 +414,7 @@ public abstract class Cases {
     // try to read data on each node. select from parent series
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.** where tag1=v1");
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -426,7 +426,7 @@ public abstract class Cases {
     // try to read data on each node. select from one series
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt1.* where tag1=v1");
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt1 where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -449,7 +449,7 @@ public abstract class Cases {
     // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag1=v3"
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.** where tag1=v3");
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v3");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -462,7 +462,7 @@ public abstract class Cases {
     for (Statement readStatement : readStatements) {
       ResultSet resultSet = null;
       try {
-        resultSet = readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.** where tag3=v1");
+        resultSet = readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1");
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("The key tag3 is not a tag"));
       } finally {
