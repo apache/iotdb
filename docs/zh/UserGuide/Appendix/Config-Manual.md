@@ -1138,7 +1138,7 @@
 
 |名字| long\_string\_infer\_type |
 |:---:|:---|
-|描述| long（num > 2 ^ 24）被推断为什么 |
+|描述| 大于 2 ^ 24 的整形字符串被推断的数据类型 |
 |取值| DOUBLE, FLOAT or TEXT |
 |默认值| DOUBLE |
 |改后生效方式|重启服务生效|
