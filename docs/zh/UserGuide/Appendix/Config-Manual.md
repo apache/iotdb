@@ -1120,7 +1120,7 @@
 
 |名字| boolean\_string\_infer\_type |
 |:---:|:---|
-|描述| "true" 或者 "false" 被视为什么数据 |
+|描述| "true" 或者 "false" 字符串被推断的数据类型 |
 |取值| BOOLEAN 或者 TEXT |
 |默认值| BOOLEAN |
 |改后生效方式|重启服务生效|
