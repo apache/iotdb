@@ -163,7 +163,7 @@
 
 |名字| enable\_discard\_out\_of\_order\_data |
 |:---:|:---|
-|描述| 是否删除无序数据，默认值为 false 表示关闭 |
+|描述| 是否丢弃乱序数据，默认值为 false 表示关闭 |
 |类型| Boolean |
 |默认值| false |
 |改后生效方式|触发生效|
