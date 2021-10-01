@@ -1129,7 +1129,7 @@
 
 |名字| integer\_string\_infer\_type |
 |:---:|:---|
-|描述| 整数型数据被推断成什么 |
+|描述| 整型字符串推断的数据类型 |
 |取值| INT32, INT64, FLOAT, DOUBLE, TEXT |
 |默认值| FLOAT |
 |改后生效方式|重启服务生效|
