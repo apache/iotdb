@@ -42,18 +42,18 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.PathGrouperByStorageGroup;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.BelongedEntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.FlatMeasurementPathCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.FlatMeasurementSchemaCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathFlatCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaFlatCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupPathCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.TSEntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.FlatMeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementFlatCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -854,7 +854,7 @@ public class MTree implements Serializable {
   }
 
   public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
-    TSEntityPathCollector collector = new TSEntityPathCollector(root, timeseries);
+    BelongedEntityPathCollector collector = new BelongedEntityPathCollector(root, timeseries);
     collector.traverse();
     return collector.getResult();
   }
@@ -886,8 +886,8 @@ public class MTree implements Serializable {
    */
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    MeasurementPathFlatCollector collector =
-        new MeasurementPathFlatCollector(root, pathPattern, limit, offset);
+    FlatMeasurementPathCollector collector =
+        new FlatMeasurementPathCollector(root, pathPattern, limit, offset);
     collector.traverse();
     offset = collector.getCurOffset() + 1;
     List<PartialPath> res = collector.getResult();
@@ -901,8 +901,8 @@ public class MTree implements Serializable {
    */
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
-    MeasurementSchemaFlatCollector collector =
-        new MeasurementSchemaFlatCollector(root, plan.getPath());
+    FlatMeasurementSchemaCollector collector =
+        new FlatMeasurementSchemaCollector(root, plan.getPath());
     collector.setQueryContext(queryContext);
     collector.setNeedLast(true);
     collector.traverse();
@@ -931,8 +931,8 @@ public class MTree implements Serializable {
    */
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
-    MeasurementSchemaFlatCollector collector =
-        new MeasurementSchemaFlatCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());
+    FlatMeasurementSchemaCollector collector =
+        new FlatMeasurementSchemaCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());
     collector.traverse();
     return collector.getResult();
   }
@@ -1092,7 +1092,7 @@ public class MTree implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   public int getAllTimeseriesFlatCount(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new MeasurementFlatCounter(root, pathPattern);
+    CounterTraverser counter = new FlatMeasurementCounter(root, pathPattern);
     counter.traverse();
     return counter.getCount();
   }

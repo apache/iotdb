@@ -30,8 +30,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 // This method implements the measurement component count function.
 // Each component of MultiMeasurement will be count once.
-public class MeasurementFlatCounter extends CounterTraverser {
-  public MeasurementFlatCounter(IMNode startNode, PartialPath path) throws MetadataException {
+// E.g. given MTree: root.sg.d.s, root.sg.d.vector[s1, s2]; FlatMeasurementCount will be 3.
+public class FlatMeasurementCounter extends CounterTraverser {
+  public FlatMeasurementCounter(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     isMeasurementTraverser = true;
   }

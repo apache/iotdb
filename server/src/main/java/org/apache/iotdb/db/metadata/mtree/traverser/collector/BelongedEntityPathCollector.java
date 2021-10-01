@@ -30,12 +30,13 @@ import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
-// This class implements related entity paths collection for given timeseries path pattern.
+// This class implements measurement belonged entity paths collection for given timeseries path
+// pattern.
 // All the entities, that one of the timeseries matching the path pattern belongs to, will be
 // collected.
-public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
+public class BelongedEntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
 
-  public TSEntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public BelongedEntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     this.resultSet = new TreeSet<>();
   }

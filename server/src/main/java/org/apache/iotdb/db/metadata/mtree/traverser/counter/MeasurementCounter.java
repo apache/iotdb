@@ -23,7 +23,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 // This method implements the measurement count function.
-// One MultiMeasurement represent one aligned timeseries will only be count once.
+// One MultiMeasurement will only be count once.
 public class MeasurementCounter extends CounterTraverser {
 
   public MeasurementCounter(IMNode startNode, PartialPath path) throws MetadataException {

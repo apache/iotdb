@@ -1083,9 +1083,8 @@ public class MManager {
 
   /**
    * PartialPath of aligned time series will be organized to one VectorPartialPath. BEFORE this
-   * method, all the aligned time series is NOT united. For example,
-   * VectorMeasurementSchema(root.sg.d1.vector1 [s1,s2]) will be * root.sg.d1.vector1[s1],
-   * root.sg.d1.vector1[s2]
+   * method, all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1]
+   * and root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
    *
    * @param fullPaths full path list without uniting the sub measurement under the same aligned time
    *     series.

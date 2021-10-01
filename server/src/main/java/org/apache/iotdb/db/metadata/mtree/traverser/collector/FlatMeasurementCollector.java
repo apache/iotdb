@@ -32,15 +32,15 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 // This class defines MeasurementMNode as target node and
 // defines the measurement component process framework.
-// Each component of MultiMeasurement will be processed.
-public abstract class MeasurementFlatCollector<T> extends CollectorTraverser<T> {
+// UnaryMeasurement and each component of MultiMeasurement will be processed.
+public abstract class FlatMeasurementCollector<T> extends CollectorTraverser<T> {
 
-  public MeasurementFlatCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public FlatMeasurementCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     isMeasurementTraverser = true;
   }
 
-  public MeasurementFlatCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public FlatMeasurementCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
     isMeasurementTraverser = true;
