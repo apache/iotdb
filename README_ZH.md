@@ -353,7 +353,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](https://iotdb.apache.org/zh/UserGuide/Master/Appendix/SQL-Reference.html)。
 
 ### 停止 IoTDB
 
