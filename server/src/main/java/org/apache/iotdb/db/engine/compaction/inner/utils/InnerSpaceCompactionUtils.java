@@ -397,7 +397,7 @@ public class InnerSpaceCompactionUtils {
                   }
                   totalChunkNum += chunkMetadatas.size();
                 }
-                logger.info(
+                logger.debug(
                     "{} [Compaction] compacting {}.{}, max chunk num is {},  min chunk num is {},"
                         + " average chunk num is {}, using {} compaction",
                     storageGroup,

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.RecoverCrossMergeTask;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -96,5 +97,13 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
         ModificationFile.getCompactionMods(seqFile).remove();
       }
     }
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask other) {
+    if (other instanceof InplaceCompactionRecoverTask) {
+      return logFile.equals(((InplaceCompactionRecoverTask) other).logFile);
+    }
+    return false;
   }
 }

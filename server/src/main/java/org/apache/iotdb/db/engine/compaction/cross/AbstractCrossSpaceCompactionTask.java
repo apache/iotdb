@@ -20,13 +20,77 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactionTask {
 
+  List<TsFileResource> selectedSequenceFiles;
+  List<TsFileResource> selectedUnsequenceFiles;
+
+  public AbstractCrossSpaceCompactionTask(
+      String fullStorageGroupName,
+      long timePartition,
+      AtomicInteger currentTaskNum,
+      List<TsFileResource> selectedSequenceFiles,
+      List<TsFileResource> selectedUnsequenceFiles) {
+    super(fullStorageGroupName, timePartition, currentTaskNum);
+    this.selectedSequenceFiles = selectedSequenceFiles;
+    this.selectedUnsequenceFiles = selectedUnsequenceFiles;
+  }
+
   public AbstractCrossSpaceCompactionTask(
       String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
     super(fullStorageGroupName, timePartition, currentTaskNum);
+    this.selectedSequenceFiles = null;
+    this.selectedUnsequenceFiles = null;
+  }
+
+  public List<TsFileResource> getSelectedSequenceFiles() {
+    return selectedSequenceFiles;
+  }
+
+  public List<TsFileResource> getSelectedUnsequenceFiles() {
+    return selectedUnsequenceFiles;
+  }
+
+  @Override
+  public boolean checkValidAndSetMerging() {
+    for (TsFileResource resource : selectedSequenceFiles) {
+      if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
+        return false;
+      }
+    }
+
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
+        return false;
+      }
+    }
+
+    for (TsFileResource resource : selectedSequenceFiles) {
+      resource.setMerging(true);
+    }
+
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      resource.setMerging(true);
+    }
+
+    return true;
+  }
+
+  @Override
+  public String toString() {
+    return new StringBuilder()
+        .append(fullStorageGroupName)
+        .append("-")
+        .append(timePartition)
+        .append(" task seq file num is ")
+        .append(selectedSequenceFiles.size())
+        .append(" , unseq file num is ")
+        .append(selectedUnsequenceFiles.size())
+        .toString();
   }
 }

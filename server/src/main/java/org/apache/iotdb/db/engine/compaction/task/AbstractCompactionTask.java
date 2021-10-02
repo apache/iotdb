@@ -44,13 +44,13 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
     this.currentTaskNum = currentTaskNum;
-    this.currentTaskNum.getAndIncrement();
   }
 
   protected abstract void doCompaction() throws Exception;
 
   @Override
   public Void call() throws Exception {
+    currentTaskNum.incrementAndGet();
     try {
       doCompaction();
     } catch (Exception e) {
@@ -62,5 +62,30 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       }
     }
     return null;
+  }
+
+  public String getFullStorageGroupName() {
+    return fullStorageGroupName;
+  }
+
+  public long getTimePartition() {
+    return timePartition;
+  }
+
+  public abstract boolean equalsOtherTask(AbstractCompactionTask otherTask);
+
+  /**
+   * Check if the compaction task is valid (selected files are not merging, closed and exist). If
+   * the task is valid, then set the merging status of selected files to true.
+   *
+   * @return true if the task is valid else false
+   */
+  public abstract boolean checkValidAndSetMerging();
+
+  public boolean equals(Object other) {
+    if (other instanceof AbstractCompactionTask) {
+      return equalsOtherTask((AbstractCompactionTask) other);
+    }
+    return false;
   }
 }
