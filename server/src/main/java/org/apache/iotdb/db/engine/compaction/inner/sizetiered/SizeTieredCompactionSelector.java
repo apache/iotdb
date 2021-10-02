@@ -85,7 +85,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
 
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
-    LOGGER.info(
+    LOGGER.debug(
         "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
             + "target file num is {}, current task num is {}, total task num is {}, "
             + "max task num is {}",
@@ -121,25 +121,10 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         // if no available thread for new compaction task
         // or compaction of current type is disable
         // just return
-        if ((CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread)
-            || (!enableSeqSpaceCompaction && sequence)
-            || (!enableUnseqSpaceCompaction && !sequence)) {
-          if (CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread) {
-            LOGGER.info(
-                "{} [Compaction] Return selection because too many compaction thread, "
-                    + "current thread num is {}, total task num is {}",
-                logicalStorageGroupName + "-" + virtualStorageGroupName,
-                CompactionTaskManager.currentTaskNum,
-                CompactionTaskManager.getInstance().getTaskCount());
-          } else {
-            LOGGER.info(
-                "{} [Compaction] Return selection because compaction is not enable",
-                logicalStorageGroupName + "-" + virtualStorageGroupName);
-          }
-          LOGGER.info(
-              "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
-              logicalStorageGroupName + "-" + virtualStorageGroupName,
-              submitTaskNum);
+        if ((!enableSeqSpaceCompaction && sequence) || (!enableUnseqSpaceCompaction && !sequence)) {
+          LOGGER.debug(
+              "{} [Compaction] Return selection because compaction is not enable",
+              logicalStorageGroupName + "-" + virtualStorageGroupName);
           return taskSubmitted;
         }
         // the file size reach threshold
@@ -174,7 +159,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         // if the file size or file num reach threshold
         if (selectedFileSize >= targetCompactionFileSize
             || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
-          LOGGER.info(
+          LOGGER.debug(
               "Submit a {} inner space compaction task because {}",
               sequence ? "sequence" : "unsequence",
               selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
@@ -195,10 +180,12 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           submitTaskNum++;
         }
       }
-      LOGGER.info(
-          "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
-          logicalStorageGroupName + "-" + virtualStorageGroupName,
-          submitTaskNum);
+      if (taskSubmitted) {
+        LOGGER.info(
+            "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
+            logicalStorageGroupName + "-" + virtualStorageGroupName,
+            submitTaskNum);
+      }
       return taskSubmitted;
     } catch (IOException e) {
       e.printStackTrace();
