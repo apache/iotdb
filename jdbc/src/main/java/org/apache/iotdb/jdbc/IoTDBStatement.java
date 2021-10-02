@@ -59,7 +59,7 @@ public class IoTDBStatement implements Statement {
 
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
-   * will use server configuration.
+   * will disable the function of query timeout.
    */
   private int queryTimeout;
 
