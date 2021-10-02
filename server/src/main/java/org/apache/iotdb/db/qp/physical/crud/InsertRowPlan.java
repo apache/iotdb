@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -192,10 +192,10 @@ public class InsertRowPlan extends InsertPlan {
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
       measurementMNodes[i] =
-          new MeasurementMNode(
+          MeasurementMNode.getMeasurementMNode(
               null,
               measurements[i],
-              new MeasurementSchema(
+              new UnaryMeasurementSchema(
                   measurements[i], tsRecord.dataPointList.get(i).getType(), TSEncoding.PLAIN),
               null);
       dataTypes[i] = tsRecord.dataPointList.get(i).getType();

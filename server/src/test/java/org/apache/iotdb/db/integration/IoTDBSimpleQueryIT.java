@@ -82,7 +82,7 @@ public class IoTDBSimpleQueryIT {
     }
 
     IMeasurementMNode mNode =
-        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
     assertNull(mNode.getSchema().getProps());
   }
 
@@ -103,7 +103,7 @@ public class IoTDBSimpleQueryIT {
     }
 
     IMeasurementMNode mNode =
-        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
 
     // check if SDT property is set
     assertEquals(2, mNode.getSchema().getProps().size());
@@ -128,7 +128,7 @@ public class IoTDBSimpleQueryIT {
     }
 
     IMeasurementMNode mNode =
-        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
 
     // check if SDT property is set
     assertEquals(4, mNode.getSchema().getProps().size());

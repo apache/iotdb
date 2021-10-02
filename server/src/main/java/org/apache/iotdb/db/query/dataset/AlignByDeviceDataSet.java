@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.IOException;
@@ -260,7 +260,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     try {
       PartialPath fullPath = new PartialPath(device.getFullPath(), measurement);
       IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
-      if (schema instanceof MeasurementSchema) {
+      if (schema instanceof UnaryMeasurementSchema) {
         return fullPath;
       } else {
         String vectorPath = fullPath.getDevice();

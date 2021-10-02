@@ -22,9 +22,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.List;
 import java.util.Set;
@@ -33,12 +30,13 @@ import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
-// This class implements related entity paths collection for given timeseries path pattern.
+// This class implements measurement belonged entity paths collection for given timeseries path
+// pattern.
 // All the entities, that one of the timeseries matching the path pattern belongs to, will be
 // collected.
-public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
+public class BelongedEntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
 
-  public TSEntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public BelongedEntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     this.resultSet = new TreeSet<>();
   }
@@ -48,9 +46,10 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
     if (!node.isMeasurement() || idx != nodes.length - 2) {
       return false;
     }
-    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
-    if (schema instanceof VectorMeasurementSchema) {
-      List<String> measurements = schema.getSubMeasurementsList();
+    IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
+    if (measurementMNode.isMultiMeasurement()) {
+      List<String> measurements =
+          measurementMNode.getAsMultiMeasurementMNode().getSubMeasurementList();
       String regex = nodes[idx + 1].replace("*", ".*");
       for (String measurement : measurements) {
         if (!Pattern.matches(regex, measurement)) {
@@ -67,10 +66,10 @@ public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> 
     if (!node.isMeasurement()) {
       return false;
     }
-    IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
-    if (schema instanceof MeasurementSchema) {
+    IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
+    if (measurementMNode.isUnaryMeasurement()) {
       resultSet.add(node.getParent().getPartialPath());
-    } else if (schema instanceof VectorMeasurementSchema) {
+    } else if (measurementMNode.isMultiMeasurement()) {
       if (idx >= nodes.length - 1
           && !nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
           && !isPrefixMatch) {

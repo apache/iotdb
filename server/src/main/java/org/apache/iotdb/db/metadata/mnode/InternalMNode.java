@@ -154,13 +154,13 @@ public class InternalMNode extends MNode {
 
     if (newChildNode.isEntity() && oldChildNode.isEntity()) {
       Map<String, IMeasurementMNode> grandAliasChildren =
-          ((IEntityMNode) oldChildNode).getAliasChildren();
+          oldChildNode.getAsEntityMNode().getAliasChildren();
       if (!grandAliasChildren.isEmpty()) {
-        ((IEntityMNode) newChildNode).setAliasChildren(grandAliasChildren);
+        newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
         grandAliasChildren.forEach(
             (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
       }
-      ((IEntityMNode) newChildNode).setUseTemplate(oldChildNode.isUseTemplate());
+      newChildNode.getAsEntityMNode().setUseTemplate(oldChildNode.isUseTemplate());
     }
 
     newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());

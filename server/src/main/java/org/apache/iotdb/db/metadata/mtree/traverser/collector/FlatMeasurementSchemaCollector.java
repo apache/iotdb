@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -34,20 +36,21 @@ import java.util.List;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 // This class implements the measurement collection function.
-public class MeasurementSchemaCollector
-    extends MeasurementCollector<List<Pair<PartialPath, String[]>>> {
+public class FlatMeasurementSchemaCollector
+    extends FlatMeasurementCollector<List<Pair<PartialPath, String[]>>> {
 
   // whether show timeseries with last value
   protected boolean needLast = false;
   // queryContext helps get last value
   protected QueryContext queryContext;
 
-  public MeasurementSchemaCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public FlatMeasurementSchemaCollector(IMNode startNode, PartialPath path)
+      throws MetadataException {
     super(startNode, path);
     this.resultSet = new LinkedList<>();
   }
 
-  public MeasurementSchemaCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public FlatMeasurementSchemaCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
     this.resultSet = new LinkedList<>();
@@ -62,7 +65,7 @@ public class MeasurementSchemaCollector
   }
 
   @Override
-  protected void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException {
+  protected void collectUnaryMeasurement(UnaryMeasurementMNode node) throws MetadataException {
     IMeasurementSchema measurementSchema = node.getSchema();
     String[] tsRow = new String[7];
     tsRow[0] = node.getAlias();
@@ -77,7 +80,7 @@ public class MeasurementSchemaCollector
   }
 
   @Override
-  protected void collectVectorMeasurement(IMeasurementMNode node, int index)
+  protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index)
       throws MetadataException {
     IMeasurementSchema schema = node.getSchema();
     List<String> measurements = schema.getSubMeasurementsList();

@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.junit.After;
@@ -104,7 +104,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -121,7 +121,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -144,7 +144,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -179,7 +179,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -196,7 +196,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -220,7 +220,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -280,7 +280,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -300,7 +300,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -336,7 +336,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);
@@ -353,7 +353,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId,
         measurementId,
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
         context,
         tsfileResourcesForQuery);

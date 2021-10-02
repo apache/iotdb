@@ -29,8 +29,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.junit.After;
@@ -51,7 +51,7 @@ public class TsFileIOWriterTest {
     TsFileIOWriter writer = new TsFileIOWriter(new File(tsfile));
 
     // file schema
-    MeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema("sensor01");
+    UnaryMeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema("sensor01");
     Schema schema = new Schema();
     schema.registerTimeseries(new Path(deviceId, "sensor01"), measurementSchema);
 

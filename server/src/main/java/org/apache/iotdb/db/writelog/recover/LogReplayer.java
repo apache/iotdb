@@ -185,7 +185,7 @@ public class LogReplayer {
     }
     IMeasurementMNode[] mNodes;
     try {
-      mNodes = IoTDB.metaManager.getMNodes(plan.getPrefixPath(), plan.getMeasurements());
+      mNodes = IoTDB.metaManager.getMeasurementMNodes(plan.getPrefixPath(), plan.getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

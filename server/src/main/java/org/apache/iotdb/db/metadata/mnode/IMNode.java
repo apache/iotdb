@@ -75,5 +75,11 @@ public interface IMNode extends Serializable {
 
   boolean isMeasurement();
 
+  IStorageGroupMNode getAsStorageGroupMNode();
+
+  IEntityMNode getAsEntityMNode();
+
+  IMeasurementMNode getAsMeasurementMNode();
+
   void serializeTo(MLogWriter logWriter) throws IOException;
 }

@@ -43,8 +43,8 @@ import java.util.Objects;
  * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.
  */
-public class MeasurementSchema
-    implements IMeasurementSchema, Comparable<MeasurementSchema>, Serializable {
+public class UnaryMeasurementSchema
+    implements IMeasurementSchema, Comparable<UnaryMeasurementSchema>, Serializable {
 
   private String measurementId;
   private byte type;
@@ -53,9 +53,9 @@ public class MeasurementSchema
   private byte compressor;
   private Map<String, String> props = null;
 
-  public MeasurementSchema() {}
+  public UnaryMeasurementSchema() {}
 
-  public MeasurementSchema(String measurementId, TSDataType tsDataType) {
+  public UnaryMeasurementSchema(String measurementId, TSDataType tsDataType) {
     this(
         measurementId,
         tsDataType,
@@ -65,7 +65,7 @@ public class MeasurementSchema
   }
 
   /** set properties as an empty Map. */
-  public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
+  public UnaryMeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
     this(
         measurementId,
         type,
@@ -74,7 +74,7 @@ public class MeasurementSchema
         null);
   }
 
-  public MeasurementSchema(
+  public UnaryMeasurementSchema(
       String measurementId, TSDataType type, TSEncoding encoding, CompressionType compressionType) {
     this(measurementId, type, encoding, compressionType, null);
   }
@@ -85,7 +85,7 @@ public class MeasurementSchema
    * <p>props - information in encoding method. For RLE, Encoder.MAX_POINT_NUMBER For PLAIN,
    * Encoder.maxStringLength
    */
-  public MeasurementSchema(
+  public UnaryMeasurementSchema(
       String measurementId,
       TSDataType type,
       TSEncoding encoding,
@@ -98,7 +98,7 @@ public class MeasurementSchema
     this.compressor = compressionType.serialize();
   }
 
-  public MeasurementSchema(
+  public UnaryMeasurementSchema(
       String measurementId,
       byte type,
       byte encoding,
@@ -112,8 +112,8 @@ public class MeasurementSchema
   }
 
   /** function for deserializing data from input stream. */
-  public static MeasurementSchema deserializeFrom(InputStream inputStream) throws IOException {
-    MeasurementSchema measurementSchema = new MeasurementSchema();
+  public static UnaryMeasurementSchema deserializeFrom(InputStream inputStream) throws IOException {
+    UnaryMeasurementSchema measurementSchema = new UnaryMeasurementSchema();
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(inputStream);
 
@@ -139,8 +139,8 @@ public class MeasurementSchema
   }
 
   /** function for deserializing data from byte buffer. */
-  public static MeasurementSchema deserializeFrom(ByteBuffer buffer) {
-    MeasurementSchema measurementSchema = new MeasurementSchema();
+  public static UnaryMeasurementSchema deserializeFrom(ByteBuffer buffer) {
+    UnaryMeasurementSchema measurementSchema = new UnaryMeasurementSchema();
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
 
@@ -165,8 +165,8 @@ public class MeasurementSchema
     return measurementSchema;
   }
 
-  public static MeasurementSchema partialDeserializeFrom(ByteBuffer buffer) {
-    MeasurementSchema measurementSchema = new MeasurementSchema();
+  public static UnaryMeasurementSchema partialDeserializeFrom(ByteBuffer buffer) {
+    UnaryMeasurementSchema measurementSchema = new UnaryMeasurementSchema();
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
 
@@ -347,7 +347,7 @@ public class MeasurementSchema
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    MeasurementSchema that = (MeasurementSchema) o;
+    UnaryMeasurementSchema that = (UnaryMeasurementSchema) o;
     return type == that.type
         && encoding == that.encoding
         && Objects.equals(measurementId, that.measurementId)
@@ -361,7 +361,7 @@ public class MeasurementSchema
 
   /** compare by measurementID. */
   @Override
-  public int compareTo(MeasurementSchema o) {
+  public int compareTo(UnaryMeasurementSchema o) {
     if (equals(o)) {
       return 0;
     } else {

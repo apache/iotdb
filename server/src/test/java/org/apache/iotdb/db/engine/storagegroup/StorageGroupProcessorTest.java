@@ -51,7 +51,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -132,7 +132,7 @@ public class StorageGroupProcessorTest {
       tsfileProcessor.query(
           deviceId,
           measurementId,
-          new MeasurementSchema(
+          new UnaryMeasurementSchema(
               measurementId,
               TSDataType.INT32,
               TSEncoding.RLE,
@@ -219,11 +219,11 @@ public class StorageGroupProcessorTest {
 
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
-            null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+        MeasurementMNode.getMeasurementMNode(
+            null, "s0", new UnaryMeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
-            null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+        MeasurementMNode.getMeasurementMNode(
+            null, "s1", new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
         new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
@@ -367,11 +367,11 @@ public class StorageGroupProcessorTest {
 
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
-            null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+        MeasurementMNode.getMeasurementMNode(
+            null, "s0", new UnaryMeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
-            null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+        MeasurementMNode.getMeasurementMNode(
+            null, "s1", new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
         new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
@@ -448,11 +448,11 @@ public class StorageGroupProcessorTest {
 
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
-            null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+        MeasurementMNode.getMeasurementMNode(
+            null, "s0", new UnaryMeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
-            null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+        MeasurementMNode.getMeasurementMNode(
+            null, "s1", new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
         new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
@@ -529,11 +529,11 @@ public class StorageGroupProcessorTest {
 
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
-        new MeasurementMNode(
-            null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+        MeasurementMNode.getMeasurementMNode(
+            null, "s0", new UnaryMeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
     measurementMNodes[1] =
-        new MeasurementMNode(
-            null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+        MeasurementMNode.getMeasurementMNode(
+            null, "s1", new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
     InsertTabletPlan insertTabletPlan1 =
         new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
