@@ -99,7 +99,7 @@ public class SeqTsFileRecoverTest {
     EnvironmentUtils.envSetUp();
     tsF =
         SystemFileFactory.INSTANCE.getFile(
-            logNodePrefix, TestConstant.PARTIAL_PATH_STRING + "1-1-1.tsfile");
+            logNodePrefix, TestConstant.TSFILE_PREFIX_PATH + "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
     IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
