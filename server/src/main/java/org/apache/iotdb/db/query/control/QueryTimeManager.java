@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
@@ -44,7 +42,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class QueryTimeManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(QueryTimeManager.class);
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * the key of queryInfoMap is the query id and the value of queryInfoMap is the start time, the
