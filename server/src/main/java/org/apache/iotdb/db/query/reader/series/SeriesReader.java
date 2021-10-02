@@ -228,7 +228,9 @@ public class SeriesReader {
   }
 
   boolean hasNextFile() throws IOException {
-    QueryTimeManager.checkQueryAlive(context.getQueryId());
+    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
+      return false;
+    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -289,7 +291,9 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
-    QueryTimeManager.checkQueryAlive(context.getQueryId());
+    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
+      return false;
+    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -412,7 +416,9 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
-    QueryTimeManager.checkQueryAlive(context.getQueryId());
+    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
+      return false;
+    }
 
     /*
      * has overlapped data before
