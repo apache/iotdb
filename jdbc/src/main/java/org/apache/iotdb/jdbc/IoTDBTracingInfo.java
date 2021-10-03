@@ -21,29 +21,83 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class IoTDBTracingInfo {
 
-  public TSTracingInfo tsTracingInfo;
+  private TSTracingInfo tsTracingInfo;
 
-  public static final long TIME_NULL = -1L;
+  public IoTDBTracingInfo() {}
 
   public void setTsTracingInfo(TSTracingInfo tsTracingInfo) {
     this.tsTracingInfo = tsTracingInfo;
+  }
+
+  public boolean isSetTracingInfo() {
+    return tsTracingInfo != null;
   }
 
   public List<String> getActivityList() {
     return tsTracingInfo.getActivityList();
   }
 
-  public List<String> getElapsedTimeList() {
-    List<String> elapsedTimeList = new ArrayList<>();
-    for (Long time : tsTracingInfo.getElapsedTimeList()) {
-      if (time == TIME_NULL) elapsedTimeList.add("");
-      else elapsedTimeList.add(time.toString());
+  public List<Long> getElapsedTimeList() {
+    return tsTracingInfo.getElapsedTimeList();
+  }
+
+  public long getStatisticsByName(String name) throws Exception {
+    switch (name) {
+      case "seriesPathNum":
+        return tsTracingInfo.getSeriesPathNum();
+      case "seqFileNum":
+        return tsTracingInfo.getSeqFileNum();
+      case "unSeqFileNum":
+        return tsTracingInfo.getUnSeqFileNum();
+      case "seqChunkNum":
+        return tsTracingInfo.getSequenceChunkNum();
+      case "seqChunkPointNum":
+        return tsTracingInfo.getSequenceChunkPointNum();
+      case "unSeqChunkNum":
+        return tsTracingInfo.getUnsequenceChunkNum();
+      case "unSeqChunkPointNum":
+        return tsTracingInfo.getUnsequenceChunkPointNum();
+      case "totalPageNum":
+        return tsTracingInfo.getTotalPageNum();
+      case "overlappedPageNum":
+        return tsTracingInfo.getOverlappedPageNum();
+      default:
+        throw new Exception("Invalid statistics name!");
     }
-    return elapsedTimeList;
+  }
+
+  public String getStatisticsInfoByName(String name) throws Exception {
+    switch (name) {
+      case "seriesPathNum":
+        return String.format(Constant.STATISTICS_PATHNUM, tsTracingInfo.getSeriesPathNum());
+      case "seqFileNum":
+        return String.format(Constant.STATISTICS_SEQFILENUM, tsTracingInfo.getSeqFileNum());
+      case "unSeqFileNum":
+        return String.format(Constant.STATISTICS_UNSEQFILENUM, tsTracingInfo.getUnSeqFileNum());
+      case "seqChunkInfo":
+        return String.format(
+            Constant.STATISTICS_SEQCHUNKINFO,
+            tsTracingInfo.getSequenceChunkNum(),
+            (double) tsTracingInfo.getSequenceChunkPointNum()
+                / tsTracingInfo.getSequenceChunkNum());
+      case "unSeqChunkInfo":
+        return String.format(
+            Constant.STATISTICS_UNSEQCHUNKINFO,
+            tsTracingInfo.getUnsequenceChunkNum(),
+            (double) tsTracingInfo.getUnsequenceChunkPointNum()
+                / tsTracingInfo.getUnsequenceChunkNum());
+      case "pageNumInfo":
+        return String.format(
+            Constant.STATISTICS_PAGEINFO,
+            tsTracingInfo.getTotalPageNum(),
+            tsTracingInfo.getOverlappedPageNum(),
+            (double) tsTracingInfo.getOverlappedPageNum() / tsTracingInfo.getTotalPageNum() * 100);
+      default:
+        throw new Exception("Invalid statistics name!");
+    }
   }
 }

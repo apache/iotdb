@@ -23,25 +23,8 @@ public class TracingConstant {
 
   private TracingConstant() {}
 
-  public static final String STATEMENT_ID = "Statement Id: %d";
-  public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
-
   public static final String ACTIVITY_START_EXECUTE = "Start to execute statement: %s";
   public static final String ACTIVITY_PARSE_SQL = "Parse SQL to physical plan";
   public static final String ACTIVITY_CREATE_DATASET = "Create and cache dataset";
   public static final String ACTIVITY_REQUEST_COMPLETE = "Request complete";
-
-  public static final String STATISTICS_PATHNUM = "* Num of series paths: %d";
-  public static final String STATISTICS_SEQFILENUM = "* Num of sequence files read: %d";
-  public static final String STATISTICS_UNSEQFILENUM = "* Num of unsequence files read: %d";
-  public static final String STATISTICS_SEQCHUNKINFO =
-      "* Num of sequence chunks: %d, avg points: %.1f";
-  public static final String STATISTICS_UNSEQCHUNKINFO =
-      "* Num of unsequence chunks: %d, avg points: %.1f";
-  public static final String STATISTICS_PAGEINFO =
-      "* Num of Pages: %d, overlapped pages: %d (%.1f%%)";
-  public static final String STATISTICS_RESULT_LINES = "* Lines of result: %d";
-  public static final String STATISTICS_PRC_INFO = "* Num of RPC: %d, avg cost: %d ms";
-
-  public static final long TIME_NULL = -1L;
 }

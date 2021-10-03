@@ -51,6 +51,15 @@ struct TSQueryNonAlignDataSet{
 struct TSTracingInfo{
   1: required list<string> activityList
   2: required list<i64> elapsedTimeList
+  3: optional i32 seriesPathNum
+  4: optional i32 seqFileNum
+  5: optional i32 unSeqFileNum
+  6: optional i32 sequenceChunkNum
+  7: optional i64 sequenceChunkPointNum
+  8: optional i32 unsequenceChunkNum
+  9: optional i64 unsequenceChunkPointNum
+  10: optional i32 totalPageNum
+  11: optional i32 overlappedPageNum
 }
 
 struct TSExecuteStatementResp {

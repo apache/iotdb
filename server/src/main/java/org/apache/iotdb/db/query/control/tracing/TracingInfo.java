@@ -43,9 +43,9 @@ public class TracingInfo {
   private final Set<TsFileResource> unSeqFileSet = new HashSet<>();
 
   private int sequenceChunkNum = 0;
-  private long sequenceChunkPoints = 0;
+  private long sequenceChunkPointNum = 0;
   private int unsequenceChunkNum = 0;
-  private long unsequenceChunkPoints = 0;
+  private long unsequenceChunkPointNum = 0;
 
   private int totalPageNum = 0;
   private int overlappedPageNum = 0;
@@ -66,13 +66,13 @@ public class TracingInfo {
     this.seriesPathNum = seriesPathNum;
   }
 
-  public void addChunkInfo(int chunkNum, long pointsNum, boolean isSeq) {
+  public void addChunkInfo(int chunkNum, long pointNum, boolean isSeq) {
     if (isSeq) {
       sequenceChunkNum += chunkNum;
-      sequenceChunkPoints += pointsNum;
+      sequenceChunkPointNum += pointNum;
     } else {
       unsequenceChunkNum += chunkNum;
-      unsequenceChunkPoints += pointsNum;
+      unsequenceChunkPointNum += pointNum;
     }
   }
 
@@ -81,7 +81,7 @@ public class TracingInfo {
   }
 
   public long getSequenceChunkPoints() {
-    return sequenceChunkPoints;
+    return sequenceChunkPointNum;
   }
 
   public int getUnsequenceChunkNum() {
@@ -89,7 +89,7 @@ public class TracingInfo {
   }
 
   public long getUnsequenceChunkPoints() {
-    return unsequenceChunkPoints;
+    return unsequenceChunkPointNum;
   }
 
   public Set<TsFileResource> getSeqFileSet() {
@@ -125,43 +125,6 @@ public class TracingInfo {
     activityList.add(new Pair<>(activity, time - startTime));
   }
 
-  public void setStatisticsInfo() {
-    activityList.add(
-        new Pair<>(
-            String.format(TracingConstant.STATISTICS_PATHNUM, seriesPathNum),
-            TracingConstant.TIME_NULL));
-    activityList.add(
-        new Pair<>(
-            String.format(TracingConstant.STATISTICS_SEQFILENUM, seqFileSet.size()),
-            TracingConstant.TIME_NULL));
-    activityList.add(
-        new Pair<>(
-            String.format(TracingConstant.STATISTICS_UNSEQFILENUM, unSeqFileSet.size()),
-            TracingConstant.TIME_NULL));
-    activityList.add(
-        new Pair<>(
-            String.format(
-                TracingConstant.STATISTICS_SEQCHUNKINFO,
-                sequenceChunkNum,
-                (double) sequenceChunkPoints / sequenceChunkNum),
-            TracingConstant.TIME_NULL));
-    activityList.add(
-        new Pair<>(
-            String.format(
-                TracingConstant.STATISTICS_UNSEQCHUNKINFO,
-                unsequenceChunkNum,
-                (double) unsequenceChunkPoints / unsequenceChunkNum),
-            TracingConstant.TIME_NULL));
-    activityList.add(
-        new Pair<>(
-            String.format(
-                TracingConstant.STATISTICS_PAGEINFO,
-                totalPageNum,
-                overlappedPageNum,
-                (double) overlappedPageNum / totalPageNum * 100),
-            TracingConstant.TIME_NULL));
-  }
-
   public TSTracingInfo fillRpcReturnTracingInfo() {
     TSTracingInfo tsTracingInfo = new TSTracingInfo();
 
@@ -178,6 +141,16 @@ public class TracingInfo {
 
     tsTracingInfo.setActivityList(activityList);
     tsTracingInfo.setElapsedTimeList(elapsedTimeList);
+
+    tsTracingInfo.setSeriesPathNum(seriesPathNum);
+    tsTracingInfo.setSeqFileNum(seqFileSet.size());
+    tsTracingInfo.setUnSeqFileNum(unSeqFileSet.size());
+    tsTracingInfo.setSequenceChunkNum(sequenceChunkNum);
+    tsTracingInfo.setSequenceChunkPointNum(sequenceChunkPointNum);
+    tsTracingInfo.setUnsequenceChunkNum(unsequenceChunkNum);
+    tsTracingInfo.setUnsequenceChunkPointNum(unsequenceChunkPointNum);
+    tsTracingInfo.setTotalPageNum(totalPageNum);
+    tsTracingInfo.setOverlappedPageNum(overlappedPageNum);
     return tsTracingInfo;
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.control.tracing;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,7 @@ public class TracingManager {
     return TracingManagerHelper.INSTANCE;
   }
 
-  public TracingInfo getTracingInfo(long queryId) {
+  private TracingInfo getTracingInfo(long queryId) {
     return queryIdToTracingInfo.computeIfAbsent(queryId, k -> new TracingInfo());
   }
 
@@ -70,8 +71,8 @@ public class TracingManager {
     getTracingInfo(queryId).addActivity(activity, startTime);
   }
 
-  public void setStatisticsInfo(long queryId) {
-    queryIdToTracingInfo.get(queryId).setStatisticsInfo();
+  public TSTracingInfo fillRpcReturnTracingInfo(long queryId) {
+    return getTracingInfo(queryId).fillRpcReturnTracingInfo();
   }
 
   private static class TracingManagerHelper {

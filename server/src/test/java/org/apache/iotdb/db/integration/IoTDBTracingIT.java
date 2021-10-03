@@ -19,58 +19,94 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 
 import static org.junit.Assert.fail;
 
 public class IoTDBTracingIT {
 
-  @BeforeClass
-  public static void setUp() {
+  @Before
+  public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.closeStatMonitor();
+
     EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    prepareData();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
 
+  private static void prepareData() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
+
+      String insertTemplate = "INSERT INTO root.sg1.d1(timestamp, s1) VALUES(%d,%d)";
+
+      // prepare seq-file
+      for (int i = 200; i < 300; i++) {
+        statement.execute(String.format(insertTemplate, i, i));
+      }
+      statement.execute("flush");
+
+      for (int i = 400; i < 500; i++) {
+        statement.execute(String.format(insertTemplate, i, i));
+      }
+      statement.execute("flush");
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
   @Test
-  public void tracingTest() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
+  public void tracingTest() throws SQLException {
     Connection connection =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+
     try (Statement statement = connection.createStatement()) {
       statement.execute("tracing on");
     } catch (Exception e) {
       Assert.assertEquals("411: TRACING ON/OFF hasn't been supported yet", e.getMessage());
     }
+
     try (Statement statement = connection.createStatement()) {
       statement.execute("tracing off");
     } catch (Exception e) {
       Assert.assertEquals("411: TRACING ON/OFF hasn't been supported yet", e.getMessage());
     }
+
     try (Statement statement = connection.createStatement()) {
       statement.execute("tracing select s1 from root.sg1.d1");
-      ResultSet resultSet = statement.getResultSet();
-      List<List<String>> tracingInfo = ((IoTDBJDBCResultSet) resultSet).getTracingInfo();
-      Assert.assertEquals(2, tracingInfo.size());
-      Assert.assertEquals(11, tracingInfo.get(0).size());
-      Assert.assertEquals(11, tracingInfo.get(1).size());
+      AbstractIoTDBJDBCResultSet resultSet = (AbstractIoTDBJDBCResultSet) statement.getResultSet();
+      Assert.assertTrue(resultSet.isSetTracingInfo());
+      Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));
+      Assert.assertEquals(2, resultSet.getStatisticsByName("seqFileNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqFileNum"));
+      Assert.assertEquals(2, resultSet.getStatisticsByName("seqChunkNum"));
+      Assert.assertEquals(200, resultSet.getStatisticsByName("seqChunkPointNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkPointNum"));
+      Assert.assertEquals(2, resultSet.getStatisticsByName("totalPageNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("overlappedPageNum"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

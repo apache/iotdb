@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
@@ -542,10 +541,8 @@ public class SeriesReader {
         FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
 
     // for tracing: try to calculate the number of pages
-    SessionManager sessionManager = SessionManager.getInstance();
-    long statementId = sessionManager.getStatementIdByQueryId(context.getQueryId());
     if (context.isEnableTracing()) {
-      addTotalPageNumInTracing(statementId, pageReaderList.size());
+      addTotalPageNumInTracing(context.getQueryId(), pageReaderList.size());
     }
 
     pageReaderList.forEach(

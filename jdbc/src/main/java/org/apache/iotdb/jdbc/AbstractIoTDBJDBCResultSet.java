@@ -45,7 +45,6 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
@@ -1189,17 +1188,22 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   abstract Object getObjectByName(String columnName) throws SQLException;
 
   public boolean isSetTracingInfo() {
-    return ioTDBRpcTracingInfo.tsTracingInfo != null;
+    return ioTDBRpcTracingInfo.isSetTracingInfo();
   }
 
-  public List<List<String>> getTracingInfo() {
-    List<List<String>> lists = new ArrayList<>();
-    List<String> activityList = ioTDBRpcTracingInfo.getActivityList();
-    List<String> elapsedTimeList = ioTDBRpcTracingInfo.getElapsedTimeList();
-    activityList.add(0, "Activity");
-    elapsedTimeList.add(0, "Elapsed Time");
-    lists.add(0, activityList);
-    lists.add(1, elapsedTimeList);
-    return lists;
+  public List<String> getActivityList() {
+    return ioTDBRpcTracingInfo.getActivityList();
+  }
+
+  public List<Long> getElapsedTimeList() {
+    return ioTDBRpcTracingInfo.getElapsedTimeList();
+  }
+
+  public long getStatisticsByName(String name) throws Exception {
+    return ioTDBRpcTracingInfo.getStatisticsByName(name);
+  }
+
+  public String getStatisticsInfoByName(String name) throws Exception {
+    return ioTDBRpcTracingInfo.getStatisticsInfoByName(name);
   }
 }
