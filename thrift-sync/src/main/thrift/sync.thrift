@@ -44,7 +44,7 @@ service SyncService{
   SyncStatus startSync();
   SyncStatus init(1:string storageGroupName)
   SyncStatus syncDeletedFileName(1:string fileName)
-  SyncStatus initSyncData(1:string filename, 2:string pathname, 3:string dirname)
+  SyncStatus initSyncData(1:string filename)
   SyncStatus syncData(1:binary buff)
   SyncStatus checkDataDigest(1:string md5)
   SyncStatus endSync()
