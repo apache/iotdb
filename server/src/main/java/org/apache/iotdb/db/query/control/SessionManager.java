@@ -117,15 +117,6 @@ public class SessionManager {
     return -1;
   }
 
-  public long getStatementIdByQueryId(long queryId) {
-    for (Map.Entry<Long, Set<Long>> statementToQueries : statementIdToQueryId.entrySet()) {
-      if (statementToQueries.getValue().contains(queryId)) {
-        return statementToQueries.getKey();
-      }
-    }
-    return -1;
-  }
-
   public long requestStatementId(long sessionId) {
     long statementId = statementIdGenerator.incrementAndGet();
     sessionIdToStatementId
