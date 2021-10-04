@@ -129,8 +129,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     return pathNameToReaderIndex.get(pathName);
   }
 
-  @Override
-  public boolean isRawQuery() {
-    return false;
+  public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
+    this.pathNameToReaderIndex = pathNameToReaderIndex;
   }
 }

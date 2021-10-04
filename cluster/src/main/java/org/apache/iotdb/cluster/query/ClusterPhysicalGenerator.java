@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurati
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +45,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
@@ -67,9 +65,8 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
-      throws MetadataException {
-    return getCMManager().getSeriesSchemas(paths);
+  public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
+    return getCMManager().groupVectorPaths(paths);
   }
 
   @Override

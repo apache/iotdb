@@ -49,6 +49,10 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
         : timeseriesMetadata.getStatistics();
   }
 
+  public Statistics getStatistics(int index) {
+    return valueTimeseriesMetadataList.get(index).getStatistics();
+  }
+
   @Override
   public boolean isModified() {
     return timeseriesMetadata.isModified();

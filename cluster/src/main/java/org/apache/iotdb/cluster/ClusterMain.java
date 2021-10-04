@@ -220,7 +220,7 @@ public class ClusterMain {
 
   private static void doRemoveNode(String[] args) throws IOException {
     if (args.length != 3) {
-      logger.error("Usage: -r <ip> <metaPort>");
+      logger.error("Usage: <ip> <metaPort>");
       return;
     }
     String ip = args[1];

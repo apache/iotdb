@@ -51,6 +51,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -237,7 +238,7 @@ public class TsFileResource {
     }
     if (timeTimeSeriesMetadata.getTSDataType() != null) {
       if (timeTimeSeriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-        Statistics<?> timeStatistics =
+        Statistics<? extends Serializable> timeStatistics =
             Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
 
         List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
@@ -303,7 +304,7 @@ public class TsFileResource {
         timeSeriesMetadata =
             new VectorTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
       } else {
-        Statistics<?> seriesStatistics =
+        Statistics<? extends Serializable> seriesStatistics =
             Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
         // flush chunkMetadataList one by one
         for (IChunkMetadata chunkMetadata : chunkMetadataList) {

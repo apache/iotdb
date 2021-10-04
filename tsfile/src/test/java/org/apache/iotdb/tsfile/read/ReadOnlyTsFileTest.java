@@ -41,8 +41,8 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -71,7 +71,8 @@ public class ReadOnlyTsFileTest {
 
     Path path = new Path("t", "id");
     tsFileWriter.registerTimeseries(
-        path, new MeasurementSchema("id", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.LZ4));
+        path,
+        new UnaryMeasurementSchema("id", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.LZ4));
 
     for (int i = 0; i < 11000000; i++) {
       TSRecord t = new TSRecord(i, "t");

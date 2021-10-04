@@ -37,16 +37,9 @@ public class DescPriorityMergeReader extends PriorityMergeReader {
             });
   }
 
-  /**
-   * @param reader
-   * @param priority
-   * @param endTime
-   * @param queryContext
-   * @throws IOException
-   */
   @Override
   public void addReader(
-      IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext queryContext)
+      IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext context)
       throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));

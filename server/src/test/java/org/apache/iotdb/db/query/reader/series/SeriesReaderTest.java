@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -49,7 +49,7 @@ public class SeriesReaderTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
-  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();

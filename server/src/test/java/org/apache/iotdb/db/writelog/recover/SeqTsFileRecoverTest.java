@@ -52,8 +52,8 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -134,7 +134,8 @@ public class SeqTsFileRecoverTest {
     Map<String, IMeasurementSchema> template = new HashMap<>();
     for (int i = 0; i < 10; i++) {
       template.put(
-          "sensor" + i, new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
+          "sensor" + i,
+          new UnaryMeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
     }
     schema.registerSchemaTemplate("template1", template);
     for (int i = 0; i < 10; i++) {
@@ -213,7 +214,8 @@ public class SeqTsFileRecoverTest {
 
     Schema schema = new Schema();
     Map<String, IMeasurementSchema> template = new HashMap<>();
-    template.put("sensor1", new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
+    template.put(
+        "sensor1", new UnaryMeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerSchemaTemplate("template1", template);
     for (int i = 0; i < 4; i++) {
       schema.registerDevice("root.sg.device" + i, "template1");

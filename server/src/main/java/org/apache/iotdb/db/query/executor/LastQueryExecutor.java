@@ -269,18 +269,11 @@ public class LastQueryExecutor {
 
     public TimeValuePair read() {
       try {
-        node = (IMeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
+        node = IoTDB.metaManager.getMeasurementMNode(path);
       } catch (MetadataException e) {
-        TimeValuePair timeValuePair;
         // cluster mode may not get remote node
-        if (path instanceof VectorPartialPath) {
-          // the seriesPath has been transformed to vector path
-          // here needs subSensor path
-          timeValuePair =
-              IoTDB.metaManager.getLastCache(((VectorPartialPath) path).getPathWithSubSensor(0));
-        } else {
-          timeValuePair = IoTDB.metaManager.getLastCache(path);
-        }
+        TimeValuePair timeValuePair;
+        timeValuePair = IoTDB.metaManager.getLastCache(path);
         if (timeValuePair != null) {
           return timeValuePair;
         }
@@ -293,9 +286,10 @@ public class LastQueryExecutor {
       if (path instanceof VectorPartialPath) {
         // the seriesPath has been transformed to vector path
         // here needs subSensor path
-        return IoTDB.metaManager.getLastCache(node, ((VectorPartialPath) path).getSubSensor(0));
+        return IoTDB.metaManager.getLastCache(
+            node.getAsMultiMeasurementMNode(), ((VectorPartialPath) path).getSubSensor(0));
       } else {
-        return IoTDB.metaManager.getLastCache(node);
+        return IoTDB.metaManager.getLastCache(node.getAsUnaryMeasurementMNode());
       }
     }
 
@@ -307,9 +301,14 @@ public class LastQueryExecutor {
           // the seriesPath has been transformed to vector path
           // here needs subSensor path
           IoTDB.metaManager.updateLastCache(
-              node, ((VectorPartialPath) path).getSubSensor(0), pair, false, Long.MIN_VALUE);
+              node.getAsMultiMeasurementMNode(),
+              ((VectorPartialPath) path).getSubSensor(0),
+              pair,
+              false,
+              Long.MIN_VALUE);
         } else {
-          IoTDB.metaManager.updateLastCache(node, pair, false, Long.MIN_VALUE);
+          IoTDB.metaManager.updateLastCache(
+              node.getAsUnaryMeasurementMNode(), pair, false, Long.MIN_VALUE);
         }
       }
     }

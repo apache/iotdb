@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -57,7 +58,7 @@ public class PageWriter {
    * statistic of current page. It will be reset after calling {@code
    * writePageHeaderAndDataIntoBuff()}
    */
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   public PageWriter() {
     this(null, null);
@@ -285,7 +286,7 @@ public class PageWriter {
     return statistics.getCount();
   }
 
-  public Statistics<?> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return statistics;
   }
 }
