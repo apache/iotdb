@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -56,7 +56,7 @@ public class MergeUpgradeTest {
 
   private int seqFileNum = 2;
   private TSEncoding encoding = TSEncoding.RLE;
-  private MeasurementSchema[] measurementSchemas;
+  private UnaryMeasurementSchema[] measurementSchemas;
   private int timeseriesNum = 5;
   private long ptNum = 10;
   private boolean changeVersion = true;
@@ -122,10 +122,10 @@ public class MergeUpgradeTest {
   }
 
   private void prepareSeries() {
-    measurementSchemas = new MeasurementSchema[timeseriesNum];
+    measurementSchemas = new UnaryMeasurementSchema[timeseriesNum];
     for (int i = 0; i < timeseriesNum; i++) {
       measurementSchemas[i] =
-          new MeasurementSchema(
+          new UnaryMeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
     }
   }
@@ -169,7 +169,7 @@ public class MergeUpgradeTest {
       long ptNum,
       long valueOffset)
       throws WriteProcessException, IOException {
-    for (MeasurementSchema MeasurementSchema : measurementSchemas) {
+    for (UnaryMeasurementSchema MeasurementSchema : measurementSchemas) {
       fileWriter.registerTimeseries(
           new Path(deviceName, MeasurementSchema.getMeasurementId()), MeasurementSchema);
     }

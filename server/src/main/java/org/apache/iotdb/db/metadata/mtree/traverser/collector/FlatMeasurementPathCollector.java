@@ -22,26 +22,27 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
 
 import java.util.LinkedList;
 import java.util.List;
 
 // This class implements the measurement path collection function.
-public class MeasurementPathCollector extends MeasurementCollector<List<PartialPath>> {
+public class FlatMeasurementPathCollector extends FlatMeasurementCollector<List<PartialPath>> {
 
-  public MeasurementPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public FlatMeasurementPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
   }
 
-  public MeasurementPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public FlatMeasurementPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
     this.resultSet = new LinkedList<>();
   }
 
   @Override
-  protected void collectUnaryMeasurement(IMeasurementMNode node) throws MetadataException {
+  protected void collectUnaryMeasurement(UnaryMeasurementMNode node) throws MetadataException {
     PartialPath path = node.getPartialPath();
     if (nodes[nodes.length - 1].equals(node.getAlias())) {
       // only when user query with alias, the alias in path will be set
@@ -51,10 +52,9 @@ public class MeasurementPathCollector extends MeasurementCollector<List<PartialP
   }
 
   @Override
-  protected void collectVectorMeasurement(IMeasurementMNode node, int index)
+  protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index)
       throws MetadataException {
     resultSet.add(
-        new VectorPartialPath(
-            node.getFullPath(), node.getSchema().getSubMeasurementsList().get(index)));
+        new VectorPartialPath(node.getFullPath(), node.getSubMeasurementList().get(index)));
   }
 }

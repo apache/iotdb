@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -47,8 +47,10 @@ public class DefaultSchemaTemplateTest {
   public void testUsingDefaultSchemaTemplate() throws IOException, WriteProcessException {
     File file = new File("target/defaultSchemaTemplate.tsfile");
     try (TsFileWriter writer = new TsFileWriter(file)) {
-      MeasurementSchema s1 = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
-      MeasurementSchema s2 = new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN);
+      UnaryMeasurementSchema s1 =
+          new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+      UnaryMeasurementSchema s2 =
+          new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN);
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(s1);

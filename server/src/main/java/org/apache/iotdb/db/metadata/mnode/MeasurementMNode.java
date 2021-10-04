@@ -24,77 +24,67 @@ import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
-/** Represents an MNode which has a Measurement or Sensor attached to it. */
-public class MeasurementMNode extends MNode implements IMeasurementMNode {
+public abstract class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   private static final Logger logger = LoggerFactory.getLogger(MeasurementMNode.class);
 
-  private static final long serialVersionUID = -1199657856921206435L;
-
-  /** measurement's Schema for one timeseries represented by current leaf node */
-  private IMeasurementSchema schema;
-
   /** alias name of this measurement */
-  private String alias;
-
+  protected String alias;
   /** tag/attribute's start offset in tag file */
   private long offset = -1;
-
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;
-
   /** registered trigger */
   private TriggerExecutor triggerExecutor = null;
 
-  /** @param alias alias of measurementName */
-  public MeasurementMNode(
-      IMNode parent,
-      String measurementName,
-      String alias,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType type,
-      Map<String, String> props) {
-    super(parent, measurementName);
-    this.schema = new MeasurementSchema(measurementName, dataType, encoding, type, props);
-    this.alias = alias;
+  /**
+   * MeasurementMNode factory method. The type of returned MeasurementMNode is according to the
+   * schema type. The default type is UnaryMeasurementMNode, which means if schema == null, an
+   * UnaryMeasurementMNode will return.
+   */
+  public static IMeasurementMNode getMeasurementMNode(
+      IEntityMNode parent, String measurementName, IMeasurementSchema schema, String alias) {
+    if (schema == null) {
+      return new UnaryMeasurementMNode(parent, measurementName, null, alias);
+    } else if (schema instanceof UnaryMeasurementSchema) {
+      return new UnaryMeasurementMNode(
+          parent, measurementName, (UnaryMeasurementSchema) schema, alias);
+    } else if (schema instanceof VectorMeasurementSchema) {
+      return new MultiMeasurementMNode(
+          parent, measurementName, (VectorMeasurementSchema) schema, alias);
+    } else {
+      throw new RuntimeException("Undefined schema type.");
+    }
   }
 
-  public MeasurementMNode(
-      IMNode parent, String measurementName, IMeasurementSchema schema, String alias) {
-    super(parent, measurementName);
-    this.schema = schema;
+  /** @param alias alias of measurementName */
+  MeasurementMNode(IMNode parent, String name, String alias) {
+    super(parent, name);
     this.alias = alias;
   }
 
   @Override
   public IEntityMNode getParent() {
-    return (IEntityMNode) parent;
+    if (parent == null) {
+      return null;
+    }
+    return parent.getAsEntityMNode();
   }
 
   @Override
-  public IMeasurementSchema getSchema() {
-    return schema;
-  }
-
-  @Override
-  public void setSchema(IMeasurementSchema schema) {
-    this.schema = schema;
-  }
+  public abstract IMeasurementSchema getSchema();
 
   @Override
   public int getMeasurementMNodeCount() {
@@ -102,9 +92,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public int getMeasurementCount() {
-    return schema.getSubMeasurementsCount();
-  }
+  public abstract int getMeasurementCount();
 
   /**
    * get data type
@@ -113,14 +101,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
    * @return measurement data type
    */
   @Override
-  public TSDataType getDataType(String measurementId) {
-    if (schema instanceof MeasurementSchema) {
-      return schema.getType();
-    } else {
-      int index = schema.getSubMeasurementIndex(measurementId);
-      return schema.getSubMeasurementsTSDataTypeList().get(index);
-    }
-  }
+  public abstract TSDataType getDataType(String measurementId);
 
   @Override
   public long getOffset() {
@@ -174,46 +155,48 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
     logWriter.serializeMeasurementMNode(this);
   }
 
-  /**
-   * deserialize MeasuremetMNode from string array
-   *
-   * @param nodeInfo node information array. For example:
-   *     "2,s0,speed,2,2,1,year:2020;month:jan;,-1,0" representing: [0] nodeType [1] name [2] alias
-   *     [3] TSDataType.ordinal() [4] TSEncoding.ordinal() [5] CompressionType.ordinal() [6] props
-   *     [7] offset [8] children size
-   */
-  public static IMeasurementMNode deserializeFrom(String[] nodeInfo) {
-    String name = nodeInfo[1];
-    String alias = nodeInfo[2].equals("") ? null : nodeInfo[2];
-    Map<String, String> props = new HashMap<>();
-    if (!nodeInfo[6].equals("")) {
-      for (String propInfo : nodeInfo[6].split(";")) {
-        props.put(propInfo.split(":")[0], propInfo.split(":")[1]);
-      }
-    }
-    IMeasurementSchema schema =
-        new MeasurementSchema(
-            name,
-            Byte.parseByte(nodeInfo[3]),
-            Byte.parseByte(nodeInfo[4]),
-            Byte.parseByte(nodeInfo[5]),
-            props);
-    IMeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
-    node.setOffset(Long.parseLong(nodeInfo[7]));
-    return node;
-  }
-
-  /** deserialize MeasuremetMNode from MeasurementNodePlan */
+  /** deserialize MeasurementMNode from MeasurementNodePlan */
   public static IMeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
     IMeasurementMNode node =
-        new MeasurementMNode(null, plan.getName(), plan.getSchema(), plan.getAlias());
+        MeasurementMNode.getMeasurementMNode(
+            null, plan.getName(), plan.getSchema(), plan.getAlias());
     node.setOffset(plan.getOffset());
-
     return node;
   }
 
   @Override
+  public boolean isUnaryMeasurement() {
+    return false;
+  }
+
+  @Override
+  public boolean isMultiMeasurement() {
+    return false;
+  }
+
+  @Override
+  public UnaryMeasurementMNode getAsUnaryMeasurementMNode() {
+    if (isUnaryMeasurement()) {
+      return (UnaryMeasurementMNode) this;
+    } else {
+      throw new UnsupportedOperationException("This is not an UnaryMeasurementMNode");
+    }
+  }
+
+  @Override
+  public MultiMeasurementMNode getAsMultiMeasurementMNode() {
+    if (isMultiMeasurement()) {
+      return (MultiMeasurementMNode) this;
+    } else {
+      throw new UnsupportedOperationException("This is not an MultiMeasurementMNode");
+    }
+  }
+
+  @Override
   public String getFullPath() {
+    if (fullPath != null) {
+      return fullPath;
+    }
     return concatFullPath();
   }
 
@@ -224,7 +207,8 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public IMNode getChild(String name) {
-    logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
+    MeasurementMNode.logger.warn(
+        "current node {} is a MeasurementMNode, can not get child {}", this.name, name);
     throw new RuntimeException(
         String.format(
             "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
@@ -265,7 +249,8 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public Template getSchemaTemplate() {
-    logger.warn("current node {} is a MeasurementMNode, can not get Device Template", name);
+    MeasurementMNode.logger.warn(
+        "current node {} is a MeasurementMNode, can not get Device Template", name);
     throw new RuntimeException(
         String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
   }

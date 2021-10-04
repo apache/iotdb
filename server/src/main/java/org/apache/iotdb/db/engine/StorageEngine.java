@@ -583,10 +583,10 @@ public class StorageEngine implements IService {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
         try {
-          IStorageGroupMNode storageGroupMNode =
-              IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getPrefixPath());
           updateMonitorStatistics(
-              processorMap.get(storageGroupMNode.getPartialPath()), insertRowPlan);
+              processorMap.get(
+                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getPrefixPath())),
+              insertRowPlan);
         } catch (MetadataException e) {
           logger.error("failed to record status", e);
         }
@@ -643,10 +643,10 @@ public class StorageEngine implements IService {
 
     if (config.isEnableStatMonitor()) {
       try {
-        IStorageGroupMNode storageGroupMNode =
-            IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getPrefixPath());
         updateMonitorStatistics(
-            processorMap.get(storageGroupMNode.getPartialPath()), insertTabletPlan);
+            processorMap.get(
+                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getPrefixPath())),
+            insertTabletPlan);
       } catch (MetadataException e) {
         logger.error("failed to record status", e);
       }

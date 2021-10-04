@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -40,7 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -875,8 +876,8 @@ public class MManagerBasicTest {
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node = manager.setUsingSchemaTemplate(node);
 
-    MeasurementSchema s11 =
-        new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    UnaryMeasurementSchema s11 =
+        new UnaryMeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     assertNotNull(node.getSchemaTemplate());
     assertEquals(node.getSchemaTemplate().getSchemaMap().get("s11"), s11);
 
@@ -889,13 +890,16 @@ public class MManagerBasicTest {
 
     assertTrue(allSchema.isEmpty());
 
-    IMeasurementMNode[] mNodes =
-        manager.getMNodes(new PartialPath("root.sg1.d1"), new String[] {"s11"});
-    assertNotNull(mNodes[0]);
-    assertEquals(mNodes[0].getSchema(), s11);
+    IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
+    assertNotNull(mNode);
+    assertEquals(mNode.getSchema(), s11);
 
-    mNodes = manager.getMNodes(new PartialPath("root.sg1.d1"), new String[] {"s100"});
-    assertNull(mNodes[0]);
+    try {
+      manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
+      fail();
+    } catch (PathNotExistException e) {
+      assertEquals("Path [root.sg1.d1.s100] does not exist", e.getMessage());
+    }
   }
 
   private CreateTemplatePlan getCreateTemplatePlan() {
@@ -1561,7 +1565,8 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
+      assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
+      assertEquals(3, manager.getAllTimeseriesFlatCount(node.getPartialPath().concatNode("**")));
       assertEquals(1, node.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);

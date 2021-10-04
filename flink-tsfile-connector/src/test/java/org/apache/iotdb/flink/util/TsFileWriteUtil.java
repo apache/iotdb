@@ -26,8 +26,8 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.io.File;
 
@@ -44,11 +44,13 @@ public class TsFileWriteUtil {
     }
     Schema schema = new Schema();
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+        DEFAULT_TEMPLATE, new UnaryMeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE,
+        new UnaryMeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE,
+        new UnaryMeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 
@@ -141,11 +143,13 @@ public class TsFileWriteUtil {
     }
     Schema schema = new Schema();
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+        DEFAULT_TEMPLATE, new UnaryMeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE,
+        new UnaryMeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE,
+        new UnaryMeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 

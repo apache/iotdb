@@ -43,7 +43,7 @@ public interface IEntityMNode extends IMNode {
   static IEntityMNode setToEntity(IMNode node) {
     IEntityMNode entityMNode;
     if (node.isEntity()) {
-      entityMNode = (IEntityMNode) node;
+      entityMNode = node.getAsEntityMNode();
     } else {
       if (node.isStorageGroup()) {
         entityMNode =
