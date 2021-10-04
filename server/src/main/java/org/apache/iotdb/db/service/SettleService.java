@@ -44,7 +44,7 @@ public class SettleService implements IService {
   private ExecutorService settleThreadPool;
   private static AtomicInteger filesToBeSettledCount = new AtomicInteger();
   private PartialPath storageGroupPath;
-  private String tsFilePath;
+  private String tsFilePath = "";
 
   public static SettleService getINSTANCE() {
     return InstanceHolder.INSTANCE;

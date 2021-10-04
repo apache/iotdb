@@ -129,7 +129,7 @@ public class TsFileAndModSettleToolTest {
       List<TsFileResource> resourcesToBeSettled = createFiles();
       List<TsFileResource> settledResources = new ArrayList<>();
       for (TsFileResource oldResource : resourcesToBeSettled) {
-        TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
+        TsFileAndModSettleTool tsFileAndModSettleTool = TsFileAndModSettleTool.getInstance();
         tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource, settledResources);
       }
     } catch (Exception e) {

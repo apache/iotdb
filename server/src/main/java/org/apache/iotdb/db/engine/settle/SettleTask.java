@@ -61,7 +61,7 @@ public class SettleTask extends WrappedRunnable {
           resourceToBeSettled.getTsFile().getAbsolutePath());
       return;
     }
-    TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
+    TsFileAndModSettleTool tsFileAndModSettleTool = TsFileAndModSettleTool.getInstance();
     if (tsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
       logger.info("find settled file for {}", resourceToBeSettled.getTsFile());
       settledResources = tsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
