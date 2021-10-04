@@ -35,7 +35,7 @@ public class FilePathUtilsTest {
   private static final String storageGroupName = "root.group_9";
   private static final String virtualSgName = "1";
   private static final long partitionId = 0;
-  private static final String tsFileName = "1611199237113-4-0.tsfile";
+  private static final String tsFileName = "1611199237113-4-0-0.tsfile";
   private static final String fullPath =
       "target"
           + File.separator

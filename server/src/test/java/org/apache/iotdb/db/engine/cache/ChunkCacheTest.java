@@ -241,19 +241,14 @@ public class ChunkCacheTest {
         tsFileResource.remove();
       }
     }
-    File[] files =
-        FSFactoryProducer.getFSFactory().listFilesBySuffix(tempSGDir.getPath(), ".tsfile");
+    File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".tsfile");
     for (File file : files) {
-      if (file.exists()) {
-        Assert.assertTrue(file.delete());
-      }
+      file.delete();
     }
     File[] resourceFiles =
-        FSFactoryProducer.getFSFactory().listFilesBySuffix(tempSGDir.getPath(), ".resource");
+        FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
     for (File resourceFile : resourceFiles) {
-      if (resourceFile.exists()) {
-        Assert.assertTrue(resourceFile.delete());
-      }
+      resourceFile.delete();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     FileReaderManager.getInstance().stop();

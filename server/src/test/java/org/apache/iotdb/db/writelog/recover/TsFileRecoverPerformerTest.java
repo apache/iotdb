@@ -63,7 +63,8 @@ public class TsFileRecoverPerformerTest {
     // generate a completed tsfile
     File tempTsFile =
         FSFactoryProducer.getFSFactory()
-            .getFile(TestConstant.OUTPUT_DATA_DIR.concat("temp1.tsfile"));
+            .getFile(
+                TestConstant.OUTPUT_DATA_DIR.concat(System.currentTimeMillis() + "-1-0-0.tsfile"));
     if (!tempTsFile.getParentFile().exists()) {
       Assert.assertTrue(tempTsFile.getParentFile().mkdirs());
     }
@@ -144,7 +145,8 @@ public class TsFileRecoverPerformerTest {
     // generate a completed tsfile
     File tempTsFile =
         FSFactoryProducer.getFSFactory()
-            .getFile(TestConstant.OUTPUT_DATA_DIR.concat("temp2.tsfile"));
+            .getFile(
+                TestConstant.OUTPUT_DATA_DIR.concat(System.currentTimeMillis() + "-2-0-0.tsfile"));
     if (!tempTsFile.getParentFile().exists()) {
       Assert.assertTrue(tempTsFile.getParentFile().mkdirs());
     }
