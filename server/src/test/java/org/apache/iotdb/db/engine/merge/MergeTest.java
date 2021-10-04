@@ -75,6 +75,7 @@ abstract class MergeTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
@@ -95,7 +96,7 @@ abstract class MergeTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
-    EnvironmentUtils.cleanAllDir();
+    EnvironmentUtils.cleanEnv();
     MergeManager.getINSTANCE().stop();
   }
 

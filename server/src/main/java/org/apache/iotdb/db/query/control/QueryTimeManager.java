@@ -124,7 +124,7 @@ public class QueryTimeManager implements IService {
    * @return True if alive.
    */
   public static boolean checkQueryAlive(long queryId) {
-    QueryInfo queryInfo = getInstance().queryInfoMap.get(queryId);
+    QueryInfo queryInfo = getInstance().getQueryInfo(queryId);
     if (queryInfo == null) {
       return false;
     } else if (queryInfo.isInterrupted()) {
@@ -139,6 +139,10 @@ public class QueryTimeManager implements IService {
 
   public Map<Long, QueryInfo> getQueryInfoMap() {
     return queryInfoMap;
+  }
+
+  public QueryInfo getQueryInfo(long queryId) {
+    return queryInfoMap.get(queryId);
   }
 
   public static QueryTimeManager getInstance() {
