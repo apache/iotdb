@@ -28,8 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -62,12 +60,12 @@ import static org.junit.Assert.assertNotNull;
 @SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
 public class RestorableTsFileIOWriterTest {
 
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
-  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final String FILE_NAME =
+      TestConstant.BASE_OUTPUT_PATH.concat(System.currentTimeMillis() + "-1-0-0.tsfile");
+  File file = new File(FILE_NAME);
 
   @Before
   public void setUp() throws IOException {
-    File file = fsFactory.getFile(FILE_NAME);
     if (!file.getParentFile().exists()) {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
@@ -75,7 +73,6 @@ public class RestorableTsFileIOWriterTest {
 
   @After
   public void tearDown() {
-    File file = fsFactory.getFile(FILE_NAME);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -83,19 +80,14 @@ public class RestorableTsFileIOWriterTest {
 
   @Test(expected = NotCompatibleTsFileException.class)
   public void testBadHeadMagic() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
-    FileWriter fWriter = new FileWriter(file);
-    try {
+    try (FileWriter fWriter = new FileWriter(file)) {
       fWriter.write("Tsfile");
-    } finally {
-      fWriter.close();
     }
     new RestorableTsFileIOWriter(file);
   }
 
   @Test
   public void testOnlyHeadMagic() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.getIOWriter().close();
 
@@ -112,7 +104,6 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOnlyFirstMask() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     // we have to flush using inner API.
     writer.getIOWriter().out.write(new byte[] {MetaMarker.CHUNK_HEADER});
@@ -121,22 +112,22 @@ public class RestorableTsFileIOWriterTest {
     writer = new TsFileWriter(rWriter);
     writer.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
+    rWriter.close();
   }
 
   @Test
   public void testOnlyOneIncompleteChunkHeader() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
 
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     TsFileWriter writer = new TsFileWriter(rWriter);
     writer.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
+    rWriter.close();
   }
 
   @Test
   public void testOnlyOneChunkHeader() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.getIOWriter().startChunkGroup("root.sg1.d1");
     writer
@@ -155,11 +146,11 @@ public class RestorableTsFileIOWriterTest {
     writer = new TsFileWriter(rWriter);
     writer.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
+    rWriter.close();
   }
 
   @Test
   public void testOnlyOneChunkHeaderAndSomePage() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -193,11 +184,11 @@ public class RestorableTsFileIOWriterTest {
     writer.close();
     // truncate version marker and version
     assertEquals(pos1, rWriter.getTruncatedSize());
+    rWriter.close();
   }
 
   @Test
   public void testOnlyOneChunkGroup() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -217,6 +208,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(file.getPath()));
     List<Path> pathList = new ArrayList<>();
@@ -238,7 +230,6 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOnlyOneChunkGroupAndOneMarker() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -258,7 +249,10 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+
     assertNotEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length, rWriter.getTruncatedSize());
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -269,7 +263,6 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testTwoChunkGroupAndMore() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -302,6 +295,8 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -316,7 +311,6 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testNoSeperatorMask() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -349,6 +343,8 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -363,7 +359,6 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testHavingSomeFileMetadata() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -397,6 +392,8 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -411,7 +408,6 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testOpenCompleteFile() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -433,6 +429,8 @@ public class RestorableTsFileIOWriterTest {
 
     rWriter = new RestorableTsFileIOWriter(file);
     assertFalse(rWriter.canWrite());
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -443,7 +441,6 @@ public class RestorableTsFileIOWriterTest {
 
   @Test
   public void testAppendDataOnCompletedFile() throws Exception {
-    File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
         new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -464,6 +461,7 @@ public class RestorableTsFileIOWriterTest {
         RestorableTsFileIOWriter.getWriterForAppendingDataOnCompletedTsFile(file);
     TsFileWriter write = new TsFileWriter(rWriter);
     write.close();
+    rWriter.close();
     assertEquals(size, file.length());
   }
 }

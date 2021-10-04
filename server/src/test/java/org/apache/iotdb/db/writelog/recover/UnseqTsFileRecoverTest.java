@@ -97,8 +97,10 @@ public class UnseqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
-    if (!tsF.getCanonicalFile().exists()) {
+    tsF =
+        SystemFileFactory.INSTANCE.getFile(
+            logNodePrefix, System.currentTimeMillis() + "-1-0-0.tsfile");
+    if (!tsF.getParentFile().exists()) {
       Assert.assertTrue(tsF.getParentFile().mkdirs());
     }
 

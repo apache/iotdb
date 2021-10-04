@@ -21,7 +21,6 @@ package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -58,13 +57,12 @@ public class TsFileRecoverPerformerTest {
   private final Logger LOGGER = LoggerFactory.getLogger(TsFileRecoverPerformerTest.class);
 
   @Test
-  public void testUncompletedTsFileRecoverWithoutRedoWAL()
-      throws IOException, IllegalPathException {
+  public void testUncompletedTsFileRecoverWithoutRedoWAL() throws IOException {
     // generate a completed tsfile
     File tempTsFile =
         FSFactoryProducer.getFSFactory()
             .getFile(
-                TestConstant.OUTPUT_DATA_DIR.concat(System.currentTimeMillis() + "-1-0-0.tsfile"));
+                TestConstant.BASE_OUTPUT_PATH.concat(System.currentTimeMillis() + "-1-0-0.tsfile"));
     if (!tempTsFile.getParentFile().exists()) {
       Assert.assertTrue(tempTsFile.getParentFile().mkdirs());
     }
@@ -117,6 +115,7 @@ public class TsFileRecoverPerformerTest {
         tsFileWriter.flushAllChunkGroups();
       }
     } catch (Exception e) {
+      e.printStackTrace();
       throw new RuntimeException("fail to write tsfile " + tempTsFile.getAbsolutePath());
     }
 
@@ -130,8 +129,9 @@ public class TsFileRecoverPerformerTest {
         new TsFileRecoverPerformer(null, new TsFileResource(tempTsFile), true, false);
     try {
       performer.recover(false, null, null);
-    } catch (StorageGroupProcessorException e) {
+    } catch (Exception e) {
     }
+
     try {
       Assert.assertEquals(
           (long) flushNum.get(flushNum.size() - 1), getValueCount(tempTsFile, "s1"));
@@ -146,7 +146,7 @@ public class TsFileRecoverPerformerTest {
     File tempTsFile =
         FSFactoryProducer.getFSFactory()
             .getFile(
-                TestConstant.OUTPUT_DATA_DIR.concat(System.currentTimeMillis() + "-2-0-0.tsfile"));
+                TestConstant.BASE_OUTPUT_PATH.concat(System.currentTimeMillis() + "-2-0-0.tsfile"));
     if (!tempTsFile.getParentFile().exists()) {
       Assert.assertTrue(tempTsFile.getParentFile().mkdirs());
     }
@@ -210,10 +210,12 @@ public class TsFileRecoverPerformerTest {
 
     TsFileRecoverPerformer performer =
         new TsFileRecoverPerformer(null, new TsFileResource(tempTsFile), true, false);
+
     try {
       performer.recover(true, null, null);
     } catch (Exception e) {
     }
+
     try {
       Assert.assertEquals(
           (long) flushNum.get(flushNum.size() - 2), getValueCount(tempTsFile, "s1"));
@@ -222,7 +224,7 @@ public class TsFileRecoverPerformerTest {
     }
   }
 
-  private long getValueCount(File file, String sensor) throws IOException {
+  private long getValueCount(File file, String sensor) {
     long count = 0;
     try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getPath())) {
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -269,7 +271,6 @@ public class TsFileRecoverPerformerTest {
         }
       }
     } catch (Exception e) {
-
     }
     return count;
   }

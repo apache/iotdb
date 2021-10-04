@@ -223,7 +223,6 @@ public class EnvironmentUtils {
     // delete tracing
     cleanDir(config.getTracingDir());
     // delete data files
-    cleanDir(TestConstant.OUTPUT_DATA_DIR);
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
     }
