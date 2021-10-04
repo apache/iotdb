@@ -750,9 +750,13 @@ public class TSServiceImpl implements TSIService.Iface {
 
     final long startTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
+    QueryContext context =
+        genQueryContext(queryId, plan.isDebug())
+            .setStatement(statement)
+            .setStartTime(startTime)
+            .setTimeout(timeout);
 
     try {
-      queryTimeManager.registerQuery(queryId, startTime, statement, timeout, plan);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         TracingManager tracingManager = TracingManager.getInstance();
         if (!(plan instanceof AlignByDevicePlan)) {
@@ -774,7 +778,7 @@ public class TSServiceImpl implements TSIService.Iface {
         ((QueryPlan) plan).setEnableRedirect(enableRedirect);
       }
       // create and cache dataset
-      QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
+      QueryDataSet newDataSet = createQueryDataSet(context, plan, fetchSize);
 
       if (newDataSet.getEndPoint() != null && enableRedirect) {
         // redirect query
@@ -1038,6 +1042,11 @@ public class TSServiceImpl implements TSIService.Iface {
 
     final long startTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
+    QueryContext context =
+        genQueryContext(queryId, physicalPlan.isDebug())
+            .setStartTime(startTime)
+            .setStatement(statement)
+            .setTimeout(timeout);
     final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
     final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
 
@@ -1050,12 +1059,11 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     try {
-      queryTimeManager.registerQuery(queryId, startTime, statement, timeout, queryPlan);
 
       InsertTabletPlansIterator insertTabletPlansIterator =
           new InsertTabletPlansIterator(
               queryPlan,
-              createQueryDataSet(queryId, queryPlan, fetchSize),
+              createQueryDataSet(context, queryPlan, fetchSize),
               selectIntoPlan.getFromPath(),
               selectIntoPlan.getIntoPaths());
       while (insertTabletPlansIterator.hasNext()) {
@@ -1108,9 +1116,10 @@ public class TSServiceImpl implements TSIService.Iface {
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
       }
 
-      // register query info to queryTimeManager
-      queryTimeManager.registerQuery(
-          req.queryId, System.currentTimeMillis(), req.statement, req.timeout);
+      genQueryContext(req.queryId, false)
+          .setStartTime(System.currentTimeMillis())
+          .setStatement(req.statement)
+          .setTimeout(req.timeout);
 
       QueryDataSet queryDataSet = sessionManager.getDataset(req.queryId);
       if (req.isAlign) {
@@ -1202,14 +1211,14 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   /** create QueryDataSet and buffer it for fetchResults */
-  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan, int fetchSize)
+  private QueryDataSet createQueryDataSet(
+      QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
-    QueryContext context = genQueryContext(queryId, physicalPlan.isDebug());
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
-    sessionManager.setDataset(queryId, queryDataSet);
+    sessionManager.setDataset(context.getQueryId(), queryDataSet);
     return queryDataSet;
   }
 
