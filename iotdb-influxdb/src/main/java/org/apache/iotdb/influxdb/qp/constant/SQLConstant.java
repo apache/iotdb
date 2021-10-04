@@ -20,9 +20,7 @@ package org.apache.iotdb.influxdb.qp.constant;
 
 import java.util.*;
 
-/**
- * this class contains several constants used in SQL.
- */
+/** this class contains several constants used in SQL. */
 public class SQLConstant {
 
   private SQLConstant() {

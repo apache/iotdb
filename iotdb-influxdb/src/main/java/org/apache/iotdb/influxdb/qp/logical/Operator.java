@@ -18,9 +18,5 @@
  */
 package org.apache.iotdb.influxdb.qp.logical;
 
-/**
- * This class is a superclass of all operator.
- */
-public abstract class Operator {
-
-}
+/** This class is a superclass of all operator. */
+public abstract class Operator {}
