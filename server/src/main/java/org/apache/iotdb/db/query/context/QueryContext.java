@@ -73,7 +73,7 @@ public class QueryContext {
   }
 
   public QueryContext(long queryId, boolean debug) {
-    this(queryId, debug, System.currentTimeMillis(), null, 0);
+    this(queryId, debug, System.currentTimeMillis(), "", 0);
   }
 
   /** Every time we generate the queryContext, register it to queryTimeManager. */

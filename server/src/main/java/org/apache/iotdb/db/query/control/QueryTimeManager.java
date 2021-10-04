@@ -21,8 +21,6 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -45,7 +43,7 @@ public class QueryTimeManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(QueryTimeManager.class);
 
-  private Map<Long, QueryContext> queryContextMap;
+  private volatile Map<Long, QueryContext> queryContextMap;
 
   private ScheduledExecutorService executorService;
 
@@ -99,10 +97,6 @@ public class QueryTimeManager implements IService {
           return null;
         });
     return successRemoved;
-  }
-
-  public AtomicBoolean unRegisterQuery(long queryId, PhysicalPlan plan) {
-    return plan instanceof ShowQueryProcesslistPlan ? null : unRegisterQuery(queryId);
   }
 
   /**
