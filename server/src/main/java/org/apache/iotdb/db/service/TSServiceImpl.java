@@ -750,11 +750,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
     final long startTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
-    QueryContext context =
-        genQueryContext(queryId, plan.isDebug())
-            .setStatement(statement)
-            .setStartTime(startTime)
-            .setTimeout(timeout);
+    QueryContext context = genQueryContext(queryId, plan.isDebug(), startTime, statement, timeout);
 
     try {
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
@@ -1043,10 +1039,7 @@ public class TSServiceImpl implements TSIService.Iface {
     final long startTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
     QueryContext context =
-        genQueryContext(queryId, physicalPlan.isDebug())
-            .setStartTime(startTime)
-            .setStatement(statement)
-            .setTimeout(timeout);
+        genQueryContext(queryId, physicalPlan.isDebug(), startTime, statement, timeout);
     final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
     final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
 
@@ -1116,10 +1109,7 @@ public class TSServiceImpl implements TSIService.Iface {
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
       }
 
-      genQueryContext(req.queryId, false)
-          .setStartTime(System.currentTimeMillis())
-          .setStatement(req.statement)
-          .setTimeout(req.timeout);
+      genQueryContext(req.queryId, false, System.currentTimeMillis(), req.statement, req.timeout);
 
       QueryDataSet queryDataSet = sessionManager.getDataset(req.queryId);
       if (req.isAlign) {
@@ -1222,8 +1212,9 @@ public class TSServiceImpl implements TSIService.Iface {
     return queryDataSet;
   }
 
-  protected QueryContext genQueryContext(long queryId, boolean debug) {
-    return new QueryContext(queryId, debug);
+  protected QueryContext genQueryContext(
+      long queryId, boolean debug, long startTime, String statement, long timeout) {
+    return new QueryContext(queryId, debug, startTime, statement, timeout);
   }
 
   /** update statement can be: 1. select-into statement 2. non-query statement */
