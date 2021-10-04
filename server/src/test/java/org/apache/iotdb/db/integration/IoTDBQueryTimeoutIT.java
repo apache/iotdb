@@ -75,7 +75,8 @@ public class IoTDBQueryTimeoutIT {
       while (resultSet.next()) {
         cnt++;
       }
-      Assert.assertEquals(0, cnt);
+      // Test Query Id is registered
+      Assert.assertEquals(1, cnt);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
