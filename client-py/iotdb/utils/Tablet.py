@@ -201,8 +201,6 @@ class Tablet(object):
                         for j in range(self.__row_number // 8 + 1):
                             values_tobe_packed.append(bytes([bitmaps[i].bits()[j]]))
             format_str = "".join(format_str_list)
-            print(format_str)
-            print(values_tobe_packed)
             return struct.pack(format_str, *values_tobe_packed)
         else:
             bs_len = 0
