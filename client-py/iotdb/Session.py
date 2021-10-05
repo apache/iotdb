@@ -459,7 +459,7 @@ class Session(object):
                          1,  125.3,  True,  text1
                          2,  111.6, False,  text2
                          3,  688.6,  True,  text3
-        Notice: The tablet should not have empty cell
+        Notice: From 0.13.0, the tablet can contain empty cell
                 The tablet itself is sorted (see docs of Tablet.py)
         :param tablet: a tablet specified above
         """
@@ -599,7 +599,7 @@ class Session(object):
             self.__session_id,
             tablet.get_device_id(),
             tablet.get_measurements(),
-            tablet.get_binary_values,
+            tablet.get_binary_values(),
             tablet.get_binary_timestamps(),
             data_type_values,
             tablet.get_row_number(),
@@ -618,7 +618,7 @@ class Session(object):
             ]
             device_id_lst.append(tablet.get_device_id())
             measurements_lst.append(tablet.get_measurements())
-            values_lst.append(tablet.get_binary_values)
+            values_lst.append(tablet.get_binary_values())
             timestamps_lst.append(tablet.get_binary_timestamps())
             type_lst.append(data_type_values)
             size_lst.append(tablet.get_row_number())

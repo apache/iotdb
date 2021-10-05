@@ -92,16 +92,13 @@ class Tablet(object):
         else:
             return self.__timestamps.tobytes()
 
-    @property
     def get_binary_values(self):
         if not self.__use_new:
             format_str_list = [">"]
             values_tobe_packed = []
-            column_has_none = []
             bitmaps = []
             for i in range(self.__column_number):
                 bitmap = None
-                column_has_none.insert(i, False)
                 bitmaps.insert(i, bitmap)
                 if self.__data_types[i] == TSDataType.BOOLEAN:
                     format_str_list.append(str(self.__row_number))
@@ -111,7 +108,6 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(False)
-                            column_has_none.insert(i, True)
                             if bitmap is None:
                                 bitmap = BitMap(self.__row_number)
                                 bitmaps.insert(i, bitmap)
@@ -125,7 +121,6 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(0)
-                            column_has_none.insert(i, True)
                             if bitmap is None:
                                 bitmap = BitMap(self.__row_number)
                                 bitmaps.insert(i, bitmap)
@@ -139,7 +134,6 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(0)
-                            column_has_none.insert(i, True)
                             if bitmap is None:
                                 bitmap = BitMap(self.__row_number)
                                 bitmaps.insert(i, bitmap)
@@ -153,7 +147,6 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(0)
-                            column_has_none.insert(i, True)
                             if bitmap is None:
                                 bitmap = BitMap(self.__row_number)
                                 bitmaps.insert(i, bitmap)
@@ -167,7 +160,6 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(0)
-                            column_has_none.insert(i, True)
                             if bitmap is None:
                                 bitmap = BitMap(self.__row_number)
                                 bitmaps.insert(i, bitmap)
@@ -189,7 +181,6 @@ class Tablet(object):
                             format_str_list.append("s")
                             values_tobe_packed.append(len(value_bytes))
                             values_tobe_packed.append(value_bytes)
-                            column_has_none.insert(i, True)
                             if bitmap is None:
                                 bitmap = BitMap(self.__row_number)
                                 bitmaps.insert(i, bitmap)
@@ -198,11 +189,10 @@ class Tablet(object):
                 else:
                     raise RuntimeError("Unsupported data type:" + str(self.__data_types[i]))
 
-            if len(column_has_none) != 0:
+            if len(bitmaps) != 0:
                 for i in range(self.__column_number):
-                    format_str_list.append(str(1))
                     format_str_list.append("?")
-                    if not column_has_none[i]:
+                    if bitmaps[i] is None:
                         values_tobe_packed.append(False)
                     else:
                         values_tobe_packed.append(True)
