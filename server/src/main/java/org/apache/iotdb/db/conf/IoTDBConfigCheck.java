@@ -332,7 +332,7 @@ public class IoTDBConfigCheck {
     }
 
     if (!(properties.getProperty(TAG_ATTRIBUTE_FLUSH_INTERVAL).equals(tagAttributeFlushInterval))) {
-      printErrorLogAndExit(TAG_ATTRIBUTE_FLUSH_INTERVAL);
+      throwException(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     }
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {

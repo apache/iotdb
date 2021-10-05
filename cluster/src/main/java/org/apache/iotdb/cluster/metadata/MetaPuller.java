@@ -48,7 +48,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -189,7 +188,8 @@ public class MetaPuller {
     List<IMeasurementSchema> schemas = null;
     try {
       schemas = pullMeasurementSchemas(node, request);
-    } catch (IOException | TException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error(
           "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
           metaGroupMember.getName(),
@@ -197,8 +197,7 @@ public class MetaPuller {
           request.getPrefixPaths().size() - 1,
           node,
           e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } catch (Exception e) {
       logger.error(
           "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
           metaGroupMember.getName(),
@@ -369,7 +368,8 @@ public class MetaPuller {
     List<TimeseriesSchema> schemas = null;
     try {
       schemas = pullTimeSeriesSchemas(node, request);
-    } catch (IOException | TException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error(
           "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
           metaGroupMember.getName(),
@@ -377,8 +377,7 @@ public class MetaPuller {
           request.getPrefixPaths().size() - 1,
           node,
           e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } catch (Exception e) {
       logger.error(
           "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
           metaGroupMember.getName(),
