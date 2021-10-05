@@ -69,11 +69,7 @@ public class QueryContext {
   public QueryContext() {}
 
   public QueryContext(long queryId) {
-    this(queryId, false);
-  }
-
-  public QueryContext(long queryId, boolean debug) {
-    this(queryId, debug, System.currentTimeMillis(), "", 0);
+    this(queryId, false, System.currentTimeMillis(), "", 0);
   }
 
   /** Every time we generate the queryContext, register it to queryTimeManager. */
@@ -83,6 +79,10 @@ public class QueryContext {
     this.startTime = startTime;
     this.statement = statement;
     this.timeout = timeout;
+    System.out.println(queryId);
+    for (StackTraceElement ste : Thread.currentThread().getStackTrace()) {
+      System.out.println(ste);
+    }
     QueryTimeManager.getInstance().registerQuery(this);
   }
 

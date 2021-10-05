@@ -2009,6 +2009,10 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowQueryProcesslist() {
+    for (Entry<Long, QueryContext> context :
+        QueryTimeManager.getInstance().getQueryContextMap().entrySet()) {
+      System.out.println(context.getKey());
+    }
     ListDataSet listDataSet =
         new ListDataSet(
             Arrays.asList(new PartialPath(QUERY_ID, false), new PartialPath(STATEMENT, false)),
