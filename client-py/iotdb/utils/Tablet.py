@@ -97,6 +97,7 @@ class Tablet(object):
             format_str_list = [">"]
             values_tobe_packed = []
             bitmaps = []
+            has_none = False
             for i in range(self.__column_number):
                 bitmap = None
                 bitmaps.insert(i, bitmap)
@@ -108,10 +109,8 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(False)
-                            if bitmap is None:
-                                bitmap = BitMap(self.__row_number)
-                                bitmaps.insert(i, bitmap)
-                            bitmap.mark(j)
+                            self.__mark_none_value(bitmaps, bitmap, i, j)
+                            has_none = True
 
                 elif self.__data_types[i] == TSDataType.INT32:
                     format_str_list.append(str(self.__row_number))
@@ -121,10 +120,8 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(0)
-                            if bitmap is None:
-                                bitmap = BitMap(self.__row_number)
-                                bitmaps.insert(i, bitmap)
-                            bitmap.mark(j)
+                            self.__mark_none_value(bitmaps, bitmap, i, j)
+                            has_none = True
 
                 elif self.__data_types[i] == TSDataType.INT64:
                     format_str_list.append(str(self.__row_number))
@@ -134,10 +131,8 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(0)
-                            if bitmap is None:
-                                bitmap = BitMap(self.__row_number)
-                                bitmaps.insert(i, bitmap)
-                            bitmap.mark(j)
+                            self.__mark_none_value(bitmaps, bitmap, i, j)
+                            has_none = True
 
                 elif self.__data_types[i] == TSDataType.FLOAT:
                     format_str_list.append(str(self.__row_number))
@@ -147,10 +142,8 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(0)
-                            if bitmap is None:
-                                bitmap = BitMap(self.__row_number)
-                                bitmaps.insert(i, bitmap)
-                            bitmap.mark(j)
+                            self.__mark_none_value(bitmaps, bitmap, i, j)
+                            has_none = True
 
                 elif self.__data_types[i] == TSDataType.DOUBLE:
                     format_str_list.append(str(self.__row_number))
@@ -160,10 +153,8 @@ class Tablet(object):
                             values_tobe_packed.append(self.__values[j][i])
                         else:
                             values_tobe_packed.append(0)
-                            if bitmap is None:
-                                bitmap = BitMap(self.__row_number)
-                                bitmaps.insert(i, bitmap)
-                            bitmap.mark(j)
+                            self.__mark_none_value(bitmaps, bitmap, i, j)
+                            has_none = True
 
                 elif self.__data_types[i] == TSDataType.TEXT:
                     for j in range(self.__row_number):
@@ -181,15 +172,13 @@ class Tablet(object):
                             format_str_list.append("s")
                             values_tobe_packed.append(len(value_bytes))
                             values_tobe_packed.append(value_bytes)
-                            if bitmap is None:
-                                bitmap = BitMap(self.__row_number)
-                                bitmaps.insert(i, bitmap)
-                            bitmap.mark(j)
+                            self.__mark_none_value(bitmaps, bitmap, i, j)
+                            has_none = True
 
                 else:
                     raise RuntimeError("Unsupported data type:" + str(self.__data_types[i]))
 
-            if len(bitmaps) != 0:
+            if has_none:
                 for i in range(self.__column_number):
                     format_str_list.append("?")
                     if bitmaps[i] is None:
@@ -230,3 +219,9 @@ class Tablet(object):
                 ret[offset:offset + _l] = bs
                 offset += _l
             return ret
+
+    def __mark_none_value(self, bitmaps, bitmap, column, row):
+        if bitmap is None:
+            bitmap = BitMap(self.__row_number)
+            bitmaps.insert(column, bitmap)
+        bitmap.mark(row)
