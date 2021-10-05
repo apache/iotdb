@@ -178,6 +178,20 @@ tablet_02 = Tablet(
 if session.insert_tablets([tablet_01, tablet_02]) < 0:
     test_fail("insert tablets failed")
 
+# insert one tablet with empty cells into the database.
+values_ = [
+    [None, 10, 11, 1.1, 10011.1, "test01"],
+    [True, None, 11111, 1.25, 101.0, "test02"],
+    [False, 100, 1, None, 688.25, "test03"],
+    [True, 0, 0, 0, None, None],
+]  # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
+timestamps_ = [16, 17, 18, 19]
+tablet_ = Tablet(
+    "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+)
+if session.insert_tablet(tablet_) < 0:
+    test_fail("insert tablet failed")
+
 # insert records of one device
 time_list = [1, 2, 3]
 measurements_list = [

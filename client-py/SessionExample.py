@@ -141,7 +141,7 @@ tablet_02 = Tablet(
 )
 session.insert_tablets([tablet_01, tablet_02])
 
-# insert one tablet with empty cell into the database.
+# insert one tablet with empty cells into the database.
 values_ = [
     [None, 10, 11, 1.1, 10011.1, "test01"],
     [True, None, 11111, 1.25, 101.0, "test02"],
