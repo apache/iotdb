@@ -21,13 +21,9 @@ class BitMap(object):
 
     def __init__(self, size):
         self.__size = size
-        self.__bits = []
+        self.bits = []
         for i in range (size // 8 + 1):
-            self.__bits.append(0)
+            self.bits.append(0)
 
     def mark(self, position):
-        self.__bits[position // 8] |= BitMap.BIT_UTIL[position % 8]
-
-    def bits(self):
-        return self.__bits
-
+        self.bits[position // 8] |= BitMap.BIT_UTIL[position % 8]

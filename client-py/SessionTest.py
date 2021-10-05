@@ -185,12 +185,12 @@ values_ = [
     [False, 100, 1, None, 688.25, "test03"],
     [True, 0, 0, 0, None, None],
 ]  # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
-timestamps_ = [16, 17, 18, 19]
+timestamps_ = [20, 21, 22, 23]
 tablet_ = Tablet(
     "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
 )
 if session.insert_tablet(tablet_) < 0:
-    test_fail("insert tablet failed")
+    test_fail("insert tablet with empty cells failed")
 
 # insert records of one device
 time_list = [1, 2, 3]
@@ -232,9 +232,10 @@ if (
 # execute sql query statement
 session_data_set = session.execute_query_statement("select * from root.sg_test_01.d_01")
 session_data_set.set_fetch_size(1024)
-expect_count = 16
+expect_count = 20
 actual_count = 0
 while session_data_set.has_next():
+    print(session_data_set.next())
     actual_count += 1
 session_data_set.close_operation_handle()
 
