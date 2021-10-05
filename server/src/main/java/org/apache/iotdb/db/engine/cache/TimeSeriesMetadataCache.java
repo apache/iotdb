@@ -23,12 +23,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -220,8 +221,10 @@ public class TimeSeriesMetadataCache {
 
     public TimeSeriesMetadataCacheKey(String filePath, String device, String measurement) {
       this.filePath = filePath;
-      this.tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(filePath);
-      this.tsFileVersion = FilePathUtils.getTsFileVersion(filePath);
+      Pair<String, Long> tsFilePrefixPathAndTsFileVersionPair =
+          FilePathUtils.getTsFilePrefixPathAndTsFileVersionPair(filePath);
+      this.tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
+      this.tsFileVersion = tsFilePrefixPathAndTsFileVersionPair.right;
       this.device = device;
       this.measurement = measurement;
     }
