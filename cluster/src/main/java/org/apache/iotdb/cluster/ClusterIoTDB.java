@@ -47,6 +47,7 @@ import org.apache.iotdb.cluster.server.raft.DataRaftHeartBeatService;
 import org.apache.iotdb.cluster.server.raft.DataRaftService;
 import org.apache.iotdb.cluster.server.raft.MetaRaftHeartBeatService;
 import org.apache.iotdb.cluster.server.raft.MetaRaftService;
+import org.apache.iotdb.cluster.server.service.DataGroupEngine;
 import org.apache.iotdb.cluster.server.service.DataGroupServiceImpls;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaSyncService;
@@ -105,13 +106,13 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private MetaGroupMember metaGroupEngine;
 
-  // TODO we can split dataGroupServiceImpls into two parts: the rpc impl and the engine.
-  private DataGroupServiceImpls dataGroupEngine;
+  // split DataGroupServiceImpls into engine and impls
+  private DataGroupEngine dataGroupEngine;
 
   private Node thisNode;
   private Coordinator coordinator;
 
-  private IoTDB iotdb = IoTDB.getInstance();
+  private final IoTDB iotdb = IoTDB.getInstance();
 
   // Cluster IoTDB uses a individual registerManager with its parent.
   private RegisterManager registerManager = new RegisterManager();
@@ -157,7 +158,12 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
     MetaPuller.getInstance().init(metaGroupEngine);
 
-    dataGroupEngine = new DataGroupServiceImpls(protocolFactory, metaGroupEngine);
+    // from the scope of the DataGroupEngine,it should be singleton pattern
+    // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in
+    // future commit.
+    DataGroupEngine.setProtocolFactory(protocolFactory);
+    DataGroupEngine.setMetaGroupMember(metaGroupEngine);
+    dataGroupEngine = DataGroupEngine.getInstance();
     clientManager =
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
@@ -331,18 +337,19 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     registerManager.register(dataGroupEngine);
 
     // rpc service initialize
+    DataGroupServiceImpls dataGroupServiceImpls = new DataGroupServiceImpls();
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       MetaAsyncService metaAsyncService = new MetaAsyncService(metaGroupEngine);
       MetaRaftHeartBeatService.getInstance().initAsyncedServiceImpl(metaAsyncService);
       MetaRaftService.getInstance().initAsyncedServiceImpl(metaAsyncService);
-      DataRaftService.getInstance().initAsyncedServiceImpl(dataGroupEngine);
-      DataRaftHeartBeatService.getInstance().initAsyncedServiceImpl(dataGroupEngine);
+      DataRaftService.getInstance().initAsyncedServiceImpl(dataGroupServiceImpls);
+      DataRaftHeartBeatService.getInstance().initAsyncedServiceImpl(dataGroupServiceImpls);
     } else {
       MetaSyncService syncService = new MetaSyncService(metaGroupEngine);
       MetaRaftHeartBeatService.getInstance().initSyncedServiceImpl(syncService);
       MetaRaftService.getInstance().initSyncedServiceImpl(syncService);
-      DataRaftService.getInstance().initSyncedServiceImpl(dataGroupEngine);
-      DataRaftHeartBeatService.getInstance().initSyncedServiceImpl(dataGroupEngine);
+      DataRaftService.getInstance().initSyncedServiceImpl(dataGroupServiceImpls);
+      DataRaftHeartBeatService.getInstance().initSyncedServiceImpl(dataGroupServiceImpls);
     }
     // start RPC service
     logger.info("start Meta Heartbeat RPC service... ");
@@ -594,7 +601,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     return registerManager;
   }
 
-  public DataGroupServiceImpls getDataGroupEngine() {
+  public DataGroupEngine getDataGroupEngine() {
     return dataGroupEngine;
   }
 

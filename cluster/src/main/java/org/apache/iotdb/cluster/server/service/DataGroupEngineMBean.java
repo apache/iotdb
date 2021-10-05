@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.cluster.server.service;
 
-public interface DataGroupServiceImplsMBean {
+public interface DataGroupEngineMBean {
 
   String getHeaderGroupMapAsString();
 

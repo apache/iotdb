@@ -69,7 +69,7 @@ import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.monitor.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer;
-import org.apache.iotdb.cluster.server.service.DataGroupServiceImpls;
+import org.apache.iotdb.cluster.server.service.DataGroupEngine;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -272,7 +272,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     return localDataMember.closePartition(storageGroupName, partitionId, isSeq);
   }
 
-  DataGroupServiceImpls getDataGroupEngine() {
+  DataGroupEngine getDataGroupEngine() {
     return ClusterIoTDB.getInstance().getDataGroupEngine();
   }
 
@@ -1662,7 +1662,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     this.partitionTable = partitionTable;
     router = new ClusterPlanRouter(partitionTable);
     this.coordinator.setRouter(router);
-    DataGroupServiceImpls dClusterServer = getDataGroupEngine();
+    DataGroupEngine dClusterServer = getDataGroupEngine();
     if (dClusterServer != null) {
       dClusterServer.setPartitionTable(partitionTable);
     }

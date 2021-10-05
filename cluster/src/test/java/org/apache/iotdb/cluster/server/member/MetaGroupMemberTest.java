@@ -68,7 +68,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
-import org.apache.iotdb.cluster.server.service.DataGroupServiceImpls;
+import org.apache.iotdb.cluster.server.service.DataGroupEngine;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
@@ -132,13 +132,20 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.server.NodeCharacter.*;
+import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
+import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
+import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class MetaGroupMemberTest extends BaseMember {
 
-  private DataGroupServiceImpls dataGroupServiceImpls;
+  private DataGroupEngine dataGroupEngine;
   protected boolean mockDataClusterServer;
   private Node exiledNode;
 
@@ -148,7 +155,7 @@ public class MetaGroupMemberTest extends BaseMember {
   @Override
   @After
   public void tearDown() throws Exception {
-    dataGroupServiceImpls.stop();
+    dataGroupEngine.stop();
     super.tearDown();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevSeedNodes);
@@ -171,8 +178,8 @@ public class MetaGroupMemberTest extends BaseMember {
     dummyResponse.set(Response.RESPONSE_AGREE);
     testMetaMember.setAllNodes(allNodes);
 
-    dataGroupServiceImpls =
-        new DataGroupServiceImpls(
+    dataGroupEngine =
+        new DataGroupEngine(
             new DataGroupMember.Factory(null, testMetaMember) {
               @Override
               public DataGroupMember create(PartitionGroup partitionGroup) {
@@ -181,7 +188,7 @@ public class MetaGroupMemberTest extends BaseMember {
             },
             testMetaMember);
 
-    buildDataGroups(dataGroupServiceImpls);
+    buildDataGroups(dataGroupEngine);
     testMetaMember.getThisNode().setNodeIdentifier(0);
     testMetaMember.setRouter(new ClusterPlanRouter(testMetaMember.getPartitionTable()));
     mockDataClusterServer = false;
@@ -327,9 +334,9 @@ public class MetaGroupMemberTest extends BaseMember {
           }
 
           @Override
-          public DataGroupServiceImpls getDataGroupEngine() {
+          public DataGroupEngine getDataGroupEngine() {
             return mockDataClusterServer
-                ? MetaGroupMemberTest.this.dataGroupServiceImpls
+                ? MetaGroupMemberTest.this.dataGroupEngine
                 : ClusterIoTDB.getInstance().getDataGroupEngine();
           }
 
@@ -544,7 +551,7 @@ public class MetaGroupMemberTest extends BaseMember {
     return metaGroupMember;
   }
 
-  private void buildDataGroups(DataGroupServiceImpls dataGroupServiceImpls) {
+  private void buildDataGroups(DataGroupEngine dataGroupServiceImpls) {
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
 
     dataGroupServiceImpls.setPartitionTable(partitionTable);
