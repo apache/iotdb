@@ -496,7 +496,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertRecords(request), request.getDeviceIds());
+          client.insertRecords(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -516,7 +516,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertStringRecords(request), request.getDeviceIds());
+          client.insertStringRecords(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -574,7 +574,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertTablets(request), request.getDeviceIds());
+          client.insertTablets(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {

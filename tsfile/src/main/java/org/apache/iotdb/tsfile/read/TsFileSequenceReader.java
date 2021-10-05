@@ -50,13 +50,14 @@ import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -1053,14 +1054,15 @@ public class TsFileSequenceReader implements AutoCloseable {
             ChunkHeader chunkHeader = this.readChunkHeader(marker);
             measurementID = chunkHeader.getMeasurementID();
             IMeasurementSchema measurementSchema =
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     measurementID,
                     chunkHeader.getDataType(),
                     chunkHeader.getEncodingType(),
                     chunkHeader.getCompressionType());
             measurementSchemaList.add(measurementSchema);
             dataType = chunkHeader.getDataType();
-            Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
+            Statistics<? extends Serializable> chunkStatistics =
+                Statistics.getStatsByType(dataType);
             int dataSize = chunkHeader.getDataSize();
             if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
               while (dataSize > 0) {

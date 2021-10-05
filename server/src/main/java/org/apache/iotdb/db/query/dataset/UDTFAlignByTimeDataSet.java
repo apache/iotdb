@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -50,8 +49,6 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
   public UDTFAlignByTimeDataSet(
       QueryContext context,
       UDTFPlan udtfPlan,
-      List<PartialPath> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes,
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
       List<Boolean> cached)
@@ -59,8 +56,8 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     super(
         context,
         udtfPlan,
-        deduplicatedPaths,
-        deduplicatedDataTypes,
+        udtfPlan.getDeduplicatedPaths(),
+        udtfPlan.getDeduplicatedDataTypes(),
         timestampGenerator,
         readersOfSelectedSeries,
         cached);
@@ -69,13 +66,14 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
 
   /** execute without value filter */
   public UDTFAlignByTimeDataSet(
-      QueryContext context,
-      UDTFPlan udtfPlan,
-      List<PartialPath> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes,
-      List<ManagedSeriesReader> readersOfSelectedSeries)
+      QueryContext context, UDTFPlan udtfPlan, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
-    super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
+    super(
+        context,
+        udtfPlan,
+        udtfPlan.getDeduplicatedPaths(),
+        udtfPlan.getDeduplicatedDataTypes(),
+        readersOfSelectedSeries);
     initTimeHeap();
   }
 
@@ -194,7 +192,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         --rowOffset;
       }
 
-      inputLayer.updateRowRecordListEvictionUpperBound();
+      rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
     }
 
     /*
@@ -296,7 +294,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       throw new IOException(e.getMessage());
     }
 
-    inputLayer.updateRowRecordListEvictionUpperBound();
+    rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
 
     return rowRecord;
   }

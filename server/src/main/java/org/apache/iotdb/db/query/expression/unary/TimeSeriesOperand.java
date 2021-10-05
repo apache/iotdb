@@ -20,18 +20,28 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
+import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class TimeSeriesOperand implements Expression {
+public class TimeSeriesOperand extends Expression {
 
   protected PartialPath path;
-  protected TSDataType dataType;
 
   public TimeSeriesOperand(PartialPath path) {
     this.path = path;
@@ -63,6 +73,45 @@ public class TimeSeriesOperand implements Expression {
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
     pathSet.add(path);
+  }
+
+  @Override
+  public void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+    // nothing to do
+  }
+
+  @Override
+  public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
+    memoryAssigner.increaseExpressionReference(this);
+  }
+
+  @Override
+  public IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFPlan udtfPlan,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      float memoryBudgetInMB = memoryAssigner.assign();
+
+      LayerPointReader parentLayerPointReader =
+          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path.getFullPath()));
+      expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
+
+      expressionIntermediateLayerMap.put(
+          this,
+          memoryAssigner.getReference(this) == 1
+              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader)
+              : new SingleInputColumnMultiReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader));
+    }
+
+    return expressionIntermediateLayerMap.get(this);
   }
 
   @Override

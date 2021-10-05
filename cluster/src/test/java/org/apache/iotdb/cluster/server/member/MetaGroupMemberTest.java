@@ -299,7 +299,7 @@ public class MetaGroupMemberTest extends BaseMember {
     try {
       for (String prefixPath : prefixPaths) {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
-          IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), schemas);
+          IoTDB.metaManager.collectMeasurementSchema(new PartialPath(prefixPath), schemas);
           dataOutputStream.writeInt(schemas.size());
           for (IMeasurementSchema schema : schemas) {
             schema.partialSerializeTo(dataOutputStream);

@@ -363,7 +363,7 @@ or
 IoTDB> exit
 ```
 
-For more information about the commands supported by IoTDB SQL, please see [SQL Reference](http://iotdb.apache.org/UserGuide/Master/Operation%20Manual/SQL%20Reference.html).
+For more information about the commands supported by IoTDB SQL, please see [SQL Reference](https://iotdb.apache.org/UserGuide/Master/Appendix/SQL-Reference.html).
 
 ### Stop IoTDB
 

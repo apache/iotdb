@@ -329,6 +329,37 @@ public class IoTDBSelectIntoIT {
   }
 
   @Test
+  public void testNestedQuery() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "select s1 * sin(s1) + cos(s1), sin(s1) / s1 + s1, s1 into ${2}.n2, ${2}.n3, ${2}.n4 from root.sg.d1");
+
+      try (ResultSet resultSet = statement.executeQuery("select n2, n3, n4 from root.sg.d1.d1")) {
+        assertEquals(1 + 3, resultSet.getMetaData().getColumnCount());
+
+        for (int i = 1; i < INSERTION_SQLS.length; ++i) {
+          assertTrue(resultSet.next());
+          for (int j = 0; j < 2 + 1; ++j) {
+            double s2 = Double.parseDouble(resultSet.getString(2));
+            double s3 = Double.parseDouble(resultSet.getString(3));
+            double s4 = Double.parseDouble(resultSet.getString(4));
+            assertEquals(i * Math.sin(i) + Math.cos(i), s2, 0);
+            assertEquals(Math.sin(i) / i + i, s3, 0);
+            assertEquals(i, s4, 0);
+          }
+        }
+
+        assertFalse(resultSet.next());
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
   public void testGroupByQuery() {
     try (Connection connection =
             DriverManager.getConnection(
@@ -366,7 +397,7 @@ public class IoTDBSelectIntoIT {
       try (ResultSet resultSet = statement.executeQuery("select gbf_s1 from root.sg.d1")) {
         assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
 
-        for (int i = 1; i < 10; ++i) {
+        for (int i = 1; i < 5; ++i) {
           assertTrue(resultSet.next());
           for (int j = 0; j < 1 + 1; ++j) {
             assertEquals(String.valueOf(i), resultSet.getString(1));

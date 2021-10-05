@@ -20,26 +20,78 @@
 package org.apache.iotdb.db.query.expression;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
+import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.io.IOException;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public interface Expression {
+public abstract class Expression {
 
-  default boolean isAggregationFunctionExpression() {
+  private String expressionString;
+
+  public boolean isAggregationFunctionExpression() {
     return false;
   }
 
-  default boolean isTimeSeriesGeneratingFunctionExpression() {
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
   }
 
-  void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
+  public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
 
-  void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+  public abstract void removeWildcards(
+      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws LogicalOptimizeException;
 
-  void collectPaths(Set<PartialPath> pathSet);
+  public abstract void collectPaths(Set<PartialPath> pathSet);
+
+  public abstract void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
+
+  public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
+
+  public abstract IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFPlan udtfPlan,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException;
+
+  public String getExpressionString() {
+    if (expressionString == null) {
+      expressionString = toString();
+    }
+    return expressionString;
+  }
+
+  @Override
+  public int hashCode() {
+    return getExpressionString().hashCode();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (!(o instanceof Expression)) {
+      return false;
+    }
+
+    return getExpressionString().equals(((Expression) o).getExpressionString());
+  }
 }

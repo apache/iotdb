@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.rpc;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public enum TSStatusCode {
   SUCCESS_STATUS(200),
   STILL_EXECUTING_STATUS(201),
@@ -100,11 +103,28 @@ public enum TSStatusCode {
 
   private int statusCode;
 
+  private static final Map<Integer, TSStatusCode> CODE_MAP = new HashMap<>();
+
+  static {
+    for (TSStatusCode value : TSStatusCode.values()) {
+      CODE_MAP.put(value.getStatusCode(), value);
+    }
+  }
+
   TSStatusCode(int statusCode) {
     this.statusCode = statusCode;
   }
 
   public int getStatusCode() {
     return statusCode;
+  }
+
+  public static TSStatusCode representOf(int statusCode) {
+    return CODE_MAP.get(statusCode);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("%s(%d)", name(), getStatusCode());
   }
 }

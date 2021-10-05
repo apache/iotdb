@@ -426,16 +426,14 @@ SELECT example(s1, "key1"="value1", "key2"="value2"), example(*, "key3"="value3"
 SELECT example(s1, s2, "key1"="value1", "key2"="value2") FROM root.sg.d1;
 ```
 
-### 与其他查询的混合查询
-
-目前 IoTDB 支持 UDF 查询与原始查询的混合查询，例如：
+### 与其他查询的嵌套查询
 
 ``` sql
 SELECT s1, s2, example(s1, s2) FROM root.sg.d1;
 SELECT *, example(*) FROM root.sg.d1 DISABLE ALIGN;
+SELECT s1 * example(* / s1 + s2) FROM root.sg.d1;
+SELECT s1, s2, s1 + example(s1, s2), s1 - example(s1 + example(s1, s2) / s2) FROM root.sg.d1;
 ```
-
-暂不支持 UDF 查询与其他查询混合使用。
 
 ## 查看所有注册的 UDF
 
@@ -508,7 +506,7 @@ SHOW FUNCTIONS
 
 ## Q&A
 
-**Q1: 如何修改已经注册的 UDF？**
+Q1: 如何修改已经注册的 UDF？
 
 A1: 假设 UDF 的名称为`example`，全类名为`org.apache.iotdb.udf.UDTFExample`，由`example.jar`引入
 

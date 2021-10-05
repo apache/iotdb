@@ -367,7 +367,7 @@ public class IoTDBLoadExternalTsfileIT {
         Statement statement = connection.createStatement()) {
 
       // check query result
-      boolean hasResultSet = statement.execute("SELECT * FROM root");
+      boolean hasResultSet = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
@@ -459,18 +459,25 @@ public class IoTDBLoadExternalTsfileIT {
               .getUnSequenceFileList()
               .size());
       if (config.getTimeIndexLevel().equals(TimeIndexLevel.DEVICE_TIME_INDEX)) {
-        assertEquals(
-            1,
-            StorageEngine.getInstance()
+        if (StorageEngine.getInstance()
                 .getProcessor(new PartialPath("root.test"))
                 .getUnSequenceFileList()
-                .size());
-        assertEquals(
-            3,
-            StorageEngine.getInstance()
-                .getProcessor(new PartialPath("root.test"))
-                .getSequenceFileTreeSet()
-                .size());
+                .size()
+            == 1) {
+          assertEquals(
+              3,
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet()
+                  .size());
+        } else {
+          assertEquals(
+              2,
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet()
+                  .size());
+        }
       } else if (config.getTimeIndexLevel().equals(TimeIndexLevel.FILE_TIME_INDEX)) {
         assertEquals(
             2,
@@ -496,7 +503,7 @@ public class IoTDBLoadExternalTsfileIT {
           new File(tmpDir, new PartialPath("root.test") + File.separator + "0").listFiles().length);
 
       // check query result
-      hasResultSet = statement.execute("SELECT  * FROM root");
+      hasResultSet = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;

@@ -49,6 +49,7 @@ jobs:
           brew install bison
           echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile
           source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
+          brew install openssl
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:

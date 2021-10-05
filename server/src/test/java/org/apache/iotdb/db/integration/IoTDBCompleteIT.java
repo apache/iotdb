@@ -106,7 +106,7 @@ public class IoTDBCompleteIT {
       "CREATE TIMESERIES root.vehicle.d4.s8 WITH DATATYPE=INT32,ENCODING=RLE,MAX_POINT_NUMBER=100",
       "CREATE TIMESERIES root.vehicle.d5.s9 WITH DATATYPE=FLOAT,ENCODING=PLAIN,compressor=SNAPPY,MAX_POINT_NUMBER=10",
       "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,compressor=UNCOMPRESSED,MAX_POINT_NUMBER=10",
-      "DELETE TIMESERIES root.vehicle.d0.*",
+      "DELETE TIMESERIES root.vehicle.d0.**",
       "SHOW TIMESERIES",
       "===  Timeseries Tree  ===\n"
           + "\n"
@@ -170,7 +170,7 @@ public class IoTDBCompleteIT {
           + "\t\t}\n"
           + "\t}\n"
           + "}",
-      "DELETE TIMESERIES root.vehicle.*",
+      "DELETE TIMESERIES root.vehicle.**",
       "SHOW TIMESERIES",
       "===  Timeseries Tree  ===\n"
           + "\n"
@@ -193,7 +193,7 @@ public class IoTDBCompleteIT {
       "INSERT INTO root.vehicle.d0(timestamp,s0) values(2000-01-01T08:00:00+08:00,105)",
       "SELECT * FROM root.vehicle.d0",
       "1,101,null,\n" + "2,102,202,\n" + "946684800000,105,null,\n" + "NOW(),104,null,\n",
-      "DELETE TIMESERIES root.vehicle.*"
+      "DELETE TIMESERIES root.vehicle.**"
     };
     executeSQL(sqlS);
   }
@@ -208,7 +208,7 @@ public class IoTDBCompleteIT {
       "INSERT INTO root.vehicle.d0(timestamp,s0) values(2000-01-01T08:00:00+08:00,105)",
       "SELECT * FROM root.vehicle.d0",
       "1,101,null,\n" + "2,102,202,\n" + "946684800000,105,null,\n" + "NOW(),104,null,\n",
-      "DELETE TIMESERIES root.vehicle.*",
+      "DELETE TIMESERIES root.vehicle.**",
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
       "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,1)",
       "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,1)",
@@ -243,15 +243,15 @@ public class IoTDBCompleteIT {
       "INSERT INTO root.vehicle.d1(timestamp,s1) values(1,1)",
       "INSERT INTO root.vehicle.d0(timestamp,s0) values(5,5)",
       "INSERT INTO root.vehicle.d1(timestamp,s1) values(5,5)",
-      "SELECT * FROM root.vehicle",
+      "SELECT * FROM root.vehicle.*",
       "1,1,1,\n" + "5,5,5,\n",
       "DELETE FROM root.vehicle.d0.s0,root.vehicle.d1.s1 WHERE time < 3",
-      "SELECT * FROM root.vehicle",
+      "SELECT * FROM root.vehicle.*",
       "5,5,5,\n",
-      "DELETE FROM root.vehicle.* WHERE time < 7",
-      "SELECT * FROM root.vehicle",
+      "DELETE FROM root.vehicle.** WHERE time < 7",
+      "SELECT * FROM root.vehicle.*",
       "",
-      "DELETE TIMESERIES root.vehicle.*"
+      "DELETE TIMESERIES root.vehicle.**"
     };
     executeSQL(sqlS);
   }
@@ -284,7 +284,7 @@ public class IoTDBCompleteIT {
           + "8,108,\n"
           + "9,109,\n"
           + "10,110,\n",
-      "DELETE TIMESERIES root.vehicle.*"
+      "DELETE TIMESERIES root.vehicle.**"
     };
     executeSQL(sqlS);
   }
@@ -332,7 +332,7 @@ public class IoTDBCompleteIT {
       "DELETE FROM root.vehicle.d0.s0 WHERE time <= NOW()",
       "SELECT * FROM root.vehicle.d0",
       "",
-      "DELETE TIMESERIES root.vehicle.*"
+      "DELETE TIMESERIES root.vehicle.**"
     };
     executeSQL(sqlS);
   }
@@ -387,7 +387,7 @@ public class IoTDBCompleteIT {
       "",
       "SELECT MIN_VALUE(s0) FROM root.vehicle.d0 WHERE time < 5",
       "",
-      "DELETE TIMESERIES root.vehicle.*"
+      "DELETE TIMESERIES root.vehicle.**"
     };
     executeSQL(sqlS);
   }
@@ -422,7 +422,7 @@ public class IoTDBCompleteIT {
       "1,1,101,\n" + "2,3,104,\n" + "5,1,105,\n",
       "SELECT MIN_VALUE(s0), MAX_TIME(s1) FROM root.vehicle.d0 WHERE s1 > 102 and time < 9 GROUP BY(3ms,1,[1,4],[6,9])",
       "1,108,3,\n" + "4,105,6,\n" + "7,103,8,\n",
-      "DELETE TIMESERIES root.vehicle.*"
+      "DELETE TIMESERIES root.vehicle.**"
     };
     executeSQL(sqlS);
   }

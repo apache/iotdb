@@ -50,6 +50,12 @@ public class VectorPartialPath extends PartialPath {
     subSensorsList.add(subSensor);
   }
 
+  public VectorPartialPath(PartialPath vectorPath, String subSensor) {
+    super(vectorPath.getNodes());
+    subSensorsList = new ArrayList<>();
+    subSensorsList.add(subSensor);
+  }
+
   public List<String> getSubSensorsList() {
     return subSensorsList;
   }

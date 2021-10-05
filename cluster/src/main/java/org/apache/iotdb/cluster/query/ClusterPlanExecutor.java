@@ -135,12 +135,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
+
+    Map<String, String> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }
@@ -289,13 +285,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Set<PartialPath> getDevices(PartialPath path) throws MetadataException {
-    // make sure this node knows all storage groups
-    ((CMManager) IoTDB.metaManager).syncMetaLeader();
-    return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
-  }
-
-  @Override
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
       throws MetadataException {
 
@@ -342,7 +331,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getNodesList(
+      return IoTDB.metaManager.getNodesListInGivenLevel(
           schemaPattern,
           level,
           new SlotSgFilter(
@@ -442,7 +431,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getChildNodeInNextLevel(path);
+      return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
     } catch (MetadataException e) {
       logger.error("Cannot not get next children nodes of {} from {} locally", path, group);
       return Collections.emptySet();
