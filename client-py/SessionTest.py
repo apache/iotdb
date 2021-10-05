@@ -26,14 +26,17 @@ final_flag = True
 failed_count = 0
 
 
-def test_fail(message):
+def test_fail():
     global failed_count
     global final_flag
+    final_flag = False
+    failed_count += 1
+
+
+def print_message(message):
     print("*********")
     print(message)
     print("*********")
-    final_flag = False
-    failed_count += 1
 
 
 # creating session connection.
@@ -55,10 +58,12 @@ session.set_storage_group("root.sg_test_03")
 session.set_storage_group("root.sg_test_04")
 
 if session.delete_storage_group("root.sg_test_02") < 0:
-    test_fail("delete storage group failed")
+    test_fail()
+    print_message("delete storage group failed")
 
 if session.delete_storage_groups(["root.sg_test_03", "root.sg_test_04"]) < 0:
-    test_fail("delete storage groups failed")
+    test_fail()
+    print_message("delete storage groups failed")
 
 # setting time series.
 session.create_time_series(
@@ -96,25 +101,28 @@ session.create_multi_time_series(
 
 # delete time series
 if (
-    session.delete_time_series(
-        [
-            "root.sg_test_01.d_01.s_07",
-            "root.sg_test_01.d_01.s_08",
-            "root.sg_test_01.d_01.s_09",
-        ]
-    )
-    < 0
+        session.delete_time_series(
+            [
+                "root.sg_test_01.d_01.s_07",
+                "root.sg_test_01.d_01.s_08",
+                "root.sg_test_01.d_01.s_09",
+            ]
+        )
+        < 0
 ):
-    test_fail("delete time series failed")
+    test_fail()
+    print_message("delete time series failed")
 
 # checking time series
 # s_07 expecting False
 if session.check_time_series_exists("root.sg_test_01.d_01.s_07"):
-    test_fail("root.sg_test_01.d_01.s_07 shouldn't exist")
+    test_fail()
+    print_message("root.sg_test_01.d_01.s_07 shouldn't exist")
 
 # s_03 expecting True
 if not session.check_time_series_exists("root.sg_test_01.d_01.s_03"):
-    test_fail("root.sg_test_01.d_01.s_03 should exist")
+    test_fail()
+    print_message("root.sg_test_01.d_01.s_03 should exist")
 
 # insert one record into the database.
 measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
@@ -128,12 +136,13 @@ data_types_ = [
     TSDataType.TEXT,
 ]
 if (
-    session.insert_record(
-        "root.sg_test_01.d_01", 1, measurements_, data_types_, values_
-    )
-    < 0
+        session.insert_record(
+            "root.sg_test_01.d_01", 1, measurements_, data_types_, values_
+        )
+        < 0
 ):
-    test_fail("insert record failed")
+    test_fail()
+    print_message("insert record failed")
 
 # insert multiple records into database
 measurements_list_ = [
@@ -147,12 +156,13 @@ values_list_ = [
 data_type_list_ = [data_types_, data_types_]
 device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_01"]
 if (
-    session.insert_records(
-        device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
-    )
-    < 0
+        session.insert_records(
+            device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
+        )
+        < 0
 ):
-    test_fail("insert records failed")
+    test_fail()
+    print_message("insert records failed")
 
 # insert one tablet into the database.
 values_ = [
@@ -166,7 +176,8 @@ tablet_ = Tablet(
     "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
 )
 if session.insert_tablet(tablet_) < 0:
-    test_fail("insert tablet failed")
+    test_fail()
+    print_message("insert tablet failed")
 
 # insert multiple tablets into database
 tablet_01 = Tablet(
@@ -176,7 +187,8 @@ tablet_02 = Tablet(
     "root.sg_test_01.d_01", measurements_, data_types_, values_, [12, 13, 14, 15]
 )
 if session.insert_tablets([tablet_01, tablet_02]) < 0:
-    test_fail("insert tablets failed")
+    test_fail()
+    print_message("insert tablets failed")
 
 # insert one tablet with empty cells into the database.
 values_ = [
@@ -190,7 +202,8 @@ tablet_ = Tablet(
     "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
 )
 if session.insert_tablet(tablet_) < 0:
-    test_fail("insert tablet with empty cells failed")
+    test_fail()
+    print_message("insert tablet with empty cells failed")
 
 # insert records of one device
 time_list = [1, 2, 3]
@@ -207,25 +220,27 @@ data_types_list = [
 values_list = [[False, 22, 33], [True, 1, 23], [False, 15, 26]]
 
 if (
-    session.insert_records_of_one_device(
-        "root.sg_test_01.d_01",
-        time_list,
-        measurements_list,
-        data_types_list,
-        values_list,
-    )
-    < 0
+        session.insert_records_of_one_device(
+            "root.sg_test_01.d_01",
+            time_list,
+            measurements_list,
+            data_types_list,
+            values_list,
+        )
+        < 0
 ):
-    test_fail("insert records of one device failed")
+    test_fail()
+    print_message("insert records of one device failed")
 
 # execute non-query sql statement
 if (
-    session.execute_non_query_statement(
-        "insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)"
-    )
-    < 0
+        session.execute_non_query_statement(
+            "insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)"
+        )
+        < 0
 ):
-    test_fail(
+    test_fail()
+    print_message(
         "execute 'insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)' failed"
     )
 
@@ -240,7 +255,8 @@ while session_data_set.has_next():
 session_data_set.close_operation_handle()
 
 if actual_count != expect_count:
-    test_fail(
+    test_fail()
+    print_message(
         "query count mismatch: expect count: "
         + str(expect_count)
         + " actual count: "
