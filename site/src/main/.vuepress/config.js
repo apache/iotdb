@@ -664,6 +664,7 @@ var config = {
 					},
 					{
 						title: 'Data Concept',
+						sidebarDepth: 2,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
 							['Data-Concept/Measurement-Template','Measurement Template'],
@@ -1460,6 +1461,7 @@ var config = {
 					},
 					{
 						title: '数据模式与概念',
+						sidebarDepth: 2,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
 							['Data-Concept/Measurement-Template','物理量模板'],
