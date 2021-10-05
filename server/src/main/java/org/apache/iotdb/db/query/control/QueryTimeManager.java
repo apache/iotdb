@@ -81,7 +81,14 @@ public class QueryTimeManager implements IService {
     queryContextMap.get(queryId).setInterrupted(true);
   }
 
-  public AtomicBoolean unRegisterQuery(long queryId) {
+  /**
+   * UnRegister query when query quits because of getting enough data or timeout. If getting enough
+   * data, we only remove the timeout task. If the query is full quit because of timeout or
+   * EndQuery(), we remove them all.
+   *
+   * @param fullQuit True if timeout or endQuery()
+   */
+  public AtomicBoolean unRegisterQuery(long queryId, boolean fullQuit) {
     // This is used to make sure the QueryTimeoutRuntimeException is thrown once
     AtomicBoolean successRemoved = new AtomicBoolean(false);
     queryContextMap.computeIfPresent(
@@ -94,7 +101,7 @@ public class QueryTimeManager implements IService {
           }
           SessionTimeoutManager.getInstance()
               .refresh(SessionManager.getInstance().getSessionIdByQueryId(queryId));
-          return null;
+          return fullQuit ? null : v;
         });
     return successRemoved;
   }
@@ -113,9 +120,8 @@ public class QueryTimeManager implements IService {
     if (queryContext == null) {
       return false;
     } else if (queryContext.isInterrupted()) {
-      if (getInstance().unRegisterQuery(queryId).get()) {
-        throw new QueryTimeoutRuntimeException(
-            QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+      if (getInstance().unRegisterQuery(queryId, true).get()) {
+        throw new QueryTimeoutRuntimeException();
       }
       return false;
     }

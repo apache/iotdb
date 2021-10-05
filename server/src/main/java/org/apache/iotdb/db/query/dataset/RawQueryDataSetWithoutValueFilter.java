@@ -70,8 +70,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     public void runMayThrow() {
       try {
         // check the status of mainThread before next reading
+        // 1. Main thread quits because of timeout
+        // 2. Main thread quits because of getting enough fetchSize result
         if (!QueryTimeManager.checkQueryAlive(queryId)) {
-          reader.setManagedByQueryManager(false);
           return;
         }
 

@@ -844,7 +844,7 @@ public class TSServiceImpl implements TSIService.Iface {
           }
         }
       }
-      queryTimeManager.unRegisterQuery(queryId);
+      queryTimeManager.unRegisterQuery(queryId, false);
 
       return resp;
     } catch (Exception e) {
@@ -1071,7 +1071,6 @@ public class TSServiceImpl implements TSIService.Iface {
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
     } finally {
       sessionManager.releaseQueryResourceNoExceptions(queryId);
-      queryTimeManager.unRegisterQuery(queryId);
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
       long costTime = System.currentTimeMillis() - startTime;
       if (costTime >= config.getSlowQueryThreshold()) {
@@ -1125,7 +1124,7 @@ public class TSServiceImpl implements TSIService.Iface {
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
 
-        queryTimeManager.unRegisterQuery(req.queryId);
+        queryTimeManager.unRegisterQuery(req.queryId, false);
         return resp;
       } else {
         TSQueryNonAlignDataSet nonAlignResult =
@@ -1146,7 +1145,7 @@ public class TSServiceImpl implements TSIService.Iface {
         resp.setNonAlignQueryDataSet(nonAlignResult);
         resp.setIsAlign(false);
 
-        queryTimeManager.unRegisterQuery(req.queryId);
+        queryTimeManager.unRegisterQuery(req.queryId, false);
         return resp;
       }
     } catch (InterruptedException e) {
