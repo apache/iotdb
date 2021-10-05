@@ -25,10 +25,11 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import java.io.File;
 
 public class TestConstant {
-
+  public static final String TSFILE_PREFIX_PATH =
+      "root.sg1" + File.separator + "0" + File.separator + "0" + File.separator;
   public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
   public static final String OUTPUT_DATA_DIR =
-      BASE_OUTPUT_PATH.concat("data").concat(File.separator);
+      BASE_OUTPUT_PATH + "data".concat(File.separator) + TSFILE_PREFIX_PATH;
 
   public static final String d0 = "root.vehicle.d0";
   public static final String s0 = "s0";

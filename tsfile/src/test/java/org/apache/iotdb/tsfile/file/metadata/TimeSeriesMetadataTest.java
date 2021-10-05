@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -40,13 +41,21 @@ public class TimeSeriesMetadataTest {
   final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputTimeSeries.tsfile");
 
   @Before
-  public void setUp() {}
+  public void setUp() {
+    File file = new File(PATH);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+  }
 
   @After
   public void tearDown() {
     File file = new File(PATH);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
   }
 

@@ -59,6 +59,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -75,7 +76,7 @@ public class UnseqTsFileRecoverTest {
   private File tsF;
   private TsFileWriter writer;
   private WriteLogNode node;
-  private String logNodePrefix = TestConstant.OUTPUT_DATA_DIR.concat("testNode/0");
+  private String logNodePrefix = TestConstant.BASE_OUTPUT_PATH.concat("testNode/0");
   private Schema schema;
   private TsFileResource resource;
   private VersionController versionController =
@@ -96,8 +97,12 @@ public class UnseqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
-    tsF.getParentFile().mkdirs();
+    tsF =
+        SystemFileFactory.INSTANCE.getFile(
+            logNodePrefix, System.currentTimeMillis() + "-1-0-0.tsfile");
+    if (!tsF.getParentFile().exists()) {
+      Assert.assertTrue(tsF.getParentFile().mkdirs());
+    }
 
     schema = new Schema();
     for (int i = 0; i < 10; i++) {

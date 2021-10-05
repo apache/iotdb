@@ -89,7 +89,7 @@ public class FileGenerator {
   }
 
   public static void prepare() throws IOException {
-    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData.tsfile");
     errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
     generateTestSchema();
     generateSampleInputDataFile();

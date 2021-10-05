@@ -63,6 +63,9 @@ public class TsFileReadWriteTest {
     if (f.exists()) {
       assertTrue(f.delete());
     }
+    if (!f.getParentFile().exists()) {
+      assertTrue(f.getParentFile().mkdirs());
+    }
   }
 
   @After

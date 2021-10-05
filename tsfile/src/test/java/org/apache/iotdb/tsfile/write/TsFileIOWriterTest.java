@@ -48,6 +48,14 @@ public class TsFileIOWriterTest {
 
   @Before
   public void before() throws IOException {
+    File file = new File(tsfile);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+
     TsFileIOWriter writer = new TsFileIOWriter(new File(tsfile));
 
     // file schema

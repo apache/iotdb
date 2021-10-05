@@ -55,6 +55,7 @@ import java.util.Collections;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class LevelCompactionMoreDataTest extends LevelCompactionTest {
 
@@ -95,7 +96,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
     for (int i = 0; i < seqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
+              TestConstant.OUTPUT_DATA_DIR.concat(
                   i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
@@ -113,7 +114,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
+              TestConstant.OUTPUT_DATA_DIR.concat(
                   (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + (10000 + i)
@@ -131,7 +132,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
 
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + unseqFileNum
@@ -180,9 +181,11 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    tempSGDir = new File(TestConstant.OUTPUT_DATA_DIR);
+    if (!tempSGDir.exists()) {
+      assertTrue(tempSGDir.mkdirs());
+    }
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
   }
 
   @After

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.Assert;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,8 +41,10 @@ public class MergePerfTest extends MergeTest {
 
   public void test() throws Exception {
     IoTDB.metaManager.init();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
+    tempSGDir = new File(TestConstant.OUTPUT_DATA_DIR);
+    if (tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
     setUp();
     timeConsumption = System.currentTimeMillis();
     MergeResource resource = new MergeResource(seqResources, unseqResources);
