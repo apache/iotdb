@@ -79,13 +79,6 @@ public class QueryContext {
     this.startTime = startTime;
     this.statement = statement;
     this.timeout = timeout;
-    System.out.println(queryId);
-    int index = 1;
-    for (StackTraceElement ste : Thread.currentThread().getStackTrace()) {
-      if (index++ < 6) {
-        System.out.println(ste);
-      }
-    }
     QueryTimeManager.getInstance().registerQuery(this);
   }
 
