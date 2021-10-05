@@ -132,6 +132,11 @@ public class QueryTimeManager implements IService {
     return queryContextMap;
   }
 
+  public void clear() {
+    queryContextMap.clear();
+    queryScheduledTaskMap.clear();
+  }
+
   public QueryContext getQueryContext(long queryId) {
     return queryContextMap.get(queryId);
   }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -150,7 +149,6 @@ public class IoTDBContinuousQueryIT {
 
     statement.close();
     connection.close();
-    QueryResourceManager.getInstance().endQuery(EnvironmentUtils.TEST_QUERY_JOB_ID);
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
     setUp();

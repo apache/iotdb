@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -85,7 +84,6 @@ public class IoTDBCreateTimeseriesIT {
 
       statement.close();
       connection.close();
-      QueryResourceManager.getInstance().endQuery(EnvironmentUtils.TEST_QUERY_JOB_ID);
       EnvironmentUtils.stopDaemon();
       setUp();
 
@@ -138,7 +136,6 @@ public class IoTDBCreateTimeseriesIT {
 
     statement.close();
     connection.close();
-    QueryResourceManager.getInstance().endQuery(EnvironmentUtils.TEST_QUERY_JOB_ID);
     EnvironmentUtils.stopDaemon();
     setUp();
 
