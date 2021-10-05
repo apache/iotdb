@@ -82,7 +82,7 @@ public class QueryContext {
     System.out.println(queryId);
     int index = 1;
     for (StackTraceElement ste : Thread.currentThread().getStackTrace()) {
-      if (index++ < 6s) {
+      if (index++ < 6) {
         System.out.println(ste);
       }
     }
