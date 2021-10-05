@@ -30,9 +30,7 @@ public class TracingManager {
   // (queryId -> TracingInfo)
   private final Map<Long, TracingInfo> queryIdToTracingInfo = new ConcurrentHashMap<>();
 
-  public TracingManager() {
-    // singleton
-  }
+  public TracingManager() {}
 
   public static TracingManager getInstance() {
     return TracingManagerHelper.INSTANCE;
