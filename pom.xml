@@ -114,7 +114,7 @@
         <scala.version>2.11.12</scala.version>
         <hadoop2.version>2.10.0</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
         <logback.version>1.2.3</logback.version>
         <joda.version>2.9.9</joda.version>
@@ -134,7 +134,7 @@
         <common.logging.version>1.1.3</common.logging.version>
         <org.slf4j.version>1.7.30</org.slf4j.version>
         <guava.version>24.1.1</guava.version>
-        <jline.version>2.14.5</jline.version>
+        <jline.version>3.16.0</jline.version>
         <jetty.version>9.4.35.v20201120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
@@ -157,6 +157,8 @@
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
         <spotless.version>2.4.2</spotless.version>
+        <httpclient.version>4.5.13</httpclient.version>
+        <httpcore.version>4.4.13</httpcore.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -465,6 +467,10 @@
                         <groupId>org.apache.httpcomponents</groupId>
                         <artifactId>httpcore</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.tomcat.embed</groupId>
+                        <artifactId>tomcat-embed-core</artifactId>
+                    </exclusion>
                 </exclusions>
             </dependency>
             <dependency>
@@ -488,6 +494,52 @@
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
+            </dependency>
+            <!-- for test container -->
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>5.5.0</version>
+            </dependency>
+            <!-- for hadoop connector -->
+            <dependency>
+                <groupId>org.apache.zookeeper</groupId>
+                <artifactId>zookeeper</artifactId>
+                <version>3.4.9</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-beanutils</groupId>
+                <artifactId>commons-beanutils</artifactId>
+                <version>1.9.4</version>
+            </dependency>
+            <!-- for test-container and hadoop conflict-->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.21</version>
+            </dependency>
+            <!-- for spark-iotdb-connector and hadoop connector conflict -->
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${httpclient.version}</version>
+            </dependency>
+            <!-- for spark-iotdb conflict -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>2.7.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpcore</artifactId>
+                <version>${httpcore.version}</version>
+            </dependency>
+            <!-- for hive connector-->
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-server</artifactId>
+                <version>11.0.6</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
