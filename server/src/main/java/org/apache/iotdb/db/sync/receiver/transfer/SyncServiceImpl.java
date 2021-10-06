@@ -219,7 +219,8 @@ public class SyncServiceImpl implements SyncService.Iface {
       currentFileWriter.set(new FileOutputStream(file));
       syncLog.get().startSyncTsFiles();
       messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
-      logger.info("initSyncData currentFileWriter: " + currentFileWriter.get().toString()); // change back
+      logger.info(
+          "initSyncData currentFileWriter: " + currentFileWriter.get().toString()); // change back
     } catch (IOException | NoSuchAlgorithmException e) {
       logger.error("Can not init sync resource for file {}", filePath, e);
       return getErrorResult(
@@ -235,7 +236,9 @@ public class SyncServiceImpl implements SyncService.Iface {
       int pos = buff.position();
       logger.info("syncData currentSG: " + currentSG.get()); // change back
       logger.info("syncData currentFileWriter: " + currentFileWriter.get().toString());
-      logger.info("syncData currentFileWriterChannel is Open: " + currentFileWriter.get().getChannel().isOpen());
+      logger.info(
+          "syncData currentFileWriterChannel is Open: "
+              + currentFileWriter.get().getChannel().isOpen());
       currentFileWriter.get().getChannel().write(buff);
       buff.position(pos);
       messageDigest.get().update(buff);
