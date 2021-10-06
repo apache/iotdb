@@ -19,14 +19,22 @@
 
 package org.apache.iotdb.influxdb;
 
-import org.apache.iotdb.influxdb.qp.constant.FilterConstant;
-import org.apache.iotdb.influxdb.qp.logical.Operator;
-import org.apache.iotdb.influxdb.qp.logical.crud.*;
+import org.apache.iotdb.influxdb.protocol.constant.FilterConstant;
+import org.apache.iotdb.influxdb.protocol.operator.BasicFunctionOperator;
+import org.apache.iotdb.influxdb.protocol.operator.Condition;
+import org.apache.iotdb.influxdb.protocol.operator.FilterOperator;
+import org.apache.iotdb.influxdb.protocol.operator.Operator;
+import org.apache.iotdb.influxdb.protocol.operator.QueryOperator;
+import org.apache.iotdb.influxdb.protocol.operator.SelectComponent;
 import org.apache.iotdb.tsfile.read.common.Field;
 
 import org.influxdb.dto.QueryResult;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class IoTDBInfluxDBUtils {
 

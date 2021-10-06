@@ -19,16 +19,24 @@
 
 package org.apache.iotdb.influxdb;
 
-import org.apache.iotdb.influxdb.qp.constant.FilterConstant;
-import org.apache.iotdb.influxdb.qp.constant.SQLConstant;
-import org.apache.iotdb.influxdb.qp.logical.Operator;
-import org.apache.iotdb.influxdb.qp.logical.crud.*;
-import org.apache.iotdb.influxdb.qp.logical.function.*;
-import org.apache.iotdb.influxdb.qp.strategy.LogicalGenerator;
-import org.apache.iotdb.influxdb.query.expression.Expression;
-import org.apache.iotdb.influxdb.query.expression.ResultColumn;
-import org.apache.iotdb.influxdb.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.influxdb.query.expression.unary.NodeExpression;
+import org.apache.iotdb.influxdb.protocol.constant.FilterConstant;
+import org.apache.iotdb.influxdb.protocol.constant.SQLConstant;
+import org.apache.iotdb.influxdb.protocol.expression.Expression;
+import org.apache.iotdb.influxdb.protocol.expression.ResultColumn;
+import org.apache.iotdb.influxdb.protocol.expression.unary.FunctionExpression;
+import org.apache.iotdb.influxdb.protocol.expression.unary.NodeExpression;
+import org.apache.iotdb.influxdb.protocol.function.Function;
+import org.apache.iotdb.influxdb.protocol.function.FunctionFactory;
+import org.apache.iotdb.influxdb.protocol.function.FunctionValue;
+import org.apache.iotdb.influxdb.protocol.function.aggregator.Aggregator;
+import org.apache.iotdb.influxdb.protocol.function.selector.Selector;
+import org.apache.iotdb.influxdb.protocol.operator.BasicFunctionOperator;
+import org.apache.iotdb.influxdb.protocol.operator.Condition;
+import org.apache.iotdb.influxdb.protocol.operator.FilterOperator;
+import org.apache.iotdb.influxdb.protocol.operator.Operator;
+import org.apache.iotdb.influxdb.protocol.operator.QueryOperator;
+import org.apache.iotdb.influxdb.protocol.operator.SelectComponent;
+import org.apache.iotdb.influxdb.protocol.sql.LogicalGenerator;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -38,12 +46,20 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
-import org.influxdb.dto.*;
+import org.influxdb.dto.BatchPoints;
+import org.influxdb.dto.Point;
+import org.influxdb.dto.Pong;
+import org.influxdb.dto.Query;
+import org.influxdb.dto.QueryResult;
 
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -52,23 +68,23 @@ import java.util.stream.Collectors;
 
 public class IoTDBInfluxDB implements InfluxDB {
 
+  static final String METHOD_NOT_SUPPORTED = "Method not supported";
+
   private static Session session;
+  private final String placeholder = "PH";
+  // Tag list and order corresponding to all measurements in the current database
+  // TODO At present, the distributed situation is not considered. It is assumed that all writes are
+  // performed by the instance
+  private final Map<String, Map<String, Integer>> measurementTagOrder = new HashMap<>();
   // Database currently selected by influxdb
   private String database;
   // Measurement currently selected by influxdb
   private String measurement;
-  // Tag list and order corresponding to all measurements in the current database
-  // TODO At present, the distributed situation is not considered. It is assumed that all writes are
-  // performed by the instance
-  private Map<String, Map<String, Integer>> measurementTagOrder = new HashMap<>();
   // Tag list and order under current measurement
   private Map<String, Integer> tagOrders;
-
   // The list of fields under the current measurement and the order of the specified rules
   private Map<String, Integer> fieldOrders;
   private Map<Integer, String> fieldOrdersReversed;
-
-  private final String placeholder = "PH";
 
   /**
    * constructor function
@@ -107,10 +123,138 @@ public class IoTDBInfluxDB implements InfluxDB {
   }
 
   /**
+   * further process the obtained query result through the query criteria of select
+   *
+   * @param queryResult query results to be processed
+   * @param selectComponent select conditions to be filtered
+   */
+  private static void ProcessSelectComponent(
+      QueryResult queryResult, SelectComponent selectComponent) {
+    // get the row order map of the current data result first
+    List<String> columns = queryResult.getResults().get(0).getSeries().get(0).getColumns();
+    Map<String, Integer> columnOrders = new HashMap<>();
+    for (int i = 0; i < columns.size(); i++) {
+      columnOrders.put(columns.get(i), i);
+    }
+    // get current values
+    List<List<Object>> values = queryResult.getResults().get(0).getSeries().get(0).getValues();
+    // new columns
+    List<String> newColumns = new ArrayList<>();
+    newColumns.add(SQLConstant.RESERVED_TIME);
+
+    // when have function
+    if (selectComponent.isHasFunction()) {
+      List<Function> functions = new ArrayList<>();
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        Expression expression = resultColumn.getExpression();
+        if (expression instanceof FunctionExpression) {
+          String functionName = ((FunctionExpression) expression).getFunctionName();
+          functions.add(
+              FunctionFactory.generateFunction(
+                  functionName, ((FunctionExpression) expression).getExpressions()));
+          newColumns.add(functionName);
+        } else if (expression instanceof NodeExpression) {
+          String columnName = ((NodeExpression) expression).getName();
+          if (!columnName.equals(SQLConstant.STAR)) {
+            newColumns.add(columnName);
+          } else {
+            newColumns.addAll(columns.subList(1, columns.size()));
+          }
+        }
+      }
+      for (List<Object> value : values) {
+        for (Function function : functions) {
+          List<Expression> expressions = function.getExpressions();
+          if (expressions == null) {
+            throw new IllegalArgumentException("not support param");
+          }
+          NodeExpression parmaExpression = (NodeExpression) expressions.get(0);
+          String parmaName = parmaExpression.getName();
+          if (columnOrders.containsKey(parmaName)) {
+            Object selectedValue = value.get(columnOrders.get(parmaName));
+            Long selectedTimestamp = (Long) value.get(0);
+            if (selectedValue != null) {
+              // selector function
+              if (function instanceof Selector) {
+                ((Selector) function)
+                    .updateValueAndRelate(
+                        new FunctionValue(selectedValue, selectedTimestamp), value);
+              } else {
+                // aggregate function
+                ((Aggregator) function)
+                    .updateValue(new FunctionValue(selectedValue, selectedTimestamp));
+              }
+            }
+          }
+        }
+      }
+      List<Object> value = new ArrayList<>();
+      values = new ArrayList<>();
+      // after the data is constructed, the final results are generated
+      // First, judge whether there are common queries. If there are, a selector function is allowed
+      // without aggregate functions
+      if (selectComponent.isHasCommonQuery()) {
+        Selector selector = (Selector) functions.get(0);
+        List<Object> relatedValue = selector.getRelatedValues();
+        for (String column : newColumns) {
+          if (SQLConstant.getNativeSelectorFunctionNames().contains(column)) {
+            value.add(selector.calculate().getValue());
+          } else {
+            if (relatedValue != null) {
+              value.add(relatedValue.get(columnOrders.get(column)));
+            }
+          }
+        }
+      } else {
+        // If there are no common queries, they are all function queries
+        for (Function function : functions) {
+          if (value.size() == 0) {
+            value.add(function.calculate().getTimestamp());
+          } else {
+            value.set(0, function.calculate().getTimestamp());
+          }
+          value.add(function.calculate().getValue());
+        }
+        if (selectComponent.isHasAggregationFunction() || selectComponent.isHasMoreFunction()) {
+          value.set(0, 0);
+        }
+      }
+      values.add(value);
+    }
+    // if it is not a function query, it is only a common query
+    else if (selectComponent.isHasCommonQuery()) {
+      // start traversing the scope of the select
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        Expression expression = resultColumn.getExpression();
+        if (expression instanceof NodeExpression) {
+          // not star case
+          if (!((NodeExpression) expression).getName().equals(SQLConstant.STAR)) {
+            newColumns.add(((NodeExpression) expression).getName());
+          } else {
+            newColumns.addAll(columns.subList(1, columns.size()));
+          }
+        }
+      }
+      List<List<Object>> newValues = new ArrayList();
+      for (List<Object> value : values) {
+        List<Object> tmpValue = new ArrayList();
+        for (String newColumn : newColumns) {
+          tmpValue.add(value.get(columnOrders.get(newColumn)));
+        }
+        newValues.add(tmpValue);
+      }
+      values = newValues;
+    }
+    IoTDBInfluxDBUtils.updateQueryResultColumnValue(
+        queryResult, IoTDBInfluxDBUtils.removeDuplicate(newColumns), values);
+  }
+
+  /**
    * write function compatible with influxdb
    *
    * @param point Data structure for inserting data
    */
+  @Override
   public void write(Point point) {
     String measurement = null;
     Map<String, String> tags = new HashMap<>();
@@ -207,6 +351,7 @@ public class IoTDBInfluxDB implements InfluxDB {
    * @param query query parameters of influxdb, including databasename and SQL statement
    * @return returns the query result of influxdb
    */
+  @Override
   public QueryResult query(Query query) {
     String sql = query.getCommand();
     String database = query.getDatabase();
@@ -245,6 +390,7 @@ public class IoTDBInfluxDB implements InfluxDB {
    *
    * @param name database name
    */
+  @Override
   public void createDatabase(String name) {
     IoTDBInfluxDBUtils.checkNonEmptyString(name, "database name");
     try {
@@ -265,6 +411,7 @@ public class IoTDBInfluxDB implements InfluxDB {
    *
    * @param name database name
    */
+  @Override
   public void deleteDatabase(String name) {
     try {
       session.deleteStorageGroup("root." + name);
@@ -278,6 +425,7 @@ public class IoTDBInfluxDB implements InfluxDB {
    *
    * @param database database name
    */
+  @Override
   public InfluxDB setDatabase(String database) {
     if (!database.equals(this.database)) {
       updateDatabase(database);
@@ -288,48 +436,48 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void write(String s) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(List<String> list) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(String s, String s1, Point point) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(int i, Point point) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(BatchPoints batchPoints) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void writeWithRetry(BatchPoints batchPoints) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(String s, String s1, ConsistencyLevel consistencyLevel, String s2) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(
       String s, String s1, ConsistencyLevel consistencyLevel, TimeUnit timeUnit, String s2) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(String s, String s1, ConsistencyLevel consistencyLevel, List<String> list) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -339,43 +487,43 @@ public class IoTDBInfluxDB implements InfluxDB {
       ConsistencyLevel consistencyLevel,
       TimeUnit timeUnit,
       List<String> list) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(int i, String s) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void write(int i, List<String> list) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void query(Query query, Consumer<QueryResult> consumer, Consumer<Throwable> consumer1) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void query(Query query, int i, Consumer<QueryResult> consumer) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void query(Query query, int i, BiConsumer<Cancellable, QueryResult> biConsumer) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void query(Query query, int i, Consumer<QueryResult> consumer, Runnable runnable) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void query(
       Query query, int i, BiConsumer<Cancellable, QueryResult> biConsumer, Runnable runnable) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -385,102 +533,102 @@ public class IoTDBInfluxDB implements InfluxDB {
       BiConsumer<Cancellable, QueryResult> biConsumer,
       Runnable runnable,
       Consumer<Throwable> consumer) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public QueryResult query(Query query, TimeUnit timeUnit) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public List<String> describeDatabases() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean databaseExists(String s) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void flush() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void close() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB setConsistency(ConsistencyLevel consistencyLevel) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB setRetentionPolicy(String s) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void createRetentionPolicy(String s, String s1, String s2, String s3, int i, boolean b) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void createRetentionPolicy(String s, String s1, String s2, int i, boolean b) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void createRetentionPolicy(String s, String s1, String s2, String s3, int i) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void dropRetentionPolicy(String s, String s1) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB setLogLevel(LogLevel logLevel) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB enableGzip() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB disableGzip() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isGzipEnabled() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB enableBatch() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB enableBatch(BatchOptions batchOptions) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB enableBatch(int i, int i1, TimeUnit timeUnit) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public InfluxDB enableBatch(int i, int i1, TimeUnit timeUnit, ThreadFactory threadFactory) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -491,7 +639,7 @@ public class IoTDBInfluxDB implements InfluxDB {
       ThreadFactory threadFactory,
       BiConsumer<Iterable<Point>, Throwable> biConsumer,
       ConsistencyLevel consistencyLevel) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -501,27 +649,27 @@ public class IoTDBInfluxDB implements InfluxDB {
       TimeUnit timeUnit,
       ThreadFactory threadFactory,
       BiConsumer<Iterable<Point>, Throwable> biConsumer) {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public void disableBatch() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isBatchEnabled() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public Pong ping() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public String version() {
-    throw new UnsupportedOperationException(Constant.METHOD_NOT_SUPPORTED);
+    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
   /**
@@ -955,132 +1103,6 @@ public class IoTDBInfluxDB implements InfluxDB {
     result.setSeries(new ArrayList<>(Arrays.asList(series)));
     queryResult.setResults(new ArrayList<>(Arrays.asList(result)));
     return queryResult;
-  }
-
-  /**
-   * further process the obtained query result through the query criteria of select
-   *
-   * @param queryResult query results to be processed
-   * @param selectComponent select conditions to be filtered
-   */
-  private void ProcessSelectComponent(QueryResult queryResult, SelectComponent selectComponent) {
-    // get the row order map of the current data result first
-    List<String> columns = queryResult.getResults().get(0).getSeries().get(0).getColumns();
-    Map<String, Integer> columnOrders = new HashMap<>();
-    for (int i = 0; i < columns.size(); i++) {
-      columnOrders.put(columns.get(i), i);
-    }
-    // get current values
-    List<List<Object>> values = queryResult.getResults().get(0).getSeries().get(0).getValues();
-    // new columns
-    List<String> newColumns = new ArrayList<>();
-    newColumns.add(SQLConstant.RESERVED_TIME);
-
-    // when have function
-    if (selectComponent.isHasFunction()) {
-      List<Function> functions = new ArrayList<>();
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        Expression expression = resultColumn.getExpression();
-        if (expression instanceof FunctionExpression) {
-          String functionName = ((FunctionExpression) expression).getFunctionName();
-          functions.add(
-              FunctionFactory.generateFunction(
-                  functionName, ((FunctionExpression) expression).getExpressions()));
-          newColumns.add(functionName);
-        } else if (expression instanceof NodeExpression) {
-          String columnName = ((NodeExpression) expression).getName();
-          if (!columnName.equals(SQLConstant.STAR)) {
-            newColumns.add(columnName);
-          } else {
-            newColumns.addAll(columns.subList(1, columns.size()));
-          }
-        }
-      }
-      for (List<Object> value : values) {
-        for (Function function : functions) {
-          List<Expression> expressions = function.getExpressions();
-          if (expressions == null) {
-            throw new IllegalArgumentException("not support param");
-          }
-          NodeExpression parmaExpression = (NodeExpression) expressions.get(0);
-          String parmaName = parmaExpression.getName();
-          if (columnOrders.containsKey(parmaName)) {
-            Object selectedValue = value.get(columnOrders.get(parmaName));
-            Long selectedTimestamp = (Long) value.get(0);
-            if (selectedValue != null) {
-              // selector function
-              if (function instanceof Selector) {
-                ((Selector) function)
-                    .updateValueAndRelate(
-                        new FunctionValue(selectedValue, selectedTimestamp), value);
-              } else {
-                // aggregate function
-                ((Aggregate) function)
-                    .updateValue(new FunctionValue(selectedValue, selectedTimestamp));
-              }
-            }
-          }
-        }
-      }
-      List<Object> value = new ArrayList<>();
-      values = new ArrayList<>();
-      // after the data is constructed, the final results are generated
-      // First, judge whether there are common queries. If there are, a selector function is allowed
-      // without aggregate functions
-      if (selectComponent.isHasCommonQuery()) {
-        Selector selector = (Selector) functions.get(0);
-        List<Object> relatedValue = selector.getRelatedValues();
-        for (String column : newColumns) {
-          if (SQLConstant.getNativeSelectorFunctionNames().contains(column)) {
-            value.add(selector.calculate().getValue());
-          } else {
-            if (relatedValue != null) {
-              value.add(relatedValue.get(columnOrders.get(column)));
-            }
-          }
-        }
-      } else {
-        // If there are no common queries, they are all function queries
-        for (Function function : functions) {
-          if (value.size() == 0) {
-            value.add(function.calculate().getTimestamp());
-          } else {
-            value.set(0, function.calculate().getTimestamp());
-          }
-          value.add(function.calculate().getValue());
-        }
-        if (selectComponent.isHasAggregationFunction() || selectComponent.isHasMoreFunction()) {
-          value.set(0, 0);
-        }
-      }
-      values.add(value);
-    }
-    // if it is not a function query, it is only a common query
-    else if (selectComponent.isHasCommonQuery()) {
-      // start traversing the scope of the select
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        Expression expression = resultColumn.getExpression();
-        if (expression instanceof NodeExpression) {
-          // not star case
-          if (!((NodeExpression) expression).getName().equals(SQLConstant.STAR)) {
-            newColumns.add(((NodeExpression) expression).getName());
-          } else {
-            newColumns.addAll(columns.subList(1, columns.size()));
-          }
-        }
-      }
-      List<List<Object>> newValues = new ArrayList();
-      for (List<Object> value : values) {
-        List<Object> tmpValue = new ArrayList();
-        for (String newColumn : newColumns) {
-          tmpValue.add(value.get(columnOrders.get(newColumn)));
-        }
-        newValues.add(tmpValue);
-      }
-      values = newValues;
-    }
-    IoTDBInfluxDBUtils.updateQueryResultColumnValue(
-        queryResult, IoTDBInfluxDBUtils.removeDuplicate(newColumns), values);
   }
 
   /**
