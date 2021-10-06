@@ -265,7 +265,7 @@ public class IoTDBSequenceDataQueryIT {
   @Test
   public void readWithValueFilterTest()
       throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
-    // select * from root where root.vehicle.d0.s0 >=14
+    // select * from root.** where root.vehicle.d0.s0 >=14
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();

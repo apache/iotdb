@@ -110,7 +110,6 @@ public class IoTDBMultiStatementsIT {
     }
   }
 
-  // "select * from root.vehicle" : test select wild data
   @Test
   public void selectAllTest() throws ClassNotFoundException {
     String[] retArray =
@@ -118,7 +117,7 @@ public class IoTDBMultiStatementsIT {
           "1,1,1", "2,2,2", "3,3,3", "4,4,4", "5,5,0", "6,6,1", "7,7,2", "8,8,3", "9,9,4"
         };
 
-    String selectSql = "select * from root";
+    String selectSql = "select * from root.**";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =

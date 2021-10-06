@@ -37,8 +37,8 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.After;
@@ -383,7 +383,7 @@ public class MetadataIndexConstructorTest {
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
                 new Path(device, measurement),
-                new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
+                new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
           }
           // the number of record rows
           int rowNum = 10;

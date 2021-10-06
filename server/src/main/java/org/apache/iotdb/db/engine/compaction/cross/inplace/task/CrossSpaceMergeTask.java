@@ -25,8 +25,6 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -38,11 +36,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -145,21 +140,9 @@ public class CrossSpaceMergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
-    Map<PartialPath, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    List<PartialPath> unmergedSeries = new ArrayList<>();
-    for (PartialPath device : devices) {
-      IMNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
-      // todo add template merge logic
-      for (Entry<String, IMNode> entry : deviceNode.getChildren().entrySet()) {
-        if ((!(entry.getValue() instanceof IMeasurementMNode))) {
-          continue;
-        }
-        PartialPath path = device.concatNode(entry.getKey());
-        measurementSchemaMap.put(path, ((IMeasurementMNode) entry.getValue()).getSchema());
-        unmergedSeries.add(path);
-      }
-    }
+    Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
+        IoTDB.metaManager.getAllMeasurementSchemaByPrefix(new PartialPath(storageGroupName));
+    List<PartialPath> unmergedSeries = new ArrayList<>(measurementSchemaMap.keySet());
     resource.setMeasurementSchemaMap(measurementSchemaMap);
 
     mergeLogger.logMergeStart();

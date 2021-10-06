@@ -92,8 +92,6 @@ public class IoTDBUDTFHybridQueryIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create function counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
-      statement.execute(
-          "create function accumulator as \"org.apache.iotdb.db.query.udf.example.Accumulator\"");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

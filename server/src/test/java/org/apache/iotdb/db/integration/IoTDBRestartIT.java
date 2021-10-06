@@ -308,7 +308,7 @@ public class IoTDBRestartIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("select * from root.**");
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -341,7 +341,7 @@ public class IoTDBRestartIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("select * from root.**");
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;

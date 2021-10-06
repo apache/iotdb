@@ -166,7 +166,7 @@ public class IoTDBDeletionIT {
       statement.execute(
           "DELETE FROM root.vehicle.d0.s1,root.vehicle.d0.s2,root.vehicle.d0.s3"
               + " WHERE time <= 350");
-      statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 150");
+      statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 150");
 
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
@@ -204,7 +204,7 @@ public class IoTDBDeletionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("merge");
-      statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
+      statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
 
       // before merge completes
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
@@ -276,7 +276,7 @@ public class IoTDBDeletionIT {
         assertEquals(150, cnt);
       }
 
-      statement.execute("DELETE FROM root.vehicle.d0 WHERE time > 50 and time <= 250");
+      statement.execute("DELETE FROM root.vehicle.d0.** WHERE time > 50 and time <= 250");
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {

@@ -61,7 +61,8 @@ public class ShowDevicesDataSet extends ShowDataSet {
 
   @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
-    List<ShowDevicesResult> devicesList = IoTDB.metaManager.getDevices((ShowDevicesPlan) plan);
+    List<ShowDevicesResult> devicesList =
+        IoTDB.metaManager.getMatchedDevices((ShowDevicesPlan) plan);
     List<RowRecord> records = new ArrayList<>();
     for (ShowDevicesResult result : devicesList) {
       RowRecord record = new RowRecord(0);

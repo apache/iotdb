@@ -39,7 +39,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
     String json = payload.toString(StandardCharsets.UTF_8);
 
-    // parse data from the json and generate Messages and put them into List<Meesage> ret
+    // parse data from the json and generate Messages and put them into List<Message> ret
     List<Message> ret = new ArrayList<>();
     // this is just an example, so we just generate some Messages directly
     for (int i = 0; i < 2; i++) {

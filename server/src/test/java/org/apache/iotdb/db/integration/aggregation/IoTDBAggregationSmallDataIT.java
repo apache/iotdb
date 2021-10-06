@@ -222,7 +222,7 @@ public class IoTDBAggregationSmallDataIT {
             e.toString()
                 .contains(
                     String.format(
-                        "500: [INTERNAL_SERVER_ERROR] Exception occurred: "
+                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
                             + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
                             + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
                         OperationType.EXECUTE_STATEMENT.getName())));
@@ -268,7 +268,7 @@ public class IoTDBAggregationSmallDataIT {
             e.toString()
                 .contains(
                     String.format(
-                        "500: [INTERNAL_SERVER_ERROR] Exception occurred: "
+                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
                             + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
                             + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
                         OperationType.EXECUTE_STATEMENT.getName())));
@@ -794,7 +794,7 @@ public class IoTDBAggregationSmallDataIT {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SELECT * FROM root");
+      boolean hasResultSet = statement.execute("SELECT * FROM root.**");
       if (hasResultSet) {
         try (ResultSet resultSet = statement.getResultSet()) {
           int cnt = 0;

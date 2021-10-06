@@ -49,7 +49,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -442,7 +442,7 @@ public class MLogWriter implements AutoCloseable {
             words[2].equals("") ? null : words[2],
             Long.parseLong(words[words.length - 2]),
             Integer.parseInt(words[words.length - 1]),
-            new MeasurementSchema(
+            new UnaryMeasurementSchema(
                 words[1],
                 TSDataType.values()[Integer.parseInt(words[3])],
                 TSEncoding.values()[Integer.parseInt(words[4])],

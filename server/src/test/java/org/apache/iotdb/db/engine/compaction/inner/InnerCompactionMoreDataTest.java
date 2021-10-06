@@ -41,7 +41,7 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -65,10 +65,10 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
 
   @Override
   void prepareSeries() throws MetadataException {
-    measurementSchemas = new MeasurementSchema[measurementNum];
+    measurementSchemas = new UnaryMeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
-          new MeasurementSchema(
+          new UnaryMeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
@@ -77,7 +77,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     }
     IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
         IoTDB.metaManager.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
@@ -151,7 +151,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(
             new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
       }

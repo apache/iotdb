@@ -414,9 +414,8 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
-    // Because diffent resultSet share the same TTransport and buffer, if the former has not
-    // comsumed
-    // result timely, the latter will overlap the former byte buffer, thus problem will occur
+    // Because different result sets share the TTransport and buffer, if the previous result set was
+    // not consumed timely, the byte buffer will be overwritten by the incoming result set
     deepCopyResp(execResp);
     BitSet aliasColumn = null;
     if (execResp.getAliasColumns() != null && execResp.getAliasColumns().size() > 0) {

@@ -105,7 +105,7 @@ The parameters of the sync sender are configured in a separate configuration fil
 |parameter: sync_storage_groups||
 |--- |--- |
 |Description |This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma. If the list is empty, it means that all storage groups participate in synchronization. By default, it is an empty list. |
-|Type|Int : [0,2147483647]|
+|Type|String|
 |Example|root.sg1, root.sg2|
 |Modalities for Entry into Force after Modification|Restart client|
 

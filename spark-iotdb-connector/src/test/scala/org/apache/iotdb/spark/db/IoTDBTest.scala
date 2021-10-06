@@ -71,14 +71,14 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
 
   test("test show data") {
     val df = spark.read.format("org.apache.iotdb.sparkdb")
-      .option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root").load
+      .option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root.**").load
     Assert.assertEquals(7505, df.count())
   }
 
   test("test show data with partition") {
     val df = spark.read.format("org.apache.iotdb.sparkdb")
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-      .option("sql", "select * from root")
+      .option("sql", "select * from root.**")
       .option("lowerBound", 1).option("upperBound", System.nanoTime() / 1000 / 1000)
       .option("numPartition", 10).load
     Assert.assertEquals(7505, df.count())
@@ -87,7 +87,7 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
   test("test filter data") {
     val df = spark.read.format("org.apache.iotdb.sparkdb")
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-      .option("sql", "select * from root where time < 2000 and time > 1000").load
+      .option("sql", "select * from root.** where time < 2000 and time > 1000").load
 
     Assert.assertEquals(499, df.count())
   }
@@ -95,7 +95,7 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
   test("test filter data with partition") {
     val df = spark.read.format("org.apache.iotdb.sparkdb")
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-      .option("sql", "select * from root where time < 2000 and time > 1000")
+      .option("sql", "select * from root.** where time < 2000 and time > 1000")
       .option("lowerBound", 1)
       .option("upperBound", 10000).option("numPartition", 10).load
 
@@ -105,7 +105,7 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
   test("test transform to narrow") {
     val df = spark.read.format("org.apache.iotdb.sparkdb")
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-      .option("sql", "select * from root where time < 1100 and time > 1000").load
+      .option("sql", "select * from root.** where time < 1100 and time > 1000").load
     val narrow_df = Transformer.toNarrowForm(spark, df)
     Assert.assertEquals(198, narrow_df.count())
   }
@@ -113,7 +113,7 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
   test("test transform to narrow with partition") {
     val df = spark.read.format("org.apache.iotdb.sparkdb")
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-      .option("sql", "select * from root where time < 1100 and time > 1000")
+      .option("sql", "select * from root.** where time < 1100 and time > 1000")
       .option("lowerBound", 1).option("upperBound", 10000)
       .option("numPartition", 10).load
     val narrow_df = Transformer.toNarrowForm(spark, df)
@@ -123,7 +123,7 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
   test("test transform back to wide") {
     val df = spark.read.format("org.apache.iotdb.sparkdb")
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-      .option("sql", "select * from root where time < 1100 and time > 1000").load
+      .option("sql", "select * from root.** where time < 1100 and time > 1000").load
     val narrow_df = Transformer.toNarrowForm(spark, df)
     val wide_df = Transformer.toWideForm(spark, narrow_df)
     Assert.assertEquals(99, wide_df.count())

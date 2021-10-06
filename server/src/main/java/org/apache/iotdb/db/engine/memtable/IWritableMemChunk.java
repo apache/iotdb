@@ -42,25 +42,28 @@ public interface IWritableMemChunk {
 
   void putVector(long t, Object[] v);
 
-  void putLongs(long[] t, BitMap bitMap, long[] v, int start, int end);
+  void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
-  void putInts(long[] t, BitMap bitMap, int[] v, int start, int end);
+  void putInts(long[] t, int[] v, BitMap bitMap, int start, int end);
 
-  void putFloats(long[] t, BitMap bitMap, float[] v, int start, int end);
+  void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end);
 
-  void putDoubles(long[] t, BitMap bitMap, double[] v, int start, int end);
+  void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end);
 
-  void putBinaries(long[] t, BitMap bitMap, Binary[] v, int start, int end);
+  void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end);
 
-  void putBooleans(long[] t, BitMap bitMap, boolean[] v, int start, int end);
+  void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
-  void putVectors(long[] t, BitMap[] bitMaps, Object[] v, int start, int end);
+  void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int start, int end);
 
   void write(long insertTime, Object objectValue);
 
-  /** [start, end) */
+  /**
+   * write data in the range [start, end). Null value in the valueList will be replaced by the
+   * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
+   */
   void write(
-      long[] times, Object bitMaps, Object valueList, TSDataType dataType, int start, int end);
+      long[] times, Object valueList, Object bitMaps, TSDataType dataType, int start, int end);
 
   long count();
 

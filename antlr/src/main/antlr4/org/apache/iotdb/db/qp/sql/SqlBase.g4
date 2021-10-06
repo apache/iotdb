@@ -98,9 +98,9 @@ statement
     | UNLOAD stringLiteral stringLiteral #unloadFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
-    | CREATE TEMPORARY? FUNCTION udfName=ID AS className=stringLiteral #createFunction
+    | CREATE FUNCTION udfName=ID AS className=stringLiteral #createFunction
     | DROP FUNCTION udfName=ID #dropFunction
-    | SHOW TEMPORARY? FUNCTIONS #showFunctions
+    | SHOW FUNCTIONS #showFunctions
     | CREATE TRIGGER triggerName=ID triggerEventClause ON fullPath
       AS className=stringLiteral triggerAttributeClause? #createTrigger
     | DROP TRIGGER triggerName=ID #dropTrigger
@@ -124,13 +124,18 @@ resultColumn
     ;
 
 expression
-    : LR_BRACKET unary=expression RR_BRACKET
-    | (PLUS | MINUS) unary=expression
+    : LR_BRACKET unaryInBracket=expression RR_BRACKET
+    | (PLUS | MINUS) unaryAfterSign=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-    | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPath
     | literal=SINGLE_QUOTE_STRING_LITERAL
+    ;
+
+functionName
+    : ID
+    | COUNT
     ;
 
 functionAttribute
@@ -1223,10 +1228,6 @@ SGLEVEL
     : S G L E V E L
     ;
 
-TEMPORARY
-    : T E M P O R A R Y
-    ;
-
 FUNCTION
     : F U N C T I O N
     ;
@@ -1355,7 +1356,7 @@ LOCK
 //============================
 COMMA : ',';
 
-STAR : '*';
+STAR : '*' | '**';
 
 OPERATOR_EQ : '=' | '==';
 

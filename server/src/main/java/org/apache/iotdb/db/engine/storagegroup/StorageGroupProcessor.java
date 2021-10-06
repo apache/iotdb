@@ -55,6 +55,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -1032,7 +1033,8 @@ public class StorageGroupProcessor {
 
   /**
    * insert batch to tsfile processor thread-safety that the caller need to guarantee The rows to be
-   * inserted are in the range [start, end)
+   * inserted are in the range [start, end) Null value in each column values will be replaced by the
+   * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletPlan insert a tablet of a device
    * @param sequence whether is sequence
@@ -1106,17 +1108,24 @@ public class StorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        // no matter aligned or not, concat the path to use the full path to update LastCache
-        IoTDB.metaManager.updateLastCache(
-            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-            plan.composeLastTimeValuePair(i),
-            true,
-            latestFlushedTime);
+        if (plan.isAligned()) {
+          IoTDB.metaManager.updateLastCache(
+              new VectorPartialPath(plan.getPrefixPath(), plan.getMeasurements()[i]),
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        } else {
+          IoTDB.metaManager.updateLastCache(
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        }
       } else {
         if (plan.isAligned()) {
           // vector lastCache update need subMeasurement
           IoTDB.metaManager.updateLastCache(
-              mNodes[i],
+              mNodes[i].getAsMultiMeasurementMNode(),
               plan.getMeasurements()[i],
               plan.composeLastTimeValuePair(i),
               true,
@@ -1126,7 +1135,10 @@ public class StorageGroupProcessor {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+              mNodes[i].getAsUnaryMeasurementMNode(),
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
         }
       }
     }
@@ -1175,17 +1187,24 @@ public class StorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        // no matter aligned or not, concat the path to use the full path to update LastCache
-        IoTDB.metaManager.updateLastCache(
-            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-            plan.composeTimeValuePair(i),
-            true,
-            latestFlushedTime);
+        if (plan.isAligned()) {
+          IoTDB.metaManager.updateLastCache(
+              new VectorPartialPath(plan.getPrefixPath(), plan.getMeasurements()[i]),
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        } else {
+          IoTDB.metaManager.updateLastCache(
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        }
       } else {
         if (plan.isAligned()) {
           // vector lastCache update need subSensor path
           IoTDB.metaManager.updateLastCache(
-              mNodes[i],
+              mNodes[i].getAsMultiMeasurementMNode(),
               plan.getMeasurements()[i],
               plan.composeTimeValuePair(i),
               true,
@@ -1194,7 +1213,10 @@ public class StorageGroupProcessor {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
+              mNodes[i].getAsUnaryMeasurementMNode(),
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
         }
       }
     }
@@ -1887,7 +1909,7 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.metaManager.getDevices(path.getDevicePath());
+      Set<PartialPath> devicePaths = IoTDB.metaManager.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
         Long lastUpdateTime = null;
         for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
@@ -2377,27 +2399,15 @@ public class StorageGroupProcessor {
       List<TsFileResource> sequenceList =
           tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId);
 
-      int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
-      System.out.println(insertPos);
-      String newFileName, renameInfo;
-      LoadTsFileType tsFileType;
-
-      // loading tsfile by type
-      if (insertPos == POS_OVERLAP) {
-        newFileName =
-            getNewTsFileName(
-                System.currentTimeMillis(),
-                getAndSetNewVersion(newFilePartitionId, newTsFileResource),
-                0,
-                0);
-        renameInfo = IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-        tsFileType = LoadTsFileType.LOAD_UNSEQUENCE;
-      } else {
-        // check whether the file name needs to be renamed.
-        newFileName = getFileNameForSequenceLoadingFile(insertPos, newTsFileResource, sequenceList);
-        renameInfo = IoTDBConstant.SEQUENCE_FLODER_NAME;
-        tsFileType = LoadTsFileType.LOAD_SEQUENCE;
-      }
+      int insertPos = findInsertionPosition(newTsFileResource, sequenceList);
+      LoadTsFileType tsFileType = getLoadingTsFileType(insertPos, sequenceList);
+      String renameInfo =
+          (tsFileType == LoadTsFileType.LOAD_SEQUENCE)
+              ? IoTDBConstant.SEQUENCE_FLODER_NAME
+              : IoTDBConstant.UNSEQUENCE_FLODER_NAME;
+      newTsFileResource.setSeq(tsFileType == LoadTsFileType.LOAD_SEQUENCE);
+      String newFileName =
+          getLoadingTsFileName(tsFileType, insertPos, newTsFileResource, sequenceList);
 
       if (!newFileName.equals(tsfileToBeInserted.getName())) {
         logger.info(
@@ -2415,6 +2425,7 @@ public class StorageGroupProcessor {
       updateLatestTimeMap(newTsFileResource);
       long partitionNum = newTsFileResource.getTimePartition();
       updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
+      logger.info("TsFile {} is successfully loaded in {} list.", newFileName, renameInfo);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
@@ -2446,6 +2457,26 @@ public class StorageGroupProcessor {
     return Math.max(oldVersion, newVersion);
   }
 
+  private Long getTsFileResourceEstablishTime(TsFileResource tsFileResource) {
+    String tsFileName = tsFileResource.getTsFile().getName();
+    return Long.parseLong(tsFileName.split(FILE_NAME_SEPARATOR)[0]);
+  }
+
+  private LoadTsFileType getLoadingTsFileType(int insertPos, List<TsFileResource> sequenceList) {
+    if (insertPos == POS_OVERLAP) {
+      return LoadTsFileType.LOAD_UNSEQUENCE;
+    }
+    if (insertPos == sequenceList.size() - 1) {
+      return LoadTsFileType.LOAD_SEQUENCE;
+    }
+    long preTime =
+        (insertPos == -1) ? 0 : getTsFileResourceEstablishTime(sequenceList.get(insertPos));
+    long subsequenceTime = getTsFileResourceEstablishTime(sequenceList.get(insertPos + 1));
+    return preTime == subsequenceTime
+        ? LoadTsFileType.LOAD_UNSEQUENCE
+        : LoadTsFileType.LOAD_SEQUENCE;
+  }
+
   /**
    * Find the position of "newTsFileResource" in the sequence files if it can be inserted into them.
    *
@@ -2454,21 +2485,13 @@ public class StorageGroupProcessor {
    *     file can be inserted between [i, i+1]
    */
   private int findInsertionPosition(
-      TsFileResource newTsFileResource,
-      long newFilePartitionId,
-      List<TsFileResource> sequenceList) {
+      TsFileResource newTsFileResource, List<TsFileResource> sequenceList) {
 
     int insertPos = -1;
 
     // find the position where the new file should be inserted
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
-      long localPartitionId = Long.parseLong(localFile.getTsFile().getParentFile().getName());
-
-      if (newFilePartitionId > localPartitionId) {
-        insertPos = i;
-        continue;
-      }
 
       if (!localFile.isClosed() && localFile.getProcessor() != null) {
         // we cannot compare two files by TsFileResource unless they are both closed
@@ -2499,8 +2522,10 @@ public class StorageGroupProcessor {
    */
   private int compareTsFileDevices(TsFileResource fileA, TsFileResource fileB) {
     boolean hasPre = false, hasSubsequence = false;
-    for (String device : fileA.getDevices()) {
-      if (!fileB.getDevices().contains(device)) {
+    Set<String> fileADevices = fileA.getDevices();
+    Set<String> fileBDevices = fileB.getDevices();
+    for (String device : fileADevices) {
+      if (!fileBDevices.contains(device)) {
         continue;
       }
       long startTimeA = fileA.getStartTime(device);
@@ -2630,30 +2655,24 @@ public class StorageGroupProcessor {
    *     1]
    * @return appropriate filename
    */
-  private String getFileNameForSequenceLoadingFile(
-      int insertIndex, TsFileResource newTsFileResource, List<TsFileResource> sequenceList)
-      throws LoadFileException {
+  private String getLoadingTsFileName(
+      LoadTsFileType tsFileType,
+      int insertIndex,
+      TsFileResource newTsFileResource,
+      List<TsFileResource> sequenceList) {
     long timePartitionId = newTsFileResource.getTimePartition();
-    long preTime, subsequenceTime;
-
-    if (insertIndex == -1) {
-      preTime = 0L;
-    } else {
-      String preName = sequenceList.get(insertIndex).getTsFile().getName();
-      preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
-    }
-    if (insertIndex
-        == tsFileResourceManager.getSequenceListByTimePartition(timePartitionId).size() - 1) {
-      subsequenceTime = preTime + ((System.currentTimeMillis() - preTime) << 1);
-    } else {
-      String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
-      subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
+    if (tsFileType == LoadTsFileType.LOAD_UNSEQUENCE || insertIndex == sequenceList.size() - 1) {
+      return getNewTsFileName(
+          System.currentTimeMillis(),
+          getAndSetNewVersion(timePartitionId, newTsFileResource),
+          0,
+          0);
     }
 
+    long preTime =
+        (insertIndex == -1) ? 0 : getTsFileResourceEstablishTime(sequenceList.get(insertIndex));
+    long subsequenceTime = getTsFileResourceEstablishTime(sequenceList.get(insertIndex + 1));
     long meanTime = preTime + ((subsequenceTime - preTime) >> 1);
-    if (insertIndex != tsFileResourceManager.size(true) - 1 && meanTime == subsequenceTime) {
-      throw new LoadFileException("can not load TsFile because of can not find suitable location");
-    }
 
     return getNewTsFileName(
         meanTime, getAndSetNewVersion(timePartitionId, newTsFileResource), 0, 0);

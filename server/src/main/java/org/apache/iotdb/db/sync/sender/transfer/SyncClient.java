@@ -171,16 +171,19 @@ public class SyncClient implements ISyncClient {
    * @param lockFile lock file
    */
   private boolean lockInstance(File lockFile) {
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw")) {
+    RandomAccessFile randomAccessFile = null;
+    try {
+      randomAccessFile = new RandomAccessFile(lockFile, "rw");
       final FileLock fileLock = randomAccessFile.getChannel().tryLock();
       if (fileLock != null) {
+        final RandomAccessFile randomAccessFile2 = randomAccessFile;
         Runtime.getRuntime()
             .addShutdownHook(
                 new Thread(
                     () -> {
                       try {
                         fileLock.release();
-                        randomAccessFile.close();
+                        randomAccessFile2.close();
                       } catch (Exception e) {
                         logger.error("Unable to remove lock file: {}", lockFile, e);
                       }
@@ -189,6 +192,14 @@ public class SyncClient implements ISyncClient {
       }
     } catch (Exception e) {
       logger.error("Unable to create and/or lock file: {}", lockFile, e);
+    } finally {
+      if (randomAccessFile != null) {
+        try {
+          randomAccessFile.close();
+        } catch (Exception e) {
+          logger.error("Unable to close randomAccessFile: {}", randomAccessFile, e);
+        }
+      }
     }
     return false;
   }
@@ -325,7 +336,7 @@ public class SyncClient implements ISyncClient {
               socket.getLocalAddress().getHostAddress(),
               getOrCreateUUID(getUuidFile()),
               ioTDBConfig.getPartitionInterval(),
-              IoTDBConstant.VERSION);
+              IoTDBConstant.MAJOR_VERSION);
       SyncStatus status = serviceClient.check(info);
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
