@@ -372,7 +372,7 @@ It costs 0.014s
 
 #### User Defined Timeseries Generating Functions
 
-Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
+Please refer to [UDF (User Defined Function)](../UDF/UDF-User-Defined-Function.md).
 
 ### Aggregate Query
 

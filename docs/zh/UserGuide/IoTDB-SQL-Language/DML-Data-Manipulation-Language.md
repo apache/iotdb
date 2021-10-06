@@ -1492,7 +1492,7 @@ It costs 0.014s
 
  * 自定义序列生成函数
 
-请参考 [UDF (用户定义函数)](../Advanced-Features/UDF-User-Defined-Function.md)。
+请参考 [UDF (用户定义函数)](../UDF/UDF-User-Defined-Function.md)。
 
 #### 错误处理
 

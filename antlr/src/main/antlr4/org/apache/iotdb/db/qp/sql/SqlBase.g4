@@ -106,7 +106,7 @@ statement
     | DROP TRIGGER triggerName=ID #dropTrigger
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
-    | SHOW TRIGGERS #showTriggers
+    | SHOW TRIGGERS (ON fullPath)? #showTriggers
     | SELECT topClause? selectElements
     fromClause
     whereClause?

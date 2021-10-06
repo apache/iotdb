@@ -563,6 +563,14 @@ var config = {
 							['UDF/UDF-User-Defined-Function','UDF (User Defined Function)']
 						]
 					},
+					// The trigger module has not been implemented yet,
+					// so the website should not show users how to use it to avoid misleading.
+					// {
+					// 	title: 'Trigger',
+					// 	children: [
+					// 		['UDF/Triggers','Trigger']
+					// 	]
+					// },
 					{
 						title: 'Communication Service Protocol',
 						children: [
