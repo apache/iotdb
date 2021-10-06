@@ -126,7 +126,7 @@ public class SyncReceiverLogAnalyzerTest {
                 + IoTDBConstant.FILE_NAME_SEPARATOR
                 + rand
                 + IoTDBConstant.FILE_NAME_SEPARATOR
-                + "0.tsfile";
+                + "0-0.tsfile";
         Thread.sleep(1);
         File syncFile = new File(fileName);
         receiverLogger.finishSyncTsfile(syncFile);

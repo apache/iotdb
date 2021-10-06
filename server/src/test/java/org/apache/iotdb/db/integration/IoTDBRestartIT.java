@@ -136,35 +136,39 @@ public class IoTDBRestartIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("delete from root.turbine.d1.s1 where time<=1");
+      statement.execute("delete from root.turbine.d1.s1 where time <= 1");
 
-      boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
-      assertTrue(hasResultSet);
-      String[] exp = new String[] {"2,2.0", "3,3.0"};
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
+      boolean hasResultSet1 = statement.execute("SELECT s1 FROM root.turbine.d1");
+      assertTrue(hasResultSet1);
+      String[] exp1 = new String[] {"2,2.0", "3,3.0"};
+      ResultSet resultSet1 = statement.getResultSet();
       try {
-        while (resultSet.next()) {
-          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-          assertEquals(exp[cnt], result);
-          cnt++;
-        }
-
-        statement.execute("flush");
-        statement.execute("delete from root.turbine.d1.s1 where time<=2");
-
-        hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
-        assertTrue(hasResultSet);
-        exp = new String[] {"3,3.0"};
-        resultSet = statement.getResultSet();
-        cnt = 0;
-        while (resultSet.next()) {
-          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-          assertEquals(exp[cnt], result);
+        int cnt = 0;
+        while (resultSet1.next()) {
+          String result = resultSet1.getString(TIMESTAMP_STR) + "," + resultSet1.getString(2);
+          assertEquals(exp1[cnt], result);
           cnt++;
         }
       } finally {
-        resultSet.close();
+        resultSet1.close();
+      }
+
+      statement.execute("flush");
+      statement.execute("delete from root.turbine.d1.s1 where time <= 2");
+
+      boolean hasResultSet2 = statement.execute("SELECT s1 FROM root.turbine.d1");
+      assertTrue(hasResultSet2);
+      String[] exp2 = new String[] {"3,3.0"};
+      ResultSet resultSet2 = statement.getResultSet();
+      try {
+        int cnt = 0;
+        while (resultSet2.next()) {
+          String result = resultSet2.getString(TIMESTAMP_STR) + "," + resultSet2.getString(2);
+          assertEquals(exp2[cnt], result);
+          cnt++;
+        }
+      } finally {
+        resultSet2.close();
       }
     }
 

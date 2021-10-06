@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -209,8 +211,9 @@ public class TimeSeriesMetadataCache {
   }
 
   public static class TimeSeriesMetadataCacheKey {
-
     private final String filePath;
+    private final String tsFilePrefixPath;
+    private final long tsFileVersion;
     private final String device;
     private final String measurement;
 
@@ -218,6 +221,10 @@ public class TimeSeriesMetadataCache {
 
     public TimeSeriesMetadataCacheKey(String filePath, String device, String measurement) {
       this.filePath = filePath;
+      Pair<String, Long> tsFilePrefixPathAndTsFileVersionPair =
+          FilePathUtils.getTsFilePrefixPathAndTsFileVersionPair(filePath);
+      this.tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
+      this.tsFileVersion = tsFilePrefixPathAndTsFileVersionPair.right;
       this.device = device;
       this.measurement = measurement;
     }
@@ -231,14 +238,15 @@ public class TimeSeriesMetadataCache {
         return false;
       }
       TimeSeriesMetadataCacheKey that = (TimeSeriesMetadataCacheKey) o;
-      return Objects.equals(filePath, that.filePath)
-          && Objects.equals(device, that.device)
-          && Objects.equals(measurement, that.measurement);
+      return device.equals(that.device)
+          && measurement.equals(that.measurement)
+          && tsFileVersion == that.tsFileVersion
+          && tsFilePrefixPath.equals(that.tsFilePrefixPath);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(filePath, device, measurement);
+      return Objects.hash(tsFilePrefixPath, tsFileVersion, device, measurement);
     }
   }
 

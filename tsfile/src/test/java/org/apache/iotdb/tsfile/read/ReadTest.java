@@ -46,13 +46,14 @@ import static org.junit.Assert.assertFalse;
 
 public class ReadTest {
 
-  private static String fileName = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
+  private static final String filePath =
+      TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
   private static ReadOnlyTsFile roTsFile = null;
 
   @Before
   public void prepare() throws IOException {
     FileGenerator.generateFile(1000, 100);
-    TsFileSequenceReader reader = new TsFileSequenceReader(fileName);
+    TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
     roTsFile = new ReadOnlyTsFile(reader);
   }
 

@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetaUtils;
@@ -33,97 +33,13 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-
-public class FilePathUtils {
-
-  private static final String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
-
-  private FilePathUtils() {
-    // forbidding instantiation
-  }
-
-  /**
-   * Format file path to end with File.separator
-   *
-   * @param filePath origin file path
-   * @return Regularized Path
-   */
-  public static String regularizePath(String filePath) {
-    if (filePath.length() > 0 && filePath.charAt(filePath.length() - 1) != File.separatorChar) {
-      filePath = filePath + File.separatorChar;
-    }
-    return filePath;
-  }
-
-  /**
-   * IMPORTANT, when the path of TsFile changes, the following methods should be changed
-   * accordingly. The sequence TsFile is located at ${IOTDB_DATA_DIR}/data/sequence/. The unsequence
-   * TsFile is located at ${IOTDB_DATA_DIR}/data/unsequence/. Where different storage group's TsFile
-   * is located at <logicalStorageGroupName>/<virtualStorageGroupName>/<timePartitionId>/<fileName>.
-   * For example, one sequence TsFile may locate at
-   * /data/data/sequence/root.group_9/0/0/1611199237113-4-0.tsfile
-   *
-   * @param resource the tsFileResource
-   */
-  public static String[] splitTsFilePath(TsFileResource resource) {
-    return resource.getTsFile().getAbsolutePath().split(PATH_SPLIT_STRING);
-  }
-
-  public static String getLogicalStorageGroupName(TsFileResource resource) {
-    String[] pathSegments = splitTsFilePath(resource);
-    return pathSegments[pathSegments.length - 4];
-  }
-
-  public static String getVirtualStorageGroupId(TsFileResource resource) {
-    String[] pathSegments = splitTsFilePath(resource);
-    return pathSegments[pathSegments.length - 3];
-  }
-
-  public static long getTimePartitionId(TsFileResource resource) {
-    String[] pathSegments = splitTsFilePath(resource);
-    return Long.parseLong(pathSegments[pathSegments.length - 2]);
-  }
-
-  /**
-   * @param resource the RemoteTsFileResource
-   * @return the file in the snapshot is a hardlink, remove the hardlink suffix
-   */
-  public static String getTsFileNameWithoutHardLink(TsFileResource resource) {
-    String[] pathSegments = splitTsFilePath(resource);
-    return pathSegments[pathSegments.length - 1].substring(
-        0, pathSegments[pathSegments.length - 1].lastIndexOf(TsFileConstant.PATH_SEPARATOR));
-  }
-
-  public static String getTsFilePrefixPath(TsFileResource resource) {
-    String[] pathSegments = splitTsFilePath(resource);
-    int pathLength = pathSegments.length;
-    return pathSegments[pathLength - 4]
-        + File.separator
-        + pathSegments[pathLength - 3]
-        + File.separator
-        + pathSegments[pathLength - 2];
-  }
-
-  public static Pair<String, Long> getLogicalSgNameAndTimePartitionIdPair(TsFileResource resource) {
-    String[] pathSegments = splitTsFilePath(resource);
-    return new Pair<>(
-        pathSegments[pathSegments.length - 4],
-        Long.parseLong(pathSegments[pathSegments.length - 2]));
-  }
-
-  public static String[] splitTsFilePath(String tsFileAbsolutePath) {
-    return tsFileAbsolutePath.split(PATH_SPLIT_STRING);
-  }
-
+public class AggregateUtils {
   /**
    * Transform an originalPath to a partial path that satisfies given level. Path nodes exceed the
    * given level will be replaced by "*", e.g. generatePartialPathByLevel("root.sg.dh.d1.s1", 2)
@@ -247,13 +163,5 @@ public class FilePathUtils {
       resultSet.add(entry.getValue());
     }
     return resultSet;
-  }
-
-  public static long splitAndGetTsFileVersion(String tsFileName) {
-    String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
-    if (names.length != 4) {
-      return 0;
-    }
-    return Long.parseLong(names[1]);
   }
 }

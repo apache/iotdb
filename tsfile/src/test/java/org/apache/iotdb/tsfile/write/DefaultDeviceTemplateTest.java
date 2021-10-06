@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -44,7 +45,11 @@ public class DefaultDeviceTemplateTest {
 
   @Test
   public void testUsingDefaultDeviceTemplate() throws IOException, WriteProcessException {
-    File file = new File("target/defaultDeviceTemplate.tsfile");
+    File file = new File(TestConstant.BASE_OUTPUT_PATH.concat("defaultDeviceTemplate.tsfile"));
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.mkdirs());
+    }
+
     try (TsFileWriter writer = new TsFileWriter(file)) {
       MeasurementSchema s1 = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
       MeasurementSchema s2 = new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN);

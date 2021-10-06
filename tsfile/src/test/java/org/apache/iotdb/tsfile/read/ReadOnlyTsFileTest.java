@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -44,7 +45,9 @@ import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -58,9 +61,25 @@ public class ReadOnlyTsFileTest {
   private TsFileSequenceReader fileReader;
   private ReadOnlyTsFile tsFile;
 
+  @Before
+  public void setUp() {
+    File file = new File(FILE_PATH);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+  }
+
+  @After
+  public void tearDown() {
+    File file = new File(FILE_PATH);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+  }
+
   @Test
   public void multiPagesTest() throws IOException, WriteProcessException {
-    final String filePath = "target/multiPages.tsfile";
+    final String filePath = TestConstant.BASE_OUTPUT_PATH.concat("multiPages.tsfile");
 
     TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
     // make multi pages in one group
