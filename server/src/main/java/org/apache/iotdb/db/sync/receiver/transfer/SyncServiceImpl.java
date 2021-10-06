@@ -199,6 +199,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus initSyncData(String fileInfo) {
     File file;
     String filePath = fileInfo;
+    logger.info("initSyncData receive: " + fileInfo); // change back
     try {
       if (currentSG.get() == null) { // schema mlog.txt file
         file = new File(getSyncDataPath(), filePath);
@@ -206,6 +207,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
         file = new File(getSyncDataPath(), filePath);
       }
+      logger.info("initSyncData file: " + file); // change back
       file.delete();
       currentFile.set(file);
       if (!file.getParentFile().exists()) {
@@ -217,6 +219,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       currentFileWriter.set(new FileOutputStream(file));
       syncLog.get().startSyncTsFiles();
       messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
+      logger.info("initSyncData currentFileWriter: " + currentFileWriter.get().toString()); // change back
     } catch (IOException | NoSuchAlgorithmException e) {
       logger.error("Can not init sync resource for file {}", filePath, e);
       return getErrorResult(
@@ -230,6 +233,9 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus syncData(ByteBuffer buff) {
     try {
       int pos = buff.position();
+      logger.info("syncData currentSG: " + currentSG.get()); // change back
+      logger.info("syncData currentFileWriter: " + currentFileWriter.get().toString());
+      logger.info("syncData currentFileWriterChannel is Open: " + currentFileWriter.get().getChannel().isOpen());
       currentFileWriter.get().getChannel().write(buff);
       buff.position(pos);
       messageDigest.get().update(buff);

@@ -408,6 +408,7 @@ public class SyncClient implements ISyncClient {
         md.update(buffer, 0, dataLength);
         ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
         SyncStatus status = serviceClient.syncData(buffToSend);
+        logger.info("success send schema data"); // change back
         if (status.code != SUCCESS_CODE) {
           logger.error("Receiver failed to receive metadata because {}, retry.", status.msg);
           return false;
