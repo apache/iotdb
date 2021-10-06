@@ -43,36 +43,6 @@ public class MergeManagerTest extends MergeTest {
     assertTrue((System.currentTimeMillis() - startTime) >= 9000);
   }
 
-  @Test
-  public void testGenMergeReport() {
-    FakedMergeMultiChunkTask chunkTask = new FakedMergeMultiChunkTask();
-    for (int i = 0; i < 5; i++) {
-      MergeManager.getINSTANCE().submitMainTask(new FakedMainMergeTask(i));
-      MergeManager.getINSTANCE().submitChunkSubTask(chunkTask.createSubTask(i));
-    }
-
-    String report = MergeManager.getINSTANCE().genMergeTaskReport();
-    checkReport(report);
-  }
-
-  @Test
-  public void testAbortMerge() {
-    FakedMergeMultiChunkTask chunkTask = new FakedMergeMultiChunkTask();
-    for (int i = 0; i < 5; i++) {
-      MergeManager.getINSTANCE().submitMainTask(new FakedMainMergeTask(i));
-      MergeManager.getINSTANCE().submitChunkSubTask(chunkTask.createSubTask(i));
-    }
-
-    MergeManager.getINSTANCE().abortMerge("non-exist");
-    String report = MergeManager.getINSTANCE().genMergeTaskReport();
-
-    checkReport(report);
-
-    MergeManager.getINSTANCE().abortMerge("test");
-    report = MergeManager.getINSTANCE().genMergeTaskReport();
-    assertEquals(String.format("Main tasks:%n" + "Sub tasks:%n"), report);
-  }
-
   private void checkReport(String report) {
     String[] split = report.split(System.lineSeparator());
     assertEquals("Main tasks:", split[0]);

@@ -22,10 +22,7 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace.manage;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.MergeMultiChunkTask.MergeChunkHeapTask;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -66,9 +63,7 @@ public class MergeManager implements IService, MergeManagerMBean {
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private AtomicInteger threadCnt = new AtomicInteger();
-  private ThreadPoolExecutor mergeTaskPool;
   private ThreadPoolExecutor mergeChunkSubTaskPool;
-  private ScheduledExecutorService timedMergeThreadPool;
   private ScheduledExecutorService taskCleanerThreadPool;
 
   private Map<String, Set<MergeFuture>> storageGroupMainTasks = new ConcurrentHashMap<>();
@@ -107,13 +102,6 @@ public class MergeManager implements IService, MergeManagerMBean {
     return INSTANCE;
   }
 
-  public void submitMainTask(CrossSpaceMergeTask mergeTask) {
-    MergeFuture future = (MergeFuture) mergeTaskPool.submit(mergeTask);
-    storageGroupMainTasks
-        .computeIfAbsent(mergeTask.getStorageGroupName(), k -> new ConcurrentSkipListSet<>())
-        .add(future);
-  }
-
   public Future<Void> submitChunkSubTask(MergeChunkHeapTask task) {
     MergeFuture future = (MergeFuture) mergeChunkSubTaskPool.submit(task);
     storageGroupSubTasks
@@ -125,31 +113,16 @@ public class MergeManager implements IService, MergeManagerMBean {
   @Override
   public void start() {
     JMXService.registerMBean(this, mbeanName);
-    if (mergeTaskPool == null) {
-      int threadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
-      if (threadNum <= 0) {
-        threadNum = 1;
-      }
+    if (mergeChunkSubTaskPool == null) {
 
       int chunkSubThreadNum = IoTDBDescriptor.getInstance().getConfig().getMergeChunkSubThreadNum();
       if (chunkSubThreadNum <= 0) {
         chunkSubThreadNum = 1;
       }
-
-      mergeTaskPool =
-          new MergeThreadPool(
-              threadNum, r -> new Thread(r, "MergeThread-" + threadCnt.getAndIncrement()));
       mergeChunkSubTaskPool =
           new MergeThreadPool(
-              threadNum * chunkSubThreadNum,
+              chunkSubThreadNum,
               r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
-      long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
-      if (mergeInterval > 0) {
-        timedMergeThreadPool =
-            Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "TimedMergeThread"));
-        timedMergeThreadPool.scheduleAtFixedRate(
-            this::mergeAll, mergeInterval, mergeInterval, TimeUnit.SECONDS);
-      }
 
       taskCleanerThreadPool =
           Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "MergeTaskCleaner"));
@@ -160,18 +133,13 @@ public class MergeManager implements IService, MergeManagerMBean {
 
   @Override
   public void stop() {
-    if (mergeTaskPool != null) {
-      if (timedMergeThreadPool != null) {
-        timedMergeThreadPool.shutdownNow();
-        timedMergeThreadPool = null;
-      }
+    if (mergeChunkSubTaskPool != null) {
       taskCleanerThreadPool.shutdownNow();
       taskCleanerThreadPool = null;
-      mergeTaskPool.shutdownNow();
       mergeChunkSubTaskPool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
-      while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
+      while (!mergeChunkSubTaskPool.isTerminated()) {
         int timeMillis = 0;
         try {
           Thread.sleep(200);
@@ -188,7 +156,6 @@ public class MergeManager implements IService, MergeManagerMBean {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }
-      mergeTaskPool = null;
       storageGroupMainTasks.clear();
       storageGroupSubTasks.clear();
       logger.info("MergeManager stopped");
@@ -198,19 +165,14 @@ public class MergeManager implements IService, MergeManagerMBean {
 
   @Override
   public void waitAndStop(long milliseconds) {
-    if (mergeTaskPool != null) {
-      if (timedMergeThreadPool != null) {
-        awaitTermination(timedMergeThreadPool, milliseconds);
-        timedMergeThreadPool = null;
-      }
+    if (mergeChunkSubTaskPool != null) {
       awaitTermination(taskCleanerThreadPool, milliseconds);
       taskCleanerThreadPool = null;
 
-      awaitTermination(mergeTaskPool, milliseconds);
       awaitTermination(mergeChunkSubTaskPool, milliseconds);
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
-      while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
+      while (!mergeChunkSubTaskPool.isTerminated()) {
         int timeMillis = 0;
         try {
           Thread.sleep(200);
@@ -227,7 +189,6 @@ public class MergeManager implements IService, MergeManagerMBean {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }
-      mergeTaskPool = null;
       storageGroupMainTasks.clear();
       storageGroupSubTasks.clear();
       logger.info("MergeManager stopped");
@@ -248,15 +209,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   @Override
   public ServiceType getID() {
     return ServiceType.MERGE_SERVICE;
-  }
-
-  private void mergeAll() {
-    try {
-      StorageEngine.getInstance()
-          .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    } catch (StorageEngineException e) {
-      logger.error("Cannot perform a global merge because", e);
-    }
   }
 
   /**
