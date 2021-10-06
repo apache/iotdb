@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.metadata.metadisk;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -17,7 +18,7 @@ import java.io.File;
 public class MetadataDiskManagerTest {
 
   private static final int CACHE_SIZE = 10;
-  private static final String BASE_PATH = MetadataDiskManagerTest.class.getResource("").getPath();
+  private static final String BASE_PATH = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
   private static final String METAFILE_FILEPATH =
       BASE_PATH + "MetadataDiskManagerTest_metafile.bin";
   private String SNAPSHOT_PATH = METAFILE_FILEPATH + ".snapshot.bin";

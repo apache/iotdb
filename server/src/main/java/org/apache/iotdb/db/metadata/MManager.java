@@ -227,6 +227,8 @@ public class MManager {
 
     if (config.isMetadataDiskBased()) {
       MTreeType = MTREE_DISK_BASED;
+    } else {
+      MTreeType = MTREE_MEMORY_BASED;
     }
   }
 

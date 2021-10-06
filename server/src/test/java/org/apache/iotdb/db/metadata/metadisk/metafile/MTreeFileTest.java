@@ -1,9 +1,11 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -22,14 +24,14 @@ import java.util.Map;
 
 public class MTreeFileTest {
 
-  private static String BASE_PATH = MTreeFileTest.class.getResource("").getPath();
-  private static String MTREE_FILEPATH = BASE_PATH + "mtreefile.bin";
+  private static final String BASE_PATH = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+  private static final String MTREE_FILEPATH = BASE_PATH + File.separator + "mtreefile_test.bin";
 
   private MTreeFile mTreeFile;
 
   @Before
   public void setUp() throws IOException {
-    //    EnvironmentUtils.envSetUp();
+    EnvironmentUtils.envSetUp();
     File file = new File(MTREE_FILEPATH);
     if (file.exists()) {
       file.delete();
@@ -44,7 +46,7 @@ public class MTreeFileTest {
     if (file.exists()) {
       file.delete();
     }
-    //    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -20,8 +21,8 @@ import java.util.Map;
 
 public class MetaFileTest {
 
-  private static String BASE_PATH = MetaFileTest.class.getResource("").getPath();
-  private static String MTREE_FILEPATH = BASE_PATH + "MetaFileTest_metafile.bin";
+  private static String BASE_PATH = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+  private static String MTREE_FILEPATH = BASE_PATH + File.separator + "MetaFileTest_metafile.bin";
 
   private MetaFile metaFile;
 

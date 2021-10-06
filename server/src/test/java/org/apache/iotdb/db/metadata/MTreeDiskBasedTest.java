@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -23,8 +24,9 @@ import static org.junit.Assert.*;
 public class MTreeDiskBasedTest {
 
   private static final int CACHE_SIZE = 0;
-  private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
-  private static final String METAFILE_FILEPATH = BASE_PATH + "MTreeDiskBasedTest_metafile.bin";
+  private static final String BASE_PATH = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+  private static final String METAFILE_FILEPATH =
+      BASE_PATH + File.separator + "MTreeDiskBasedTest_metafile.bin";
   private File metaFile = new File(METAFILE_FILEPATH);
 
   private MTreeDiskBased root;
