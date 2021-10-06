@@ -25,32 +25,43 @@ import org.apache.iotdb.db.metadata.metadisk.metafile.IPersistenceInfo;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 public class PersistenceMNode implements IPersistenceInfo, IMNode {
 
   /** offset in metafile */
-  private long position;
+  private List<Long> positionList = new ArrayList<>();
 
   public PersistenceMNode() {}
 
   public PersistenceMNode(long position) {
-    this.position = position;
+    this.positionList.add(position);
+  }
+
+  public PersistenceMNode(List<Long> positionList) {
+    this.positionList.addAll(positionList);
   }
 
   public PersistenceMNode(IPersistenceInfo persistenceInfo) {
-    position = persistenceInfo.getPosition();
+    positionList.addAll(persistenceInfo.getPositionList());
   }
 
   @Override
-  public long getPosition() {
-    return position;
+  public long getStartPosition() {
+    return positionList.get(0);
   }
 
   @Override
-  public void setPosition(long position) {
-    this.position = position;
+  public List<Long> getPositionList() {
+    return positionList;
+  }
+
+  @Override
+  public void setPositionList(List<Long> positionList) {
+    this.positionList = positionList;
   }
 
   @Override
@@ -81,9 +92,9 @@ public class PersistenceMNode implements IPersistenceInfo, IMNode {
   @Override
   public void setPersistenceInfo(IPersistenceInfo persistenceInfo) {
     if (persistenceInfo == null) {
-      position = -1;
+      positionList.clear();
     } else {
-      position = persistenceInfo.getPosition();
+      positionList = persistenceInfo.getPositionList();
     }
   }
 
@@ -218,11 +229,11 @@ public class PersistenceMNode implements IPersistenceInfo, IMNode {
 
   @Override
   public boolean isDeleted() {
-    return position == -1;
+    return positionList.get(0) == -1;
   }
 
   @Override
   public IMNode clone() {
-    return new PersistenceMNode(position);
+    return new PersistenceMNode(positionList);
   }
 }

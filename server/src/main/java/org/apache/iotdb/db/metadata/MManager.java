@@ -799,7 +799,10 @@ public class MManager {
 
   /** To calculate the count of timeseries for given prefix path. */
   public int getAllTimeseriesCount(PartialPath prefixPath) throws MetadataException {
-    return (int) totalSeriesNumber.get();
+    if (prefixPath.getNodes().length == 1) {
+      return (int) totalSeriesNumber.get();
+    }
+    return mtree.getAllTimeseriesCount(prefixPath);
   }
 
   /** To calculate the count of devices for given prefix path. */

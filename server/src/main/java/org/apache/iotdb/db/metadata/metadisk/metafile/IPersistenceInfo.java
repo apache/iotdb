@@ -20,13 +20,17 @@ package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
+import java.util.List;
+
 public interface IPersistenceInfo {
 
   static IPersistenceInfo createPersistenceInfo(long position) {
     return new PersistenceMNode(position);
   }
 
-  long getPosition();
+  long getStartPosition();
 
-  void setPosition(long position);
+  List<Long> getPositionList();
+
+  void setPositionList(List<Long> positionList);
 }

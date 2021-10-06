@@ -41,7 +41,7 @@ public class MockMetaFile implements IMetaFileAccess {
 
   @Override
   public IMNode read(IPersistenceInfo persistenceInfo) throws IOException {
-    return positionFile.get(persistenceInfo.getPosition());
+    return positionFile.get(persistenceInfo.getStartPosition());
   }
 
   @Override
@@ -59,7 +59,7 @@ public class MockMetaFile implements IMetaFileAccess {
       // require child be written before parent
       persistedMNode.evictChild(childName);
     }
-    positionFile.put(persistedMNode.getPersistenceInfo().getPosition(), persistedMNode);
+    positionFile.put(persistedMNode.getPersistenceInfo().getStartPosition(), persistedMNode);
   }
 
   @Override
@@ -71,7 +71,7 @@ public class MockMetaFile implements IMetaFileAccess {
 
   @Override
   public void remove(IPersistenceInfo persistenceInfo) throws IOException {
-    positionFile.remove(persistenceInfo.getPosition());
+    positionFile.remove(persistenceInfo.getStartPosition());
   }
 
   @Override
@@ -85,7 +85,7 @@ public class MockMetaFile implements IMetaFileAccess {
   }
 
   public void remove(PartialPath path) throws IOException {
-    positionFile.remove(getMNodeByPath(path).getPersistenceInfo().getPosition());
+    positionFile.remove(getMNodeByPath(path).getPersistenceInfo().getStartPosition());
   }
 
   // todo require all node in the path be persist, which means when write child, the parent should
@@ -94,7 +94,7 @@ public class MockMetaFile implements IMetaFileAccess {
     String[] nodes = path.getNodes();
     IMNode cur = positionFile.get(rootPosition);
     for (int i = 1; i < nodes.length; i++) {
-      cur = positionFile.get(cur.getChild(nodes[i]).getPersistenceInfo().getPosition());
+      cur = positionFile.get(cur.getChild(nodes[i]).getPersistenceInfo().getStartPosition());
     }
     return cur;
   }

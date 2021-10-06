@@ -49,7 +49,7 @@ public class MetaFileTest {
   public void testSimpleMNodeRW() throws IOException {
     IMNode mNode = new InternalMNode(null, "root");
     metaFile.write(mNode);
-    Assert.assertNotEquals(0, mNode.getPersistenceInfo().getPosition());
+    Assert.assertNotEquals(0, mNode.getPersistenceInfo().getStartPosition());
     mNode = metaFile.read(mNode.getPersistenceInfo());
     Assert.assertEquals("root", mNode.getName());
   }

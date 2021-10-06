@@ -21,7 +21,8 @@ package org.apache.iotdb.db.metadata.metadisk.metafile;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.*;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.antlr.v4.runtime.misc.Triple;
 
 import java.io.File;
 import java.io.IOException;
@@ -148,10 +149,10 @@ public class MTreeFile {
   }
 
   public IMNode read(IPersistenceInfo persistenceInfo) throws IOException {
-    long position = persistenceInfo.getPosition();
-    Pair<Byte, ByteBuffer> mNodeData = readBytesFromFile(position);
-    byte nodeType = mNodeData.left;
-    ByteBuffer dataBuffer = mNodeData.right;
+    long position = persistenceInfo.getStartPosition();
+    Triple<Byte, ByteBuffer, List<Long>> mNodeData = readBytesFromFile(position);
+    byte nodeType = mNodeData.a;
+    ByteBuffer dataBuffer = mNodeData.b;
     IMNode mNode;
     switch (nodeType) {
       case INTERNAL_NODE: // normal InternalMNode
@@ -172,15 +173,19 @@ public class MTreeFile {
       default:
         throw new IOException("file corrupted");
     }
+    persistenceInfo.setPositionList(mNodeData.c);
     mNode.setPersistenceInfo(persistenceInfo);
 
     return mNode;
   }
 
-  private Pair<Byte, ByteBuffer> readBytesFromFile(long position) throws IOException {
+  private Triple<Byte, ByteBuffer, List<Long>> readBytesFromFile(long position) throws IOException {
     if (position < headerLength) {
       throw new IOException("wrong node position");
     }
+
+    List<Long> positionList = new ArrayList<>();
+    positionList.add(position);
 
     ByteBuffer buffer = ByteBuffer.allocate(nodeLength);
     fileAccess.readBytes(position, buffer);
@@ -206,6 +211,7 @@ public class MTreeFile {
     for (int i = 1; i < num; i++) {
       buffer.clear();
       fileAccess.readBytes(extendPosition, buffer);
+      positionList.add(extendPosition);
       bitmap = buffer.get();
       if ((bitmap & IS_USED_MASK) == 0) {
         throw new IOException("file corrupted");
@@ -221,7 +227,7 @@ public class MTreeFile {
     }
     dataBuffer.flip();
 
-    return new Pair<>(nodeType, dataBuffer);
+    return new Triple<>(nodeType, dataBuffer, positionList);
   }
 
   public void write(IMNode mNode) throws IOException {
@@ -257,11 +263,13 @@ public class MTreeFile {
       }
     }
 
-    long position = mNode.getPersistenceInfo().getPosition();
+    List<Long> positionList = mNode.getPersistenceInfo().getPositionList();
     IMNode parent = mNode.getParent();
     long parentPosition =
-        (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
-    writeBytesToFile(dataBuffer, bitmap, position, parentPosition);
+        (parent == null || !parent.isPersisted())
+            ? 0
+            : parent.getPersistenceInfo().getStartPosition();
+    writeBytesToFile(dataBuffer, bitmap, positionList, parentPosition);
   }
 
   public void writeRecursively(IMNode mNode) throws IOException {
@@ -272,7 +280,8 @@ public class MTreeFile {
   }
 
   private void writeBytesToFile(
-      ByteBuffer dataBuffer, byte bitmap, long position, long parentPosition) throws IOException {
+      ByteBuffer dataBuffer, byte bitmap, List<Long> positionList, long parentPosition)
+      throws IOException {
     int mNodeDataLength = dataBuffer.remaining();
     int mNodeLength = mNodeDataLength + 4; // length + data
     int bufferNum =
@@ -280,9 +289,17 @@ public class MTreeFile {
     int dataBufferEnd = dataBuffer.limit();
 
     ByteBuffer buffer = ByteBuffer.allocate(nodeLength);
-    long currentPos = position;
+    long currentPos = positionList.get(0);
     long prePos = parentPosition;
-    long extensionPos = (bufferNum == 1) ? 0 : getFreePos();
+    long extensionPos;
+    if (bufferNum == 1) {
+      extensionPos = 0;
+    } else if (positionList.size() > 1) {
+      extensionPos = positionList.get(1);
+    } else {
+      extensionPos = getFreePos();
+      positionList.add(extensionPos);
+    }
 
     buffer.put(bitmap);
     buffer.putLong(prePos);
@@ -306,7 +323,14 @@ public class MTreeFile {
       currentPos = extensionPos;
       buffer.put(bitmap);
       buffer.putLong(prePos);
-      extensionPos = (i == bufferNum - 1) ? 0 : getFreePos();
+      if (i == bufferNum - 1) {
+        extensionPos = 0;
+      } else if (positionList.size() > i + 1) {
+        extensionPos = positionList.get(i + 1);
+      } else {
+        extensionPos = getFreePos();
+        positionList.add(extensionPos);
+      }
       buffer.putLong(extensionPos);
       dataBuffer.limit(Math.min(dataBuffer.position() + NODE_DATA_LENGTH, dataBufferEnd));
       buffer.put(dataBuffer);
@@ -332,7 +356,7 @@ public class MTreeFile {
   }
 
   public void remove(IPersistenceInfo persistenceInfo) throws IOException {
-    long position = persistenceInfo.getPosition();
+    long position = persistenceInfo.getStartPosition();
     ByteBuffer buffer = ByteBuffer.allocate(17);
     while (position != 0) {
       fileAccess.readBytes(position, buffer);

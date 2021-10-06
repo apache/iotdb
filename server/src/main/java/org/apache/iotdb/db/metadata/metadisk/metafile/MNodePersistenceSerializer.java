@@ -133,7 +133,7 @@ public class MNodePersistenceSerializer implements IMNodeSerializer {
   private void serializeChildren(Map<String, IMNode> children, ByteBuffer dataBuffer) {
     for (String childName : children.keySet()) {
       ReadWriteIOUtils.writeVar(childName, dataBuffer);
-      dataBuffer.putLong(children.get(childName).getPersistenceInfo().getPosition());
+      dataBuffer.putLong(children.get(childName).getPersistenceInfo().getStartPosition());
     }
     dataBuffer.put((byte) 0);
   }
