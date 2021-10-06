@@ -41,6 +41,7 @@
 * [IOTDB-1693] fix IoTDB restart does not truncate broken ChunkGroup bug
 * [IOTDB-1703] Fix MManager slow recover with tag
 * [IOTDB-1723] Fix concurrency issue in compaction selection
+* [IOTDB-1726] Wrong hashCode() and equals() method in ChunkMetadata
 * [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
 * [IOTDB-1723] Fix concurrency issue in compaction selection
 * fix merge ClassCastException: MeasurementMNode

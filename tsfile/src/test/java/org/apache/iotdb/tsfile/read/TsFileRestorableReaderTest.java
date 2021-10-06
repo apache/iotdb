@@ -24,6 +24,9 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -37,6 +40,22 @@ public class TsFileRestorableReaderTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+  @Before
+  public void setUp() {
+    File file = fsFactory.getFile(FILE_PATH);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+  }
+
+  @After
+  public void tearDown() {
+    File file = fsFactory.getFile(FILE_PATH);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+  }
 
   @Test
   public void testToReadDamagedFileAndRepair() throws IOException {
