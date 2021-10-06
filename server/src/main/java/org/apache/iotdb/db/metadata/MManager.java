@@ -2031,7 +2031,7 @@ public class MManager {
               dataType = getTypeInLoc(plan, i);
               // create it, may concurrent created by multiple thread
               internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-              measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurementList[i]);
+              measurementMNode = (MeasurementMNode) getMNode(deviceMNode.left, measurementList[i]);
             }
           }
 

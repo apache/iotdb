@@ -22,7 +22,15 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.metadisk.IMetadataAccess;
 import org.apache.iotdb.db.metadata.metadisk.MetadataDiskManager;
@@ -51,13 +59,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
+import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
 import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
 
 public class MTreeDiskBased implements IMTree {
 
@@ -128,13 +155,14 @@ public class MTreeDiskBased implements IMTree {
       Map<String, String> props,
       String alias)
       throws MetadataException {
-    checkTimeseries(path.getFullPath());
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2 || !nodeNames[0].equals(rootName)) {
       throw new IllegalPathException(path.getFullPath());
     }
+    checkTimeseries(path);
     IMNode cur = metadataDiskManager.getRoot();
     boolean hasSetStorageGroup = false;
+    Template upperTemplate = cur.getDeviceTemplate();
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length - 1; i++) {
       String nodeName = nodeNames[i];
@@ -151,6 +179,15 @@ public class MTreeDiskBased implements IMTree {
       } else {
         cur = metadataDiskManager.getChild(cur, nodeName, true);
       }
+      if (cur.getDeviceTemplate() != null) {
+        upperTemplate = cur.getDeviceTemplate();
+      }
+    }
+
+    if (upperTemplate != null && !upperTemplate.isCompatible(path)) {
+      unlockMNodePath(cur);
+      throw new PathAlreadyExistException(
+          path.getFullPath() + " ( which is incompatible with template )");
     }
 
     if (props != null && props.containsKey(LOSS) && props.get(LOSS).equals(SDT)) {
@@ -201,10 +238,26 @@ public class MTreeDiskBased implements IMTree {
     }
   }
 
-  private void checkTimeseries(String timeseries) throws IllegalPathException {
-    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
+  private void checkTimeseries(PartialPath timeseries) throws MetadataException {
+    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries.getFullPath()).matches()) {
       throw new IllegalPathException(
           String.format("The timeseries name contains unsupported character. %s", timeseries));
+    }
+
+    // filter special id, including "time" and "timeseries"
+    for (String nodeName : timeseries.getNodes()) {
+      nodeName = nodeName.trim().toLowerCase(Locale.ENGLISH);
+      if ("time".equals(nodeName) || "timestamp".equals(nodeName)) {
+        throw new IllegalPathException(timeseries.getFullPath());
+      }
+    }
+
+    String measurementId = timeseries.getMeasurement();
+    // check measurementId syntax
+    // only measurementId may be named separately from fullPath by user via API
+    if (measurementId.contains(".")
+        && !(measurementId.startsWith("\"") && measurementId.endsWith("\""))) {
+      throw new MetadataException(String.format("%s is an illegal measurementId", measurementId));
     }
   }
 
@@ -264,6 +317,7 @@ public class MTreeDiskBased implements IMTree {
       throw new IllegalPathException(deviceId.getFullPath());
     }
     IMNode cur = metadataDiskManager.getRoot();
+    Template upperTemplate = null;
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
         if (i == sgLevel) {
@@ -281,9 +335,12 @@ public class MTreeDiskBased implements IMTree {
       } else {
         cur = metadataDiskManager.getChild(cur, nodeNames[i], true);
       }
+      // update upper template
+      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
+      cur = cur.getChild(nodeNames[i]);
     }
     unlockMNodePath(cur.getParent());
-    return new Pair<>(cur, null);
+    return new Pair<>(cur, upperTemplate);
   }
 
   @Override
@@ -341,21 +398,23 @@ public class MTreeDiskBased implements IMTree {
       i++;
     }
 
-    if (cur.hasChild(nodeNames[i])) {
-      // node b has child sg
-      cur = metadataDiskManager.getChild(cur, nodeNames[i], true);
-      unlockMNodePath(cur);
-      if (cur.isStorageGroup()) {
-        throw new StorageGroupAlreadySetException(path.getFullPath());
+    synchronized (this) {
+      if (cur.hasChild(nodeNames[i])) {
+        // node b has child sg
+        cur = metadataDiskManager.getChild(cur, nodeNames[i], true);
+        unlockMNodePath(cur);
+        if (cur.isStorageGroup()) {
+          throw new StorageGroupAlreadySetException(path.getFullPath());
+        } else {
+          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+        }
       } else {
-        throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+        StorageGroupMNode storageGroupMNode =
+            new StorageGroupMNode(
+                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+        metadataDiskManager.addChild(cur, nodeNames[i], storageGroupMNode, true);
+        unlockMNodePath(storageGroupMNode);
       }
-    } else {
-      StorageGroupMNode storageGroupMNode =
-          new StorageGroupMNode(
-              cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-      metadataDiskManager.addChild(cur, nodeNames[i], storageGroupMNode, true);
-      unlockMNodePath(storageGroupMNode);
     }
   }
 
@@ -413,7 +472,7 @@ public class MTreeDiskBased implements IMTree {
   @Override
   public boolean isStorageGroup(PartialPath path) {
     String[] nodeNames = path.getNodes();
-    if (nodeNames.length <= 1 || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(PATH_ROOT)) {
       return false;
     }
     IMNode cur;
@@ -464,7 +523,7 @@ public class MTreeDiskBased implements IMTree {
     }
     curNode = parent;
     // delete all empty ancestors except storage group and MeasurementMNode
-    while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
+    while (!PATH_ROOT.equals(curNode.getName())
         && !(curNode.isMeasurement())
         && curNode.getChildren().size() == 0) {
       // if current storage group has no time series, return the storage group name
@@ -497,7 +556,9 @@ public class MTreeDiskBased implements IMTree {
     }
 
     IMNode cur = metadataDiskManager.getRoot();
+    Template upperTemplate = null;
     for (int i = 1; i < nodes.length; i++) {
+      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
       cur = metadataDiskManager.getChild(cur, nodes[i]);
       if (cur == null) {
         // not find
@@ -515,7 +576,7 @@ public class MTreeDiskBased implements IMTree {
     if (!storageGroupChecked) {
       throw new StorageGroupNotSetException(path.getFullPath());
     }
-    return new Pair<>(cur, null);
+    return new Pair<>(cur, upperTemplate);
   }
 
   @Override
@@ -527,7 +588,9 @@ public class MTreeDiskBased implements IMTree {
     }
     boolean storageGroupChecked = false;
     IMNode cur = metadataDiskManager.getRoot();
+    Template upperTemplate = null;
     for (int i = 1; i < nodes.length; i++) {
+      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
       if (!cur.hasChild(nodes[i])) {
         unlockMNodePath(cur);
         if (!storageGroupChecked) {
@@ -568,6 +631,9 @@ public class MTreeDiskBased implements IMTree {
     }
     IMNode cur = metadataDiskManager.getRoot();
     for (int i = 1; i < nodes.length; i++) {
+      if (cur == null) {
+        break;
+      }
       cur = metadataDiskManager.getChild(cur, nodes[i]);
       if (cur.isStorageGroup()) {
         return (StorageGroupMNode) cur;
@@ -596,11 +662,25 @@ public class MTreeDiskBased implements IMTree {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = metadataDiskManager.getRoot();
+    Template upperTemplate = cur.getDeviceTemplate();
     for (int i = 1; i < nodes.length; i++) {
-      cur = metadataDiskManager.getChild(cur, nodes[i]);
-      if (cur == null) {
-        throw new PathNotExistException(path.getFullPath(), true);
+      if (cur.getDeviceTemplate() != null) {
+        upperTemplate = cur.getDeviceTemplate();
       }
+      IMNode next = metadataDiskManager.getChild(cur, nodes[i]);
+      if (next == null) {
+        if (upperTemplate == null) {
+          throw new PathNotExistException(path.getFullPath(), true);
+        }
+
+        String realName = nodes[i];
+        MeasurementSchema schema = upperTemplate.getSchemaMap().get(realName);
+        if (schema == null) {
+          throw new PathNotExistException(path.getFullPath(), true);
+        }
+        return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
+      }
+      cur = next;
     }
     return cur;
   }
@@ -630,8 +710,8 @@ public class MTreeDiskBased implements IMTree {
 
   @Override
   public Map<String, IMNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException {
-    IMNode node = getNodeByPath(path);
     Map<String, IMNode> result = new HashMap<>();
+    IMNode node = getNodeByPath(path);
     for (String key : node.getChildren().keySet()) {
       result.put(key, metadataDiskManager.getChild(node, key));
     }
@@ -947,6 +1027,10 @@ public class MTreeDiskBased implements IMTree {
       } else {
         IMNode child = metadataDiskManager.getChild(node, nodes[idx]);
         if (child == null) {
+          if (node.isUseTemplate()
+              && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
+            return 1;
+          }
           if (!wildcard) {
             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
           } else {
@@ -957,6 +1041,9 @@ public class MTreeDiskBased implements IMTree {
       }
     } else {
       int sum = node.isMeasurement() ? 1 : 0;
+      if (node.isUseTemplate()) {
+        sum += node.getUpperTemplate().getSchemaMap().size();
+      }
       for (IMNode child : metadataDiskManager.getChildren(node).values()) {
         sum += getCount(child, nodes, idx + 1, wildcard);
       }
@@ -976,22 +1063,22 @@ public class MTreeDiskBased implements IMTree {
   /** Traverse the MTree to get the count of devices. */
   private int getDevicesCount(IMNode node, String[] nodes, int idx) throws MetadataException {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    int cnt = 0;
+    boolean curIsDevice = node.isUseTemplate();
+    int cnt = curIsDevice ? 1 : 0;
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       IMNode next = metadataDiskManager.getChild(node, nodeReg);
       if (next != null) {
-        if (next.isMeasurement() && idx >= nodes.length) {
+        if (next.isMeasurement() && idx >= nodes.length && !curIsDevice) {
           cnt++;
         } else {
           cnt += getDevicesCount(next, nodes, idx + 1);
         }
       }
     } else {
-      boolean deviceAdded = false;
       for (IMNode child : metadataDiskManager.getChildren(node).values()) {
-        if (child.isMeasurement() && !deviceAdded && idx >= nodes.length) {
+        if (child.isMeasurement() && !curIsDevice && idx >= nodes.length) {
           cnt++;
-          deviceAdded = true;
+          curIsDevice = true;
         }
         cnt += getDevicesCount(child, nodes, idx + 1);
       }
@@ -1077,7 +1164,8 @@ public class MTreeDiskBased implements IMTree {
     }
     List<Pair<PartialPath, String[]>> allMatchedNodes = new ArrayList<>();
 
-    findPath(metadataDiskManager.getRoot(), nodes, 1, allMatchedNodes, false, true, queryContext);
+    findPath(
+        metadataDiskManager.getRoot(), nodes, 1, allMatchedNodes, false, true, queryContext, null);
 
     Stream<Pair<PartialPath, String[]>> sortedStream =
         allMatchedNodes.stream()
@@ -1120,6 +1208,7 @@ public class MTreeDiskBased implements IMTree {
         res,
         offset.get() != 0 || limit.get() != 0,
         false,
+        null,
         null);
     // avoid memory leaks
     limit.remove();
@@ -1146,7 +1235,8 @@ public class MTreeDiskBased implements IMTree {
       List<Pair<PartialPath, String[]>> timeseriesSchemaList,
       boolean hasLimit,
       boolean needLast,
-      QueryContext queryContext)
+      QueryContext queryContext,
+      Template upperTemplate)
       throws MetadataException {
     if (node.isMeasurement() && nodes.length <= idx) {
       if (hasLimit) {
@@ -1156,10 +1246,87 @@ public class MTreeDiskBased implements IMTree {
         }
       }
 
+      addMeasurementSchema(
+          node,
+          timeseriesSchemaList,
+          needLast,
+          queryContext,
+          ((MeasurementMNode) node).getSchema(),
+          "*");
+
+      if (hasLimit) {
+        count.set(count.get() + 1);
+      }
+    }
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    if (node.getDeviceTemplate() != null) {
+      upperTemplate = node.getDeviceTemplate();
+    }
+
+    if (!nodeReg.contains(PATH_WILDCARD)) {
+      IMNode next = metadataDiskManager.getChild(node, nodeReg);
+      if (next != null) {
+        findPath(
+            next,
+            nodes,
+            idx + 1,
+            timeseriesSchemaList,
+            hasLimit,
+            needLast,
+            queryContext,
+            upperTemplate);
+      }
+    } else {
+      for (IMNode child : metadataDiskManager.getChildren(node).values()) {
+        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+          continue;
+        }
+        findPath(
+            child,
+            nodes,
+            idx + 1,
+            timeseriesSchemaList,
+            hasLimit,
+            needLast,
+            queryContext,
+            upperTemplate);
+        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
+          return;
+        }
+      }
+    }
+
+    // template part
+    if (!(node instanceof MeasurementMNode) && node.isUseTemplate()) {
+      if (upperTemplate != null) {
+        HashSet<MeasurementSchema> set = new HashSet<>();
+        for (MeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
+          if (set.add(schema)) {
+            addMeasurementSchema(
+                new MeasurementMNode(node, schema.getMeasurementId(), schema, null),
+                timeseriesSchemaList,
+                needLast,
+                queryContext,
+                schema,
+                nodeReg);
+          }
+        }
+      }
+    }
+  }
+
+  private void addMeasurementSchema(
+      IMNode node,
+      List<Pair<PartialPath, String[]>> timeseriesSchemaList,
+      boolean needLast,
+      QueryContext queryContext,
+      MeasurementSchema measurementSchema,
+      String reg)
+      throws StorageGroupNotSetException {
+    if (Pattern.matches(reg.replace("*", ".*"), measurementSchema.getMeasurementId())) {
       PartialPath nodePath = node.getPartialPath();
       String[] tsRow = new String[7];
       tsRow[0] = ((MeasurementMNode) node).getAlias();
-      MeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
       tsRow[1] = getStorageGroupPath(nodePath).getFullPath();
       tsRow[2] = measurementSchema.getType().toString();
       tsRow[3] = measurementSchema.getEncodingType().toString();
@@ -1169,27 +1336,6 @@ public class MTreeDiskBased implements IMTree {
           needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
       Pair<PartialPath, String[]> temp = new Pair<>(nodePath, tsRow);
       timeseriesSchemaList.add(temp);
-
-      if (hasLimit) {
-        count.set(count.get() + 1);
-      }
-    }
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!nodeReg.contains(PATH_WILDCARD)) {
-      IMNode next = metadataDiskManager.getChild(node, nodeReg);
-      if (next != null) {
-        findPath(next, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-      }
-    } else {
-      for (IMNode child : metadataDiskManager.getChildren(node).values()) {
-        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-          continue;
-        }
-        findPath(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
-          return;
-        }
-      }
     }
   }
 
@@ -1324,7 +1470,7 @@ public class MTreeDiskBased implements IMTree {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     Set<PartialPath> devices = new TreeSet<>();
-    findDevices(metadataDiskManager.getRoot(), nodes, 1, devices, false);
+    findDevices(metadataDiskManager.getRoot(), nodes, 1, devices, false, null);
     return devices;
   }
 
@@ -1340,7 +1486,12 @@ public class MTreeDiskBased implements IMTree {
     curOffset.set(-1);
     count.set(0);
     findDevices(
-        metadataDiskManager.getRoot(), nodes, 1, devices, offset.get() != 0 || limit.get() != 0);
+        metadataDiskManager.getRoot(),
+        nodes,
+        1,
+        devices,
+        offset.get() != 0 || limit.get() != 0,
+        null);
     // avoid memory leaks
     limit.remove();
     offset.remove();
@@ -1368,8 +1519,14 @@ public class MTreeDiskBased implements IMTree {
    */
   @SuppressWarnings("squid:S3776")
   private void findDevices(
-      IMNode node, String[] nodes, int idx, Set<PartialPath> res, boolean hasLimit)
+      IMNode node,
+      String[] nodes,
+      int idx,
+      Set<PartialPath> res,
+      boolean hasLimit,
+      Template upperTemplate)
       throws MetadataException {
+    upperTemplate = node.getDeviceTemplate() == null ? upperTemplate : node.getDeviceTemplate();
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     // the node path doesn't contains '*'
     if (!nodeReg.contains(PATH_WILDCARD)) {
@@ -1386,12 +1543,17 @@ public class MTreeDiskBased implements IMTree {
           }
           res.add(node.getPartialPath());
         } else {
-          findDevices(next, nodes, idx + 1, res, hasLimit);
+          findDevices(next, nodes, idx + 1, res, hasLimit, upperTemplate);
         }
       }
     } else { // the node path contains '*'
       boolean deviceAdded = false;
-      for (IMNode child : metadataDiskManager.getChildren(node).values()) {
+      List<IMNode> children = new ArrayList<>(metadataDiskManager.getChildren(node).values());
+      // template part
+      if (upperTemplate != null && node.isUseTemplate()) {
+        children.addAll(upperTemplate.getMeasurementMNode());
+      }
+      for (IMNode child : children) {
         // use '.*' to replace '*' to form a regex to match
         // if the match failed, skip it.
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
@@ -1409,7 +1571,7 @@ public class MTreeDiskBased implements IMTree {
           res.add(node.getPartialPath());
           deviceAdded = true;
         }
-        findDevices(child, nodes, idx + 1, res, hasLimit);
+        findDevices(child, nodes, idx + 1, res, hasLimit, upperTemplate);
       }
     }
   }
@@ -1420,8 +1582,7 @@ public class MTreeDiskBased implements IMTree {
   }
 
   @Override
-  public List<PartialPath> getNodesList(
-      PartialPath path, int nodeLevel, MManager.StorageGroupFilter filter)
+  public List<PartialPath> getNodesList(PartialPath path, int nodeLevel, StorageGroupFilter filter)
       throws MetadataException {
     String[] nodes = path.getNodes();
     if (!nodes[0].equals(rootName)) {
@@ -1453,7 +1614,7 @@ public class MTreeDiskBased implements IMTree {
       PartialPath path,
       List<PartialPath> res,
       int targetLevel,
-      MManager.StorageGroupFilter filter)
+      StorageGroupFilter filter)
       throws MetadataException {
     if (node == null
         || node.isStorageGroup() && filter != null && !filter.satisfy(node.getFullPath())) {
@@ -1615,7 +1776,37 @@ public class MTreeDiskBased implements IMTree {
   }
 
   @Override
-  public void checkTemplateOnPath(PartialPath path) throws MetadataException {}
+  public void checkTemplateOnPath(PartialPath path) throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = metadataDiskManager.getRoot();
+    if (!nodeNames[0].equals(rootName)) {
+      return;
+    }
+    if (cur.getDeviceTemplate() != null) {
+      throw new MetadataException("Template already exists on " + cur.getFullPath());
+    }
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChild(nodeNames[i])) {
+        return;
+      }
+      cur = metadataDiskManager.getChild(cur, nodeNames[i]);
+      if (cur.getDeviceTemplate() != null) {
+        throw new MetadataException("Template already exists on " + cur.getFullPath());
+      }
+    }
+
+    checkTemplateOnSubtree(cur);
+  }
+
+  // traverse  all the  descendant of the given path node
+  private void checkTemplateOnSubtree(IMNode node) throws MetadataException {
+    for (IMNode child : metadataDiskManager.getChildren(node).values()) {
+      if (child.getDeviceTemplate() != null) {
+        throw new MetadataException("Template already exists on " + child.getFullPath());
+      }
+      checkTemplateOnSubtree(child);
+    }
+  }
 
   @Override
   public void updateMNode(IMNode mNode) throws MetadataException {
