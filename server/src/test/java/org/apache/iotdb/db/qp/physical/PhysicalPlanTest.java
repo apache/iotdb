@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.trigger.api.TriggerEvent;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -48,7 +49,6 @@ import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
@@ -1183,6 +1183,7 @@ public class PhysicalPlanTest {
     CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals("trigger1", plan.getTriggerName());
+    Assert.assertEquals(TriggerEvent.BEFORE_INSERT, plan.getEvent());
     Assert.assertEquals("root.sg1.d1.s1", plan.getFullPath().getFullPath());
     Assert.assertEquals("org.apache.iotdb.engine.trigger.Example", plan.getClassName());
   }
@@ -1196,6 +1197,7 @@ public class PhysicalPlanTest {
     CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals("trigger2", plan.getTriggerName());
+    Assert.assertEquals(TriggerEvent.AFTER_INSERT, plan.getEvent());
     Assert.assertEquals("root.sg1.d1.s2", plan.getFullPath().getFullPath());
     Assert.assertEquals("org.apache.iotdb.engine.trigger.Example", plan.getClassName());
     Map<String, String> expectedAttributes = new HashMap<>();
@@ -1233,11 +1235,11 @@ public class PhysicalPlanTest {
 
   @Test
   public void testShowTriggers() throws QueryProcessException {
-    String sql = "SHOW TRIGGERS";
+    String sql = "SHOW TRIGGERS ON root.sg1.d1.s1";
 
     ShowTriggersPlan plan = (ShowTriggersPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals(ShowContentType.TRIGGERS, plan.getShowContentType());
+    Assert.assertEquals("root.sg1.d1.s1", plan.getPath().getFullPath());
   }
 
   @Test

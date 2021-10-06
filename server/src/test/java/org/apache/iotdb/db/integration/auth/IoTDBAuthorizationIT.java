@@ -39,7 +39,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -66,7 +65,6 @@ public class IoTDBAuthorizationIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser 'temppw'");
-      setUpForTriggerRelatedPrivilegesTests(adminStmt);
       boolean caught = false;
       try (Connection userCon =
               DriverManager.getConnection(
@@ -163,42 +161,7 @@ public class IoTDBAuthorizationIT {
           caught = true;
         }
         assertTrue(caught);
-
-        executeTriggerRelatedPrivilegesTests(userStmt);
       }
-    }
-  }
-
-  private static void setUpForTriggerRelatedPrivilegesTests(Statement adminStmt)
-      throws SQLException {
-    adminStmt.execute(
-        "create timeseries root.ln.wf01.wt01.temperature with datatype=FLOAT,encoding=RLE");
-    adminStmt.execute(
-        "create timeseries root.ln.wf02.wt02.hardware with datatype=TEXT,encoding=PLAIN");
-    adminStmt.execute(
-        "create timeseries root.ln.wf03.wt03.software with datatype=DOUBLE,encoding=PLAIN");
-    adminStmt.execute(
-        "create trigger started-trigger before insert on root.ln.wf01.wt01.temperature as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-    adminStmt.execute(
-        "create trigger stopped-trigger after insert on root.ln.wf02.wt02.hardware as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-    adminStmt.execute("stop trigger stopped-trigger");
-  }
-
-  private static void executeTriggerRelatedPrivilegesTests(Statement userStmt) throws SQLException {
-    String[] statements = {
-      "create trigger magic before insert on root.ln.wf03.wt03.software as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'",
-      "stop trigger started-trigger",
-      "drop trigger started-trigger",
-      "start trigger stopped-trigger",
-    };
-    for (String statement : statements) {
-      try {
-        userStmt.execute(statement);
-      } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("602"));
-        continue;
-      }
-      fail();
     }
   }
 

@@ -43,10 +43,9 @@ public enum ThreadName {
   SYNC_MONITOR("Sync-Monitor"),
   LOAD_TSFILE("Load-TsFile"),
   TIME_COST_STATISTIC("TIME_COST_STATISTIC"),
-  QUERY_SERVICE("Query"),
-  WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager");
+  QUERY_SERVICE("Query");
 
-  private final String name;
+  private String name;
 
   ThreadName(String name) {
     this.name = name;

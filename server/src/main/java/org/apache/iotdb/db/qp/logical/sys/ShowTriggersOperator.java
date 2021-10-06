@@ -19,9 +19,21 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
+
 public class ShowTriggersOperator extends ShowOperator {
+
+  private PartialPath path;
 
   public ShowTriggersOperator(int tokenIntType) {
     super(tokenIntType);
+  }
+
+  public void setPath(PartialPath path) {
+    this.path = path;
+  }
+
+  public PartialPath getPath() {
+    return path;
   }
 }

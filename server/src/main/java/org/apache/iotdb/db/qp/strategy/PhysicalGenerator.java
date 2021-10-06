@@ -71,6 +71,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
@@ -352,7 +353,7 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_SHOW_FUNCTIONS:
             return new ShowFunctionsPlan(((ShowFunctionsOperator) operator).showTemporary());
           case SQLConstant.TOK_SHOW_TRIGGERS:
-            return new ShowTriggersPlan();
+            return new ShowTriggersPlan(((ShowTriggersOperator) operator).getPath());
           default:
             throw new LogicalOperatorException(
                 String.format(

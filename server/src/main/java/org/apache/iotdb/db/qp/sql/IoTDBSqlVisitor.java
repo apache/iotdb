@@ -529,9 +529,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitShowTriggers(ShowTriggersContext ctx) {
     ShowTriggersOperator showTriggersOperator =
         new ShowTriggersOperator(SQLConstant.TOK_SHOW_TRIGGERS);
-    //    if (ctx.fullPath() != null) {
-    //      showTriggersOperator.setPath(parseFullPath(ctx.fullPath()));
-    //    }
+    if (ctx.fullPath() != null) {
+      showTriggersOperator.setPath(parseFullPath(ctx.fullPath()));
+    }
     return showTriggersOperator;
   }
 

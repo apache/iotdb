@@ -212,9 +212,6 @@ public class LastQueryExecutor {
         }
       }
     }
-    for (LastCacheAccessor cacheAccessor : cacheAccessors) {
-      cacheAccessor.clear();
-    }
     return resultContainer;
   }
 

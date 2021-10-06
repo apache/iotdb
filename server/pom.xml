@@ -144,12 +144,6 @@
             <artifactId>powermock-api-mockito2</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <version>4.0.3</version>
-            <scope>test</scope>
-        </dependency>
         <!--        compile group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'-->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

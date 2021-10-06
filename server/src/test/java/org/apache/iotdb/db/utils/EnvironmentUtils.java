@@ -89,8 +89,7 @@ public class EnvironmentUtils {
   public static void cleanEnv() throws IOException, StorageEngineException {
     // wait all compaction finished
     CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
-
-    // deregister all user defined classes
+    // deregister all UDFs
     try {
       UDFRegistrationService.getInstance().deregisterAll();
     } catch (UDFRegistrationException e) {
@@ -224,8 +223,6 @@ public class EnvironmentUtils {
     cleanDir(config.getQueryDir());
     // delete tracing
     cleanDir(config.getTracingDir());
-    // delete ulog
-    cleanDir(config.getUdfDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
