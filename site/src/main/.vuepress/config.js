@@ -703,14 +703,19 @@ var config = {
 						]
 					},
 					{
-						title: 'Advanced Features',
+						title: 'UDF',
 						children: [
-							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							// The trigger module has not been implemented yet,
-							// so the website should not show users how to use it to avoid misleading.
-							// ['Advanced-Features/Triggers','Trigger']
+							['UDF/UDF-User-Defined-Function','UDF (User Defined Function)']
 						]
 					},
+					// The trigger module has not been implemented yet,
+					// so the website should not show users how to use it to avoid misleading.
+					// {
+					// 	title: 'Trigger',
+					// 	children: [
+					// 		['UDF/Triggers','Trigger']
+					// 	]
+					// },
 					{
 						title: 'Communication Service Protocol',
 						children: [
@@ -1364,6 +1369,14 @@ var config = {
 							['UDF/UDF-User-Defined-Function','用户定义函数(UDF)']
 						]
 					},
+					// The trigger module has not been implemented yet,
+					// so the website should not show users how to use it to avoid misleading.
+					// {
+					// 	title: 'Trigger',
+					// 	children: [
+					// 		['UDF/Triggers','Trigger']
+					// 	]
+					// },
 					{
 						title: '通信服务协议',
 						children: [
@@ -1490,14 +1503,19 @@ var config = {
 						]
 					},
 					{
-						title: '高级功能',
+						title: '用户定义函数(UDF)',
 						children: [
-							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-              // The trigger module has not been implemented yet,
-              // so the website should not show users how to use it to avoid misleading.
-              // ['Advanced-Features/Triggers','触发器']
+							['UDF/UDF-User-Defined-Function','用户定义函数(UDF)']
 						]
 					},
+					// The trigger module has not been implemented yet,
+					// so the website should not show users how to use it to avoid misleading.
+					// {
+					// 	title: 'Trigger',
+					// 	children: [
+					// 		['UDF/Triggers','Trigger']
+					// 	]
+					// },
 					{
 						title: '通信服务协议',
 						children: [
