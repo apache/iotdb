@@ -108,21 +108,21 @@ layer_name : identifier
 
 ### 一元、多元时间序列
 
-* 数据点（Data point）
+#### 数据点（Data point）
 
 **一个“时间-值”对**。
 
-* 时间序列（一个实体的某个物理量对应一个时间序列，Timeseries，也称测点 meter、时间线 timeline，实时数据库中常被称作标签 tag、参数 parameter）
+#### 时间序列（一个实体的某个物理量对应一个时间序列，Timeseries，也称测点 meter、时间线 timeline，实时数据库中常被称作标签 tag、参数 parameter）
 
 **一个物理实体的某个物理量在时间轴上的记录**，是数据点的序列。
 
 例如，ln 电力集团、wf01 风电场的实体 wt01 有名为 status 的物理量，则它的时间序列可以表示为：`root.ln.wf01.wt01.status`。 
 
-* 一元时间序列（single-variable timeseries 或 timeseries，v0.1 起支持）
+#### 一元时间序列（single-variable timeseries 或 timeseries，v0.1 起支持）
 
 一个实体的一个一元物理量对应一个一元时间序列。实体+物理量=时间序列
 
-* 多元时间序列（Multi-variable timeseries 或 Aligned timeseries，v0.13 起支持）
+#### 多元时间序列（Multi-variable timeseries 或 Aligned timeseries，v0.13 起支持）
 
 一个实体的一个多元物理量对应一个多元时间序列。这些时间序列称为**多元时间序列**，也叫**对齐时间序列**。
 
@@ -134,13 +134,13 @@ layer_name : identifier
 
 在后续数据定义语言、数据操作语言和 Java 原生接口章节，将对涉及到对齐时间序列的各种操作进行逐一介绍。
 
-* 时间戳类型
+#### 时间戳类型
 
 时间戳是一个数据到来的时间点，其中包括绝对时间戳和相对时间戳，详细描述参见数据类型文档。
 
 
 ### 物理量模板
 
-* 物理量模板（Measurement template，v0.13 起支持）
+#### 物理量模板（Measurement template，v0.13 起支持）
 
 实际应用中有许多实体所采集的物理量相同，即具有相同的工况名称和类型，可以声明一个**物理量模板**来定义可采集的物理量集合。在实践中，物理量模板的使用可帮助减少元数据的资源占用，详细内容参见物理量模板文档。
