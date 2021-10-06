@@ -1500,7 +1500,7 @@ var config = {
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Time-zone','时区'],
-							['API/IoTDB-InfluxDB','InfluxDB 协议适配器']
+							['API/InfluxDB-Protocol','InfluxDB 协议适配器']
 						]
 					},
 					{
