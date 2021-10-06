@@ -174,6 +174,10 @@ public class MManager {
     }
   }
 
+  public Template getTemplate(String name) {
+    return templateMap.get(name);
+  }
+
   private static class MManagerHolder {
 
     private MManagerHolder() {

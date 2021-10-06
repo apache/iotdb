@@ -337,7 +337,6 @@ public class MTreeDiskBased implements IMTree {
       }
       // update upper template
       upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
-      cur = cur.getChild(nodeNames[i]);
     }
     unlockMNodePath(cur.getParent());
     return new Pair<>(cur, upperTemplate);

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -41,6 +42,7 @@ import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.MTREE_MEMORY_BASED;
 import static org.junit.Assert.*;
 
 public class IoTDBCreateSnapshotIT {
@@ -62,6 +64,9 @@ public class IoTDBCreateSnapshotIT {
 
   @Test
   public void createSnapshotTest() throws ClassNotFoundException {
+    if (IoTDB.metaManager.getMTreeType() != MTREE_MEMORY_BASED) {
+      return;
+    }
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
