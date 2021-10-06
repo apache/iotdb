@@ -146,7 +146,16 @@ public class ClientManager implements IClientManager {
   @Override
   public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
       throws Exception {
-    return asyncClientPoolMap.get(category).borrowObject(node);
+    KeyedObjectPool<Node, RaftService.AsyncClient> pool;
+    if (asyncClientPoolMap != null && (pool = asyncClientPoolMap.get(category)) != null) {
+      return pool.borrowObject(node);
+    }
+    logger.error(
+        "Unexpected BorrowAsyncClient invoking: Node:{}, ClientCategory:{}, isSyncMode:{}",
+        node,
+        clientPoolFactory,
+        syncClientPoolMap != null);
+    return null;
   }
 
   /**
@@ -159,7 +168,16 @@ public class ClientManager implements IClientManager {
    */
   @Override
   public RaftService.Client borrowSyncClient(Node node, ClientCategory category) throws Exception {
-    return syncClientPoolMap.get(category).borrowObject(node);
+    KeyedObjectPool<Node, RaftService.Client> pool;
+    if (syncClientPoolMap != null && (pool = syncClientPoolMap.get(category)) != null) {
+      return pool.borrowObject(node);
+    }
+    logger.error(
+        "Unexpected BorrowSyncClient invoking: Node:{}, ClientCategory:{}, isSyncMode:{}",
+        node,
+        clientPoolFactory,
+        syncClientPoolMap != null);
+    return null;
   }
 
   @Override

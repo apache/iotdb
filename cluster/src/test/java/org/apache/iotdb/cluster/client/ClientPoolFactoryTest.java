@@ -37,6 +37,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -132,7 +133,7 @@ public class ClientPoolFactoryTest {
         clientPoolFactory.createAsyncDataPool(ClientCategory.DATA);
 
     Assert.assertEquals(pool.getMaxTotalPerKey(), mockMaxClientPerMember);
-    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
+    Assert.assertEquals(pool.getMaxWaitDuration(), Duration.ofMillis(mockMaxWaitTimeoutMs));
 
     RaftService.AsyncClient asyncClient = null;
 
@@ -147,10 +148,10 @@ public class ClientPoolFactoryTest {
   @Test
   public void createAsyncMetaClientTest() throws Exception {
     GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
-        clientPoolFactory.createAsyncDataPool(ClientCategory.META);
+        clientPoolFactory.createAsyncMetaPool(ClientCategory.META);
 
     Assert.assertEquals(pool.getMaxTotalPerKey(), mockMaxClientPerMember);
-    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
+    Assert.assertEquals(pool.getMaxWaitDuration(), Duration.ofMillis(mockMaxWaitTimeoutMs));
 
     Node node = constructDefaultNode();
 
@@ -167,7 +168,7 @@ public class ClientPoolFactoryTest {
         clientPoolFactory.createSyncDataPool(ClientCategory.DATA_HEARTBEAT);
 
     Assert.assertEquals(pool.getMaxTotalPerKey(), mockMaxClientPerMember);
-    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
+    Assert.assertEquals(pool.getMaxWaitDuration(), Duration.ofMillis(mockMaxWaitTimeoutMs));
 
     Node node = constructDefaultNode();
 
@@ -212,7 +213,7 @@ public class ClientPoolFactoryTest {
         clientPoolFactory.createSyncMetaPool(ClientCategory.META_HEARTBEAT);
 
     Assert.assertEquals(pool.getMaxTotalPerKey(), mockMaxClientPerMember);
-    Assert.assertEquals(pool.getMaxWaitDuration().getNano(), mockMaxWaitTimeoutMs * 1000000);
+    Assert.assertEquals(pool.getMaxWaitDuration(), Duration.ofMillis(mockMaxWaitTimeoutMs));
 
     Node node = constructDefaultNode();
 

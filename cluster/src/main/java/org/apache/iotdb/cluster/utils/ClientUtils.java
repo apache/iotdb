@@ -61,8 +61,6 @@ public class ClientUtils {
       ((SyncMetaClient) client).returnSelf();
     } else if (client instanceof SyncDataClient) {
       ((SyncDataClient) client).returnSelf();
-    } else {
-      throw new UnsupportedOperationException("the client type is not supported: " + client);
     }
   }
 }
