@@ -153,7 +153,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Float> stats) {
     FloatStatistics floatStats = (FloatStatistics) stats;
     if (isEmpty) {
       initializeStats(

@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.assertEquals;
 
-public class JSONPayloadFormatTest {
+public class JSONPayloadFormatterTest {
 
   @Test
   public void formatJson() {

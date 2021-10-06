@@ -1101,8 +1101,10 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitTopClause(TopClauseContext ctx) {
     Map<String, Object> props = new HashMap<>();
     int top = Integer.parseInt(ctx.INT().getText());
-    if (top < 0) {
-      throw new SQLParserException("TOP <N>: N should be greater than 0.");
+    if (top <= 0 || top > 1000) {
+      throw new SQLParserException(
+          String.format(
+              "TOP <N>: N should be greater than 0 and less than 1000, current N is %d", top));
     }
     props.put(TOP_K, top);
     queryOp.setProps(props);

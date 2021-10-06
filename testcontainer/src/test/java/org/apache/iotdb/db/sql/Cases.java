@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -169,7 +169,7 @@ public abstract class Cases {
       writeStatement.execute(initData);
     }
     try {
-      session.executeNonQueryStatement(" delete from root.ln.wf011.*");
+      session.executeNonQueryStatement(" delete from root.ln.wf011.**");
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       Assert.assertFalse(e instanceof BatchExecutionException);
     }
@@ -414,7 +414,7 @@ public abstract class Cases {
     // try to read data on each node. select from parent series
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01 where tag1=v1");
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -437,7 +437,7 @@ public abstract class Cases {
 
     // try to read data on each node. select from root
     for (Statement readStatement : readStatements) {
-      ResultSet resultSet = readStatement.executeQuery("SHOW TIMESERIES root where tag1=v1");
+      ResultSet resultSet = readStatement.executeQuery("SHOW TIMESERIES root.** where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -669,9 +669,9 @@ public abstract class Cases {
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
 
     Map<String, Tablet> tabletMap = new HashMap<>();
     for (int i = 0; i < 5; i++) {

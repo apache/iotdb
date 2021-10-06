@@ -367,7 +367,7 @@ public class IoTDBTagIT {
               + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)");
 
       boolean hasResult =
-          statement.execute("show timeseries root.turbine.d1 where tag1=v1 limit 2 offset 1");
+          statement.execute("show timeseries root.turbine.d1.** where tag1=v1 limit 2 offset 1");
       assertTrue(hasResult);
       int count = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -735,7 +735,7 @@ public class IoTDBTagIT {
       }
 
       // with *
-      boolean hasResult = statement.execute("show timeseries root.turbine.* where unit=f");
+      boolean hasResult = statement.execute("show timeseries root.turbine.** where unit=f");
       assertTrue(hasResult);
       int count = 0;
       Set<String> res = new HashSet<>();
@@ -766,7 +766,7 @@ public class IoTDBTagIT {
       assertEquals(ret.size(), count);
 
       // no *
-      hasResult = statement.execute("show timeseries root.turbine where unit=f");
+      hasResult = statement.execute("show timeseries root.turbine.** where unit=f");
       assertTrue(hasResult);
       count = 0;
       res.clear();
@@ -967,7 +967,8 @@ public class IoTDBTagIT {
       assertEquals(ret, res);
       assertEquals(ret.size(), count);
 
-      hasResult = statement.execute("show timeseries root.ln where description contains 'test1'");
+      hasResult =
+          statement.execute("show timeseries root.ln.** where description contains 'test1'");
       assertTrue(hasResult);
       count = 0;
       res.clear();

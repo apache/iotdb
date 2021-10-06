@@ -47,11 +47,11 @@ Besides, if deploy on Windows system, the LayerName is case-insensitive, which m
 
 ### Show Storage Group
 
-After creating the storage group, we can use the [SHOW STORAGE GROUP](../Appendix/SQL-Reference.md) statement and [SHOW STORAGE GROUP \<PrefixPath>](../Appendix/SQL-Reference.md) to view the storage groups. The SQL statements are as follows:
+After creating the storage group, we can use the [SHOW STORAGE GROUP](../Appendix/SQL-Reference.md) statement and [SHOW STORAGE GROUP \<PathPattern>](../Appendix/SQL-Reference.md) to view the storage groups. The SQL statements are as follows:
 
 ```
 IoTDB> show storage group
-IoTDB> show storage group root.ln
+IoTDB> show storage group root.**
 ```
 
 The result is as follows:
@@ -69,13 +69,13 @@ It costs 0.060s
 
 ### Delete Storage Group
 
-User can use the `DELETE STORAGE GROUP <PrefixPath>` statement to delete all storage groups under the prefixPath. Please note the data in the storage group will also be deleted. 
+User can use the `DELETE STORAGE GROUP <PathPattern>` statement to delete all storage groups matching the pathPattern. Please note the data in the storage group will also be deleted. 
 
 ```
 IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
 // delete all data, all timeseries and all storage groups
-IoTDB > DELETE STORAGE GROUP root.*
+IoTDB > DELETE STORAGE GROUP root.**
 ```
 ## Timeseries Management
 ### Create Timeseries
@@ -102,7 +102,7 @@ Please refer to [Encoding](../Data-Concept/Encoding.md) for correspondence betwe
 
 ### Delete Timeseries
 
-To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
+To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PathPattern>` statement.
 
 The usage are as follows:
 
@@ -127,7 +127,7 @@ error: Not support deleting part of aligned timeseies!
 
 ### Show Timeseries
 
-* SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
+* SHOW LATEST? TIMESERIES pathPattern? showWhereClause? limitClause?
 
   There are four optional clauses added in SHOW TIMESERIES, return information of time series 
   
@@ -139,13 +139,13 @@ Examples:
 
   presents all timeseries information in JSON form
  
-* SHOW TIMESERIES <`Path`> 
+* SHOW TIMESERIES <`PathPattern`> 
   
-  returns all timeseries information under the given <`Path`>.  <`Path`> needs to be a prefix path or a path with star or a timeseries path. SQL statements are as follows:
+  returns all timeseries information matching the given <`PathPattern`>. SQL statements are as follows:
 
 ```
-IoTDB> show timeseries root
-IoTDB> show timeseries root.ln
+IoTDB> show timeseries root.**
+IoTDB> show timeseries root.ln.**
 ```
 
 The results are shown below respectively:
@@ -177,15 +177,15 @@ Total line number = 4
 It costs 0.004s
 ```
 
-* SHOW TIMESERIES (<`PrefixPath`>)? WhereClause
+* SHOW TIMESERIES (<`PathPattern`>)? WhereClause
  
-  returns all the timeseries information that satisfy the where condition and start with the prefixPath SQL statements are as follows:
+  returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
 
 ```
 ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
 ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln where unit=c
-show timeseries root.ln where description contains 'test1'
+show timeseries root.ln.** where unit=c
+show timeseries root.ln.** where description contains 'test1'
 ```
 
 The results are shown below respectly:
@@ -223,11 +223,11 @@ It is worth noting that when the queried path does not exist, the system will re
 
 ### Count Timeseries
 
-IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
+IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries matching the path. SQL statements are as follows:
 
 ```
-IoTDB > COUNT TIMESERIES root
-IoTDB > COUNT TIMESERIES root.ln
+IoTDB > COUNT TIMESERIES root.**
+IoTDB > COUNT TIMESERIES root.ln.**
 IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 ```
@@ -259,9 +259,9 @@ Then the Metadata Tree will be as below:
 As can be seen, `root` is considered as `LEVEL=0`. So when you enter statements such as:
 
 ```
-IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
-IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.** GROUP BY LEVEL=1
+IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=2
 ```
 
 You will get following results:
@@ -346,10 +346,10 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4)
 ### Show Child Paths
 
 ```
-SHOW CHILD PATHS prefixPath
+SHOW CHILD PATHS pathPattern
 ```
 
-Return all child paths of the prefixPath, the prefixPath could contains *.
+Return all child paths of all the paths matching pathPattern.
 
 Example：
 
@@ -371,10 +371,10 @@ It costs 0.002s
 ### Show Child Nodes
 
 ```
-SHOW CHILD NODES prefixPath
+SHOW CHILD NODES pathPattern
 ```
 
-Return all child nodes of the prefixPath.
+Return all child nodes of the pathPattern.
 
 Example：
 
@@ -401,12 +401,12 @@ Example：
 
 ### Count Nodes
 
-IoTDB is able to use `COUNT NODES <PrefixPath> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
+IoTDB is able to use `COUNT NODES <PathPattern> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
 
 ```
-IoTDB > COUNT NODES root LEVEL=2
-IoTDB > COUNT NODES root.ln LEVEL=2
-IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+IoTDB > COUNT NODES root.** LEVEL=2
+IoTDB > COUNT NODES root.ln.** LEVEL=2
+IoTDB > COUNT NODES root.ln.wf01.** LEVEL=3
 ```
 
 As for the above mentioned example and Metadata tree, you can get following results:
@@ -438,22 +438,21 @@ It costs 0.002s
 ```
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
-`PrefixPath` could contains `*`, but all nodes after `*` would be ignored. Only the prefix path before `*` is valid.
 
 ### Show Devices
 
-* SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
+* SHOW DEVICES pathPattern? (WITH STORAGE GROUP)? limitClause? #showDevices
 
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
-* `SHOW DEVICES` statement presents all devices' information, which is equal to `SHOW DEVICES root`.
-* `SHOW DEVICES <PrefixPath>` statement specifies the `PrefixPath` and returns the devices information under the given level.
+* `SHOW DEVICES` statement presents all devices' information, which is equal to `SHOW DEVICES root.**`.
+* `SHOW DEVICES <PathPattern>` statement specifies the `PathPattern` and returns the devices information matching the pathPattern and under the given level.
 
 SQL statement is as follows:
 
 ```
 IoTDB> show devices
-IoTDB> show devices root.ln
+IoTDB> show devices root.ln.**
 ```
 
 You can get results below:
@@ -483,14 +482,14 @@ It costs 0.001s
 To view devices' information with storage group, we can use `SHOW DEVICES WITH STORAGE GROUP` statement.
 
 * `SHOW DEVICES WITH STORAGE GROUP` statement presents all devices' information with their storage group.
-* `SHOW DEVICES <PrefixPath> WITH STORAGE GROUP` statement specifies the `PrefixPath` and returns the 
+* `SHOW DEVICES <PathPattern> WITH STORAGE GROUP` statement specifies the `PathPattern` and returns the 
 devices' information under the given level with their storage group information.
 
 SQL statement is as follows:
 
 ```
 IoTDB> show devices with storage group
-IoTDB> show devices root.ln with storage group
+IoTDB> show devices root.ln.** with storage group
 ```
 
 You can get results below:

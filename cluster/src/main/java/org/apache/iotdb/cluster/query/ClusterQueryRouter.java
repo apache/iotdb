@@ -78,8 +78,9 @@ public class ClusterQueryRouter extends QueryRouter {
   }
 
   @Override
-  protected AggregationExecutor getAggregationExecutor(AggregationPlan aggregationPlan) {
-    return new ClusterAggregateExecutor(aggregationPlan, metaGroupMember);
+  protected AggregationExecutor getAggregationExecutor(
+      QueryContext context, AggregationPlan aggregationPlan) {
+    return new ClusterAggregateExecutor(context, aggregationPlan, metaGroupMember);
   }
 
   @Override

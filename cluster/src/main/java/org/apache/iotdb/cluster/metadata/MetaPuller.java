@@ -39,8 +39,8 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -51,8 +51,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MetaPuller {
@@ -146,7 +148,7 @@ public class MetaPuller {
       }
       int preSize = results.size();
       for (PartialPath prefixPath : prefixPaths) {
-        IoTDB.metaManager.collectSeries(prefixPath, results);
+        IoTDB.metaManager.collectMeasurementSchema(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -245,7 +247,7 @@ public class MetaPuller {
           for (int i = 0; i < size; i++) {
             schemas.add(
                 buffer.get() == 0
-                    ? MeasurementSchema.partialDeserializeFrom(buffer)
+                    ? UnaryMeasurementSchema.partialDeserializeFrom(buffer)
                     : VectorMeasurementSchema.partialDeserializeFrom(buffer));
           }
         } catch (TException e) {
@@ -270,14 +272,17 @@ public class MetaPuller {
    */
   public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, RaftNode ignoredGroup)
       throws MetadataException {
+    // Remove duplicated prefix paths to optimize
+    Set<PartialPath> prefixPathSet = new HashSet<>(prefixPaths);
+    List<PartialPath> uniquePrefixPaths = new ArrayList<>(prefixPathSet);
     logger.debug(
         "{}: Pulling timeseries schemas of {}, ignored group {}",
         metaGroupMember.getName(),
-        prefixPaths,
+        uniquePrefixPaths,
         ignoredGroup);
     // split the paths by the data groups that should hold them
     Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
-    for (PartialPath prefixPath : prefixPaths) {
+    for (PartialPath prefixPath : uniquePrefixPaths) {
       if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath.getFullPath())) {
         continue;
       }
@@ -295,8 +300,8 @@ public class MetaPuller {
       logger.debug(
           "{}: pulling schemas of {} and other {} paths from {} groups",
           metaGroupMember.getName(),
-          prefixPaths.get(0),
-          prefixPaths.size() - 1,
+          uniquePrefixPaths.get(0),
+          uniquePrefixPaths.size() - 1,
           partitionGroupPathMap.size());
     }
     for (Map.Entry<PartitionGroup, List<String>> partitionGroupListEntry :

@@ -163,6 +163,8 @@ public class JDBCExample {
     // JDBC driver name and database URL
     String driver = "org.apache.iotdb.jdbc.IoTDBDriver";
     String url = "jdbc:iotdb://127.0.0.1:6667/";
+    // set rpc compress mode
+    // String url = "jdbc:iotdb://127.0.0.1:6667?rpc_compress=true";
 
     // Database credentials
     String username = "root";

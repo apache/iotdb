@@ -55,6 +55,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -1020,7 +1021,8 @@ public class StorageGroupProcessor {
 
   /**
    * insert batch to tsfile processor thread-safety that the caller need to guarantee The rows to be
-   * inserted are in the range [start, end)
+   * inserted are in the range [start, end) Null value in each column values will be replaced by the
+   * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletPlan insert a tablet of a device
    * @param sequence whether is sequence
@@ -1094,17 +1096,24 @@ public class StorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        // no matter aligned or not, concat the path to use the full path to update LastCache
-        IoTDB.metaManager.updateLastCache(
-            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-            plan.composeLastTimeValuePair(i),
-            true,
-            latestFlushedTime);
+        if (plan.isAligned()) {
+          IoTDB.metaManager.updateLastCache(
+              new VectorPartialPath(plan.getPrefixPath(), plan.getMeasurements()[i]),
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        } else {
+          IoTDB.metaManager.updateLastCache(
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        }
       } else {
         if (plan.isAligned()) {
           // vector lastCache update need subMeasurement
           IoTDB.metaManager.updateLastCache(
-              mNodes[i],
+              mNodes[i].getAsMultiMeasurementMNode(),
               plan.getMeasurements()[i],
               plan.composeLastTimeValuePair(i),
               true,
@@ -1114,7 +1123,10 @@ public class StorageGroupProcessor {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+              mNodes[i].getAsUnaryMeasurementMNode(),
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
         }
       }
     }
@@ -1163,17 +1175,24 @@ public class StorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        // no matter aligned or not, concat the path to use the full path to update LastCache
-        IoTDB.metaManager.updateLastCache(
-            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-            plan.composeTimeValuePair(i),
-            true,
-            latestFlushedTime);
+        if (plan.isAligned()) {
+          IoTDB.metaManager.updateLastCache(
+              new VectorPartialPath(plan.getPrefixPath(), plan.getMeasurements()[i]),
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        } else {
+          IoTDB.metaManager.updateLastCache(
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        }
       } else {
         if (plan.isAligned()) {
           // vector lastCache update need subSensor path
           IoTDB.metaManager.updateLastCache(
-              mNodes[i],
+              mNodes[i].getAsMultiMeasurementMNode(),
               plan.getMeasurements()[i],
               plan.composeTimeValuePair(i),
               true,
@@ -1182,7 +1201,10 @@ public class StorageGroupProcessor {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
+              mNodes[i].getAsUnaryMeasurementMNode(),
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
         }
       }
     }
@@ -1897,7 +1919,7 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.metaManager.getDevices(path.getDevicePath());
+      Set<PartialPath> devicePaths = IoTDB.metaManager.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
         Long lastUpdateTime = null;
         for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {

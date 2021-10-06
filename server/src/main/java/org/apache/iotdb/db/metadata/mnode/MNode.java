@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
@@ -73,6 +74,13 @@ public abstract class MNode implements IMNode {
    */
   @Override
   public PartialPath getPartialPath() {
+    if (fullPath != null) {
+      try {
+        return new PartialPath(fullPath);
+      } catch (IllegalPathException ignored) {
+
+      }
+    }
     List<String> detachedPath = new ArrayList<>();
     IMNode temp = this;
     detachedPath.add(temp.getName());
@@ -131,6 +139,33 @@ public abstract class MNode implements IMNode {
   @Override
   public boolean isMeasurement() {
     return false;
+  }
+
+  @Override
+  public IStorageGroupMNode getAsStorageGroupMNode() {
+    if (isStorageGroup()) {
+      return (IStorageGroupMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
+  public IEntityMNode getAsEntityMNode() {
+    if (isEntity()) {
+      return (IEntityMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
+  public IMeasurementMNode getAsMeasurementMNode() {
+    if (isMeasurement()) {
+      return (IMeasurementMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
   }
 
   @Override
