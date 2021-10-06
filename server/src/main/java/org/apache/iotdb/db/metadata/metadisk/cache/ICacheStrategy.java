@@ -34,7 +34,7 @@ public interface ICacheStrategy {
   void unlockMNode(IMNode mNode);
 
   /** change the mnode's position in cache */
-  void applyChange(IMNode mNode);
+  void updateCacheStatus(IMNode mNode);
 
   /**
    * change the mnode's status in cache if a mnode in cache is modified, it will be collected when

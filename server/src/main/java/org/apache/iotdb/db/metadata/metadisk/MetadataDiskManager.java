@@ -140,10 +140,10 @@ public class MetadataDiskManager implements IMetadataAccess {
           return result;
         }
         if (result.isCached()) {
-          cacheStrategy.applyChange(result);
+          cacheStrategy.updateCacheStatus(result);
         } else {
           if (isCacheable(result)) {
-            cacheStrategy.applyChange(result);
+            cacheStrategy.updateCacheStatus(result);
             cacheStrategy.setModified(result, false);
           }
         }
@@ -157,7 +157,7 @@ public class MetadataDiskManager implements IMetadataAccess {
           }
         }
         if (isCacheable(result)) {
-          cacheStrategy.applyChange(result);
+          cacheStrategy.updateCacheStatus(result);
           cacheStrategy.setModified(result, false);
         }
       }
@@ -222,7 +222,7 @@ public class MetadataDiskManager implements IMetadataAccess {
       if (isCacheable(child)) {
         parent.addChild(childName, child);
         cacheStrategy.setModified(parent, true);
-        cacheStrategy.applyChange(child);
+        cacheStrategy.updateCacheStatus(child);
         cacheStrategy.setModified(child, true);
       } else {
         try {
@@ -268,7 +268,7 @@ public class MetadataDiskManager implements IMetadataAccess {
       if (child.isCached()) {
         parent.addAlias(alias, child);
         cacheStrategy.setModified(parent, true);
-        cacheStrategy.applyChange(child);
+        cacheStrategy.updateCacheStatus(child);
         cacheStrategy.setModified(child, true);
       } else {
         try {
@@ -292,11 +292,11 @@ public class MetadataDiskManager implements IMetadataAccess {
       getChild(parent, measurement);
       parent.replaceChild(measurement, newChild);
       if (newChild.isCached()) {
-        cacheStrategy.applyChange(newChild);
+        cacheStrategy.updateCacheStatus(newChild);
         cacheStrategy.setModified(newChild, true);
       } else {
         if (isCacheable(newChild)) {
-          cacheStrategy.applyChange(newChild);
+          cacheStrategy.updateCacheStatus(newChild);
           cacheStrategy.setModified(newChild, true);
         } else {
           try {
@@ -406,7 +406,7 @@ public class MetadataDiskManager implements IMetadataAccess {
         return;
       }
       if (mNode.isCached()) {
-        cacheStrategy.applyChange(mNode);
+        cacheStrategy.updateCacheStatus(mNode);
         cacheStrategy.setModified(mNode, true);
       } else if (mNode.isPersisted()) {
         try {

@@ -14,10 +14,10 @@ public class LRUCacheStrategyTest {
   public void testLRUEviction() {
     IMNode root = getSimpleTree();
     LRUCacheStrategy lruEviction = new LRUCacheStrategy();
-    lruEviction.applyChange(root);
-    lruEviction.applyChange(root.getChild("s1"));
-    lruEviction.applyChange(root.getChild("s2"));
-    lruEviction.applyChange(root.getChild("s1").getChild("t2"));
+    lruEviction.updateCacheStatus(root);
+    lruEviction.updateCacheStatus(root.getChild("s1"));
+    lruEviction.updateCacheStatus(root.getChild("s2"));
+    lruEviction.updateCacheStatus(root.getChild("s1").getChild("t2"));
     StringBuilder stringBuilder = new StringBuilder();
     LRUCacheEntry entry = (LRUCacheEntry) root.getCacheEntry();
     while (entry != null) {

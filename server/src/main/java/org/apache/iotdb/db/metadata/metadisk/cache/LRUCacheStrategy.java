@@ -103,7 +103,7 @@ public class LRUCacheStrategy implements ICacheStrategy {
   }
 
   @Override
-  public void applyChange(IMNode mNode) {
+  public void updateCacheStatus(IMNode mNode) {
     if (mNode == null) {
       return;
     }
