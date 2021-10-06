@@ -191,9 +191,6 @@ public class StorageGroupProcessor {
   // upgrading unsequence TsFile resource list
   private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
 
-  private Map<String, TsFileResource> settleSeqFileMap = new HashMap<>();
-  private Map<String, TsFileResource> settleUnseqFileMap = new HashMap<>();
-
   /** unsequence tsfile processors which are closing */
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor =
       new CopyOnReadLinkedList<>();
@@ -625,65 +622,49 @@ public class StorageGroupProcessor {
     }
   }
 
-  /** This method will put the tsFiles which need to be recovered settling to the list */
-  private void addRecoverSettleFilesToList() {
-    for (Map.Entry<String, Integer> entry :
-        TsFileAndModSettleTool.recoverSettleFileMap.entrySet()) {
-      File fileToBeRecovered = new File(entry.getKey());
-      if (!fileToBeRecovered.exists()) {
-        logger.warn(
-            "meet error when recovering to settle file : the file to be recovered may be deleted!");
+  public void addSettleFilesToList(
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths) {
+    if (tsFilePaths.size() == 0) {
+      for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+        if (!resource.isClosed()) {
+          continue;
+        }
+        resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
+        seqResourcesToBeSettled.add(resource);
       }
-      if (fileToBeRecovered
-              .getParentFile()
-              .getParentFile()
-              .getParentFile()
-              .getName()
-              .equals(logicalStorageGroupName)
-          && fileToBeRecovered
-              .getParentFile()
-              .getParentFile()
-              .getName()
-              .equals(virtualStorageGroupId)) {
-        TsFileResource resource = new TsFileResource(fileToBeRecovered);
-        resource.setClosed(true);
-        if (fileToBeRecovered
+      for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
+        if (!resource.isClosed()) {
+          continue;
+        }
+        resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
+        unseqResourcesToBeSettled.add(resource);
+      }
+    } else {
+      for (String tsFilePath : tsFilePaths) {
+        File fileToBeSettled = new File(tsFilePath);
+        if (fileToBeSettled
             .getParentFile()
             .getParentFile()
             .getParentFile()
             .getParentFile()
             .getName()
             .equals("sequence")) {
-          settleSeqFileMap.put(resource.getTsFile().getName(), resource);
+          for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+            if (resource.getTsFile().getAbsolutePath().equals(tsFilePath)) {
+              resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
+              seqResourcesToBeSettled.add(resource);
+              break;
+            }
+          }
         } else {
-          settleUnseqFileMap.put(resource.getTsFile().getName(), resource);
-        }
-      }
-    }
-  }
-
-  private void addSettleFilesToList(String tsFilePath) {
-    for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
-      if (!resource.isClosed()) {
-        continue;
-      }
-      if (!settleSeqFileMap.containsKey(resource.getTsFile().getName())) {
-        if (tsFilePath.equals("")) {
-          settleSeqFileMap.put(resource.getTsFile().getName(), resource);
-        } else if (tsFilePath.equals(resource.getTsFile().getAbsolutePath())) {
-          settleSeqFileMap.put(resource.getTsFile().getName(), resource);
-        }
-      }
-    }
-    for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
-      if (!resource.isClosed()) {
-        continue;
-      }
-      if (!settleUnseqFileMap.containsKey(resource.getTsFile().getName())) {
-        if (tsFilePath.equals("")) {
-          settleUnseqFileMap.put(resource.getTsFile().getName(), resource);
-        } else if (tsFilePath.equals(resource.getTsFile().getAbsolutePath())) {
-          settleUnseqFileMap.put(resource.getTsFile().getName(), resource);
+          for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
+            if (resource.getTsFile().getAbsolutePath().equals(tsFilePath)) {
+              unseqResourcesToBeSettled.add(resource);
+              break;
+            }
+          }
         }
       }
     }
@@ -1968,7 +1949,7 @@ public class StorageGroupProcessor {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files upgraded.");
     }
-    if (SettleService.getFilesToBeSettledCount().get() != 0) {
+    if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
     }
@@ -2306,12 +2287,6 @@ public class StorageGroupProcessor {
     return upgradeFileCount.get();
   }
 
-  public int countSettleFiles(String tsFilePath) {
-    addRecoverSettleFilesToList();
-    addSettleFilesToList(tsFilePath);
-    return settleSeqFileMap.size() + settleUnseqFileMap.size();
-  }
-
   /** upgrade all files belongs to this storage group */
   public void upgrade() {
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
@@ -2366,33 +2341,10 @@ public class StorageGroupProcessor {
     }
   }
 
-  /** Settle All TsFiles and mods belonging to this storage group */
-  public void settle() throws WriteProcessException {
-    for (Map.Entry<String, TsFileResource> entry : settleSeqFileMap.entrySet()) {
-      TsFileResource seqTsFileResource = entry.getValue();
-      seqTsFileResource.readLock();
-      seqTsFileResource.setSeq(true);
-      seqTsFileResource.setSettleTsFileCallBack(this::settleTsFileCallBack);
-      seqTsFileResource.doSettle();
-      seqTsFileResource.readUnlock();
-    }
-    for (Map.Entry<String, TsFileResource> entry : settleUnseqFileMap.entrySet()) {
-      TsFileResource unSeqTsFileResource = entry.getValue();
-      unSeqTsFileResource.readLock();
-      unSeqTsFileResource.setSeq(false);
-      unSeqTsFileResource.setSettleTsFileCallBack(this::settleTsFileCallBack);
-      unSeqTsFileResource.doSettle();
-      unSeqTsFileResource.readUnlock();
-    }
-    settleSeqFileMap.clear();
-    settleUnseqFileMap.clear();
-  }
-
   /**
-   * After finishing settling tsfile, we need to do 3 things : (1) move the new tsfile to the
-   * correct folder (2) write the deletions produced during the settling process to its
-   * corresponding new mods file (3) update the relevant data of this old tsFile in memory ,eg:
-   * FileSequenceReader, TsFileManagement, cache, etc.
+   * After finishing settling tsfile, we need to do 2 things : (1) move the new tsfile to the
+   * correct folder, including deleting its old mods file (2) update the relevant data of this old
+   * tsFile in memory ,eg: FileSequenceReader, TsFileManagement, cache, etc.
    */
   private void settleTsFileCallBack(
       TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
@@ -2400,9 +2352,10 @@ public class StorageGroupProcessor {
     oldTsFileResource.readUnlock();
     oldTsFileResource.writeLock();
     TsFileAndModSettleTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
-    if (TsFileAndModSettleTool.recoverSettleFileMap.size() != 0) {
-      TsFileAndModSettleTool.recoverSettleFileMap.remove(
-          oldTsFileResource.getTsFile().getAbsolutePath());
+    if (TsFileAndModSettleTool.getInstance().recoverSettleFileMap.size() != 0) {
+      TsFileAndModSettleTool.getInstance()
+          .recoverSettleFileMap
+          .remove(oldTsFileResource.getTsFile().getAbsolutePath());
     }
     // clear Cache , including chunk cache and timeseriesMetadata cache
     ChunkCache.getInstance().clear();
@@ -2413,8 +2366,8 @@ public class StorageGroupProcessor {
       tsFileManagement.remove(oldTsFileResource, oldTsFileResource.isSeq());
     }
     FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFilePath());
-
-    SettleService.getFilesToBeSettledCount().addAndGet(-1);
+    oldTsFileResource.setSettleTsFileCallBack(null);
+    SettleService.getINSTANCE().getFilesToBeSettledCount().addAndGet(-1);
     oldTsFileResource.writeUnlock();
     oldTsFileResource.readLock();
   }

@@ -378,11 +378,7 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_CONTINUOUS_QUERY:
         return operateDropContinuousQuery((DropContinuousQueryPlan) plan);
       case SETTLE:
-        //   try {
         settle((SettlePlan) plan);
-        //        } catch (WriteProcessException e) {
-        //          throw new QueryProcessException(e.getMessage());
-        //        }
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -2054,11 +2050,19 @@ public class PlanExecutor implements IPlanExecutor {
     return noExistSg;
   }
 
-  private void settle(SettlePlan plan) throws StorageEngineException {
+  private void settle(SettlePlan plan)
+      throws StorageEngineException { // Todo:在这里获取所有的tsfileResourceslist,构建settleTask;
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException(
+          "Current system mode is read only, does not support file settle");
+    }
+    PartialPath sgPath = null;
     try {
+      List<TsFileResource> seqResourcesToBeSettled = new ArrayList<>();
+      List<TsFileResource> unseqResourcesToBeSettled = new ArrayList<>();
+      List<String> tsFilePaths = new ArrayList<>();
       if (plan.isSgPath()) {
-        PartialPath sgPath = plan.getSgPath();
-        SettleService.getINSTANCE().setStorageGroupPath(sgPath);
+        sgPath = plan.getSgPath();
       } else {
         String tsFilePath = plan.getTsFilePath();
         if (new File(tsFilePath).isDirectory()) {
@@ -2066,13 +2070,17 @@ public class PlanExecutor implements IPlanExecutor {
         } else if (!new File(tsFilePath).exists()) {
           throw new WriteProcessException("The tsFile " + tsFilePath + " is not existed.");
         }
-        SettleService.getINSTANCE().setTsFilePath(tsFilePath);
+        sgPath = SettleService.getINSTANCE().getSGByFilePath(tsFilePath);
+        tsFilePaths.add(tsFilePath);
       }
-      SettleService.getINSTANCE().startSettling();
-    } catch (WriteProcessException | StorageEngineException e) {
+      StorageEngine.getInstance()
+          .getResourcesToBeSettled(
+              sgPath, seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+      SettleService.getINSTANCE().startSettling(seqResourcesToBeSettled, unseqResourcesToBeSettled);
+      StorageEngine.getInstance().setSettling(sgPath, false);
+    } catch (WriteProcessException e) {
+      if (sgPath != null) StorageEngine.getInstance().setSettling(sgPath, false);
       throw new StorageEngineException(e.getMessage());
-    } finally {
-      SettleService.getINSTANCE().stop();
     }
   }
 }

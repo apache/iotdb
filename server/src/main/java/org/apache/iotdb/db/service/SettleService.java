@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -33,6 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,9 +47,8 @@ public class SettleService implements IService {
 
   private AtomicInteger threadCnt = new AtomicInteger();
   private ExecutorService settleThreadPool;
+
   private static AtomicInteger filesToBeSettledCount = new AtomicInteger();
-  private PartialPath storageGroupPath;
-  private String tsFilePath = "";
 
   public static SettleService getINSTANCE() {
     return InstanceHolder.INSTANCE;
@@ -58,34 +62,93 @@ public class SettleService implements IService {
 
   @Override
   public void start() {
-    try {
+    if (settleThreadPool == null) {
       int settleThreadNum = IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
       settleThreadPool =
           Executors.newFixedThreadPool(
               settleThreadNum, r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement()));
-      startSettling();
-    } catch (WriteProcessException | StorageEngineException e) {
+    }
+    TsFileAndModSettleTool.findFilesToBeRecovered();
+
+    /* Classify the file paths by the SG, and then call the methods of StorageGroupProcessor of each
+    SG in turn to get the TsFileResources.*/
+    Map<PartialPath, List<String>> tmpSgResourcesMap = new HashMap<>(); // sgPath -> tsFilePaths
+    try {
+      for (String filePath : TsFileAndModSettleTool.getInstance().recoverSettleFileMap.keySet()) {
+        PartialPath sgPath = getSGByFilePath(filePath);
+        if (tmpSgResourcesMap.containsKey(sgPath)) {
+          List<String> filePaths = tmpSgResourcesMap.get(sgPath);
+          filePaths.add(filePath);
+          tmpSgResourcesMap.put(sgPath, filePaths);
+        } else {
+          List<String> tsFilePaths = new ArrayList<>();
+          tsFilePaths.add(filePath);
+          tmpSgResourcesMap.put(sgPath, tsFilePaths);
+        }
+      }
+      List<TsFileResource> seqResourcesToBeSettled = new ArrayList<>();
+      List<TsFileResource> unseqResourcesToBeSettled = new ArrayList<>();
+      for (Map.Entry<PartialPath, List<String>> entry : tmpSgResourcesMap.entrySet()) {
+        try {
+          StorageEngine.getInstance()
+              .getResourcesToBeSettled(
+                  entry.getKey(),
+                  seqResourcesToBeSettled,
+                  unseqResourcesToBeSettled,
+                  entry.getValue());
+        } catch (StorageEngineException e) {
+          e.printStackTrace();
+        } finally {
+          StorageEngine.getInstance().setSettling(entry.getKey(), false);
+        }
+      }
+      startSettling(seqResourcesToBeSettled, unseqResourcesToBeSettled);
+    } catch (WriteProcessException e) {
       e.printStackTrace();
     }
   }
 
-  public void startSettling() throws WriteProcessException, StorageEngineException {
-    TsFileAndModSettleTool.findFilesToBeRecovered();
-    boolean isSg = storageGroupPath == null ? false : true;
-    countSettleFiles(isSg);
+  public void startSettling(
+      List<TsFileResource> seqResourcesToBeSettled, List<TsFileResource> unseqResourcesToBeSettled)
+      throws WriteProcessException {
+    filesToBeSettledCount.addAndGet(
+        seqResourcesToBeSettled.size() + unseqResourcesToBeSettled.size());
     if (!SettleLog.createSettleLog() || filesToBeSettledCount.get() == 0) {
       stop();
       return;
     }
-    settleAll();
+    logger.info("Totally find " + getFilesToBeSettledCount() + " tsFiles to be settled.");
+
+    // settle seqTsFile
+    for (TsFileResource resource : seqResourcesToBeSettled) {
+      try {
+        resource.readLock();
+        resource.setSeq(true);
+        submitSettleTask(new SettleTask(resource));
+      } catch (Exception e) {
+        resource.writeUnlock();
+        resource.readUnlock();
+        throw new WriteProcessException("Meet error when settling file: "+ resource.getTsFile().getAbsolutePath()+" .",e);
+      }
+    }
+    // settle unseqTsFile
+    for (TsFileResource resource : unseqResourcesToBeSettled) {
+      try {
+        resource.readLock();
+        resource.setSeq(false);
+        submitSettleTask(new SettleTask(resource));
+      } catch (Exception e) {
+        resource.writeUnlock();
+        resource.readUnlock();
+        throw new WriteProcessException("Meet error when settling file: "+ resource.getTsFile().getAbsolutePath()+" .",e);
+      }
+    }
   }
 
   @Override
   public void stop() {
     SettleLog.closeLogWriter();
     TsFileAndModSettleTool.clearRecoverSettleFileMap();
-    setStorageGroupPath(null);
-    setTsFilePath("");
     filesToBeSettledCount.set(0);
     if (settleThreadPool != null) {
       settleThreadPool.shutdownNow();
@@ -100,62 +163,25 @@ public class SettleService implements IService {
     return ServiceType.SETTLE_SERVICE;
   }
 
-  private void settleAll() throws StorageEngineException, WriteProcessException {
-    logger.info(
-        "Totally find "
-            + getFilesToBeSettledCount()
-            + " tsFiles to be settled, including "
-            + TsFileAndModSettleTool.recoverSettleFileMap.size()
-            + " tsFiles to be recovered.");
-    StorageEngine.getInstance().settleAll(getStorageGroupPath());
-  }
-
-  public static AtomicInteger getFilesToBeSettledCount() {
+  public AtomicInteger getFilesToBeSettledCount() {
     return filesToBeSettledCount;
   }
 
-  private void countSettleFiles(boolean isSg) throws StorageEngineException {
-    if (!isSg) {
-      PartialPath sgPath = null;
-      try {
-        sgPath =
-            new PartialPath(
-                new File(getTsFilePath())
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getName());
-        setStorageGroupPath(sgPath);
-      } catch (IllegalPathException e) {
-        e.printStackTrace();
-      }
+  public PartialPath getSGByFilePath(String tsFilePath) throws WriteProcessException {
+    PartialPath sgPath = null;
+    try {
+      sgPath =
+          new PartialPath(
+              new File(tsFilePath).getParentFile().getParentFile().getParentFile().getName());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(
+          "Fail to get sg of this tsFile while parsing the file path.", e);
     }
-    filesToBeSettledCount.addAndGet(
-        StorageEngine.getInstance().countSettleFiles(getStorageGroupPath(), getTsFilePath()));
+    return sgPath;
   }
 
-  public void submitSettleTask(SettleTask settleTask) {
-    settleThreadPool.submit(settleTask);
-  }
-
-  /** This method is used to settle TsFile in the main thread. */
-  public void settleTsFile(SettleTask settleTask) throws Exception {
+  private void submitSettleTask(SettleTask settleTask) throws Exception {
+    // settleThreadPool.submit(settleTask);
     settleTask.settleTsFile();
-  }
-
-  public PartialPath getStorageGroupPath() {
-    return storageGroupPath;
-  }
-
-  public void setStorageGroupPath(PartialPath storageGroupPath) {
-    this.storageGroupPath = storageGroupPath;
-  }
-
-  public String getTsFilePath() {
-    return tsFilePath;
-  }
-
-  public void setTsFilePath(String tsFilePath) {
-    this.tsFilePath = tsFilePath;
   }
 }

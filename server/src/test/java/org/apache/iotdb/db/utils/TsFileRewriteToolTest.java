@@ -67,7 +67,7 @@ public class TsFileRewriteToolTest {
 
   private final boolean newEnablePartition = true;
   private final long newPartitionInterval = 3600_000;
-  protected final long maxTimestamp = 50000L; // 100000000L;
+  protected final long maxTimestamp = 100000000L;
   protected final String folder = "target" + File.separator + "split";
   protected final String STORAGE_GROUP = "root.sg_0";
   protected final String DEVICE1 = STORAGE_GROUP + ".device_1";

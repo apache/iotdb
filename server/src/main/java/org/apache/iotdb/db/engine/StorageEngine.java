@@ -780,15 +780,6 @@ public class StorageEngine implements IService {
     return totalUpgradeFileNum;
   }
 
-  public int countSettleFiles(PartialPath storageGroupPath, String tsFilePath)
-      throws StorageEngineException {
-    if (processorMap.get(storageGroupPath) == null) {
-      throw new StorageEngineException(
-          "The Storage Group " + storageGroupPath.toString() + " is not existed.");
-    }
-    return processorMap.get(storageGroupPath).countSettleFiles(tsFilePath);
-  }
-
   /**
    * upgrade all storage groups.
    *
@@ -804,12 +795,30 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void settleAll(PartialPath sgPath) throws StorageEngineException, WriteProcessException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+  public void getResourcesToBeSettled(
+      PartialPath sgPath,
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths)
+      throws StorageEngineException {
+    if (processorMap.get(sgPath) == null) {
       throw new StorageEngineException(
-          "Current system mode is read only, does not support file settle");
+          "The Storage Group " + sgPath.toString() + " is not existed.");
     }
-    processorMap.get(sgPath).settleAll();
+    if (processorMap.get(sgPath).isSettling()) {
+      throw new StorageEngineException(
+          "Storage Group " + sgPath.getFullPath() + " is already being settled now.");
+    }
+    processorMap
+        .get(sgPath)
+        .getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+  }
+
+  public void setSettling(PartialPath sgPath, boolean isSettling) {
+    if (processorMap.get(sgPath) == null) {
+      return;
+    }
+    processorMap.get(sgPath).setSettling(isSettling);
   }
 
   /**

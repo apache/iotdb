@@ -49,7 +49,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class TsFileAndModSettleTool {
   private static final Logger logger = LoggerFactory.getLogger(TsFileAndModSettleTool.class);
   // TsFilePath -> SettleCheckStatus
-  public static Map<String, Integer> recoverSettleFileMap = new HashMap<>();
+  public Map<String, Integer> recoverSettleFileMap = new HashMap<>();
   private static final TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
 
   private TsFileAndModSettleTool() {}
@@ -61,7 +61,7 @@ public class TsFileAndModSettleTool {
   public static void main(String[] args) {
     Map<String, TsFileResource> oldTsFileResources = new HashMap<>();
     findFilesToBeRecovered();
-    for (Map.Entry<String, Integer> entry : recoverSettleFileMap.entrySet()) {
+    for (Map.Entry<String, Integer> entry : getInstance().recoverSettleFileMap.entrySet()) {
       String path = entry.getKey();
       TsFileResource resource = new TsFileResource(new File(path));
       resource.setClosed(true);
@@ -81,7 +81,7 @@ public class TsFileAndModSettleTool {
         "Totally find "
             + oldTsFileResources.size()
             + " tsFiles to be settled, including "
-            + recoverSettleFileMap.size()
+            + getInstance().recoverSettleFileMap.size()
             + " tsFiles to be recovered.");
     settleTsFilesAndMods(oldTsFileResources);
   }
@@ -183,7 +183,6 @@ public class TsFileAndModSettleTool {
     }
     if (resourcesToBeSettled.size() == successCount) {
       SettleLog.closeLogWriter();
-      FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath()).delete();
       System.out.println("Finish settling all tsfiles Successfully!");
     } else {
       System.out.println(
@@ -233,16 +232,16 @@ public class TsFileAndModSettleTool {
           String oldFilePath = line.split(SettleLog.COMMA_SEPERATOR)[0];
           int settleCheckStatus = Integer.parseInt(line.split(SettleLog.COMMA_SEPERATOR)[1]);
           if (settleCheckStatus == SettleCheckStatus.SETTLE_SUCCESS.getCheckStatus()) {
-            recoverSettleFileMap.remove(oldFilePath);
+            getInstance().recoverSettleFileMap.remove(oldFilePath);
             continue;
           }
-          recoverSettleFileMap.put(oldFilePath, settleCheckStatus);
+          getInstance().recoverSettleFileMap.put(oldFilePath, settleCheckStatus);
         }
       } catch (IOException e) {
         logger.error(
-            "meet error when recover settle process, file path:{}",
-            SettleLog.getSettleLogPath(),
-            e);
+            "meet error when reading settle log, log path:{}", SettleLog.getSettleLogPath(), e);
+      } finally {
+        FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath()).delete();
       }
     }
   }
@@ -250,8 +249,8 @@ public class TsFileAndModSettleTool {
   /** this method is used to check whether the new file is settled when recovering old tsFile. */
   public boolean isSettledFileGenerated(TsFileResource oldTsFileResource) {
     String oldFilePath = oldTsFileResource.getTsFilePath();
-    return TsFileAndModSettleTool.recoverSettleFileMap.containsKey(oldFilePath)
-        && TsFileAndModSettleTool.recoverSettleFileMap.get(oldFilePath)
+    return TsFileAndModSettleTool.getInstance().recoverSettleFileMap.containsKey(oldFilePath)
+        && TsFileAndModSettleTool.getInstance().recoverSettleFileMap.get(oldFilePath)
             == SettleCheckStatus.AFTER_SETTLE_FILE.getCheckStatus();
   }
 
@@ -353,6 +352,6 @@ public class TsFileAndModSettleTool {
   }
 
   public static void clearRecoverSettleFileMap() {
-    recoverSettleFileMap.clear();
+    getInstance().recoverSettleFileMap.clear();
   }
 }

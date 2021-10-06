@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -62,6 +61,8 @@ public class VirtualStorageGroupManager {
    * new created
    */
   private AtomicBoolean[] isVsgReady;
+
+  private volatile boolean isSettling;
 
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
@@ -326,16 +327,6 @@ public class VirtualStorageGroupManager {
     return totalUpgradeFileNum;
   }
 
-  public int countSettleFiles(String tsFilePath) {
-    int totalSettleFileNum = 0;
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        totalSettleFileNum += storageGroupProcessor.countSettleFiles(tsFilePath);
-      }
-    }
-    return totalSettleFileNum;
-  }
-
   /** push upgradeAll operation down to all virtual storage group processors */
   public void upgradeAll() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
@@ -345,10 +336,15 @@ public class VirtualStorageGroupManager {
     }
   }
 
-  public void settleAll() throws WriteProcessException {
+  public void getResourcesToBeSettled(
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths) {
+    setSettling(true);
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.settle();
+        storageGroupProcessor.addSettleFilesToList(
+            seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
       }
     }
   }
@@ -464,5 +460,13 @@ public class VirtualStorageGroupManager {
   /** only for test */
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
+  }
+
+  public boolean isSettling() {
+    return isSettling;
+  }
+
+  public void setSettling(boolean settling) {
+    isSettling = settling;
   }
 }

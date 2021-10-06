@@ -24,8 +24,6 @@ import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,10 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SettleTask extends WrappedRunnable {
-
   private static final Logger logger = LoggerFactory.getLogger(SettleTask.class);
   private final TsFileResource resourceToBeSettled;
-  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public SettleTask(TsFileResource resourceToBeSettled) {
     this.resourceToBeSettled = resourceToBeSettled;
@@ -73,13 +69,12 @@ public class SettleTask extends WrappedRunnable {
               + SettleLog.COMMA_SEPERATOR
               + SettleCheckStatus.BEGIN_SETTLE_FILE);
       tsFileAndModSettleTool.settleOneTsFileAndMod(resourceToBeSettled, settledResources);
+      // Write Settle Log, Status 2
+      SettleLog.writeSettleLog(
+          resourceToBeSettled.getTsFile().getAbsolutePath()
+              + SettleLog.COMMA_SEPERATOR
+              + SettleCheckStatus.AFTER_SETTLE_FILE);
     }
-
-    // Write Settle Log, Status 2
-    SettleLog.writeSettleLog(
-        resourceToBeSettled.getTsFile().getAbsolutePath()
-            + SettleLog.COMMA_SEPERATOR
-            + SettleCheckStatus.AFTER_SETTLE_FILE);
     resourceToBeSettled.getSettleTsFileCallBack().call(resourceToBeSettled, settledResources);
 
     // Write Settle Log, Status 3
@@ -90,11 +85,10 @@ public class SettleTask extends WrappedRunnable {
     logger.info(
         "Settle completes, file path:{} , the remaining file to be settled num: {}",
         resourceToBeSettled.getTsFile().getAbsolutePath(),
-        SettleService.getFilesToBeSettledCount().get());
+        SettleService.getINSTANCE().getFilesToBeSettledCount().get());
 
-    if (SettleService.getFilesToBeSettledCount().get() == 0) {
+    if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() == 0) {
       SettleLog.closeLogWriter();
-      fsFactory.getFile(SettleLog.getSettleLogPath()).delete();
       SettleService.getINSTANCE().stop();
       logger.info("All files settled successfully! ");
     }
