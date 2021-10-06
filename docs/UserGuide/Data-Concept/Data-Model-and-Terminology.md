@@ -87,8 +87,8 @@ The following are the constraints on the layer (`layer_name`):
 
 * In addition to the beginning layer (`root`) of the time series and the storage group layer, other layers also support the use of special strings referenced by \` or `" ` as its name. It should be noted that the quoted string cannot contain `.` characters. Here are some legal examples:
 
-  * root.sg."select".""""."\$", which contains 5 layers: root, sg, select, "", \$
-  * root.sg.\`\`\`\`.\`from\`.\`\$\`, which contains 5 layers: root, sg, \`\`, from, \$
+  * root.sg.select."+-\`from\`".""""."\$", which contains 6 layers: root, sg, select, +-\`from\`, "", \$
+  * root.sg.\`\`\`\`.select.\`+="from"\`.\`\$\`, which contains 6 layers: root, sg, \`\`, select, +="from", \$
 
 * In particular, if the system is deployed on a Windows machine, the storage group layer name will be case-insensitive. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
 

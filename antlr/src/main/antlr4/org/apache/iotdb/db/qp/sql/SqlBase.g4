@@ -24,9 +24,10 @@ singleStatement
     ;
 
 /*
- * According to The Definitive ANTLR 4 Reference, 11. Altering the Parse with Semantic Predicates, Altering the Parse with Semantic Predicates.
- * "It s a good idea to avoid embedding predicates in the parser when possible for efficiency and clarity reasons."
- * So if unnecessary, don't use embedding predicates.
+ * According to The Definitive ANTLR 4 Reference,
+ * 11. Altering the Parse with Semantic Predicates, Altering the Parse with Semantic Predicates.
+ * "It s a good idea to avoid embedding predicates in the parser when possible for efficiency and
+ * clarity reasons." So if unnecessary, don't use embedding predicates.
  */
 
 statement
@@ -41,8 +42,8 @@ statement
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
-    | CREATE INDEX ON prefixPath whereClause? indexWithClause #createIndex //not support yet
-    | DROP INDEX indexName=ID ON prefixPath #dropIndex //not support yet
+    | CREATE INDEX ON prefixPath whereClause? indexWithClause #createIndex // not support yet
+    | DROP INDEX indexName=ID ON prefixPath #dropIndex // not support yet
     | MERGE #merge
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
@@ -170,10 +171,10 @@ aliasClause
 
 attributeClauses
     : DATATYPE OPERATOR_EQ dataType (COMMA ENCODING OPERATOR_EQ encoding)?
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
-    (COMMA property)*
-    tagClause?
-    attributeClause?
+      (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
+      (COMMA property)*
+      tagClause?
+      attributeClause?
     ;
 
 compressor
@@ -249,7 +250,6 @@ withoutNullClause
     : WITHOUT NULL (ALL | ANY)
     ;
 
-
 orderByTimeClause
     : ORDER BY TIME (DESC | ASC)?
     ;
@@ -297,11 +297,11 @@ groupByTimeClause
       (COMMA DURATION)?
       RR_BRACKET
     | GROUP BY LR_BRACKET
-            timeInterval
-            COMMA DURATION
-            (COMMA DURATION)?
-            RR_BRACKET
-            COMMA LEVEL OPERATOR_EQ INT
+      timeInterval
+      COMMA DURATION
+      (COMMA DURATION)?
+      RR_BRACKET
+      COMMA LEVEL OPERATOR_EQ INT
     ;
 
 groupByFillClause
@@ -310,7 +310,7 @@ groupByFillClause
       COMMA DURATION
       RR_BRACKET
       FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
-     ;
+   ;
 
 groupByLevelClause
     : GROUP BY LEVEL OPERATOR_EQ INT
@@ -351,7 +351,6 @@ indexPredicateClause
     : (suffixPath | fullPath) LIKE sequenceClause
     | (suffixPath | fullPath) CONTAIN sequenceClause WITH TOLERANCE constant (CONCAT sequenceClause WITH TOLERANCE constant)*
     ;
-
 
 sequenceClause
     : LR_BRACKET constant (COMMA constant)* RR_BRACKET
@@ -449,219 +448,12 @@ suffixPath
 nodeName
     : ID STAR?
     | STAR
-    | DOUBLE_QUOTE_STRING_LITERAL
-    | DURATION
-    | encoding
-    | dataType
-    | dateExpression
-    | MINUS? (EXPONENT | INT)
-    | booleanClause
-    | CREATE
-    | INSERT
-    | UPDATE
-    | DELETE
-    | SELECT
-    | SHOW
-    | GRANT
-    | INTO
-    | SET
-    | WHERE
-    | FROM
-    | TO
-    | BY
-    | DEVICE
-    | CONFIGURATION
-    | DESCRIBE
-    | SLIMIT
-    | LIMIT
-    | UNLINK
-    | OFFSET
-    | SOFFSET
-    | FILL
-    | LINEAR
-    | PREVIOUS
-    | PREVIOUSUNTILLAST
-    | METADATA
-    | TIMESERIES
-    | TIMESTAMP
-    | PROPERTY
-    | WITH
-    | DATATYPE
-    | COMPRESSOR
-    | STORAGE
-    | GROUP
-    | LABEL
-    | ADD
-    | UPSERT
-    | VALUES
-    | NOW
-    | LINK
-    | INDEX
-    | USING
-    | ON
-    | DROP
-    | MERGE
-    | LIST
-    | USER
-    | PRIVILEGES
-    | ROLE
-    | ALL
-    | OF
-    | ALTER
-    | PASSWORD
-    | REVOKE
-    | LOAD
-    | WATERMARK_EMBEDDING
-    | UNSET
-    | TTL
-    | FLUSH
-    | TASK
-    | INFO
-    | VERSION
-    | REMOVE
-    | UNLOAD
-    | CHILD
-    | PATHS
-    | DEVICES
-    | COUNT
-    | NODES
-    | LEVEL
-    | LAST
-    | DISABLE
-    | ALIGN
-    | COMPRESSION
-    | TIME
-    | ATTRIBUTES
-    | TAGS
-    | RENAME
-    | FULL
-    | CLEAR
-    | CACHE
-    | SNAPSHOT
-    | FOR
-    | SCHEMA
-    | TRACING
-    | OFF
-    | SYSTEM
-    | READONLY
-    | WRITABLE
-    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
-    | compressor
-    | GLOBAL
-    | PARTITION
-    | DESC
-    | ASC
+    | keyword
     ;
 
 nodeNameWithoutStar
     : ID
-    | DOUBLE_QUOTE_STRING_LITERAL
-    | DURATION
-    | encoding
-    | dataType
-    | dateExpression
-    | MINUS? ( EXPONENT | INT)
-    | booleanClause
-    | CREATE
-    | INSERT
-    | UPDATE
-    | DELETE
-    | SELECT
-    | SHOW
-    | GRANT
-    | INTO
-    | SET
-    | WHERE
-    | FROM
-    | TO
-    | BY
-    | DEVICE
-    | CONFIGURATION
-    | DESCRIBE
-    | SLIMIT
-    | LIMIT
-    | UNLINK
-    | OFFSET
-    | SOFFSET
-    | FILL
-    | LINEAR
-    | PREVIOUS
-    | PREVIOUSUNTILLAST
-    | METADATA
-    | TIMESERIES
-    | PROPERTY
-    | WITH
-    | DATATYPE
-    | COMPRESSOR
-    | STORAGE
-    | GROUP
-    | LABEL
-    | ADD
-    | UPSERT
-    | VALUES
-    | NOW
-    | LINK
-    | INDEX
-    | USING
-    | ON
-    | DROP
-    | MERGE
-    | LIST
-    | USER
-    | PRIVILEGES
-    | ROLE
-    | ALL
-    | OF
-    | ALTER
-    | PASSWORD
-    | REVOKE
-    | LOAD
-    | WATERMARK_EMBEDDING
-    | UNSET
-    | TTL
-    | FLUSH
-    | TASK
-    | INFO
-    | VERSION
-    | REMOVE
-    | UNLOAD
-    | CHILD
-    | PATHS
-    | DEVICES
-    | COUNT
-    | NODES
-    | LEVEL
-    | LAST
-    | DISABLE
-    | ALIGN
-    | COMPRESSION
-    | ATTRIBUTES
-    | TAGS
-    | RENAME
-    | FULL
-    | CLEAR
-    | CACHE
-    | SNAPSHOT
-    | FOR
-    | SCHEMA
-    | TRACING
-    | OFF
-    | SYSTEM
-    | READONLY
-    | WRITABLE
-    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
-    | compressor
-    | GLOBAL
-    | PARTITION
-    | DESC
-    | ASC
-    | CONTINUOUS
-    | CQ
-    | CQS
-    | BEGIN
-    | END
-    | RESAMPLE
-    | EVERY
+    | keyword
     ;
 
 dataType
@@ -697,9 +489,9 @@ encoding
     ;
 
 realLiteral
-    :   INT DOT (INT | EXPONENT)?
-    |   DOT  (INT|EXPONENT)
-    |   EXPONENT
+    : INT DOT (INT | EXPONENT)?
+    | DOT (INT|EXPONENT)
+    | EXPONENT
     ;
 
 property
@@ -727,6 +519,166 @@ triggerAttribute
 //============================
 // Start of the keywords list
 //============================
+
+keyword
+    : CREATE
+    | INSERT
+    | UPDATE
+    | DELETE
+    | SELECT
+    | SHOW
+    | QUERY
+    | KILL
+    | PROCESSLIST
+    | GRANT
+    | INTO
+    | SET
+    | WHERE
+    | FROM
+    | TO
+    | ORDER
+    | BY
+    | DEVICE
+    | CONFIGURATION
+    | DESCRIBE
+    | SLIMIT
+    | LIMIT
+    | UNLINK
+    | OFFSET
+    | SOFFSET
+    | FILL
+    | LINEAR
+    | PREVIOUS
+    | PREVIOUSUNTILLAST
+    | METADATA
+    | TIMESERIES
+    | TIMESTAMP
+    | PROPERTY
+    | WITH
+    | ROOT
+    | DATATYPE
+    | COMPRESSOR
+    | STORAGE
+    | GROUP
+    | LABEL
+    | INT32
+    | INT64
+    | FLOAT
+    | DOUBLE
+    | BOOLEAN
+    | TEXT
+    | ENCODING
+    | PLAIN
+    | DICTIONARY
+    | RLE
+    | DIFF
+    | TS_2DIFF
+    | GORILLA
+    | REGULAR
+    | BITMAP
+    | ADD
+    | UPSERT
+    | ALIAS
+    | VALUES
+    | NOW
+    | LINK
+    | INDEX
+    | USING
+    | TRACING
+    | ON
+    | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
+    | DROP
+    | MERGE
+    | LIST
+    | USER
+    | PRIVILEGES
+    | ROLE
+    | ALL
+    | OF
+    | ALTER
+    | PASSWORD
+    | REVOKE
+    | LOAD
+    | WATERMARK_EMBEDDING
+    | UNSET
+    | TTL
+    | FLUSH
+    | TASK
+    | INFO
+    | VERSION
+    | REMOVE
+    | UNLOAD
+    | CHILD
+    | PATHS
+    | DEVICES
+    | COUNT
+    | NODES
+    | LEVEL
+    | LAST
+    | DISABLE
+    | ALIGN
+    | COMPRESSION
+    | TIME
+    | ATTRIBUTES
+    | TAGS
+    | RENAME
+    | GLOBAL
+    | FULL
+    | CLEAR
+    | CACHE
+    | TRUE
+    | FALSE
+    | UNCOMPRESSED
+    | SNAPPY
+    | GZIP
+    | LZO
+    | PAA
+    | PLA
+    | LZ4
+    | LATEST
+    | PARTITION
+    | SNAPSHOT
+    | FOR
+    | SCHEMA
+    | AUTOREGISTER
+    | VERIFY
+    | SGLEVEL
+    | FUNCTION
+    | FUNCTIONS
+    | AS
+    | TRIGGER
+    | TRIGGERS
+    | BEFORE
+    | AFTER
+    | START
+    | STOP
+    | DESC
+    | ASC
+    | TOP
+    | CONTAIN
+    | CONCAT
+    | LIKE
+    | REGEXP
+    | TOLERANCE
+    | EXPLAIN
+    | CONTINUOUS
+    | QUERIES
+    | CQ
+    | CQS
+    | BEGIN
+    | END
+    | RESAMPLE
+    | EVERY
+    | DEBUG
+    | NULL
+    | WITHOUT
+    | ANY
+    | LOCK
+    ;
+
 CREATE
     : C R E A T E
     ;
@@ -762,7 +714,6 @@ KILL
 PROCESSLIST
     : P R O C E S S L I S T
     ;
-
 
 GRANT
     : G R A N T
@@ -1083,6 +1034,7 @@ VERSION
 REMOVE
     : R E M O V E
     ;
+
 UNLOAD
     : U N L O A D
     ;
@@ -1144,9 +1096,9 @@ RENAME
     ;
 
 GLOBAL
-  : G L O B A L
-  | G
-  ;
+    : G L O B A L
+    | G
+    ;
 
 FULL
     : F U L L
@@ -1189,12 +1141,12 @@ PAA
     ;
 
 PLA
-   : P L A
-   ;
+    : P L A
+    ;
 
 LZ4
-   : L Z '4' 
-   ;
+    : L Z '4'
+    ;
 
 LATEST
     : L A T E S T
@@ -1354,6 +1306,7 @@ LOCK
 //============================
 // End of the keywords list
 //============================
+
 COMMA : ',';
 
 STAR : '*' | '**';
@@ -1423,6 +1376,14 @@ stringLiteral
    | DOUBLE_QUOTE_STRING_LITERAL
    ;
 
+SINGLE_QUOTE_STRING_LITERAL
+    : '\'' ('\\' . | ~'\'' )*? '\''
+    ;
+
+DOUBLE_QUOTE_STRING_LITERAL
+    : '"' ('\\' . | ~'"' )*? '"'
+    ;
+
 INT : [0-9]+;
 
 EXPONENT : INT ('e'|'E') ('+'|'-')? INT ;
@@ -1463,14 +1424,6 @@ fragment ID_CHAR
 
 fragment CN_CHAR
     : '\u2E80'..'\u9FFF'
-    ;
-
-DOUBLE_QUOTE_STRING_LITERAL
-    : '"' ('\\' . | ~'"' )*? '"'
-    ;
-
-SINGLE_QUOTE_STRING_LITERAL
-    : '\'' ('\\' . | ~'\'' )*? '\''
     ;
 
 fragment A
