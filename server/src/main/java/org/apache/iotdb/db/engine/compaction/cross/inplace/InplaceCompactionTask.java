@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -229,5 +230,18 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     } catch (IOException e) {
       LOGGER.error("{} cannot remove merging modification ", fullStorageGroupName, e);
     }
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask other) {
+    if (other instanceof InplaceCompactionTask) {
+      InplaceCompactionTask otherTask = (InplaceCompactionTask) other;
+      if (!otherTask.selectedSeqTsFileResourceList.equals(selectedSeqTsFileResourceList)
+          || !otherTask.selectedUnSeqTsFileResourceList.equals(selectedUnSeqTsFileResourceList)) {
+        return false;
+      }
+      return true;
+    }
+    return false;
   }
 }

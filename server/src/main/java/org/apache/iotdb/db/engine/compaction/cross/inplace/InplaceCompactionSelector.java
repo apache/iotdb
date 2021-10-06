@@ -125,13 +125,6 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       // cached during selection
       mergeResource.setCacheDeviceMeta(true);
 
-      for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
-        tsFileResource.setMerging(true);
-      }
-      for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
-        tsFileResource.setMerging(true);
-      }
-
       AbstractCompactionTask compactionTask =
           taskFactory.createTask(
               logicalStorageGroupName,
@@ -141,12 +134,10 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
               storageGroupDir,
               sequenceFileList,
               unsequenceFileList,
-              mergeResource.getSeqFiles(),
-              mergeResource.getUnseqFiles(),
+              mergeFiles[0],
+              mergeFiles[1],
               fileSelector.getConcurrentMergeNum());
-      CompactionTaskManager.getInstance()
-          .submitTask(
-              logicalStorageGroupName + "-" + virtualGroupId, timePartition, compactionTask);
+      CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
       taskSubmitted = true;
       LOGGER.info(
           "{} [Compaction] submit a task with {} sequence file and {} unseq files",

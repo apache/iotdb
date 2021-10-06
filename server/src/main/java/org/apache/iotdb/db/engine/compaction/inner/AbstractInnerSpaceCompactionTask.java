@@ -20,13 +20,101 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactionTask {
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+
+  protected List<TsFileResource> selectedTsFileResourceList;
+  protected boolean sequence;
+  protected long selectedFileSize;
+  protected int sumOfCompactionCount;
+  protected long maxFileVersion;
 
   public AbstractInnerSpaceCompactionTask(
-      String storageGroupName, long timePartition, AtomicInteger currentTaskNum) {
+      String storageGroupName,
+      long timePartition,
+      AtomicInteger currentTaskNum,
+      boolean sequence,
+      List<TsFileResource> selectedTsFileResourceList) {
     super(storageGroupName, timePartition, currentTaskNum);
+    this.selectedTsFileResourceList = selectedTsFileResourceList;
+    this.sequence = sequence;
+    collectSelectedFilesInfo();
+  }
+
+  private void collectSelectedFilesInfo() {
+    selectedFileSize = 0L;
+    sumOfCompactionCount = 0;
+    maxFileVersion = -1L;
+    if (selectedTsFileResourceList == null) {
+      return;
+    }
+    for (TsFileResource resource : selectedTsFileResourceList) {
+      try {
+        selectedFileSize += resource.getTsFileSize();
+        TsFileNameGenerator.TsFileName fileName =
+            TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
+        sumOfCompactionCount += fileName.getInnerCompactionCnt();
+        if (fileName.getVersion() > maxFileVersion) {
+          maxFileVersion = fileName.getVersion();
+        }
+      } catch (IOException e) {
+        LOGGER.warn("Fail to get the tsfile name of {}", resource.getTsFile(), e);
+      }
+    }
+  }
+
+  public List<TsFileResource> getSelectedTsFileResourceList() {
+    return selectedTsFileResourceList;
+  }
+
+  public boolean isSequence() {
+    return sequence;
+  }
+
+  public long getSelectedFileSize() {
+    return selectedFileSize;
+  }
+
+  public int getSumOfCompactionCount() {
+    return sumOfCompactionCount;
+  }
+
+  public long getMaxFileVersion() {
+    return maxFileVersion;
+  }
+
+  @Override
+  public boolean checkValidAndSetMerging() {
+    for (TsFileResource resource : selectedTsFileResourceList) {
+      if (resource.isMerging() | !resource.isClosed() || !resource.getTsFile().exists()) {
+        return false;
+      }
+    }
+
+    for (TsFileResource resource : selectedTsFileResourceList) {
+      resource.setMerging(true);
+    }
+    return true;
+  }
+
+  @Override
+  public String toString() {
+    return new StringBuilder()
+        .append(fullStorageGroupName)
+        .append("-")
+        .append(timePartition)
+        .append(" task file num is ")
+        .append(selectedTsFileResourceList.size())
+        .toString();
   }
 }

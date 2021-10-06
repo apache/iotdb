@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -33,26 +34,33 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
-  private static final Logger logger = LoggerFactory.getLogger(CompactionTaskManager.class);
+  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
-  private ScheduledThreadPoolExecutor pool;
+  private ScheduledThreadPoolExecutor taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
+  private Queue<AbstractCompactionTask> compactionTaskQueue =
+      new PriorityQueue<>(new CompactionTaskComparator());
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
+  private ScheduledExecutorService compactionTaskSubmissionThreadPool;
+  private final long TASK_SUBMIT_INTERVAL = 20_000;
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -60,23 +68,31 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public void start() {
-    if (pool == null
+    if (taskExecutionPool == null
         && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
-      this.pool =
+      this.taskExecutionPool =
           (ScheduledThreadPoolExecutor)
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
       currentTaskNum = new AtomicInteger(0);
+      compactionTaskSubmissionThreadPool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
+      compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
+          this::submitTaskFromTaskQueue,
+          TASK_SUBMIT_INTERVAL,
+          TASK_SUBMIT_INTERVAL,
+          TimeUnit.MILLISECONDS);
     }
     logger.info("Compaction task manager started.");
   }
 
   @Override
   public void stop() {
-    if (pool != null) {
-      pool.shutdownNow();
-      logger.info("Waiting for task pool to shut down");
+    if (taskExecutionPool != null) {
+      taskExecutionPool.shutdownNow();
+      compactionTaskSubmissionThreadPool.shutdownNow();
+      logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
     }
@@ -84,9 +100,10 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public void waitAndStop(long milliseconds) {
-    if (pool != null) {
-      awaitTermination(pool, milliseconds);
-      logger.info("Waiting for task pool to shut down");
+    if (taskExecutionPool != null) {
+      awaitTermination(taskExecutionPool, milliseconds);
+      awaitTermination(compactionTaskSubmissionThreadPool, milliseconds);
+      logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
     }
@@ -94,8 +111,8 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void waitAllCompactionFinish() {
-    if (pool != null) {
-      while (pool.getActiveCount() > 0 || pool.getQueue().size() > 0) {
+    if (taskExecutionPool != null) {
+      while (taskExecutionPool.getActiveCount() > 0 || taskExecutionPool.getQueue().size() > 0) {
         // wait
         try {
           Thread.sleep(200);
@@ -111,7 +128,7 @@ public class CompactionTaskManager implements IService {
 
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
-    while (!pool.isTerminated()) {
+    while (!taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
       try {
         Thread.sleep(200);
@@ -128,7 +145,7 @@ public class CompactionTaskManager implements IService {
         logger.info("CompactionManager has wait for {} seconds to stop", time / 1000);
       }
     }
-    pool = null;
+    taskExecutionPool = null;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
@@ -149,15 +166,38 @@ public class CompactionTaskManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
+  public synchronized void addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
+    if (!compactionTaskQueue.contains(compactionTask)) {
+      compactionTaskQueue.add(compactionTask);
+    }
+  }
+
+  public synchronized void submitTaskFromTaskQueue() {
+    while (currentTaskNum.get()
+            < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+        && compactionTaskQueue.size() > 0) {
+      AbstractCompactionTask task = compactionTaskQueue.poll();
+      if (task.checkValidAndSetMerging()) {
+        submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
+        logger.info(
+            "submit a compaction task {}, current task num is {}, max task num is {}",
+            task,
+            currentTaskNum.get(),
+            IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+      }
+    }
+    compactionTaskQueue.clear();
+  }
+
   public synchronized void submitTask(
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
+    if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
       logger.info(
-          "submitted a compaction task, task num in pool = {}, currentTaskNum is {}",
+          "submitted a compaction task, task num in taskExecutionPool = {}, currentTaskNum is {}",
           getTaskCount(),
           currentTaskNum.get());
-      Future<Void> future = pool.submit(compactionMergeTask);
+      Future<Void> future = taskExecutionPool.submit(compactionMergeTask);
       CompactionScheduler.addPartitionCompaction(fullStorageGroupName, timePartition);
       compactionTaskFutures
           .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
@@ -167,7 +207,9 @@ public class CompactionTaskManager implements IService {
     }
     logger.warn(
         "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
-        pool == null ? "pool is null" : "pool is terminated");
+        taskExecutionPool == null
+            ? "taskExecutionPool is null"
+            : "taskExecutionPool is terminated");
   }
 
   /**
@@ -188,25 +230,27 @@ public class CompactionTaskManager implements IService {
   }
 
   public boolean isTerminated() {
-    return pool == null || pool.isTerminated();
+    return taskExecutionPool == null || taskExecutionPool.isTerminated();
   }
 
   public int getTaskCount() {
-    return pool.getActiveCount() + pool.getQueue().size();
+    return taskExecutionPool.getActiveCount() + taskExecutionPool.getQueue().size();
   }
 
   public long getFinishTaskNum() {
-    return pool.getCompletedTaskCount();
+    return taskExecutionPool.getCompletedTaskCount();
   }
 
   @TestOnly
   public void restart() {
     if (IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
-      this.pool =
+      this.taskExecutionPool =
           (ScheduledThreadPoolExecutor)
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      this.compactionTaskSubmissionThreadPool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
     }
     currentTaskNum = new AtomicInteger(0);
     logger.info("Compaction task manager started.");

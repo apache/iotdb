@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -38,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_NAME;
@@ -50,11 +50,8 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
  */
 public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
-  protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
   protected TsFileResourceManager tsFileResourceManager;
-  protected boolean sequence;
-  protected Set<String> skippedDevicesSet;
 
   public SizeTieredCompactionTask(
       String logicalStorageGroupName,
@@ -65,12 +62,14 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       AtomicInteger currentTaskNum) {
-    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, currentTaskNum);
+    super(
+        logicalStorageGroupName + "-" + virtualStorageGroupName,
+        timePartition,
+        currentTaskNum,
+        sequence,
+        selectedTsFileResourceList);
     this.tsFileResourceList = tsFileResourceList;
     this.tsFileResourceManager = tsFileResourceManager;
-    this.selectedTsFileResourceList = selectedTsFileResourceList;
-    this.sequence = sequence;
-    this.skippedDevicesSet = new HashSet<>();
   }
 
   public static void combineModsInCompaction(
@@ -138,7 +137,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           selectedTsFileResourceList,
           fullStorageGroupName,
           sizeTieredCompactionLogger,
-          this.skippedDevicesSet,
+          new HashSet<>(),
           sequence);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
@@ -196,5 +195,17 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     if (logFile.exists()) {
       logFile.delete();
     }
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask other) {
+    if (other instanceof SizeTieredCompactionTask) {
+      SizeTieredCompactionTask otherSizeTieredTask = (SizeTieredCompactionTask) other;
+      if (!selectedTsFileResourceList.equals(otherSizeTieredTask.selectedTsFileResourceList)) {
+        return false;
+      }
+      return true;
+    }
+    return false;
   }
 }
