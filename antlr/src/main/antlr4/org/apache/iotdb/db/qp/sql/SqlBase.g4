@@ -1439,31 +1439,13 @@ DATETIME
       (('+' | '-') INT ':' INT)?)?
     ;
 
-/** Allow unicode rule/token names */
-ID : FIRST_NAME_CHAR NAME_CHAR*;
-
-fragment
-NAME_CHAR
-    :   'A'..'Z'
-    |   'a'..'z'
-    |   '0'..'9'
-    |   '_'
-    |   '-'
-    |   ':'
-    |   '/'
-    |   '@'
-    |   '#'
-    |   '$'
-    |   '%'
-    |   '&'
-    |   '+'
-    |   '{'
-    |   '}'
-    |   CN_CHAR
+ID
+    : ID_CHAR+
+    | '"' (~'"' | '""')* '"'
+    | '`' (~'`' | '``')* '`'
     ;
 
-fragment
-FIRST_NAME_CHAR
+fragment ID_CHAR
     :   'A'..'Z'
     |   'a'..'z'
     |   '0'..'9'
@@ -1474,15 +1456,14 @@ FIRST_NAME_CHAR
     |   '$'
     |   '%'
     |   '&'
-    |   '+'
     |   '{'
     |   '}'
     |   CN_CHAR
     ;
 
 fragment CN_CHAR
-  : '\u2E80'..'\u9FFF'
-  ;
+    : '\u2E80'..'\u9FFF'
+    ;
 
 DOUBLE_QUOTE_STRING_LITERAL
     : '"' ('\\' . | ~'"' )*? '"'
@@ -1492,7 +1473,6 @@ SINGLE_QUOTE_STRING_LITERAL
     : '\'' ('\\' . | ~'\'' )*? '\''
     ;
 
-//Characters and write it this way for case sensitivity
 fragment A
     : 'a' | 'A'
     ;
@@ -1598,5 +1578,5 @@ fragment Z
     ;
 
 WS
-    : [ \r\n\t]+ -> channel(HIDDEN)
+    : [ \u000B\t\r\n]+ -> channel(HIDDEN)
     ;
