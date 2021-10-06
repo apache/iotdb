@@ -138,32 +138,6 @@ public final class IoTDBInfluxDBUtils {
   }
 
   /**
-   * sum the query results of two influxdb (that is, by default, they will not have duplicate data
-   * and will be directly added together)
-   *
-   * @param queryResult1 query result1
-   * @param queryResult2 query result2
-   * @return sum of two query results
-   */
-  public static QueryResult addQueryResultProcess(
-      QueryResult queryResult1, QueryResult queryResult2) {
-    if (checkQueryResultNull(queryResult1)) {
-      return queryResult2;
-    } else if (checkQueryResultNull(queryResult2)) {
-      return queryResult1;
-    }
-    if (!checkSameQueryResult(queryResult1, queryResult2)) {
-      System.out.println("QueryResult1 and QueryResult2 is not same attribute");
-      return queryResult1;
-    }
-    List<List<Object>> values1 = queryResult1.getResults().get(0).getSeries().get(0).getValues();
-    List<List<Object>> values2 = queryResult2.getResults().get(0).getSeries().get(0).getValues();
-    values1.addAll(values2);
-    updateQueryResultValue(queryResult1, values1);
-    return queryResult1;
-  }
-
-  /**
    * update the new values to the query results of influxdb
    *
    * @param queryResult influxdb query results to be updated

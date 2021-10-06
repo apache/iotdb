@@ -19,7 +19,7 @@
 
 -->
 
-# IoTDB-InfluxDB适配器
+# InfluxDB-Protocol适配器
 
 
 ## 1.背景
@@ -35,19 +35,46 @@ InfluxDB是当前世界排名第一的时序数据库，具有繁荣的生态系
    1. 正确性测试：通过适配器以influxdb的协议插入数据，然后查询IoTDB数据库，将我们认为发送的内容与我们希望存储的内容进行比较。进行正确性测试
    2. 性能测试：以多线程的方式或者以Fiber多协程方式并发写入和读取，进行性能测试，类似的 demo：https://github.com/Tencent/TencentKona-8/tree/KonaFiber/demo/fiber/iotdb-sync-stress-demo
 
+## 3.切换方案
 
-## 3.方案一
+- 原版本
 
-### 3.1 IoTDB-InfluxDB适配器
+  ```java
+  influxDB = InfluxDBFactory.connect(openurl, username, password);
+  influxDB.createDatabase(database);
+  influxDB.insert(ponit);
+  influxDB.query(query);
+  ```
+
+- 迁移版本
+ 
+  ```java
+  influxDB = IotDBInfluxDBFactory.connect(openurl, username, password);
+  influxDB.createDatabase(database);
+  influxDB.insert(ponit);
+  influxDB.query(query);
+  ```
+
+只需要把
+InfluxDBFactory.connect(openurl, username, password);
+
+改为
+**IotDBInfluxDBFactory**.connect(openurl, username, password);
+
+即可
+
+## 4.方案设计
+
+### 4.1 InfluxDB-Protocol适配器
 
 适配器是一个继承至InfluxDB基类的子类，实现了InfluxDB主要的写入和查询方法，用户通过改变代码中InfluxDB的实现类，从而使InfluxDB原有的操作函数没有改变，但是会以IoTDB的协议写入IoTDB数据库中。
 
 ![architecture-design](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
 
 
-### 3.2 将InfluxDB的数据格式转换成IoTDB的数据格式
+### 4.2 将InfluxDB的数据格式转换成IoTDB的数据格式
 
-#### 3.2.1问题
+#### 4.2.1问题
 
 1. 问题：InfluxDB中Tag的顺序不敏感，而在IoTDB中是敏感的。
 
@@ -72,14 +99,14 @@ InfluxDB是当前世界排名第一的时序数据库，具有繁荣的生态系
    1. 怎样映射tag key和它对应的order
    2. 在不知道所有的label key的情况下，怎么维护他们之间的顺序
 
-### 3.2.2解决方案
+### 4.2.2解决方案
 
-##### 3.2.2.1主要思想
+##### 4.2.2.1主要思想
 
 1. 内存中Map <Database_Measurement, Map <Tag Key, Order> > table结构维护Tag之间的顺序
 2. InfluxDB中时序根据label顺序对应到IoTDB
 
-##### 3.2.2.2实例
+##### 4.2.2.2实例
 
 a. 添加时序
 
@@ -146,129 +173,8 @@ b. 查询数据
    2. 查询student中phone=B且存储的socre>97的数据，对应到IoTDB的查询为：select * from root.testdatabase.student.*.B where socre>98
    3. 查询student中phone=B且存储的socre>97且时间在最近七天内的的数据，对应到IoTDB的查询为：select * from root.testdatabase.student.*.B where socre>98 and time > now()-7d
 
-## 4.方案二
 
-### 4.1关系映射
-
-#### 4.11influxdb：
-
-1. database
-2. measurement
-3. tag key tag value.  field key field value
-
-#### 4.1.2IoTDB
-
-1. storage group
-2. device
-3. timeseries
-
-我们将上面对应的三点一一对应，举例如下
-
-### 4.2举例
-
-#### 4.2.1写入
-
-influxdb的写入语句分别为（默认database=testdata）
-
-1. insert cpu,host=serverA,region=us value=0.64（tag为host、region）
-2. insert cpu,host=serverA,region=us,sex=n value=0.64（tag为host、region、sex）
-
-最终写入情况为：
-
-![influxdb-write](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-write.png?raw=true)
-
-IoTDB的写入数据为
-
-1. insert into root.testdata.cpu(timestamp,host,region,value) values(now(),"serverA","us",0.64)
-2. insert into root.testdata.cpu(timestamp,host,region,sex,value) values(now(),"serverA","us","n",0.64)
-
-最终写入情况为：
-
-![iotdb-write](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/iotdb-write.png?raw=true)
-
-我们可以发现，二者实际存储对表面形式也比较类似。
-
-#### 4.2.2查询
-
-当把influxdb的tag和field都当作timeseries写入数据中时，由于存储的表面形式比较类似，最终查询就比较方便了。
-
-1. 根据值查询
-
-   select * from root.testdata.cpu where value = 0.64
-
-2. 根据tag查询
-
-   select * from. root.testdata.cpu where region = "us"
-
-3. 根据time查询
-
-   select * from root.testdata.cpu where time>now()-7d
-
-4. 混合查询
-
-   由于把tag和filed都当作timeseries查询，混合查询也同理。
-
-5. group by
-
-   influxdb中group by可以按照tag分组展示
-
-   ![influxdb-group-by](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-group-by.png?raw=true)
-
-   inflxudb中的group by功能不太类似，因此实现方法是：先获取所有的数据，然后在列表中以hash的方式手动分组，理论上复杂度为O（n），复杂度可以接受。
-
-## 5.方案对比-性能测试
-
-### 5.1存储情况
-
-1. influxdb的tag和filed均当作IoTDB的timeseries
-
-![influxdb-test1](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test1.png?raw=true)
-
-2. influxdb的tag当作路径
-
-![influxdb-test2](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test2.png?raw=true)
-
-### 5.2查询情况
-
-1. 查找条件为select * from root.teststress.test1 where RL = 1 and A = 1 and B =1 and C=1
-
-   其中RL是tag，A，B，C均为field
-
-2. 取中间值情况，即当有十个tag时，取中间第五个累积递增
-
-   ```java
-           SessionDataSet dataSet = session.executeQueryStatement("select * from root.teststress.test2.*.*.*.*.SL where A=1 and B=1 and C=1");
-           dataSet = session.executeQueryStatement("select * from root.teststress.test2.*.*.*.*.SL.* where A=1 and B=1 and C=1");
-           dataSet = session.executeQueryStatement("select * from root.teststress.test2.*.*.*.*.SL.*.*.* where A=1 and B=1 and C=1");
-           dataSet = session.executeQueryStatement("select * from root.teststress.test2.*.*.*.*.SL.*.*.*.* where A=1 and B=1 and C=1");
-           dataSet = session.executeQueryStatement("select * from root.teststress.test2.*.*.*.*.SL.*.*.*.*.* where A=1 and B=1 ");
-   ```
-
-### 5.3特殊说明
-
-1. 为了存储的方便，第二种情况的存储，没有把tag的value存入路径中，即直接把tag的key存入路径中。其表现为![influxdb-test-result](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-test-result.png?raw=true)
-
-   前面累积的path都是相同的，这样最后会导致的结果是：会加快根据path过滤的查找，如：
-
-   ```sql
-   select * from root.teststress.test2.*.*.*.*.SL.*.*.*.*.*
-   ```
-
-   这时只有一条路径，所有速度会变快，即第二种查找的时间会比实际的快一些
-
-### 5.4测试结果
-
-第一种查找的时间平均可以达到1000多ms，第二种查找的时间在300ms附近
-
-同时如果第二种查找的时候，在较靠前的路径使用*，(select * from root.teststress.test2.* where A=1 and B=1 )会导致需要查找的path过多，报错信息如下
-
-​```log
-Too many paths in one query! Currently allowed max deduplicated path number is 715, this query contains 1000 deduplicated path. Please use slimit to choose what you real want or adjust max_deduplicated_path_num in iotdb-engine.properties.
-​```
-
-综上所述，建议采取第二种方案（把tag放在path中存储）(同时需要解决上述提到的问题:Too many paths in one query)。
-
-## 6.查询优化
+## 5.查询优化
 为了尽可能的降低session查询的次数，应将一些可以合并的过滤条件进行合并，从而减少查询的次数。
 
 同时需要注意的是，由于tag过滤是通过path进行过滤，而filed过滤是通过IoTDB的where值过滤，因此二者的**or**过滤无法合并成一次过滤。即where tag1=value1 or field1=value2这种情况，无法合并成一次过滤。因此下文中尝试解决就是把可以合并的情况进行合并，即将**and**过滤进行合并。为了减少查询的次数，该算法使用递归的方法，对子树进行判断并尝试合并。
@@ -290,7 +196,7 @@ InfluxDB语法解析器生成的语法树如下图所示：
 当然，如果根节点是and，同时左右子树分别对应的两个操作也是and，那么最终会合并成**一次**查询。
 
 
-## 7. 支持的函数
+## 6. 支持的函数
 
 1. first()
 先利用IoTDB中的first_value函数，然后对每一个device中的first值再重回IoTDB中查询，指定path和where限定条件，查询出对应的time
@@ -309,34 +215,9 @@ InfluxDB语法解析器生成的语法树如下图所示：
 10. spread()
 通过利用IoTDB中的max_value和min_value函数，对多个device查找最大值和最小值，进行求和
 
-## 8.切换方案
+## 7.参考资料
 
- - 原版本
-​```java
-influxDB = InfluxDBFactory.connect(openurl, username, password);
-influxDB.createDatabase(database);
-influxDB.insert(ponit);
-influxDB.query(query);
-​```
-
-- 迁移版本
-​```java
-influxDB = IotDBInfluxDBFactory.connect(openurl, username, password);
-influxDB.createDatabase(database);
-influxDB.insert(ponit);
-influxDB.query(query);
-​```        
-
-只需要把
-InfluxDBFactory.connect(openurl, username, password);
-
-改为
-**IotDBInfluxDBFactory**.connect(openurl, username, password);
-
-即可
-
-## 9.参考资料
-
-1. https://summer.iscas.ac.cn/#/org/orgdetail/apacheiotdb
-2. https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=165224300#Prometheus%E8%BF%9E%E6%8E%A5%E5%99%A8-3.4%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3
+1. https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=191333271 (详细设计方案)
+2. https://summer.iscas.ac.cn/#/org/orgdetail/apacheiotdb
+3. https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=165224300#Prometheus%E8%BF%9E%E6%8E%A5%E5%99%A8-3.4%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3
 

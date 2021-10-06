@@ -779,46 +779,6 @@ public class IoTDBInfluxDB implements InfluxDB {
     realQuerySql += " align by device";
     SessionDataSet sessionDataSet = session.executeQueryStatement(realQuerySql);
     return iotdbAlignByDeviceResultCvtToInfluxdbResult(sessionDataSet);
-    // The following comments refer to the scheme of non align by device
-    //        if (realIotDBCondition.isEmpty()) {
-    //            realQuerySql = ("select * from " + curQueryPath);
-    //            SessionDataSet sessionDataSet = session.executeQueryStatement(realQuerySql);
-    //            queryResult = iotdbResultCvtToInfluxdbResult(sessionDataSet);
-    //            System.out.println(sessionDataSet.toString());
-    //        } else {
-    //            //With filter conditions, we can only traverse multiple times
-    //            QueryResult lastQueryResult = null;
-    //            for (int i = currentQueryMaxTagNum; i <= measurementTagNum; i++) {
-    //                if (i != currentQueryMaxTagNum) {
-    //                    curQueryPath.append(".*");
-    //                }
-    //                realQuerySql = ("select * from " + curQueryPath + " where " +
-    // realIotDBCondition + " align by device");
-    //                SessionDataSet sessionDataSet = null;
-    //                try {
-    //                    sessionDataSet = session.executeQueryStatement(realQuerySql);
-    //                } catch (StatementExecutionException e) {
-    //                    if (e.getStatusCode() == 411) {
-    //                        //If the timeseries of where do not match, an error of 411 will be
-    // thrown and blocked for printing
-    //                        System.out.println(e.getMessage());
-    //                    } else {
-    //                        throw e;
-    //                    }
-    //                }
-    //                //Temporary conversion results
-    //                QueryResult tmpQueryResult = iotdbResultCvtToInfluxdbResult(sessionDataSet);
-    //                //If it is the first time, it is assigned directly without or operation
-    //                if (i == currentQueryMaxTagNum) {
-    //                    lastQueryResult = tmpQueryResult;
-    //                } else {
-    //                    //Perform the add operation
-    //                    lastQueryResult =
-    // IotDBInfluxDBUtils.addQueryResultProcess(lastQueryResult, tmpQueryResult);
-    //                }
-    //            }
-    //            queryResult = lastQueryResult;
-    //        }
   }
 
   /**
