@@ -48,6 +48,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.MTREE_MEMORY_BASED;
+
 public class MLogParserTest {
 
   @Before
@@ -184,6 +186,9 @@ public class MLogParserTest {
 
   @Test
   public void testParseSnapshot() {
+    if (IoTDB.metaManager.getMTreeType() != MTREE_MEMORY_BASED) {
+      return;
+    }
     prepareData();
     IoTDB.metaManager.createMTreeSnapshot();
 
