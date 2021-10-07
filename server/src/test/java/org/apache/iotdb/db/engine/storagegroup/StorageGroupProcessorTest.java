@@ -91,7 +91,6 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
-    EnvironmentUtils.cleanEnv();
     config.setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
@@ -138,7 +137,7 @@ public class StorageGroupProcessorTest {
               TSEncoding.RLE,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap()),
-          new QueryContext(),
+          EnvironmentUtils.TEST_QUERY_CONTEXT,
           tsfileResourcesForQuery);
     }
 
