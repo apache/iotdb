@@ -22,6 +22,7 @@ import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
 import org.apache.iotdb.session.Session;
 
 import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -89,12 +90,12 @@ public class IoTDBInfluxDBIT {
     IoTDBInfluxDBFactory.connect(session).close();
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = InfluxDBException.class)
   public void testConnectRefusedFailed() {
     InfluxDB influxDB = IoTDBInfluxDBFactory.connect(host, 80, username, password);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = InfluxDBException.class)
   public void testConnectAuthFailed() {
     InfluxDB influxDB = IoTDBInfluxDBFactory.connect(host, port, "1", "1");
   }
