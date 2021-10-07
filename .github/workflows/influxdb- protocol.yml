@@ -13,7 +13,7 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: InfluxDB-IoTDB Test
+name: InfluxDB-Protocol Test
 
 on:
   push:
@@ -64,4 +64,4 @@ jobs:
       - name: IT Test
         shell: bash
         run: |
-          cd iotdb-influxdb && mvn -B clean compile post-integration-test -Dtest.port.closed=true
+          cd influxdb-protocol && mvn -B clean compile post-integration-test -Dtest.port.closed=true
