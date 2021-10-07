@@ -66,10 +66,10 @@ statement
     | LIST ROLE #listRole
     | LIST PRIVILEGES USER username=rootOrId ON prefixPath #listPrivilegesUser
     | LIST PRIVILEGES ROLE roleName=ID ON prefixPath #listPrivilegesRole
-    | LIST USER PRIVILEGES username =rootOrId #listUserPrivileges
-    | LIST ROLE PRIVILEGES roleName = ID #listRolePrivileges
-    | LIST ALL ROLE OF USER username = rootOrId #listAllRoleOfUser
-    | LIST ALL USER OF ROLE roleName = ID #listAllUserOfRole
+    | LIST USER PRIVILEGES username=rootOrId #listUserPrivileges
+    | LIST ROLE PRIVILEGES roleName=ID #listRolePrivileges
+    | LIST ALL ROLE OF USER username=rootOrId #listAllRoleOfUser
+    | LIST ALL USER OF ROLE roleName=ID #listAllUserOfRole
     | SET TTL TO path=prefixPath time=INT #setTTLStatement
     | UNSET TTL TO path=prefixPath #unsetTTLStatement
     | SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
@@ -203,6 +203,7 @@ whereClause
 showWhereClause
     : WHERE (property | containsExpression)
     ;
+
 containsExpression
     : name=ID OPERATOR_CONTAINS value=propertyValue
     ;
@@ -382,9 +383,9 @@ comparisonOperator
 insertColumnsSpec
     : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? measurementName)+ RR_BRACKET
     ;
+
 measurementName
     : nodeNameWithoutStar
-    | LR_BRACKET nodeNameWithoutStar (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
@@ -448,12 +449,12 @@ suffixPath
 nodeName
     : ID STAR?
     | STAR
-    | keyword
+    | keywordWithoutTimestamp
     ;
 
 nodeNameWithoutStar
     : ID
-    | keyword
+    | keywordWithoutTimestamp
     ;
 
 dataType
@@ -521,6 +522,12 @@ triggerAttribute
 //============================
 
 keyword
+    : keywordWithoutTimestamp
+    | TIMESTAMP
+    | TIME
+    ;
+
+keywordWithoutTimestamp
     : CREATE
     | INSERT
     | UPDATE
@@ -552,7 +559,6 @@ keyword
     | PREVIOUSUNTILLAST
     | METADATA
     | TIMESERIES
-    | TIMESTAMP
     | PROPERTY
     | WITH
     | ROOT
@@ -621,7 +627,6 @@ keyword
     | DISABLE
     | ALIGN
     | COMPRESSION
-    | TIME
     | ATTRIBUTES
     | TAGS
     | RENAME
@@ -1402,8 +1407,8 @@ DATETIME
 
 ID
     : ID_CHAR+
-    | '"' (~'"' | '""')* '"'
-    | '`' (~'`' | '``')* '`'
+    | '"' (~('"' | '.') | '""')* '"'
+    | '`' (~('`' | '.') | '``')* '`'
     ;
 
 fragment ID_CHAR
