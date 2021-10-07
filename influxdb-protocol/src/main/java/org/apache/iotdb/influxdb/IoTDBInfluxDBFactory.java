@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.influxdb;
 
+import org.apache.iotdb.session.Session;
+
+import okhttp3.OkHttpClient;
 import org.influxdb.InfluxDB;
 
 public enum IoTDBInfluxDBFactory {
@@ -36,5 +39,31 @@ public enum IoTDBInfluxDBFactory {
     IoTDBInfluxDBUtils.checkNonEmptyString(host, "host");
     IoTDBInfluxDBUtils.checkNonEmptyString(userName, "username");
     return new IoTDBInfluxDB(host, rpcPort, userName, password);
+  }
+
+  public static InfluxDB connect(
+      String url, String username, String password, OkHttpClient.Builder client) {
+    IoTDBInfluxDBUtils.checkNonEmptyString(url, "url");
+    IoTDBInfluxDBUtils.checkNonEmptyString(username, "username");
+    return connect(url, username, password);
+  }
+
+  public static InfluxDB connect(
+      String url,
+      String username,
+      String password,
+      OkHttpClient.Builder client,
+      InfluxDB.ResponseFormat responseFormat) {
+    IoTDBInfluxDBUtils.checkNonEmptyString(url, "url");
+    IoTDBInfluxDBUtils.checkNonEmptyString(username, "username");
+    return connect(url, username, password);
+  }
+
+  public static InfluxDB connect(Session.Builder builder) {
+    return new IoTDBInfluxDB(builder);
+  }
+
+  public static InfluxDB connect(Session session) {
+    return new IoTDBInfluxDB(session);
   }
 }
