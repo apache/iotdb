@@ -47,43 +47,36 @@ public class IoTDBInfluxDBIT {
 
   @Test
   public void testConnect1() {
-    InfluxDB influxDB =
-        IoTDBInfluxDBFactory.connect("https://" + host + ":" + port, username, password);
-    influxDB.close();
+        IoTDBInfluxDBFactory.connect("https://" + host + ":" + port, username, password).close();
   }
 
   @Test
   public void testConnect2() {
-    InfluxDB influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);
-    influxDB.close();
+    IoTDBInfluxDBFactory.connect(host, port, username, password).close();
   }
 
   @Test
   public void testConnect3() {
-    InfluxDB influxDB =
         IoTDBInfluxDBFactory.connect(
-            "https://" + host + ":" + port, username, password, new okhttp3.OkHttpClient.Builder());
-    influxDB.close();
+            "https://" + host + ":" + port, username, password, new okhttp3.OkHttpClient.Builder()).close();
   }
 
   @Test
   public void testConnect4() {
-    InfluxDB influxDB =
+
         IoTDBInfluxDBFactory.connect(
             "https://" + host + ":" + port,
             username,
             password,
             new okhttp3.OkHttpClient.Builder(),
-            InfluxDB.ResponseFormat.JSON);
-    influxDB.close();
+            InfluxDB.ResponseFormat.JSON).close();
   }
 
   @Test
   public void testConnect5() {
     Session.Builder builder =
         new Session.Builder().host(host).port(port).username(username).password(password);
-    InfluxDB influxDB = IoTDBInfluxDBFactory.connect(builder);
-    influxDB.close();
+    IoTDBInfluxDBFactory.connect(builder).close();
   }
 
   @Test
@@ -91,8 +84,7 @@ public class IoTDBInfluxDBIT {
     Session session =
         new Session.Builder().host(host).port(port).username(username).password(password).build();
     session.setFetchSize(10000);
-    InfluxDB influxDB = IoTDBInfluxDBFactory.connect(session);
-    influxDB.close();
+    IoTDBInfluxDBFactory.connect(session).close();
   }
 
   @Test(expected = IllegalArgumentException.class)

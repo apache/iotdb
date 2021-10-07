@@ -31,6 +31,9 @@
     <name>InfluxDB Protocol</name>
     <description>compatible with the protocol of influxdb.</description>
     <properties>
+        <influxdb.test.skip>false</influxdb.test.skip>
+        <influxdb.it.skip>${influxdb.test.skip}</influxdb.it.skip>
+        <influxdb.ut.skip>${influxdb.test.skip}</influxdb.ut.skip>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
@@ -53,8 +56,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>RELEASE</version>
-            <scope>test</scope>
+            <version>${junit.version}</version>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
@@ -63,7 +65,7 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>LATEST</version>
+            <version>1.15.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

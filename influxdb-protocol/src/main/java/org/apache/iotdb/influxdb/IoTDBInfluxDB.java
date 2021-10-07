@@ -56,7 +56,7 @@ public class IoTDBInfluxDB implements InfluxDB {
       URI uri = new URI(url);
       new IoTDBInfluxDB(uri.getHost(), uri.getPort(), userName, password);
     } catch (URISyntaxException e) {
-      throw new IllegalArgumentException(e);
+      throw new IllegalArgumentException("Unable to parse url: " + url, e);
     }
   }
 
@@ -75,7 +75,6 @@ public class IoTDBInfluxDB implements InfluxDB {
     } catch (IoTDBConnectionException e) {
       throw new IllegalArgumentException(e.getMessage());
     }
-    session.setFetchSize(10000);
   }
 
   /**
@@ -94,56 +93,28 @@ public class IoTDBInfluxDB implements InfluxDB {
    */
   public IoTDBInfluxDB(Session.Builder builder) {
     session = builder.build();
-    session.setFetchSize(10000);
   }
 
-  /**
-   * write function compatible with influxdb
-   *
-   * @param point Data structure for inserting data
-   */
   @Override
   public void write(final Point point) {
     throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
-  /**
-   * query function compatible with influxdb
-   *
-   * @param query query parameters of influxdb, including databasename and SQL statement
-   * @return returns the query result of influxdb
-   */
   @Override
   public QueryResult query(final Query query) {
     throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
-  /**
-   * create database,write to iotdb
-   *
-   * @param name database name
-   */
   @Override
   public void createDatabase(final String name) {
     throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
-  /**
-   * delete database
-   *
-   * @param name database name
-   */
   @Override
   public void deleteDatabase(final String name) {
-
     throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
   }
 
-  /**
-   * set database，and get the list and order of all tags corresponding to the database
-   *
-   * @param database database name
-   */
   @Override
   public InfluxDB setDatabase(final String database) {
     throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);

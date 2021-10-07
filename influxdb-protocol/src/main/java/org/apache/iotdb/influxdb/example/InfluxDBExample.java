@@ -87,7 +87,7 @@ public class InfluxDBExample {
     Query query;
     QueryResult result;
 
-    //     the selector query is parallel to the field value
+    // the selector query is parallel to the field value
     query =
         new Query(
             "select * from student where (name=\"xie\" and sex=\"m\")or time<now()-7d", "database");
