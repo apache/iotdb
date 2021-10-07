@@ -24,6 +24,7 @@ import org.apache.iotdb.session.Session;
 
 import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBException;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Pong;
@@ -73,7 +74,7 @@ public class IoTDBInfluxDB implements InfluxDB {
     try {
       session.open(false);
     } catch (IoTDBConnectionException e) {
-      throw new IllegalArgumentException(e.getMessage());
+      throw new InfluxDBException(e.getMessage());
     }
   }
 
@@ -265,7 +266,7 @@ public class IoTDBInfluxDB implements InfluxDB {
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
-      throw new IllegalArgumentException(e.getMessage());
+      throw new InfluxDBException(e.getMessage());
     }
   }
 
