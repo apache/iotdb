@@ -1178,6 +1178,8 @@ The result will be returned in a four column table format.
 | Time | timeseries | value | dataType |
 ```
 
+**Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore the colum `dataType` is returned also which contains the _real_ type how the value should be interpreted.
+
 Example 1: get the last point of root.ln.wf01.wt01.status:
 
 ```
