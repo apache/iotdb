@@ -48,7 +48,7 @@ statement
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
-    | CREATE USER userName=ID password= stringLiteral#createUser
+    | CREATE USER userName=ID password=stringLiteral#createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=stringLiteral #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
@@ -516,6 +516,10 @@ triggerAttributeClause
 triggerAttribute
     : key=stringLiteral OPERATOR_EQ value=stringLiteral
     ;
+
+stringLiteral
+   : SINGLE_QUOTE_STRING_LITERAL
+   ;
 
 //============================
 // Start of the keywords list
@@ -1376,19 +1380,6 @@ UNDERLINE : '_';
 
 NaN : 'NaN';
 
-stringLiteral
-   : SINGLE_QUOTE_STRING_LITERAL
-   | DOUBLE_QUOTE_STRING_LITERAL
-   ;
-
-SINGLE_QUOTE_STRING_LITERAL
-    : '\'' ('\\' . | ~'\'' )*? '\''
-    ;
-
-DOUBLE_QUOTE_STRING_LITERAL
-    : '"' ('\\' . | ~'"' )*? '"'
-    ;
-
 INT : [0-9]+;
 
 EXPONENT : INT ('e'|'E') ('+'|'-')? INT ;
@@ -1403,6 +1394,10 @@ DATETIME
       ((T | WS)
       INT ':' INT ':' INT (DOT INT)?
       (('+' | '-') INT ':' INT)?)?
+    ;
+
+SINGLE_QUOTE_STRING_LITERAL
+    : '\'' ('\\' . | ~'\'' )*? '\''
     ;
 
 ID
