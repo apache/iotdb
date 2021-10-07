@@ -95,7 +95,8 @@ Msg: 701 Current query is time out, please check your statement or modify timeou
 session.executeQueryStatement(String sql, long timeout)
 ```
 
-如果不配置超时时间参数或将超时时间设置为 0，将使用服务器端默认的超时时间。
+> 如果不配置超时时间参数或将超时时间设置为负数，将使用服务器端默认的超时时间。 
+> 如果超时时间设置为0，则会禁用超时功能。
 
 ### 查询中止
 

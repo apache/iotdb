@@ -70,7 +70,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     public void runMayThrow() {
       try {
         // check the status of mainThread before next reading
-        QueryTimeManager.checkQueryAlive(queryId);
+        // 1. Main thread quits because of timeout
+        // 2. Main thread quits because of getting enough fetchSize result
+        if (!QueryTimeManager.checkQueryAlive(queryId)) {
+          return;
+        }
 
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue
@@ -493,9 +497,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   private void prepareForNext(int seriesIndex) throws IOException, InterruptedException {
     // move next
     cachedBatchDataArray[seriesIndex].next();
-
-    // check the interrupted status of query before taking next batch
-    QueryTimeManager.checkQueryAlive(queryId);
 
     // get next batch if current batch is empty and still have remaining batch data in queue
     if (!cachedBatchDataArray[seriesIndex].hasCurrent() && !noMoreDataInQueueArray[seriesIndex]) {
