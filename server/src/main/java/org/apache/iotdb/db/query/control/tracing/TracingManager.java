@@ -70,7 +70,7 @@ public class TracingManager {
   }
 
   public TSTracingInfo fillRpcReturnTracingInfo(long queryId) {
-    return getTracingInfo(queryId).fillRpcReturnTracingInfo();
+    return queryIdToTracingInfo.remove(queryId).fillRpcReturnTracingInfo();
   }
 
   private static class TracingManagerHelper {

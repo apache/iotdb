@@ -758,7 +758,7 @@ public class TSServiceImpl implements TSIService.Iface {
     final long queryStartTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
 
-    if (plan.isEnableTracing()) {
+    if (((QueryPlan) plan).isEnableTracing()) {
       tracingManager.setStartTime(queryId, this.startTime);
       tracingManager.registerActivity(
           queryId,
@@ -769,7 +769,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
     try {
       queryTimeManager.registerQuery(queryId, queryStartTime, statement, timeout, plan);
-      if (plan.isEnableTracing() && !(plan instanceof AlignByDevicePlan)) {
+      if (((QueryPlan) plan).isEnableTracing() && !(plan instanceof AlignByDevicePlan)) {
         tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
       }
 
@@ -786,7 +786,7 @@ public class TSServiceImpl implements TSIService.Iface {
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
-      if (plan.isEnableTracing()) {
+      if (((QueryPlan) plan).isEnableTracing()) {
         tracingManager.registerActivity(
             queryId, TracingConstant.ACTIVITY_CREATE_DATASET, System.currentTimeMillis());
       }
@@ -845,7 +845,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       resp.setQueryId(queryId);
 
-      if (plan instanceof AlignByDevicePlan && plan.isEnableTracing()) {
+      if (plan instanceof AlignByDevicePlan && ((QueryPlan) plan).isEnableTracing()) {
         tracingManager.setSeriesPathNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
       }
 
@@ -862,7 +862,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       queryTimeManager.unRegisterQuery(queryId, plan);
 
-      if (plan.isEnableTracing()) {
+      if (((QueryPlan) plan).isEnableTracing()) {
         tracingManager.registerActivity(
             queryId, TracingConstant.ACTIVITY_REQUEST_COMPLETE, System.currentTimeMillis());
 
@@ -1068,7 +1068,7 @@ public class TSServiceImpl implements TSIService.Iface {
     queryCount.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute select into: {}", sessionManager.getCurrSessionId(), statement);
-    if (physicalPlan.isEnableTracing()) {
+    if (((QueryPlan) physicalPlan).isEnableTracing()) {
       tracingManager.setSeriesPathNum(queryId, queryPlan.getPaths().size());
     }
 
@@ -1234,7 +1234,8 @@ public class TSServiceImpl implements TSIService.Iface {
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context =
-        genQueryContext(queryId, physicalPlan.isDebug(), physicalPlan.isEnableTracing());
+        genQueryContext(
+            queryId, physicalPlan.isDebug(), ((QueryPlan) physicalPlan).isEnableTracing());
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
     sessionManager.setDataset(queryId, queryDataSet);

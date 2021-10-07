@@ -69,6 +69,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         aliasColumnMap);
     ioTDBRpcDataSet.setTsQueryDataSet(dataset);
     if (tracingInfo != null) {
+      ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
     }
     this.operationType = operationType;
@@ -105,6 +106,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         isRpcFetchResult);
     ioTDBRpcDataSet.setTsQueryDataSet(dataset);
     if (tracingInfo != null) {
+      ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
     }
   }

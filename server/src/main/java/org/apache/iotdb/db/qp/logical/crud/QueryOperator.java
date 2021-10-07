@@ -69,7 +69,6 @@ public class QueryOperator extends Operator {
   public QueryOperator() {
     super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
-    enableTracing = false;
   }
 
   public QueryOperator(QueryOperator queryOperator) {

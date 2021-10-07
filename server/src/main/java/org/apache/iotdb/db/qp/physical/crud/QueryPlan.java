@@ -48,6 +48,7 @@ public abstract class QueryPlan extends PhysicalPlan {
   private Map<String, Integer> vectorPathToIndex = new HashMap<>();
 
   private boolean enableRedirect = false;
+  private boolean enableTracing = false;
 
   // if true, we don't need the row whose any column is null
   private boolean withoutAnyNull;
@@ -148,6 +149,14 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setEnableRedirect(boolean enableRedirect) {
     this.enableRedirect = enableRedirect;
+  }
+
+  public boolean isEnableTracing() {
+    return enableTracing;
+  }
+
+  public void setEnableTracing(boolean enableTracing) {
+    this.enableTracing = enableTracing;
   }
 
   public Map<String, Integer> getVectorPathToIndex() {

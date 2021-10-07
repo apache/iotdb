@@ -91,7 +91,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             timeout,
             sgColumns,
             aliasColumnMap);
-    this.ioTDBRpcTracingInfo = new IoTDBTracingInfo();
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     this.aliasColumnMap = aliasColumnMap;

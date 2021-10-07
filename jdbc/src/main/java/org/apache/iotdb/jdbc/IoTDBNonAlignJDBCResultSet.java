@@ -123,6 +123,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     this.sgColumns = newSgColumns;
     this.tsQueryNonAlignDataSet = dataset;
     if (tracingInfo != null) {
+      ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
     }
   }
