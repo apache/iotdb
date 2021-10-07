@@ -97,7 +97,9 @@ If you use JDBC or Session, we also support setting a timeout for a single query
 session.executeQueryStatement(String sql, long timeout)
 ```
 
-If the timeout parameter is not configured or with value 0, the default timeout time will be used.
+
+> If the timeout parameter is not configured or with a negative number, the default timeout time will be used. 
+> If value 0 is used, timeout function will be disabled.
 
 ### Query abort
 

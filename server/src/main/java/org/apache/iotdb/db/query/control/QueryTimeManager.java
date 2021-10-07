@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IService;
@@ -43,7 +44,7 @@ public class QueryTimeManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(QueryTimeManager.class);
 
-  private volatile Map<Long, QueryContext> queryContextMap;
+  private Map<Long, QueryContext> queryContextMap;
 
   private ScheduledExecutorService executorService;
 
@@ -57,6 +58,10 @@ public class QueryTimeManager implements IService {
 
   public void registerQuery(QueryContext context) {
     queryContextMap.put(context.getQueryId(), context);
+    // Use the default configuration of server if a negative timeout
+    if (context.getTimeout() < 0) {
+      context.setTimeout(IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+    }
     if (context.getTimeout() != 0) {
       // submit a scheduled task to judge whether query is still running after timeout
       ScheduledFuture<?> scheduledFuture =
