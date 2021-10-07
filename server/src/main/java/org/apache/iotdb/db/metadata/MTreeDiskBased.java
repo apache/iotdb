@@ -630,10 +630,10 @@ public class MTreeDiskBased implements IMTree {
     }
     IMNode cur = metadataDiskManager.getRoot();
     for (int i = 1; i < nodes.length; i++) {
+      cur = metadataDiskManager.getChild(cur, nodes[i]);
       if (cur == null) {
         break;
       }
-      cur = metadataDiskManager.getChild(cur, nodes[i]);
       if (cur.isStorageGroup()) {
         return (StorageGroupMNode) cur;
       }

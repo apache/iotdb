@@ -505,6 +505,8 @@ public class InternalMNode implements IMNode {
   protected void copyData(IMNode mNode) {
     mNode.setParent(parent);
     mNode.setPersistenceInfo(getPersistenceInfo());
+    mNode.setUseTemplate(useTemplate);
+    mNode.setDeviceTemplate(deviceTemplate);
 
     Map<String, IMNode> newChildren = new ConcurrentHashMap<>();
     if (children != null) {

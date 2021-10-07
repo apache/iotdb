@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -836,11 +837,13 @@ public class MManagerBasicTest {
     // set device template
     SetDeviceTemplatePlan setDeviceTemplatePlan =
         new SetDeviceTemplatePlan("template1", "root.sg1.d1");
-
     manager.setDeviceTemplate(setDeviceTemplatePlan);
 
+    SetUsingDeviceTemplatePlan setUsingDeviceTemplatePlan =
+        new SetUsingDeviceTemplatePlan(new PartialPath("root.sg1.d1"));
+    manager.setUsingDeviceTemplate(setUsingDeviceTemplatePlan);
+
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
-    node.setUseTemplate(true);
 
     MeasurementSchema s11 =
         new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);

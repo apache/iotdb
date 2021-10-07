@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.*;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -15,8 +16,11 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MNodePersistenceSerializer implements IMNodeSerializer {
+
+  Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
   @Override
   public ByteBuffer serializeMNode(IMNode mNode) {
@@ -60,6 +64,15 @@ public class MNodePersistenceSerializer implements IMNodeSerializer {
   @Override
   public void serializeInternalMNode(InternalMNode mNode, ByteBuffer dataBuffer) {
     ReadWriteIOUtils.writeVar(mNode.getName(), dataBuffer);
+
+    ReadWriteIOUtils.write(mNode.isUseTemplate(), dataBuffer);
+    Template template = mNode.getDeviceTemplate();
+    if (template != null) {
+      templateMap.put(template.getName(), template);
+    }
+    String templateName = template == null ? "" : template.getName();
+    ReadWriteIOUtils.writeVar(templateName, dataBuffer);
+
     serializeChildren(mNode.getChildren(), dataBuffer);
     serializeChildren(mNode.getAliasChildren(), dataBuffer);
     dataBuffer.flip();
@@ -69,6 +82,11 @@ public class MNodePersistenceSerializer implements IMNodeSerializer {
   public InternalMNode deserializeInternalMNode(ByteBuffer dataBuffer) {
     InternalMNode mNode = new InternalMNode(null, null);
     mNode.setName(ReadWriteIOUtils.readVarIntString(dataBuffer));
+
+    mNode.setUseTemplate(ReadWriteIOUtils.readBool(dataBuffer));
+    String templateName = ReadWriteIOUtils.readVarIntString(dataBuffer);
+    mNode.setDeviceTemplate(templateMap.get(templateName));
+
     deserializeChildren(mNode, dataBuffer);
     return mNode;
   }
@@ -83,6 +101,15 @@ public class MNodePersistenceSerializer implements IMNodeSerializer {
   @Override
   public void serializeStorageGroupMNode(StorageGroupMNode mNode, ByteBuffer dataBuffer) {
     ReadWriteIOUtils.writeVar(mNode.getName(), dataBuffer);
+
+    ReadWriteIOUtils.write(mNode.isUseTemplate(), dataBuffer);
+    Template template = mNode.getDeviceTemplate();
+    if (template != null) {
+      templateMap.put(template.getName(), template);
+    }
+    String templateName = template == null ? "" : template.getName();
+    ReadWriteIOUtils.writeVar(templateName, dataBuffer);
+
     dataBuffer.putLong(mNode.getDataTTL());
     serializeChildren(mNode.getChildren(), dataBuffer);
     serializeChildren(mNode.getAliasChildren(), dataBuffer);
@@ -93,6 +120,11 @@ public class MNodePersistenceSerializer implements IMNodeSerializer {
   public StorageGroupMNode deserializeStorageGroupMNode(ByteBuffer dataBuffer) {
     StorageGroupMNode mNode = new StorageGroupMNode(null, null, 0);
     mNode.setName(ReadWriteIOUtils.readVarIntString(dataBuffer));
+
+    mNode.setUseTemplate(ReadWriteIOUtils.readBool(dataBuffer));
+    String templateName = ReadWriteIOUtils.readVarIntString(dataBuffer);
+    mNode.setDeviceTemplate(templateMap.get(templateName));
+
     mNode.setDataTTL(dataBuffer.getLong());
     deserializeChildren(mNode, dataBuffer);
     return mNode;
@@ -108,6 +140,15 @@ public class MNodePersistenceSerializer implements IMNodeSerializer {
   @Override
   public void serializeMeasurementMNode(MeasurementMNode mNode, ByteBuffer dataBuffer) {
     ReadWriteIOUtils.writeVar(mNode.getName(), dataBuffer);
+
+    ReadWriteIOUtils.write(mNode.isUseTemplate(), dataBuffer);
+    Template template = mNode.getDeviceTemplate();
+    if (template != null) {
+      templateMap.put(template.getName(), template);
+    }
+    String templateName = template == null ? "" : template.getName();
+    ReadWriteIOUtils.writeVar(templateName, dataBuffer);
+
     ReadWriteIOUtils.writeVar(mNode.getAlias() == null ? "" : mNode.getAlias(), dataBuffer);
     dataBuffer.putLong(mNode.getOffset());
     serializeMeasurementSchema(mNode.getSchema(), dataBuffer);
@@ -121,6 +162,11 @@ public class MNodePersistenceSerializer implements IMNodeSerializer {
   public MeasurementMNode deserializeMeasurementMNode(ByteBuffer dataBuffer) {
     MeasurementMNode mNode = new MeasurementMNode(null, null, null, null);
     mNode.setName(ReadWriteIOUtils.readVarIntString(dataBuffer));
+
+    mNode.setUseTemplate(ReadWriteIOUtils.readBool(dataBuffer));
+    String templateName = ReadWriteIOUtils.readVarIntString(dataBuffer);
+    mNode.setDeviceTemplate(templateMap.get(templateName));
+
     String alias = ReadWriteIOUtils.readVarIntString(dataBuffer);
     mNode.setAlias("".equals(alias) ? null : alias);
     mNode.setOffset(dataBuffer.getLong());
@@ -270,6 +316,13 @@ public class MNodePersistenceSerializer implements IMNodeSerializer {
     length +=
         ReadWriteForEncodingUtils.varIntSize(mNode.getName().length())
             + mNode.getName().length(); // string.length()==string.getBytes().length
+
+    // template
+    length += 1;
+    Template template = mNode.getDeviceTemplate();
+    String templateName = template == null ? "" : template.getName();
+    length += ReadWriteForEncodingUtils.varIntSize(templateName.length());
+    length += templateName.length();
 
     // children
     length += evaluateChildrenLength(mNode.getChildren());

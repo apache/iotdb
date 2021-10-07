@@ -2122,6 +2122,7 @@ public class MManager {
       MeasurementSchema schema = curTemplateMap.get(measurement);
       if (!deviceMNode.left.isUseTemplate()) {
         deviceMNode.left.setUseTemplate(true);
+        mtree.updateMNode(deviceMNode.left);
         try {
           logWriter.setUsingDeviceTemplate(deviceMNode.left.getPartialPath());
         } catch (IOException e) {
@@ -2220,18 +2221,20 @@ public class MManager {
       // get mnode and update template should be atomic
       synchronized (this) {
         mtree.checkTemplateOnPath(path);
-
-        Pair<IMNode, Template> node = getDeviceNodeWithAutoCreate(path);
-
-        if (node.left.getDeviceTemplate() != null) {
-          if (node.left.getDeviceTemplate().equals(template)) {
-            throw new DuplicatedTemplateException(template.getName());
-          } else {
-            throw new MetadataException("Specified node already has template");
+        Pair<IMNode, Template> node = getDeviceNodeWithAutoCreate(path, true);
+        try {
+          if (node.left.getDeviceTemplate() != null) {
+            if (node.left.getDeviceTemplate().equals(template)) {
+              throw new DuplicatedTemplateException(template.getName());
+            } else {
+              throw new MetadataException("Specified node already has template");
+            }
           }
+          node.left.setDeviceTemplate(template);
+          mtree.updateMNode(node.left);
+        } finally {
+          mtree.unlockMNode(node.left);
         }
-
-        node.left.setDeviceTemplate(template);
       }
 
       // write wal
@@ -2247,15 +2250,25 @@ public class MManager {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
   }
 
-  private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
+  public void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
+    IMNode node = null;
     try {
-      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
-    } catch (PathNotExistException e) {
-      // the order of SetUsingDeviceTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
-      // during writing currently, so we need a auto-create mechanism here
-      mtree.getDeviceNodeWithAutoCreating(
-          plan.getPrefixPath(), config.getDefaultStorageGroupLevel());
-      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+      try {
+        node = mtree.getNodeByPathWithMemoryLock(plan.getPrefixPath());
+      } catch (PathNotExistException e) {
+        // the order of SetUsingDeviceTemplatePlan and AutoCreateDeviceMNodePlan cannot be
+        // guaranteed
+        // during writing currently, so we need a auto-create mechanism here
+        try {
+          node = getDeviceNodeWithAutoCreate(plan.getPrefixPath(), true).left;
+        } catch (IOException ioException) {
+          throw new MetadataException(ioException);
+        }
+      }
+      node.setUseTemplate(true);
+      mtree.updateMNode(node);
+    } finally {
+      mtree.unlockMNode(node);
     }
   }
 
