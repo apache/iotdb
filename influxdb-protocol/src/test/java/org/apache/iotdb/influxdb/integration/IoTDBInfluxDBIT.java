@@ -47,7 +47,7 @@ public class IoTDBInfluxDBIT {
 
   @Test
   public void testConnect1() {
-        IoTDBInfluxDBFactory.connect("https://" + host + ":" + port, username, password).close();
+    IoTDBInfluxDBFactory.connect("https://" + host + ":" + port, username, password).close();
   }
 
   @Test
@@ -57,19 +57,21 @@ public class IoTDBInfluxDBIT {
 
   @Test
   public void testConnect3() {
-        IoTDBInfluxDBFactory.connect(
-            "https://" + host + ":" + port, username, password, new okhttp3.OkHttpClient.Builder()).close();
+    IoTDBInfluxDBFactory.connect(
+            "https://" + host + ":" + port, username, password, new okhttp3.OkHttpClient.Builder())
+        .close();
   }
 
   @Test
   public void testConnect4() {
 
-        IoTDBInfluxDBFactory.connect(
+    IoTDBInfluxDBFactory.connect(
             "https://" + host + ":" + port,
             username,
             password,
             new okhttp3.OkHttpClient.Builder(),
-            InfluxDB.ResponseFormat.JSON).close();
+            InfluxDB.ResponseFormat.JSON)
+        .close();
   }
 
   @Test
