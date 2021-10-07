@@ -62,7 +62,7 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
     return new Chunk(
         chunk.getHeader(),
         chunk.getData().duplicate(),
-        chunk.getDeleteIntervalList(),
+        chunkMetaData.getDeleteIntervalList(),
         chunkMetaData.getStatistics());
   }
 

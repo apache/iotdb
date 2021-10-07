@@ -16,10 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils;
-
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.utils.Pair;
+package org.apache.iotdb.tsfile.utils;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -64,54 +61,33 @@ public class FilePathUtilsTest {
 
   @Test
   public void getLogicalSgNameAndTimePartitionIdPairTest() {
-    TsFileResource tsFileResource = new TsFileResource();
-    tsFileResource.setFile(tsFile);
     Pair<String, Long> sgNameAndTimePartitionIdPair =
-        FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(tsFileResource);
+        FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(tsFile.getAbsolutePath());
     Assert.assertEquals(storageGroupName, sgNameAndTimePartitionIdPair.left);
     Assert.assertEquals(partitionId, sgNameAndTimePartitionIdPair.right.longValue());
   }
 
   @Test
   public void getLogicalStorageGroupNameTest() {
-    TsFileResource tsFileResource = new TsFileResource();
-    tsFileResource.setFile(tsFile);
-    String tmpSgName = FilePathUtils.getLogicalStorageGroupName(tsFileResource);
+    String tmpSgName = FilePathUtils.getLogicalStorageGroupName(tsFile.getAbsolutePath());
     Assert.assertEquals(storageGroupName, tmpSgName);
   }
 
   @Test
   public void getVirtualStorageGroupNameTest() {
-    TsFileResource tsFileResource = new TsFileResource();
-    tsFileResource.setFile(tsFile);
-    String tmpVirtualSgName = FilePathUtils.getVirtualStorageGroupId(tsFileResource);
+    String tmpVirtualSgName = FilePathUtils.getVirtualStorageGroupId(tsFile.getAbsolutePath());
     Assert.assertEquals(virtualSgName, tmpVirtualSgName);
   }
 
   @Test
   public void getTimePartitionIdTest() {
-    TsFileResource tsFileResource = new TsFileResource();
-    tsFileResource.setFile(tsFile);
-    long tmpTimePartitionId = FilePathUtils.getTimePartitionId(tsFileResource);
+    long tmpTimePartitionId = FilePathUtils.getTimePartitionId(tsFile.getAbsolutePath());
     Assert.assertEquals(partitionId, tmpTimePartitionId);
   }
 
   @Test
-  public void getTsFileNameWithoutHardLinkTest() {
-    TsFileResource tsFileResource = new TsFileResource();
-    tsFileResource.setFile(tsFile);
-    TsFileResource newTsFileResource = tsFileResource.createHardlink();
-    String tsFileNameWithoutHardLink =
-        FilePathUtils.getTsFileNameWithoutHardLink(newTsFileResource);
-    Assert.assertEquals(tsFileName, tsFileNameWithoutHardLink);
-    Assert.assertTrue(newTsFileResource.getTsFile().delete());
-  }
-
-  @Test
   public void getTsFilePrefixPathTest() {
-    TsFileResource tsFileResource = new TsFileResource();
-    tsFileResource.setFile(tsFile);
-    String tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(tsFileResource);
+    String tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(tsFile.getAbsolutePath());
     String exceptPrefixPath =
         storageGroupName + File.separator + virtualSgName + File.separator + partitionId;
     Assert.assertEquals(exceptPrefixPath, tsFilePrefixPath);
