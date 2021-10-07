@@ -2050,8 +2050,7 @@ public class PlanExecutor implements IPlanExecutor {
     return noExistSg;
   }
 
-  private void settle(SettlePlan plan)
-      throws StorageEngineException {
+  private void settle(SettlePlan plan) throws StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file settle");

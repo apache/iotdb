@@ -801,12 +801,12 @@ public class StorageEngine implements IService {
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths)
       throws StorageEngineException {
-    VirtualStorageGroupManager vsg=processorMap.get(sgPath);
+    VirtualStorageGroupManager vsg = processorMap.get(sgPath);
     if (vsg == null) {
       throw new StorageEngineException(
           "The Storage Group " + sgPath.toString() + " is not existed.");
     }
-    if(!vsg.getIsSettling().compareAndSet(false,true)){
+    if (!vsg.getIsSettling().compareAndSet(false, true)) {
       throw new StorageEngineException(
           "Storage Group " + sgPath.getFullPath() + " is already being settled now.");
     }
