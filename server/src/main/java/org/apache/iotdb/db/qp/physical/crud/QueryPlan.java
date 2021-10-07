@@ -157,14 +157,6 @@ public abstract class QueryPlan extends PhysicalPlan {
     this.enableTracing = enableTracing;
   }
 
-  public Map<String, Integer> getVectorPathToIndex() {
-    return vectorPathToIndex;
-  }
-
-  public void setVectorPathToIndex(Map<String, Integer> vectorPathToIndex) {
-    this.vectorPathToIndex = vectorPathToIndex;
-  }
-
   public List<ResultColumn> getResultColumns() {
     return resultColumns;
   }
