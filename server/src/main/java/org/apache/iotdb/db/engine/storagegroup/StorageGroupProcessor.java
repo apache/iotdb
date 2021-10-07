@@ -2348,28 +2348,34 @@ public class StorageGroupProcessor {
    */
   private void settleTsFileCallBack(
       TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
-      throws IOException {
+      throws WriteProcessException {
     oldTsFileResource.readUnlock();
     oldTsFileResource.writeLock();
-    TsFileAndModSettleTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
-    if (TsFileAndModSettleTool.getInstance().recoverSettleFileMap.size() != 0) {
-      TsFileAndModSettleTool.getInstance()
-          .recoverSettleFileMap
-          .remove(oldTsFileResource.getTsFile().getAbsolutePath());
-    }
-    // clear Cache , including chunk cache and timeseriesMetadata cache
-    ChunkCache.getInstance().clear();
-    TimeSeriesMetadataCache.getInstance().clear();
+    try {
+      TsFileAndModSettleTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
+      if (TsFileAndModSettleTool.getInstance().recoverSettleFileMap.size() != 0) {
+        TsFileAndModSettleTool.getInstance()
+            .recoverSettleFileMap
+            .remove(oldTsFileResource.getTsFile().getAbsolutePath());
+      }
+      // clear Cache , including chunk cache and timeseriesMetadata cache
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
 
-    // if old tsfile is being deleted in the process due to its all data's being deleted.
-    if (!oldTsFileResource.getTsFile().exists()) {
-      tsFileManagement.remove(oldTsFileResource, oldTsFileResource.isSeq());
+      // if old tsfile is being deleted in the process due to its all data's being deleted.
+      if (!oldTsFileResource.getTsFile().exists()) {
+        tsFileManagement.remove(oldTsFileResource, oldTsFileResource.isSeq());
+      }
+      FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFilePath());
+      oldTsFileResource.setSettleTsFileCallBack(null);
+      SettleService.getINSTANCE().getFilesToBeSettledCount().addAndGet(-1);
+    } catch (IOException e) {
+      logger.error("Exception to move new tsfile in settling", e);
+      throw new WriteProcessException(
+          "Meet error when settling file: " + oldTsFileResource.getTsFile().getAbsolutePath(), e);
+    } finally {
+      oldTsFileResource.writeUnlock();
     }
-    FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFilePath());
-    oldTsFileResource.setSettleTsFileCallBack(null);
-    SettleService.getINSTANCE().getFilesToBeSettledCount().addAndGet(-1);
-    oldTsFileResource.writeUnlock();
-    oldTsFileResource.readLock();
   }
 
   private void loadUpgradedResources(List<TsFileResource> resources, boolean isseq) {
@@ -3318,7 +3324,7 @@ public class StorageGroupProcessor {
   public interface SettleTsFileCallBack {
 
     void call(TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
-        throws IOException, WriteProcessException;
+        throws WriteProcessException;
   }
 
   @FunctionalInterface

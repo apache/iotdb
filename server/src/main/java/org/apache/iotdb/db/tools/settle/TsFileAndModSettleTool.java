@@ -22,7 +22,9 @@ package org.apache.iotdb.db.tools.settle;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
@@ -198,7 +200,8 @@ public class TsFileAndModSettleTool {
    * settling
    */
   public void settleOneTsFileAndMod(
-      TsFileResource resourceToBeSettled, List<TsFileResource> settledResources) throws Exception {
+      TsFileResource resourceToBeSettled, List<TsFileResource> settledResources)
+      throws WriteProcessException, IllegalPathException, IOException {
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
           "The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
@@ -211,13 +214,8 @@ public class TsFileAndModSettleTool {
     try (TsFileRewriteTool tsFileRewriteTool = new TsFileRewriteTool(resourceToBeSettled)) {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
-    if (settledResources.size() == 0) { // if all the data in this tsfile has been deleted
+    if (settledResources.size() == 0) {
       resourceToBeSettled.setDeleted(true);
-      resourceToBeSettled.readUnlock();
-      resourceToBeSettled.writeLock();
-      resourceToBeSettled.delete();
-      resourceToBeSettled.writeUnlock();
-      resourceToBeSettled.readLock();
     }
   }
 
@@ -309,7 +307,12 @@ public class TsFileAndModSettleTool {
                 + File.separator
                 + oldTsFileResource.getTimePartition());
     if (newTsFileResources.size() == 0) { // if the oldTsFile has no mods, it should not be deleted.
-      if (newPartitionDir.exists()) newPartitionDir.delete();
+      if (oldTsFileResource.isDeleted()) {
+        oldTsFileResource.remove();
+      }
+      if (newPartitionDir.exists()) {
+        newPartitionDir.delete();
+      }
       return;
     }
     FSFactory fsFactory = FSFactoryProducer.getFSFactory();

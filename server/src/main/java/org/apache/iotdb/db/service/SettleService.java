@@ -47,6 +47,7 @@ public class SettleService implements IService {
 
   private AtomicInteger threadCnt = new AtomicInteger();
   private ExecutorService settleThreadPool;
+  private boolean isRecoverFinish;
 
   private static AtomicInteger filesToBeSettledCount = new AtomicInteger();
 
@@ -86,6 +87,9 @@ public class SettleService implements IService {
           tmpSgResourcesMap.put(sgPath, tsFilePaths);
         }
       }
+      while (!StorageEngine.getInstance().isAllSgReady()) {
+        // wait for all sg ready
+      }
       List<TsFileResource> seqResourcesToBeSettled = new ArrayList<>();
       List<TsFileResource> unseqResourcesToBeSettled = new ArrayList<>();
       for (Map.Entry<PartialPath, List<String>> entry : tmpSgResourcesMap.entrySet()) {
@@ -103,6 +107,7 @@ public class SettleService implements IService {
         }
       }
       startSettling(seqResourcesToBeSettled, unseqResourcesToBeSettled);
+      setRecoverFinish(true);
     } catch (WriteProcessException e) {
       e.printStackTrace();
     }
@@ -117,31 +122,21 @@ public class SettleService implements IService {
       stop();
       return;
     }
-    logger.info("Totally find " + getFilesToBeSettledCount() + " tsFiles to be settled.");
-
+    logger.info(
+        "Totally find "
+            + (seqResourcesToBeSettled.size() + unseqResourcesToBeSettled.size())
+            + " tsFiles to be settled.");
     // settle seqTsFile
     for (TsFileResource resource : seqResourcesToBeSettled) {
-      try {
-        resource.readLock();
-        resource.setSeq(true);
-        submitSettleTask(new SettleTask(resource));
-      } catch (Exception e) {
-        resource.writeUnlock();
-        resource.readUnlock();
-        throw new WriteProcessException("Meet error when settling file: "+ resource.getTsFile().getAbsolutePath()+" .",e);
-      }
+      resource.readLock();
+      resource.setSeq(true);
+      submitSettleTask(new SettleTask(resource));
     }
     // settle unseqTsFile
     for (TsFileResource resource : unseqResourcesToBeSettled) {
-      try {
-        resource.readLock();
-        resource.setSeq(false);
-        submitSettleTask(new SettleTask(resource));
-      } catch (Exception e) {
-        resource.writeUnlock();
-        resource.readUnlock();
-        throw new WriteProcessException("Meet error when settling file: "+ resource.getTsFile().getAbsolutePath()+" .",e);
-      }
+      resource.readLock();
+      resource.setSeq(false);
+      submitSettleTask(new SettleTask(resource));
     }
   }
 
@@ -180,8 +175,16 @@ public class SettleService implements IService {
     return sgPath;
   }
 
-  private void submitSettleTask(SettleTask settleTask) throws Exception {
+  private void submitSettleTask(SettleTask settleTask) throws WriteProcessException {
     // settleThreadPool.submit(settleTask);
     settleTask.settleTsFile();
+  }
+
+  public boolean isRecoverFinish() {
+    return isRecoverFinish;
+  }
+
+  public void setRecoverFinish(boolean recoverFinish) {
+    isRecoverFinish = recoverFinish;
   }
 }

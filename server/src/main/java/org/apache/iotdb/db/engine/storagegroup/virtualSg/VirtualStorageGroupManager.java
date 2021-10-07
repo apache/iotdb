@@ -62,7 +62,7 @@ public class VirtualStorageGroupManager {
    */
   private AtomicBoolean[] isVsgReady;
 
-  private volatile boolean isSettling;
+  private AtomicBoolean isSettling = new AtomicBoolean();
 
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
@@ -340,7 +340,6 @@ public class VirtualStorageGroupManager {
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths) {
-    setSettling(true);
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         storageGroupProcessor.addSettleFilesToList(
@@ -462,11 +461,11 @@ public class VirtualStorageGroupManager {
     Arrays.fill(virtualStorageGroupProcessor, null);
   }
 
-  public boolean isSettling() {
-    return isSettling;
+  public void setSettling(boolean settling) {
+    isSettling.set(settling);
   }
 
-  public void setSettling(boolean settling) {
-    isSettling = settling;
+  public AtomicBoolean getIsSettling() {
+    return isSettling;
   }
 }

@@ -801,17 +801,16 @@ public class StorageEngine implements IService {
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths)
       throws StorageEngineException {
-    if (processorMap.get(sgPath) == null) {
+    VirtualStorageGroupManager vsg=processorMap.get(sgPath);
+    if (vsg == null) {
       throw new StorageEngineException(
           "The Storage Group " + sgPath.toString() + " is not existed.");
     }
-    if (processorMap.get(sgPath).isSettling()) {
+    if(!vsg.getIsSettling().compareAndSet(false,true)){
       throw new StorageEngineException(
           "Storage Group " + sgPath.getFullPath() + " is already being settled now.");
     }
-    processorMap
-        .get(sgPath)
-        .getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+    vsg.getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
   }
 
   public void setSettling(PartialPath sgPath, boolean isSettling) {

@@ -2051,10 +2051,13 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void settle(SettlePlan plan)
-      throws StorageEngineException { // Todo:在这里获取所有的tsfileResourceslist,构建settleTask;
+      throws StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file settle");
+    }
+    if (!SettleService.getINSTANCE().isRecoverFinish()) {
+      throw new StorageEngineException("Existing sg that is not ready, please try later.");
     }
     PartialPath sgPath = null;
     try {
