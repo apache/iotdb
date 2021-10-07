@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -160,17 +159,10 @@ public class ChunkCacheTest {
 
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file =
-          new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  System.currentTimeMillis()
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+      File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i));
+      if (!file.getParentFile().exists()) {
+        Assert.assertTrue(file.getParentFile().mkdirs());
+      }
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i);
@@ -178,17 +170,7 @@ public class ChunkCacheTest {
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
     for (int i = 0; i < unseqFileNum; i++) {
-      File file =
-          new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  System.currentTimeMillis()
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + (i + seqFileNum)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+      File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i + seqFileNum));
       if (!file.getParentFile().exists()) {
         Assert.assertTrue(file.getParentFile().mkdirs());
       }

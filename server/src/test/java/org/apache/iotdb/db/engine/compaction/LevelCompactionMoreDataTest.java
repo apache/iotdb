@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -95,15 +96,16 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
     for (int i = 0; i < seqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                  .concat(
+                      i
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + i
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes((long) i);
@@ -113,15 +115,16 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  (10000 + i)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + (10000 + i)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                  .concat(
+                      (10000 + i)
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + (10000 + i)
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes((long) (i + seqFileNum));
@@ -131,15 +134,16 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
 
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                .concat(
+                    unseqFileNum
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + unseqFileNum
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.updatePlanIndexes((long) (seqFileNum + unseqFileNum));
@@ -180,9 +184,11 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
+    if (!tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
   }
 
   @After

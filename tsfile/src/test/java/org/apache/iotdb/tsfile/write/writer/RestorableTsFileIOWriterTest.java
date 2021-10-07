@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -43,6 +42,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
@@ -59,12 +59,16 @@ import static org.junit.Assert.assertTrue;
 @SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
 public class RestorableTsFileIOWriterTest {
 
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.ts");
-  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final String FILE_NAME =
+      TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
+  private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test(expected = NotCompatibleTsFileException.class)
   public void testBadHeadMagic() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
     FileWriter fWriter = new FileWriter(file);
     try {
       fWriter.write("Tsfile");
@@ -106,6 +110,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
     assertTrue(file.delete());
   }
@@ -119,6 +124,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     TsFileWriter writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
     assertTrue(file.delete());
   }
@@ -144,6 +150,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
     assertTrue(file.delete());
   }
@@ -182,6 +189,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
     // truncate version marker and version
     assertEquals(pos1, rWriter.getTruncatedSize());
     assertTrue(file.delete());
@@ -209,6 +217,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(file.getPath()));
     List<Path> pathList = new ArrayList<>();
@@ -252,6 +261,8 @@ public class RestorableTsFileIOWriterTest {
     writer = new TsFileWriter(rWriter);
     writer.close();
     assertNotEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length, rWriter.getTruncatedSize());
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -296,6 +307,8 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -344,6 +357,8 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -393,6 +408,8 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -430,6 +447,8 @@ public class RestorableTsFileIOWriterTest {
 
     rWriter = new RestorableTsFileIOWriter(file);
     assertFalse(rWriter.canWrite());
+    rWriter.close();
+
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
@@ -462,6 +481,7 @@ public class RestorableTsFileIOWriterTest {
         RestorableTsFileIOWriter.getWriterForAppendingDataOnCompletedTsFile(file);
     TsFileWriter write = new TsFileWriter(rWriter);
     write.close();
+    rWriter.close();
     assertEquals(size, file.length());
     assertTrue(file.delete());
   }

@@ -26,7 +26,7 @@ import java.io.File;
 public class FilePathUtils {
 
   private static final String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
-  private static final String FILE_NAME_SEPARATOR = "-";
+  public static final String FILE_NAME_SEPARATOR = "-";
 
   private FilePathUtils() {
     // forbidding instantiation
@@ -85,6 +85,7 @@ public class FilePathUtils {
   }
 
   public static String getTsFilePrefixPath(String tsFileAbsolutePath) {
+    if (tsFileAbsolutePath == null) return null;
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
     int pathLength = pathSegments.length;
     return pathSegments[pathLength - 4]
