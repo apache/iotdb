@@ -71,7 +71,7 @@ public class RemoteSeriesReaderByTimestampTest {
               @Override
               public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
                   throws IOException {
-                return new AsyncDataClient(null, null, node, null) {
+                return new AsyncDataClient(null, null, node, ClientCategory.DATA) {
                   @Override
                   public void fetchSingleSeriesByTimestamps(
                       RaftNode header,

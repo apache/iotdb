@@ -20,7 +20,9 @@
 package org.apache.iotdb.cluster.server.member;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
+import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
+import org.apache.iotdb.cluster.client.ClientManager.Type;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
@@ -43,6 +45,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -310,9 +313,13 @@ public class BaseMember {
     // TODO fixme : restore normal provider
     ClusterIoTDB.getInstance()
         .setClientManager(
-            new ClientManager(
-                ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
-                ClientManager.Type.RequestForwardClient));
+            new ClientManager(true, Type.RequestForwardClient) {
+              @Override
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws Exception {
+                return new TestAsyncDataClient(node, dataGroupMemberMap);
+              }
+            });
     return ret;
   }
 }
