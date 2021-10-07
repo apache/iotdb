@@ -122,9 +122,4 @@ public class AggregationPlan extends RawDataQueryPlan {
     }
     return columnForDisplay;
   }
-
-  @Override
-  public boolean isRawQuery() {
-    return false;
-  }
 }

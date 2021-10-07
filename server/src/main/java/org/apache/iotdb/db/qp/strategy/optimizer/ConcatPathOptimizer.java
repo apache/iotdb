@@ -31,7 +31,9 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
+import org.apache.iotdb.db.qp.logical.crud.LikeOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
@@ -188,6 +190,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
                   noStarPaths.get(i),
                   ((InOperator) operator).getNot(),
                   ((InOperator) operator).getValues()));
+        } else if (operator instanceof LikeOperator) {
+          currentNode.addChildOperator(
+              new LikeOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((LikeOperator) operator).getValue()));
+        } else if (operator instanceof RegexpOperator) {
+          currentNode.addChildOperator(
+              new RegexpOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((RegexpOperator) operator).getValue()));
         } else {
           currentNode.addChildOperator(
               new BasicFunctionOperator(

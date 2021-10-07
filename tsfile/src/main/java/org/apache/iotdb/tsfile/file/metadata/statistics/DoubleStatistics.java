@@ -161,7 +161,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Double> stats) {
     DoubleStatistics doubleStats = (DoubleStatistics) stats;
     if (this.isEmpty) {
       initializeStats(

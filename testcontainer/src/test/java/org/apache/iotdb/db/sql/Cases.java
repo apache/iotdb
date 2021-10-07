@@ -34,6 +34,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,6 +45,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -165,7 +169,7 @@ public abstract class Cases {
       writeStatement.execute(initData);
     }
     try {
-      session.executeNonQueryStatement(" delete from root.ln.wf011.*");
+      session.executeNonQueryStatement(" delete from root.ln.wf011.**");
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       Assert.assertFalse(e instanceof BatchExecutionException);
     }
@@ -349,7 +353,7 @@ public abstract class Cases {
   }
 
   @Test
-  public void testCreateFunctionPlan1() {
+  public void testCreateFunctionPlan() {
     try {
       PhysicalPlan plan =
           processor.parseSQLToPhysicalPlan(
@@ -361,26 +365,6 @@ public abstract class Cases {
       Assert.assertEquals("udf", createFunctionPlan.getUdfName());
       Assert.assertEquals(
           "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      Assert.assertFalse(createFunctionPlan.isTemporary());
-    } catch (QueryProcessException e) {
-      Assert.fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testCreateFunctionPlan2() { // create temporary function
-    try {
-      PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
-        Assert.fail();
-      }
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      Assert.assertEquals("udf", createFunctionPlan.getUdfName());
-      Assert.assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      Assert.assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       Assert.fail(e.toString());
     }
@@ -430,7 +414,7 @@ public abstract class Cases {
     // try to read data on each node. select from parent series
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01 where tag1=v1");
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -453,7 +437,7 @@ public abstract class Cases {
 
     // try to read data on each node. select from root
     for (Statement readStatement : readStatements) {
-      ResultSet resultSet = readStatement.executeQuery("SHOW TIMESERIES root where tag1=v1");
+      ResultSet resultSet = readStatement.executeQuery("SHOW TIMESERIES root.** where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -609,5 +593,221 @@ public abstract class Cases {
     }
 
     writeStatement.execute(setWritable);
+  }
+
+  @Test
+  public void testAutoCreateSchemaInClusterMode()
+      throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    List<String> measurementList = new ArrayList<>();
+    measurementList.add("s1");
+    measurementList.add("s2");
+    measurementList.add("s3");
+
+    List<TSDataType> typeList = new ArrayList<>();
+    typeList.add(TSDataType.INT64);
+    typeList.add(TSDataType.INT64);
+    typeList.add(TSDataType.INT64);
+
+    List<Object> valueList = new ArrayList<>();
+    valueList.add(1L);
+    valueList.add(2L);
+    valueList.add(3L);
+
+    for (int i = 0; i < 5; i++) {
+      String sg = "root.sg" + String.valueOf(i);
+      session.setStorageGroup(sg);
+      for (int j = 0; j < 10; j++) {
+        session.createTimeseries(
+            String.format("%s.d1.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
+        session.createTimeseries(
+            String.format("%s.d2.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
+        session.createTimeseries(
+            String.format("%s.d3.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
+        session.createTimeseries(
+            String.format("%s.d4.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
+      }
+    }
+
+    // step 1: insert into existing time series.
+    for (int i = 0; i < 5; i++) {
+      for (long t = 0; t < 3; t++) {
+        session.insertRecord(
+            String.format("root.sg%s.d1", i), t, measurementList, typeList, 1L, 2L, 3L);
+      }
+    }
+
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+    List<String> deviceList = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      String devicePath = String.format("root.sg%s.d2", i);
+      deviceList.add(devicePath);
+      typesList.add(typeList);
+      measurementsList.add(measurementList);
+      valuesList.add(valueList);
+    }
+
+    for (long t = 0; t < 3; t++) {
+      List<Long> timeList = new ArrayList<>();
+      for (int i = 0; i < 5; i++) {
+        timeList.add(t);
+      }
+      session.insertRecords(deviceList, timeList, measurementsList, typesList, valuesList);
+    }
+
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
+
+    Map<String, Tablet> tabletMap = new HashMap<>();
+    for (int i = 0; i < 5; i++) {
+      Tablet tablet = new Tablet(String.format("root.sg%s.d3", i), schemaList, 10);
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, row);
+        tablet.addValue("s1", rowIndex, 1L);
+        tablet.addValue("s2", rowIndex, 2L);
+        tablet.addValue("s3", rowIndex, 3L);
+      }
+      session.insertTablet(tablet);
+      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tabletMap.put(String.format("root.sg%s.d4", i), tablet);
+    }
+
+    session.insertTablets(tabletMap);
+
+    // step 2: test auto create sg and time series schema
+    for (int i = 5; i < 10; i++) {
+      for (long t = 0; t < 3; t++) {
+        session.insertRecord(
+            String.format("root.sg%s.d1", i), t, measurementList, typeList, 1L, 2L, 3L);
+      }
+    }
+
+    deviceList.clear();
+    for (int i = 5; i < 10; i++) {
+      String device_path = String.format("root.sg%s.d2", i);
+      deviceList.add(device_path);
+    }
+
+    for (long t = 0; t < 3; t++) {
+      List<Long> timeList = new ArrayList<>();
+      for (int i = 0; i < 5; i++) {
+        timeList.add(t);
+      }
+      session.insertRecords(deviceList, timeList, measurementsList, typesList, valuesList);
+    }
+
+    tabletMap.clear();
+    for (int i = 5; i < 10; i++) {
+      Tablet tablet = new Tablet(String.format("root.sg%s.d3", i), schemaList, 10);
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, row);
+        tablet.addValue("s1", rowIndex, 1L);
+        tablet.addValue("s2", rowIndex, 2L);
+        tablet.addValue("s3", rowIndex, 3L);
+      }
+      session.insertTablet(tablet);
+      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tabletMap.put(String.format("root.sg%s.d4", i), tablet);
+    }
+
+    session.insertTablets(tabletMap);
+
+    measurementsList.clear();
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      timeList.add((long) i);
+      List<String> measurements = new ArrayList<>();
+      measurements.add(String.format("s%d", i));
+      measurements.add(String.format("s%d", i + 5));
+      measurements.add(String.format("s%d", i + 10));
+      measurementsList.add(measurements);
+    }
+
+    session.insertRecordsOfOneDevice(
+        "root.sg0.d5", timeList, measurementsList, typesList, valuesList);
+    session.insertRecordsOfOneDevice(
+        "root.sg20.d1", timeList, measurementsList, typesList, valuesList);
+
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 10; i++) {
+        for (int d = 1; d <= 4; d++) {
+          ResultSet resultSet =
+              readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
+          for (long t = 0; t < 3; t++) {
+            Assert.assertTrue(resultSet.next());
+            Assert.assertEquals(resultSet.getLong(1), t);
+            Assert.assertEquals(resultSet.getString(2), "1");
+            Assert.assertEquals(resultSet.getString(3), "2");
+            Assert.assertEquals(resultSet.getString(4), "3");
+          }
+        }
+      }
+
+      for (int i = 0; i < 5; i++) {
+        ResultSet resultSet =
+            readStatement.executeQuery(
+                String.format("select s%d,s%d,s%d from root.sg0.d5", i, i + 5, i + 10));
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(resultSet.getLong(1), i);
+        Assert.assertEquals(resultSet.getString(2), "1");
+        Assert.assertEquals(resultSet.getString(3), "2");
+        Assert.assertEquals(resultSet.getString(4), "3");
+
+        resultSet =
+            readStatement.executeQuery(
+                String.format("select s%d,s%d,s%d from root.sg20.d1", i, i + 5, i + 10));
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(resultSet.getLong(1), i);
+        Assert.assertEquals(resultSet.getString(2), "1");
+        Assert.assertEquals(resultSet.getString(3), "2");
+        Assert.assertEquals(resultSet.getString(4), "3");
+      }
+    }
+
+    // test create time series
+    for (int i = 0; i < 5; i++) {
+      session.createTimeseries(
+          String.format("root.sg1%s.d1.s1", i),
+          TSDataType.INT64,
+          TSEncoding.RLE,
+          CompressionType.SNAPPY);
+    }
+
+    List<String> path = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 5; i < 10; i++) {
+      path.add(String.format("root.sg1%s.d1.s1", i));
+      dataTypes.add(TSDataType.INT64);
+      encodings.add(TSEncoding.RLE);
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+    session.createMultiTimeseries(
+        path, dataTypes, encodings, compressionTypes, null, null, null, null);
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 10; i++) {
+        ResultSet resultSet =
+            readStatement.executeQuery(String.format("show timeseries root.sg1%s.d1.s1", i));
+        Assert.assertTrue(resultSet.next());
+      }
+    }
   }
 }

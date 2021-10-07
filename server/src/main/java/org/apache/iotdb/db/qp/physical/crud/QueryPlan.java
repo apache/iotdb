@@ -45,8 +45,6 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
-  private Map<String, Integer> vectorPathToIndex = new HashMap<>();
-
   private boolean enableRedirect = false;
   private boolean enableTracing = false;
 
@@ -135,7 +133,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
     ResultColumn resultColumn = resultColumns.get(pathIndex);
-    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getFullPath();
+    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getExactFullPath();
   }
 
   public String getColumnForDisplay(String columnForReader, int pathIndex)

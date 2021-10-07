@@ -226,6 +226,8 @@ public class InsertRowPlanTest {
 
     InsertRowPlan plan2 = new InsertRowPlan();
     plan2.deserialize(byteBuffer);
+
+    executor.insert(plan2);
     Assert.assertEquals(plan1, plan2);
   }
 

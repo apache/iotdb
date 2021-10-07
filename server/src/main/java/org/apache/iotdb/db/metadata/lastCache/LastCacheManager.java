@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.lastCache;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -63,18 +64,17 @@ public class LastCacheManager {
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
       return lastCacheContainer.getCachedLast();
-    } else {
-      String measurementId = seriesPath.getMeasurement();
-      if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        return lastCacheContainer.getCachedLast();
-      } else {
-        IMeasurementSchema schema = node.getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-          return lastCacheContainer.getCachedLast(
-              schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()));
-        }
-        return null;
+    } else if (seriesPath instanceof VectorPartialPath) {
+      IMeasurementSchema schema = node.getSchema();
+      if (schema instanceof VectorMeasurementSchema) {
+        return lastCacheContainer.getCachedLast(
+            node.getSchema()
+                .getSubMeasurementIndex(
+                    ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)));
       }
+      return null;
+    } else {
+      return lastCacheContainer.getCachedLast();
     }
   }
 
@@ -103,23 +103,21 @@ public class LastCacheManager {
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
       lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } else {
-      String measurementId = seriesPath.getMeasurement();
-      if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-      } else {
-        IMeasurementSchema schema = node.getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-          if (lastCacheContainer.isEmpty()) {
-            lastCacheContainer.init(schema.getMeasurementCount());
-          }
-          lastCacheContainer.updateCachedLast(
-              schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()),
-              timeValuePair,
-              highPriorityUpdate,
-              latestFlushedTime);
+    } else if (seriesPath instanceof VectorPartialPath) {
+      IMeasurementSchema schema = node.getSchema();
+      if (schema instanceof VectorMeasurementSchema) {
+        if (lastCacheContainer.isEmpty()) {
+          lastCacheContainer.init(schema.getSubMeasurementsCount());
         }
+        lastCacheContainer.updateCachedLast(
+            schema.getSubMeasurementIndex(
+                ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)),
+            timeValuePair,
+            highPriorityUpdate,
+            latestFlushedTime);
       }
+    } else {
+      lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
     }
   }
 
@@ -140,20 +138,18 @@ public class LastCacheManager {
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
       lastCacheContainer.resetLastCache();
-    } else {
-      String measurementId = seriesPath.getMeasurement();
-      if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        lastCacheContainer.resetLastCache();
-      } else {
-        IMeasurementSchema schema = node.getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-          if (lastCacheContainer.isEmpty()) {
-            lastCacheContainer.init(schema.getMeasurementCount());
-          }
-          lastCacheContainer.resetLastCache(
-              schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()));
+    } else if (seriesPath instanceof VectorPartialPath) {
+      IMeasurementSchema schema = node.getSchema();
+      if (schema instanceof VectorMeasurementSchema) {
+        if (lastCacheContainer.isEmpty()) {
+          lastCacheContainer.init(schema.getSubMeasurementsCount());
         }
+        lastCacheContainer.resetLastCache(
+            schema.getSubMeasurementIndex(
+                ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)));
       }
+    } else {
+      lastCacheContainer.resetLastCache();
     }
   }
 
@@ -170,7 +166,7 @@ public class LastCacheManager {
       ILastCacheContainer lastCacheContainer = entityMNode.getLastCacheContainer(measurement);
       IMeasurementSchema schema = node.getSchema();
       if (lastCacheContainer.isEmpty() && (schema instanceof VectorMeasurementSchema)) {
-        lastCacheContainer.init(schema.getMeasurementCount());
+        lastCacheContainer.init(schema.getSubMeasurementsCount());
       }
       node.setLastCacheContainer(lastCacheContainer);
     }
@@ -183,13 +179,13 @@ public class LastCacheManager {
    */
   public static void deleteLastCacheByDevice(IEntityMNode node) {
     // process lastCache of timeseries represented by measurementNode
-    for (IMNode measurementNode : node.getChildren().values()) {
-      if (measurementNode != null) {
-        ((IMeasurementMNode) measurementNode).getLastCacheContainer().resetLastCache();
+    for (IMNode child : node.getChildren().values()) {
+      if (child.isMeasurement()) {
+        child.getAsMeasurementMNode().getLastCacheContainer().resetLastCache();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
-              measurementNode.getFullPath());
+              child.getFullPath());
         }
       }
     }
@@ -226,7 +222,7 @@ public class LastCacheManager {
         continue;
       }
       path = child.getPartialPath();
-      measurementMNode = (IMeasurementMNode) child;
+      measurementMNode = child.getAsMeasurementMNode();
       if (originalPath.matchFullPath(path)) {
         lastCacheContainer = measurementMNode.getLastCacheContainer();
         if (lastCacheContainer == null) {
@@ -261,8 +257,8 @@ public class LastCacheManager {
     TimeValuePair lastPair;
     if (schema instanceof VectorMeasurementSchema) {
       int index;
-      for (String measurement : schema.getValueMeasurementIdList()) {
-        index = schema.getMeasurementIdColumnIndex(measurement);
+      for (String measurement : schema.getSubMeasurementsList()) {
+        index = schema.getSubMeasurementIndex(measurement);
         lastPair = lastCacheContainer.getCachedLast(index);
         if (lastPair != null
             && startTime <= lastPair.getTimestamp()

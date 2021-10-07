@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -69,7 +70,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /** statistic of this chunk. */
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   /** SDT parameters */
   private boolean isSdtEncoding;
@@ -433,8 +434,8 @@ public class ChunkWriterImpl implements IChunkWriter {
    * @param statistics the chunk statistics
    * @throws IOException exception in IO
    */
-  private void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
-      throws IOException {
+  private void writeAllPagesOfChunkToTsFile(
+      TsFileIOWriter writer, Statistics<? extends Serializable> statistics) throws IOException {
     if (statistics.getCount() == 0) {
       return;
     }

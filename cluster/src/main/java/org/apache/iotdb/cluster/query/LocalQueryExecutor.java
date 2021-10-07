@@ -307,11 +307,11 @@ public class LocalQueryExecutor {
               try {
                 if (fullPath.contains("$#$")) {
                   String[] array = fullPath.split(":");
-                  List<PartialPath> subSensorsPathList = new ArrayList<>();
+                  List<String> subSensorsList = new ArrayList<>();
                   for (int i = 1; i < array.length; i++) {
-                    subSensorsPathList.add(new PartialPath(array[i]));
+                    subSensorsList.add(array[i]);
                   }
-                  paths.add(new VectorPartialPath(array[0], subSensorsPathList));
+                  paths.add(new VectorPartialPath(array[0], subSensorsList));
                 } else {
                   paths.add(new PartialPath(fullPath));
                 }
@@ -491,7 +491,7 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(new PartialPath(prefixPath));
       } else {
-        getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
+        getCMManager().collectMeasurementSchema(new PartialPath(prefixPath), measurementSchemas);
       }
     }
 
@@ -529,7 +529,7 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(prefixPath);
       } else {
-        getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
+        getCMManager().collectTimeseriesSchema(new PartialPath(prefixPath), timeseriesSchemas);
       }
     }
 

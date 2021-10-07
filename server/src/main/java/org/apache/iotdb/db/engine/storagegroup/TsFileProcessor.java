@@ -247,8 +247,9 @@ public class TsFileProcessor {
   }
 
   /**
-   * insert batch data of insertTabletPlan into the workingMemtable The rows to be inserted are in
-   * the range [start, end)
+   * insert batch data of insertTabletPlan into the workingMemtable. The rows to be inserted are in
+   * the range [start, end). Null value in each column values will be replaced by the subsequent
+   * non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletPlan insert a tablet of a device
    * @param start start index of rows to be inserted in insertTabletPlan
@@ -339,13 +340,14 @@ public class TsFileProcessor {
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
         // ChunkMetadataIncrement
         IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
-        if (schema.getType() == TSDataType.VECTOR) {
+        if (insertRowPlan.isAligned()) {
           chunkMetadataIncrement +=
-              schema.getValueTSDataTypeList().size()
+              schema.getSubMeasurementsTSDataTypeList().size()
                   * ChunkMetadata.calculateRamSize(
-                      schema.getValueMeasurementIdList().get(0),
-                      schema.getValueTSDataTypeList().get(0));
-          memTableIncrement += TVList.vectorTvListArrayMemSize(schema.getValueTSDataTypeList());
+                      schema.getSubMeasurementsList().get(0),
+                      schema.getSubMeasurementsTSDataTypeList().get(0));
+          memTableIncrement +=
+              TVList.vectorTvListArrayMemSize(schema.getSubMeasurementsTSDataTypeList());
         } else {
           chunkMetadataIncrement +=
               ChunkMetadata.calculateRamSize(
@@ -386,8 +388,8 @@ public class TsFileProcessor {
       if (insertTabletPlan.isAligned()) {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
-        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+        Object[] columns = new Object[vectorSchema.getSubMeasurementsList().size()];
+        for (int j = 0; j < vectorSchema.getSubMeasurementsList().size(); j++) {
           columns[j] = insertTabletPlan.getColumns()[columnIndex++];
         }
         updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
@@ -459,8 +461,8 @@ public class TsFileProcessor {
       Object[] columns) {
     // memIncrements = [memTable, text, chunk metadata] respectively
 
-    List<String> measurementIds = vectorSchema.getValueMeasurementIdList();
-    List<TSDataType> dataTypes = vectorSchema.getValueTSDataTypeList();
+    List<String> measurementIds = vectorSchema.getSubMeasurementsList();
+    List<TSDataType> dataTypes = vectorSchema.getSubMeasurementsTSDataTypeList();
     if (workMemTable.checkIfChunkDoesNotExist(deviceId, vectorSchema.getMeasurementId())) {
       // ChunkMetadataIncrement
       memIncrements[2] +=
@@ -1252,8 +1254,8 @@ public class TsFileProcessor {
         List<ChunkMetadata> timeChunkMetadataList =
             writer.getVisibleMetadataList(deviceId, measurementId, schema.getType());
         List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-        List<String> valueMeasurementIdList = schema.getValueMeasurementIdList();
-        List<TSDataType> valueDataTypeList = schema.getValueTSDataTypeList();
+        List<String> valueMeasurementIdList = schema.getSubMeasurementsList();
+        List<TSDataType> valueDataTypeList = schema.getSubMeasurementsTSDataTypeList();
         for (int i = 0; i < valueMeasurementIdList.size(); i++) {
           valueChunkMetadataList.add(
               writer.getVisibleMetadataList(

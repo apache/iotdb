@@ -20,36 +20,75 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * VectorPartialPath represents a vector's fullPath. It not only contains the full path of vector's
- * own name, but also has subSensorsPathList which contain all the fullPath of vector's sub sensors.
+ * own name, but also has subSensorsList which contain all the fullPath of vector's sub sensors.
  * e.g. VectorPartialPath1(root.sg1.d1.vector1, [root.sg1.d1.vector1.s1, root.sg1.d1.vector1.s2])
  * VectorPartialPath2(root.sg1.d1.vector2, [root.sg1.d1.vector2.s1, root.sg1.d1.vector2.s2])
  */
 public class VectorPartialPath extends PartialPath {
 
-  private List<PartialPath> subSensorsPathList;
+  private List<String> subSensorsList;
 
-  public VectorPartialPath(String path, List<PartialPath> subSensorsPathList)
+  public VectorPartialPath() {}
+
+  public VectorPartialPath(String vectorPath, List<String> subSensorsList)
       throws IllegalPathException {
-    super(path);
-    this.subSensorsPathList = subSensorsPathList;
+    super(vectorPath);
+    this.subSensorsList = subSensorsList;
   }
 
-  public List<PartialPath> getSubSensorsPathList() {
-    return subSensorsPathList;
+  public VectorPartialPath(String vectorPath, String subSensor) throws IllegalPathException {
+    super(vectorPath);
+    subSensorsList = new ArrayList<>();
+    subSensorsList.add(subSensor);
   }
 
-  public void setSubSensorsPathList(List<PartialPath> subSensorsPathList) {
-    this.subSensorsPathList = subSensorsPathList;
+  public VectorPartialPath(PartialPath vectorPath, String subSensor) {
+    super(vectorPath.getNodes());
+    subSensorsList = new ArrayList<>();
+    subSensorsList.add(subSensor);
   }
 
-  public void addSubSensor(PartialPath path) {
-    this.subSensorsPathList.add(path);
+  public List<String> getSubSensorsList() {
+    return subSensorsList;
+  }
+
+  public String getSubSensor(int index) {
+    return subSensorsList.get(index);
+  }
+
+  public PartialPath getPathWithSubSensor(int index) {
+    return new PartialPath(nodes).concatNode(subSensorsList.get(index));
+  }
+
+  public void setSubSensorsList(List<String> subSensorsList) {
+    this.subSensorsList = subSensorsList;
+  }
+
+  public void addSubSensor(String subSensor) {
+    this.subSensorsList.add(subSensor);
+  }
+
+  public void addSubSensor(List<String> subSensors) {
+    this.subSensorsList.addAll(subSensors);
+  }
+
+  @Override
+  public PartialPath copy() {
+    VectorPartialPath result = new VectorPartialPath();
+    result.nodes = nodes;
+    result.fullPath = fullPath;
+    result.device = device;
+    result.measurementAlias = measurementAlias;
+    result.subSensorsList = new ArrayList<>(subSensorsList);
+    return result;
   }
 
   @Override
@@ -64,11 +103,20 @@ public class VectorPartialPath extends PartialPath {
       return false;
     }
     VectorPartialPath that = (VectorPartialPath) o;
-    return Objects.equals(subSensorsPathList, that.subSensorsPathList);
+    return Objects.equals(subSensorsList, that.subSensorsList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), subSensorsPathList);
+    return Objects.hash(super.hashCode(), subSensorsList);
+  }
+
+  @Override
+  public String getExactFullPath() {
+    fullPath = getFullPath();
+    if (subSensorsList.size() == 1) {
+      return fullPath + TsFileConstant.PATH_SEPARATOR + subSensorsList.get(0);
+    }
+    return fullPath;
   }
 }

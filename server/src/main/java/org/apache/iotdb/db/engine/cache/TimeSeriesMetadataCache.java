@@ -43,7 +43,8 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -181,12 +182,14 @@ public class TimeSeriesMetadataCache {
   }
 
   /**
-   * Support for vector
+   * Support for vector. allSensors > subSensors
    *
    * @param key vector's own fullPath, e.g. root.sg1.d1.vector
-   * @param subSensorList all subSensors of this vector in one query, e.g. [s1, s2, s3]
-   * @param allSensors all sensors of the device in one device, to vector, this should contain both
-   *     vector name and subSensors' name, e.g. [vector, s1, s2, s3]
+   * @param subSensorList all subSensors of this vector in query, e.g. [vector.s1, vector.s2,
+   *     vector.s3]
+   * @param allSensors all sensors belonging to this device that appear in query. For vector, this
+   *     should contain both vector name and subSensors' name, e.g. [vector, vector.s1, vector.s2,
+   *     vector.s3]
    */
   // Suppress synchronize warning
   // Suppress high Cognitive Complexity warning
@@ -210,11 +213,13 @@ public class TimeSeriesMetadataCache {
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return Collections.emptyList();
       }
-      return readTimeseriesMetadataForVector(reader, key, subSensorList, allSensors);
+      // for the condition that cache is disabled, we only get what we need
+      Set<String> allSensorSet = new HashSet<>(subSensorList);
+      allSensorSet.add(key.measurement);
+      return readTimeseriesMetadataForVector(reader, key, subSensorList, allSensorSet);
     }
 
     List<TimeseriesMetadata> res = new ArrayList<>();
-
     getVectorTimeSeriesMetadataListFromCache(key, subSensorList, res);
 
     if (res.isEmpty()) {
@@ -240,36 +245,30 @@ public class TimeSeriesMetadataCache {
             allSensors.removeAll(subSensorList);
             return Collections.emptyList();
           }
-          List<TimeseriesMetadata> timeSeriesMetadataList =
-              readTimeseriesMetadataForVector(reader, key, subSensorList, allSensors);
-          Map<TimeSeriesMetadataCacheKey, TimeseriesMetadata> map = new HashMap<>();
-          // put TimeSeriesMetadata of all sensors used in this query into cache
-          timeSeriesMetadataList.forEach(
-              metadata -> {
-                // for root.sg1.d1.vector1.s1, key.device of vector will only return root.sg1.d1
-                // metadata.getMeasurementId() will return s1, the vector1 is saved in
-                // key.measurement
-                // so we should concat them to get the deviceId for root.sg1.d1.vector1.s1
-                TimeSeriesMetadataCacheKey k =
-                    new TimeSeriesMetadataCacheKey(
-                        key.filePath, key.device, metadata.getMeasurementId());
-                lruCache.put(k, metadata);
-                map.put(k, metadata);
-              });
-          // The reason we don't get from cache is in case that
-          // the cache capacity is too small to contains all the sub sensors of this vector
-          getVectorTimeSeriesMetadataListFromMap(key, subSensorList, res, map);
+          res = readTimeseriesMetadataForVector(reader, key, subSensorList, allSensors);
+          Iterator<TimeseriesMetadata> iterator = res.iterator();
+          Set<String> subSensorSet = new HashSet<>(subSensorList);
+          subSensorSet.add(key.measurement);
+          // Note: allSensors > subSensors
+          // Put TimeSeriesMetadata of all sensors used in this query into cache
+          // Remove redundant TimeSeriesMetadata that do not belong to subSensors
+          while (iterator.hasNext()) {
+            TimeseriesMetadata metadata = iterator.next();
+            TimeSeriesMetadataCacheKey k =
+                new TimeSeriesMetadataCacheKey(
+                    key.filePath, key.device, metadata.getMeasurementId());
+            lruCache.put(k, metadata);
+            if (!subSensorSet.contains(metadata.getMeasurementId())) {
+              iterator.remove();
+            }
+          }
         }
       }
     }
-    if (res.isEmpty()) {
-      if (debug) {
+    if (debug) {
+      if (res.isEmpty()) {
         DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
-      }
-      allSensors.removeAll(subSensorList);
-      return Collections.emptyList();
-    } else {
-      if (debug) {
+      } else {
         DEBUG_LOGGER.info(
             "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.",
             key.device,
@@ -277,21 +276,20 @@ public class TimeSeriesMetadataCache {
             key.filePath,
             res);
       }
-      for (int i = 0; i < res.size(); i++) {
-        res.set(i, new TimeseriesMetadata(res.get(i)));
-      }
-      allSensors.removeAll(subSensorList);
-      return res;
     }
+
+    allSensors.removeAll(subSensorList);
+    return res;
   }
 
   /**
    * Support for vector, extraction of common function of `get`
    *
    * @param key vector's own fullPath, e.g. root.sg1.d1.vector
-   * @param subSensorList all subSensors of this vector in one query, e.g. [s1, s2, s3]
+   * @param subSensorList all subSensors of this vector in one query, e.g. [vector.s1, vector.s2,
+   *     vector.s3]
    * @param allSensors all sensors of the device in one device, to vector, this should contain both
-   *     vector name and subSensors' name, e.g. [vector, s1, s2, s3]
+   *     vector name and subSensors' name, e.g. [vector, vector.s1, vector.s2, vector.s3]
    * @param reader TsFileSequenceReader created by file
    */
   private List<TimeseriesMetadata> readTimeseriesMetadataForVector(
@@ -320,16 +318,15 @@ public class TimeSeriesMetadataCache {
       }
     }
     while (!subSensorsSet.isEmpty()) {
-      Path subPath =
-          new Path(
-              key.device, key.measurement + TsFileConstant.PATH_SEPARATOR + subSensorsSet.first());
-      List<TimeseriesMetadata> subList = reader.readTimeseriesMetadata(subPath, allSensors);
-      for (TimeseriesMetadata tsMetadata : subList) {
+      Path subPath = new Path(key.device, subSensorsSet.first());
+      List<TimeseriesMetadata> subTsMetaDataList =
+          reader.readTimeseriesMetadata(subPath, allSensors);
+      for (TimeseriesMetadata tsMetadata : subTsMetaDataList) {
         if (!subSensorsSet.isEmpty() && subSensorsSet.contains(tsMetadata.getMeasurementId())) {
           subSensorsSet.remove(tsMetadata.getMeasurementId());
         }
       }
-      timeSeriesMetadataList.addAll(subList);
+      timeSeriesMetadataList.addAll(subTsMetaDataList);
     }
     return timeSeriesMetadataList;
   }
@@ -338,41 +335,11 @@ public class TimeSeriesMetadataCache {
    * !!!Attention!!!
    *
    * <p>For a vector, e.g. root.sg1.d1.vector1(s1, s2) TimeSeriesMetadataCacheKey for vector1 should
-   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: vector1},
-   * vector1 will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should
-   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: s1}
+   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1, measurement: vector1}, vector1
+   * will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should be
+   * {filePath: ""./data/data/seq/......., device: root.sg1.d1, measurement: vector.s1}
    * TimeSeriesMetadataCacheKey for vector1.s2 should be {filePath: ""./data/data/seq/.......,
-   * device: root.sg1.d1.vector1, measurement: s2}
-   */
-  private void getVectorTimeSeriesMetadataListFromMap(
-      TimeSeriesMetadataCacheKey key,
-      List<String> subSensorList,
-      List<TimeseriesMetadata> res,
-      Map<TimeSeriesMetadataCacheKey, TimeseriesMetadata> map) {
-    TimeseriesMetadata timeseriesMetadata = map.get(key);
-    if (timeseriesMetadata != null) {
-      res.add(timeseriesMetadata);
-      for (String subSensor : subSensorList) {
-        timeseriesMetadata =
-            map.get(new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
-        if (timeseriesMetadata != null) {
-          res.add(timeseriesMetadata);
-        } else {
-          break;
-        }
-      }
-    }
-  }
-
-  /**
-   * !!!Attention!!!
-   *
-   * <p>For a vector, e.g. root.sg1.d1.vector1(s1, s2) TimeSeriesMetadataCacheKey for vector1 should
-   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: vector1},
-   * vector1 will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should
-   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: s1}
-   * TimeSeriesMetadataCacheKey for vector1.s2 should be {filePath: ""./data/data/seq/.......,
-   * device: root.sg1.d1.vector1, measurement: s2}
+   * device: root.sg1.d1, measurement: vector.s2}
    */
   private void getVectorTimeSeriesMetadataListFromCache(
       TimeSeriesMetadataCacheKey key, List<String> subSensorList, List<TimeseriesMetadata> res) {

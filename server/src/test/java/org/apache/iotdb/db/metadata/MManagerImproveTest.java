@@ -141,7 +141,7 @@ public class MManagerImproveTest {
       IMNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
       for (String s : measurementList) {
         assertTrue(node.hasChild(s));
-        IMeasurementMNode measurementNode = (IMeasurementMNode) node.getChild(s);
+        IMeasurementMNode measurementNode = node.getChild(s).getAsMeasurementMNode();
         TSDataType dataType = measurementNode.getSchema().getType();
         assertEquals(TSDataType.TEXT, dataType);
       }
