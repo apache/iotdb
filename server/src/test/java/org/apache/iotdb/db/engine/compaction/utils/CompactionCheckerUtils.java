@@ -40,10 +40,11 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -115,10 +116,15 @@ public class CompactionCheckerUtils {
             ChunkReader chunkReader = new ChunkReader(chunk, null);
             while (chunkReader.hasNextSatisfiedPage()) {
               BatchData batchData = chunkReader.nextPageData();
-              BatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
-              while (batchDataIterator.hasNextTimeValuePair()) {
-                TimeValuePair timeValuePair = batchDataIterator.nextTimeValuePair();
-                timeValuePairMap.put(timeValuePair.getTimestamp(), timeValuePair);
+              IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
+              while (batchDataIterator.hasNext()) {
+                timeValuePairMap.put(
+                    batchDataIterator.currentTime(),
+                    new TimeValuePair(
+                        batchDataIterator.currentTime(),
+                        TsPrimitiveType.getByType(
+                            chunkMetadata.getDataType(), batchDataIterator.currentValue())));
+                batchDataIterator.next();
               }
             }
           }
@@ -223,9 +229,14 @@ public class CompactionCheckerUtils {
                   count += batchData.length();
                 }
                 fullPathPointNum.put(path.getFullPath(), count);
-                BatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
-                while (batchDataIterator.hasNextTimeValuePair()) {
-                  currTimeValuePairs.add(batchDataIterator.nextTimeValuePair());
+                IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
+                while (batchDataIterator.hasNext()) {
+                  currTimeValuePairs.add(
+                      new TimeValuePair(
+                          batchDataIterator.currentTime(),
+                          TsPrimitiveType.getByType(
+                              header.getDataType(), batchDataIterator.currentValue())));
+                  batchDataIterator.next();
                 }
                 dataSize -= pageHeader.getSerializedPageSize();
               }
@@ -411,9 +422,9 @@ public class CompactionCheckerUtils {
               } else {
                 pagePointsNum.add((long) batchData.length());
               }
-              BatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
-              while (batchDataIterator.hasNextTimeValuePair()) {
-                batchDataIterator.nextTimeValuePair();
+              IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
+              while (batchDataIterator.hasNext()) {
+                batchDataIterator.next();
               }
               dataSize -= pageHeader.getSerializedPageSize();
             }

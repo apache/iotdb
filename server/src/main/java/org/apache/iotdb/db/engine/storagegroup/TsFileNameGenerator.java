@@ -29,14 +29,10 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_MERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_TIME_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_VERSION_INDEX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class TsFileNameGenerator {
@@ -107,21 +103,20 @@ public class TsFileNameGenerator {
   }
 
   public static TsFileName getTsFileName(String fileName) throws IOException {
-    String[] fileNameParts =
-        fileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
-            FILE_NAME_SEPARATOR);
-    if (fileNameParts.length != 4) {
-      throw new IOException("tsfile file name format is incorrect:" + fileName);
-    }
-    try {
-      TsFileName tsFileName =
-          new TsFileName(
-              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_TIME_INDEX]),
-              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_VERSION_INDEX]),
-              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
-              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
-      return tsFileName;
-    } catch (NumberFormatException e) {
+    Matcher matcher = TsFileName.FILE_NAME_MATCHER.matcher(fileName);
+    if (matcher.find()) {
+      try {
+        TsFileName tsFileName =
+            new TsFileName(
+                Long.parseLong(matcher.group(1)),
+                Long.parseLong(matcher.group(2)),
+                Integer.parseInt(matcher.group(3)),
+                Integer.parseInt(matcher.group(4)));
+        return tsFileName;
+      } catch (NumberFormatException e) {
+        throw new IOException("tsfile file name format is incorrect:" + fileName);
+      }
+    } else {
       throw new IOException("tsfile file name format is incorrect:" + fileName);
     }
   }
@@ -203,6 +198,8 @@ public class TsFileNameGenerator {
   }
 
   public static class TsFileName {
+    private static final String FILE_NAME_PATTERN = "(\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
+    private static final Pattern FILE_NAME_MATCHER = Pattern.compile(TsFileName.FILE_NAME_PATTERN);
 
     private long time;
     private long version;
