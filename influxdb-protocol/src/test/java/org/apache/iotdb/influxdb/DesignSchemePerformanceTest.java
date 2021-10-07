@@ -43,7 +43,6 @@ public class DesignSchemePerformanceTest {
   @Before
   public void setUp() throws IoTDBConnectionException {
     // create session
-    //
     session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
 
@@ -112,16 +111,6 @@ public class DesignSchemePerformanceTest {
     long after = System.currentTimeMillis();
     long duration = (after - before);
     System.out.println(duration);
-    //        System.out.println(dataSet.getColumnNames());
-    //        dataSet.setFetchSize(1024); // default is 10000
-    //        int index = 0;
-    //        while (dataSet.hasNext()) {
-    ////            System.out.println(dataSet.next());
-    //            index++;
-    //        }
-    //        System.out.println(index);
-
-    //        dataSet.closeOperationHandle();
   }
 
   public void Query2() throws IoTDBConnectionException, StatementExecutionException { // 测试数据查询
