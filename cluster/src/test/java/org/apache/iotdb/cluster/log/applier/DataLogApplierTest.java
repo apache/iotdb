@@ -23,7 +23,11 @@ import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.common.*;
+import org.apache.iotdb.cluster.common.IoTDBTest;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
+import org.apache.iotdb.cluster.common.TestDataGroupMember;
+import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -31,8 +35,14 @@ import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.rpc.thrift.*;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -169,6 +179,7 @@ public class DataLogApplierTest extends IoTDBTest {
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
     isPartitionEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(true);
     // TODO fixme: restore normal provider
     ClusterIoTDB.getInstance()
         .setClientManager(
@@ -204,6 +215,10 @@ public class DataLogApplierTest extends IoTDBTest {
                                           timeseriesSchemas.add(
                                               TestUtils.getTestTimeSeriesSchema(4, i));
                                         }
+                                      } else if (path.startsWith(TestUtils.getTestSg(1))
+                                          || path.startsWith(TestUtils.getTestSg(2))
+                                          || path.startsWith(TestUtils.getTestSg(3))) {
+                                        // do nothing
                                       } else if (!path.startsWith(TestUtils.getTestSg(5))) {
                                         resultHandler.onError(
                                             new StorageGroupNotSetException(path));
