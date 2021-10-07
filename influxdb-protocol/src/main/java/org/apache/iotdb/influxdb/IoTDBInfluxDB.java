@@ -291,7 +291,11 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void close() {
-    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
+    try {
+      session.close();
+    } catch (IoTDBConnectionException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
   }
 
   @Override
