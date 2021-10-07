@@ -104,7 +104,6 @@
         <module>client-py</module>
         <module>compile-tools</module>
         <module>client-cpp</module>
-        <module>influxdb-protocol</module>
     </modules>
     <!-- Properties Management -->
     <properties>
