@@ -61,7 +61,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import static junit.framework.TestCase.*;
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
 
 public class RemoteMultSeriesReaderTest {
 
@@ -189,7 +191,7 @@ public class RemoteMultSeriesReaderTest {
               @Override
               public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
                   throws IOException {
-                return new AsyncDataClient(null, null, node, null) {
+                return new AsyncDataClient(null, null, node, ClientCategory.DATA) {
                   @Override
                   public void fetchMultSeries(
                       RaftNode header,

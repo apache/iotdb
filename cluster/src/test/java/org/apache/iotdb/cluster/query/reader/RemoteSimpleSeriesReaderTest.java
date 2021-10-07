@@ -54,7 +54,9 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import static junit.framework.TestCase.*;
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.fail;
 
 public class RemoteSimpleSeriesReaderTest {
@@ -80,7 +82,7 @@ public class RemoteSimpleSeriesReaderTest {
               @Override
               public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
                   throws IOException {
-                return new AsyncDataClient(null, null, node, null) {
+                return new AsyncDataClient(null, null, node, ClientCategory.DATA) {
                   @Override
                   public void fetchSingleSeries(
                       RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
