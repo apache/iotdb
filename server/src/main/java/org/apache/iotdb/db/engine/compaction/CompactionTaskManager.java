@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -32,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -60,6 +62,7 @@ public class CompactionTaskManager implements IService {
       new ConcurrentHashMap<>();
   private ScheduledExecutorService compactionTaskSubmissionThreadPool;
   private final long TASK_SUBMIT_INTERVAL = 1_000;
+  private final Map<Integer, Integer> compactionTaskCount = new HashMap<>();
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -171,9 +174,23 @@ public class CompactionTaskManager implements IService {
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
     if (!compactionTaskQueue.contains(compactionTask)) {
       compactionTaskQueue.add(compactionTask);
+      if (compactionTask instanceof AbstractInnerSpaceCompactionTask) {
+        AbstractInnerSpaceCompactionTask innerTask =
+            (AbstractInnerSpaceCompactionTask) compactionTask;
+        compactionTaskCount.put(
+            innerTask.getMaxCompactionCount(),
+            compactionTaskCount.computeIfAbsent(innerTask.getMaxCompactionCount(), o -> 0) + 1);
+      }
       if (compactionTaskQueue.size() > MAX_COMPACTION_QUEUE_SIZE) {
         // if the queue is too large, remove the last one
-        logger.info("Removing {} from queue", compactionTaskQueue.pollLast());
+        AbstractCompactionTask task = compactionTaskQueue.pollLast();
+        if (task instanceof AbstractInnerSpaceCompactionTask) {
+          AbstractInnerSpaceCompactionTask innerTask = (AbstractInnerSpaceCompactionTask) task;
+          compactionTaskCount.put(
+              innerTask.getMaxCompactionCount(),
+              compactionTaskCount.get(innerTask.getMaxCompactionCount()) - 1);
+        }
+        logger.info("Removing {} from queue, current task map is {}", task, compactionTaskCount);
       }
       return true;
     }
@@ -185,13 +202,19 @@ public class CompactionTaskManager implements IService {
             < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
         && compactionTaskQueue.size() > 0) {
       AbstractCompactionTask task = compactionTaskQueue.poll();
+      if (task instanceof AbstractInnerSpaceCompactionTask) {
+        AbstractInnerSpaceCompactionTask innerTask = (AbstractInnerSpaceCompactionTask) task;
+        compactionTaskCount.put(
+            innerTask.getMaxCompactionCount(),
+            compactionTaskCount.get(innerTask.getMaxCompactionCount()) - 1);
+      }
       if (task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
         logger.info(
-            "submit a compaction task {}, current task num is {}, max task num is {}",
+            "submit a compaction task {}, current task map is {}, queue size is {}",
             task,
-            currentTaskNum.get(),
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+            compactionTaskCount,
+            compactionTaskQueue.size());
       }
     }
     compactionTaskQueue.clear();
