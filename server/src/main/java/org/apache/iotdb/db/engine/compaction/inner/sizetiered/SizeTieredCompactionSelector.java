@@ -191,6 +191,19 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
 
     @Override
     public int compare(Pair<List<TsFileResource>, Long> o1, Pair<List<TsFileResource>, Long> o2) {
+      TsFileResource resourceOfO1 = o1.left.get(0);
+      TsFileResource resourceOfO2 = o2.left.get(0);
+      try {
+        TsFileNameGenerator.TsFileName fileNameOfO1 =
+            TsFileNameGenerator.getTsFileName(resourceOfO1.getTsFile().getName());
+        TsFileNameGenerator.TsFileName fileNameOfO2 =
+            TsFileNameGenerator.getTsFileName(resourceOfO2.getTsFile().getName());
+        if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
+          return fileNameOfO1.getInnerCompactionCnt() - fileNameOfO2.getInnerCompactionCnt();
+        }
+      } catch (IOException e) {
+        return 0;
+      }
       if (o1.left.size() != o2.left.size()) {
         return o1.left.size() - o2.left.size();
       } else {
