@@ -25,7 +25,7 @@ public final class IoTDBInfluxDBUtils {
    * check whether the field is empty. If it is empty, an error will be thrown
    *
    * @param string string to check
-   * @param name   prompt information in error throwing
+   * @param name prompt information in error throwing
    */
   public static void checkNonEmptyString(String string, String name)
       throws IllegalArgumentException {
