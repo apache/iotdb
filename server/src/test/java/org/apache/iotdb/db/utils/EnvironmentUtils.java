@@ -108,7 +108,6 @@ public class EnvironmentUtils {
       daemon = null;
     }
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
-    QueryTimeManager.getInstance().clear();
 
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
@@ -145,6 +144,8 @@ public class EnvironmentUtils {
     }
     // close metadata
     IoTDB.metaManager.clear();
+
+    QueryTimeManager.getInstance().clear();
 
     // close tracing
     if (config.isEnablePerformanceTracing()) {
