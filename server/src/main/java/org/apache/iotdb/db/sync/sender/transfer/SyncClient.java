@@ -224,7 +224,7 @@ public class SyncClient implements ISyncClient {
             syncAll();
           } catch (Exception e) {
             logger.error("Sync failed", e);
-          } finally{
+          } finally {
             if (transport != null && transport.isOpen()) {
               transport.close();
             }
@@ -404,7 +404,7 @@ public class SyncClient implements ISyncClient {
                 "Can not sync schema after %s retries.", config.getMaxNumOfSyncFileRetry()));
       }
       if (!isSyncConnect && !reconnect()) {
-        retryCount ++;
+        retryCount++;
         continue;
       }
       if (tryToSyncSchema()) {
@@ -445,7 +445,9 @@ public class SyncClient implements ISyncClient {
       // check digest
       return checkDigestForSchema(new BigInteger(1, md.digest()).toString(16));
     } catch (TException e) {
-      logger.error("Can not finish transfer schema to receiver, thrift error happen {}, try to reconnect", e);
+      logger.error(
+          "Can not finish transfer schema to receiver, thrift error happen {}, try to reconnect",
+          e);
       isSyncConnect = false;
       return false;
     } catch (NoSuchAlgorithmException | IOException e) {
