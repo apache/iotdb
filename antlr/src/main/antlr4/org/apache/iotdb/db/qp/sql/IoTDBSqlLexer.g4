@@ -132,7 +132,6 @@ NAN_LITERAL: N A N ;
  */
 
 ID:                                  ID_LITERAL;
-DOUBLE_QUOTE_ID:                  '"' ~'"'+ '"';
 
 
 /**

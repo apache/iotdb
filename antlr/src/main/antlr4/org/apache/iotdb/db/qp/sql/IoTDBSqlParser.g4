@@ -27,35 +27,39 @@ options { tokenVocab=IoTDBSqlLexer; }
  */
 
 statement
-: DEBUG? sqlStatement SEMI? EOF
-;
+    : DEBUG? sqlStatement SEMI? EOF
+    ;
 
 sqlStatement
     : ddlStatement | dmlStatement | dclStatement | utilityStatement
     ;
 
 ddlStatement
-: setStorageGroup | createStorageGroup | createTimeseries | createFunction | createTrigger | createContinuousQuery | createSnapshot
-| alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | dropFunction | dropTrigger | dropContinuousQuery
-| setTTL | unsetTTL | startTrigger | stopTrigger
-| showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-| showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
-| countStorageGroup | countDevices | countTimeseries | countNodes;
+    : setStorageGroup | createStorageGroup | createTimeseries
+    | createFunction | createTrigger | createContinuousQuery | createSnapshot
+    | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
+    | dropFunction | dropTrigger | dropContinuousQuery
+    | setTTL | unsetTTL | startTrigger | stopTrigger
+    | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | countStorageGroup | countDevices | countTimeseries | countNodes
+    ;
 
 dmlStatement
-: selectStatement | insertStatement | deleteStatement;
+    : selectStatement | insertStatement | deleteStatement;
 
 dclStatement
-: createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
-| revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
-| listUser | listRole | listPrivilegesUser | listPrivilegesRole
-| listUserPrivileges | listRolePrivileges | listAllRoleOfUser | listAllUserOfRole ;
+    : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
+    | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
+    | listUser | listRole | listPrivilegesUser | listPrivilegesRole
+    | listUserPrivileges | listRolePrivileges | listAllRoleOfUser | listAllUserOfRole
+    ;
 
 utilityStatement
-: mergeStatement | fullMergeStatement | flushStatement
-| clearCache | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showMergeInfo
-| showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
-| loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
+    : mergeStatement | fullMergeStatement | flushStatement | clearCache
+    | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showMergeInfo
+    | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
+    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 
 /**
@@ -68,33 +72,6 @@ createStorageGroup: CREATE STORAGE GROUP prefixPath;
 
 // Create Timeseries
 createTimeseries: CREATE TIMESERIES fullPath alias? WITH attributeClauses;
-
-alias
-    : LR_BRACKET ID RR_BRACKET
-    ;
-
-attributeClauses
-    : DATATYPE OPERATOR_EQ dataType (COMMA ENCODING OPERATOR_EQ encoding)?
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
-    (COMMA property)*
-    tagClause?
-    attributeClause?
-    ;
-
-compressor
-    : UNCOMPRESSED
-    | SNAPPY
-    | LZ4
-    | GZIP
-    ;
-
-attributeClause
-    : ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET
-    ;
-
-tagClause
-    : TAGS LR_BRACKET property (COMMA property)* RR_BRACKET
-    ;
 
 // Create Function
 createFunction: CREATE FUNCTION udfName=ID AS className=stringLiteral;
@@ -110,19 +87,6 @@ createSnapshot: CREATE SNAPSHOT FOR SCHEMA;
 
 // Alter Timeseries
 alterTimeseries: ALTER TIMESERIES fullPath alterClause;
-
-alterClause
-    : RENAME beforeName=ID TO currentName=ID
-    | SET property (COMMA property)*
-    | DROP ID (COMMA ID)*
-    | ADD TAGS property (COMMA property)*
-    | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT aliasClause? tagClause? attributeClause?
-    ;
-
-aliasClause
-    : ALIAS OPERATOR_EQ ID
-    ;
 
 // Delete Storage Group
 deleteStorageGroup: DELETE STORAGE GROUP prefixPath (COMMA prefixPath)*;
@@ -162,14 +126,6 @@ showDevices: SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause?;
 
 // Show Timeseries
 showTimeseries: SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?;
-
-showWhereClause
-    : WHERE (property | containsExpression)
-    ;
-
-containsExpression
-    : name=ID OPERATOR_CONTAINS value=propertyValue
-    ;
 
 // Show Child Paths
 showChildPaths: SHOW CHILD PATHS prefixPath?;
@@ -212,160 +168,6 @@ countNodes: COUNT NODES prefixPath LEVEL OPERATOR_EQ INT;
 // Select Statement
 selectStatement: selectClause intoClause? fromClause whereClause? specialClause?;
 
-selectClause
-    : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
-    ;
-
-resultColumn
-    : expression (AS ID)?
-    ;
-
-expression
-    : LR_BRACKET unaryInBracket=expression RR_BRACKET
-    | (PLUS | MINUS) unaryAfterSign=expression
-    | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
-    | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-    | suffixPath
-    | literal=SINGLE_QUOTE_STRING_LITERAL
-    ;
-
-functionName
-    : ID
-    | COUNT
-    ;
-
-functionAttribute
-    : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
-    ;
-
-intoClause
-    : INTO intoPath (COMMA intoPath)*
-    ;
-
-intoPath
-    : fullPath
-    | nodeNameWithoutStar (DOT nodeNameWithoutStar)*
-    ;
-
-specialClause
-    : specialLimit #specialLimitStatement
-    | orderByTimeClause specialLimit? #orderByTimeStatement
-    | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
-    | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
-    | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
-    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
-    ;
-
-specialLimit
-    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign? #limitStatement
-    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
-    | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
-    ;
-
-withoutNullClause
-    : WITHOUT NULL (ALL | ANY)
-    ;
-
-
-orderByTimeClause
-    : ORDER BY TIME (DESC | ASC)?
-    ;
-
-limitClause
-    : LIMIT INT offsetClause?
-    | offsetClause? LIMIT INT
-    ;
-
-offsetClause
-    : OFFSET INT
-    ;
-
-slimitClause
-    : SLIMIT INT soffsetClause?
-    | soffsetClause? SLIMIT INT
-    ;
-
-soffsetClause
-    : SOFFSET INT
-    ;
-
-alignByDeviceClause
-    : ALIGN BY DEVICE
-    | GROUP BY DEVICE
-    ;
-
-disableAlign
-    : DISABLE ALIGN
-    ;
-
-alignByDeviceClauseOrDisableAlign
-    : alignByDeviceClause
-    | disableAlign
-    ;
-
-fillClause
-    : FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
-    ;
-
-groupByTimeClause
-    : GROUP BY LR_BRACKET
-      timeInterval
-      COMMA DURATION
-      (COMMA DURATION)?
-      RR_BRACKET
-    | GROUP BY LR_BRACKET
-            timeInterval
-            COMMA DURATION
-            (COMMA DURATION)?
-            RR_BRACKET
-            COMMA LEVEL OPERATOR_EQ INT
-    ;
-
-groupByFillClause
-    : GROUP BY LR_BRACKET
-      timeInterval
-      COMMA DURATION
-      RR_BRACKET
-      FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
-     ;
-
-groupByLevelClause
-    : GROUP BY LEVEL OPERATOR_EQ INT
-    ;
-
-typeClause
-    : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET specificValueClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
-    ;
-
-linearClause
-    : LINEAR (COMMA aheadDuration=DURATION COMMA behindDuration=DURATION)?
-    ;
-
-previousClause
-    : PREVIOUS (COMMA DURATION)?
-    ;
-
-specificValueClause
-    : constant?
-    ;
-
-previousUntilLastClause
-    : PREVIOUSUNTILLAST (COMMA DURATION)?
-    ;
-
-indexWithClause
-    : WITH INDEX OPERATOR_EQ indexName=ID (COMMA property)*
-    ;
-
-topClause
-    : TOP INT
-    ;
-
 // Insert Statement
 insertStatement: INSERT INTO prefixPath insertColumnsSpec VALUES insertValuesSpec;
 
@@ -378,7 +180,7 @@ deleteStatement: DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)?;
  */
 
 // Create User
-createUser: CREATE USER userName=ID password= stringLiteral;
+createUser: CREATE USER userName=ID password=stringLiteral;
 
 // Create Role
 createRole: CREATE ROLE roleName=ID;
@@ -498,7 +300,7 @@ unloadFile: UNLOAD stringLiteral stringLiteral;
  * 6. Common Clauses
  */
 
-// IoTDB Objects
+// 6.1 IoTDB Objects
 
 fullPath
     : ROOT (DOT nodeNameWithoutWildcard)*
@@ -515,50 +317,10 @@ suffixPath
 nodeName
     : ID WILDCARD?
     | WILDCARD
-    | DOUBLE_QUOTE_STRING_LITERAL
-    | DURATION
-    | encoding
-    | dataType
-    | dateExpression
-    | MINUS? (EXPONENT | INT)
-    | booleanClause
     | keywordsCanBeId
     ;
 
 nodeNameWithoutWildcard
     : ID
-    | DOUBLE_QUOTE_STRING_LITERAL
-    | DURATION
-    | encoding
-    | dataType
-    | dateExpression
-    | MINUS? (EXPONENT | INT)
-    | booleanClause
     | keywordsCanBeId
     ;
-
-
-// Literals
-
-constant
-    : stringLiteral
-    | numericLiteral
-    | BOOLEAN_LITERAL
-    | NULL_LITERAL
-    | NAN_LITERAL
-    ;
-
-
-numericLiteral
-    : MINUS? DECIMAL_LITERAL | MINUS? REAL_LITERAL
-    ;
-
-//    Data Types
-
-dataType:;
-
-//    Expressions, predicates
-
-
-keywordsCanBeId
-    :;
