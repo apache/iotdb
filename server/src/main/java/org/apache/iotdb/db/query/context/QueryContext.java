@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.context;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
 import java.util.ArrayList;
@@ -51,15 +52,34 @@ public class QueryContext {
 
   private boolean debug;
 
+  /**
+   * To reduce the cost of memory, we only keep the a certain size statement. For statement whose
+   * length is over this, we keep its head and tail.
+   */
+  private static final int MAX_STATEMENT_LENGTH = 64;
+
+  private long startTime;
+
+  private String statement;
+
+  private long timeout;
+
+  private volatile boolean isInterrupted = false;
+
   public QueryContext() {}
 
   public QueryContext(long queryId) {
-    this.queryId = queryId;
+    this(queryId, false, System.currentTimeMillis(), "", 0);
   }
 
-  public QueryContext(long queryId, boolean debug) {
+  /** Every time we generate the queryContext, register it to queryTimeManager. */
+  public QueryContext(long queryId, boolean debug, long startTime, String statement, long timeout) {
     this.queryId = queryId;
     this.debug = debug;
+    this.startTime = startTime;
+    this.statement = statement;
+    this.timeout = timeout;
+    QueryTimeManager.getInstance().registerQuery(this);
   }
 
   /**
@@ -108,5 +128,51 @@ public class QueryContext {
 
   public boolean chunkNotSatisfy(IChunkMetadata chunkMetaData) {
     return chunkMetaData.getEndTime() < queryTimeLowerBound;
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public String getStatement() {
+    return statement;
+  }
+
+  public QueryContext setStartTime(long startTime) {
+    this.startTime = startTime;
+    return this;
+  }
+
+  public void getStatement(String statement) {
+    this.statement = statement;
+  }
+
+  public long getTimeout() {
+    return timeout;
+  }
+
+  public QueryContext setTimeout(long timeout) {
+    this.timeout = timeout;
+    return this;
+  }
+
+  public QueryContext setStatement(String statement) {
+    if (statement.length() <= 64) {
+      this.statement = statement;
+    } else {
+      this.statement =
+          statement.substring(0, MAX_STATEMENT_LENGTH / 2)
+              + "..."
+              + statement.substring(statement.length() - MAX_STATEMENT_LENGTH / 2);
+    }
+    return this;
+  }
+
+  public void setInterrupted(boolean interrupted) {
+    isInterrupted = interrupted;
+  }
+
+  public boolean isInterrupted() {
+    return isInterrupted;
   }
 }

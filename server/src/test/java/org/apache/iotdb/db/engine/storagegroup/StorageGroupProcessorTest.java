@@ -135,7 +135,7 @@ public class StorageGroupProcessorTest {
               TSEncoding.RLE,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap()),
-          new QueryContext(),
+          EnvironmentUtils.TEST_QUERY_CONTEXT,
           tsfileResourcesForQuery);
     }
 

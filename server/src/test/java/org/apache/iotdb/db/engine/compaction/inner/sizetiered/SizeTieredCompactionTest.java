@@ -74,6 +74,7 @@ public class SizeTieredCompactionTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
@@ -93,7 +94,7 @@ public class SizeTieredCompactionTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
-    EnvironmentUtils.cleanAllDir();
+    EnvironmentUtils.cleanEnv();
   }
 
   void prepareSeries() throws MetadataException {

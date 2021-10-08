@@ -28,8 +28,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -191,7 +191,6 @@ public class MergeOverLapTest extends MergeTest {
             MERGE_TEST_SG);
     mergeTask.call();
 
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -203,7 +202,7 @@ public class MergeOverLapTest extends MergeTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             resources,
             new ArrayList<>(),
             null,

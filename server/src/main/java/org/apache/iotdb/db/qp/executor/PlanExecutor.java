@@ -118,7 +118,6 @@ import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.control.QueryTimeManager.QueryInfo;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -453,7 +452,7 @@ public class PlanExecutor implements IPlanExecutor {
     QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
     long killQueryId = killQueryPlan.getQueryId();
     if (killQueryId != -1) {
-      if (queryTimeManager.getQueryInfoMap().get(killQueryId) != null) {
+      if (queryTimeManager.getQueryContextMap().get(killQueryId) != null) {
         queryTimeManager.killQuery(killQueryId);
       } else {
         throw new QueryIdNotExsitException(
@@ -462,9 +461,9 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } else {
       // if queryId is not specified, kill all running queries
-      if (!queryTimeManager.getQueryInfoMap().isEmpty()) {
-        synchronized (queryTimeManager.getQueryInfoMap()) {
-          List<Long> queryIdList = new ArrayList<>(queryTimeManager.getQueryInfoMap().keySet());
+      if (!queryTimeManager.getQueryContextMap().isEmpty()) {
+        synchronized (queryTimeManager.getQueryContextMap()) {
+          List<Long> queryIdList = new ArrayList<>(queryTimeManager.getQueryContextMap().keySet());
           for (Long queryId : queryIdList) {
             queryTimeManager.killQuery(queryId);
           }
@@ -2018,10 +2017,10 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(new PartialPath(QUERY_ID, false), new PartialPath(STATEMENT, false)),
             Arrays.asList(TSDataType.INT64, TSDataType.TEXT));
     QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-    for (Entry<Long, QueryInfo> queryInfo : queryTimeManager.getQueryInfoMap().entrySet()) {
-      RowRecord record = new RowRecord(queryInfo.getValue().getStartTime());
-      record.addField(queryInfo.getKey(), TSDataType.INT64);
-      record.addField(new Binary(queryInfo.getValue().getStatement()), TSDataType.TEXT);
+    for (Entry<Long, QueryContext> context : queryTimeManager.getQueryContextMap().entrySet()) {
+      RowRecord record = new RowRecord(context.getValue().getStartTime());
+      record.addField(context.getKey(), TSDataType.INT64);
+      record.addField(new Binary(context.getValue().getStatement()), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
     return listDataSet;
