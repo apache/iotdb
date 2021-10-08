@@ -145,4 +145,21 @@ public class BitMap {
     }
     return copy;
   }
+
+  public static void copyOfRange(BitMap src, int srcPos, BitMap dest, int destPos, int length) {
+    if (srcPos + length > src.size) {
+      throw new IndexOutOfBoundsException(
+          (srcPos + length - 1) + " is out of src range " + src.size);
+    } else if (destPos + length > dest.size) {
+      throw new IndexOutOfBoundsException(
+          (destPos + length - 1) + " is out of dest range " + dest.size);
+    }
+    for (int i = 0; i < length; ++i) {
+      if (src.isMarked(srcPos + i)) {
+        dest.mark(destPos + i);
+      } else {
+        dest.unmark(destPos + i);
+      }
+    }
+  }
 }
