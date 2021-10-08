@@ -199,7 +199,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         TsFileNameGenerator.TsFileName fileNameOfO2 =
             TsFileNameGenerator.getTsFileName(resourceOfO2.getTsFile().getName());
         if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
-          return fileNameOfO1.getInnerCompactionCnt() - fileNameOfO2.getInnerCompactionCnt();
+          return fileNameOfO2.getInnerCompactionCnt() - fileNameOfO1.getInnerCompactionCnt();
         }
       } catch (IOException e) {
         return 0;

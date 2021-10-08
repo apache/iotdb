@@ -5,6 +5,7 @@ import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionT
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import com.google.common.collect.MinMaxPriorityQueue;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -13,8 +14,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertTrue;
@@ -22,8 +21,8 @@ import static org.junit.Assert.assertTrue;
 public class CompactionTaskComparatorTest {
   private final Logger LOGGER = LoggerFactory.getLogger(CompactionTaskComparatorTest.class);
   private final AtomicInteger taskNum = new AtomicInteger(0);
-  private Queue<AbstractCompactionTask> compactionTaskQueue =
-      new PriorityQueue<>(new CompactionTaskComparator());
+  private MinMaxPriorityQueue<AbstractCompactionTask> compactionTaskQueue =
+      MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).create();
 
   @Before
   public void setUp() {
@@ -45,7 +44,7 @@ public class CompactionTaskComparatorTest {
     }
 
     for (int i = 0; i < 100; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.poll();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == compactionTasks[i]);
     }
   }
@@ -66,7 +65,7 @@ public class CompactionTaskComparatorTest {
     }
 
     for (int i = 0; i < 100; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.poll();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == compactionTasks[99 - i]);
     }
   }
@@ -87,7 +86,7 @@ public class CompactionTaskComparatorTest {
     }
 
     for (int i = 0; i < 100; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.poll();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == compactionTasks[99 - i]);
     }
   }
@@ -108,7 +107,7 @@ public class CompactionTaskComparatorTest {
     }
 
     for (int i = 0; i < 100; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.poll();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == compactionTasks[99 - i]);
     }
   }
@@ -150,12 +149,12 @@ public class CompactionTaskComparatorTest {
     }
 
     for (int i = 0; i < 100; i++) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.poll();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == innerCompactionTasks[i]);
     }
 
     for (int i = 0; i < 100; i++) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.poll();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == crossCompactionTasks[99 - i]);
     }
   }
@@ -198,7 +197,7 @@ public class CompactionTaskComparatorTest {
     }
 
     for (int i = 0; i < 200; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.poll();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == crossCompactionTasks[i]);
     }
   }

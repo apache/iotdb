@@ -63,8 +63,10 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     // if the sum of compaction count of the selected files are different
     // we prefer to execute task with smaller compaction count
     // this can reduce write amplification
-    if (o1.getSumOfCompactionCount() != o2.getSumOfCompactionCount()) {
-      return o1.getSumOfCompactionCount() - o2.getSumOfCompactionCount();
+    if (((double) o1.getSumOfCompactionCount()) / o1.getSelectedTsFileResourceList().size()
+        != ((double) o2.getSumOfCompactionCount()) / o2.getSelectedTsFileResourceList().size()) {
+      return o1.getSumOfCompactionCount() / o1.getSelectedTsFileResourceList().size()
+          - o2.getSumOfCompactionCount() / o2.getSelectedTsFileResourceList().size();
     }
 
     List<TsFileResource> selectedFilesOfO1 = o1.getSelectedTsFileResourceList();

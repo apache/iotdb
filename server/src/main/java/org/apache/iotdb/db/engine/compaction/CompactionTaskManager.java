@@ -27,6 +27,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 
+import com.google.common.collect.MinMaxPriorityQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +35,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,8 +53,8 @@ public class CompactionTaskManager implements IService {
   private ScheduledThreadPoolExecutor taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
-  private Queue<AbstractCompactionTask> compactionTaskQueue =
-      new PriorityQueue<>(new CompactionTaskComparator());
+  private final int MAX_COMPACTION_QUEUE_SIZE = 500;
+  private MinMaxPriorityQueue<AbstractCompactionTask> compactionTaskQueue;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
@@ -76,6 +75,9 @@ public class CompactionTaskManager implements IService {
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
       currentTaskNum = new AtomicInteger(0);
+      MinMaxPriorityQueue.Builder builder =
+          MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator());
+      compactionTaskQueue = builder.create();
       compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
       compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
@@ -169,6 +171,10 @@ public class CompactionTaskManager implements IService {
   public synchronized void addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
     if (!compactionTaskQueue.contains(compactionTask)) {
       compactionTaskQueue.add(compactionTask);
+      if (compactionTaskQueue.size() > MAX_COMPACTION_QUEUE_SIZE) {
+        // if the queue is too large, remove the last one
+        compactionTaskQueue.pollLast();
+      }
     }
   }
 
