@@ -46,7 +46,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
+/** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
