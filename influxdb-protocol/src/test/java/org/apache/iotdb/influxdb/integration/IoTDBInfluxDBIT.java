@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 
 public class IoTDBInfluxDBIT {
+
   private String host;
   private Integer port;
   private String username;
@@ -59,19 +60,18 @@ public class IoTDBInfluxDBIT {
   @Test
   public void testConnect3() {
     IoTDBInfluxDBFactory.connect(
-            "https://" + host + ":" + port, username, password, new okhttp3.OkHttpClient.Builder())
+        "https://" + host + ":" + port, username, password, new okhttp3.OkHttpClient.Builder())
         .close();
   }
 
   @Test
   public void testConnect4() {
-
     IoTDBInfluxDBFactory.connect(
-            "https://" + host + ":" + port,
-            username,
-            password,
-            new okhttp3.OkHttpClient.Builder(),
-            InfluxDB.ResponseFormat.JSON)
+        "https://" + host + ":" + port,
+        username,
+        password,
+        new okhttp3.OkHttpClient.Builder(),
+        InfluxDB.ResponseFormat.JSON)
         .close();
   }
 

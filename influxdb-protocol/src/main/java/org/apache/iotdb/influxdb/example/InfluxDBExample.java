@@ -20,8 +20,6 @@
 package org.apache.iotdb.influxdb.example;
 
 import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
@@ -33,24 +31,18 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class InfluxDBExample {
+
   private static InfluxDB influxDB;
 
   public static void main(String[] args) throws Exception {
-    // init
     influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:6667", "root", "root");
-    // create database
     influxDB.createDatabase("database");
-    // set database
     influxDB.setDatabase("database");
-
     insertData();
     queryData();
   }
 
-  // insert data
-  public static void insertData() throws IoTDBConnectionException, StatementExecutionException {
-
-    // insert the build parameter to construct the influxdb
+  private static void insertData() {
     Point.Builder builder = Point.measurement("student");
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();
@@ -63,7 +55,6 @@ public class InfluxDBExample {
     builder.fields(fields);
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     Point point = builder.build();
-    // after the build construction is completed, start writing
     influxDB.write(point);
 
     builder = Point.measurement("student");
@@ -81,9 +72,7 @@ public class InfluxDBExample {
     influxDB.write(point);
   }
 
-  // query data
-  private static void queryData() throws Exception {
-
+  private static void queryData() {
     Query query;
     QueryResult result;
 
