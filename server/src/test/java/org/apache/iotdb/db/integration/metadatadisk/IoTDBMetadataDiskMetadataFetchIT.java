@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.integration.metadatadisk;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -55,7 +56,8 @@ import static org.junit.Assert.fail;
 public class IoTDBMetadataDiskMetadataFetchIT {
 
   private DatabaseMetaData databaseMetaData;
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBMetadataDiskMetadataFetchIT.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBMetadataDiskMetadataFetchIT.class);
 
   private static void insertSQL() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
