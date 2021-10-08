@@ -81,7 +81,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     PriorityQueue<Pair<List<TsFileResource>, Long>> notFullCompactionQueue =
         new PriorityQueue<>(10, new SizeTieredCompactionTaskComparator());
-    boolean meetCompactedFile = false;
 
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
@@ -99,20 +98,13 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     int currentCompactionCount = 0;
     try {
       // traverse the tsfile from new to old
-      Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
+      Iterator<TsFileResource> iterator = tsFileResources.iterator();
       LOGGER.debug("Current file list is {}", tsFileResources.getArrayList());
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
         TsFileNameGenerator.TsFileName currentName =
             TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-        if (currentName.getInnerCompactionCnt() > 0) {
-          meetCompactedFile = true;
-        }
         if (currentName.getInnerCompactionCnt() != currentCompactionCount) {
-          if (selectedFileList.size() > 1 && meetCompactedFile) {
-            notFullCompactionQueue.add(
-                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-          }
           selectedFileList.clear();
           selectedFileSize = 0L;
           currentCompactionCount = currentName.getInnerCompactionCnt();
@@ -132,21 +124,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
-          if (selectedFileList.size() > 1 && meetCompactedFile) {
-            // if current seek didn't meet a big file
-            // we should not submit a not full compaction task to avoid write amplification
-            notFullCompactionQueue.add(
-                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-          }
           selectedFileList.clear();
           selectedFileSize = 0L;
-          if (currentFile.getTsFileSize() >= targetCompactionFileSize) {
-            LOGGER.debug("Selected file list is clear because current file is too large");
-          } else {
-            LOGGER.debug(
-                "Selected file list is clear because current file is {}",
-                currentFile.isMerging() ? "merging" : "not closed");
-          }
           continue;
         }
         selectedFileList.add(currentFile);
@@ -169,15 +148,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           submitTaskNum += 1;
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
-        }
-      }
-      if (selectedFileList.size() > 1 && meetCompactedFile) {
-        notFullCompactionQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-      }
-      if (config.isEnableNotFullCompaction()) {
-        while (notFullCompactionQueue.size() > 0) {
-          createAndSubmitTask(notFullCompactionQueue.poll().left);
-          submitTaskNum++;
         }
       }
       if (taskSubmitted) {
