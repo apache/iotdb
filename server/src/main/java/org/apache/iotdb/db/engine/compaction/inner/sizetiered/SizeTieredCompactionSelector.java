@@ -79,7 +79,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     boolean enableSeqSpaceCompaction = config.isEnableSeqSpaceCompaction();
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
-    PriorityQueue<Pair<List<TsFileResource>, Long>> notFullCompactionQueue =
+    PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(10, new SizeTieredCompactionTaskComparator());
 
     // this iterator traverses the list in reverse order
@@ -143,12 +143,15 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
               sequence ? "sequence" : "unsequence",
               selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
           // submit the task
-          createAndSubmitTask(selectedFileList);
-          taskSubmitted = true;
-          submitTaskNum += 1;
+          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         }
+      }
+      while (taskPriorityQueue.size() > 0) {
+        createAndSubmitTask(taskPriorityQueue.poll().left);
+        taskSubmitted = true;
+        submitTaskNum += 1;
       }
       if (taskSubmitted) {
         LOGGER.info(
