@@ -41,59 +41,42 @@ import java.util.function.Consumer;
 
 public class IoTDBInfluxDB implements InfluxDB {
 
-  static final String METHOD_NOT_SUPPORTED = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED = "Method not supported.";
 
-  private static Session session;
+  private final Session session;
 
-  /**
-   * constructor function
-   *
-   * @param url contain host and port
-   * @param userName username
-   * @param password user password
-   */
   public IoTDBInfluxDB(String url, String userName, String password) {
+    URI uri;
     try {
-      URI uri = new URI(url);
-      new IoTDBInfluxDB(uri.getHost(), uri.getPort(), userName, password);
+      uri = new URI(url);
     } catch (URISyntaxException e) {
       throw new IllegalArgumentException("Unable to parse url: " + url, e);
     }
+    session = new Session(uri.getHost(), uri.getPort(), userName, password);
+    openSession();
   }
 
-  /**
-   * constructor function
-   *
-   * @param host host
-   * @param rpcPort port
-   * @param userName username
-   * @param password user password
-   */
   public IoTDBInfluxDB(String host, int rpcPort, String userName, String password) {
     session = new Session(host, rpcPort, userName, password);
+    openSession();
+  }
+
+  public IoTDBInfluxDB(Session session) {
+    this.session = session;
+    openSession();
+  }
+
+  public IoTDBInfluxDB(Session.Builder builder) {
+    session = builder.build();
+    openSession();
+  }
+
+  private void openSession() {
     try {
       session.open(false);
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }
-  }
-
-  /**
-   * constructor function
-   *
-   * @param s session
-   */
-  public IoTDBInfluxDB(Session s) {
-    session = s;
-  }
-
-  /**
-   * constructor function
-   *
-   * @param builder session builder
-   */
-  public IoTDBInfluxDB(Session.Builder builder) {
-    session = builder.build();
   }
 
   @Override
