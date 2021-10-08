@@ -70,7 +70,7 @@ void createSchemaTemplate(
       List<CompressionType> compressors)
 ```
 
-* 将名为'templateName'的物理量模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的物理量模板
+* 将名为 `templateName` 的物理量模板挂载到 `prefixPath` 路径下，在执行这一步之前，你需要创建名为 `templateName` 的物理量模板
 
 ``` 
 void setSchemaTemplate(String templateName, String prefixPath)
