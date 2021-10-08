@@ -23,10 +23,13 @@ import org.apache.iotdb.session.Session;
 
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
+
+import static org.junit.Assert.assertEquals;
 
 public class IoTDBInfluxDBIT {
 
@@ -34,6 +37,7 @@ public class IoTDBInfluxDBIT {
   private Integer port;
   private String username;
   private String password;
+  private InfluxDB influxDB;
 
   @Rule
   public GenericContainer IotDB =
@@ -45,6 +49,12 @@ public class IoTDBInfluxDBIT {
     port = IotDB.getMappedPort(6667);
     username = "root";
     password = "root";
+    influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);
+  }
+
+  @After
+  public void tearDown() {
+    influxDB.close();
   }
 
   @Test
@@ -98,5 +108,16 @@ public class IoTDBInfluxDBIT {
   @Test(expected = InfluxDBException.class)
   public void testConnectAuthFailed() {
     InfluxDB influxDB = IoTDBInfluxDBFactory.connect(host, port, "1", "1");
+  }
+
+  @Test
+  public void testVersion() {
+    // TODO docker image version is latest, may not 0.12.2 in the feature
+    assertEquals("0.12.2", influxDB.version());
+  }
+
+  @Test
+  public void testPing() {
+    assertEquals("0.12.2", influxDB.ping().getVersion());
   }
 }
