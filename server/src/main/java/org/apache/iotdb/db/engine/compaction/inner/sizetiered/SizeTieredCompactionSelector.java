@@ -149,9 +149,10 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         }
       }
       while (taskPriorityQueue.size() > 0) {
-        createAndSubmitTask(taskPriorityQueue.poll().left);
-        taskSubmitted = true;
-        submitTaskNum += 1;
+        if (createAndSubmitTask(taskPriorityQueue.poll().left)) {
+          taskSubmitted = true;
+          submitTaskNum += 1;
+        }
       }
       if (taskSubmitted) {
         LOGGER.info(
@@ -168,7 +169,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     }
   }
 
-  private void createAndSubmitTask(List<TsFileResource> selectedFileList) {
+  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList) {
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,
@@ -178,12 +179,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
             tsFileResources,
             selectedFileList,
             sequence);
-    CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
-    LOGGER.info(
-        "{}-{} [Compaction] submit a inner compaction task of {} files",
-        logicalStorageGroupName,
-        virtualStorageGroupName,
-        selectedFileList.size());
+    return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }
 
   private class SizeTieredCompactionTaskComparator

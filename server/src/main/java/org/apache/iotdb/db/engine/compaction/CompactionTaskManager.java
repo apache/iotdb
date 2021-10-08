@@ -53,7 +53,7 @@ public class CompactionTaskManager implements IService {
   private ScheduledThreadPoolExecutor taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
-  private final int MAX_COMPACTION_QUEUE_SIZE = 500;
+  private final int MAX_COMPACTION_QUEUE_SIZE = 10000;
   private MinMaxPriorityQueue<AbstractCompactionTask> compactionTaskQueue;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
@@ -168,14 +168,16 @@ public class CompactionTaskManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
-  public synchronized void addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
+  public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
     if (!compactionTaskQueue.contains(compactionTask)) {
       compactionTaskQueue.add(compactionTask);
       if (compactionTaskQueue.size() > MAX_COMPACTION_QUEUE_SIZE) {
         // if the queue is too large, remove the last one
-        compactionTaskQueue.pollLast();
+        logger.info("Removing {} from queue", compactionTaskQueue.pollLast());
       }
+      return true;
     }
+    return false;
   }
 
   public synchronized void submitTaskFromTaskQueue() {

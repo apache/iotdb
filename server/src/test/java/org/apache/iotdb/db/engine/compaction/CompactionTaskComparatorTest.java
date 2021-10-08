@@ -76,7 +76,7 @@ public class CompactionTaskComparatorTest {
     AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
     for (int i = 0; i < 100; ++i) {
       List<TsFileResource> resources = new ArrayList<>();
-      for (int j = 0; j < 100; ++j) {
+      for (int j = 0; j < 10; ++j) {
         resources.add(
             new FakedTsFileResource(
                 new File(String.format("%d-%d-%d-0.tsfile", i + j, i + j, j - i + 101)), 1));
