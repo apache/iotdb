@@ -81,10 +81,10 @@ public class Session {
   protected int fetchSize;
   private static final byte TYPE_NULL = -2;
   /**
-   * Timeout of query can be set by users. If not set, default value 0 will be used, which will use
-   * server configuration.
+   * Timeout of query can be set by users. A negative number means using the default configuration
+   * of server. And value 0 will disable the function of query timeout.
    */
-  private long queryTimeoutInMs = 0;
+  private long queryTimeoutInMs = -1;
 
   protected boolean enableRPCCompression;
   protected int connectionTimeoutInMs;
@@ -550,10 +550,7 @@ public class Session {
     return defaultSessionConnection.checkTimeseriesExists(path, queryTimeoutInMs);
   }
 
-  public void setQueryTimeout(long timeoutInMs) throws StatementExecutionException {
-    if (timeoutInMs < 0) {
-      throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
-    }
+  public void setQueryTimeout(long timeoutInMs) {
     this.queryTimeoutInMs = timeoutInMs;
   }
 
@@ -581,9 +578,6 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
-    if (timeoutInMs < 0) {
-      throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
-    }
     return executeStatementMayRedirect(sql, timeoutInMs);
   }
 

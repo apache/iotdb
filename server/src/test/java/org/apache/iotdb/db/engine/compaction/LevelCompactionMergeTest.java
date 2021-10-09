@@ -31,8 +31,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -92,7 +92,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     while (compactionMergeWorking) {
       // wait
     }
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -102,7 +102,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -136,7 +136,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     while (compactionMergeWorking) {
       // wait
     }
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -146,7 +146,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -201,12 +201,12 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     while (compactionMergeWorking) {
       // wait
     }
-    QueryContext context = new QueryContext();
+
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -319,7 +319,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(compactionFiles, true);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -329,7 +329,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[1].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -353,12 +353,12 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     while (compactionMergeWorking) {
       // wait
     }
-    context = new QueryContext();
+
     tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[1].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,

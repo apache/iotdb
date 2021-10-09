@@ -28,9 +28,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -213,7 +213,6 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
     while (compactionMergeWorking) {
       // wait
     }
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -223,7 +222,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[2688].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,

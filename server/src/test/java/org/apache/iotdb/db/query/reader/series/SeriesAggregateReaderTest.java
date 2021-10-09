@@ -21,13 +21,14 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -59,11 +60,13 @@ public class SeriesAggregateReaderTest {
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
+    EnvironmentUtils.envSetUp();
     SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
     SeriesReaderTestUtil.tearDown(seqResources, unseqResources);
   }
 
@@ -79,7 +82,7 @@ public class SeriesAggregateReaderTest {
               path,
               allSensors,
               TSDataType.INT32,
-              new QueryContext(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               queryDataSource,
               null,
               null,

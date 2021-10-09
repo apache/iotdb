@@ -616,7 +616,7 @@ alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annota
 
 ## 完整的 Maven 示例项目
 
-如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目** trigger-example**。
+如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目 **trigger-example**。
 
 您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/trigger) 找到它。
 

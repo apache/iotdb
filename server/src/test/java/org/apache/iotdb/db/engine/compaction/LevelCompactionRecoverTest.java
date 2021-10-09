@@ -30,8 +30,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -88,7 +88,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -98,7 +98,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -145,7 +145,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.close();
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
+
     path =
         new PartialPath(
             deviceIds[0]
@@ -155,7 +155,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -180,7 +180,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -190,7 +190,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -261,7 +261,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
+
     path =
         new PartialPath(
             deviceIds[0]
@@ -271,7 +271,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -296,7 +296,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -306,7 +306,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -383,7 +383,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
+
     path =
         new PartialPath(
             deviceIds[0]
@@ -393,7 +393,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -418,7 +418,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(seqResources, false);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -428,7 +428,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -475,7 +475,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.close();
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, false);
     levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
+
     path =
         new PartialPath(
             deviceIds[0]
@@ -485,7 +485,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(false),
             new ArrayList<>(),
             null,
@@ -517,7 +517,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -527,7 +527,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -560,7 +560,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -570,7 +570,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -617,7 +617,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -627,7 +627,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -683,7 +683,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -693,7 +693,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,

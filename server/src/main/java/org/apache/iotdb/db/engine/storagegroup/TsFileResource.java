@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
@@ -154,6 +155,9 @@ public class TsFileResource {
   protected long minPlanIndex = Long.MAX_VALUE;
 
   private long version = 0;
+
+  /** memory cost for the TsFileResource when it's calculated for the first time */
+  private long ramSize;
 
   public TsFileResource() {}
 
@@ -774,7 +778,12 @@ public class TsFileResource {
 
   /** @return resource map size */
   public long calculateRamSize() {
-    return timeIndex.calculateRamSize();
+    ramSize = timeIndex.calculateRamSize();
+    return ramSize;
+  }
+
+  public long getRamSize() {
+    return ramSize;
   }
 
   public void delete() throws IOException {
@@ -848,8 +857,31 @@ public class TsFileResource {
     this.timeIndex = timeIndex;
   }
 
-  // change tsFile name
+  public byte getTimeIndexType() {
+    return timeIndexType;
+  }
 
+  public int compareIndexDegradePriority(TsFileResource tsFileResource) {
+    int cmp = timeIndex.compareDegradePriority(tsFileResource.timeIndex);
+    return cmp == 0 ? file.getAbsolutePath().compareTo(tsFileResource.file.getAbsolutePath()) : cmp;
+  }
+
+  /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
+  public long degradeTimeIndex() {
+    TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
+    // if current timeIndex is FileTimeIndex, no need to degrade
+    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
+    // get the minimum startTime
+    long startTime = timeIndex.getMinStartTime();
+    // get the maximum endTime
+    long endTime = timeIndex.getMaxEndTime();
+    // replace the DeviceTimeIndex with FileTimeIndex
+    timeIndex = new FileTimeIndex(startTime, endTime);
+    timeIndexType = 0;
+    return ramSize - timeIndex.calculateRamSize();
+  }
+
+  // change tsFile name
   public static String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
     return time
         + FILE_NAME_SEPARATOR

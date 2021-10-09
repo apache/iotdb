@@ -116,7 +116,9 @@ public class StorageEngine implements IService {
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
    * will have a subfolder under the systemDir.
    */
-  private final String systemDir;
+  private final String systemDir =
+      FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+
   /** storage group name -> storage group processor */
   private final ConcurrentHashMap<PartialPath, VirtualStorageGroupManager> processorMap =
       new ConcurrentHashMap<>();
@@ -134,27 +136,7 @@ public class StorageEngine implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
-  private StorageEngine() {
-    systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
-
-    // build time Interval to divide time partition
-    if (!enablePartition) {
-      timePartitionInterval = Long.MAX_VALUE;
-    } else {
-      initTimePartition();
-    }
-
-    // create systemDir
-    try {
-      FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
-    } catch (IOException e) {
-      throw new StorageEngineFailureException(e);
-    }
-    // recover upgrade process
-    UpgradeUtils.recoverUpgrade();
-
-    recover();
-  }
+  private StorageEngine() {}
 
   public static StorageEngine getInstance() {
     return InstanceHolder.INSTANCE;
@@ -275,6 +257,25 @@ public class StorageEngine implements IService {
 
   @Override
   public void start() {
+    // build time Interval to divide time partition
+    if (!enablePartition) {
+      timePartitionInterval = Long.MAX_VALUE;
+    } else {
+      initTimePartition();
+    }
+
+    // create systemDir
+    try {
+      FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
+    } catch (IOException e) {
+      throw new StorageEngineFailureException(e);
+    }
+
+    // recover upgrade process
+    UpgradeUtils.recoverUpgrade();
+
+    recover();
+
     ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
     ttlCheckThread.scheduleAtFixedRate(
         this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
@@ -369,7 +370,7 @@ public class StorageEngine implements IService {
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
     }
-    this.reset();
+    processorMap.clear();
   }
 
   private void stopTimedService(ScheduledExecutorService pool, String poolName) {
@@ -398,7 +399,7 @@ public class StorageEngine implements IService {
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
-    this.reset();
+    processorMap.clear();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
@@ -558,6 +559,7 @@ public class StorageEngine implements IService {
   }
 
   /** This function is just for unit test. */
+  @TestOnly
   public synchronized void reset() {
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
       virtualStorageGroupManager.reset();
