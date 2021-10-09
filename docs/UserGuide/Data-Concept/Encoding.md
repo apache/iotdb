@@ -54,7 +54,9 @@ DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinali
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-<center> **The correspondence between the data type and its supported encodings**
+<center> 
+
+**The correspondence between the data type and its supported encodings**
 
 |Data Type	|Supported Encoding|
 |:---:|:---:|

@@ -53,7 +53,9 @@ The timestamp is the time point at which data is produced. It includes absolute 
 
 Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (including DATETIME-INPUT and DATETIME-DISPLAY). When a user inputs a timestamp, he can use a LONG type timestamp or a DATETIME-INPUT type timestamp, and the supported formats of the DATETIME-INPUT type timestamp are shown in the table below:
 
-<center>**Supported formats of DATETIME-INPUT type timestamp**
+<center>
+
+**Supported formats of DATETIME-INPUT type timestamp**
 
 
 
@@ -78,7 +80,9 @@ Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (incl
 
 IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestamps. The DATETIME-DISPLAY type can support user-defined time formats. The syntax of the custom time format is shown in the table below:
 
-<center>**The syntax of the custom time format**
+<center>
+
+**The syntax of the custom time format**
 
 
 | Symbol |           Meaning           | Presentation |              Examples              |
@@ -127,7 +131,9 @@ Relative time refers to the time relative to the server time ```now()``` and ```
         
  ```
 
-  <center>**The syntax of the duration unit**
+  <center>
+
+**The syntax of the duration unit**
 
 
 | Symbol |   Meaning   |       Presentation       | Examples |

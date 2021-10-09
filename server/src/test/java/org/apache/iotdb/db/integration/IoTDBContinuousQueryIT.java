@@ -27,8 +27,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -44,8 +42,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class IoTDBContinuousQueryIT {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBContinuousQueryIT.class);
 
   private Statement statement;
   private Connection connection;
