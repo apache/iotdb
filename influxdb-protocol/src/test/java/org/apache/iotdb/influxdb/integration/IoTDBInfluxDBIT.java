@@ -29,7 +29,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBInfluxDBIT {
 
@@ -112,12 +113,13 @@ public class IoTDBInfluxDBIT {
 
   @Test
   public void testVersion() {
-    // TODO docker image version is latest, may not 0.12.2 in the feature
-    assertEquals("0.12.2", influxDB.version());
+    String version = influxDB.version();
+    assertNotNull(version);
+    assertTrue(version.length() > 0);
   }
 
   @Test
   public void testPing() {
-    assertEquals("0.12.2", influxDB.ping().getVersion());
+    assertTrue(influxDB.ping().getResponseTime() > 0);
   }
 }
