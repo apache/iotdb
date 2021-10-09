@@ -157,12 +157,12 @@ aliasClause
 
 // Delete Storage Group
 deleteStorageGroup
-    : DELETE STORAGE GROUP prefixPaths
+    : DELETE STORAGE GROUP prefixPath (COMMA prefixPath)*
     ;
 
 // Delete Timeseries
 deleteTimeseries
-    : DELETE TIMESERIES prefixPaths
+    : DELETE TIMESERIES prefixPath (COMMA prefixPath)*
     ;
 
 // Delete Partition
@@ -251,7 +251,7 @@ showContinuousQueries
 
 // Show TTL
 showTTL
-    : SHOW TTL ON prefixPaths
+    : SHOW TTL ON prefixPath (COMMA prefixPath)*
     ;
 
 // Show All TTL
@@ -259,22 +259,22 @@ showAllTTL
     : SHOW ALL TTL
     ;
 
-// countStorageGroup
+// Count Storage Group
 countStorageGroup
     : COUNT STORAGE GROUP prefixPath?
     ;
 
-// countDevices
+// Count Devices
 countDevices
     : COUNT DEVICES prefixPath?
     ;
 
-// countTimeseries
+// Count Timeseries
 countTimeseries
     : COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ DECIMAL_LITERAL)?
     ;
 
-// countNodes
+// Count Nodes
 countNodes
     : COUNT NODES prefixPath LEVEL OPERATOR_EQ DECIMAL_LITERAL
     ;
@@ -512,7 +512,7 @@ fullMergeStatement
 
 // Flush
 flushStatement
-    : FLUSH prefixPaths? BOOLEAN_LITERAL?
+    : FLUSH prefixPath? (COMMA prefixPath)* BOOLEAN_LITERAL?
     ;
 
 // Clear Cache
@@ -609,10 +609,6 @@ fullPath
 
 prefixPath
     : ROOT (DOT nodeName)*
-    ;
-
-prefixPaths
-    : prefixPath (COMMA prefixPath)*
     ;
 
 suffixPath
