@@ -144,8 +144,6 @@ public class EnvironmentUtils {
     // close metadata
     IoTDB.metaManager.clear();
 
-    QueryTimeManager.getInstance().clear();
-
     // close array manager
     PrimitiveArrayManager.close();
 

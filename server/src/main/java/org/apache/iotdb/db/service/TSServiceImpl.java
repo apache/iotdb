@@ -757,7 +757,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
     final long queryStartTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
-    QueryContext context = genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
+    QueryContext context =
+        genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
 
     if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
       context.setEnableTracing(true);
