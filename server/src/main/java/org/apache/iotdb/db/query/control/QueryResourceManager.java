@@ -129,7 +129,7 @@ public class QueryResourceManager {
     TemporaryQueryDataFileService.getInstance().deregister(queryId);
 
     // remove query info in QueryTimeManager
-    QueryTimeManager.getInstance().unRegisterQuery(queryId);
+    QueryTimeManager.getInstance().unRegisterQuery(queryId, true);
   }
 
   private static class QueryTokenManagerHelper {
