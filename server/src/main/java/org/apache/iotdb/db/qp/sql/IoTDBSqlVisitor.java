@@ -786,7 +786,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
                     : new PartialPath(SQLConstant.getSingleRootArray()));
     if (ctx.DECIMAL_LITERAL() != null) {
       return new CountOperator(
-              SQLConstant.TOK_COUNT_NODE_TIMESERIES, path, Integer.parseInt(ctx.INT().getText()));
+              SQLConstant.TOK_COUNT_NODE_TIMESERIES, path, Integer.parseInt(ctx.DECIMAL_LITERAL().getText()));
     } else {
       return new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES, path);
     }
@@ -809,7 +809,54 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   // Select Statement
 
   @Override
-  public Operator visitInsertStatement(InsertStatementContext ctx) {
+  public Operator visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
+    // 1. Visit special clause first to initialize different query operator
+    if (ctx.specialClause() != null) {
+      queryOp = (QueryOperator) visit(ctx.specialClause());
+    }
+    // 2. There is no special clause in query statement.
+    if (queryOp == null) {
+      queryOp = new QueryOperator();
+    }
+    // 3. Visit select, from, where in sequence
+    parseSelectClause(ctx.selectClause());
+    parseFromClause(ctx.fromClause());
+    if (ctx.whereClause() != null) {
+      WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
+      if (whereComponent != null) {
+        queryOp.setWhereComponent(whereComponent);
+      }
+    }
+    // 4. Check whether it's a select-into clause
+    return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
+  }
+
+  private SelectIntoOperator parseAndConstructSelectIntoOperator(IoTDBSqlParser.SelectStatementContext ctx) {
+    if (queryOp.getFromComponent().getPrefixPaths().size() != 1) {
+      throw new SQLParserException(
+              "select into: the number of prefix paths in the from clause should be 1.");
+    }
+
+    int sourcePathsCount = queryOp.getSelectComponent().getResultColumns().size();
+    if (sourcePathsCount != ctx.intoClause().intoPath().size()) {
+      throw new SQLParserException(
+              "select into: the number of source paths and the number of target paths should be the same.");
+    }
+
+    SelectIntoOperator selectIntoOperator = new SelectIntoOperator();
+    selectIntoOperator.setQueryOperator(queryOp);
+    List<PartialPath> intoPaths = new ArrayList<>();
+    for (int i = 0; i < sourcePathsCount; ++i) {
+      intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
+    }
+    selectIntoOperator.setIntoPaths(intoPaths);
+    return selectIntoOperator;
+  }
+
+  // Insert Statement
+
+  @Override
+  public Operator visitInsertStatement(IoTDBSqlParser.InsertStatementContext ctx) {
     InsertOperator insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
     insertOp.setDevice(parsePrefixPath(ctx.prefixPath()));
     parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
@@ -817,11 +864,23 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return insertOp;
   }
 
+  private void parseInsertColumnSpec(IoTDBSqlParser.InsertColumnsSpecContext ctx, InsertOperator insertOp) {
+    List<IoTDBSqlParser.MeasurementNameContext> measurementNames = ctx.measurementName();
+    List<String> measurementList = new ArrayList<>();
+    for (IoTDBSqlParser.MeasurementNameContext measurementName : measurementNames) {
+      String measurement = measurementName.getText();
+      measurementList.add(measurement);
+    }
+    insertOp.setMeasurementList(measurementList.toArray(new String[0]));
+  }
+
+  // Delete Statement
+
   @Override
-  public Operator visitDeleteStatement(DeleteStatementContext ctx) {
+  public Operator visitDeleteStatement(IoTDBSqlParser.DeleteStatementContext ctx) {
     DeleteDataOperator deleteDataOp = new DeleteDataOperator(SQLConstant.TOK_DELETE);
-    List<PrefixPathContext> prefixPaths = ctx.prefixPath();
-    for (PrefixPathContext prefixPath : prefixPaths) {
+    List<IoTDBSqlParser.PrefixPathContext> prefixPaths = ctx.prefixPath();
+    for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPaths) {
       deleteDataOp.addPath(parsePrefixPath(prefixPath));
     }
     if (ctx.whereClause() != null) {
@@ -836,73 +895,221 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return deleteDataOp;
   }
 
-  @Override
-  public Operator visitCreateIndex(CreateIndexContext ctx) {
-    CreateIndexOperator createIndexOp = new CreateIndexOperator(SQLConstant.TOK_CREATE_INDEX);
-    List<PrefixPathContext> prefixPaths = Collections.singletonList(ctx.prefixPath());
-    for (PrefixPathContext prefixPath : prefixPaths) {
-      createIndexOp.addPath(parsePrefixPath(prefixPath));
-    }
-    parseIndexWithClause(ctx.indexWithClause(), createIndexOp);
-    if (ctx.whereClause() != null) {
-      FilterOperator filterOp = parseWhereClause(ctx.whereClause()).getFilterOperator();
-      long indexTime = parseCreateIndexFilter(filterOp);
-      createIndexOp.setTime(indexTime);
-    }
-    return createIndexOp;
-  }
+  /**
+   * 4. Data Control Language (DCL)
+   */
 
-  /** for create index command, time should only have an end time. */
-  private long parseCreateIndexFilter(FilterOperator filterOperator) {
-    if (filterOperator.getFilterType() != FilterType.GREATERTHAN
-        && filterOperator.getFilterType() != FilterType.GREATERTHANOREQUALTO) {
-      throw new SQLParserException(
-          "For create index command, where clause must be like : time > XXX or time >= XXX");
-    }
-    long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
-    if (filterOperator.getFilterType() == FilterType.LESSTHAN) {
-      time = time - 1;
-    }
-    return time;
-  }
-
-  public void parseIndexWithClause(IndexWithClauseContext ctx, CreateIndexOperator createIndexOp) {
-    IndexType indexType;
-    try {
-      indexType = IndexType.getIndexType(ctx.indexName.getText());
-    } catch (UnsupportedIndexTypeException e) {
-      throw new SQLParserException(ctx.indexName.getText());
-    }
-
-    List<PropertyContext> properties = ctx.property();
-    Map<String, String> props = new HashMap<>(properties.size(), 1);
-    if (ctx.property(0) != null) {
-      for (PropertyContext property : properties) {
-        String k = property.ID().getText().toUpperCase();
-        String v = property.propertyValue().getText().toUpperCase();
-        v = IndexUtils.removeQuotation(v);
-        props.put(k, v);
-      }
-    }
-    createIndexOp.setIndexType(indexType);
-    createIndexOp.setProps(props);
-  }
+  // Create User
 
   @Override
-  public Operator visitDropIndex(DropIndexContext ctx) {
-    DropIndexOperator dropIndexOperator = new DropIndexOperator(SQLConstant.TOK_DROP_INDEX);
-    List<PrefixPathContext> prefixPaths = Collections.singletonList(ctx.prefixPath());
-    for (PrefixPathContext prefixPath : prefixPaths) {
-      dropIndexOperator.addPath(parsePrefixPath(prefixPath));
-    }
-    try {
-      dropIndexOperator.setIndexType(IndexType.getIndexType(ctx.indexName.getText()));
-    } catch (UnsupportedIndexTypeException e) {
-      throw new SQLParserException(ctx.indexName.getText());
-    }
-    return dropIndexOperator;
+  public Operator visitCreateUser(IoTDBSqlParser.CreateUserContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorOperator.AuthorType.CREATE_USER);
+    authorOperator.setUserName(ctx.ID().getText());
+    authorOperator.setPassWord(removeStringQuote(ctx.password.getText()));
+    return authorOperator;
   }
 
+  // Create Role
+
+  @Override
+  public Operator visitCreateRole(IoTDBSqlParser.CreateRoleContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorOperator.AuthorType.CREATE_ROLE);
+    authorOperator.setRoleName(ctx.ID().getText());
+    return authorOperator;
+  }
+
+  // Alter Password
+
+  @Override
+  public Operator visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(
+                    SQLConstant.TOK_AUTHOR_UPDATE_USER, AuthorOperator.AuthorType.UPDATE_USER);
+    if (ctx.ID() != null) {
+      authorOperator.setUserName(ctx.ID().getText());
+    } else {
+      authorOperator.setUserName(ctx.ROOT().getText());
+    }
+    authorOperator.setNewPassword(removeStringQuote(ctx.password.getText()));
+    return authorOperator;
+  }
+
+  // Grant User Privileges
+
+  @Override
+  public Operator visitGrantUser(IoTDBSqlParser.GrantUserContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER);
+    authorOperator.setUserName(ctx.ID().getText());
+    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
+    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    return authorOperator;
+  }
+
+  // Grant Role Privileges
+
+  @Override
+  public Operator visitGrantRole(IoTDBSqlParser.GrantRoleContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE);
+    authorOperator.setRoleName(ctx.ID().getText());
+    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
+    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    return authorOperator;
+  }
+
+  // Grant User Role
+
+  @Override
+  public Operator visitGrantRoleToUser(IoTDBSqlParser.GrantRoleToUserContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(
+                    SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
+    authorOperator.setRoleName(ctx.roleName.getText());
+    authorOperator.setUserName(ctx.userName.getText());
+    return authorOperator;
+  }
+
+  // Revoke User Privileges
+
+  @Override
+  public Operator visitRevokeUser(IoTDBSqlParser.RevokeUserContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER);
+    authorOperator.setUserName(ctx.ID().getText());
+    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
+    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    return authorOperator;
+  }
+
+  // Revoke Role Privileges
+
+  @Override
+  public Operator visitRevokeRole(IoTDBSqlParser.RevokeRoleContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE);
+    authorOperator.setRoleName(ctx.ID().getText());
+    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
+    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    return authorOperator;
+  }
+
+  // Revoke Role From User
+
+  @Override
+  public Operator visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE_FROM_USER);
+    authorOperator.setRoleName(ctx.roleName.getText());
+    authorOperator.setUserName(ctx.userName.getText());
+    return authorOperator;
+  }
+
+  // Drop User
+
+  @Override
+  public Operator visitDropUser(IoTDBSqlParser.DropUserContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP, AuthorOperator.AuthorType.DROP_USER);
+    authorOperator.setUserName(ctx.ID().getText());
+    return authorOperator;
+  }
+
+  // Drop Role
+
+  @Override
+  public Operator visitDropRole(IoTDBSqlParser.DropRoleContext ctx) {
+    AuthorOperator authorOperator =
+            new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP, AuthorOperator.AuthorType.DROP_ROLE);
+    authorOperator.setRoleName(ctx.ID().getText());
+    return authorOperator;
+  }
+
+  // List Users
+
+  @Override
+  public Operator visitListUser(IoTDBSqlParser.ListUserContext ctx) {
+    return new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER);
+  }
+
+  // List Roles
+
+  @Override
+  public Operator visitListRole(IoTDBSqlParser.ListRoleContext ctx) {
+    return new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE);
+  }
+
+  // List Privileges
+
+  @Override
+  public Operator visitListPrivilegesUser(IoTDBSqlParser.ListPrivilegesUserContext ctx) {
+    AuthorOperator operator =
+            new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+    if (ctx.ID() != null) {
+      operator.setUserName(ctx.ID().getText());
+    } else {
+      operator.setUserName(ctx.ROOT().getText());
+    }
+    operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    return operator;
+  }
+
+  // List Privileges of Roles On Specific Path
+
+  @Override
+  public Operator visitListPrivilegesRole(IoTDBSqlParser.ListPrivilegesRoleContext ctx) {
+    AuthorOperator operator =
+            new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+    operator.setRoleName((ctx.ID().getText()));
+    operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    return operator;
+  }
+
+  // List Privileges of Users
+
+  @Override
+  public Operator visitListUserPrivileges(ListUserPrivilegesContext ctx) {
+    AuthorOperator operator =
+            new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+    operator.setUserName(ctx.rootOrId().getText());
+    return operator;
+  }
+
+  // List Privileges of Roles
+
+  @Override
+  public Operator visitListRolePrivileges(ListRolePrivilegesContext ctx) {
+    AuthorOperator operator =
+            new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+    operator.setRoleName(ctx.ID().getText());
+    return operator;
+  }
+
+  // List Roles of Users
+
+  @Override
+  public Operator visitListAllRoleOfUser(ListAllRoleOfUserContext ctx) {
+    AuthorOperator operator =
+            new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_ROLES);
+    operator.setUserName(ctx.rootOrId().getText());
+    return operator;
+  }
+
+  // List Users of Role
+
+  @Override
+  public Operator visitListAllUserOfRole(ListAllUserOfRoleContext ctx) {
+    AuthorOperator operator =
+            new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_USERS);
+    operator.setRoleName((ctx.ID().getText()));
+    return operator;
+  }
+
+  /**
+   * 5. Utility Statements
+   */
 
   @Override
   public Operator visitMerge(MergeContext ctx) {
@@ -933,112 +1140,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitClearcache(ClearcacheContext ctx) {
     return new ClearCacheOperator(SQLConstant.TOK_CLEAR_CACHE);
-  }
-
-  @Override
-  public Operator visitCreateUser(CreateUserContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorOperator.AuthorType.CREATE_USER);
-    authorOperator.setUserName(ctx.ID().getText());
-    authorOperator.setPassWord(removeStringQuote(ctx.password.getText()));
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitAlterUser(AlterUserContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(
-            SQLConstant.TOK_AUTHOR_UPDATE_USER, AuthorOperator.AuthorType.UPDATE_USER);
-    if (ctx.ID() != null) {
-      authorOperator.setUserName(ctx.ID().getText());
-    } else {
-      authorOperator.setUserName(ctx.ROOT().getText());
-    }
-    authorOperator.setNewPassword(removeStringQuote(ctx.password.getText()));
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitDropUser(DropUserContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP, AuthorOperator.AuthorType.DROP_USER);
-    authorOperator.setUserName(ctx.ID().getText());
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitCreateRole(CreateRoleContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorOperator.AuthorType.CREATE_ROLE);
-    authorOperator.setRoleName(ctx.ID().getText());
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitDropRole(DropRoleContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP, AuthorOperator.AuthorType.DROP_ROLE);
-    authorOperator.setRoleName(ctx.ID().getText());
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitGrantUser(GrantUserContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER);
-    authorOperator.setUserName(ctx.ID().getText());
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitGrantRole(GrantRoleContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE);
-    authorOperator.setRoleName(ctx.ID().getText());
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitRevokeUser(RevokeUserContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER);
-    authorOperator.setUserName(ctx.ID().getText());
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitRevokeRole(RevokeRoleContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE);
-    authorOperator.setRoleName(ctx.ID().getText());
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitGrantRoleToUser(GrantRoleToUserContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(
-            SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
-    authorOperator.setRoleName(ctx.roleName.getText());
-    authorOperator.setUserName(ctx.userName.getText());
-    return authorOperator;
-  }
-
-  @Override
-  public Operator visitRevokeRoleFromUser(RevokeRoleFromUserContext ctx) {
-    AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE_FROM_USER);
-    authorOperator.setRoleName(ctx.roleName.getText());
-    authorOperator.setUserName(ctx.userName.getText());
-    return authorOperator;
   }
 
   @Override
@@ -1078,65 +1179,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new DataAuthOperator(SQLConstant.TOK_REVOKE_WATERMARK_EMBEDDING, users);
   }
 
-  @Override
-  public Operator visitListUser(ListUserContext ctx) {
-    return new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER);
-  }
 
-  @Override
-  public Operator visitListRole(ListRoleContext ctx) {
-    return new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE);
-  }
-
-  @Override
-  public Operator visitListPrivilegesUser(ListPrivilegesUserContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(ctx.rootOrId().getText());
-    operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
-    return operator;
-  }
-
-  @Override
-  public Operator visitListPrivilegesRole(ListPrivilegesRoleContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    operator.setRoleName((ctx.ID().getText()));
-    operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
-    return operator;
-  }
-
-  @Override
-  public Operator visitListUserPrivileges(ListUserPrivilegesContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(ctx.rootOrId().getText());
-    return operator;
-  }
-
-  @Override
-  public Operator visitListRolePrivileges(ListRolePrivilegesContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    operator.setRoleName(ctx.ID().getText());
-    return operator;
-  }
-
-  @Override
-  public Operator visitListAllRoleOfUser(ListAllRoleOfUserContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_ROLES);
-    operator.setUserName(ctx.rootOrId().getText());
-    return operator;
-  }
-
-  @Override
-  public Operator visitListAllUserOfRole(ListAllUserOfRoleContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_USERS);
-    operator.setRoleName((ctx.ID().getText()));
-    return operator;
-  }
 
   @Override
   public Operator visitShowFlushTaskInfo(ShowFlushTaskInfoContext ctx) {
@@ -1236,28 +1279,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
 
 
-  @Override
-  public Operator visitSelectStatement(SelectStatementContext ctx) {
-    // 1. Visit special clause first to initialize different query operator
-    if (ctx.specialClause() != null) {
-      queryOp = (QueryOperator) visit(ctx.specialClause());
-    }
-    // 2. There is no special clause in query statement.
-    if (queryOp == null) {
-      queryOp = new QueryOperator();
-    }
-    // 3. Visit select, from, where in sequence
-    parseSelectClause(ctx.selectClause());
-    parseFromClause(ctx.fromClause());
-    if (ctx.whereClause() != null) {
-      WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
-      if (whereComponent != null) {
-        queryOp.setWhereComponent(whereComponent);
-      }
-    }
-    // 4. Check whether it's a select-into clause
-    return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
-  }
 
   public void parseSelectClause(IoTDBSqlParser.SelectClauseContext ctx) {
     SelectComponent selectComponent = new SelectComponent(zoneId);
@@ -1312,27 +1333,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         resultColumnContext.AS() == null ? null : resultColumnContext.ID().getText());
   }
 
-  private SelectIntoOperator parseAndConstructSelectIntoOperator(SelectStatementContext ctx) {
-    if (queryOp.getFromComponent().getPrefixPaths().size() != 1) {
-      throw new SQLParserException(
-          "select into: the number of prefix paths in the from clause should be 1.");
-    }
-
-    int sourcePathsCount = queryOp.getSelectComponent().getResultColumns().size();
-    if (sourcePathsCount != ctx.intoClause().intoPath().size()) {
-      throw new SQLParserException(
-          "select into: the number of source paths and the number of target paths should be the same.");
-    }
-
-    SelectIntoOperator selectIntoOperator = new SelectIntoOperator();
-    selectIntoOperator.setQueryOperator(queryOp);
-    List<PartialPath> intoPaths = new ArrayList<>();
-    for (int i = 0; i < sourcePathsCount; ++i) {
-      intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
-    }
-    selectIntoOperator.setIntoPaths(intoPaths);
-    return selectIntoOperator;
-  }
 
   private PartialPath parseIntoPath(IoTDBSqlParser.IntoPathContext intoPathContext) {
     int levelLimitOfSourcePrefixPath =
@@ -1620,7 +1620,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     queryOp.setFromComponent(fromComponent);
   }
 
-  private void parseIndexPredicate(IndexPredicateClauseContext ctx) {
+  private void parseIndexPredicate(IoTDBSqlParser.IndexPredicateClauseContext ctx) {
     Map<String, Object> props;
     PartialPath path;
     if (ctx.suffixPath() != null) {
@@ -1995,10 +1995,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  private String[] parsePrivilege(PrivilegesContext ctx) {
-    List<StringLiteralContext> privilegeList = ctx.stringLiteral();
+  private String[] parsePrivilege(IoTDBSqlParser.PrivilegesContext ctx) {
+    List<IoTDBSqlParser.PrivilegeContext> privilegeList = ctx.privilege();
     List<String> privileges = new ArrayList<>();
-    for (StringLiteralContext privilege : privilegeList) {
+    for (IoTDBSqlParser.PrivilegeContext privilege : privilegeList) {
       privileges.add(removeStringQuote(privilege.getText()));
     }
     return privileges.toArray(new String[0]);
@@ -2057,7 +2057,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  public WhereComponent parseWhereClause(WhereClauseContext ctx) {
+  public WhereComponent parseWhereClause(IoTDBSqlParser.WhereClauseContext ctx) {
     if (ctx.indexPredicateClause() != null) {
       parseIndexPredicate(ctx.indexPredicateClause());
       return null;
@@ -2067,7 +2067,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new WhereComponent(whereOp.getChildren().get(0));
   }
 
-  private FilterOperator parseOrExpression(OrExpressionContext ctx) {
+  private FilterOperator parseOrExpression(IoTDBSqlParser.OrExpressionContext ctx) {
     if (ctx.andExpression().size() == 1) {
       return parseAndExpression(ctx.andExpression(0));
     }
@@ -2089,7 +2089,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return binaryOp;
   }
 
-  private FilterOperator parseAndExpression(AndExpressionContext ctx) {
+  private FilterOperator parseAndExpression(IoTDBSqlParser.AndExpressionContext ctx) {
     if (ctx.predicate().size() == 1) {
       return parsePredicate(ctx.predicate(0));
     }
@@ -2113,7 +2113,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private FilterOperator parsePredicate(PredicateContext ctx) {
+  private FilterOperator parsePredicate(IoTDBSqlParser.PredicateContext ctx) {
     PartialPath path = null;
     if (ctx.OPERATOR_NOT() != null) {
       FilterOperator notOp = new FilterOperator(FilterType.KW_NOT);
@@ -2131,8 +2131,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         throw new SQLParserException("Path is null, please check the sql.");
       }
       return ctx.REGEXP() != null
-          ? new RegexpOperator(FilterType.REGEXP, path, ctx.stringLiteral().getText())
-          : new LikeOperator(FilterType.LIKE, path, ctx.stringLiteral().getText());
+          ? new RegexpOperator(FilterType.REGEXP, path, ctx.STRING_LITERAL().getText())
+          : new LikeOperator(FilterType.LIKE, path, ctx.STRING_LITERAL().getText());
     } else {
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new PartialPath(SQLConstant.getSingleTimeArray());
@@ -2154,10 +2154,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  private FilterOperator parseInOperator(InClauseContext ctx, PartialPath path) {
+  private FilterOperator parseInOperator(IoTDBSqlParser.InClauseContext ctx, PartialPath path) {
     Set<String> values = new HashSet<>();
     boolean not = ctx.OPERATOR_NOT() != null;
-    for (ConstantContext constant : ctx.constant()) {
+    for (IoTDBSqlParser.ConstantContext constant : ctx.constant()) {
       if (constant.dateExpression() != null) {
         if (!path.equals(TIME_PATH)) {
           throw new SQLParserException(path.getFullPath(), "Date can only be used to time");
@@ -2197,7 +2197,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
    *
    * <p>eg. now() + 1d - 2h
    */
-  private Long parseDateExpression(DateExpressionContext ctx) {
+  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
     long time;
     time = parseTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
@@ -2250,15 +2250,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
-  private void parseInsertColumnSpec(InsertColumnsSpecContext ctx, InsertOperator insertOp) {
-    List<MeasurementNameContext> measurementNames = ctx.measurementName();
-    List<String> measurementList = new ArrayList<>();
-    for (MeasurementNameContext measurementName : measurementNames) {
-      String measurement = measurementName.getText();
-      measurementList.add(measurement);
-    }
-    insertOp.setMeasurementList(measurementList.toArray(new String[0]));
-  }
+
 
   private void parseInsertValuesSpec(IoTDBSqlParser.InsertValuesSpecContext ctx, InsertOperator insertOp) {
     List<InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();

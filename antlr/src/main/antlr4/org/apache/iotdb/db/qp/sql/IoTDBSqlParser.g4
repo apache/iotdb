@@ -389,7 +389,7 @@ measurementValue
 
 // Delete Statement
 deleteStatement
-    : DELETE fromClause (whereClause)?
+    : DELETE prefixPath (COMMA prefixPath)* (whereClause)?
     ;
 
 whereClause
