@@ -104,7 +104,7 @@ public class QueryContext {
   }
 
   public void setEnableTracing(boolean enableTracing) {
-      this.enableTracing = enableTracing;
+    this.enableTracing = enableTracing;
   }
 
   public long getQueryTimeLowerBound() {
