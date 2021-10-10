@@ -1236,12 +1236,9 @@ public class TSServiceImpl implements TSIService.Iface {
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context;
+    context = genQueryContext(queryId, physicalPlan.isDebug());
     if (physicalPlan instanceof QueryPlan) {
-      context =
-          genQueryContext(
-              queryId, physicalPlan.isDebug(), ((QueryPlan) physicalPlan).isEnableTracing());
-    } else {
-      context = genQueryContext(queryId, physicalPlan.isDebug(), false);
+      context.setEnableTracing(((QueryPlan) physicalPlan).isEnableTracing());
     }
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
@@ -1249,8 +1246,8 @@ public class TSServiceImpl implements TSIService.Iface {
     return queryDataSet;
   }
 
-  protected QueryContext genQueryContext(long queryId, boolean debug, boolean enableTracing) {
-    return new QueryContext(queryId, debug, enableTracing);
+  protected QueryContext genQueryContext(long queryId, boolean debug) {
+    return new QueryContext(queryId, debug);
   }
 
   /** update statement can be: 1. select-into statement 2. non-query statement */

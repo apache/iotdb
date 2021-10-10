@@ -50,7 +50,7 @@ public class QueryContext {
   private long queryTimeLowerBound = Long.MIN_VALUE;
 
   private boolean debug;
-  private boolean enableTracing;
+  private boolean enableTracing = false;
 
   public QueryContext() {}
 
@@ -58,10 +58,9 @@ public class QueryContext {
     this.queryId = queryId;
   }
 
-  public QueryContext(long queryId, boolean debug, boolean enableTracing) {
+  public QueryContext(long queryId, boolean debug) {
     this.queryId = queryId;
     this.debug = debug;
-    this.enableTracing = enableTracing;
   }
 
   /**
@@ -102,6 +101,10 @@ public class QueryContext {
 
   public boolean isEnableTracing() {
     return enableTracing;
+  }
+
+  public void setEnableTracing(boolean enableTracing) {
+      this.enableTracing = enableTracing;
   }
 
   public long getQueryTimeLowerBound() {
