@@ -71,7 +71,7 @@ void createSchemaTemplate(
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
 ```
-* Set the device template named 'templateName' at path 'prefixPath'. You should firstly create the template using
+* Set the device template named `templateName` at path `prefixPath`. You should firstly create the template using
 
 ``` 
 

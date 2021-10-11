@@ -62,6 +62,8 @@ public class VirtualStorageGroupManager {
    */
   private AtomicBoolean[] isVsgReady;
 
+  private AtomicBoolean isSettling = new AtomicBoolean();
+
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
 
@@ -334,6 +336,18 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  public void getResourcesToBeSettled(
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths) {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.addSettleFilesToList(
+            seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+      }
+    }
+  }
+
   /** push mergeAll operation down to all virtual storage group processors */
   public void mergeAll(boolean isFullMerge) {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
@@ -445,5 +459,13 @@ public class VirtualStorageGroupManager {
   /** only for test */
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
+  }
+
+  public void setSettling(boolean settling) {
+    isSettling.set(settling);
+  }
+
+  public AtomicBoolean getIsSettling() {
+    return isSettling;
   }
 }

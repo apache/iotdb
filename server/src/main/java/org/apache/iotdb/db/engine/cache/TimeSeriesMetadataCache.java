@@ -213,11 +213,13 @@ public class TimeSeriesMetadataCache {
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return Collections.emptyList();
       }
-      return readTimeseriesMetadataForVector(reader, key, subSensorList, allSensors);
+      // for the condition that cache is disabled, we only get what we need
+      Set<String> allSensorSet = new HashSet<>(subSensorList);
+      allSensorSet.add(key.measurement);
+      return readTimeseriesMetadataForVector(reader, key, subSensorList, allSensorSet);
     }
 
     List<TimeseriesMetadata> res = new ArrayList<>();
-
     getVectorTimeSeriesMetadataListFromCache(key, subSensorList, res);
 
     if (res.isEmpty()) {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -295,7 +295,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -384,23 +384,20 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root")), 6);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop")), 6);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 6);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 5);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.**")), 6);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.**")), 6);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 1);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 4);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.**")), 5);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1")), 1);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 2);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")), 3);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 3);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")), 3);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 2);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2")), 2);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**")), 2);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop")), 0);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1")), 0);
 
-      try {
-        manager.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"));
-        fail("Expected exception");
-      } catch (MetadataException e) {
-        assertEquals("Path [root.laptop.d3.s1] does not exist", e.getMessage());
-      }
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -468,7 +465,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getDevices(new PartialPath("root.*")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -481,7 +478,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getDevices(new PartialPath("root.*")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -495,7 +492,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          recoverManager.getDevices(new PartialPath("root.*")).stream()
+          recoverManager.getMatchedDevices(new PartialPath("root.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -526,14 +523,15 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
-      List<String> list = new ArrayList<>();
+      List<PartialPath> list = new ArrayList<>();
 
-      list.add("root.laptop.d1");
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.d1")));
-      list.add("root.laptop.d2");
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop")));
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root")));
+      list.add(new PartialPath("root.laptop.d1"));
+      assertEquals(list, manager.getBelongedStorageGroups(new PartialPath("root.laptop.d1.s1")));
+      assertEquals(list, manager.getBelongedStorageGroups(new PartialPath("root.laptop.d1")));
+
+      list.add(new PartialPath("root.laptop.d2"));
+      assertEquals(list, manager.getBelongedStorageGroups(new PartialPath("root.laptop.**")));
+      assertEquals(list, manager.getBelongedStorageGroups(new PartialPath("root.**")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -546,24 +544,36 @@ public class MManagerBasicTest {
 
     try {
       assertTrue(manager.getAllTimeseriesPath(new PartialPath("root")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle.device")).isEmpty());
+      assertTrue(manager.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
+      assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(
-          manager.getStorageGroupByPath(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          manager.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertTrue(
+          manager
+              .getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor"))
+              .isEmpty());
 
       manager.setStorageGroup(new PartialPath("root.vehicle"));
-      assertFalse(manager.getStorageGroupByPath(new PartialPath("root.vehicle")).isEmpty());
-      assertFalse(manager.getStorageGroupByPath(new PartialPath("root.vehicle.device")).isEmpty());
+      assertFalse(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertFalse(
-          manager.getStorageGroupByPath(new PartialPath("root.vehicle.device.sensor")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device")).isEmpty());
+          manager.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertFalse(
+          manager
+              .getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor"))
+              .isEmpty());
+      assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
+      assertTrue(
+          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
 
       manager.setStorageGroup(new PartialPath("root.vehicle1.device"));
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device1")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device2")).isEmpty());
-      assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device3")).isEmpty());
-      assertFalse(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device")).isEmpty());
+      assertTrue(
+          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());
+      assertTrue(
+          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device2")).isEmpty());
+      assertTrue(
+          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device3")).isEmpty());
+      assertFalse(
+          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -597,9 +607,10 @@ public class MManagerBasicTest {
       Set<String> nodes2 = new HashSet<>(Arrays.asList("laptop"));
       Set<String> nodes3 = new HashSet<>(Arrays.asList("d1", "d2"));
       Set<String> nexLevelNodes1 =
-          manager.getChildNodeInNextLevel(new PartialPath("root.laptop.d1"));
-      Set<String> nexLevelNodes2 = manager.getChildNodeInNextLevel(new PartialPath("root"));
-      Set<String> nexLevelNodes3 = manager.getChildNodeInNextLevel(new PartialPath("root.laptop"));
+          manager.getChildNodeNameInNextLevel(new PartialPath("root.laptop.d1"));
+      Set<String> nexLevelNodes2 = manager.getChildNodeNameInNextLevel(new PartialPath("root"));
+      Set<String> nexLevelNodes3 =
+          manager.getChildNodeNameInNextLevel(new PartialPath("root.laptop"));
       // usual condition
       assertEquals(nodes, nexLevelNodes1);
       assertEquals(nodes2, nexLevelNodes2);
@@ -720,7 +731,7 @@ public class MManagerBasicTest {
       // usual condition
       assertEquals(
           devices,
-          manager.getDevices(new PartialPath("root.laptop")).stream()
+          manager.getMatchedDevices(new PartialPath("root.laptop.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
       manager.setStorageGroup(new PartialPath("root.vehicle"));
@@ -734,7 +745,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getDevices(new PartialPath("root.*")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
     } catch (MetadataException e) {
@@ -864,8 +875,8 @@ public class MManagerBasicTest {
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node = manager.setUsingSchemaTemplate(node);
 
-    MeasurementSchema s11 =
-        new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    UnaryMeasurementSchema s11 =
+        new UnaryMeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     assertNotNull(node.getSchemaTemplate());
     assertEquals(node.getSchemaTemplate().getSchemaMap().get("s11"), s11);
 
@@ -878,13 +889,16 @@ public class MManagerBasicTest {
 
     assertTrue(allSchema.isEmpty());
 
-    IMeasurementMNode[] mNodes =
-        manager.getMNodes(new PartialPath("root.sg1.d1"), new String[] {"s11"});
-    assertNotNull(mNodes[0]);
-    assertEquals(mNodes[0].getSchema(), s11);
+    IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
+    assertNotNull(mNode);
+    assertEquals(mNode.getSchema(), s11);
 
-    mNodes = manager.getMNodes(new PartialPath("root.sg1.d1"), new String[] {"s100"});
-    assertNull(mNodes[0]);
+    try {
+      manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
+      fail();
+    } catch (PathNotExistException e) {
+      assertEquals("Path [root.sg1.d1.s100] does not exist", e.getMessage());
+    }
   }
 
   private CreateTemplatePlan getCreateTemplatePlan() {
@@ -1162,21 +1176,22 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
       // show timeseries
       //      showTimeSeriesPlan =
       //          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
-      //      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      //      result = manager.showTimeseries(showTimeSeriesPlan,
+      // EnvironmentUtils.TEST_QUERY_CONTEXT);
       //      assertEquals(4, result.size());
 
       // show timeseries root.laptop.d1.vector
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+              new PartialPath("root.laptop.d1.vector.*"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(3, result.size());
       for (int i = 0; i < result.size(); i++) {
         assertEquals("root.laptop.d1.vector.s" + (i + 1), result.get(i).getName());
@@ -1186,7 +1201,7 @@ public class MManagerBasicTest {
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
     } catch (MetadataException e) {
@@ -1200,7 +1215,7 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     } catch (MetadataException e) {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
@@ -1266,7 +1281,7 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
@@ -1274,14 +1289,14 @@ public class MManagerBasicTest {
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
 
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          new ShowTimeSeriesPlan(new PartialPath("root.**"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(4, result.size());
       Set<String> set = new HashSet<>();
       for (int i = 1; i < result.size(); i++) {
@@ -1304,8 +1319,7 @@ public class MManagerBasicTest {
       ShowTimeSeriesPlan showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     } catch (MetadataException e) {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
@@ -1365,13 +1379,13 @@ public class MManagerBasicTest {
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.computer.d1")));
 
-      Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")));
+      Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
-      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1")));
-      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer")));
-      Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.**")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.**")));
+      Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1429,7 +1443,8 @@ public class MManagerBasicTest {
 
       Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d1")));
       Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d2")));
-      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop")));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.*")));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1549,7 +1564,8 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath()));
+      assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
+      assertEquals(3, manager.getAllTimeseriesFlatCount(node.getPartialPath().concatNode("**")));
       assertEquals(1, node.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
@@ -1867,5 +1883,34 @@ public class MManagerBasicTest {
           "some children of root.a have already been set to storage group", e.getMessage());
       Assert.assertFalse(manager.isPathExist(new PartialPath("root.a.d")));
     }
+  }
+
+  @Test
+  public void testTimeseriesDeletionWithEntityUsingTemplate() throws MetadataException {
+    MManager manager = IoTDB.metaManager;
+    manager.setStorageGroup(new PartialPath("root.sg"));
+
+    CreateTemplatePlan plan = getCreateTemplatePlan("s1");
+    manager.createSchemaTemplate(plan);
+    SetSchemaTemplatePlan setPlan = new SetSchemaTemplatePlan("template1", "root.sg.d1");
+    manager.setSchemaTemplate(setPlan);
+    manager.createTimeseries(
+        new PartialPath("root.sg.d1.s2"),
+        TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.sg.d1")));
+    manager.deleteTimeseries(new PartialPath("root.sg.d1.s2"));
+    assertTrue(manager.isPathExist(new PartialPath("root.sg.d1")));
+
+    manager.createTimeseries(
+        new PartialPath("root.sg.d2.s2"),
+        TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    manager.deleteTimeseries(new PartialPath("root.sg.d2.s2"));
+    assertFalse(manager.isPathExist(new PartialPath("root.sg.d2")));
   }
 }

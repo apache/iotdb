@@ -42,7 +42,6 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -55,7 +54,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -161,8 +160,11 @@ public class TTLTest {
     plan.setValues(new Object[] {1L});
     plan.setMeasurementMNodes(
         new IMeasurementMNode[] {
-          new MeasurementMNode(
-              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
+          MeasurementMNode.getMeasurementMNode(
+              null,
+              "s1",
+              new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
+              null)
         });
     plan.transferType();
 
@@ -194,8 +196,11 @@ public class TTLTest {
     plan.setValues(new Object[] {1L});
     plan.setMeasurementMNodes(
         new IMeasurementMNode[] {
-          new MeasurementMNode(
-              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
+          MeasurementMNode.getMeasurementMNode(
+              null,
+              "s1",
+              new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
+              null)
         });
     plan.transferType();
 
@@ -278,8 +283,6 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());
     assertEquals(0, unseqResource.size());
-
-    QueryResourceManager.getInstance().endQuery(EnvironmentUtils.TEST_QUERY_JOB_ID);
   }
 
   @Test

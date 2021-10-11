@@ -45,8 +45,6 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
-  private Map<String, Integer> vectorPathToIndex = new HashMap<>();
-
   private boolean enableRedirect = false;
 
   // if true, we don't need the row whose any column is null
@@ -148,14 +146,6 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setEnableRedirect(boolean enableRedirect) {
     this.enableRedirect = enableRedirect;
-  }
-
-  public Map<String, Integer> getVectorPathToIndex() {
-    return vectorPathToIndex;
-  }
-
-  public void setVectorPathToIndex(Map<String, Integer> vectorPathToIndex) {
-    this.vectorPathToIndex = vectorPathToIndex;
   }
 
   public List<ResultColumn> getResultColumns() {

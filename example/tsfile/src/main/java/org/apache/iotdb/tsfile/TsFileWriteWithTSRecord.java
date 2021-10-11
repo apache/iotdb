@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.io.File;
 
@@ -51,13 +51,13 @@ public class TsFileWriteWithTSRecord {
           // add measurements into file schema
           tsFileWriter.registerTimeseries(
               new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
-              new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+              new UnaryMeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
           tsFileWriter.registerTimeseries(
               new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
-              new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+              new UnaryMeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
           tsFileWriter.registerTimeseries(
               new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
-              new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
+              new UnaryMeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
         }
 
         // construct TSRecord

@@ -666,6 +666,7 @@ var config = {
 						title: 'Data Concept',
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
+							['Data-Concept/Measurement-Template','Measurement Template'],
 							['Data-Concept/Data-Type','Data Type'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
@@ -1461,6 +1462,7 @@ var config = {
 						title: '数据模式与概念',
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
+							['Data-Concept/Measurement-Template','物理量模板'],
 							['Data-Concept/Data-Type','数据类型'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
@@ -1499,7 +1501,8 @@ var config = {
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-TsFile-API','TsFile API'],
-							['API/Time-zone','时区']
+							['API/Time-zone','时区'],
+							['API/InfluxDB-Protocol','InfluxDB 协议适配器']
 						]
 					},
 					{

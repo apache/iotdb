@@ -29,10 +29,8 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurati
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
-import java.util.Map;
 
 /** Used to convert logical operator to physical plan */
 public class PhysicalGenerator {
@@ -60,8 +58,7 @@ public class PhysicalGenerator {
     return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
-  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
-      throws MetadataException {
-    return IoTDB.metaManager.getSeriesSchemas(paths);
+  public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
+    return IoTDB.metaManager.groupVectorPaths(paths);
   }
 }

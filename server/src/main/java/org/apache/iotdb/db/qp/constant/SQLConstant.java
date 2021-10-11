@@ -34,7 +34,7 @@ public class SQLConstant {
     // forbidding instantiation
   }
 
-  private static final String[] SINGLE_ROOT_ARRAY = {"root"};
+  private static final String[] SINGLE_ROOT_ARRAY = {"root", "**"};
   private static final String[] SINGLE_TIME_ARRAY = {"time"};
   public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
   public static final String ALIGNBY_DEVICE_COLUMN_NAME = "Device";
@@ -183,6 +183,8 @@ public class SQLConstant {
 
   public static final int TOK_SET_SYSTEM_MODE = 110;
 
+  public static final int TOK_SETTLE = 111;
+
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
@@ -253,6 +255,8 @@ public class SQLConstant {
     tokenNames.put(TOK_SHOW_CONTINUOUS_QUERIES, "TOK_SHOW_CONTINUOUS_QUERIES");
 
     tokenNames.put(TOK_SELECT_INTO, "TOK_SELECT_INTO");
+
+    tokenNames.put(TOK_SETTLE, "TOK_SETTLE");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

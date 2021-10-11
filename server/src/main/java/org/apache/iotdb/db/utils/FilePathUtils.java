@@ -145,7 +145,9 @@ public class FilePathUtils {
       if (k <= pathLevel) {
         transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[k]);
       } else {
-        transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(IoTDBConstant.PATH_WILDCARD);
+        transformedPath
+            .append(TsFileConstant.PATH_SEPARATOR)
+            .append(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
       }
     }
     transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[tmpPath.length - 1]);

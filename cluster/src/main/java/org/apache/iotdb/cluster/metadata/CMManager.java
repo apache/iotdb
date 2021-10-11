@@ -38,6 +38,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -52,7 +53,13 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -182,25 +189,25 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public TSDataType getSeriesType(PartialPath path) throws MetadataException {
+  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
 
-    if (path.equals(SQLConstant.TIME_PATH)) {
+    if (fullPath.equals(SQLConstant.TIME_PATH)) {
       return TSDataType.INT64;
     }
 
-    String measurement = path.getMeasurement();
-    if (path instanceof VectorPartialPath) {
-      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
+    String measurement = fullPath.getMeasurement();
+    if (fullPath instanceof VectorPartialPath) {
+      if (((VectorPartialPath) fullPath).getSubSensorsList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        measurement = ((VectorPartialPath) path).getSubSensor(0);
+        measurement = ((VectorPartialPath) fullPath).getSubSensor(0);
       }
     }
 
     // try remote cache first
     try {
       cacheLock.readLock().lock();
-      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(path);
+      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(fullPath);
       if (measurementMNode != null) {
         return measurementMNode.getDataType(measurement);
       }
@@ -211,28 +218,29 @@ public class CMManager extends MManager {
     // try local MTree
     TSDataType seriesType;
     try {
-      seriesType = super.getSeriesType(path);
+      seriesType = super.getSeriesType(fullPath);
     } catch (PathNotExistException e) {
       // pull from remote node
       List<IMeasurementSchema> schemas =
-          metaPuller.pullMeasurementSchemas(Collections.singletonList(path));
+          metaPuller.pullMeasurementSchemas(Collections.singletonList(fullPath));
       if (!schemas.isEmpty()) {
         IMeasurementSchema measurementSchema = schemas.get(0);
         IMeasurementMNode measurementMNode =
-            new MeasurementMNode(
+            MeasurementMNode.getMeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
           for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
-            cacheMeta(((VectorPartialPath) path).getPathWithSubSensor(i), measurementMNode, false);
+            cacheMeta(
+                ((VectorPartialPath) fullPath).getPathWithSubSensor(i), measurementMNode, false);
           }
           cacheMeta(
-              new PartialPath(path.getDevice(), measurementSchema.getMeasurementId()),
+              new PartialPath(fullPath.getDevice(), measurementSchema.getMeasurementId()),
               measurementMNode,
               true);
         } else {
-          cacheMeta(path, measurementMNode, true);
+          cacheMeta(fullPath, measurementMNode, true);
         }
-        return measurementMNode.getDataType(path.getMeasurement());
+        return measurementMNode.getDataType(fullPath.getMeasurement());
       } else {
         throw e;
       }
@@ -246,7 +254,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  protected IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     IMeasurementMNode node = null;
     // try remote cache first
     try {
@@ -262,7 +270,7 @@ public class CMManager extends MManager {
     if (node == null) {
       // try local MTree
       try {
-        node = (IMeasurementMNode) super.getNodeByPath(fullPath);
+        node = super.getMeasurementMNode(fullPath);
       } catch (PathNotExistException e) {
         // pull from remote node
         List<IMeasurementSchema> schemas =
@@ -270,7 +278,7 @@ public class CMManager extends MManager {
         if (!schemas.isEmpty()) {
           IMeasurementSchema measurementSchema = schemas.get(0);
           IMeasurementMNode measurementMNode =
-              new MeasurementMNode(
+              MeasurementMNode.getMeasurementMNode(
                   null, measurementSchema.getMeasurementId(), measurementSchema, null);
           cacheMeta(fullPath, measurementMNode, true);
           node = measurementMNode;
@@ -290,10 +298,10 @@ public class CMManager extends MManager {
    * @param measurements the measurements.
    */
   @Override
-  public IMeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
+  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     try {
-      return super.getMNodes(deviceId, measurements);
+      return super.getMeasurementMNodes(deviceId, measurements);
     } catch (MetadataException e) {
       // some measurements not exist in local
       // try cache
@@ -351,7 +359,7 @@ public class CMManager extends MManager {
       // TODO-Cluster: also pull alias?
       // take care, the pulled schema's measurement Id is only series name
       IMeasurementMNode measurementMNode =
-          new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
+          MeasurementMNode.getMeasurementMNode(null, schema.getMeasurementId(), schema, null);
       cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode, true);
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
@@ -477,7 +485,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
+  protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path,
@@ -529,7 +537,7 @@ public class CMManager extends MManager {
     // for CreateMultiTimeSeriesPlan, use getPaths() to get all timeseries to get related storage
     // groups.
     if (plan instanceof BatchPlan) {
-      storageGroups.addAll(getStorageGroups(getValidStorageGroups(plan)));
+      storageGroups.addAll(getStorageGroups(getValidStorageGroups((BatchPlan) plan)));
     } else if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((InsertPlan) plan).getPrefixPath())));
@@ -561,12 +569,13 @@ public class CMManager extends MManager {
     }
   }
 
-  private List<PartialPath> getValidStorageGroups(PhysicalPlan plan) {
+  private List<PartialPath> getValidStorageGroups(BatchPlan plan) {
     List<PartialPath> paths = new ArrayList<>();
-    for (int i = 0; i < plan.getPaths().size(); i++) {
+    List<PartialPath> originalPaths = plan.getPrefixPaths();
+    for (int i = 0; i < originalPaths.size(); i++) {
       // has permission to create sg
-      if (!((BatchPlan) plan).getResults().containsKey(i)) {
-        paths.add(plan.getPaths().get(i));
+      if (!plan.getResults().containsKey(i)) {
+        paths.add(originalPaths.get(i));
       }
     }
     return paths;
@@ -948,12 +957,7 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = determineStorageGroup(originPath);
+    Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
     Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
     return ret;
@@ -1106,8 +1110,8 @@ public class CMManager extends MManager {
   /**
    * Split the paths by the data group they belong to and query them from the groups separately.
    *
-   * @param sgPathMap the key is the storage group name and the value is the path to be queried with
-   *     storage group added
+   * @param sgPathMap the key is the storage group name and the value is the path pattern to be
+   *     queried with storage group added
    * @return a collection of all queried devices
    */
   private Set<PartialPath> getMatchedDevices(Map<String, String> sgPathMap)
@@ -1131,7 +1135,7 @@ public class CMManager extends MManager {
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
-        Set<PartialPath> allDevices = getDevices(pathUnderSG);
+        Set<PartialPath> allDevices = super.getMatchedDevices(pathUnderSG);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
             metaGroupMember.getName(),
@@ -1219,14 +1223,8 @@ public class CMManager extends MManager {
   /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
   @Override
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
-      PartialPath prefixPath, int limit, int offset) throws MetadataException {
-
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = determineStorageGroup(prefixPath);
+      PartialPath pathPattern, int limit, int offset) throws MetadataException {
+    Map<String, String> sgPathMap = groupPathByStorageGroup(pathPattern);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);
 
     int skippedOffset = 0;
@@ -1241,7 +1239,7 @@ public class CMManager extends MManager {
     if (limit > 0 && result.size() > limit) {
       result = result.subList(0, limit);
     }
-    logger.debug("The paths of path {} are {}", prefixPath, result);
+    logger.debug("The paths of path {} are {}", pathPattern, result);
 
     return new Pair<>(result, skippedOffset);
   }
@@ -1253,12 +1251,7 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = determineStorageGroup(originPath);
+    Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
     List<PartialPath> ret = getMatchedPaths(sgPathMap, false);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
@@ -1327,7 +1320,7 @@ public class CMManager extends MManager {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      getDevices(new PartialPath(path)).stream()
+      this.getMatchedDevices(new PartialPath(path)).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }
@@ -1342,13 +1335,13 @@ public class CMManager extends MManager {
    * @param nodeLevel
    */
   public List<String> getNodeList(String path, int nodeLevel) throws MetadataException {
-    return getNodesList(new PartialPath(path), nodeLevel).stream()
+    return getNodesListInGivenLevel(new PartialPath(path), nodeLevel).stream()
         .map(PartialPath::getFullPath)
         .collect(Collectors.toList());
   }
 
   public Set<String> getChildNodeInNextLevel(String path) throws MetadataException {
-    return getChildNodeInNextLevel(new PartialPath(path));
+    return getChildNodeNameInNextLevel(new PartialPath(path));
   }
 
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
@@ -1376,8 +1369,9 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public IMNode getMNode(IMNode deviceMNode, String measurementName) {
-    IMNode child = deviceMNode.getChild(measurementName);
+  protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
+      throws PathAlreadyExistException {
+    IMeasurementMNode child = super.getMeasurementMNode(deviceMNode, measurementName);
     if (child == null) {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurementName));
     }
@@ -1390,11 +1384,11 @@ public class CMManager extends MManager {
   }
 
   public List<ShowDevicesResult> getLocalDevices(ShowDevicesPlan plan) throws MetadataException {
-    return super.getDevices(plan);
+    return super.getMatchedDevices(plan);
   }
 
   @Override
-  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+  public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
     ConcurrentSkipListSet<ShowDevicesResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool =
         new ThreadPoolExecutor(
@@ -1560,7 +1554,7 @@ public class CMManager extends MManager {
         metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      List<ShowDevicesResult> localResult = super.getDevices(plan);
+      List<ShowDevicesResult> localResult = super.getMatchedDevices(plan);
       resultSet.addAll(localResult);
       logger.debug("Fetched {} devices of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
@@ -1744,16 +1738,16 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
+  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
     try {
-      return super.getStorageGroupPath(path);
+      return super.getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
       try {
         metaGroupMember.syncLeader(null);
       } catch (CheckConsistencyException ex) {
         logger.warn("Failed to check consistency.", e);
       }
-      return super.getStorageGroupPath(path);
+      return super.getBelongedStorageGroup(path);
     }
   }
 }

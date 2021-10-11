@@ -989,7 +989,7 @@ public class DataGroupMemberTest extends BaseMember {
   @Test
   public void testGetPaths() {
     System.out.println("Start testGetPaths()");
-    String path = TestUtils.getTestSg(0);
+    String path = TestUtils.getTestSg(0) + ".**";
     AtomicReference<GetAllPathsResult> pathResult = new AtomicReference<>();
     GenericHandler<GetAllPathsResult> handler =
         new GenericHandler<>(TestUtils.getNode(0), pathResult);

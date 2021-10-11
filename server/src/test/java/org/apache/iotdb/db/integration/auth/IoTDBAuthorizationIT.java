@@ -618,7 +618,7 @@ public class IoTDBAuthorizationIT {
         userStmt.execute("CREATE TIMESERIES root.a.c WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.a(timestamp,b,c) VALUES (1,100,1000)");
         // userStmt.execute("DELETE FROM root.a.b WHERE TIME <= 1000000000");
-        userStmt.execute("SELECT * FROM root");
+        userStmt.execute("SELECT * FROM root.**");
         userStmt.getResultSet().close();
 
         adminStmt.execute("REVOKE ROLE admin PRIVILEGES 'DELETE_TIMESERIES' on root");
@@ -632,7 +632,7 @@ public class IoTDBAuthorizationIT {
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES 'READ_TIMESERIES' on root");
         adminStmt.execute("REVOKE admin FROM tempuser");
-        userStmt.execute("SELECT * FROM root");
+        userStmt.execute("SELECT * FROM root.**");
         userStmt.getResultSet().close();
         caught = false;
         try {
@@ -1135,7 +1135,7 @@ public class IoTDBAuthorizationIT {
               e.getMessage());
         }
       }
-      ResultSet resultSet = adminStmt.executeQuery("select * from root");
+      ResultSet resultSet = adminStmt.executeQuery("select * from root.**");
       String[] expected = new String[] {"1, 1.0", "1, null", "3, null", "3, 1.0"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);

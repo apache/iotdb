@@ -44,6 +44,7 @@ public class RawDataQueryPlan extends QueryPlan {
   private IExpression expression = null;
   private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
 
+  // TODO: remove this when all types of query supporting vector
   /** used to group all the sub sensors of one vector into VectorPartialPath */
   private List<PartialPath> deduplicatedVectorPaths = new ArrayList<>();
 
@@ -93,11 +94,9 @@ public class RawDataQueryPlan extends QueryPlan {
       }
     }
 
-    if (isRawQuery()) {
-      // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
-      // vector into one VectorPartialPath
-      transformVectorPaths(physicalGenerator, columnForDisplaySet);
-    }
+    // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
+    // vector into one VectorPartialPath
+    groupVectorPaths(physicalGenerator);
   }
 
   public IExpression getExpression() {
@@ -173,25 +172,13 @@ public class RawDataQueryPlan extends QueryPlan {
    * them directly into deduplicatedPaths and deduplicatedDataTypes, because we don't know whether
    * the raw query has value filter here.
    */
-  public void transformVectorPaths(
-      PhysicalGenerator physicalGenerator, Set<String> columnForDisplaySet)
-      throws MetadataException {
-    Pair<List<PartialPath>, Map<String, Integer>> pair =
-        physicalGenerator.getSeriesSchema(getDeduplicatedPaths());
-
-    List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
+  public void groupVectorPaths(PhysicalGenerator physicalGenerator) throws MetadataException {
+    List<PartialPath> vectorizedDeduplicatedPaths =
+        physicalGenerator.groupVectorPaths(getDeduplicatedPaths());
     List<TSDataType> vectorizedDeduplicatedDataTypes =
         new ArrayList<>(physicalGenerator.getSeriesTypes(vectorizedDeduplicatedPaths));
     setDeduplicatedVectorPaths(vectorizedDeduplicatedPaths);
     setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
-
-    Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
-    Map<String, Integer> vectorPathToIndex = new HashMap<>();
-    for (String columnForDisplay : columnForDisplaySet) {
-      vectorPathToIndex.put(
-          columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
-    }
-    setVectorPathToIndex(vectorPathToIndex);
   }
 
   public List<PartialPath> getDeduplicatedVectorPaths() {
@@ -218,11 +205,6 @@ public class RawDataQueryPlan extends QueryPlan {
     if (!this.deduplicatedVectorPaths.isEmpty()) {
       this.deduplicatedPaths = this.deduplicatedVectorPaths;
       this.deduplicatedDataTypes = this.deduplicatedVectorDataTypes;
-      setPathToIndex(getVectorPathToIndex());
     }
-  }
-
-  public boolean isRawQuery() {
-    return true;
   }
 }

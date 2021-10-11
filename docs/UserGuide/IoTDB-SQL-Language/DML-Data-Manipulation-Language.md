@@ -207,7 +207,7 @@ IoTDB supports the 'order by time' statement since 0.11, it's used to display re
 For example, the SQL statement is:
 
 ```sql
-select * from root.ln where time > 1 order by time desc limit 10;
+select * from root.ln.** where time > 1 order by time desc limit 10;
 ```
 The execution result of this SQL statement is as follows:
 
@@ -423,6 +423,43 @@ Total line number = 5
 It costs 0.014s
 ```
 
+#### Constant Timeseries Generating Functions
+
+The constant timeseries generating function is used to generate a timeseries in which the values of all data points are the same.
+
+The constant timeseries generating function accepts one or more timeseries inputs, and the timestamp set of the output data points is the union of the timestamp sets of the input timeseries.
+
+Currently, IoTDB supports the following constant timeseries generating functions:
+
+| Function Name | Required Attributes                                          | Output Series Data Type                      | Description                                                  |
+| ------------- | ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------ |
+| CONST         | `value`: the value of the output data point <br />`type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Output the user-specified constant timeseries according to the  attributes `value` and `type`. |
+| PI            | None                                                         | DOUBLE                                       | Data point value: a `double` value of  `π`, the ratio of the circumference of a circle to its diameter, which is equals to `Math.PI` in the *Java Standard Library*. |
+| E             | None                                                         | DOUBLE                                       | Data point value: a `double` value of  `e`, the base of the natural logarithms, which is equals to `Math.E` in the *Java Standard Library*. |
+
+Example:
+
+```   sql
+select s1, s2, const(s1, 'value'='1024', 'type'='INT64'), pi(s2), e(s1, s2) from root.sg1.d1; 
+```
+
+Result:
+
+```
+select s1, s2, const(s1, 'value'='1024', 'type'='INT64'), pi(s2), e(s1, s2) from root.sg1.d1; 
++-----------------------------+--------------+--------------+-----------------------------------------------------+------------------+---------------------------------+
+|                         Time|root.sg1.d1.s1|root.sg1.d1.s2|const(root.sg1.d1.s1, "value"="1024", "type"="INT64")|pi(root.sg1.d1.s2)|e(root.sg1.d1.s1, root.sg1.d1.s2)|
++-----------------------------+--------------+--------------+-----------------------------------------------------+------------------+---------------------------------+
+|1970-01-01T08:00:00.000+08:00|           0.0|           0.0|                                                 1024| 3.141592653589793|                2.718281828459045|
+|1970-01-01T08:00:00.001+08:00|           1.0|          null|                                                 1024|              null|                2.718281828459045|
+|1970-01-01T08:00:00.002+08:00|           2.0|          null|                                                 1024|              null|                2.718281828459045|
+|1970-01-01T08:00:00.003+08:00|          null|           3.0|                                                 null| 3.141592653589793|                2.718281828459045|
+|1970-01-01T08:00:00.004+08:00|          null|           4.0|                                                 null| 3.141592653589793|                2.718281828459045|
++-----------------------------+--------------+--------------+-----------------------------------------------------+------------------+---------------------------------+
+Total line number = 5
+It costs 0.005s
+```
+
 #### User Defined Timeseries Generating Functions
 
 Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
@@ -431,11 +468,9 @@ Known Implementation UDF Libraries:
 
 + [IoTDB-Quality](https://thulab.github.io/iotdb-quality), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
 
-### Nested Query (Subquery)
+### Nested Expressions
 
-"Nested query" is also called "subquery", that is, in a SQL statement, the result of the "inner query" can be used as the input of the "outer query".
-
-IoTDB supports the execution of arbitrary nested expressions consisting of **time series, arithmetic expressions, and time series generation functions (including user-defined functions)** in the `select` clause.
+IoTDB supports the execution of arbitrary nested expressions consisting of **time series, arithmetic expressions, and time series generating functions (including user-defined functions)** in the `select` clause.
 
 #### Syntax
 
@@ -960,7 +995,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 
 Detailed descriptions of all parameters are given in Table 3-4.
 
-<center>**Table 3-4 Previous fill paramter list**
+<center>
+
+**Table 3-4 Previous fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1013,7 +1050,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 ```
 Detailed descriptions of all parameters are given in Table 3-5.
 
-<center>**Table 3-5 Linear fill paramter list**
+<center>
+
+**Table 3-5 Linear fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1056,7 +1095,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
 ```
 Detailed descriptions of all parameters are given in Table 3-6.
 
-<center>**Table 3-6 Specific value fill paramter list**
+<center>
+
+**Table 3-6 Specific value fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1093,7 +1134,9 @@ It costs 0.007s
 
 Data types and the supported fill methods are shown in Table 3-6.
 
-<center>**Table 3-6 Data types and the supported fill methods**
+<center>
+
+**Table 3-6 Data types and the supported fill methods**
 
 |Data Type|Supported Fill Methods|
 |:---|:---|
@@ -1107,7 +1150,9 @@ Data types and the supported fill methods are shown in Table 3-6.
 
 When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 3-7.
 
-<center>**Table 3-7 Default fill methods and parameters for various data types**
+<center>
+
+**Table 3-7 Default fill methods and parameters for various data types**
 
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
@@ -1142,6 +1187,8 @@ The result will be returned in a four column table format.
 ```
 | Time | timeseries | value | dataType |
 ```
+
+**Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore the colum `dataType` is returned also which contains the _real_ type how the value should be interpreted.
 
 Example 1: get the last point of root.ln.wf01.wt01.status:
 

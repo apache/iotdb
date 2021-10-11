@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -127,21 +126,21 @@ public class IoTDBLoadExternalTsfileIT {
   private static final String TEST_D0_S0_STR = "root.test.d0.s0";
   private static final String TEST_D0_S1_STR = "root.test.d0.s1";
   private static final String TEST_D1_STR = "root.test.d1.g0.s0";
-  private static int virtualPartitionNum = 0;
+
+  private int prevVirtualPartitionNum;
 
   private static String[] deleteSqls =
       new String[] {"DELETE STORAGE GROUP root.vehicle", "DELETE STORAGE GROUP root.test"};
 
   @Before
   public void setUp() throws Exception {
+    prevVirtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
-    HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    virtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
   }
@@ -152,8 +151,7 @@ public class IoTDBLoadExternalTsfileIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(virtualPartitionNum);
-    HashVirtualPartitioner.getInstance().setStorageGroupNum(virtualPartitionNum);
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(prevVirtualPartitionNum);
   }
 
   @Test
@@ -367,7 +365,7 @@ public class IoTDBLoadExternalTsfileIT {
         Statement statement = connection.createStatement()) {
 
       // check query result
-      boolean hasResultSet = statement.execute("SELECT * FROM root");
+      boolean hasResultSet = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
@@ -503,7 +501,7 @@ public class IoTDBLoadExternalTsfileIT {
           new File(tmpDir, new PartialPath("root.test") + File.separator + "0").listFiles().length);
 
       // check query result
-      hasResultSet = statement.execute("SELECT  * FROM root");
+      hasResultSet = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;

@@ -750,9 +750,9 @@ public class TSServiceImpl implements TSIService.Iface {
 
     final long startTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
+    QueryContext context = genQueryContext(queryId, plan.isDebug(), startTime, statement, timeout);
 
     try {
-      queryTimeManager.registerQuery(queryId, startTime, statement, timeout, plan);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         TracingManager tracingManager = TracingManager.getInstance();
         if (!(plan instanceof AlignByDevicePlan)) {
@@ -774,7 +774,7 @@ public class TSServiceImpl implements TSIService.Iface {
         ((QueryPlan) plan).setEnableRedirect(enableRedirect);
       }
       // create and cache dataset
-      QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
+      QueryDataSet newDataSet = createQueryDataSet(context, plan, fetchSize);
 
       if (newDataSet.getEndPoint() != null && enableRedirect) {
         // redirect query
@@ -844,7 +844,7 @@ public class TSServiceImpl implements TSIService.Iface {
           }
         }
       }
-      queryTimeManager.unRegisterQuery(queryId, plan);
+      queryTimeManager.unRegisterQuery(queryId, false);
 
       return resp;
     } catch (Exception e) {
@@ -931,7 +931,7 @@ public class TSServiceImpl implements TSIService.Iface {
         for (int i = 0; i < resultColumns.size(); ++i) {
           if (isJdbcQuery) {
             String sgName =
-                IoTDB.metaManager.getStorageGroupPath(plan.getPaths().get(i)).getFullPath();
+                IoTDB.metaManager.getBelongedStorageGroup(plan.getPaths().get(i)).getFullPath();
             respSgColumns.add(sgName);
             if (resultColumns.get(i).getAlias() == null) {
               respColumns.add(
@@ -1038,6 +1038,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
     final long startTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
+    QueryContext context =
+        genQueryContext(queryId, physicalPlan.isDebug(), startTime, statement, timeout);
     final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
     final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
 
@@ -1050,12 +1052,11 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     try {
-      queryTimeManager.registerQuery(queryId, startTime, statement, timeout, queryPlan);
 
       InsertTabletPlansIterator insertTabletPlansIterator =
           new InsertTabletPlansIterator(
               queryPlan,
-              createQueryDataSet(queryId, queryPlan, fetchSize),
+              createQueryDataSet(context, queryPlan, fetchSize),
               selectIntoPlan.getFromPath(),
               selectIntoPlan.getIntoPaths());
       while (insertTabletPlansIterator.hasNext()) {
@@ -1070,7 +1071,6 @@ public class TSServiceImpl implements TSIService.Iface {
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
     } finally {
       sessionManager.releaseQueryResourceNoExceptions(queryId);
-      queryTimeManager.unRegisterQuery(queryId, queryPlan);
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
       long costTime = System.currentTimeMillis() - startTime;
       if (costTime >= config.getSlowQueryThreshold()) {
@@ -1108,9 +1108,7 @@ public class TSServiceImpl implements TSIService.Iface {
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
       }
 
-      // register query info to queryTimeManager
-      queryTimeManager.registerQuery(
-          req.queryId, System.currentTimeMillis(), req.statement, req.timeout);
+      genQueryContext(req.queryId, false, System.currentTimeMillis(), req.statement, req.timeout);
 
       QueryDataSet queryDataSet = sessionManager.getDataset(req.queryId);
       if (req.isAlign) {
@@ -1126,7 +1124,7 @@ public class TSServiceImpl implements TSIService.Iface {
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
 
-        queryTimeManager.unRegisterQuery(req.queryId);
+        queryTimeManager.unRegisterQuery(req.queryId, false);
         return resp;
       } else {
         TSQueryNonAlignDataSet nonAlignResult =
@@ -1147,7 +1145,7 @@ public class TSServiceImpl implements TSIService.Iface {
         resp.setNonAlignQueryDataSet(nonAlignResult);
         resp.setIsAlign(false);
 
-        queryTimeManager.unRegisterQuery(req.queryId);
+        queryTimeManager.unRegisterQuery(req.queryId, false);
         return resp;
       }
     } catch (InterruptedException e) {
@@ -1202,19 +1200,20 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   /** create QueryDataSet and buffer it for fetchResults */
-  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan, int fetchSize)
+  private QueryDataSet createQueryDataSet(
+      QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
-    QueryContext context = genQueryContext(queryId, physicalPlan.isDebug());
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
-    sessionManager.setDataset(queryId, queryDataSet);
+    sessionManager.setDataset(context.getQueryId(), queryDataSet);
     return queryDataSet;
   }
 
-  protected QueryContext genQueryContext(long queryId, boolean debug) {
-    return new QueryContext(queryId, debug);
+  protected QueryContext genQueryContext(
+      long queryId, boolean debug, long startTime, String statement, long timeout) {
+    return new QueryContext(queryId, debug, startTime, statement, timeout);
   }
 
   /** update statement can be: 1. select-into statement 2. non-query statement */
@@ -1367,19 +1366,20 @@ public class TSServiceImpl implements TSIService.Iface {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
           sessionManager.getCurrSessionId(),
-          req.deviceIds.get(0),
+          req.prefixPaths.get(0),
           req.getTimestamps().get(0));
     }
     boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
-    for (int i = 0; i < req.deviceIds.size(); i++) {
+    for (int i = 0; i < req.prefixPaths.size(); i++) {
       try {
         InsertRowPlan plan =
             new InsertRowPlan(
-                new PartialPath(req.getDeviceIds().get(i)),
+                new PartialPath(req.getPrefixPaths().get(i)),
                 req.getTimestamps().get(i),
                 req.getMeasurementsList().get(i).toArray(new String[0]),
-                req.valuesList.get(i));
+                req.valuesList.get(i),
+                req.isAligned);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
@@ -1404,7 +1404,7 @@ public class TSServiceImpl implements TSIService.Iface {
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
     return judgeFinalTsStatus(
-        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.prefixPaths.size());
   }
 
   private TSStatus judgeFinalTsStatus(
@@ -1438,7 +1438,7 @@ public class TSServiceImpl implements TSIService.Iface {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
           sessionManager.getCurrSessionId(),
-          req.deviceId,
+          req.prefixPath,
           req.getTimestamps().get(0));
     }
 
@@ -1446,10 +1446,11 @@ public class TSServiceImpl implements TSIService.Iface {
     try {
       InsertRowsOfOneDevicePlan plan =
           new InsertRowsOfOneDevicePlan(
-              new PartialPath(req.getDeviceId()),
+              new PartialPath(req.getPrefixPath()),
               req.getTimestamps().toArray(new Long[0]),
               req.getMeasurementsList(),
-              req.getValuesList().toArray(new ByteBuffer[0]));
+              req.getValuesList().toArray(new ByteBuffer[0]),
+              req.isAligned);
       TSStatus status = checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
@@ -1483,20 +1484,21 @@ public class TSServiceImpl implements TSIService.Iface {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
           sessionManager.getCurrSessionId(),
-          req.deviceIds.get(0),
+          req.prefixPaths.get(0),
           req.getTimestamps().get(0));
     }
 
     boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
-    for (int i = 0; i < req.deviceIds.size(); i++) {
+    for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
-        plan.setPrefixPath(new PartialPath(req.getDeviceIds().get(i)));
+        plan.setPrefixPath(new PartialPath(req.getPrefixPaths().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setNeedInferType(true);
+        plan.setAligned(req.isAligned);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
@@ -1521,7 +1523,7 @@ public class TSServiceImpl implements TSIService.Iface {
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
     return judgeFinalTsStatus(
-        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.prefixPaths.size());
   }
 
   private void addMeasurementAndValue(
@@ -1625,16 +1627,17 @@ public class TSServiceImpl implements TSIService.Iface {
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
           sessionManager.getCurrSessionId(),
-          req.getDeviceId(),
+          req.getPrefixPath(),
           req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setPrefixPath(new PartialPath(req.getDeviceId()));
+      plan.setPrefixPath(new PartialPath(req.getPrefixPath()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
       plan.setValues(req.getValues().toArray(new Object[0]));
       plan.setNeedInferType(true);
+      plan.setAligned(req.isAligned);
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
@@ -1729,7 +1732,7 @@ public class TSServiceImpl implements TSIService.Iface {
   private InsertTabletPlan constructInsertTabletPlan(TSInsertTabletsReq req, int i)
       throws IllegalPathException {
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(new PartialPath(req.deviceIds.get(i)), req.measurementsList.get(i));
+        new InsertTabletPlan(new PartialPath(req.prefixPaths.get(i)), req.measurementsList.get(i));
     insertTabletPlan.setTimes(
         QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
     insertTabletPlan.setColumns(
@@ -1743,6 +1746,7 @@ public class TSServiceImpl implements TSIService.Iface {
             req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i)));
     insertTabletPlan.setRowCount(req.sizeList.get(i));
     insertTabletPlan.setDataTypes(req.typesList.get(i));
+    insertTabletPlan.setAligned(req.isAligned);
     return insertTabletPlan;
   }
 
@@ -1750,7 +1754,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertTabletsInternally(TSInsertTabletsReq req) throws IllegalPathException {
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
-    for (int i = 0; i < req.deviceIds.size(); i++) {
+    for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletPlan insertTabletPlan = constructInsertTabletPlan(req, i);
       TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
       if (status != null) {
@@ -2203,14 +2207,11 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private TSStatus onNPEOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
-    String message =
-        String.format("[%s] Exception occurred: %s failed. ", statusCode.name(), operation);
+    String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
     if (e instanceof NullPointerException) {
-      LOGGER.error("Status code: {}, MSG: {}", statusCode, message, e);
-    } else if (e instanceof UnSupportedDataTypeException) {
-      LOGGER.warn("Status code: {}, MSG: {}", statusCode, e.getMessage());
+      LOGGER.error("Status code: {}, operation: {} failed", statusCode, operation, e);
     } else {
-      LOGGER.warn("Status code: {}, MSG: {}", statusCode, message, e);
+      LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
@@ -2221,16 +2222,12 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   private TSStatus onIoTDBException(Exception e, String operation, int errorCode) {
-    String errorName = "IOTDBException";
-    for (TSStatusCode value : TSStatusCode.values()) {
-      if (value.getStatusCode() == errorCode) {
-        errorName = value.name();
-        break;
-      }
-    }
-    String message = String.format("[%s] Exception occurred: %s failed. ", errorName, operation);
-    LOGGER.warn("Status code: {}, MSG: {}", errorName, message, e);
-    return RpcUtils.getStatus(errorCode, message + e.getMessage());
+    TSStatusCode statusCode = TSStatusCode.representOf(errorCode);
+    String message =
+        String.format(
+            "[%s] Exception occurred: %s failed. %s", statusCode, operation, e.getMessage());
+    LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
+    return RpcUtils.getStatus(errorCode, message);
   }
 
   private TSStatus onIoTDBException(Exception e, OperationType operation, int errorCode) {

@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
@@ -197,9 +197,16 @@ public class Tablet {
     return maxRowNumber;
   }
 
-  /** Reset Tablet to the default state - set the rowSize to 0 */
+  /** Reset Tablet to the default state - set the rowSize to 0 and reset bitMaps */
   public void reset() {
     rowSize = 0;
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        if (bitMap != null) {
+          bitMap.reset();
+        }
+      }
+    }
   }
 
   private void createColumns() {
@@ -277,7 +284,7 @@ public class Tablet {
     int columnIndex = 0;
     for (int i = 0; i < schemas.size(); i++) {
       IMeasurementSchema schema = schemas.get(i);
-      if (schema instanceof MeasurementSchema) {
+      if (schema instanceof UnaryMeasurementSchema) {
         valueOccupation += calOccupationOfOneColumn(schema.getType(), columnIndex);
         columnIndex++;
       } else {
