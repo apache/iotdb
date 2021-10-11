@@ -238,10 +238,10 @@ public class IoTDBLargeDataIT {
     }
   }
 
-  // "select * from root.vehicle" : test select wild data
+  // "select * from root.vehicle.**" : test select wild data
   @Test
   public void selectAllTest() throws ClassNotFoundException {
-    String selectSql = "select * from root.vehicle";
+    String selectSql = "select * from root.vehicle.**";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =

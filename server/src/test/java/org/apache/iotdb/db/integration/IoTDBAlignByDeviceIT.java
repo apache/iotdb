@@ -162,7 +162,7 @@ public class IoTDBAlignByDeviceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root.vehicle align by device");
+      boolean hasResultSet = statement.execute("select * from root.vehicle.** align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -520,7 +520,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select count(*) from root.vehicle GROUP BY ([2,50),20ms) align by device");
+              "select count(*) from root.vehicle.** GROUP BY ([2,50),20ms) align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -625,7 +625,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device");
+              "select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -663,24 +663,6 @@ public class IoTDBAlignByDeviceIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void errorCaseTest1() throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("select d0.s1, d0.s2, d1.s0 from root.vehicle align by device");
-      fail("No exception thrown.");
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage()
-              .contains(
-                  "The paths of the SELECT clause can only be single level. In other words, "
-                      + "the paths of the SELECT clause can only be measurements or STAR, without DOT."));
     }
   }
 
@@ -844,7 +826,8 @@ public class IoTDBAlignByDeviceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select *, '11' from root.vehicle align by device");
+      boolean hasResultSet =
+          statement.execute("select *, '11' from root.vehicle.** align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

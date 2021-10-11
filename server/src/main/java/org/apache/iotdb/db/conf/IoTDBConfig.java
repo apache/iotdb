@@ -125,6 +125,9 @@ public class IoTDBConfig {
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
+  /** Memory allocated proportion for timeIndex */
+  private double timeIndexMemoryProportion = 0.2;
+
   /** Flush proportion for system */
   private double flushProportion = 0.4;
 
@@ -307,10 +310,10 @@ public class IoTDBConfig {
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
-  private long seqMemtableFlushInterval = 12 * 60 * 60 * 1000L;
+  private long seqMemtableFlushInterval = 60 * 60 * 1000L;
 
   /** The interval to check whether sequence memtables need flushing. Unit: ms */
-  private long seqMemtableFlushCheckInterval = 60 * 60 * 1000L;
+  private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** Whether to timed flush unsequence tsfiles' memtables. */
   private boolean enableTimedFlushUnseqMemtable = true;
@@ -319,10 +322,10 @@ public class IoTDBConfig {
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 12 * 60 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 60 * 60 * 1000L;
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
-  private long unseqMemtableFlushCheckInterval = 60 * 60 * 1000L;
+  private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** Whether to timed close tsfiles. */
   private boolean enableTimedCloseTsFile = true;
@@ -331,10 +334,10 @@ public class IoTDBConfig {
    * If a TsfileProcessor's last working memtable flush time is older than current time minus this
    * and its working memtable is null, the TsfileProcessor will be closed. Unit: ms
    */
-  private long closeTsFileIntervalAfterFlushing = 12 * 60 * 60 * 1000L;
+  private long closeTsFileIntervalAfterFlushing = 60 * 60 * 1000L;
 
   /** The interval to check whether tsfiles need closing. Unit: ms */
-  private long closeTsFileCheckInterval = 60 * 60 * 1000L;
+  private long closeTsFileCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
@@ -696,6 +699,9 @@ public class IoTDBConfig {
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  // Interval num of tag and attribute records when force flushing to disk
+  private int tagAttributeFlushInterval = 1000;
+
   // In one insert (one device, one timestamp, multiple measurements),
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
@@ -807,7 +813,7 @@ public class IoTDBConfig {
     return concurrentWritingTimePartition;
   }
 
-  void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
+  public void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
     this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 
@@ -1379,6 +1385,14 @@ public class IoTDBConfig {
     this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
   }
 
+  public double getTimeIndexMemoryProportion() {
+    return timeIndexMemoryProportion;
+  }
+
+  public void setTimeIndexMemoryProportion(double timeIndexMemoryProportion) {
+    this.timeIndexMemoryProportion = timeIndexMemoryProportion;
+  }
+
   public double getFlushProportion() {
     return flushProportion;
   }
@@ -1419,7 +1433,7 @@ public class IoTDBConfig {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
   }
 
-  long getAllocateMemoryForRead() {
+  public long getAllocateMemoryForRead() {
     return allocateMemoryForRead;
   }
 
@@ -2183,6 +2197,14 @@ public class IoTDBConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getTagAttributeFlushInterval() {
+    return tagAttributeFlushInterval;
+  }
+
+  public void setTagAttributeFlushInterval(int tagAttributeFlushInterval) {
+    this.tagAttributeFlushInterval = tagAttributeFlushInterval;
   }
 
   public int getPrimitiveArraySize() {

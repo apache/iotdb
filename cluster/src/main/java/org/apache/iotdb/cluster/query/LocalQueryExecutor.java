@@ -54,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
@@ -307,11 +308,11 @@ public class LocalQueryExecutor {
               try {
                 if (fullPath.contains("$#$")) {
                   String[] array = fullPath.split(":");
-                  List<PartialPath> subSensorsPathList = new ArrayList<>();
+                  List<String> subSensorsList = new ArrayList<>();
                   for (int i = 1; i < array.length; i++) {
-                    subSensorsPathList.add(new PartialPath(array[i]));
+                    subSensorsList.add(array[i]);
                   }
-                  paths.add(new VectorPartialPath(array[0], subSensorsPathList));
+                  paths.add(new VectorPartialPath(array[0], subSensorsList));
                 } else {
                   paths.add(new PartialPath(fullPath));
                 }
@@ -491,7 +492,7 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(new PartialPath(prefixPath));
       } else {
-        getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
+        getCMManager().collectMeasurementSchema(new PartialPath(prefixPath), measurementSchemas);
       }
     }
 
@@ -529,7 +530,7 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(prefixPath);
       } else {
-        getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
+        getCMManager().collectTimeseriesSchema(new PartialPath(prefixPath), timeseriesSchemas);
       }
     }
 
@@ -615,7 +616,10 @@ public class LocalQueryExecutor {
 
     ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
     List<ShowTimeSeriesResult> allTimeseriesSchema;
-    allTimeseriesSchema = getCMManager().showLocalTimeseries(plan, new QueryContext());
+    allTimeseriesSchema =
+        getCMManager()
+            .showLocalTimeseries(
+                plan, new QueryContext(SessionManager.getInstance().requestQueryId(false)));
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {

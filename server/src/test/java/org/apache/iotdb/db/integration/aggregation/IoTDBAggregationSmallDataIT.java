@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.integration.aggregation;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -228,9 +229,11 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing "
-                        + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
-                        + "FROM root.vehicle\". Binary statistics does not support: max"));
+                    String.format(
+                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
+                            + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
+                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
+                        OperationType.EXECUTE_STATEMENT.getName())));
       }
 
       boolean hasResultSet =
@@ -272,9 +275,11 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing "
-                        + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
-                        + "FROM root.vehicle\". Binary statistics does not support: max"));
+                    String.format(
+                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
+                            + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
+                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
+                        OperationType.EXECUTE_STATEMENT.getName())));
       }
 
       boolean hasResultSet =
@@ -797,7 +802,7 @@ public class IoTDBAggregationSmallDataIT {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SELECT * FROM root");
+      boolean hasResultSet = statement.execute("SELECT * FROM root.**");
       if (hasResultSet) {
         try (ResultSet resultSet = statement.getResultSet()) {
           int cnt = 0;

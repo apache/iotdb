@@ -32,15 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-
 public class MetaUtils {
 
   private MetaUtils() {}
-
-  public static String getNodeRegByIdx(int idx, String[] nodes) {
-    return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
-  }
 
   /**
    * @param path the path will split. ex, root.ln.
@@ -58,6 +52,9 @@ public class MetaUtils {
         }
         nodes.add(node);
         startIndex = i + 1;
+        if (startIndex == path.length()) {
+          throw new IllegalPathException(path);
+        }
       } else if (path.charAt(i) == '"') {
         int endIndex = path.indexOf('"', i + 1);
         // if a double quotes with escape character

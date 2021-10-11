@@ -101,15 +101,7 @@ public class IoTDBUDFManagementIT {
         ++count;
       }
       Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
-
-      resultSet = statement.executeQuery("show temporary functions");
-      count = 0;
-      while (resultSet.next()) {
-        ++count;
-      }
-      Assert.assertEquals(0, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-
+      resultSet.close();
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -132,37 +124,9 @@ public class IoTDBUDFManagementIT {
       }
       Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
       assertEquals(3, resultSet.getMetaData().getColumnCount());
-
-      resultSet = statement.executeQuery("show temporary functions");
-      count = 0;
-      while (resultSet.next()) {
-        ++count;
-      }
-      Assert.assertEquals(0, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-
+      resultSet.close();
       statement.execute("drop function udf");
-      statement.execute(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      statement.execute("select udf(*, *) from root.vehicle");
 
-      resultSet = statement.executeQuery("show functions");
-      count = 0;
-      while (resultSet.next()) {
-        ++count;
-      }
-      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-
-      resultSet = statement.executeQuery("show temporary functions");
-      count = 0;
-      while (resultSet.next()) {
-        ++count;
-      }
-      Assert.assertEquals(1, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-
-      statement.execute("drop function udf");
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       statement.execute("select udf(*, *) from root.vehicle");
 
@@ -173,15 +137,7 @@ public class IoTDBUDFManagementIT {
       }
       Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
       assertEquals(3, resultSet.getMetaData().getColumnCount());
-
-      resultSet = statement.executeQuery("show temporary functions");
-      count = 0;
-      while (resultSet.next()) {
-        ++count;
-      }
-      Assert.assertEquals(0, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-
+      resultSet.close();
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -265,48 +221,7 @@ public class IoTDBUDFManagementIT {
   }
 
   @Test
-  public void testCreateFunction2() throws SQLException { // create function twice
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-
-      try {
-        statement.execute(
-            "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-        fail();
-      } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("Failed to register"));
-      }
-    }
-  }
-
-  @Test
   public void testCreateFunction3() throws SQLException { // create function twice
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-
-      try {
-        statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-        fail();
-      } catch (SQLException throwable) {
-        assertTrue(
-            throwable
-                .getMessage()
-                .contains(
-                    "with the same function name and the class name has already been registered"));
-      }
-    }
-  }
-
-  @Test
-  public void testCreateFunction4() throws SQLException { // create function twice
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -314,8 +229,7 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
 
       try {
-        statement.execute(
-            "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+        statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
         fail();
       } catch (SQLException throwable) {
         assertTrue(
@@ -355,6 +269,27 @@ public class IoTDBUDFManagementIT {
       fail();
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("does not exist"));
+    }
+  }
+
+  @Test
+  public void testDropBuiltInFunction() throws SQLException { // drop
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("drop function abs");
+        fail();
+      } catch (SQLException throwable) {
+        assertTrue(throwable.getMessage().contains("Built-in function"));
+      }
+      statement.execute("INSERT INTO root.vehicle.d1(time, s1) VALUES(1, -10.0)");
+      ResultSet rs = statement.executeQuery("SELECT ABS(s1) FROM root.vehicle.d1");
+      Assert.assertTrue(rs.next());
+      Assert.assertEquals(1, rs.getLong(1));
+      Assert.assertEquals(10.0F, rs.getFloat(2), 0.00001);
+      Assert.assertFalse(rs.next());
     }
   }
 
@@ -447,15 +382,7 @@ public class IoTDBUDFManagementIT {
         }
       }
       Assert.assertEquals(2 + BUILTIN_FUNCTIONS_COUNT, count);
-
-      resultSet = statement.executeQuery("show temporary functions");
-      count = 0;
-      while (resultSet.next()) {
-        ++count;
-      }
-      Assert.assertEquals(0, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-
+      resultSet.close();
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

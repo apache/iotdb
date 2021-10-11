@@ -45,7 +45,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -175,8 +175,8 @@ public class TsFileRewriteTool implements AutoCloseable {
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             ChunkHeader header = reader.readChunkHeader(marker);
-            MeasurementSchema measurementSchema =
-                new MeasurementSchema(
+            UnaryMeasurementSchema measurementSchema =
+                new UnaryMeasurementSchema(
                     header.getMeasurementID(),
                     header.getDataType(),
                     header.getEncodingType(),
@@ -193,7 +193,10 @@ public class TsFileRewriteTool implements AutoCloseable {
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
               boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
               needToDecodeInfo.add(needToDecode);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              ByteBuffer pageData =
+                  !needToDecode
+                      ? reader.readCompressedPage(pageHeader)
+                      : reader.readPage(pageHeader, header.getCompressionType());
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
               dataSize -= pageHeader.getSerializedPageSize();
@@ -288,7 +291,7 @@ public class TsFileRewriteTool implements AutoCloseable {
   protected void reWriteChunk(
       String deviceId,
       boolean firstChunkInChunkGroup,
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       List<PageHeader> pageHeadersInChunk,
       List<ByteBuffer> pageDataInChunk,
       List<Boolean> needToDecodeInfoInChunk)
@@ -360,7 +363,7 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   protected void writePage(
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
@@ -373,7 +376,7 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   protected void decodeAndWritePage(
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws IOException {
@@ -386,7 +389,7 @@ public class TsFileRewriteTool implements AutoCloseable {
 
   protected void rewritePageIntoFiles(
       BatchData batchData,
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap) {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
@@ -421,6 +424,12 @@ public class TsFileRewriteTool implements AutoCloseable {
       }
       batchData.next();
     }
+    partitionChunkWriterMap
+        .values()
+        .forEach(
+            writer -> {
+              writer.sealCurrentPage();
+            });
   }
 
   /** check if the file has correct magic strings and version number */

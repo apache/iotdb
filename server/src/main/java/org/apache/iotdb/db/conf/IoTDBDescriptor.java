@@ -175,6 +175,12 @@ public class IoTDBDescriptor {
                   "buffered_arrays_memory_proportion",
                   Double.toString(conf.getBufferedArraysMemoryProportion()))));
 
+      conf.setTimeIndexMemoryProportion(
+          Double.parseDouble(
+              properties.getProperty(
+                  "time_index_memory_proportion",
+                  Double.toString(conf.getTimeIndexMemoryProportion()))));
+
       conf.setFlushProportion(
           Double.parseDouble(
               properties.getProperty(
@@ -633,6 +639,13 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "tag_attribute_total_size", String.valueOf(conf.getTagAttributeTotalSize()))));
+
+      conf.setTagAttributeFlushInterval(
+          Integer.parseInt(
+              properties.getProperty(
+                  "tag_attribute_flush_interval",
+                  String.valueOf(conf.getTagAttributeFlushInterval()))));
+
       conf.setPrimitiveArraySize(
           (Integer.parseInt(
               properties.getProperty(

@@ -58,6 +58,10 @@ public class ClusterConfig {
 
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
+  private long heartbeatIntervalMs = TimeUnit.SECONDS.toMillis(1);
+
+  private long electionTimeoutMs = TimeUnit.SECONDS.toMillis(20);
+
   private int readOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
   private int writeOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
@@ -520,6 +524,22 @@ public class ClusterConfig {
 
   public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
     this.waitClientTimeoutMS = waitClientTimeoutMS;
+  }
+
+  public long getHeartbeatIntervalMs() {
+    return heartbeatIntervalMs;
+  }
+
+  public void setHeartbeatIntervalMs(long heartbeatIntervalMs) {
+    this.heartbeatIntervalMs = heartbeatIntervalMs;
+  }
+
+  public long getElectionTimeoutMs() {
+    return electionTimeoutMs;
+  }
+
+  public void setElectionTimeoutMs(long electionTimeoutMs) {
+    this.electionTimeoutMs = electionTimeoutMs;
   }
 
   public int getClusterInfoRpcPort() {

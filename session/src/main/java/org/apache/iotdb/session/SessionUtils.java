@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,13 +54,13 @@ public class SessionUtils {
     int indexOfValues = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema instanceof MeasurementSchema) {
+      if (schema instanceof UnaryMeasurementSchema) {
         getValueBufferOfDataType(schema.getType(), tablet, indexOfValues, valueBuffer);
         indexOfValues++;
       } else {
-        for (int j = 0; j < schema.getValueTSDataTypeList().size(); j++) {
+        for (int j = 0; j < schema.getSubMeasurementsTSDataTypeList().size(); j++) {
           getValueBufferOfDataType(
-              schema.getValueTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
+              schema.getSubMeasurementsTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
           indexOfValues++;
         }
       }

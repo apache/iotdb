@@ -70,7 +70,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     public void runMayThrow() {
       try {
         // check the status of mainThread before next reading
-        QueryTimeManager.checkQueryAlive(queryId);
+        // 1. Main thread quits because of timeout
+        // 2. Main thread quits because of getting enough fetchSize result
+        if (!QueryTimeManager.checkQueryAlive(queryId)) {
+          return;
+        }
 
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue
@@ -184,7 +188,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     bufferNum = 0;
     for (PartialPath path : paths) {
       if (path instanceof VectorPartialPath) {
-        bufferNum += ((VectorPartialPath) path).getSubSensorsPathList().size();
+        bufferNum += ((VectorPartialPath) path).getSubSensorsList().size();
       } else {
         bufferNum += 1;
       }
@@ -273,7 +277,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           if (rowOffset == 0) {
             if (paths.get(seriesIndex) instanceof VectorPartialPath) {
               for (int i = 0;
-                  i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsPathList().size();
+                  i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsList().size();
                   i++) {
                 currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
                 bufferIndex++;
@@ -494,9 +498,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     // move next
     cachedBatchDataArray[seriesIndex].next();
 
-    // check the interrupted status of query before taking next batch
-    QueryTimeManager.checkQueryAlive(queryId);
-
     // get next batch if current batch is empty and still have remaining batch data in queue
     if (!cachedBatchDataArray[seriesIndex].hasCurrent() && !noMoreDataInQueueArray[seriesIndex]) {
       fillCache(seriesIndex);
@@ -572,7 +573,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
         if (paths.get(seriesIndex) instanceof VectorPartialPath) {
           for (int i = 0;
-              i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsPathList().size();
+              i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsList().size();
               i++) {
             record.addField(null);
           }

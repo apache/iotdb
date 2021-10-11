@@ -35,6 +35,8 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -43,6 +45,7 @@ import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.page.VectorPageReader;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -228,7 +231,9 @@ public class SeriesReader {
   }
 
   boolean hasNextFile() throws IOException {
-    QueryTimeManager.checkQueryAlive(context.getQueryId());
+    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
+      return false;
+    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -273,6 +278,13 @@ public class SeriesReader {
     return firstTimeSeriesMetadata.getStatistics();
   }
 
+  Statistics currentFileStatistics(int index) throws IOException {
+    if (!(firstTimeSeriesMetadata instanceof VectorTimeSeriesMetadata)) {
+      throw new IOException("Can only get statistics by index from vectorTimeSeriesMetaData");
+    }
+    return ((VectorTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+  }
+
   boolean currentFileModified() throws IOException {
     if (firstTimeSeriesMetadata == null) {
       throw new IOException("no first file");
@@ -289,7 +301,9 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
-    QueryTimeManager.checkQueryAlive(context.getQueryId());
+    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
+      return false;
+    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -394,6 +408,13 @@ public class SeriesReader {
     return firstChunkMetadata.getStatistics();
   }
 
+  Statistics currentChunkStatistics(int index) throws IOException {
+    if (!(firstChunkMetadata instanceof VectorChunkMetadata)) {
+      throw new IOException("Can only get statistics by index from vectorChunkMetaData");
+    }
+    return ((VectorChunkMetadata) firstChunkMetadata).getStatistics(index);
+  }
+
   boolean currentChunkModified() throws IOException {
     if (firstChunkMetadata == null) {
       throw new IOException("no first chunk");
@@ -412,7 +433,9 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
-    QueryTimeManager.checkQueryAlive(context.getQueryId());
+    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
+      return false;
+    }
 
     /*
      * has overlapped data before
@@ -613,6 +636,16 @@ public class SeriesReader {
       return null;
     }
     return firstPageReader.getStatistics();
+  }
+
+  Statistics currentPageStatistics(int index) throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    if (!(firstPageReader.isVectorPageReader())) {
+      throw new IOException("Can only get statistics by index from VectorPageReader");
+    }
+    return firstPageReader.getStatistics(index);
   }
 
   boolean currentPageModified() throws IOException {
@@ -1023,8 +1056,19 @@ public class SeriesReader {
       this.isSeq = isSeq;
     }
 
+    public boolean isVectorPageReader() {
+      return data instanceof VectorPageReader;
+    }
+
     Statistics getStatistics() {
       return data.getStatistics();
+    }
+
+    Statistics getStatistics(int index) throws IOException {
+      if (!(data instanceof VectorPageReader)) {
+        throw new IOException("Can only get statistics by index from VectorPageReader");
+      }
+      return ((VectorPageReader) data).getStatistics(index);
     }
 
     BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

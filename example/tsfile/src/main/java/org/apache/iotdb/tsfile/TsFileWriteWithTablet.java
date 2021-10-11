@@ -26,8 +26,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,11 +62,13 @@ public class TsFileWriteWithTablet {
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         IMeasurementSchema measurementSchema =
-            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
+            new UnaryMeasurementSchema(
+                sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
         measurementSchemas.add(measurementSchema);
         schema.registerTimeseries(
             new Path(device, sensorPrefix + (i + 1)),
-            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+            new UnaryMeasurementSchema(
+                sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
 
       // add measurements into TSFileWriter

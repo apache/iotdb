@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -122,8 +122,8 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
               }
             } else {
               ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
-              MeasurementSchema measurementSchema =
-                  new MeasurementSchema(
+              UnaryMeasurementSchema measurementSchema =
+                  new UnaryMeasurementSchema(
                       header.getMeasurementID(),
                       header.getDataType(),
                       header.getEncodingType(),
@@ -142,7 +142,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
                 needToDecodeInfo.add(needToDecode);
                 ByteBuffer pageData =
                     !needToDecode
-                        ? ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader)
+                        ? reader.readCompressedPage(pageHeader)
                         : reader.readPage(pageHeader, header.getCompressionType());
                 pageHeadersInChunk.add(pageHeader);
                 dataInChunk.add(pageData);
@@ -279,7 +279,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
 
   @Override
   protected void decodeAndWritePage(
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws IOException {

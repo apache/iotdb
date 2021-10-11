@@ -45,7 +45,7 @@ public class DummyPlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.write((byte) PhysicalPlanType.EXPR.ordinal());
+    stream.write((byte) PhysicalPlanType.DUMMY.ordinal());
     stream.writeInt(workload == null ? 0 : workload.length);
     if (workload != null) {
       stream.write(workload);
@@ -55,7 +55,7 @@ public class DummyPlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.EXPR.ordinal());
+    buffer.put((byte) PhysicalPlanType.DUMMY.ordinal());
     buffer.putInt(workload == null ? 0 : workload.length);
     if (workload != null) {
       buffer.put(workload);

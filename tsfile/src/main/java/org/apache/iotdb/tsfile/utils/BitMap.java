@@ -123,4 +123,43 @@ public class BitMap {
     }
     return res.toString();
   }
+
+  @Override
+  public BitMap clone() {
+    byte[] cloneBytes = new byte[this.bits.length];
+    System.arraycopy(this.bits, 0, cloneBytes, 0, this.bits.length);
+    return new BitMap(this.size, cloneBytes);
+  }
+
+  /**
+   * Copies a bitmap from the specified source bitmap, beginning at the specified position, to the
+   * specified position of the destination bitmap. A subsequence of bits are copied from the source
+   * bitmap referenced by src to the destination bitmap referenced by dest. The number of bits
+   * copied is equal to the length argument. The bits at positions srcPos through srcPos+length-1 in
+   * the source bitmap are copied into positions destPos through destPos+length-1, respectively, of
+   * the destination bitmap.
+   *
+   * @param src the source bitmap.
+   * @param srcPos starting position in the source bitmap.
+   * @param dest the destination bitmap.
+   * @param destPos starting position in the destination bitmap.
+   * @param length the number of bits to be copied.
+   * @throws IndexOutOfBoundsException if copying would cause access of data outside bitmap bounds.
+   */
+  public static void copyOfRange(BitMap src, int srcPos, BitMap dest, int destPos, int length) {
+    if (srcPos + length > src.size) {
+      throw new IndexOutOfBoundsException(
+          (srcPos + length - 1) + " is out of src range " + src.size);
+    } else if (destPos + length > dest.size) {
+      throw new IndexOutOfBoundsException(
+          (destPos + length - 1) + " is out of dest range " + dest.size);
+    }
+    for (int i = 0; i < length; ++i) {
+      if (src.isMarked(srcPos + i)) {
+        dest.mark(destPos + i);
+      } else {
+        dest.unmark(destPos + i);
+      }
+    }
+  }
 }

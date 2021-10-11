@@ -163,17 +163,22 @@ public class StatMonitor implements StatMonitorMBean, IService {
     HashSet<String> measurementSet = new HashSet<>();
     measurementSet.add(monitorSeries.getMeasurement());
     if (mManager.isPathExist(monitorSeries)) {
-      TimeValuePair timeValuePair =
-          LastQueryExecutor.calculateLastPairForSeriesLocally(
-                  Collections.singletonList(monitorSeries),
-                  Collections.singletonList(TSDataType.INT64),
-                  new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)),
-                  null,
-                  Collections.singletonMap(monitorSeries.getDevice(), measurementSet))
-              .get(0)
-              .right;
-      if (timeValuePair.getValue() != null) {
-        return timeValuePair;
+      long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      try {
+        TimeValuePair timeValuePair =
+            LastQueryExecutor.calculateLastPairForSeriesLocally(
+                    Collections.singletonList(monitorSeries),
+                    Collections.singletonList(TSDataType.INT64),
+                    new QueryContext(queryId),
+                    null,
+                    Collections.singletonMap(monitorSeries.getDevice(), measurementSet))
+                .get(0)
+                .right;
+        if (timeValuePair.getValue() != null) {
+          return timeValuePair;
+        }
+      } finally {
+        QueryResourceManager.getInstance().endQuery(queryId);
       }
     }
     return null;

@@ -140,7 +140,7 @@ public abstract class Operator {
 
     LOAD_FILES,
     REMOVE_FILE,
-    MOVE_FILE,
+    UNLOAD_FILE,
 
     CREATE_TRIGGER,
     DROP_TRIGGER,

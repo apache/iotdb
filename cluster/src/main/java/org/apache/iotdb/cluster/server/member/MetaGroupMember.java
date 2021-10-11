@@ -1458,7 +1458,7 @@ public class MetaGroupMember extends RaftMember {
     List<PartitionGroup> partitionGroups = new ArrayList<>();
     PartialPath storageGroupName;
     try {
-      storageGroupName = IoTDB.metaManager.getStorageGroupPath(path);
+      storageGroupName = IoTDB.metaManager.getBelongedStorageGroup(path);
     } catch (MetadataException e) {
       throw new StorageEngineException(e);
     }
@@ -1771,7 +1771,7 @@ public class MetaGroupMember extends RaftMember {
         new Thread(
                 () -> {
                   try {
-                    Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+                    Thread.sleep(RaftServer.getHeartbeatIntervalMs());
                   } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     // ignore

@@ -35,6 +35,8 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -169,8 +171,15 @@ public class LastPointReader {
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
     List<IPageReader> pageReaders = FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
-    for (int i = pageReaders.size() - 1; i >= 0; i--) {
-      IPageReader pageReader = pageReaders.get(i);
+    Iterator it;
+    if (pageReaders instanceof LinkedList) {
+      it = ((LinkedList<IPageReader>) pageReaders).descendingIterator();
+    } else {
+      // for singleton list
+      it = pageReaders.iterator();
+    }
+    while (it.hasNext()) {
+      IPageReader pageReader = (IPageReader) it.next();
       Statistics pageStatistics = pageReader.getStatistics();
       if (!pageReader.isModified() && endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint =

@@ -160,7 +160,11 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(DataOutputStream stream) throws IOException {
-    putString(stream, prefixPath.getFullPath());
+    if (isAligned && originalPrefixPath != null) {
+      putString(stream, originalPrefixPath.getFullPath());
+    } else {
+      putString(stream, prefixPath.getFullPath());
+    }
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -222,7 +226,14 @@ public class InsertTabletPlan extends InsertPlan {
           stream.writeBoolean(false);
         } else {
           stream.writeBoolean(true);
-          stream.write(bitMap.getByteArray());
+          if (isExecuting) {
+            int len = end - start;
+            BitMap partBitMap = new BitMap(len);
+            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+            stream.write(partBitMap.getByteArray());
+          } else {
+            stream.write(bitMap.getByteArray());
+          }
         }
       }
     }
@@ -247,7 +258,11 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(ByteBuffer buffer) {
-    putString(buffer, prefixPath.getFullPath());
+    if (isAligned && originalPrefixPath != null) {
+      putString(buffer, originalPrefixPath.getFullPath());
+    } else {
+      putString(buffer, prefixPath.getFullPath());
+    }
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
@@ -308,7 +323,14 @@ public class InsertTabletPlan extends InsertPlan {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
-          buffer.put(bitMap.getByteArray());
+          if (isExecuting) {
+            int len = end - start;
+            BitMap partBitMap = new BitMap(len);
+            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+            buffer.put(partBitMap.getByteArray());
+          } else {
+            buffer.put(bitMap.getByteArray());
+          }
         }
       }
     }
@@ -518,37 +540,53 @@ public class InsertTabletPlan extends InsertPlan {
     if (measurementIndex >= columns.length) {
       return null;
     }
+
+    // get non-null value
+    int lastIdx = rowCount - 1;
+    if (bitMaps != null && bitMaps[measurementIndex] != null) {
+      BitMap bitMap = bitMaps[measurementIndex];
+      while (lastIdx >= 0) {
+        if (!bitMap.isMarked(lastIdx)) {
+          break;
+        }
+        lastIdx--;
+      }
+    }
+    if (lastIdx < 0) {
+      return null;
+    }
+
     TsPrimitiveType value;
     switch (dataTypes[measurementIndex]) {
       case INT32:
         int[] intValues = (int[]) columns[measurementIndex];
-        value = new TsInt(intValues[rowCount - 1]);
+        value = new TsInt(intValues[lastIdx]);
         break;
       case INT64:
         long[] longValues = (long[]) columns[measurementIndex];
-        value = new TsLong(longValues[rowCount - 1]);
+        value = new TsLong(longValues[lastIdx]);
         break;
       case FLOAT:
         float[] floatValues = (float[]) columns[measurementIndex];
-        value = new TsFloat(floatValues[rowCount - 1]);
+        value = new TsFloat(floatValues[lastIdx]);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) columns[measurementIndex];
-        value = new TsDouble(doubleValues[rowCount - 1]);
+        value = new TsDouble(doubleValues[lastIdx]);
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) columns[measurementIndex];
-        value = new TsBoolean(boolValues[rowCount - 1]);
+        value = new TsBoolean(boolValues[lastIdx]);
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
-        value = new TsBinary(binaryValues[rowCount - 1]);
+        value = new TsBinary(binaryValues[lastIdx]);
         break;
       default:
         throw new UnSupportedDataTypeException(
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
-    return new TimeValuePair(times[rowCount - 1], value);
+    return new TimeValuePair(times[lastIdx], value);
   }
 
   public long[] getTimes() {
@@ -577,6 +615,8 @@ public class InsertTabletPlan extends InsertPlan {
         + ","
         + times[times.length - 1]
         + "]"
+        + ", isAligned:"
+        + isAligned
         + '}';
   }
 
@@ -615,11 +655,13 @@ public class InsertTabletPlan extends InsertPlan {
     InsertTabletPlan that = (InsertTabletPlan) o;
 
     return rowCount == that.rowCount
+        && Objects.equals(prefixPath, that.prefixPath)
         && Arrays.equals(times, that.times)
         && Objects.equals(timeBuffer, that.timeBuffer)
         && Objects.equals(valueBuffer, that.valueBuffer)
         && Objects.equals(paths, that.paths)
-        && Objects.equals(range, that.range);
+        && Objects.equals(range, that.range)
+        && Objects.equals(isAligned, that.isAligned);
   }
 
   @Override
