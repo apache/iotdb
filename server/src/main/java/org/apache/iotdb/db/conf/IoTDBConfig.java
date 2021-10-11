@@ -542,7 +542,10 @@ public class IoTDBConfig {
   /** How many threads will be set up to perform upgrade tasks. */
   private int upgradeThreadNum = 1;
 
-  /** How many threads will be set up to perform cross space compaction chunk sub-tasks. */
+  /** How many threads will be set up to perform settle tasks. */
+  private int settleThreadNum = 1;
+
+  /** How many threads will be set up to perform unseq merge chunk sub-tasks. */
   private int mergeChunkSubThreadNum = 4;
 
   /**
@@ -1993,6 +1996,10 @@ public class IoTDBConfig {
 
   public int getUpgradeThreadNum() {
     return upgradeThreadNum;
+  }
+
+  public int getSettleThreadNum() {
+    return settleThreadNum;
   }
 
   void setUpgradeThreadNum(int upgradeThreadNum) {

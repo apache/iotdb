@@ -353,14 +353,17 @@ public class ClusterPlanRouter {
       long[] subTimes = new long[count];
       int destLoc = 0;
       Object[] values = initTabletValues(plan.getDataTypes().length, count, plan.getDataTypes());
-      BitMap[] bitMaps = initBitmaps(plan.getDataTypes().length, count);
+      BitMap[] bitMaps =
+          plan.getBitMaps() == null ? null : initBitmaps(plan.getDataTypes().length, count);
       for (int i = 0; i < locs.size(); i += 2) {
         int start = locs.get(i);
         int end = locs.get(i + 1);
         System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
         for (int k = 0; k < values.length; k++) {
           System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
-          BitMap.copyOfRange(plan.getBitMaps()[k], start, bitMaps[k], destLoc, end - start);
+          if (bitMaps != null && plan.getBitMaps()[k] != null) {
+            BitMap.copyOfRange(plan.getBitMaps()[k], start, bitMaps[k], destLoc, end - start);
+          }
         }
         destLoc += end - start;
       }

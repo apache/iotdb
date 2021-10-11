@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,8 +62,10 @@ public class MergeTaskTest extends MergeTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
+    tempSGDir = new File(TestConstant.getTestTsFileDir("root.sg1", 0, 0));
+    if (!tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
   }
 
   @Override

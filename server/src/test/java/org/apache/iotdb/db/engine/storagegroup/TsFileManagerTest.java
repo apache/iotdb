@@ -93,29 +93,31 @@ public class TsFileManagerTest {
         tsFileManager.contains(
             new TsFileResource(
                 new File(
-                    TestConstant.BASE_OUTPUT_PATH.concat(
-                        10
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 10
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + ".tsfile"))),
+                    TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                        .concat(
+                            10
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 10
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + ".tsfile"))),
             false));
     assertFalse(
         tsFileManager.contains(
             new TsFileResource(
                 new File(
-                    TestConstant.BASE_OUTPUT_PATH.concat(
-                        10
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 10
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + ".tsfile"))),
+                    TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                        .concat(
+                            10
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 10
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + ".tsfile"))),
             false));
     assertFalse(tsFileManager.isEmpty(true));
     assertFalse(tsFileManager.isEmpty(false));
@@ -138,28 +140,30 @@ public class TsFileManagerTest {
     tsFileManager.add(
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"))),
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile"))),
         true);
     tsFileManager.add(
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"))),
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile"))),
         false);
     assertEquals(1, tsFileManager.size(true));
     assertEquals(1, tsFileManager.size(false));
@@ -188,15 +192,16 @@ public class TsFileManagerTest {
     TsFileResource tsFileResource1 =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     TsFileResource tsFileResource2 =
         new TsFileResource(
             new File(

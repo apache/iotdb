@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -68,6 +69,10 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
   @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
+    if (!tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
@@ -272,7 +277,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     compactionLogger.logSequence(true);
     deleteFileIfExists(targetTsFileResource.getTsFile());
-
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
         targetTsFileResource,

@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.SettleTsFileCallBack;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -139,6 +140,8 @@ public class TsFileResource {
    * 0.12/v3
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
+
+  private SettleTsFileCallBack settleTsFileCallBack;
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -714,6 +717,14 @@ public class TsFileResource {
 
   public UpgradeTsFileResourceCallBack getUpgradeTsFileResourceCallBack() {
     return upgradeTsFileResourceCallBack;
+  }
+
+  public SettleTsFileCallBack getSettleTsFileCallBack() {
+    return settleTsFileCallBack;
+  }
+
+  public void setSettleTsFileCallBack(SettleTsFileCallBack settleTsFileCallBack) {
+    this.settleTsFileCallBack = settleTsFileCallBack;
   }
 
   /** make sure Either the deviceToIndex is not empty Or the path contains a partition folder */

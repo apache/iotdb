@@ -81,7 +81,7 @@ public class SeqTsFileRecoverTest {
   private TsFileWriter writer;
   private WriteLogNode node;
 
-  private String logNodePrefix = TestConstant.BASE_OUTPUT_PATH.concat("testRecover");
+  private String logNodePrefix = TestConstant.getTestTsFileDir("root.recover", 0, 0);
   private TsFileResource resource;
   private ModificationFile modificationFile;
   private VersionController versionController =
@@ -102,8 +102,12 @@ public class SeqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
-    tsF.getParentFile().mkdirs();
+    tsF =
+        SystemFileFactory.INSTANCE.getFile(
+            logNodePrefix, System.currentTimeMillis() + "-1-0-0.tsfile");
+    if (!tsF.getParentFile().exists()) {
+      Assert.assertTrue(tsF.getParentFile().mkdirs());
+    }
   }
 
   @After

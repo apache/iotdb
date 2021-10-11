@@ -23,6 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
@@ -62,9 +64,12 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -153,6 +158,8 @@ public class StorageGroupProcessor {
   /** indicating the file to be loaded overlap with some files. */
   private static final int POS_OVERLAP = -3;
 
+  private static final int WAL_BUFFER_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2;
   private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -171,13 +178,14 @@ public class StorageGroupProcessor {
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
   /** time partition id in the storage group -> tsFileProcessor for this time partition */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
+
+  private final Deque<ByteBuffer> walByteBufferPool = new LinkedList<>();
+
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
-
   /** sequence tsfile processors which are closing */
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor =
       new CopyOnReadLinkedList<>();
-
   // upgrading unsequence TsFile resource list
   private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
 
@@ -201,7 +209,6 @@ public class StorageGroupProcessor {
    * unsequential file.
    */
   private Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice = new HashMap<>();
-
   /** used to record the latest flush time while upgrading and inserting */
   private Map<Long, Map<String, Long>> newlyFlushedPartitionLatestFlushedTimeForEachDevice =
       new HashMap<>();
@@ -212,16 +219,12 @@ public class StorageGroupProcessor {
    * partitionLatestFlushedTimeForEachDevice
    */
   private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
-
   /** virtual storage group id */
   private String virtualStorageGroupId;
-
   /** logical storage group name */
   private String logicalStorageGroupName;
-
   /** storage group system directory */
   private File storageGroupSysDir;
-
   /** manage seqFileList and unSeqFileList */
   private TsFileManager tsFileManager;
 
@@ -239,13 +242,10 @@ public class StorageGroupProcessor {
    * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
-
   /** file system factory (local or hdfs) */
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-
   /** file flush policy */
   private TsFileFlushPolicy fileFlushPolicy;
-
   /**
    * The max file versions in each partition. By recording this, if several IoTDB instances have the
    * same policy of closing file and their ingestion is identical, then files of the same version in
@@ -253,7 +253,6 @@ public class StorageGroupProcessor {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
-
   /** storage group info for mem control */
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
   /**
@@ -262,20 +261,12 @@ public class StorageGroupProcessor {
    * files should have similar numbers of devices. Default value: INIT_ARRAY_SIZE = 64
    */
   private int deviceNumInLastClosedTsFile = DeviceTimeIndex.INIT_ARRAY_SIZE;
-
   /** whether it's ready from recovery */
   private boolean isReady = false;
-
   /** close file listeners */
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
-
   /** flush listeners */
   private List<FlushListener> customFlushListeners = Collections.emptyList();
-
-  private static final int WAL_BUFFER_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2;
-
-  private final Deque<ByteBuffer> walByteBufferPool = new LinkedList<>();
 
   private int currentWalPoolSize = 0;
 
@@ -1745,6 +1736,7 @@ public class StorageGroupProcessor {
   }
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
+
   /**
    * build query data source by searching all tsfile which fit in query filter
    *
@@ -1906,6 +1898,10 @@ public class StorageGroupProcessor {
     if (upgradeFileCount.get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files upgraded.");
+    }
+    if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files settled.");
     }
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
@@ -2263,6 +2259,43 @@ public class StorageGroupProcessor {
           }
         }
       }
+    }
+  }
+
+  /**
+   * After finishing settling tsfile, we need to do 2 things : (1) move the new tsfile to the
+   * correct folder, including deleting its old mods file (2) update the relevant data of this old
+   * tsFile in memory ,eg: FileSequenceReader, tsFileManager, cache, etc.
+   */
+  private void settleTsFileCallBack(
+      TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
+      throws WriteProcessException {
+    oldTsFileResource.readUnlock();
+    oldTsFileResource.writeLock();
+    try {
+      TsFileAndModSettleTool.moveNewTsFile(oldTsFileResource, newTsFileResources);
+      if (TsFileAndModSettleTool.getInstance().recoverSettleFileMap.size() != 0) {
+        TsFileAndModSettleTool.getInstance()
+            .recoverSettleFileMap
+            .remove(oldTsFileResource.getTsFile().getAbsolutePath());
+      }
+      // clear Cache , including chunk cache and timeseriesMetadata cache
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
+
+      // if old tsfile is being deleted in the process due to its all data's being deleted.
+      if (!oldTsFileResource.getTsFile().exists()) {
+        tsFileManager.remove(oldTsFileResource, oldTsFileResource.isSeq());
+      }
+      FileReaderManager.getInstance().closeFileAndRemoveReader(oldTsFileResource.getTsFilePath());
+      oldTsFileResource.setSettleTsFileCallBack(null);
+      SettleService.getINSTANCE().getFilesToBeSettledCount().addAndGet(-1);
+    } catch (IOException e) {
+      logger.error("Exception to move new tsfile in settling", e);
+      throw new WriteProcessException(
+          "Meet error when settling file: " + oldTsFileResource.getTsFile().getAbsolutePath(), e);
+    } finally {
+      oldTsFileResource.writeUnlock();
     }
   }
 
@@ -3189,6 +3222,54 @@ public class StorageGroupProcessor {
     return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
   }
 
+  public void addSettleFilesToList(
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths) {
+    if (tsFilePaths.size() == 0) {
+      for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+        if (!resource.isClosed()) {
+          continue;
+        }
+        resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
+        seqResourcesToBeSettled.add(resource);
+      }
+      for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+        if (!resource.isClosed()) {
+          continue;
+        }
+        resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
+        unseqResourcesToBeSettled.add(resource);
+      }
+    } else {
+      for (String tsFilePath : tsFilePaths) {
+        File fileToBeSettled = new File(tsFilePath);
+        if (fileToBeSettled
+            .getParentFile()
+            .getParentFile()
+            .getParentFile()
+            .getParentFile()
+            .getName()
+            .equals("sequence")) {
+          for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+            if (resource.getTsFile().getAbsolutePath().equals(tsFilePath)) {
+              resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
+              seqResourcesToBeSettled.add(resource);
+              break;
+            }
+          }
+        } else {
+          for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+            if (resource.getTsFile().getAbsolutePath().equals(tsFilePath)) {
+              unseqResourcesToBeSettled.add(resource);
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
   public void setCustomCloseFileListeners(List<CloseFileListener> customCloseFileListeners) {
     this.customCloseFileListeners = customCloseFileListeners;
   }
@@ -3229,6 +3310,13 @@ public class StorageGroupProcessor {
   public interface TimePartitionFilter {
 
     boolean satisfy(String storageGroupName, long timePartitionId);
+  }
+
+  @FunctionalInterface
+  public interface SettleTsFileCallBack {
+
+    void call(TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
+        throws WriteProcessException;
   }
 
   public String getInsertWriteLockHolder() {
