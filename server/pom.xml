@@ -190,14 +190,15 @@
             <artifactId>netty-buffer</artifactId>
             <version>${netty.version}</version>
         </dependency>
+        <!-- for mqtt sink in trigger-->
         <dependency>
             <groupId>org.fusesource.mqtt-client</groupId>
             <artifactId>mqtt-client</artifactId>
         </dependency>
+        <!-- used for communicate with alter manager-->
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.3.5</version>
             <scope>compile</scope>
         </dependency>
         <dependency>

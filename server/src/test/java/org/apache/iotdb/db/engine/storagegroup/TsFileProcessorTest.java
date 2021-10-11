@@ -41,11 +41,13 @@ import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,10 +61,9 @@ import static org.junit.Assert.assertFalse;
 public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
-  private String storageGroup = "storage_group1";
+  private String storageGroup = "root.vehicle";
   private StorageGroupInfo sgInfo = new StorageGroupInfo(null);
-  private String filePath =
-      TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
+  private String filePath = TestConstant.getTestTsFilePath("root.vehicle", 0, 0, 0);
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
@@ -73,6 +74,10 @@ public class TsFileProcessorTest {
 
   @Before
   public void setUp() {
+    File file = new File(filePath);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
@@ -249,7 +254,11 @@ public class TsFileProcessorTest {
         assertEquals(entry1.getValue().size(), entry2.getValue().size());
         for (int i = 0; i < entry1.getValue().size(); i++) {
           ChunkMetadata chunkMetaData = entry1.getValue().get(i);
+          chunkMetaData.setFilePath(filePath);
+
           ChunkMetadata chunkMetadataRestore = entry2.getValue().get(i);
+          chunkMetadataRestore.setFilePath(filePath);
+
           assertEquals(chunkMetaData, chunkMetadataRestore);
         }
       }

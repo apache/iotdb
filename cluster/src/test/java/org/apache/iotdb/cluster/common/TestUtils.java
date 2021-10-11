@@ -371,7 +371,7 @@ public class TestUtils {
 
   /**
    * The TsFileResource's path should be consist with the {@link
-   * org.apache.iotdb.db.utils.FilePathUtils#splitTsFilePath(TsFileResource)}
+   * org.apache.iotdb.tsfile.utils.FilePathUtils#splitTsFilePath(String)}
    */
   public static List<TsFileResource> prepareTsFileResources(
       int sgNum, int fileNum, int seriesNum, int ptNum, boolean asHardLink)
