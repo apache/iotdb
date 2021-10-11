@@ -109,6 +109,28 @@ public class CompactionTaskComparatorTest {
     }
   }
 
+  @Test
+  public void testPriorityQueueSizeLimit() {
+    MinMaxPriorityQueue<AbstractCompactionTask> limitQueue =
+        MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(50).create();
+    AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
+    for (int i = 0; i < 100; ++i) {
+      List<TsFileResource> resources = new ArrayList<>();
+      for (int j = 0; j < 10; ++j) {
+        resources.add(
+            new FakedTsFileResource(
+                new File(String.format("%d-%d-%d-0.tsfile", i + j, i + j, j - i + 101)), 1));
+      }
+      compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
+      limitQueue.add(compactionTasks[i]);
+    }
+
+    for (int i = 0; i < 100 && limitQueue.size() > 0; ++i) {
+      AbstractCompactionTask currentTask = limitQueue.poll();
+      assertTrue(currentTask == compactionTasks[99 - i]);
+    }
+  }
+
   /** Test comparation with same file num, file size, compaction count and different file version */
   @Test
   public void testFileVersionCompare() {

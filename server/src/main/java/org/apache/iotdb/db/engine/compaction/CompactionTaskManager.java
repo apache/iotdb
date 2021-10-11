@@ -53,8 +53,8 @@ public class CompactionTaskManager implements IService {
   private ScheduledThreadPoolExecutor taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
-  private final int MAX_COMPACTION_QUEUE_SIZE = 1000;
-  private MinMaxPriorityQueue<AbstractCompactionTask> compactionTaskQueue;
+  private MinMaxPriorityQueue<AbstractCompactionTask> compactionTaskQueue =
+      MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(1000).create();
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
@@ -75,9 +75,6 @@ public class CompactionTaskManager implements IService {
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
       currentTaskNum = new AtomicInteger(0);
-      MinMaxPriorityQueue.Builder builder =
-          MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator());
-      compactionTaskQueue = builder.create();
       compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
       compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
@@ -176,10 +173,6 @@ public class CompactionTaskManager implements IService {
           compactionTaskQueue.size(),
           currentTaskNum.get());
       compactionTaskQueue.add(compactionTask);
-      if (compactionTaskQueue.size() > MAX_COMPACTION_QUEUE_SIZE) {
-        // if the queue is too large, remove the last one
-        AbstractCompactionTask task = compactionTaskQueue.pollLast();
-      }
       return true;
     }
     return false;
