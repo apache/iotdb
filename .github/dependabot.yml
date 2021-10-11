@@ -22,22 +22,22 @@ updates:
     directory: "/"
     schedule:
       interval: daily
-    target_branch: "master"
+    target-branch: "master"
 
   - package-ecosystem: maven
     directory: "/"
     schedule:
       interval: daily
-    target_branch: "rel/0.12"
+    target-branch: "rel/0.12"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: daily
-    target_branch: "master"
+    target-branch: "master"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: daily
-    target_branch: "rel/0.12"
+    target-branch: "rel/0.12"
