@@ -127,25 +127,6 @@ df.printSchema()
 df.show()
 ```
 
-#### Transform between wide and narrow table
-
-* from wide to narrow (you may use align by device from "Get narrow from of data" to get narrow form directly)
-
-```
-import org.apache.iotdb.spark.db._
-
-val wide_df = spark.read.format("org.apache.iotdb.spark.db").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
-val narrow_df = Transformer.toNarrowForm(spark, wide_df)
-```
-
-* from narrow to wide
-
-```
-import org.apache.iotdb.spark.db._
-
-val wide_df = Transformer.toWideForm(spark, narrow_df)
-```
-
 #### Java user guide
 
 ```
