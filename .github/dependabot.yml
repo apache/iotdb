@@ -22,7 +22,7 @@ updates:
     directory: "/"
     schedule:
       interval: daily
-    target_branch: master
+    target_branch: "master"
 
   - package-ecosystem: maven
     directory: "/"
@@ -34,7 +34,7 @@ updates:
     directory: "/"
     schedule:
       interval: daily
-    target_branch: master
+    target_branch: "master"
 
   - package-ecosystem: "github-actions"
     directory: "/"
