@@ -70,11 +70,6 @@ public class IoTDBTracingIT {
       }
       statement.execute("flush");
 
-      for (int i = 0; i < 100; i++) {
-        statement.execute(String.format(insertTemplate, i, i));
-      }
-      statement.execute("flush");
-
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -103,12 +98,12 @@ public class IoTDBTracingIT {
       Assert.assertTrue(resultSet.isSetTracingInfo());
       Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));
       Assert.assertEquals(2, resultSet.getStatisticsByName("seqFileNum"));
-      Assert.assertEquals(1, resultSet.getStatisticsByName("unSeqFileNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqFileNum"));
       Assert.assertEquals(2, resultSet.getStatisticsByName("seqChunkNum"));
       Assert.assertEquals(200, resultSet.getStatisticsByName("seqChunkPointNum"));
-      Assert.assertEquals(1, resultSet.getStatisticsByName("unSeqChunkNum"));
-      Assert.assertEquals(100, resultSet.getStatisticsByName("unSeqChunkPointNum"));
-      Assert.assertEquals(3, resultSet.getStatisticsByName("totalPageNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkPointNum"));
+      Assert.assertEquals(2, resultSet.getStatisticsByName("totalPageNum"));
       Assert.assertEquals(0, resultSet.getStatisticsByName("overlappedPageNum"));
     } catch (Exception e) {
       e.printStackTrace();
