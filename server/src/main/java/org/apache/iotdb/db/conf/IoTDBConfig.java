@@ -379,7 +379,7 @@ public class IoTDBConfig {
   private long targetCompactionFileSize = 2147483648L;
 
   /** The max candidate file num in compaction */
-  private int maxCompactionCandidateFileNum = 50;
+  private int maxCompactionCandidateFileNum = 10;
   /**
    * When merge point number reaches this, merge the files to the last level. During a merge, if a
    * chunk with less number of chunks than this parameter, the chunk will be merged with its
