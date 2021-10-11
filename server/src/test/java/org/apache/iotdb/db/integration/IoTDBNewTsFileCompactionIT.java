@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -1048,7 +1048,7 @@ public class IoTDBNewTsFileCompactionIT {
   private boolean waitForMergeFinish() throws StorageEngineException, InterruptedException {
     StorageGroupProcessor storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(storageGroupPath);
-    TsFileResourceManager resourceManager = storageGroupProcessor.getTsFileResourceManager();
+    TsFileManager resourceManager = storageGroupProcessor.getTsFileResourceManager();
 
     long startTime = System.nanoTime();
     // get the size of level 1's tsfile list to judge whether merge is finished

@@ -27,8 +27,8 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.IMergePathSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
@@ -94,14 +94,14 @@ public class MergeMultiChunkTask {
       measurementChunkMetadataListMapIteratorCache =
           new TreeMap<>(
               (o1, o2) ->
-                  TsFileResourceManager.compareFileName(
+                  TsFileManager.compareFileName(
                       new File(o1.getFileName()), new File(o2.getFileName())));
   // need to be cleared every device
   private final Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
       chunkMetadataListCacheForMerge =
           new TreeMap<>(
               (o1, o2) ->
-                  TsFileResourceManager.compareFileName(
+                  TsFileManager.compareFileName(
                       new File(o1.getFileName()), new File(o2.getFileName())));
 
   private String storageGroupName;

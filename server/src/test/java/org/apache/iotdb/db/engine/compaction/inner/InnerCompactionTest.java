@@ -25,8 +25,8 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -58,7 +58,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 public abstract class InnerCompactionTest {
 
   protected static final String COMPACTION_TEST_SG = "root.compactionTest";
-  protected TsFileResourceManager tsFileResourceManager;
+  protected TsFileManager tsFileManager;
   protected int seqFileNum = 6;
   protected int unseqFileNum = 0;
   protected int measurementNum = 10;

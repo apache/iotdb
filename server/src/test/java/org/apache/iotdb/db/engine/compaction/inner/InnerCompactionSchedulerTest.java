@@ -23,9 +23,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.FakedInnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -75,7 +75,7 @@ public class InnerCompactionSchedulerTest {
         "testSG",
         "0",
         0L,
-        new TsFileResourceManager("testSG", "0", "tmp"),
+        new TsFileManager("testSG", "0", "tmp"),
         tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
@@ -113,7 +113,7 @@ public class InnerCompactionSchedulerTest {
         "testSG",
         "0",
         0L,
-        new TsFileResourceManager("testSG", "0", "tmp"),
+        new TsFileManager("testSG", "0", "tmp"),
         tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());

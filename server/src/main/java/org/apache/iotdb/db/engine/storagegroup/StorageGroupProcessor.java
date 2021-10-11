@@ -222,7 +222,7 @@ public class StorageGroupProcessor {
   private File storageGroupSysDir;
 
   /** manage seqFileList and unSeqFileList */
-  private TsFileResourceManager tsFileResourceManager;
+  private TsFileManager tsFileManager;
 
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
@@ -394,8 +394,8 @@ public class StorageGroupProcessor {
     this.fileFlushPolicy = fileFlushPolicy;
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
-    this.tsFileResourceManager =
-        new TsFileResourceManager(
+    this.tsFileManager =
+        new TsFileManager(
             logicalStorageGroupName, virtualStorageGroupId, storageGroupSysDir.getPath());
     if (storageGroupSysDir.mkdirs()) {
       logger.info(
@@ -478,11 +478,11 @@ public class StorageGroupProcessor {
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         recoverTsFiles(value, false);
       }
-      for (TsFileResource resource : tsFileResourceManager.getTsFileList(true)) {
+      for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
-      for (TsFileResource resource : tsFileResourceManager.getTsFileList(false)) {
+      for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
@@ -499,7 +499,7 @@ public class StorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
-    List<TsFileResource> seqTsFileResources = tsFileResourceManager.getTsFileList(true);
+    List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
     for (TsFileResource resource : seqTsFileResources) {
       long timePartitionId = resource.getTimePartition();
       Map<String, Long> endTimeMap = new HashMap<>();
@@ -532,7 +532,7 @@ public class StorageGroupProcessor {
             0,
             new CompactionRecoverTask(
                 this::submitTimedCompactionTask,
-                tsFileResourceManager,
+                tsFileManager,
                 logicalStorageGroupName,
                 virtualStorageGroupId));
   }
@@ -567,8 +567,8 @@ public class StorageGroupProcessor {
               .getConfig()
               .getInnerCompactionStrategy()
               .getCompactionRecoverTask(
-                  tsFileResourceManager.getStorageGroupName(),
-                  tsFileResourceManager.getVirtualStorageGroup(),
+                  tsFileManager.getStorageGroupName(),
+                  tsFileManager.getVirtualStorageGroup(),
                   Long.parseLong(
                       timePartitionDir
                           .getPath()
@@ -771,10 +771,10 @@ public class StorageGroupProcessor {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           if (writer.hasCrashed()) {
-            tsFileResourceManager.addForRecover(tsFileResource, isSeq);
+            tsFileManager.addForRecover(tsFileResource, isSeq);
           } else {
             tsFileResource.setClosed(true);
-            tsFileResourceManager.add(tsFileResource, isSeq);
+            tsFileManager.add(tsFileResource, isSeq);
           }
           continue;
         } else {
@@ -843,7 +843,7 @@ public class StorageGroupProcessor {
           tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
         }
       }
-      tsFileResourceManager.add(tsFileResource, isSeq);
+      tsFileManager.add(tsFileResource, isSeq);
     }
   }
 
@@ -1279,7 +1279,7 @@ public class StorageGroupProcessor {
       // build new processor, memory control module will control the number of memtables
       res = newTsFileProcessor(sequence, timeRangeId);
       tsFileProcessorTreeMap.put(timeRangeId, res);
-      tsFileResourceManager.add(res.getTsFileResource(), sequence);
+      tsFileManager.add(res.getTsFileResource(), sequence);
     }
 
     return res;
@@ -1456,14 +1456,14 @@ public class StorageGroupProcessor {
 
   /** close all tsfile resource */
   public void closeAllResources() {
-    for (TsFileResource tsFileResource : tsFileResourceManager.getTsFileList(false)) {
+    for (TsFileResource tsFileResource : tsFileManager.getTsFileList(false)) {
       try {
         tsFileResource.close();
       } catch (IOException e) {
         logger.error("Cannot close a TsFileResource {}", tsFileResource, e);
       }
     }
-    for (TsFileResource tsFileResource : tsFileResourceManager.getTsFileList(true)) {
+    for (TsFileResource tsFileResource : tsFileManager.getTsFileList(true)) {
       try {
         tsFileResource.close();
       } catch (IOException e) {
@@ -1500,7 +1500,7 @@ public class StorageGroupProcessor {
 
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
-      this.tsFileResourceManager.clear();
+      this.tsFileManager.clear();
       this.partitionLatestFlushedTimeForEachDevice.clear();
       this.globalLatestFlushedTimeForEachDevice.clear();
       this.latestTimeForEachDevice.clear();
@@ -1537,8 +1537,8 @@ public class StorageGroupProcessor {
     }
 
     // copy to avoid concurrent modification of deletion
-    List<TsFileResource> seqFiles = new ArrayList<>(tsFileResourceManager.getTsFileList(true));
-    List<TsFileResource> unseqFiles = new ArrayList<>(tsFileResourceManager.getTsFileList(false));
+    List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
+    List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManager.getTsFileList(false));
 
     for (TsFileResource tsFileResource : seqFiles) {
       checkFileTTL(tsFileResource, ttlLowerBound, true);
@@ -1570,7 +1570,7 @@ public class StorageGroupProcessor {
                 new Date(ttlLowerBound),
                 dataTTL);
           }
-          tsFileResourceManager.remove(resource, isSeq);
+          tsFileManager.remove(resource, isSeq);
         } finally {
           resource.writeUnlock();
         }
@@ -1756,7 +1756,7 @@ public class StorageGroupProcessor {
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(
-              tsFileResourceManager.getTsFileList(true),
+              tsFileManager.getTsFileList(true),
               upgradeSeqFileList,
               fullPath,
               context,
@@ -1764,7 +1764,7 @@ public class StorageGroupProcessor {
               true);
       List<TsFileResource> unseqResources =
           getFileResourceListForQuery(
-              tsFileResourceManager.getTsFileList(false),
+              tsFileManager.getTsFileList(false),
               upgradeUnseqFileList,
               fullPath,
               context,
@@ -1791,12 +1791,12 @@ public class StorageGroupProcessor {
     // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
     insertLock.readLock().lock();
     // apply read lock for TsFileResource list
-    tsFileResourceManager.readLock();
+    tsFileManager.readLock();
   }
 
   /** unlock the read lock of insert lock */
   public void readUnlock() {
-    tsFileResourceManager.readUnlock();
+    tsFileManager.readUnlock();
     insertLock.readLock().unlock();
   }
 
@@ -1929,14 +1929,14 @@ public class StorageGroupProcessor {
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
       deleteDataInFiles(
-          tsFileResourceManager.getTsFileList(true),
+          tsFileManager.getTsFileList(true),
           deletion,
           devicePaths,
           updatedModFiles,
           planIndex,
           timePartitionFilter);
       deleteDataInFiles(
-          tsFileResourceManager.getTsFileList(false),
+          tsFileManager.getTsFileList(false),
           deletion,
           devicePaths,
           updatedModFiles,
@@ -2189,11 +2189,11 @@ public class StorageGroupProcessor {
   }
 
   private void executeCompaction() {
-    List<Long> timePartitions = new ArrayList<>(tsFileResourceManager.getTimePartitions());
+    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
     // sort the time partition from largest to smallest
     timePartitions.sort((o1, o2) -> (int) (o2 - o1));
     for (long timePartition : timePartitions) {
-      CompactionScheduler.scheduleCompaction(tsFileResourceManager, timePartition);
+      CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
     }
   }
 
@@ -2266,7 +2266,7 @@ public class StorageGroupProcessor {
       resource.writeLock();
       try {
         UpgradeUtils.moveUpgradedFiles(resource);
-        tsFileResourceManager.addAll(resource.getUpgradedResources(), isseq);
+        tsFileManager.addAll(resource.getUpgradedResources(), isseq);
         // delete old TsFile and resource
         resource.delete();
         Files.deleteIfExists(
@@ -2331,7 +2331,7 @@ public class StorageGroupProcessor {
           tsfileToBeInserted,
           newTsFileResource,
           newFilePartitionId,
-          tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId).size() - 1)) {
+          tsFileManager.getSequenceListByTimePartition(newFilePartitionId).size() - 1)) {
         updateLatestTimeMap(newTsFileResource);
       }
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
@@ -2397,7 +2397,7 @@ public class StorageGroupProcessor {
     writeLock("loadNewTsFile");
     try {
       List<TsFileResource> sequenceList =
-          tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId);
+          tsFileManager.getSequenceListByTimePartition(newFilePartitionId);
 
       int insertPos = findInsertionPosition(newTsFileResource, sequenceList);
       LoadTsFileType tsFileType = getLoadingTsFileType(insertPos, sequenceList);
@@ -2564,10 +2564,10 @@ public class StorageGroupProcessor {
   public void removeFullyOverlapFiles(TsFileResource resource) {
     writeLock("removeFullyOverlapFiles");
     try {
-      Iterator<TsFileResource> iterator = tsFileResourceManager.getIterator(true);
+      Iterator<TsFileResource> iterator = tsFileManager.getIterator(true);
       removeFullyOverlapFiles(resource, iterator, true);
 
-      iterator = tsFileResourceManager.getIterator(false);
+      iterator = tsFileManager.getIterator(false);
       removeFullyOverlapFiles(resource, iterator, false);
     } finally {
       writeUnlock();
@@ -2629,7 +2629,7 @@ public class StorageGroupProcessor {
         logger.error("Cannot close {}", tsFileResource, e);
       }
     }
-    tsFileResourceManager.remove(tsFileResource, isSeq);
+    tsFileManager.remove(tsFileResource, isSeq);
     iterator.remove();
     tsFileResource.remove();
   }
@@ -2743,11 +2743,11 @@ public class StorageGroupProcessor {
                     + File.separator
                     + tsFileResource.getTsFile().getName());
         tsFileResource.setFile(targetFile);
-        if (tsFileResourceManager.contains(tsFileResource, false)) {
+        if (tsFileManager.contains(tsFileResource, false)) {
           logger.error("The file {} has already been loaded in unsequence list", tsFileResource);
           return false;
         }
-        tsFileResourceManager.add(tsFileResource, false);
+        tsFileManager.add(tsFileResource, false);
         logger.info(
             "Load tsfile in unsequence list, move file from {} to {}",
             tsFileToLoad.getAbsolutePath(),
@@ -2765,14 +2765,14 @@ public class StorageGroupProcessor {
                     + File.separator
                     + tsFileResource.getTsFile().getName());
         tsFileResource.setFile(targetFile);
-        if (tsFileResourceManager.contains(tsFileResource, true)) {
+        if (tsFileManager.contains(tsFileResource, true)) {
           logger.error("The file {} has already been loaded in sequence list", tsFileResource);
           return false;
         }
         if (insertPos == -1) {
-          tsFileResourceManager.insertToPartitionFileList(tsFileResource, true, 0);
+          tsFileManager.insertToPartitionFileList(tsFileResource, true, 0);
         } else {
-          tsFileResourceManager.insertToPartitionFileList(tsFileResource, true, insertPos + 1);
+          tsFileManager.insertToPartitionFileList(tsFileResource, true, insertPos + 1);
         }
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",
@@ -2872,22 +2872,22 @@ public class StorageGroupProcessor {
     writeLock("deleteTsfile");
     TsFileResource tsFileResourceToBeDeleted = null;
     try {
-      Iterator<TsFileResource> sequenceIterator = tsFileResourceManager.getIterator(true);
+      Iterator<TsFileResource> sequenceIterator = tsFileManager.getIterator(true);
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
         if (sequenceResource.getTsFile().getName().equals(tsfieToBeDeleted.getName())) {
           tsFileResourceToBeDeleted = sequenceResource;
-          tsFileResourceManager.remove(tsFileResourceToBeDeleted, true);
+          tsFileManager.remove(tsFileResourceToBeDeleted, true);
           break;
         }
       }
       if (tsFileResourceToBeDeleted == null) {
-        Iterator<TsFileResource> unsequenceIterator = tsFileResourceManager.getIterator(false);
+        Iterator<TsFileResource> unsequenceIterator = tsFileManager.getIterator(false);
         while (unsequenceIterator.hasNext()) {
           TsFileResource unsequenceResource = unsequenceIterator.next();
           if (unsequenceResource.getTsFile().getName().equals(tsfieToBeDeleted.getName())) {
             tsFileResourceToBeDeleted = unsequenceResource;
-            tsFileResourceManager.remove(tsFileResourceToBeDeleted, false);
+            tsFileManager.remove(tsFileResourceToBeDeleted, false);
             break;
           }
         }
@@ -2931,22 +2931,22 @@ public class StorageGroupProcessor {
     writeLock("unloadTsfile");
     TsFileResource tsFileResourceToBeMoved = null;
     try {
-      Iterator<TsFileResource> sequenceIterator = tsFileResourceManager.getIterator(true);
+      Iterator<TsFileResource> sequenceIterator = tsFileManager.getIterator(true);
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
         if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
           tsFileResourceToBeMoved = sequenceResource;
-          tsFileResourceManager.remove(tsFileResourceToBeMoved, true);
+          tsFileManager.remove(tsFileResourceToBeMoved, true);
           break;
         }
       }
       if (tsFileResourceToBeMoved == null) {
-        Iterator<TsFileResource> unsequenceIterator = tsFileResourceManager.getIterator(false);
+        Iterator<TsFileResource> unsequenceIterator = tsFileManager.getIterator(false);
         while (unsequenceIterator.hasNext()) {
           TsFileResource unsequenceResource = unsequenceIterator.next();
           if (unsequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
             tsFileResourceToBeMoved = unsequenceResource;
-            tsFileResourceManager.remove(tsFileResourceToBeMoved, false);
+            tsFileManager.remove(tsFileResourceToBeMoved, false);
             break;
           }
         }
@@ -2985,11 +2985,11 @@ public class StorageGroupProcessor {
   }
 
   public List<TsFileResource> getSequenceFileTreeSet() {
-    return tsFileResourceManager.getTsFileList(true);
+    return tsFileManager.getTsFileList(true);
   }
 
   public List<TsFileResource> getUnSequenceFileList() {
-    return tsFileResourceManager.getTsFileList(false);
+    return tsFileManager.getTsFileList(false);
   }
 
   public String getVirtualStorageGroupId() {
@@ -3074,8 +3074,8 @@ public class StorageGroupProcessor {
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);
 
       // remove data files
-      removePartitions(filter, tsFileResourceManager.getIterator(true), true);
-      removePartitions(filter, tsFileResourceManager.getIterator(false), false);
+      removePartitions(filter, tsFileManager.getIterator(true), true);
+      removePartitions(filter, tsFileManager.getIterator(false), false);
 
     } finally {
       writeUnlock();
@@ -3096,7 +3096,7 @@ public class StorageGroupProcessor {
         processor.syncClose();
         iterator.remove();
         processor.getTsFileResource().remove();
-        tsFileResourceManager.remove(processor.getTsFileResource(), sequence);
+        tsFileManager.remove(processor.getTsFileResource(), sequence);
         updateLatestFlushTimeToPartition(partitionId, Long.MIN_VALUE);
         logger.debug(
             "{} is removed during deleting partitions",
@@ -3112,15 +3112,15 @@ public class StorageGroupProcessor {
       TsFileResource tsFileResource = iterator.next();
       if (filter.satisfy(logicalStorageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
-        tsFileResourceManager.remove(tsFileResource, sequence);
+        tsFileManager.remove(tsFileResource, sequence);
         updateLatestFlushTimeToPartition(tsFileResource.getTimePartition(), Long.MIN_VALUE);
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
     }
   }
 
-  public TsFileResourceManager getTsFileResourceManager() {
-    return tsFileResourceManager;
+  public TsFileManager getTsFileResourceManager() {
+    return tsFileManager;
   }
 
   /**

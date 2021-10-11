@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CompactionRecoverCallBack;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,17 +41,17 @@ import java.util.concurrent.Callable;
 public class CompactionRecoverTask implements Callable<Void> {
   private static final Logger logger = LoggerFactory.getLogger(CompactionRecoverTask.class);
   private CompactionRecoverCallBack compactionRecoverCallBack;
-  private TsFileResourceManager tsFileResourceManager;
+  private TsFileManager tsFileManager;
   private String logicalStorageGroupName;
   private String virtualStorageGroupId;
 
   public CompactionRecoverTask(
       CompactionRecoverCallBack compactionRecoverCallBack,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       String logicalStorageGroupName,
       String virtualStorageGroupId) {
     this.compactionRecoverCallBack = compactionRecoverCallBack;
-    this.tsFileResourceManager = tsFileResourceManager;
+    this.tsFileManager = tsFileManager;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupId = virtualStorageGroupId;
   }
@@ -71,7 +71,7 @@ public class CompactionRecoverTask implements Callable<Void> {
   }
 
   private void recoverCrossCompaction() throws Exception {
-    Set<Long> timePartitions = tsFileResourceManager.getTimePartitions();
+    Set<Long> timePartitions = tsFileManager.getTimePartitions();
     List<String> sequenceDirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
     for (String dir : sequenceDirs) {
       String storageGroupDir =
@@ -89,8 +89,8 @@ public class CompactionRecoverTask implements Callable<Void> {
                   virtualStorageGroupId,
                   timePartition,
                   storageGroupDir,
-                  tsFileResourceManager.getSequenceListByTimePartition(timePartition),
-                  tsFileResourceManager.getUnsequenceListByTimePartition(timePartition),
+                  tsFileManager.getSequenceListByTimePartition(timePartition),
+                  tsFileManager.getUnsequenceListByTimePartition(timePartition),
                   1,
                   compactionLog)
               .call();

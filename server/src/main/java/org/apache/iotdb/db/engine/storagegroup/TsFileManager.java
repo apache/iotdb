@@ -39,8 +39,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
-public class TsFileResourceManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResourceManager.class);
+public class TsFileManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
   private String storageGroupName;
   private String virtualStorageGroup;
   private String storageGroupDir;
@@ -56,7 +56,7 @@ public class TsFileResourceManager {
   private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
 
-  public TsFileResourceManager(
+  public TsFileManager(
       String storageGroupName, String virtualStorageGroup, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -182,8 +182,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
-    tsFileResourceManager =
-        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @After
@@ -195,9 +194,9 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
   // test file compaction larger than 1024 sensor
   @Test
   public void testSensorWithTwoOrThreeNode() throws IllegalPathException, IOException {
-    tsFileResourceManager.addAll(seqResources, true);
-    tsFileResourceManager.addAll(unseqResources, false);
-    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
@@ -212,7 +211,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
             path,
             measurementSchemas[2688].getType(),
             context,
-            tsFileResourceManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,

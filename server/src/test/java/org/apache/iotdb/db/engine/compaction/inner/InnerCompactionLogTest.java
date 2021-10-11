@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -48,8 +48,7 @@ public class InnerCompactionLogTest extends InnerCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
-    tsFileResourceManager =
-        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @Override
@@ -61,9 +60,9 @@ public class InnerCompactionLogTest extends InnerCompactionTest {
 
   @Test
   public void testCompactionLog() {
-    tsFileResourceManager.addAll(seqResources, true);
-    tsFileResourceManager.addAll(unseqResources, false);
-    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }

@@ -26,8 +26,8 @@ import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFacto
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,49 +54,48 @@ public class CompactionScheduler {
   private static volatile Map<String, Map<Long, Long>> compactionCountInPartition =
       new ConcurrentHashMap<>();
 
-  public static void scheduleCompaction(
-      TsFileResourceManager tsFileResourceManager, long timePartition) {
+  public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
     if (CompactionTaskManager.getInstance().getTaskCount()
         >= config.getConcurrentCompactionThread()) {
       return;
     }
-    tsFileResourceManager.readLock();
+    tsFileManager.readLock();
     try {
       TsFileResourceList sequenceFileList =
-          tsFileResourceManager.getSequenceListByTimePartition(timePartition);
+          tsFileManager.getSequenceListByTimePartition(timePartition);
       TsFileResourceList unsequenceFileList =
-          tsFileResourceManager.getUnsequenceListByTimePartition(timePartition);
+          tsFileManager.getUnsequenceListByTimePartition(timePartition);
       CompactionPriority compactionPriority = config.getCompactionPriority();
       if (compactionPriority == CompactionPriority.BALANCE) {
         doCompactionBalancePriority(
-            tsFileResourceManager.getStorageGroupName(),
-            tsFileResourceManager.getVirtualStorageGroup(),
-            tsFileResourceManager.getStorageGroupDir(),
+            tsFileManager.getStorageGroupName(),
+            tsFileManager.getVirtualStorageGroup(),
+            tsFileManager.getStorageGroupDir(),
             timePartition,
-            tsFileResourceManager,
+            tsFileManager,
             sequenceFileList,
             unsequenceFileList);
       } else if (compactionPriority == CompactionPriority.INNER_CROSS) {
         doCompactionInnerCrossPriority(
-            tsFileResourceManager.getStorageGroupName(),
-            tsFileResourceManager.getVirtualStorageGroup(),
-            tsFileResourceManager.getStorageGroupDir(),
+            tsFileManager.getStorageGroupName(),
+            tsFileManager.getVirtualStorageGroup(),
+            tsFileManager.getStorageGroupDir(),
             timePartition,
-            tsFileResourceManager,
+            tsFileManager,
             sequenceFileList,
             unsequenceFileList);
       } else if (compactionPriority == CompactionPriority.CROSS_INNER) {
         doCompactionCrossInnerPriority(
-            tsFileResourceManager.getStorageGroupName(),
-            tsFileResourceManager.getVirtualStorageGroup(),
-            tsFileResourceManager.getStorageGroupDir(),
+            tsFileManager.getStorageGroupName(),
+            tsFileManager.getVirtualStorageGroup(),
+            tsFileManager.getStorageGroupDir(),
             timePartition,
-            tsFileResourceManager,
+            tsFileManager,
             sequenceFileList,
             unsequenceFileList);
       }
     } finally {
-      tsFileResourceManager.readUnlock();
+      tsFileManager.readUnlock();
     }
   }
 
@@ -105,7 +104,7 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     boolean taskSubmitted = true;
@@ -117,7 +116,7 @@ public class CompactionScheduler {
               logicalStorageGroupName,
               virtualStorageGroupName,
               timePartition,
-              tsFileResourceManager,
+              tsFileManager,
               sequenceFileList,
               true,
               new InnerSpaceCompactionTaskFactory());
@@ -126,7 +125,7 @@ public class CompactionScheduler {
                   logicalStorageGroupName,
                   virtualStorageGroupName,
                   timePartition,
-                  tsFileResourceManager,
+                  tsFileManager,
                   unsequenceFileList,
                   false,
                   new InnerSpaceCompactionTaskFactory())
@@ -149,14 +148,14 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     tryToSubmitInnerSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
-        tsFileResourceManager,
+        tsFileManager,
         sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
@@ -164,7 +163,7 @@ public class CompactionScheduler {
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
-        tsFileResourceManager,
+        tsFileManager,
         unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
@@ -183,7 +182,7 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     tryToSubmitCrossSpaceCompactionTask(
@@ -198,7 +197,7 @@ public class CompactionScheduler {
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
-        tsFileResourceManager,
+        tsFileManager,
         sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
@@ -206,7 +205,7 @@ public class CompactionScheduler {
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
-        tsFileResourceManager,
+        tsFileManager,
         unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
@@ -216,7 +215,7 @@ public class CompactionScheduler {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
@@ -227,7 +226,7 @@ public class CompactionScheduler {
                 logicalStorageGroupName,
                 virtualStorageGroupName,
                 timePartition,
-                tsFileResourceManager,
+                tsFileManager,
                 tsFileResources,
                 sequence,
                 taskFactory);

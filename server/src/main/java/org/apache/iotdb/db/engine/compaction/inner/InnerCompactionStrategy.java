@@ -23,9 +23,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import java.io.File;
 import java.util.List;
@@ -37,7 +37,7 @@ public enum InnerCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroup,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
@@ -48,7 +48,7 @@ public enum InnerCompactionStrategy {
             logicalStorageGroupName,
             virtualStorageGroup,
             timePartition,
-            tsFileResourceManager,
+            tsFileManager,
             tsFileResourceList,
             selectedTsFileResourceList,
             sequence,
@@ -81,7 +81,7 @@ public enum InnerCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
@@ -92,7 +92,7 @@ public enum InnerCompactionStrategy {
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartition,
-            tsFileResourceManager,
+            tsFileManager,
             tsFileResources,
             sequence,
             taskFactory);

@@ -24,10 +24,10 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -56,7 +56,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
@@ -64,7 +64,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
-        tsFileResourceManager,
+        tsFileManager,
         tsFileResources,
         sequence,
         taskFactory);
@@ -175,7 +175,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartition,
-            tsFileResourceManager,
+            tsFileManager,
             tsFileResources,
             selectedFileList,
             sequence);

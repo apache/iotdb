@@ -27,8 +27,8 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetada
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -60,8 +60,7 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
-    tsFileResourceManager =
-        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @Override
@@ -93,16 +92,16 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     ChunkCache.getInstance().get(firstChunkMetadata);
     TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, allSensors);
 
-    tsFileResourceManager.addAll(seqResources, true);
-    tsFileResourceManager.addAll(unseqResources, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
     SizeTieredCompactionTask sizeTieredCompactionTask =
         new SizeTieredCompactionTask(
             COMPACTION_TEST_SG,
             "0",
             0,
-            tsFileResourceManager,
-            tsFileResourceManager.getSequenceListByTimePartition(0),
+            tsFileManager,
+            tsFileManager.getSequenceListByTimePartition(0),
             seqResources,
             true,
             CompactionTaskManager.currentTaskNum);

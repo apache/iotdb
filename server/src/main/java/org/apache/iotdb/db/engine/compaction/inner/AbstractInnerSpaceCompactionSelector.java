@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompactionSelector {
   protected String logicalStorageGroupName;
@@ -29,13 +29,13 @@ public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompa
   protected TsFileResourceList tsFileResources;
   protected boolean sequence;
   protected InnerSpaceCompactionTaskFactory taskFactory;
-  protected TsFileResourceManager tsFileResourceManager;
+  protected TsFileManager tsFileManager;
 
   public AbstractInnerSpaceCompactionSelector(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
@@ -43,7 +43,7 @@ public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompa
     this.virtualStorageGroupName = virtualStorageGroupName;
     this.timePartition = timePartition;
     this.tsFileResources = tsFileResources;
-    this.tsFileResourceManager = tsFileResourceManager;
+    this.tsFileManager = tsFileManager;
     this.sequence = sequence;
     this.taskFactory = taskFactory;
   }

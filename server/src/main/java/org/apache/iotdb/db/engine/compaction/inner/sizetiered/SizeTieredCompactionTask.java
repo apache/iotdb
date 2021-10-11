@@ -24,10 +24,10 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLog
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 
 import org.slf4j.Logger;
@@ -51,13 +51,13 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   protected TsFileResourceList tsFileResourceList;
-  protected TsFileResourceManager tsFileResourceManager;
+  protected TsFileManager tsFileManager;
 
   public SizeTieredCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
+      TsFileManager tsFileManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
@@ -69,7 +69,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         sequence,
         selectedTsFileResourceList);
     this.tsFileResourceList = tsFileResourceList;
-    this.tsFileResourceManager = tsFileResourceManager;
+    this.tsFileManager = tsFileManager;
   }
 
   public static void combineModsInCompaction(
@@ -154,7 +154,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     }
     // get write lock for TsFileResource list with timeout
     try {
-      tsFileResourceManager.writeLockWithTimeout("size-tired compaction", 60_000);
+      tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
     } catch (WriteLockFailedException e) {
       // if current compaction thread couldn't get writelock
       // a WriteLockFailException will be thrown, then terminate the thread itself
@@ -177,7 +177,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         tsFileResourceList.remove(resource);
       }
     } finally {
-      tsFileResourceManager.writeUnlock();
+      tsFileManager.writeUnlock();
     }
     // delete the old files
     InnerSpaceCompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);

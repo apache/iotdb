@@ -40,10 +40,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class TsFileResourceManagerTest {
+public class TsFileManagerTest {
 
   File tempSGDir;
-  private TsFileResourceManager tsFileResourceManager;
+  private TsFileManager tsFileManager;
   private List<TsFileResource> seqResources;
   private List<TsFileResource> unseqResources;
 
@@ -51,7 +51,7 @@ public class TsFileResourceManagerTest {
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
-    tsFileResourceManager = new TsFileResourceManager("test", "0", tempSGDir.getAbsolutePath());
+    tsFileManager = new TsFileManager("test", "0", tempSGDir.getAbsolutePath());
     seqResources = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       TsFileResource resource = generateTsFileResource(i);
@@ -81,16 +81,16 @@ public class TsFileResourceManagerTest {
   @Test
   public void testAddRemoveAndIterator() {
     for (TsFileResource tsFileResource : seqResources) {
-      tsFileResourceManager.add(tsFileResource, true);
+      tsFileManager.add(tsFileResource, true);
     }
-    tsFileResourceManager.addAll(unseqResources, false);
-    assertEquals(5, tsFileResourceManager.getTsFileList(true).size());
-    assertEquals(4, tsFileResourceManager.getTsFileList(false).size());
-    assertEquals(5, tsFileResourceManager.size(true));
-    assertEquals(4, tsFileResourceManager.size(false));
-    assertTrue(tsFileResourceManager.contains(seqResources.get(0), true));
+    tsFileManager.addAll(unseqResources, false);
+    assertEquals(5, tsFileManager.getTsFileList(true).size());
+    assertEquals(4, tsFileManager.getTsFileList(false).size());
+    assertEquals(5, tsFileManager.size(true));
+    assertEquals(4, tsFileManager.size(false));
+    assertTrue(tsFileManager.contains(seqResources.get(0), true));
     assertFalse(
-        tsFileResourceManager.contains(
+        tsFileManager.contains(
             new TsFileResource(
                 new File(
                     TestConstant.BASE_OUTPUT_PATH.concat(
@@ -104,7 +104,7 @@ public class TsFileResourceManagerTest {
                             + ".tsfile"))),
             false));
     assertFalse(
-        tsFileResourceManager.contains(
+        tsFileManager.contains(
             new TsFileResource(
                 new File(
                     TestConstant.BASE_OUTPUT_PATH.concat(
@@ -117,25 +117,25 @@ public class TsFileResourceManagerTest {
                             + 0
                             + ".tsfile"))),
             false));
-    assertFalse(tsFileResourceManager.isEmpty(true));
-    assertFalse(tsFileResourceManager.isEmpty(false));
-    tsFileResourceManager.remove(tsFileResourceManager.getTsFileList(true).get(0), true);
-    tsFileResourceManager.remove(tsFileResourceManager.getTsFileList(false).get(0), false);
-    assertEquals(4, tsFileResourceManager.getTsFileList(true).size());
-    tsFileResourceManager.removeAll(tsFileResourceManager.getTsFileList(false), false);
-    assertEquals(0, tsFileResourceManager.getTsFileList(false).size());
+    assertFalse(tsFileManager.isEmpty(true));
+    assertFalse(tsFileManager.isEmpty(false));
+    tsFileManager.remove(tsFileManager.getTsFileList(true).get(0), true);
+    tsFileManager.remove(tsFileManager.getTsFileList(false).get(0), false);
+    assertEquals(4, tsFileManager.getTsFileList(true).size());
+    tsFileManager.removeAll(tsFileManager.getTsFileList(false), false);
+    assertEquals(0, tsFileManager.getTsFileList(false).size());
     long count = 0;
-    Iterator<TsFileResource> iterator = tsFileResourceManager.getIterator(true);
+    Iterator<TsFileResource> iterator = tsFileManager.getIterator(true);
     while (iterator.hasNext()) {
       iterator.next();
       count++;
     }
     assertEquals(4, count);
-    tsFileResourceManager.removeAll(tsFileResourceManager.getTsFileList(true), true);
-    assertEquals(0, tsFileResourceManager.getTsFileList(true).size());
-    assertTrue(tsFileResourceManager.isEmpty(true));
-    assertTrue(tsFileResourceManager.isEmpty(false));
-    tsFileResourceManager.add(
+    tsFileManager.removeAll(tsFileManager.getTsFileList(true), true);
+    assertEquals(0, tsFileManager.getTsFileList(true).size());
+    assertTrue(tsFileManager.isEmpty(true));
+    assertTrue(tsFileManager.isEmpty(false));
+    tsFileManager.add(
         new TsFileResource(
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
@@ -148,7 +148,7 @@ public class TsFileResourceManagerTest {
                         + 0
                         + ".tsfile"))),
         true);
-    tsFileResourceManager.add(
+    tsFileManager.add(
         new TsFileResource(
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
@@ -161,29 +161,29 @@ public class TsFileResourceManagerTest {
                         + 0
                         + ".tsfile"))),
         false);
-    assertEquals(1, tsFileResourceManager.size(true));
-    assertEquals(1, tsFileResourceManager.size(false));
-    tsFileResourceManager.clear();
-    assertEquals(0, tsFileResourceManager.size(true));
-    assertEquals(0, tsFileResourceManager.size(false));
+    assertEquals(1, tsFileManager.size(true));
+    assertEquals(1, tsFileManager.size(false));
+    tsFileManager.clear();
+    assertEquals(0, tsFileManager.size(true));
+    assertEquals(0, tsFileManager.size(false));
   }
 
   @Test
   public void testIteratorRemove() {
     for (TsFileResource tsFileResource : seqResources) {
-      tsFileResourceManager.add(tsFileResource, true);
+      tsFileManager.add(tsFileResource, true);
     }
-    tsFileResourceManager.addAll(seqResources, false);
-    assertEquals(5, tsFileResourceManager.getTsFileList(true).size());
+    tsFileManager.addAll(seqResources, false);
+    assertEquals(5, tsFileManager.getTsFileList(true).size());
 
-    Iterator<TsFileResource> tsFileResourceIterator = tsFileResourceManager.getIterator(true);
+    Iterator<TsFileResource> tsFileResourceIterator = tsFileManager.getIterator(true);
     tsFileResourceIterator.next();
     try {
       tsFileResourceIterator.remove();
     } catch (UnsupportedOperationException e) {
       // pass
     }
-    assertEquals(5, tsFileResourceManager.getTsFileList(true).size());
+    assertEquals(5, tsFileManager.getTsFileList(true).size());
 
     TsFileResource tsFileResource1 =
         new TsFileResource(
@@ -209,8 +209,8 @@ public class TsFileResourceManagerTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    tsFileResourceManager.add(tsFileResource1, true);
-    tsFileResourceManager.add(tsFileResource2, true);
+    tsFileManager.add(tsFileResource1, true);
+    tsFileManager.add(tsFileResource2, true);
     TsFileResource tsFileResource3 =
         new TsFileResource(
             new File(
@@ -223,8 +223,8 @@ public class TsFileResourceManagerTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    tsFileResourceManager.add(tsFileResource3, true);
-    Iterator<TsFileResource> tsFileResourceIterator2 = tsFileResourceManager.getIterator(true);
+    tsFileManager.add(tsFileResource3, true);
+    Iterator<TsFileResource> tsFileResourceIterator2 = tsFileManager.getIterator(true);
     int count = 0;
     while (tsFileResourceIterator2.hasNext()) {
       count++;
