@@ -53,20 +53,20 @@ public class IoTDBTracingIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.tracing");
       statement.execute("CREATE TIMESERIES root.tracing.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
 
       String insertTemplate = "INSERT INTO root.tracing.d1(timestamp, s1) VALUES(%d,%d)";
 
-      // prepare seq-file
-      for (int i = 200; i < 300; i++) {
-        statement.execute(String.format(insertTemplate, i, i));
-      }
-      statement.execute("flush");
-
       for (int i = 400; i < 500; i++) {
         statement.execute(String.format(insertTemplate, i, i));
       }
-      statement.execute("flush");
+      statement.execute("FLUSH root.tracing");
+
+      for (int i = 0; i < 100; i++) {
+        statement.execute(String.format(insertTemplate, i, i));
+      }
+      statement.execute("FLUSH root.tracing");
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -95,12 +95,12 @@ public class IoTDBTracingIT {
       AbstractIoTDBJDBCResultSet resultSet = (AbstractIoTDBJDBCResultSet) statement.getResultSet();
       Assert.assertTrue(resultSet.isSetTracingInfo());
       Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));
-      Assert.assertEquals(2, resultSet.getStatisticsByName("seqFileNum"));
-      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqFileNum"));
-      Assert.assertEquals(2, resultSet.getStatisticsByName("seqChunkNum"));
-      Assert.assertEquals(200, resultSet.getStatisticsByName("seqChunkPointNum"));
-      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkNum"));
-      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkPointNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("seqFileNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("unSeqFileNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("seqChunkNum"));
+      Assert.assertEquals(100, resultSet.getStatisticsByName("seqChunkPointNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("unSeqChunkNum"));
+      Assert.assertEquals(100, resultSet.getStatisticsByName("unSeqChunkPointNum"));
       Assert.assertEquals(2, resultSet.getStatisticsByName("totalPageNum"));
       Assert.assertEquals(0, resultSet.getStatisticsByName("overlappedPageNum"));
     } catch (Exception e) {
