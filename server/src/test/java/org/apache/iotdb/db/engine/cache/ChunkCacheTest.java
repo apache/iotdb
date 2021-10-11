@@ -17,13 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -32,9 +28,14 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -44,26 +45,26 @@ import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-abstract class MergeTest {
+public class ChunkCacheTest {
+  File tempSGDir;
+  static final String TEST_SG = "root.sg1";
 
-  static final String MERGE_TEST_SG = "root.mergeTest";
-
-  int seqFileNum = 5;
-  int unseqFileNum = 5;
-  int measurementNum = 10;
-  int deviceNum = 10;
+  int seqFileNum = 2;
+  int unseqFileNum = 2;
+  int measurementNum = 2;
+  int deviceNum = 2;
   long ptNum = 100;
   long flushInterval = 20;
-  TSEncoding encoding = TSEncoding.PLAIN;
 
   String[] deviceIds;
   UnaryMeasurementSchema[] measurementSchemas;
@@ -71,47 +72,78 @@ abstract class MergeTest {
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
 
-  private int prevMergeChunkThreshold;
+  ChunkCache chunkCache = ChunkCache.getInstance();
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    EnvironmentUtils.envSetUp();
+    tempSGDir = new File(TestConstant.OUTPUT_DATA_DIR);
+    if (!tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
     IoTDB.metaManager.init();
-    prevMergeChunkThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
-    MergeManager.getINSTANCE().start();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    removeFiles(seqResources, unseqResources);
+    removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
-    ChunkCache.getInstance().clear();
+    chunkCache.clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
-    EnvironmentUtils.cleanEnv();
-    MergeManager.getINSTANCE().stop();
+    EnvironmentUtils.cleanAllDir();
   }
 
-  private void prepareSeries() throws MetadataException {
+  @Test
+  public void testChunkCache() throws IOException {
+    TsFileResource tsFileResource = seqResources.get(0);
+    TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
+    List<Path> paths = reader.getAllPaths();
+
+    ChunkMetadata firstChunkMetadata = reader.getChunkMetadataList(paths.get(0)).get(0);
+    firstChunkMetadata.setFilePath(tsFileResource.getTsFilePath());
+
+    // add cache
+    chunkCache.getAverageSize();
+    Chunk chunk1 = chunkCache.get(firstChunkMetadata);
+    chunkCache.getAverageSize();
+
+    ChunkMetadata chunkMetadataKey =
+        new ChunkMetadata("sensor0", TSDataType.DOUBLE, 25, new DoubleStatistics());
+    chunkMetadataKey.setVersion(0);
+    chunkMetadataKey.setFilePath(tsFileResource.getTsFilePath());
+
+    Assert.assertEquals(chunkMetadataKey, firstChunkMetadata);
+
+    // get cache
+    Chunk chunk2 = chunkCache.get(chunkMetadataKey);
+    Assert.assertEquals(chunk1.getHeader(), chunk2.getHeader());
+    Assert.assertEquals(chunk1.getData(), chunk2.getData());
+
+    chunkMetadataKey.setFilePath(null);
+    try {
+      chunkCache.get(chunkMetadataKey);
+      fail();
+    } catch (NullPointerException e) {
+      assertTrue(true);
+    }
+    reader.close();
+  }
+
+  void prepareSeries() throws MetadataException {
     measurementSchemas = new UnaryMeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
           new UnaryMeasurementSchema(
-              "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
+              "sensor" + i, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
-      deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
+      deviceIds[i] = TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.metaManager.setStorageGroup(new PartialPath(MERGE_TEST_SG));
+    IoTDB.metaManager.setStorageGroup(new PartialPath(TEST_SG));
     for (String device : deviceIds) {
       for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
@@ -128,52 +160,26 @@ abstract class MergeTest {
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i));
-      mkdirs(file);
+      if (!file.getParentFile().exists()) {
+        Assert.assertTrue(file.getParentFile().mkdirs());
+      }
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
-      tsFileResource.setMinPlanIndex(i);
-      tsFileResource.setMaxPlanIndex(i);
-      tsFileResource.setVersion(i);
+      tsFileResource.updatePlanIndexes(i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i + seqFileNum));
-      mkdirs(file);
+      if (!file.getParentFile().exists()) {
+        Assert.assertTrue(file.getParentFile().mkdirs());
+      }
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
-      tsFileResource.setMinPlanIndex(i + seqFileNum);
-      tsFileResource.setMaxPlanIndex(i + seqFileNum);
-      tsFileResource.setVersion(i + seqFileNum);
+      tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-
-    File file =
-        new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, seqFileNum + unseqFileNum));
-    mkdirs(file);
-    TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
-    tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
-    tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
-    tsFileResource.setVersion(seqFileNum + unseqFileNum);
-    unseqResources.add(tsFileResource);
-    prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
-  }
-
-  void removeFiles(List<TsFileResource> seqResList, List<TsFileResource> unseqResList)
-      throws IOException {
-    for (TsFileResource tsFileResource : seqResList) {
-      tsFileResource.remove();
-      tsFileResource.getModFile().remove();
-    }
-    for (TsFileResource tsFileResource : unseqResList) {
-      tsFileResource.remove();
-      tsFileResource.getModFile().remove();
-    }
-
-    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
   }
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
@@ -206,9 +212,27 @@ abstract class MergeTest {
     fileWriter.close();
   }
 
-  void mkdirs(File file) {
-    if (!file.getParentFile().exists()) {
-      Assert.assertTrue(file.getParentFile().mkdirs());
+  private void removeFiles() throws IOException {
+    for (TsFileResource tsFileResource : seqResources) {
+      if (tsFileResource.getTsFile().exists()) {
+        tsFileResource.remove();
+      }
     }
+    for (TsFileResource tsFileResource : unseqResources) {
+      if (tsFileResource.getTsFile().exists()) {
+        tsFileResource.remove();
+      }
+    }
+    File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".tsfile");
+    for (File file : files) {
+      file.delete();
+    }
+    File[] resourceFiles =
+        FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
+    for (File resourceFile : resourceFiles) {
+      resourceFile.delete();
+    }
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    FileReaderManager.getInstance().stop();
   }
 }

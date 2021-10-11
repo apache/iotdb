@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -74,6 +75,9 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   private boolean isClosed;
   private String filePath;
   private byte mask;
+
+  // used for ChunkCache, Eg:"root.sg1/0/0"
+  private String tsFilePrefixPath;
 
   public ChunkMetadata() {}
 
@@ -242,16 +246,12 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
     ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader
         && version == that.version
-        && Objects.equals(measurementUid, that.measurementUid)
-        && tsDataType == that.tsDataType
-        && Objects.equals(deleteIntervalList, that.deleteIntervalList)
-        && Objects.equals(statistics, that.statistics);
+        && tsFilePrefixPath.equals(that.tsFilePrefixPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        measurementUid, deleteIntervalList, tsDataType, statistics, version, offsetOfChunkHeader);
+    return Objects.hash(tsFilePrefixPath, version, offsetOfChunkHeader);
   }
 
   @Override
@@ -325,6 +325,9 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
 
   public void setFilePath(String filePath) {
     this.filePath = filePath;
+
+    // set tsFilePrefixPath
+    tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(filePath);
   }
 
   @Override

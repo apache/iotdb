@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
@@ -51,13 +52,17 @@ import static org.junit.Assert.*;
 
 public class TsFileWriterTest {
   TsFileWriter writer = null;
-  long fileName = System.nanoTime();
+  String fileName = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
   boolean closed = false;
 
   @Before
   public void setUp() {
     try {
-      writer = new TsFileWriter(new File("target/tsfileWriter-" + fileName));
+      File f = new File(fileName);
+      if (!f.getParentFile().exists()) {
+        Assert.assertTrue(f.getParentFile().mkdirs());
+      }
+      writer = new TsFileWriter(f);
       addMeasurement();
     } catch (IOException e) {
       e.printStackTrace();
@@ -71,7 +76,7 @@ public class TsFileWriterTest {
       closeFile();
     }
     try {
-      Files.deleteIfExists(new File("target/tsfileWriter-" + fileName).toPath());
+      Files.deleteIfExists(new File(fileName).toPath());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -273,8 +278,7 @@ public class TsFileWriterTest {
   private void readNothing() {
     // using TsFileReader for test
     try {
-      ReadOnlyTsFile readOnlyTsFile =
-          new ReadOnlyTsFile(new TsFileSequenceReader("target/tsfileWriter-" + fileName));
+      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(fileName));
       QueryDataSet dataSet =
           readOnlyTsFile.query(
               QueryExpression.create()
@@ -294,8 +298,7 @@ public class TsFileWriterTest {
 
   private void readOneRow(int s2Value) {
     try {
-      ReadOnlyTsFile readOnlyTsFile =
-          new ReadOnlyTsFile(new TsFileSequenceReader("target/tsfileWriter-" + fileName));
+      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(fileName));
       QueryDataSet dataSet =
           readOnlyTsFile.query(
               QueryExpression.create()
