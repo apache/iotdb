@@ -114,9 +114,22 @@ You can also use narrow table form which as follows: (You can see part 4 about h
 |    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
 |    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
+#### Get narrow form of data
+```
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
+
+import org.apache.iotdb.spark.db._
+
+val df = spark.read.format("org.apache.iotdb.spark.db").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root align by device").load
+
+df.printSchema()
+
+df.show()
+```
+
 #### Transform between wide and narrow table
 
-* from wide to narrow
+* from wide to narrow (you may use align by device from "Get narrow from of data" to get narrow form directly)
 
 ```
 import org.apache.iotdb.spark.db._
