@@ -51,6 +51,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -352,16 +353,18 @@ public class ClusterPlanRouter {
       long[] subTimes = new long[count];
       int destLoc = 0;
       Object[] values = initTabletValues(plan.getDataTypes().length, count, plan.getDataTypes());
+      BitMap[] bitMaps = initBitmaps(plan.getDataTypes().length, count);
       for (int i = 0; i < locs.size(); i += 2) {
         int start = locs.get(i);
         int end = locs.get(i + 1);
         System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
         for (int k = 0; k < values.length; k++) {
           System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
+          BitMap.copyOfRange(plan.getBitMaps()[k], start, bitMaps[k], destLoc, end - start);
         }
         destLoc += end - start;
       }
-      InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
+      InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values, bitMaps);
       newBatch.setRange(locs);
       newBatch.setAligned(plan.isAligned());
       result.put(newBatch, entry.getKey());
@@ -394,6 +397,14 @@ public class ClusterPlanRouter {
       }
     }
     return values;
+  }
+
+  private BitMap[] initBitmaps(int columnSize, int rowSize) {
+    BitMap[] bitMaps = new BitMap[columnSize];
+    for (int i = 0; i < columnSize; i++) {
+      bitMaps[i] = new BitMap(rowSize);
+    }
+    return bitMaps;
   }
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)

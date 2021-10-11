@@ -227,7 +227,10 @@ public class InsertTabletPlan extends InsertPlan {
         } else {
           stream.writeBoolean(true);
           if (isExecuting) {
-            stream.write(bitMap.copyOfRange(start, end).getByteArray());
+            int len = end - start;
+            BitMap partBitMap = new BitMap(len);
+            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+            stream.write(partBitMap.getByteArray());
           } else {
             stream.write(bitMap.getByteArray());
           }
@@ -321,7 +324,10 @@ public class InsertTabletPlan extends InsertPlan {
         } else {
           buffer.put(BytesUtils.boolToByte(true));
           if (isExecuting) {
-            buffer.put(bitMap.copyOfRange(start, end).getByteArray());
+            int len = end - start;
+            BitMap partBitMap = new BitMap(len);
+            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+            buffer.put(partBitMap.getByteArray());
           } else {
             buffer.put(bitMap.getByteArray());
           }

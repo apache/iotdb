@@ -995,7 +995,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 
 Detailed descriptions of all parameters are given in Table 3-4.
 
-<center>**Table 3-4 Previous fill paramter list**
+<center>
+
+**Table 3-4 Previous fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1048,7 +1050,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 ```
 Detailed descriptions of all parameters are given in Table 3-5.
 
-<center>**Table 3-5 Linear fill paramter list**
+<center>
+
+**Table 3-5 Linear fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1091,7 +1095,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
 ```
 Detailed descriptions of all parameters are given in Table 3-6.
 
-<center>**Table 3-6 Specific value fill paramter list**
+<center>
+
+**Table 3-6 Specific value fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1128,7 +1134,9 @@ It costs 0.007s
 
 Data types and the supported fill methods are shown in Table 3-6.
 
-<center>**Table 3-6 Data types and the supported fill methods**
+<center>
+
+**Table 3-6 Data types and the supported fill methods**
 
 |Data Type|Supported Fill Methods|
 |:---|:---|
@@ -1142,7 +1150,9 @@ Data types and the supported fill methods are shown in Table 3-6.
 
 When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 3-7.
 
-<center>**Table 3-7 Default fill methods and parameters for various data types**
+<center>
+
+**Table 3-7 Default fill methods and parameters for various data types**
 
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|

@@ -67,8 +67,6 @@ public class IoTDBSelectIntoIT {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
-
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.d1.s1"),
         TSDataType.INT32,

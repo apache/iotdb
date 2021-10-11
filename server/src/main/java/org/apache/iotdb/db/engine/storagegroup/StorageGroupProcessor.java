@@ -63,6 +63,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -223,6 +224,9 @@ public class StorageGroupProcessor {
 
   /** manage seqFileList and unSeqFileList */
   private TsFileManager tsFileManager;
+
+  /** manage tsFileResource degrade */
+  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
@@ -775,75 +779,78 @@ public class StorageGroupProcessor {
           } else {
             tsFileResource.setClosed(true);
             tsFileManager.add(tsFileResource, isSeq);
+            tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
           continue;
         } else {
           writer =
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
+
+        if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+          // not the last file or cannot write, just close it
+          tsFileResource.close();
+          tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+        } else if (writer.canWrite()) {
+          // the last file is not closed, continue writing to in
+          TsFileProcessor tsFileProcessor;
+          if (isSeq) {
+            tsFileProcessor =
+                new TsFileProcessor(
+                    virtualStorageGroupId,
+                    storageGroupInfo,
+                    tsFileResource,
+                    this::closeUnsealedTsFileProcessorCallBack,
+                    this::updateLatestFlushTimeCallback,
+                    true,
+                    writer);
+            if (enableMemControl) {
+              TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+              tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+              this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+            }
+            workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+          } else {
+            tsFileProcessor =
+                new TsFileProcessor(
+                    virtualStorageGroupId,
+                    storageGroupInfo,
+                    tsFileResource,
+                    this::closeUnsealedTsFileProcessorCallBack,
+                    this::unsequenceFlushCallback,
+                    false,
+                    writer);
+            if (enableMemControl) {
+              TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+              tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+              this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+            }
+            workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+          }
+          tsFileResource.setProcessor(tsFileProcessor);
+          tsFileResource.removeResourceFile();
+          tsFileProcessor.setTimeRangeId(timePartitionId);
+          writer.makeMetadataVisible();
+          if (enableMemControl) {
+            // get chunkMetadata size
+            long chunkMetadataSize = 0;
+            for (Map<String, List<ChunkMetadata>> metaMap :
+                writer.getMetadatasForQuery().values()) {
+              for (List<ChunkMetadata> metadatas : metaMap.values()) {
+                for (ChunkMetadata chunkMetadata : metadatas) {
+                  chunkMetadataSize += chunkMetadata.calculateRamSize();
+                }
+              }
+            }
+            tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
+          }
+        }
+        tsFileManager.add(tsFileResource, isSeq);
       } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;
       }
-
-      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
-        // not the last file or cannot write, just close it
-        tsFileResource.setClosed(true);
-      } else if (writer.canWrite()) {
-        // the last file is not closed, continue writing to in
-        TsFileProcessor tsFileProcessor;
-        if (isSeq) {
-          tsFileProcessor =
-              new TsFileProcessor(
-                  virtualStorageGroupId,
-                  storageGroupInfo,
-                  tsFileResource,
-                  this::closeUnsealedTsFileProcessorCallBack,
-                  this::updateLatestFlushTimeCallback,
-                  true,
-                  writer);
-          if (enableMemControl) {
-            TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-            tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-            this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-          }
-          workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-        } else {
-          tsFileProcessor =
-              new TsFileProcessor(
-                  virtualStorageGroupId,
-                  storageGroupInfo,
-                  tsFileResource,
-                  this::closeUnsealedTsFileProcessorCallBack,
-                  this::unsequenceFlushCallback,
-                  false,
-                  writer);
-          if (enableMemControl) {
-            TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-            tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-            this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-          }
-          workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-        }
-        tsFileResource.setProcessor(tsFileProcessor);
-        tsFileResource.removeResourceFile();
-        tsFileProcessor.setTimeRangeId(timePartitionId);
-        writer.makeMetadataVisible();
-        if (enableMemControl) {
-          // get chunkMetadata size
-          long chunkMetadataSize = 0;
-          for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
-            for (List<ChunkMetadata> metadatas : metaMap.values()) {
-              for (ChunkMetadata chunkMetadata : metadatas) {
-                chunkMetadataSize += chunkMetadata.calculateRamSize();
-              }
-            }
-          }
-          tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
-        }
-      }
-      tsFileManager.add(tsFileResource, isSeq);
     }
   }
 
@@ -2171,6 +2178,7 @@ public class StorageGroupProcessor {
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
+      tsFileResourceManager.registerSealedTsFileResource(tsFileProcessor.getTsFileResource());
     } finally {
       closeQueryLock.writeLock().unlock();
     }
