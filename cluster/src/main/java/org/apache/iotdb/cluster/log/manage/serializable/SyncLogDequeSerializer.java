@@ -252,7 +252,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public List<Log> getAllEntriesAfterCommittedIndex() {
     long lastIndex = firstLogIndex + logIndexOffsetList.size() - 1;
     logger.debug(
-        "getAllEntriesBeforeAppliedIndex, firstUnCommitIndex={}, lastIndexBeforeStart={}",
+        "getAllEntriesAfterCommittedIndex, firstUnCommitIndex={}, lastIndexBeforeStart={}",
         meta.getCommitLogIndex() + 1,
         lastIndex);
     if (meta.getCommitLogIndex() >= lastIndex) {
