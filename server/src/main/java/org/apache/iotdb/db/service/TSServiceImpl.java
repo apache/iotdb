@@ -768,15 +768,12 @@ public class TSServiceImpl implements TSIService.Iface {
           String.format(TracingConstant.ACTIVITY_START_EXECUTE, statement),
           this.startTime);
       tracingManager.registerActivity(queryId, TracingConstant.ACTIVITY_PARSE_SQL, queryStartTime);
+      if (!(plan instanceof AlignByDevicePlan)) {
+        tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
+      }
     }
 
     try {
-      if (plan instanceof QueryPlan
-          && ((QueryPlan) plan).isEnableTracing()
-          && !(plan instanceof AlignByDevicePlan)) {
-        tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
-      }
-
       String username = sessionManager.getUsername(sessionId);
       plan.setLoginUserName(username);
 

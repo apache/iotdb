@@ -53,8 +53,6 @@ public class IoTDBTracingIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-
-      statement.execute("SET STORAGE GROUP TO root.tracing");
       statement.execute("CREATE TIMESERIES root.tracing.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
 
       String insertTemplate = "INSERT INTO root.tracing.d1(timestamp, s1) VALUES(%d,%d)";
