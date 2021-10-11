@@ -79,9 +79,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     boolean enableSeqSpaceCompaction = config.isEnableSeqSpaceCompaction();
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
-    PriorityQueue<Pair<List<TsFileResource>, Long>> notFullCompactionQueue =
+    PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(10, new SizeTieredCompactionTaskComparator());
-    boolean meetCompactedFile = false;
 
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
@@ -99,20 +98,13 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     int currentCompactionCount = 0;
     try {
       // traverse the tsfile from new to old
-      Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
+      Iterator<TsFileResource> iterator = tsFileResources.iterator();
       LOGGER.debug("Current file list is {}", tsFileResources.getArrayList());
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
         TsFileNameGenerator.TsFileName currentName =
             TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-        if (currentName.getInnerCompactionCnt() > 0) {
-          meetCompactedFile = true;
-        }
         if (currentName.getInnerCompactionCnt() != currentCompactionCount) {
-          if (selectedFileList.size() > 1 && meetCompactedFile) {
-            notFullCompactionQueue.add(
-                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-          }
           selectedFileList.clear();
           selectedFileSize = 0L;
           currentCompactionCount = currentName.getInnerCompactionCnt();
@@ -132,21 +124,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
-          if (selectedFileList.size() > 1 && meetCompactedFile) {
-            // if current seek didn't meet a big file
-            // we should not submit a not full compaction task to avoid write amplification
-            notFullCompactionQueue.add(
-                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-          }
           selectedFileList.clear();
           selectedFileSize = 0L;
-          if (currentFile.getTsFileSize() >= targetCompactionFileSize) {
-            LOGGER.debug("Selected file list is clear because current file is too large");
-          } else {
-            LOGGER.debug(
-                "Selected file list is clear because current file is {}",
-                currentFile.isMerging() ? "merging" : "not closed");
-          }
           continue;
         }
         selectedFileList.add(currentFile);
@@ -164,20 +143,15 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
               sequence ? "sequence" : "unsequence",
               selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
           // submit the task
-          createAndSubmitTask(selectedFileList);
-          taskSubmitted = true;
-          submitTaskNum += 1;
+          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         }
       }
-      if (selectedFileList.size() > 1 && meetCompactedFile) {
-        notFullCompactionQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-      }
-      if (config.isEnableNotFullCompaction()) {
-        while (notFullCompactionQueue.size() > 0) {
-          createAndSubmitTask(notFullCompactionQueue.poll().left);
-          submitTaskNum++;
+      while (taskPriorityQueue.size() > 0) {
+        if (createAndSubmitTask(taskPriorityQueue.poll().left)) {
+          taskSubmitted = true;
+          submitTaskNum += 1;
         }
       }
       if (taskSubmitted) {
@@ -195,7 +169,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     }
   }
 
-  private void createAndSubmitTask(List<TsFileResource> selectedFileList) {
+  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList) {
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,
@@ -205,12 +179,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
             tsFileResources,
             selectedFileList,
             sequence);
-    CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
-    LOGGER.info(
-        "{}-{} [Compaction] submit a inner compaction task of {} files",
-        logicalStorageGroupName,
-        virtualStorageGroupName,
-        selectedFileList.size());
+    return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }
 
   private class SizeTieredCompactionTaskComparator
@@ -218,6 +187,19 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
 
     @Override
     public int compare(Pair<List<TsFileResource>, Long> o1, Pair<List<TsFileResource>, Long> o2) {
+      TsFileResource resourceOfO1 = o1.left.get(0);
+      TsFileResource resourceOfO2 = o2.left.get(0);
+      try {
+        TsFileNameGenerator.TsFileName fileNameOfO1 =
+            TsFileNameGenerator.getTsFileName(resourceOfO1.getTsFile().getName());
+        TsFileNameGenerator.TsFileName fileNameOfO2 =
+            TsFileNameGenerator.getTsFileName(resourceOfO2.getTsFile().getName());
+        if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
+          return fileNameOfO2.getInnerCompactionCnt() - fileNameOfO1.getInnerCompactionCnt();
+        }
+      } catch (IOException e) {
+        return 0;
+      }
       if (o1.left.size() != o2.left.size()) {
         return o1.left.size() - o2.left.size();
       } else {

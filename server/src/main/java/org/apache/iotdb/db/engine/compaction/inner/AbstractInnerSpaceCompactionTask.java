@@ -38,6 +38,7 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   protected long selectedFileSize;
   protected int sumOfCompactionCount;
   protected long maxFileVersion;
+  protected int maxCompactionCount;
 
   public AbstractInnerSpaceCompactionTask(
       String storageGroupName,
@@ -55,6 +56,7 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     selectedFileSize = 0L;
     sumOfCompactionCount = 0;
     maxFileVersion = -1L;
+    maxCompactionCount = -1;
     if (selectedTsFileResourceList == null) {
       return;
     }
@@ -64,6 +66,9 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
         TsFileNameGenerator.TsFileName fileName =
             TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
         sumOfCompactionCount += fileName.getInnerCompactionCnt();
+        if (fileName.getInnerCompactionCnt() > maxCompactionCount) {
+          maxCompactionCount = fileName.getInnerCompactionCnt();
+        }
         if (fileName.getVersion() > maxFileVersion) {
           maxFileVersion = fileName.getVersion();
         }
@@ -93,6 +98,10 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     return maxFileVersion;
   }
 
+  public int getMaxCompactionCount() {
+    return maxCompactionCount;
+  }
+
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
@@ -115,6 +124,8 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
         .append(timePartition)
         .append(" task file num is ")
         .append(selectedTsFileResourceList.size())
+        .append(", total compaction count is ")
+        .append(sumOfCompactionCount)
         .toString();
   }
 }
