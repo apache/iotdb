@@ -56,6 +56,7 @@ public class RowTsFileInputFormatTest extends RowTsFileInputFormatTestBase {
           while (!inputFormat.reachedEnd()) {
             Row row = inputFormat.nextRecord(reuse);
             actual.add(row.toString());
+            System.out.println(row.toString());
           }
         } finally {
           inputFormat.close();
