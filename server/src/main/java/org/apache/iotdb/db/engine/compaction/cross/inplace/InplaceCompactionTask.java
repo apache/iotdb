@@ -43,8 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 
 public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractCrossSpaceCompactionTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   protected CrossSpaceMergeResource mergeResource;
   protected String storageGroupDir;
   protected List<TsFileResource> selectedSeqTsFileResourceList;

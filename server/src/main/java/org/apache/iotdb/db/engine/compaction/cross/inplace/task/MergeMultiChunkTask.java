@@ -68,7 +68,7 @@ import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
 public class MergeMultiChunkTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(MergeMultiChunkTask.class);
+  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   private static int minChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
 

@@ -170,6 +170,11 @@ public class CompactionTaskManager implements IService {
 
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
     if (!compactionTaskQueue.contains(compactionTask)) {
+      logger.info(
+          "Add a compaction task {} to queue, current queue size is {}, current task num is {}",
+          compactionTask,
+          compactionTaskQueue.size(),
+          currentTaskNum.get());
       compactionTaskQueue.add(compactionTask);
       if (compactionTaskQueue.size() > MAX_COMPACTION_QUEUE_SIZE) {
         // if the queue is too large, remove the last one

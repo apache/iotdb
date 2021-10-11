@@ -59,7 +59,7 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.increa
  */
 public class MergeFileTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(MergeFileTask.class);
+  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
 
   private String taskName;
   private CrossSpaceMergeContext context;

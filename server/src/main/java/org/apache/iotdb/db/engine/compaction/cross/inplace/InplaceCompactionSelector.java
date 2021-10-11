@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionS
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -42,7 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SizeTieredCompactionSelector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public InplaceCompactionSelector(
