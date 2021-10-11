@@ -130,7 +130,7 @@ public class ServerTimeGenerator extends TimeGenerator {
   }
 
   /** extract time filter from a value filter */
-  private Filter getTimeFilter(Filter filter) {
+  protected Filter getTimeFilter(Filter filter) {
     if (filter instanceof UnaryFilter
         && ((UnaryFilter) filter).getFilterType() == FilterType.TIME_FILTER) {
       return filter;

@@ -53,24 +53,11 @@ public abstract class AbstractCsvTool {
   protected static final String TIME_ZONE_ARGS = "tz";
   protected static final String TIME_ZONE_NAME = "timeZone";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
-  protected static final String[] SUPPORT_TIME_FORMAT =
+  protected static final String[] TIME_FORMAT =
+      new String[] {"default", "long", "number", "timestamp"};
+  protected static final String[] STRING_TIME_FORMAT =
       new String[] {
-        "default",
-        "long",
-        "number",
-        "timestamp",
-        "yyyy-MM-dd HH:mm:ss",
-        "yyyy/MM/dd HH:mm:ss",
-        "yyyy.MM.dd HH:mm:ss",
-        "yyyy-MM-dd'T'HH:mm:ss",
-        "yyyy/MM/dd'T'HH:mm:ss",
-        "yyyy.MM.dd'T'HH:mm:ss",
-        "yyyy-MM-dd HH:mm:ssZZ",
-        "yyyy/MM/dd HH:mm:ssZZ",
-        "yyyy.MM.dd HH:mm:ssZZ",
-        "yyyy-MM-dd'T'HH:mm:ssZZ",
-        "yyyy/MM/dd'T'HH:mm:ssZZ",
-        "yyyy.MM.dd'T'HH:mm:ssZZ",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
         "yyyy/MM/dd HH:mm:ss.SSS",
         "yyyy-MM-dd HH:mm:ss.SSS",
         "yyyy.MM.dd HH:mm:ss.SSS",
@@ -83,6 +70,18 @@ public abstract class AbstractCsvTool {
         "yyyy.MM.dd HH:mm:ss.SSSZZ",
         "yyyy-MM-dd'T'HH:mm:ss.SSSZZ",
         "yyyy/MM/dd'T'HH:mm:ss.SSSZZ",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy/MM/dd HH:mm:ss",
+        "yyyy.MM.dd HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy/MM/dd'T'HH:mm:ss",
+        "yyyy.MM.dd'T'HH:mm:ss",
+        "yyyy-MM-dd HH:mm:ssZZ",
+        "yyyy/MM/dd HH:mm:ssZZ",
+        "yyyy.MM.dd HH:mm:ssZZ",
+        "yyyy-MM-dd'T'HH:mm:ssZZ",
+        "yyyy/MM/dd'T'HH:mm:ssZZ",
+        "yyyy.MM.dd'T'HH:mm:ssZZ",
       };
   protected static String host;
   protected static String port;
@@ -128,7 +127,12 @@ public abstract class AbstractCsvTool {
   }
 
   protected static boolean checkTimeFormat() {
-    for (String format : SUPPORT_TIME_FORMAT) {
+    for (String format : TIME_FORMAT) {
+      if (timeFormat.equals(format)) {
+        return true;
+      }
+    }
+    for (String format : STRING_TIME_FORMAT) {
       if (timeFormat.equals(format)) {
         return true;
       }

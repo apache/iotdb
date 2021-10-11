@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -32,12 +30,13 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
-import org.checkerframework.checker.units.qual.A;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -88,7 +87,8 @@ public class AppendGroupEntryHandlerTest {
                 newLeaderTerm,
                 member,
                 REPLICATION_NUM / 2);
-        new Thread(() -> handler.onComplete(new AppendEntryResult(Response.RESPONSE_AGREE))).start();
+        new Thread(() -> handler.onComplete(new AppendEntryResult(Response.RESPONSE_AGREE)))
+            .start();
       }
       groupReceivedCounter.wait();
     }

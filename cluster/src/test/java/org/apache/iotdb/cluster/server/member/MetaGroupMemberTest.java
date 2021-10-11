@@ -29,17 +29,23 @@ import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
@@ -54,6 +60,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
@@ -68,7 +75,6 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -83,7 +89,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -94,6 +100,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -119,8 +126,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -133,7 +142,6 @@ import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -169,6 +177,8 @@ public class MetaGroupMemberTest extends BaseMember {
     RaftServer.setReadOperationTimeoutMS(1000);
 
     super.setUp();
+    partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
+    testMetaMember.setPartitionTable(partitionTable);
     dummyResponse.set(Response.RESPONSE_AGREE);
     testMetaMember.setAllNodes(allNodes);
 
@@ -185,10 +195,10 @@ public class MetaGroupMemberTest extends BaseMember {
 
     buildDataGroups(dataClusterServer);
     testMetaMember.getThisNode().setNodeIdentifier(0);
+    testMetaMember.setRouter(new ClusterPlanRouter(testMetaMember.getPartitionTable()));
     mockDataClusterServer = false;
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;
-    System.out.println("Init term of metaGroupMember: " + testMetaMember.getTerm().get());
   }
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
@@ -198,6 +208,9 @@ public class MetaGroupMemberTest extends BaseMember {
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
           }
+
+          @Override
+          public void pullSlots(NodeRemovalResult removalResult) {}
 
           @Override
           public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
@@ -212,8 +225,13 @@ public class MetaGroupMemberTest extends BaseMember {
           }
 
           @Override
-          public TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
+          public TSStatus forwardPlan(PhysicalPlan plan, Node node, RaftNode header) {
             return executeNonQueryPlan(plan);
+          }
+
+          @Override
+          protected AppendLogResult sendLogToFollowers(Log log) {
+            return AppendLogResult.OK;
           }
 
           @Override
@@ -260,7 +278,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
     dataGroupMember.setLogManager(
         new TestPartitionedLogManager(
-            null, partitionTable, group.getHeader(), TestSnapshot.Factory.INSTANCE));
+            null, partitionTable, group.getHeader().getNode(), TestSnapshot.Factory.INSTANCE));
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLocalQueryExecutor(
@@ -310,6 +328,17 @@ public class MetaGroupMemberTest extends BaseMember {
         new MetaGroupMember(new Factory(), node, new Coordinator()) {
 
           @Override
+          public void applyAddNode(AddNodeLog addNodeLog) {
+            allNodes.add(addNodeLog.getNewNode());
+          }
+
+          @Override
+          public void applyRemoveNode(RemoveNodeLog removeNodeLog) {
+            super.applyRemoveNode(removeNodeLog);
+            exiledNode = removeNodeLog.getRemovedNode();
+          }
+
+          @Override
           public DataClusterServer getDataClusterServer() {
             return mockDataClusterServer
                 ? MetaGroupMemberTest.this.dataClusterServer
@@ -325,12 +354,12 @@ public class MetaGroupMemberTest extends BaseMember {
           }
 
           @Override
-          public DataGroupMember getLocalDataMember(Node header, Object request) {
+          public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
             return getDataGroupMember(header);
           }
 
           @Override
-          public DataGroupMember getLocalDataMember(Node header) {
+          public DataGroupMember getLocalDataMember(RaftNode header) {
             return getDataGroupMember(header);
           }
 
@@ -411,7 +440,8 @@ public class MetaGroupMemberTest extends BaseMember {
 
                 @Override
                 public void appendEntry(
-                    AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+                    AppendEntryRequest request,
+                    AsyncMethodCallback<AppendEntryResult> resultHandler) {
                   new Thread(
                           () -> {
                             long resp = dummyResponse.get();
@@ -469,7 +499,8 @@ public class MetaGroupMemberTest extends BaseMember {
                 }
 
                 @Override
-                public void exile(AsyncMethodCallback<Void> resultHandler) {
+                public void exile(
+                    ByteBuffer removeNodeLog, AsyncMethodCallback<Void> resultHandler) {
                   System.out.printf("%s was exiled%n", node);
                   exiledNode = node;
                 }
@@ -478,7 +509,8 @@ public class MetaGroupMemberTest extends BaseMember {
                 public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
                   new Thread(
                           () -> {
-                            testMetaMember.applyRemoveNode(node);
+                            testMetaMember.applyRemoveNode(
+                                new RemoveNodeLog(partitionTable.serialize(), node));
                             resultHandler.onComplete(Response.RESPONSE_AGREE);
                           })
                       .start();
@@ -496,6 +528,16 @@ public class MetaGroupMemberTest extends BaseMember {
                             response.setReplicationNumEquals(true);
                             response.setSeedNodeEquals(true);
                             resultHandler.onComplete(response);
+                          })
+                      .start();
+                }
+
+                @Override
+                public void collectMigrationStatus(AsyncMethodCallback<ByteBuffer> resultHandler) {
+                  new Thread(
+                          () -> {
+                            resultHandler.onComplete(
+                                ClusterUtils.serializeMigrationStatus(Collections.emptyMap()));
                           })
                       .start();
                 }
@@ -525,9 +567,10 @@ public class MetaGroupMemberTest extends BaseMember {
 
     dataClusterServer.setPartitionTable(partitionTable);
     for (PartitionGroup partitionGroup : partitionGroups) {
+      RaftNode header = partitionGroup.getHeader();
       DataGroupMember dataGroupMember = getDataGroupMember(partitionGroup, TestUtils.getNode(0));
       dataGroupMember.start();
-      dataClusterServer.addDataGroupMember(dataGroupMember);
+      dataClusterServer.addDataGroupMember(dataGroupMember, header);
     }
   }
 
@@ -539,7 +582,7 @@ public class MetaGroupMemberTest extends BaseMember {
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -547,13 +590,13 @@ public class MetaGroupMemberTest extends BaseMember {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[] {String.valueOf(i)});
       insertPlan.setMeasurementMNodes(
-          new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+          new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
 
     ExecutorService testThreadPool = Executors.newFixedThreadPool(4);
-    testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
+    assertTrue(testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true));
 
     StorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
@@ -572,17 +615,13 @@ public class MetaGroupMemberTest extends BaseMember {
       // the net work is down
       dummyResponse.set(Long.MIN_VALUE);
 
-      // network resume in 100ms
-      new Thread(
-              () -> {
-                await().atLeast(200, TimeUnit.MILLISECONDS);
-                dummyResponse.set(Response.RESPONSE_AGREE);
-              })
-          .start();
-
       System.out.println("Close the first file");
+      assertFalse(testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true));
+      assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
-      testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
+      // network resume in 100ms
+      dummyResponse.set(Response.RESPONSE_AGREE);
+      assertTrue(testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true));
       assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
       System.out.println("Create the second file");
@@ -592,10 +631,11 @@ public class MetaGroupMemberTest extends BaseMember {
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
+
       // indicating the leader is stale
       System.out.println("Close the second file");
       dummyResponse.set(100);
-      testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
+      assertFalse(testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true));
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
     } finally {
       RaftServer.setConnectionTimeoutInMS(prevTimeout);
@@ -606,9 +646,11 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testAddNode() {
     System.out.println("Start testAddNode()");
-    Node newNode = TestUtils.getNode(10);
+    Node newNode = TestUtils.getNode(11);
+    testMetaMember.getPartitionTable().addNode(newNode);
     testMetaMember.onElectionWins();
-    testMetaMember.applyAddNode(newNode);
+    testMetaMember.applyAddNode(
+        new AddNodeLog(testMetaMember.getPartitionTable().serialize(), newNode));
     assertTrue(partitionTable.getAllNodes().contains(newNode));
   }
 
@@ -729,7 +771,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
     // 4. prepare the partition table
     SlotPartitionTable partitionTable = (SlotPartitionTable) TestUtils.getPartitionTable(3);
-    partitionTable.setLastLogIndex(0);
+    partitionTable.setLastMetaLogIndex(0);
 
     ByteBuffer beforePartitionTableBuffer = partitionTable.serialize();
     // 5. serialize
@@ -857,7 +899,7 @@ public class MetaGroupMemberTest extends BaseMember {
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
-      insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
+      insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(i)));
       IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
@@ -873,13 +915,13 @@ public class MetaGroupMemberTest extends BaseMember {
         insertPlan.setTime(j);
         insertPlan.setValues(new Object[] {String.valueOf(j)});
         insertPlan.setMeasurementMNodes(
-            new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+            new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }
 
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
     try {
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
@@ -887,14 +929,18 @@ public class MetaGroupMemberTest extends BaseMember {
       for (int i = 0; i < 10; i++) {
         times[i] = i;
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(TestUtils.getTestMeasurement(0));
+
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp =
             readerFactory.getReaderByTimestamp(
                 new PartialPath(TestUtils.getTestSeries(i, 0)),
-                Collections.singleton(TestUtils.getTestMeasurement(0)),
+                deviceMeasurements,
                 TSDataType.DOUBLE,
                 context,
-                true);
+                true,
+                null);
 
         Object[] values = readerByTimestamp.getValuesInTimestamps(times, 10);
         for (int j = 0; j < 10; j++) {
@@ -919,7 +965,7 @@ public class MetaGroupMemberTest extends BaseMember {
     RaftServer.setReadOperationTimeoutMS(1000);
 
     for (int i = 0; i < 10; i++) {
-      insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
+      insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(i)));
       IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
@@ -935,21 +981,24 @@ public class MetaGroupMemberTest extends BaseMember {
         insertPlan.setTime(j);
         insertPlan.setValues(new Object[] {String.valueOf(j)});
         insertPlan.setMeasurementMNodes(
-            new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+            new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }
 
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
     try {
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(TestUtils.getTestMeasurement(0));
+
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader =
             readerFactory.getSeriesReader(
                 new PartialPath(TestUtils.getTestSeries(i, 0)),
-                Collections.singleton(TestUtils.getTestMeasurement(0)),
+                deviceMeasurements,
                 TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),
                 ValueFilter.ltEq(8.0),
@@ -991,6 +1040,7 @@ public class MetaGroupMemberTest extends BaseMember {
   public void testProcessValidHeartbeatReq() throws QueryProcessException {
     System.out.println("Start testProcessValidHeartbeatReq()");
     MetaGroupMember testMetaMember = getMetaGroupMember(TestUtils.getNode(10));
+    partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
     testMetaMember.setCoordinator(new Coordinator());
     try {
       HeartBeatRequest request = new HeartBeatRequest();
@@ -1001,7 +1051,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
       request.setRegenerateIdentifier(true);
       testMetaMember.processValidHeartbeatReq(request, response);
-      assertNotEquals(10, response.getFollowerIdentifier());
+      assertTrue(response.getFollowerIdentifier() != 10);
       assertTrue(response.isRequirePartitionTable());
 
       request.setPartitionTableBytes(partitionTable.serialize());
@@ -1220,7 +1270,9 @@ public class MetaGroupMemberTest extends BaseMember {
     try {
       testMetaMember.removeNode(TestUtils.getNode(0));
       fail("Expect PartitionTableUnavailableException");
-    } catch (PartitionTableUnavailableException e) {
+    } catch (PartitionTableUnavailableException
+        | InterruptedException
+        | CheckConsistencyException e) {
       // ignore
     }
   }
@@ -1231,6 +1283,7 @@ public class MetaGroupMemberTest extends BaseMember {
     AtomicReference<Long> resultRef = new AtomicReference<>();
     testMetaMember.setLeader(testMetaMember.getThisNode());
     testMetaMember.setCharacter(LEADER);
+
     doRemoveNode(resultRef, testMetaMember.getThisNode());
 
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
@@ -1248,7 +1301,6 @@ public class MetaGroupMemberTest extends BaseMember {
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(40)));
     assertEquals(ELECTOR, testMetaMember.getCharacter());
-    assertEquals(Long.MIN_VALUE, testMetaMember.getLastHeartbeatReceivedTime());
   }
 
   @Test
@@ -1329,7 +1381,7 @@ public class MetaGroupMemberTest extends BaseMember {
     StorageEngine.setEnablePartition(false);
     testMetaMember.setCharacter(LEADER);
     testMetaMember.setLeader(testMetaMember.getThisNode());
-    PartitionUtils.Intervals intervals = new PartitionUtils.Intervals();
+    TimeValuePairUtils.Intervals intervals = new TimeValuePairUtils.Intervals();
     intervals.addInterval(Long.MIN_VALUE, Long.MAX_VALUE);
 
     List<PartitionGroup> partitionGroups =
@@ -1345,7 +1397,7 @@ public class MetaGroupMemberTest extends BaseMember {
     StorageEngine.setEnablePartition(true);
     testMetaMember.setCharacter(LEADER);
     testMetaMember.setLeader(testMetaMember.getThisNode());
-    PartitionUtils.Intervals intervals = new PartitionUtils.Intervals();
+    TimeValuePairUtils.Intervals intervals = new TimeValuePairUtils.Intervals();
     intervals.addInterval(Long.MIN_VALUE, Long.MAX_VALUE);
 
     List<PartitionGroup> partitionGroups =
@@ -1355,6 +1407,7 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove) {
+    mockDataClusterServer = true;
     new MetaAsyncService(testMetaMember)
         .removeNode(
             nodeToRemove,
@@ -1370,5 +1423,9 @@ public class MetaGroupMemberTest extends BaseMember {
               }
             });
     while (resultRef.get() == null) {}
+  }
+
+  public MetaGroupMember getTestMetaGroupMember() {
+    return testMetaMember;
   }
 }

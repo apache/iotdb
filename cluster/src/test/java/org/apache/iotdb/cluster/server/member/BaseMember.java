@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -76,7 +77,7 @@ public class BaseMember {
 
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
-  Map<Node, DataGroupMember> dataGroupMemberMap;
+  protected Map<RaftNode, DataGroupMember> dataGroupMemberMap;
   private Map<Node, MetaGroupMember> metaGroupMemberMap;
   PartitionGroup allNodes;
   protected MetaGroupMember testMetaMember;
@@ -97,13 +98,13 @@ public class BaseMember {
   private long heartBeatInterval;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() throws Exception, QueryProcessException {
     prevUseAsyncApplier = ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(false);
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     preLogBufferSize = ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(4096);
+    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(409600);
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     prevEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
@@ -196,12 +197,16 @@ public class BaseMember {
   }
 
   DataGroupMember getDataGroupMember(Node node) {
+    return getDataGroupMember(new RaftNode(node, 0));
+  }
+
+  DataGroupMember getDataGroupMember(RaftNode node) {
     return dataGroupMemberMap.computeIfAbsent(node, this::newDataGroupMember);
   }
 
-  private DataGroupMember newDataGroupMember(Node node) {
+  private DataGroupMember newDataGroupMember(RaftNode raftNode) {
     DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+        new TestDataGroupMember(raftNode.getNode(), partitionTable.getHeaderGroup(raftNode)) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
@@ -236,12 +241,13 @@ public class BaseMember {
             return getAsyncClient(node);
           }
         };
-    newMember.setThisNode(node);
+    newMember.setThisNode(raftNode.getNode());
     newMember.setMetaGroupMember(testMetaMember);
-    newMember.setLeader(node);
+    newMember.setLeader(raftNode.getNode());
     newMember.setCharacter(NodeCharacter.LEADER);
     newMember.setLogManager(
-        getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), newMember));
+        getLogManager(
+            partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(0), 0)), newMember));
 
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;
@@ -252,7 +258,7 @@ public class BaseMember {
     return new TestPartitionedLogManager(
         new DataLogApplier(testMetaMember, dataGroupMember),
         testMetaMember.getPartitionTable(),
-        partitionGroup.getHeader(),
+        partitionGroup.getHeader().getNode(),
         FileSnapshot.Factory.INSTANCE) {
       @Override
       public void takeSnapshot() {}
@@ -268,12 +274,12 @@ public class BaseMember {
         new TestMetaGroupMember() {
 
           @Override
-          public DataGroupMember getLocalDataMember(Node header, Object request) {
+          public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
             return getDataGroupMember(header);
           }
 
           @Override
-          public DataGroupMember getLocalDataMember(Node header) {
+          public DataGroupMember getLocalDataMember(RaftNode header) {
             return getDataGroupMember(header);
           }
 

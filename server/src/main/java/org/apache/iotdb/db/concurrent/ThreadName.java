@@ -44,7 +44,9 @@ public enum ThreadName {
   LOAD_TSFILE("Load-TsFile"),
   TIME_COST_STATISTIC("TIME_COST_STATISTIC"),
   QUERY_SERVICE("Query"),
-  WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager");
+  WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
+  CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
+  CLUSTER_INFO_SERVICE("ClusterInfoClient");
 
   private final String name;
 

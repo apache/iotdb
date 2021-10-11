@@ -185,10 +185,10 @@ public class UnCommittedEntryManager {
    * @param appendingEntry request entry
    */
   void truncateAndAppend(Log appendingEntry) {
-//    if (maybeTerm(appendingEntry.getCurrLogIndex()) == appendingEntry.getCurrLogTerm()) {
-//      // skip existing entry
-//      return;
-//    }
+    //    if (maybeTerm(appendingEntry.getCurrLogIndex()) == appendingEntry.getCurrLogTerm()) {
+    //      // skip existing entry
+    //      return;
+    //    }
 
     long after = appendingEntry.getCurrLogIndex();
     long len = after - offset;
@@ -203,8 +203,9 @@ public class UnCommittedEntryManager {
     } else {
       // clear conflict entries
       // then append
-//      logger.info(
-//          "truncate the entries after index {}, append a new entry {}", after, appendingEntry);
+      //      logger.info(
+      //          "truncate the entries after index {}, append a new entry {}", after,
+      // appendingEntry);
       int truncateIndex = (int) (after - offset);
       if (truncateIndex < entries.size()) {
         entries.subList(truncateIndex, entries.size()).clear();

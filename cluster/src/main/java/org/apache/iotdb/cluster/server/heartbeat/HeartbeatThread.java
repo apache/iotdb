@@ -33,8 +33,9 @@ import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
-
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+
+import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +86,9 @@ public class HeartbeatThread implements Runnable {
           case LEADER:
             // send heartbeats to the followers
             sendHeartbeats();
-            Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+            synchronized (localMember.getHeartBeatWaitObject()) {
+              localMember.getHeartBeatWaitObject().wait(RaftServer.getHeartBeatIntervalMs());
+            }
             hasHadLeader = true;
             break;
           case FOLLOWER:
@@ -102,7 +105,9 @@ public class HeartbeatThread implements Runnable {
                   "{}: Heartbeat from leader {} is still valid",
                   memberName,
                   localMember.getLeader());
-              Thread.sleep(RaftServer.getConnectionTimeoutInMS());
+              synchronized (localMember.getHeartBeatWaitObject()) {
+                localMember.getHeartBeatWaitObject().wait(RaftServer.getConnectionTimeoutInMS());
+              }
             }
             hasHadLeader = true;
             break;
@@ -133,7 +138,7 @@ public class HeartbeatThread implements Runnable {
   }
 
   /** Send each node (except the local node) in the group of the member a heartbeat. */
-  private void sendHeartbeats() {
+  protected void sendHeartbeats() {
     synchronized (localMember.getTerm()) {
       request.setTerm(localMember.getTerm().get());
       request.setLeader(localMember.getThisNode());
@@ -148,7 +153,11 @@ public class HeartbeatThread implements Runnable {
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size() - 1);
+      logger.debug(
+          "{}: Send heartbeat to {} followers, commit log index = {}",
+          memberName,
+          nodes.size() - 1,
+          request.getCommitLogIndex());
     }
     synchronized (nodes) {
       // avoid concurrent modification
@@ -195,7 +204,6 @@ public class HeartbeatThread implements Runnable {
   }
 
   void sendHeartbeatSync(Node node) {
-    Client client = localMember.getSyncHeartbeatClient(node);
     HeartbeatHandler heartbeatHandler = new HeartbeatHandler(localMember, node);
     HeartBeatRequest req = new HeartBeatRequest();
     req.setCommitLogTerm(request.commitLogTerm);
@@ -211,11 +219,12 @@ public class HeartbeatThread implements Runnable {
       req.partitionTableBytes = request.partitionTableBytes;
       req.setPartitionTableBytesIsSet(true);
     }
-    if (client != null) {
-      localMember
-          .getSerialToParallelPool()
-          .submit(
-              () -> {
+    localMember
+        .getSerialToParallelPool()
+        .submit(
+            () -> {
+              Client client = localMember.getSyncHeartbeatClient(node);
+              if (client != null) {
                 try {
                   logger.debug("{}: Sending heartbeat to {}", memberName, node);
                   HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
@@ -229,8 +238,8 @@ public class HeartbeatThread implements Runnable {
                 } finally {
                   ClientUtils.putBackSyncHeartbeatClient(client);
                 }
-              });
-    }
+              }
+            });
   }
 
   /**
@@ -269,6 +278,10 @@ public class HeartbeatThread implements Runnable {
   @SuppressWarnings({"java:S2274"})
   // enable timeout
   void startElection() {
+    if (localMember.isSkipElection()) {
+      logger.info("{}: Skip election because this node has stopped.", memberName);
+      return;
+    }
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();
       localMember.setVoteFor(localMember.getThisNode());
@@ -291,12 +304,8 @@ public class HeartbeatThread implements Runnable {
 
       electionRequest.setTerm(nextTerm);
       electionRequest.setElector(localMember.getThisNode());
-      if (!electionRequest.isSetLastLogIndex()) {
-        // these field are overridden in DataGroupMember, they will be set to the term and index
-        // of the MetaGroupMember that manages the DataGroupMember so we cannot overwrite them
-        electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
-        electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
-      }
+      electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
+      electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
 
       requestVote(
           localMember.getAllNodes(),
@@ -392,22 +401,27 @@ public class HeartbeatThread implements Runnable {
   }
 
   private void requestVoteSync(Node node, ElectionHandler handler, ElectionRequest request) {
-    Client client = localMember.getSyncHeartbeatClient(node);
-    if (client != null) {
-      logger.info("{}: Requesting a vote from {}", memberName, node);
-      localMember
-          .getSerialToParallelPool()
-          .submit(
-              () -> {
+    localMember
+        .getSerialToParallelPool()
+        .submit(
+            () -> {
+              Client client = localMember.getSyncHeartbeatClient(node);
+              if (client != null) {
+                logger.info("{}: Requesting a vote from {}", memberName, node);
                 try {
                   long result = client.startElection(request);
                   handler.onComplete(result);
+                } catch (TException e) {
+                  client.getInputProtocol().getTransport().close();
+                  logger.warn(
+                      "{}: Cannot request a vote from {} due to network", memberName, node, e);
+                  handler.onError(e);
                 } catch (Exception e) {
                   handler.onError(e);
                 } finally {
                   ClientUtils.putBackSyncHeartbeatClient(client);
                 }
-              });
-    }
+              }
+            });
   }
 }

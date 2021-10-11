@@ -20,7 +20,9 @@
 package org.apache.iotdb.cluster.server.heartbeat;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,5 +79,21 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     super.sendHeartbeatAsync(node);
     // erase the sent partition table so it will not be sent in the next heartbeat
     request.unsetPartitionTableBytes();
+  }
+
+  @Override
+  void startElection() {
+    super.startElection();
+
+    if (localMetaMember.getCharacter() == NodeCharacter.LEADER) {
+      // A new raft leader needs to have at least one log in its term for committing logs with older
+      // terms.
+      // In the meta group, log frequency is very low. When the leader is changed whiling changing
+      // membership, it's necessary to process an empty log to make sure that cluster expansion
+      // operation can be carried out in time.
+      localMetaMember
+          .getAppendLogThreadPool()
+          .submit(() -> localMetaMember.processPlanLocally(new DummyPlan()));
+    }
   }
 }

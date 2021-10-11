@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.cluster.expr;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.VotingLog;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class ExprVotingLog extends VotingLog {
   private Set<Integer> weaklyAcceptedNodeIds;

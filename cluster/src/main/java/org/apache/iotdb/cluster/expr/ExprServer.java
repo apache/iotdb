@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.expr;
 
-import java.net.InetSocketAddress;
-import java.util.Arrays;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
@@ -30,10 +28,14 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
+
+import java.net.InetSocketAddress;
+import java.util.Arrays;
 
 public class ExprServer extends MetaClusterServer {
 
@@ -62,9 +64,9 @@ public class ExprServer extends MetaClusterServer {
         new InetSocketAddress(thisNode.getInternalIp(), thisNode.getMetaPort()));
   }
 
-
   public static void main(String[] args)
-      throws StartupException, TTransportException, QueryProcessException, ConfigInconsistentException, StartUpCheckFailureException {
+      throws StartupException, TTransportException, QueryProcessException,
+          ConfigInconsistentException, StartUpCheckFailureException {
 
     String[] nodeStrings = args[0].split(":");
     String ip = nodeStrings[0];
@@ -75,6 +77,8 @@ public class ExprServer extends MetaClusterServer {
     boolean useIndirectDispatcher = Boolean.parseBoolean(args[3]);
     boolean bypassRaft = Boolean.parseBoolean(args[4]);
     boolean useSW = Boolean.parseBoolean(args[5]);
+    boolean enableWeakAcceptance = Boolean.parseBoolean(args[6]);
+    boolean enableCommitReturn = Boolean.parseBoolean(args[7]);
 
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(Arrays.asList(allNodeStr));
     ClusterDescriptor.getInstance().getConfig().setInternalMetaPort(port);
@@ -86,6 +90,8 @@ public class ExprServer extends MetaClusterServer {
     LogDispatcher.bindingThreadNum = dispatcherThreadNum;
     ExprMember.bypassRaft = bypassRaft;
     ExprMember.useSlidingWindow = useSW;
+    ExprMember.ENABLE_WEAK_ACCEPTANCE = enableWeakAcceptance;
+    ExprMember.ENABLE_COMMIT_RETURN = enableCommitReturn;
 
     ExprServer server = new ExprServer();
     server.start();

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.auth.entity;
 public enum PrivilegeType {
   SET_STORAGE_GROUP,
   INSERT_TIMESERIES,
+  @Deprecated
   UPDATE_TIMESERIES,
   READ_TIMESERIES,
   CREATE_TIMESERIES,
@@ -45,6 +46,8 @@ public enum PrivilegeType {
   DROP_TRIGGER,
   START_TRIGGER,
   STOP_TRIGGER,
+  CREATE_CONTINUOUS_QUERY,
+  DROP_CONTINUOUS_QUERY,
   ALL;
 
   /**

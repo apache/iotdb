@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
@@ -71,7 +72,8 @@ public class LogDispatcherTest {
             return new TestAsyncClient() {
               @Override
               public void appendEntry(
-                  AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+                  AppendEntryRequest request,
+                  AsyncMethodCallback<AppendEntryResult> resultHandler) {
                 new Thread(
                         () -> {
                           if (!downNode.contains(node)) {
@@ -87,7 +89,8 @@ public class LogDispatcherTest {
 
               @Override
               public void appendEntries(
-                  AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+                  AppendEntriesRequest request,
+                  AsyncMethodCallback<AppendEntryResult> resultHandler) {
                 new Thread(
                         () -> {
                           if (!downNode.contains(node)) {
@@ -119,7 +122,8 @@ public class LogDispatcherTest {
               }
 
               @Override
-              public AppendEntryResult appendEntries(AppendEntriesRequest request) throws TException {
+              public AppendEntryResult appendEntries(AppendEntriesRequest request)
+                  throws TException {
                 try {
                   if (!downNode.contains(node)) {
                     return mockedAppendEntries(request);
@@ -132,7 +136,7 @@ public class LogDispatcherTest {
             };
           }
         };
-    List<Node> allNodes = new ArrayList<>();
+    PartitionGroup allNodes = new PartitionGroup();
     for (int i = 0; i < 10; i++) {
       allNodes.add(TestUtils.getNode(i));
     }
@@ -140,14 +144,16 @@ public class LogDispatcherTest {
     raftMember.setCharacter(NodeCharacter.LEADER);
   }
 
-  private AppendEntryResult mockedAppendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
+  private AppendEntryResult mockedAppendEntry(AppendEntryRequest request)
+      throws UnknownLogTypeException {
     LogParser logParser = LogParser.getINSTANCE();
     Log parse = logParser.parse(request.entry.duplicate());
     appendedEntries.computeIfAbsent(parse, p -> new AtomicInteger()).incrementAndGet();
     return new AppendEntryResult(Response.RESPONSE_AGREE);
   }
 
-  private AppendEntryResult mockedAppendEntries(AppendEntriesRequest request) throws UnknownLogTypeException {
+  private AppendEntryResult mockedAppendEntries(AppendEntriesRequest request)
+      throws UnknownLogTypeException {
     List<ByteBuffer> entries = request.getEntries();
     List<Log> logs = new ArrayList<>();
     for (ByteBuffer entry : entries) {

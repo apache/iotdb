@@ -312,6 +312,38 @@ public class IoTDBFillIT {
   }
 
   @Test
+  public void ValueFillTest() {
+    String res = "7,7.0,true,7";
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select temperature,status, hardware "
+                  + "from root.ln.wf01.wt01 where time = 7 "
+                  + "Fill(int32[7], double[7], boolean[true])");
+
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TEMPERATURE_STR_1)
+                + ","
+                + resultSet.getString(STATUS_STR_1)
+                + ","
+                + resultSet.getString(HARDWARE_STR);
+        Assert.assertEquals(res, ans);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void PreviousFillTest() {
     String[] retArray1 = new String[] {"3,3.3,false,33", "70,50.5,false,550", "70,null,null,null"};
     try (Connection connection =

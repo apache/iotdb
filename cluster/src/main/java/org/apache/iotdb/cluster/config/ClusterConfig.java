@@ -38,6 +38,7 @@ public class ClusterConfig {
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
   private int clusterRpcPort = IoTDBDescriptor.getInstance().getConfig().getRpcPort();
+  private int clusterInfoRpcPort = 6567;
 
   /** each one is a {internalIp | domain name}:{meta port} string tuple. */
   private List<String> seedNodeUrls;
@@ -46,6 +47,8 @@ public class ClusterConfig {
   private int maxConcurrentClientNum = 10000;
 
   @ClusterConsistent private int replicationNum = 1;
+
+  @ClusterConsistent private int multiRaftFactor = 1;
 
   @ClusterConsistent private String clusterName = "default";
 
@@ -59,15 +62,15 @@ public class ClusterConfig {
 
   private int writeOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
-  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(60);
+  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(300);
 
   private boolean useBatchInLogCatchUp = true;
 
   /** max number of committed logs to be saved */
-  private int minNumOfLogsInMem = 100;
+  private int minNumOfLogsInMem = 1000;
 
   /** max number of committed logs in memory */
-  private int maxNumOfLogsInMem = 1000;
+  private int maxNumOfLogsInMem = 2000;
 
   /** max memory size of committed logs in memory, default 512M */
   private long maxMemorySizeForRaftLog = 536870912;
@@ -146,7 +149,7 @@ public class ClusterConfig {
   /** The maximum number of logs saved on the disk */
   private int maxPersistRaftLogNumberOnDisk = 1_000_000;
 
-  private boolean enableUsePersistLogOnDiskToCatchUp = false;
+  private boolean enableUsePersistLogOnDiskToCatchUp = true;
 
   /**
    * The number of logs read on the disk at one time, which is mainly used to control the memory
@@ -165,6 +168,12 @@ public class ClusterConfig {
    * When consistency level is set to mid, query will fail if the log lag exceeds max_read_log_lag.
    */
   private long maxReadLogLag = 1000L;
+
+  /**
+   * When a follower tries to sync log with the leader, sync will fail if the log Lag exceeds
+   * maxSyncLogLag.
+   */
+  private long maxSyncLogLag = 100000L;
 
   private boolean openServerRpcPort = false;
 
@@ -251,6 +260,14 @@ public class ClusterConfig {
 
   public void setReplicationNum(int replicationNum) {
     this.replicationNum = replicationNum;
+  }
+
+  public int getMultiRaftFactor() {
+    return multiRaftFactor;
+  }
+
+  public void setMultiRaftFactor(int multiRaftFactor) {
+    this.multiRaftFactor = multiRaftFactor;
   }
 
   void setClusterName(String clusterName) {
@@ -473,6 +490,14 @@ public class ClusterConfig {
     this.maxReadLogLag = maxReadLogLag;
   }
 
+  public long getMaxSyncLogLag() {
+    return maxSyncLogLag;
+  }
+
+  public void setMaxSyncLogLag(long maxSyncLogLag) {
+    this.maxSyncLogLag = maxSyncLogLag;
+  }
+
   public String getInternalIp() {
     return internalIp;
   }
@@ -495,5 +520,13 @@ public class ClusterConfig {
 
   public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
     this.waitClientTimeoutMS = waitClientTimeoutMS;
+  }
+
+  public int getClusterInfoRpcPort() {
+    return clusterInfoRpcPort;
+  }
+
+  public void setClusterInfoRpcPort(int clusterInfoRpcPort) {
+    this.clusterInfoRpcPort = clusterInfoRpcPort;
   }
 }

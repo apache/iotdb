@@ -263,6 +263,8 @@ void queryLast() {
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
+
+    dataSet->closeOperationHandle();
 }
 
 int main() {

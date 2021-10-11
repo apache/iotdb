@@ -42,6 +42,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * ReadOnlyMemChunk is a snapshot of the working MemTable and flushing memtable in the memory used
+ * for querying
+ */
 public class ReadOnlyMemChunk {
 
   // deletion list for this chunk

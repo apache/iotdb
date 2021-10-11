@@ -39,12 +39,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * flush task to flush one memtable using a pipeline model to flush, which is sort memtable ->
+ * encoding -> write to disk (io task)
+ */
 public class MemTableFlushTask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
@@ -114,6 +119,9 @@ public class MemTableFlushTask {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
         IMeasurementSchema desc = series.getSchema();
+        /*
+         * sort task (first task of flush pipeline)
+         */
         TVList tvList = series.getSortedTvListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
@@ -157,16 +165,26 @@ public class MemTableFlushTask {
         System.currentTimeMillis() - start);
   }
 
+  /** encoding task (second task of pipeline) */
   private Runnable encodingTask =
       new Runnable() {
         private void writeOneSeries(
             TVList tvPairs, IChunkWriter seriesWriterImpl, TSDataType dataType) {
+          List<Integer> timeDuplicatedVectorRowIndexList = null;
           for (int sortedRowIndex = 0; sortedRowIndex < tvPairs.size(); sortedRowIndex++) {
             long time = tvPairs.getTime(sortedRowIndex);
 
             // skip duplicated data
             if ((sortedRowIndex + 1 < tvPairs.size()
                 && (time == tvPairs.getTime(sortedRowIndex + 1)))) {
+              // record the time duplicated row index list for vector type
+              if (dataType == TSDataType.VECTOR) {
+                if (timeDuplicatedVectorRowIndexList == null) {
+                  timeDuplicatedVectorRowIndexList = new ArrayList<>();
+                  timeDuplicatedVectorRowIndexList.add(tvPairs.getValueIndex(sortedRowIndex));
+                }
+                timeDuplicatedVectorRowIndexList.add(tvPairs.getValueIndex(sortedRowIndex + 1));
+              }
               continue;
             }
 
@@ -199,6 +217,13 @@ public class MemTableFlushTask {
                 List<TSDataType> dataTypes = vectorTvPairs.getTsDataTypes();
                 int originRowIndex = vectorTvPairs.getValueIndex(sortedRowIndex);
                 for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+                  // write the time duplicated rows
+                  if (timeDuplicatedVectorRowIndexList != null
+                      && !timeDuplicatedVectorRowIndexList.isEmpty()) {
+                    originRowIndex =
+                        vectorTvPairs.getValidRowIndexForTimeDuplicatedRows(
+                            timeDuplicatedVectorRowIndexList, columnIndex);
+                  }
                   boolean isNull = vectorTvPairs.isValueMarked(originRowIndex, columnIndex);
                   switch (dataTypes.get(columnIndex)) {
                     case BOOLEAN:
@@ -241,11 +266,12 @@ public class MemTableFlushTask {
                       LOGGER.error(
                           "Storage group {} does not support data type: {}",
                           storageGroup,
-                          dataType);
+                          dataTypes.get(columnIndex));
                       break;
                   }
                 }
                 seriesWriterImpl.write(time);
+                timeDuplicatedVectorRowIndexList = null;
                 break;
               default:
                 LOGGER.error(
@@ -325,6 +351,7 @@ public class MemTableFlushTask {
         }
       };
 
+  /** io task (third task of pipeline) */
   @SuppressWarnings("squid:S135")
   private Runnable ioTask =
       () -> {

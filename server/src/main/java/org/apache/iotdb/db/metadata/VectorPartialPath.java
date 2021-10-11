@@ -24,6 +24,12 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * VectorPartialPath represents a vector's fullPath. It not only contains the full path of vector's
+ * own name, but also has subSensorsPathList which contain all the fullPath of vector's sub sensors.
+ * e.g. VectorPartialPath1(root.sg1.d1.vector1, [root.sg1.d1.vector1.s1, root.sg1.d1.vector1.s2])
+ * VectorPartialPath2(root.sg1.d1.vector2, [root.sg1.d1.vector2.s1, root.sg1.d1.vector2.s2])
+ */
 public class VectorPartialPath extends PartialPath {
 
   private List<PartialPath> subSensorsPathList;

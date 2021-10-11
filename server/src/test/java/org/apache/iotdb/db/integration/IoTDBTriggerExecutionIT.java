@@ -60,20 +60,35 @@ public class IoTDBTriggerExecutionIT {
 
         @Override
         public void run() {
-
           try (Connection connection =
                   DriverManager.getConnection(
                       Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
               Statement statement = connection.createStatement()) {
+
             long count = 0;
             do {
               ++count;
-              statement.execute(
-                  String.format(
-                      "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6) values(%d,%d,%d,%d,%d,%s,\"%d\")",
-                      count, count, count, count, count, count % 2 == 0 ? "true" : "false", count));
+              boolean isSuccessful = false;
+              while (!isSuccessful) {
+                try {
+                  statement.execute(
+                      String.format(
+                          "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6) values(%d,%d,%d,%d,%d,%s,\"%d\")",
+                          count,
+                          count,
+                          count,
+                          count,
+                          count,
+                          count % 2 == 0 ? "true" : "false",
+                          count));
+                  isSuccessful = true;
+                } catch (SQLException throwable) {
+                  fail(throwable.getMessage());
+                  LOGGER.error(throwable.getMessage());
+                }
+              }
             } while (!isInterrupted());
-          } catch (SQLException e) {
+          } catch (Exception e) {
             exception = e;
           }
         }

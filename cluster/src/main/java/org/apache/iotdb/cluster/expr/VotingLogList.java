@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.cluster.expr;
 
+import org.apache.iotdb.cluster.log.VotingLog;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.cluster.log.VotingLog;
 
 public class VotingLogList {
 
@@ -47,11 +48,10 @@ public class VotingLogList {
     logList.add(log);
   }
 
-
   /**
    * When an entry of index-term is strongly accepted by a node of acceptingNodeId, record the id in
-   * all entries whose index <= the accepted entry. If any entry is accepted by a quorum, remove
-   * it from the list.
+   * all entries whose index <= the accepted entry. If any entry is accepted by a quorum, remove it
+   * from the list.
    *
    * @param index
    * @param term
@@ -85,5 +85,4 @@ public class VotingLogList {
   public synchronized void clear() {
     logList.clear();
   }
-
 }

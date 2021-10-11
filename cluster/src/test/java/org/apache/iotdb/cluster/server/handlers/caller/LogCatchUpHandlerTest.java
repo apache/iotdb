@@ -85,7 +85,8 @@ public class LogCatchUpHandlerTest {
     handler.setLog(log);
     handler.setRaftMember(member);
     synchronized (appendSucceed) {
-      new Thread(() -> handler.onComplete(new AppendEntryResult(Response.RESPONSE_LOG_MISMATCH))).start();
+      new Thread(() -> handler.onComplete(new AppendEntryResult(Response.RESPONSE_LOG_MISMATCH)))
+          .start();
       appendSucceed.wait();
     }
     assertTrue(appendSucceed.get());

@@ -36,10 +36,19 @@ import java.util.List;
 public class CreateTemplatePlan extends PhysicalPlan {
 
   String name;
+  List<String> schemaNames;
   List<List<String>> measurements;
   List<List<TSDataType>> dataTypes;
   List<List<TSEncoding>> encodings;
   List<CompressionType> compressors;
+
+  public List<String> getSchemaNames() {
+    return schemaNames;
+  }
+
+  public void setSchemaNames(List<String> schemaNames) {
+    this.schemaNames = schemaNames;
+  }
 
   public String getName() {
     return name;
@@ -87,12 +96,14 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
   public CreateTemplatePlan(
       String name,
+      List<String> schemaNames,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors) {
     super(false, OperatorType.CREATE_TEMPLATE);
     this.name = name;
+    this.schemaNames = schemaNames;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.encodings = encodings;
@@ -104,6 +115,12 @@ public class CreateTemplatePlan extends PhysicalPlan {
     buffer.put((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, buffer);
+
+    // schema names
+    ReadWriteIOUtils.write(schemaNames.size(), buffer);
+    for (String schemaName : schemaNames) {
+      ReadWriteIOUtils.write(schemaName, buffer);
+    }
 
     // measurements
     ReadWriteIOUtils.write(measurements.size(), buffer);
@@ -145,8 +162,15 @@ public class CreateTemplatePlan extends PhysicalPlan {
   public void deserialize(ByteBuffer buffer) {
     name = ReadWriteIOUtils.readString(buffer);
 
-    // measurements
+    // schema names
     int size = ReadWriteIOUtils.readInt(buffer);
+    schemaNames = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      schemaNames.add(ReadWriteIOUtils.readString(buffer));
+    }
+
+    // measurements
+    size = ReadWriteIOUtils.readInt(buffer);
     measurements = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       int listSize = ReadWriteIOUtils.readInt(buffer);
@@ -196,6 +220,12 @@ public class CreateTemplatePlan extends PhysicalPlan {
     stream.writeByte((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, stream);
+
+    // schema names
+    ReadWriteIOUtils.write(schemaNames.size(), stream);
+    for (String schemaName : schemaNames) {
+      ReadWriteIOUtils.write(schemaName, stream);
+    }
 
     // measurements
     ReadWriteIOUtils.write(measurements.size(), stream);

@@ -34,12 +34,12 @@ IoTDB stores sequential and un-sequential TsFiles separately under `data/sequenc
 
 It should be noted that, in the following query documents, we tend to use `seq file` to represent Sequential files for short. For un-sequential ones we use `unseq file`. Sometimes `unordered file` or `out-of-order file` are also used as aliases of un-sequential files.
 
-## General query process
+## General process of reading TsFile and other memory data
 
 The multi-level structure of TsFile is introduced in [TsFile](../TsFile/TsFile.md). 
 For each timeseries, we always follow the query routine across 5 levels: TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData
 
-The file access utility methods are in `org.apache.iotdb.db.utils.FileLoaderUtils`
+The function methods for file reading are in `org.apache.iotdb.db.utils.FileLoaderUtils`
 
 * `loadTimeSeriesMetadata()` reads the TimeseriesMetadata of a timeseries in a TsFileResource. If a time filter is set for this method, only those TimeseriesMetadata that satisfies this filter will be returned. `loadTimeSeriesMetadata()` returns null otherwise.
 * `loadChunkMetadataList()` can load a ChunkMetadata list for a TimeseriesMetadata。
@@ -58,8 +58,8 @@ We call it unsealed because users may be still writing data into this Timeseries
 It is almost the same in `loadPageReaderList()` to read Page data. 
 `MemChunkLoader` and `DiskChunkLoader` support for memory page loading and disk page loading. 
 
-## Data orderings in TsFiles
-
+## Data characteristics of sequential and unsequential files.
+For data in sequential and unsequential files, the partial characteristics of the data in the file are different.
 Timeseries data in seq files is in "overall" ascending order. Specifically, all the ChunkMetadata in a timeseries stored in seq files are in the right order.
 Therefore, if we have `ChunkMetadata1` and `ChunkMetadata2` kept in a seq file, it is guaranteed that 
 ```
@@ -75,10 +75,10 @@ That means, two orderings within pages are guaranteed:
 
 This certain ordering will be fully utilized to accelerate query process within our design.
 
-## Modification Handling
+## Data modification processing in the query
 
 Data deletion in IoTDB records a series of mods file for disk data. The data is not really deleted, so we need to consider the existence of modifications in query.
-
+ If any data is deleted from a file, record the deletion to the mods file. Record three columns: the time series of the deletion, the maximum time point of the deletion range, and the version corresponding to the deletion operation.
 ### Related class
 
 Modification file: org.apache.iotdb.db.engine.modification.ModificationFile
@@ -98,7 +98,7 @@ Correspondingly, TimeRange is the medium that deletions exist within memory.
 
 All deletion TimeRanges are both left-close and right-close intervals. We use Long.MIN_VALUE and Long.MAX_VALUE to refer to infinity and negative infinity timestamp.
 
-### Query chunks with delete intervals
+### Query processing with deletion ranges
 When querying a TVList, the TimeRanges are sorted and merged before a TVList tries to access them. 
 For example, we have [1,10], [5,12], [15,20], [16,21] in the original list, then they will be preprocessed to [1,12] and [15,21].
 For cases when there are a large number of deletion operations, it would be helpful to exclude deleted data.

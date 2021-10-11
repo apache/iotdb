@@ -292,6 +292,20 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  public void testLastDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+
+    insertRecords();
+
+    lastDataQuery();
+  }
+
+  @Test
   public void test()
       throws ClassNotFoundException, SQLException, IoTDBConnectionException,
           StatementExecutionException {
@@ -594,6 +608,25 @@ public class IoTDBSessionComplexIT {
     sessionDataSet.closeOperationHandle();
   }
 
+  private void lastDataQuery() throws StatementExecutionException, IoTDBConnectionException {
+    List<String> paths = new ArrayList<>();
+
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d2.s1");
+
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(paths);
+    sessionDataSet.setFetchSize(1024);
+
+    int count = 0;
+    while (sessionDataSet.hasNext()) {
+      count++;
+      List<Field> fields = sessionDataSet.next().getFields();
+      Assert.assertEquals("[root.sg1.d2.s1,1,INT64]", fields.toString().replace(" ", ""));
+    }
+    Assert.assertEquals(1, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
   private void insertTablet(String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
 
@@ -854,6 +887,41 @@ public class IoTDBSessionComplexIT {
       assertEquals("Trigger d1s3 does not exist.", e.getMessage());
     }
 
+    session.close();
+  }
+
+  @Test
+  public void testSessionCluster() throws IoTDBConnectionException, StatementExecutionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    nodeList.add("127.0.0.1:6669");
+    nodeList.add("127.0.0.1:6667");
+    nodeList.add("127.0.0.1:6668");
+    session = new Session(nodeList, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+    insertByStr();
+
+    insertViaSQL();
+    queryByDevice("root.sg1.d1");
+
+    session.close();
+  }
+
+  @Test
+  public void testErrorSessionCluster() throws IoTDBConnectionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    // test Format error
+    nodeList.add("127.0.0.16669");
+    nodeList.add("127.0.0.1:6667");
+    session = new Session(nodeList, "root", "root");
+    try {
+      session.open();
+    } catch (Exception e) {
+      Assert.assertEquals("NodeUrl Incorrect format", e.getMessage());
+    }
     session.close();
   }
 }

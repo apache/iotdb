@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -64,7 +68,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   }
 
   /** send FlushPlan to all nodes in one dataGroup */
-  private void syncFlushAllProcessor() {
+  private void syncFlushAllProcessor(List<Integer> requiredSlots, boolean needLeader) {
     logger.info("{}: Start flush all storage group processor in one data group", getName());
     Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions =
         StorageEngine.getInstance().getWorkingStorageGroupPartitions();
@@ -72,12 +76,19 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       logger.info("{}: no need to flush processor", getName());
       return;
     }
-    dataGroupMember.flushFileWhenDoSnapshot(storageGroupPartitions);
+    dataGroupMember.flushFileWhenDoSnapshot(storageGroupPartitions, requiredSlots, needLeader);
   }
 
   @Override
   @SuppressWarnings("java:S1135") // ignore todos
   public void takeSnapshot() throws IOException {
+    takeSnapshotForSpecificSlots(
+        ((SlotPartitionTable) partitionTable).getNodeSlots(dataGroupMember.getHeader()), true);
+  }
+
+  @Override
+  public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots, boolean needLeader)
+      throws IOException {
     try {
       logger.info("{}: Taking snapshots, flushing IoTDB", getName());
       // record current commit index and prevent further logs from being applied, so the
@@ -86,14 +97,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       // wait until all logs before BlockAppliedCommitIndex are applied
       super.takeSnapshot();
       // flush data to disk so that the disk files will represent a complete state
-      syncFlushAllProcessor();
+      syncFlushAllProcessor(requiredSlots, needLeader);
       logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
       // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
       synchronized (this) {
-        collectTimeseriesSchemas();
+        collectTimeseriesSchemas(requiredSlots);
         snapshotLastLogIndex = getBlockAppliedCommitIndex();
         snapshotLastLogTerm = getTerm(snapshotLastLogIndex);
-        collectTsFilesAndFillTimeseriesSchemas();
+        collectTsFilesAndFillTimeseriesSchemas(requiredSlots);
         logger.info("{}: Snapshot is taken", getName());
       }
     } catch (EntryCompactedException e) {
@@ -112,9 +123,10 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    *
    * @throws IOException
    */
-  private void collectTsFilesAndFillTimeseriesSchemas() throws IOException {
+  private void collectTsFilesAndFillTimeseriesSchemas(List<Integer> requiredSlots)
+      throws IOException {
     // 1.collect tsfile
-    collectTsFiles();
+    collectTsFiles(requiredSlots);
 
     // 2.register the measurement
     boolean slotExistsInPartition;
@@ -138,7 +150,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     }
   }
 
-  private void collectTsFiles() throws IOException {
+  private void collectTsFiles(List<Integer> requiredSlots) throws IOException {
     slotSnapshots.clear();
     Map<PartialPath, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile =
         StorageEngine.getInstance().getAllClosedStorageGroupTsFile();
@@ -151,13 +163,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
         Long partitionNum = storageGroupFiles.getKey();
         List<TsFileResource> resourceList = storageGroupFiles.getValue();
-        if (!collectTsFiles(partitionNum, resourceList, storageGroupName, createdHardlinks)) {
+        if (!collectTsFiles(
+            partitionNum, resourceList, storageGroupName, createdHardlinks, requiredSlots)) {
           // some file is deleted during the collecting, clean created hardlinks and restart
           // from the beginning
           for (TsFileResource createdHardlink : createdHardlinks) {
             createdHardlink.remove();
           }
-          collectTsFiles();
+          collectTsFiles(requiredSlots);
           return;
         }
       }
@@ -179,14 +192,16 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       Long partitionNum,
       List<TsFileResource> resourceList,
       PartialPath storageGroupName,
-      List<TsFileResource> createdHardlinks)
+      List<TsFileResource> createdHardlinks,
+      List<Integer> requiredSlots)
       throws IOException {
     int slotNum =
         SlotPartitionTable.getSlotStrategy()
             .calculateSlotByPartitionNum(
-                storageGroupName.getFullPath(),
-                partitionNum,
-                ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
+                storageGroupName.getFullPath(), partitionNum, ClusterConstant.SLOT_NUM);
+    if (!requiredSlots.contains(slotNum)) {
+      return true;
+    }
     FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum, s -> new FileSnapshot());
     for (TsFileResource tsFileResource : resourceList) {
       TsFileResource hardlink = tsFileResource.createHardlink();
@@ -222,5 +237,15 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       }
     }
     return true;
+  }
+
+  @Override
+  public long append(Log entry) {
+    long res = super.append(entry);
+    // For data group, it's necessary to apply remove/add log immediately after append
+    if (entry instanceof AddNodeLog || entry instanceof RemoveNodeLog) {
+      applyEntry(entry);
+    }
+    return res;
   }
 }

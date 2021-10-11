@@ -208,7 +208,9 @@ public class MergeFileTask {
       mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
-      newFileWriter.getFile().delete();
+      if (!newFileWriter.getFile().delete()) {
+        logger.warn("Delete file {} failed", newFileWriter.getFile());
+      }
       // change tsFile name
       File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
       fsFactory.moveFile(seqFile.getTsFile(), nextMergeVersionFile);
@@ -359,7 +361,9 @@ public class MergeFileTask {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       // change tsFile name
-      seqFile.getTsFile().delete();
+      if (!seqFile.getTsFile().delete()) {
+        logger.warn("Delete file {} failed", seqFile.getTsFile());
+      }
       File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
       fsFactory.moveFile(fileWriter.getFile(), nextMergeVersionFile);
       fsFactory.moveFile(

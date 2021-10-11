@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -78,6 +78,33 @@ public class PrimitiveMemTableTest {
       i++;
     }
     Assert.assertEquals(count, i);
+  }
+
+  @Test
+  public void memSeriesToStringTest() throws IOException {
+    TSDataType dataType = TSDataType.INT32;
+    WritableMemChunk series =
+        new WritableMemChunk(
+            new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+    int count = 100;
+    for (int i = 0; i < count; i++) {
+      series.write(i, i);
+    }
+    series.write(0, 21);
+    series.write(99, 20);
+    series.write(20, 21);
+    String str = series.toString();
+    Assert.assertFalse(series.getTVList().isSorted());
+    Assert.assertEquals(
+        "MemChunk Size: 103"
+            + System.lineSeparator()
+            + "Data type:INT32"
+            + System.lineSeparator()
+            + "First point:0 : 0"
+            + System.lineSeparator()
+            + "Last point:99 : 20"
+            + System.lineSeparator(),
+        str);
   }
 
   @Test
@@ -196,7 +223,7 @@ public class PrimitiveMemTableTest {
                 "root.sg.device5",
                 "sensor1",
                 new VectorMeasurementSchema(
-                    IoTDBConstant.ALIGN_TIMESERIES_PREFIX + 0,
+                    "$#$0",
                     new String[] {"sensor1"},
                     new TSDataType[] {TSDataType.INT64},
                     new TSEncoding[] {TSEncoding.GORILLA},
@@ -217,7 +244,7 @@ public class PrimitiveMemTableTest {
                 "root.sg.device5",
                 "$#$1",
                 new VectorMeasurementSchema(
-                    IoTDBConstant.ALIGN_TIMESERIES_PREFIX + 0,
+                    "$#$0",
                     new String[] {"sensor0", "sensor1"},
                     new TSDataType[] {TSDataType.BOOLEAN, TSDataType.INT64},
                     new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.GORILLA},
@@ -321,10 +348,9 @@ public class PrimitiveMemTableTest {
 
     String deviceId = "root.sg.device5";
 
-    MeasurementMNode[] mNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
     IMeasurementSchema schema =
-        new VectorMeasurementSchema(
-            IoTDBConstant.ALIGN_TIMESERIES_PREFIX + 0, measurements, dataTypes, encodings);
+        new VectorMeasurementSchema("$#$0", measurements, dataTypes, encodings);
     mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
     mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
 
@@ -348,6 +374,7 @@ public class PrimitiveMemTableTest {
     insertTabletPlan.setMeasurementMNodes(mNodes);
     insertTabletPlan.setStart(0);
     insertTabletPlan.setEnd(100);
+    insertTabletPlan.setAligned(true);
 
     return insertTabletPlan;
   }

@@ -225,6 +225,10 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
+  public int getValueIndex(int index) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
   public abstract void sort();
 
   public long getMinTime() {
@@ -342,7 +346,7 @@ public abstract class TVList {
   }
 
   protected Object getPrimitiveArraysByType(TSDataType dataType) {
-    return PrimitiveArrayManager.getPrimitiveArraysByType(dataType);
+    return PrimitiveArrayManager.allocate(dataType);
   }
 
   protected long[] cloneTime(long[] array) {
@@ -523,6 +527,14 @@ public abstract class TVList {
   protected abstract TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
+  public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
+      List<Integer> timeDuplicatedVectorRowIndexList,
+      long time,
+      Integer floatPrecision,
+      TSEncoding encoding) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
   @TestOnly
   public IPointReader getIterator() {
     return new Ite();
@@ -565,13 +577,30 @@ public abstract class TVList {
         return true;
       }
 
+      List<Integer> timeDuplicatedVectorRowIndexList = null;
       while (cur < iteSize) {
         long time = getTime(cur);
         if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+          // record the time duplicated row index list for vector type
+          if (getDataType() == TSDataType.VECTOR) {
+            if (timeDuplicatedVectorRowIndexList == null) {
+              timeDuplicatedVectorRowIndexList = new ArrayList<>();
+              timeDuplicatedVectorRowIndexList.add(getValueIndex(cur));
+            }
+            timeDuplicatedVectorRowIndexList.add(getValueIndex(cur + 1));
+          }
           cur++;
           continue;
         }
-        TimeValuePair tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
+        TimeValuePair tvPair;
+        if (getDataType() == TSDataType.VECTOR && timeDuplicatedVectorRowIndexList != null) {
+          tvPair =
+              getTimeValuePairForTimeDuplicatedRows(
+                  timeDuplicatedVectorRowIndexList, time, floatPrecision, encoding);
+          timeDuplicatedVectorRowIndexList = null;
+        } else {
+          tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
+        }
         cur++;
         if (tvPair.getValue() != null) {
           cachedTimeValuePair = tvPair;

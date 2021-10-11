@@ -25,21 +25,20 @@
 
 ### 简介
 
-Thrift是一个远程方法调用软件框架，用来进行可扩展且跨语言的服务的开发。
+Thrift 是一个远程方法调用软件框架，用来进行可扩展且跨语言的服务的开发。
 它结合了功能强大的软件堆栈和代码生成引擎，
 以构建在 C++, Java, Go,Python, PHP, Ruby, Erlang, Perl, Haskell, C#, Cocoa, JavaScript, Node.js, Smalltalk, and OCaml 这些编程语言间无缝结合的、高效的服务。
 
-IoTDB服务端和客户端之间使用thrift进行通信，实际使用中建议使用IoTDB提供的原生客户端封装:
-Session或Session Pool。如有特殊需要，您也可以直接针对RPC接口进行编程
+IoTDB 服务端和客户端之间使用 thrift 进行通信，实际使用中建议使用 IoTDB 提供的原生客户端封装：
+Session 或 Session Pool。如有特殊需要，您也可以直接针对 RPC 接口进行编程
 
-默认IoTDB服务端使用6667端口作为RPC通信端口，可修改配置项中的
+默认 IoTDB 服务端使用 6667 端口作为 RPC 通信端口，可修改配置项中的
 ```
 rpc_port=6667
 ```
 更改默认接口
 
-
-### rpc接口
+### rpc 接口
 
 ```
 // 打开一个 session
@@ -99,7 +98,7 @@ TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 // 按行插入数据
 TSStatus insertRecord(1:TSInsertRecordReq req);
 
-// 按String格式插入一条数据
+// 按 String 格式插入一条数据
 TSStatus insertStringRecord(1:TSInsertStringRecordReq req);
 
 // 按列插入数据
@@ -114,7 +113,7 @@ TSStatus insertRecords(1:TSInsertRecordsReq req);
 // 按行批量插入同属于某个设备的数据
 TSStatus insertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
-// 按String格式批量按行插入数据
+// 按 String 格式批量按行插入数据
 TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
 
 // 测试按列插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
@@ -126,7 +125,7 @@ TSStatus testInsertTablets(1:TSInsertTabletsReq req);
 // 测试按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
 TSStatus testInsertRecord(1:TSInsertRecordReq req);
 
-// 测试按String格式按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// 测试按 String 格式按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
 TSStatus testInsertStringRecord(1:TSInsertStringRecordReq req);
 
 // 测试按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
@@ -135,7 +134,7 @@ TSStatus testInsertRecords(1:TSInsertRecordsReq req);
 // 测试按行批量插入同属于某个设备的数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
 TSStatus testInsertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
-// 测试按String格式批量按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// 测试按 String 格式批量按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
 TSStatus testInsertStringRecords(1:TSInsertStringRecordsReq req);
 
 // 删除数据
@@ -144,14 +143,13 @@ TSStatus deleteData(1:TSDeleteDataReq req);
 // 执行原始数据查询
 TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
-// 向服务器申请一个查询语句ID
+// 向服务器申请一个查询语句 ID
 i64 requestStatementId(1:i64 sessionId);
 ```
 
-### IDL定义文件位置
-IDL定义文件的路径是thrift/src/main/thrift/rpc.thrift，其中包括了结构体定义与函数定义、
+### IDL 定义文件位置
+IDL 定义文件的路径是 thrift/src/main/thrift/rpc.thrift，其中包括了结构体定义与函数定义
 
 ### 生成文件位置
-在mvn编译过程中，会调用thrift编译IDL文件，生成最终的.class文件
-生成的文件夹路径为thrift/target/classes/org/apache/iotdb/service/rpc/thrift
-
+在 mvn 编译过程中，会调用 thrift 编译 IDL 文件，生成最终的。class 文件
+生成的文件夹路径为 thrift/target/classes/org/apache/iotdb/service/rpc/thrift

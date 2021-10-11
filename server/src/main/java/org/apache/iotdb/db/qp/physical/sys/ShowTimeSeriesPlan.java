@@ -56,8 +56,8 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.orderByHeat = orderByHeat;
   }
 
-  public ShowTimeSeriesPlan(PartialPath path, int limit, int offset, int fetchSize) {
-    super(ShowContentType.TIMESERIES, path, limit, offset, fetchSize);
+  public ShowTimeSeriesPlan(PartialPath path, int limit, int offset) {
+    super(ShowContentType.TIMESERIES, path, limit, offset);
   }
 
   public ShowTimeSeriesPlan() {

@@ -22,11 +22,16 @@ package org.apache.iotdb.cluster.server.monitor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Timer {
+
+  private static final Logger logger = LoggerFactory.getLogger(Timer.class);
 
   public static final boolean ENABLE_INSTRUMENTING = true;
 
@@ -249,6 +254,7 @@ public class Timer {
     int level;
     Statistic parent;
     List<Statistic> children = new ArrayList<>();
+    long warningThreshold = 3 * 1000 * 1000 * 1000L;
 
     Statistic(String className, String blockName, double scale, boolean valid, Statistic parent) {
       this.className = className;
@@ -285,7 +291,16 @@ public class Timer {
      */
     public void calOperationCostTimeFromStart(long startTime) {
       if (ENABLE_INSTRUMENTING && startTime != Long.MIN_VALUE) {
-        add(System.nanoTime() - startTime);
+        long consumed = System.nanoTime() - startTime;
+        add(consumed);
+        if (consumed >= warningThreshold && logger.isWarnEnabled()) {
+          logger.warn(
+              "Operation {}.{}.{} costs more than warning threshold: {}",
+              className,
+              blockName,
+              name(),
+              consumed);
+        }
       }
     }
 

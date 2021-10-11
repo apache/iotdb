@@ -20,10 +20,13 @@
 package org.apache.iotdb.cluster.server.service;
 
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
@@ -42,6 +45,8 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
 
 public class MetaSyncService extends BaseSyncService implements TSMetaService.Iface {
 
@@ -70,14 +75,19 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     AddNodeResponse addNodeResponse;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
-    } catch (AddSelfException | LogExecutionException e) {
+    } catch (AddSelfException | LogExecutionException | CheckConsistencyException e) {
+      throw new TException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new TException(e);
     }
     if (addNodeResponse != null) {
       return addNodeResponse;
     }
 
-    if (member.getCharacter() == NodeCharacter.FOLLOWER && member.getLeader() != null) {
+    if (member.getCharacter() == NodeCharacter.FOLLOWER
+        && member.getLeader() != null
+        && !ClusterConstant.EMPTY_NODE.equals(member.getLeader())) {
       logger.info("Forward the join request of {} to leader {}", node, member.getLeader());
       addNodeResponse = forwardAddNode(node, startUpStatus);
       if (addNodeResponse != null) {
@@ -139,11 +149,23 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   }
 
   @Override
+  public ByteBuffer collectMigrationStatus() {
+    return ClusterUtils.serializeMigrationStatus(metaGroupMember.collectMigrationStatus());
+  }
+
+  @Override
   public long removeNode(Node node) throws TException {
     long result;
     try {
       result = metaGroupMember.removeNode(node);
-    } catch (PartitionTableUnavailableException | LogExecutionException e) {
+    } catch (PartitionTableUnavailableException
+        | LogExecutionException
+        | CheckConsistencyException e) {
+      logger.error("Can not remove node {}", node, e);
+      throw new TException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Can not remove node {}", node, e);
       throw new TException(e);
     }
 
@@ -191,8 +213,13 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
    * must tell it directly.
    */
   @Override
-  public void exile() {
-    metaGroupMember.applyRemoveNode(metaGroupMember.getThisNode());
+  public void exile(ByteBuffer removeNodeLogBuffer) {
+    logger.info("{}: start to exile.", name);
+    removeNodeLogBuffer.get();
+    RemoveNodeLog removeNodeLog = new RemoveNodeLog();
+    removeNodeLog.deserialize(removeNodeLogBuffer);
+    metaGroupMember.getPartitionTable().deserialize(removeNodeLog.getPartitionTable());
+    metaGroupMember.applyRemoveNode(removeNodeLog);
   }
 
   @Override

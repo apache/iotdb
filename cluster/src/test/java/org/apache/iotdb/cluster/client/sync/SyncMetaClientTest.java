@@ -7,10 +7,10 @@ package org.apache.iotdb.cluster.client.sync;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.rpc.TSocketWrapper;
 
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TSocket;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -54,7 +54,7 @@ public class SyncMetaClientTest {
 
       client =
           new SyncMetaClient(
-              new TBinaryProtocol(new TSocket(node.getInternalIp(), node.getDataPort())));
+              new TBinaryProtocol(TSocketWrapper.wrap(node.getInternalIp(), node.getDataPort())));
       // client without a belong pool will be closed after putBack()
       client.putBack();
       assertFalse(client.getInputProtocol().getTransport().isOpen());
@@ -99,7 +99,7 @@ public class SyncMetaClientTest {
 
       try (SyncMetaClient clientIn =
           new SyncMetaClient(
-              new TBinaryProtocol(new TSocket(node.getInternalIp(), node.getDataPort())))) {
+              new TBinaryProtocol(TSocketWrapper.wrap(node.getInternalIp(), node.getDataPort())))) {
         clientOut = clientIn;
       }
 

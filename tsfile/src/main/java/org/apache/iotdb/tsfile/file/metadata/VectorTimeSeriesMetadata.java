@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,7 +27,9 @@ import java.util.List;
 
 public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
 
+  // TimeSeriesMetadata for time column
   private final TimeseriesMetadata timeseriesMetadata;
+  // TimeSeriesMetadata for all subSensors in the vector
   private final List<TimeseriesMetadata> valueTimeseriesMetadataList;
 
   public VectorTimeSeriesMetadata(
@@ -35,6 +38,10 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
     this.valueTimeseriesMetadataList = valueTimeseriesMetadataList;
   }
 
+  /**
+   * If the vector contains only one sub sensor, just return the sub sensor's Statistics Otherwise,
+   * return the Statistics of the time column
+   */
   @Override
   public Statistics getStatistics() {
     return valueTimeseriesMetadataList.size() == 1
@@ -50,6 +57,9 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public void setModified(boolean modified) {
     timeseriesMetadata.setModified(modified);
+    for (TimeseriesMetadata subSensor : valueTimeseriesMetadataList) {
+      subSensor.setModified(modified);
+    }
   }
 
   @Override
@@ -60,8 +70,19 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public void setSeq(boolean seq) {
     timeseriesMetadata.setSeq(seq);
+    for (TimeseriesMetadata subSensor : valueTimeseriesMetadataList) {
+      subSensor.setSeq(seq);
+    }
   }
 
+  /**
+   * If the chunkMetadataLoader is MemChunkMetadataLoader, the VectorChunkMetadata is already
+   * assembled while constructing the in-memory TsFileResource, so we just return the assembled
+   * VectorChunkMetadata list.
+   *
+   * <p>Otherwise, we need to assemble the ChunkMetadata of time column and the ChunkMetadata of all
+   * the subSensors to generate the VectorChunkMetadata
+   */
   @Override
   public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
     if (timeseriesMetadata.getChunkMetadataLoader().isMemChunkMetadataLoader()) {
@@ -91,7 +112,16 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
     return null;
   }
 
+  @Override
+  public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {
+    timeseriesMetadata.setChunkMetadataLoader(chunkMetadataLoader);
+  }
+
   public List<TimeseriesMetadata> getValueTimeseriesMetadataList() {
     return valueTimeseriesMetadataList;
+  }
+
+  public TimeseriesMetadata getTimeseriesMetadata() {
+    return timeseriesMetadata;
   }
 }

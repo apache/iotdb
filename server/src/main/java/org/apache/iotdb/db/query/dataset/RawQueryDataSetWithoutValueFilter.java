@@ -57,7 +57,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
     private final ManagedSeriesReader reader;
     private final String pathName;
-    private BlockingQueue<BatchData> blockingQueue;
+    private final BlockingQueue<BatchData> blockingQueue;
 
     public ReadTask(
         ManagedSeriesReader reader, BlockingQueue<BatchData> blockingQueue, String pathName) {
@@ -256,6 +256,10 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
       long minTime = timeHeap.pollFirst();
 
+      if (withoutAnyNull && filterRowRecord(seriesNum, minTime)) {
+        continue;
+      }
+
       if (rowOffset == 0) {
         timeBAOS.write(BytesUtils.longToBytes(minTime));
       }
@@ -388,22 +392,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             }
           }
 
-          // move next
-          cachedBatchDataArray[seriesIndex].next();
-
-          // check the interrupted status of query before taking next batch
-          QueryTimeManager.checkQueryAlive(queryId);
-
-          // get next batch if current batch is empty and still have remaining batch data in queue
-          if (!cachedBatchDataArray[seriesIndex].hasCurrent()
-              && !noMoreDataInQueueArray[seriesIndex]) {
-            fillCache(seriesIndex);
-          }
-
-          // try to put the next timestamp into the heap
-          if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
-            timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
-          }
+          prepareForNext(seriesIndex);
         }
       }
 
@@ -463,6 +452,60 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     tsQueryDataSet.setBitmapList(bitmapBufferList);
 
     return tsQueryDataSet;
+  }
+
+  /** if any column in the row record is null, we filter it. */
+  private boolean filterRowRecord(int seriesNum, long minTime)
+      throws IOException, InterruptedException {
+    boolean hasNull = false;
+    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+      if (cachedBatchDataArray[seriesIndex] == null
+          || !cachedBatchDataArray[seriesIndex].hasCurrent()
+          || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+        hasNull = true;
+      } else {
+        if (TSDataType.VECTOR == cachedBatchDataArray[seriesIndex].getDataType()) {
+          for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
+            if (primitiveVal == null) {
+              hasNull = true;
+              break;
+            }
+          }
+        }
+      }
+      if (hasNull) {
+        break;
+      }
+    }
+    if (hasNull) {
+      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+        if (cachedBatchDataArray[seriesIndex] != null
+            && cachedBatchDataArray[seriesIndex].hasCurrent()
+            && cachedBatchDataArray[seriesIndex].currentTime() == minTime) {
+          prepareForNext(seriesIndex);
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private void prepareForNext(int seriesIndex) throws IOException, InterruptedException {
+    // move next
+    cachedBatchDataArray[seriesIndex].next();
+
+    // check the interrupted status of query before taking next batch
+    QueryTimeManager.checkQueryAlive(queryId);
+
+    // get next batch if current batch is empty and still have remaining batch data in queue
+    if (!cachedBatchDataArray[seriesIndex].hasCurrent() && !noMoreDataInQueueArray[seriesIndex]) {
+      fillCache(seriesIndex);
+    }
+
+    // try to put the next timestamp into the heap
+    if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
+      timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
+    }
   }
 
   protected void fillCache(int seriesIndex) throws IOException, InterruptedException {
@@ -565,7 +608,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   public Object[] nextRowInObjects() throws IOException {
     int seriesNumber = seriesReaderList.size();
 
-    Long minTime = timeHeap.pollFirst();
+    long minTime = timeHeap.pollFirst();
     Object[] rowInObjects = new Object[seriesNumber + 1];
     rowInObjects[seriesNumber] = minTime;
 

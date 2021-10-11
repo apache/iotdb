@@ -31,7 +31,9 @@ import java.util.List;
 
 public class VectorChunkMetadata implements IChunkMetadata {
 
+  // ChunkMetadata for time column
   private final IChunkMetadata timeChunkMetadata;
+  // ChunkMetadata for all subSensors in the vector
   private final List<IChunkMetadata> valueChunkMetadataList;
 
   public VectorChunkMetadata(
@@ -103,6 +105,20 @@ public class VectorChunkMetadata implements IChunkMetadata {
   }
 
   @Override
+  public boolean needSetChunkLoader() {
+    if (timeChunkMetadata.needSetChunkLoader()) {
+      return true;
+    } else {
+      for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+        if (chunkMetadata.needSetChunkLoader()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  @Override
   public void setChunkLoader(IChunkLoader chunkLoader) {
     timeChunkMetadata.setChunkLoader(chunkLoader);
     for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
@@ -154,6 +170,16 @@ public class VectorChunkMetadata implements IChunkMetadata {
   @Override
   public byte getMask() {
     return 0;
+  }
+
+  @Override
+  public boolean isTimeColumn() {
+    return false;
+  }
+
+  @Override
+  public boolean isValueColumn() {
+    return false;
   }
 
   public Chunk getTimeChunk() throws IOException {

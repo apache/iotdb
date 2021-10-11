@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
+import org.apache.thrift.transport.layered.TFramedTransport;
 
+// https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
 public class TElasticFramedTransport extends TTransport {
 
   public static class Factory extends TTransportFactory {
@@ -136,6 +138,22 @@ public class TElasticFramedTransport extends TTransport {
       writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
     }
     underlying.flush();
+  }
+
+  @Override
+  public TConfiguration getConfiguration() {
+    return underlying.getConfiguration();
+  }
+
+  @Override
+  public void updateKnownMessageSize(long size) throws TTransportException {
+    // do nothing now.
+  }
+
+  @Override
+  public void checkReadBytesAvailable(long numBytes) throws TTransportException {
+    // do nothing now.
+    // here we can do some checkm, e.g., see whether the memory is enough.
   }
 
   @Override

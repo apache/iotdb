@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.cluster.log;
 
+import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,13 +36,6 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.monitor.Timer;
-import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * IndirectLogDispatcher sends entries only to a pre-selected subset of followers instead of all
@@ -49,8 +51,8 @@ public class IndirectLogDispatcher extends LogDispatcher {
   }
 
   @Override
-  LogDispatcher.DispatcherThread newDispatcherThread(Node node,
-      BlockingQueue<SendLogRequest> logBlockingQueue) {
+  LogDispatcher.DispatcherThread newDispatcherThread(
+      Node node, BlockingQueue<SendLogRequest> logBlockingQueue) {
     return new DispatcherThread(node, logBlockingQueue);
   }
 
@@ -77,8 +79,8 @@ public class IndirectLogDispatcher extends LogDispatcher {
       directToIndirectFollowerMap = new HashMap<>();
       for (int i = 0, j = orderedNodes.size() - 1; i <= j; i++, j--) {
         if (i != j) {
-          directToIndirectFollowerMap.put(orderedNodes.get(i),
-              Collections.singletonList(orderedNodes.get(j)));
+          directToIndirectFollowerMap.put(
+              orderedNodes.get(i), Collections.singletonList(orderedNodes.get(j)));
         } else {
           directToIndirectFollowerMap.put(orderedNodes.get(i), Collections.emptyList());
         }
@@ -92,8 +94,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
 
   class DispatcherThread extends LogDispatcher.DispatcherThread {
 
-    DispatcherThread(Node receiver,
-        BlockingQueue<SendLogRequest> logBlockingDeque) {
+    DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
       super(receiver, logBlockingDeque);
     }
 

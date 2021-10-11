@@ -54,6 +54,8 @@ public interface IChunkMetadata {
 
   IChunkLoader getChunkLoader();
 
+  boolean needSetChunkLoader();
+
   void setChunkLoader(IChunkLoader chunkLoader);
 
   void setFilePath(String filePath);
@@ -71,4 +73,8 @@ public interface IChunkMetadata {
   int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException;
 
   byte getMask();
+
+  boolean isTimeColumn();
+
+  boolean isValueColumn();
 }

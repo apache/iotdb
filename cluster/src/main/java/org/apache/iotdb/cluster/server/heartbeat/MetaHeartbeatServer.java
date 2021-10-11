@@ -75,7 +75,8 @@ public class MetaHeartbeatServer extends HeartbeatServer {
       return new TServerSocket(
           new InetSocketAddress(
               metaClusterServer.getMember().getThisNode().getInternalIp(),
-              metaClusterServer.getMember().getThisNode().getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET));
+              metaClusterServer.getMember().getThisNode().getMetaPort()
+                  + ClusterUtils.META_HEARTBEAT_PORT_OFFSET));
     }
   }
 

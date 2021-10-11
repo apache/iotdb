@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LEADER_STILL_ONLINE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
 
 /**
  * ElectionHandler checks the result from a voter and decides whether the election goes on, succeeds
@@ -104,6 +105,9 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         if (voterResp < currTerm) {
           // the rejection from a node with a smaller term means the log of this node falls behind
           logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterResp);
+          onFail();
+        } else if (voterResp == RESPONSE_NODE_IS_NOT_IN_GROUP) {
+          logger.info("{}: This node has removed from the group", memberName);
           onFail();
         } else {
           // the election is rejected by a node with a bigger term, update current term to it

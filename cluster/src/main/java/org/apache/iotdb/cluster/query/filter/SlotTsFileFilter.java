@@ -29,15 +29,21 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class SlotTsFileFilter implements TsFileFilter {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotTsFileFilter.class);
-  private List<Integer> slots;
+  private Set<Integer> slots;
+
+  public SlotTsFileFilter(Set<Integer> slots) {
+    this.slots = slots;
+  }
 
   public SlotTsFileFilter(List<Integer> slots) {
-    this.slots = slots;
+    this.slots = new HashSet<>(slots);
   }
 
   @Override
@@ -45,7 +51,7 @@ public class SlotTsFileFilter implements TsFileFilter {
     return fileNotInSlots(resource, slots);
   }
 
-  private static boolean fileNotInSlots(TsFileResource resource, List<Integer> nodeSlots) {
+  private static boolean fileNotInSlots(TsFileResource resource, Set<Integer> nodeSlots) {
     Pair<String, Long> sgNameAndPartitionIdPair =
         FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(resource);
     int slot =

@@ -69,8 +69,6 @@ public class VectorTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
-      } else if (isValueMarked(indices.get(arrayIndex)[elementIndex], i)) {
-        bitMaps.get(i).get(arrayIndex).unmark(elementIndex);
       }
       switch (dataTypes.get(i)) {
         case TEXT:
@@ -116,10 +114,21 @@ public class VectorTVList extends TVList {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getVectorByValueIndex(valueIndex);
+    return getVectorByValueIndex(valueIndex, null);
   }
 
-  private Object getVectorByValueIndex(int valueIndex) {
+  public Object getVector(List<Integer> timeDuplicatedIndexList) {
+    int[] validIndexesForTimeDuplicatedRows = new int[values.size()];
+    for (int i = 0; i < values.size(); i++) {
+      validIndexesForTimeDuplicatedRows[i] =
+          getValidRowIndexForTimeDuplicatedRows(timeDuplicatedIndexList, i);
+    }
+    return getVectorByValueIndex(
+        timeDuplicatedIndexList.get(timeDuplicatedIndexList.size() - 1),
+        validIndexesForTimeDuplicatedRows);
+  }
+
+  private Object getVectorByValueIndex(int valueIndex, int[] validIndexesForTimeDuplicatedRows) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -128,6 +137,10 @@ public class VectorTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
+      if (validIndexesForTimeDuplicatedRows != null) {
+        arrayIndex = validIndexesForTimeDuplicatedRows[i] / ARRAY_SIZE;
+        elementIndex = validIndexesForTimeDuplicatedRows[i] % ARRAY_SIZE;
+      }
       if (bitMaps != null
           && bitMaps.get(i) != null
           && bitMaps.get(i).get(arrayIndex).isMarked(elementIndex)) {
@@ -497,7 +510,12 @@ public class VectorTVList extends TVList {
     pivotIndex = getValueIndex(pos);
   }
 
-  /* Get the row index value in index column. */
+  /**
+   * Get the row index value in index column
+   *
+   * @param index row index
+   */
+  @Override
   public int getValueIndex(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
@@ -505,6 +523,27 @@ public class VectorTVList extends TVList {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     return indices.get(arrayIndex)[elementIndex];
+  }
+
+  /**
+   * Get the valid original row index in a column by a given time duplicated original row index
+   * list.
+   *
+   * @param timeDuplicatedOriginRowIndexList The row index list that the time of all indexes are
+   *     same.
+   * @param columnIndex The index of a given column.
+   * @return The original row index of the latest non-null value, or the first row index if all
+   *     values in given columns are null.
+   */
+  public int getValidRowIndexForTimeDuplicatedRows(
+      List<Integer> timeDuplicatedOriginRowIndexList, int columnIndex) {
+    int validRowIndex = timeDuplicatedOriginRowIndexList.get(0);
+    for (int originRowIndex : timeDuplicatedOriginRowIndexList) {
+      if (!isValueMarked(originRowIndex, columnIndex)) {
+        validRowIndex = originRowIndex;
+      }
+    }
+    return validRowIndex;
   }
 
   @Override
@@ -525,9 +564,19 @@ public class VectorTVList extends TVList {
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     if (this.dataTypes.size() == 1) {
-      return new TimeValuePair(getTime(index), ((TsPrimitiveType) getVector(index)).getVector()[0]);
+      return new TimeValuePair(time, ((TsPrimitiveType) getVector(index)).getVector()[0]);
     } else {
-      return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
+      return new TimeValuePair(time, (TsPrimitiveType) getVector(index));
+    }
+  }
+
+  @Override
+  public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
+      List<Integer> indexList, long time, Integer floatPrecision, TSEncoding encoding) {
+    if (this.dataTypes.size() == 1) {
+      return new TimeValuePair(time, ((TsPrimitiveType) getVector(indexList)).getVector()[0]);
+    } else {
+      return new TimeValuePair(time, (TsPrimitiveType) getVector(indexList));
     }
   }
 

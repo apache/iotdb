@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.cluster.server;
 
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
@@ -37,6 +34,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
@@ -53,7 +51,9 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -63,6 +63,10 @@ import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * MetaCluster manages the whole cluster's metadata, such as what nodes are in the cluster and the
@@ -112,10 +116,12 @@ public class MetaClusterServer extends RaftServer
     metaHeartbeatServer.start();
     ioTDB = new IoTDB();
     IoTDB.setMetaManager(CMManager.getInstance());
+    IoTDB.setClusterMode();
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(member);
     ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
     ioTDB.active();
     member.start();
+    // JMX based DBA API
     registerManager.register(ClusterMonitor.INSTANCE);
   }
 
@@ -229,14 +235,13 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void requestCommitIndex(
-      Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
-    asyncService.requestCommitIndex(header, resultHandler);
+  public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
+    asyncService.checkAlive(resultHandler);
   }
 
   @Override
-  public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
-    asyncService.checkAlive(resultHandler);
+  public void collectMigrationStatus(AsyncMethodCallback<ByteBuffer> resultHandler) {
+    asyncService.collectMigrationStatus(resultHandler);
   }
 
   @Override
@@ -266,13 +271,13 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void exile(AsyncMethodCallback<Void> resultHandler) {
-    asyncService.exile(resultHandler);
+  public void exile(ByteBuffer removeNodeLog, AsyncMethodCallback<Void> resultHandler) {
+    asyncService.exile(removeNodeLog, resultHandler);
   }
 
   @Override
   public void matchTerm(
-      long index, long term, Node header, AsyncMethodCallback<Boolean> resultHandler) {
+      long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler) {
     asyncService.matchTerm(index, term, header, resultHandler);
   }
 
@@ -292,8 +297,8 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void exile() {
-    syncService.exile();
+  public void exile(ByteBuffer removeNodeLog) {
+    syncService.exile(removeNodeLog);
   }
 
   @Override
@@ -304,6 +309,11 @@ public class MetaClusterServer extends RaftServer
   @Override
   public Node checkAlive() {
     return syncService.checkAlive();
+  }
+
+  @Override
+  public ByteBuffer collectMigrationStatus() {
+    return syncService.collectMigrationStatus();
   }
 
   @Override
@@ -337,8 +347,13 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public RequestCommitIndexResponse requestCommitIndex(Node header) throws TException {
+  public RequestCommitIndexResponse requestCommitIndex(RaftNode header) throws TException {
     return syncService.requestCommitIndex(header);
+  }
+
+  public void requestCommitIndex(
+      RaftNode header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
+    asyncService.requestCommitIndex(header, resultHandler);
   }
 
   @Override
@@ -347,7 +362,7 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public boolean matchTerm(long index, long term, Node header) {
+  public boolean matchTerm(long index, long term, RaftNode header) {
     return syncService.matchTerm(index, term, header);
   }
 
@@ -383,14 +398,26 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers,
+  public void appendEntryIndirect(
+      AppendEntryRequest request,
+      List<Node> subReceivers,
       AsyncMethodCallback<AppendEntryResult> resultHandler) {
     asyncService.appendEntryIndirect(request, subReceivers, resultHandler);
   }
 
   @Override
-  public void acknowledgeAppendEntry(AppendEntryResult ack,
-      AsyncMethodCallback<Void> resultHandler) {
+  public void acknowledgeAppendEntry(
+      AppendEntryResult ack, AsyncMethodCallback<Void> resultHandler) {
     asyncService.acknowledgeAppendEntry(ack, resultHandler);
+  }
+
+  @TestOnly
+  public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
+    this.member = metaGroupMember;
+  }
+
+  @TestOnly
+  public IoTDB getIoTDB() {
+    return ioTDB;
   }
 }

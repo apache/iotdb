@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -69,7 +70,7 @@ public class RemoteSeriesReaderByTimestampTest {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void fetchSingleSeriesByTimestamps(
-                  Node header,
+                  RaftNode header,
                   long readerId,
                   List<Long> timestamps,
                   AsyncMethodCallback<ByteBuffer> resultHandler)

@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.util.List;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -34,6 +29,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
@@ -43,8 +39,15 @@ import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.util.List;
 
 public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
@@ -68,7 +71,8 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+  public void appendEntry(
+      AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
     try {
       resultHandler.onComplete(member.appendEntry(request));
     } catch (UnknownLogTypeException e) {
@@ -77,7 +81,8 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+  public void appendEntries(
+      AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
     try {
       resultHandler.onComplete(member.appendEntries(request));
     } catch (Exception e) {
@@ -87,7 +92,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
   @Override
   public void requestCommitIndex(
-      Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
+      RaftNode header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
     long commitIndex;
     long commitTerm;
     long curTerm;
@@ -140,7 +145,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
   @Override
   public void matchTerm(
-      long index, long term, Node header, AsyncMethodCallback<Boolean> resultHandler) {
+      long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(member.matchLog(index, term));
   }
 
@@ -175,14 +180,16 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void acknowledgeAppendEntry(AppendEntryResult ack,
-      AsyncMethodCallback<Void> resultHandler) {
+  public void acknowledgeAppendEntry(
+      AppendEntryResult ack, AsyncMethodCallback<Void> resultHandler) {
     member.acknowledgeAppendLog(ack);
     resultHandler.onComplete(null);
   }
 
   @Override
-  public void appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers,
+  public void appendEntryIndirect(
+      AppendEntryRequest request,
+      List<Node> subReceivers,
       AsyncMethodCallback<AppendEntryResult> resultHandler) {
     try {
       resultHandler.onComplete(member.appendEntryIndirect(request, subReceivers));

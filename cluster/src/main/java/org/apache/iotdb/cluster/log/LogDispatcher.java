@@ -71,7 +71,7 @@ public class LogDispatcher {
   ExecutorService executorService;
   private static ExecutorService serializationService =
       Executors.newFixedThreadPool(
-          Runtime.getRuntime().availableProcessors(),
+          Runtime.getRuntime().availableProcessors() * 2,
           new ThreadFactoryBuilder().setDaemon(true).setNameFormat("DispatcherEncoder-%d").build());
   public static int bindingThreadNum = 1;
 
@@ -333,7 +333,8 @@ public class LogDispatcher {
 
       request.setEntries(logList);
       // set index for raft
-      request.setPrevLogIndex(currBatch.get(firstIndex).getVotingLog().getLog().getCurrLogIndex() - 1);
+      request.setPrevLogIndex(
+          currBatch.get(firstIndex).getVotingLog().getLog().getCurrLogIndex() - 1);
       try {
         request.setPrevLogTerm(currBatch.get(firstIndex).getAppendEntryRequest().prevLogTerm);
       } catch (Exception e) {

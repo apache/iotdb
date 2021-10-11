@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.cache.Accountable;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
@@ -39,9 +40,14 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   private long startOffsetOfChunkMetaDataList;
   /**
    * 0 means this time series has only one chunk, no need to save the statistic again in chunk
-   * metadata 1 means this time series has more than one chunk, should save the statistic again in
-   * chunk metadata if the 8th bit is 1, it means it is the time column of a vector series if the
-   * 7th bit is 1, it means it is the value column of a vector series
+   * metadata;
+   *
+   * <p>1 means this time series has more than one chunk, should save the statistic again in chunk
+   * metadata;
+   *
+   * <p>if the 8th bit is 1, it means it is the time column of a vector series;
+   *
+   * <p>if the 7th bit is 1, it means it is the value column of a vector series
    */
   private byte timeSeriesMetadataType;
 
@@ -139,6 +145,14 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
 
   public byte getTimeSeriesMetadataType() {
     return timeSeriesMetadataType;
+  }
+
+  public boolean isTimeColumn() {
+    return timeSeriesMetadataType == TsFileConstant.TIME_COLUMN_MASK;
+  }
+
+  public boolean isValueColumn() {
+    return timeSeriesMetadataType == TsFileConstant.VALUE_COLUMN_MASK;
   }
 
   public void setTimeSeriesMetadataType(byte timeSeriesMetadataType) {

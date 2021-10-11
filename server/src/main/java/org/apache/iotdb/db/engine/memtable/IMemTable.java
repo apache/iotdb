@@ -58,6 +58,9 @@ public interface IMemTable {
   void addTVListRamCost(long cost);
 
   /** only used when mem control enabled */
+  void releaseTVListRamCost(long cost);
+
+  /** only used when mem control enabled */
   long getTVListsRamCost();
 
   /**
@@ -71,9 +74,20 @@ public interface IMemTable {
 
   long getTotalPointsNum();
 
+  /**
+   * insert into this memtable
+   *
+   * @param insertRowPlan insertRowPlan
+   */
   void insert(InsertRowPlan insertRowPlan);
 
-  /** [start, end) */
+  /**
+   * insert tablet into this memtable
+   *
+   * @param insertTabletPlan insertTabletPlan
+   * @param start included
+   * @param end excluded
+   */
   void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException;
 
@@ -81,7 +95,7 @@ public interface IMemTable {
       String deviceId,
       String measurement,
       IMeasurementSchema schema,
-      long timeLowerBound,
+      long ttlLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
 
@@ -110,6 +124,11 @@ public interface IMemTable {
 
   boolean isSignalMemTable();
 
+  void setShouldFlush();
+
+  boolean shouldFlush();
+
+  /** release resource of this memtable */
   void release();
 
   /** must guarantee the device exists in the work memtable only used when mem control enabled */
@@ -121,7 +140,12 @@ public interface IMemTable {
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);
 
+  /** only used when mem control enabled */
+  void releaseTextDataSize(long textDataDecrement);
+
   long getMaxPlanIndex();
 
   long getMinPlanIndex();
+
+  long getCreatedTime();
 }

@@ -312,7 +312,7 @@ public class ExportCsv extends AbstractCsvTool {
         break;
       case "timestamp":
       case "long":
-      case "nubmer":
+      case "number":
         bw.write(time + ",");
         break;
       default:

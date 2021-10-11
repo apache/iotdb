@@ -30,23 +30,19 @@
 - Boost
 - OpenSSL 1.0+
 
-
-
 ### 安装方法
 
-编译C++客户端之前首先需要本地编译Thrift库，compile-tools模块负责编译Thrift，之后再编译client-cpp。
+编译 C++客户端之前首先需要本地编译 Thrift 库，compile-tools 模块负责编译 Thrift，之后再编译 client-cpp。
 
-
-
-#### 在Mac上编译Thrift
+#### 在 Mac 上编译 Thrift
 
 - Bison
 
-Mac 环境下预安装了Bison 2.3版本，但该版本过低不能够用来编译Thrift。使用Bison 2.3版本是会报以下错误：
+Mac 环境下预安装了 Bison 2.3 版本，但该版本过低不能够用来编译 Thrift。使用 Bison 2.3 版本是会报以下错误：
 
   ```invalid directive: '%code'```
 
-使用下面brew 命令更新bison版本    
+使用下面 brew 命令更新 bison 版本    
 
 ```     shell
 brew install bison     
@@ -61,26 +57,23 @@ echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
 
 - Boost
 
-确保安装较新的Boost版本：
+确保安装较新的 Boost 版本：
 
 ```shell
 brew install boost
 brew link boost
 ```
 
-
 - OpenSSL
 
-确保openssl库已安装，默认的openssl头文件路径为"/usr/local/opt/openssl/include"
-如果在编译Thrift过程中出现找不到openssl的错误，尝试添加
+确保 openssl 库已安装，默认的 openssl 头文件路径为"/usr/local/opt/openssl/include"
+如果在编译 Thrift 过程中出现找不到 openssl 的错误，尝试添加
 
 `-Dopenssl.include.dir=""`
 
+#### 在 Linux 上编译 Thrift
 
-
-#### 在Linux上编译Thrift
-
-Linux下需要确保g++已被安装。
+Linux 下需要确保 g++已被安装。
 
 一条命令安装所有依赖库：
 
@@ -96,41 +89,36 @@ CentOS:
 yum install gcc g++ bison flex boost-devel
 ```
 
+#### 在 Windows 上编译 Thrift
 
+保证你的 Windows 系统已经搭建好了完整的 C/C++的编译构建环境。可以是 MSVC，MinGW 等。
 
-#### 在Windows上编译Thrift
-
-保证你的Windows系统已经搭建好了完整的C/C++的编译构建环境。可以是MSVC，MinGW等。
-
-如使用MS Visual Studio，在安装时需要勾选 Visual Studio C/C++ IDE and compiler(supporting CMake, Clang, MinGW)。
+如使用 MS Visual Studio，在安装时需要勾选 Visual Studio C/C++ IDE and compiler(supporting CMake, Clang, MinGW)。
 
 - Flex 和 Bison
 
-Windows版的 Flex 和 Bison 可以从 SourceForge下载: https://sourceforge.net/projects/winflexbison/
+Windows 版的 Flex 和 Bison 可以从 SourceForge 下载：https://sourceforge.net/projects/winflexbison/
 
-下载后需要将可执行文件重命名为flex.exe和bison.exe以保证编译时能够被找到，添加可执行文件的目录到PATH环境变量中。
+下载后需要将可执行文件重命名为 flex.exe 和 bison.exe 以保证编译时能够被找到，添加可执行文件的目录到 PATH 环境变量中。
 
 - Boost
 
-Boost官网下载新版本Boost: https://www.boost.org/users/download/
+Boost 官网下载新版本 Boost: https://www.boost.org/users/download/
 
-依次执行bootstrap.bat 和 b2.exe，本地编译boost
+依次执行 bootstrap.bat 和 b2.exe，本地编译 boost
 
 ```shell
 bootstrap.bat
 .\b2.exe
 ```
 
-为了帮助CMake本地安装好的Boost，在编译client-cpp的mvn命令中需添加： 
+为了帮助 CMake 本地安装好的 Boost，在编译 client-cpp 的 mvn 命令中需添加： 
 
 `-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`
 
-
-
 #### CMake 生成器
 
-CMake需要根据不同编译平台使用不同的生成器。CMake支持的生成器列表如下(`cmake --help`的结果)：
-
+CMake 需要根据不同编译平台使用不同的生成器。CMake 支持的生成器列表如下 (`cmake --help`的结果）：
 
 ```
   Visual Studio 16 2019        = Generates Visual Studio 2019 project files.
@@ -163,25 +151,20 @@ CMake需要根据不同编译平台使用不同的生成器。CMake支持的生�
   CodeBlocks - NMake Makefiles = Generates CodeBlocks project files.
 ```
 
-编译client-cpp 时的mvn命令中添加 -Dcmake.generator="" 选项来指定使用的生成器名称。
+编译 client-cpp 时的 mvn 命令中添加 -Dcmake.generator="" 选项来指定使用的生成器名称。
  `mvn package -Dcmake.generator="Visual Studio 15 2017 [arch]"`
 
+#### 编译 C++ 客户端
 
-
-#### 编译C++ 客户端
-
-Maven 命令中添加"-P client-cpp" 选项编译client-cpp模块。client-cpp需要依赖编译好的thrift，即compile-tools模块。
-
-
-
+Maven 命令中添加"-P client-cpp" 选项编译 client-cpp 模块。client-cpp 需要依赖编译好的 thrift，即 compile-tools 模块。
 
 #### 编译及测试
 
-完整的C++客户端命令如下：
+完整的 C++客户端命令如下：
 
 `mvn  package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
 
-注意在Windows下需提前安装好Boost，并添加以下Maven 编译选项:
+注意在 Windows 下需提前安装好 Boost，并添加以下 Maven 编译选项：
 
 ```shell
 -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
@@ -194,11 +177,9 @@ mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib" -DskipTests
 ```
 
+编译成功后，打包好的。zip 文件将位于："client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip"
 
-
-编译成功后，打包好的.zip文件将位于："client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip"
-
-解压后的目录结构如下图所示(Mac)：
+解压后的目录结构如下图所示 (Mac)：
 
 ```shell
 .
@@ -214,29 +195,23 @@ mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am
 |       +-- libiotdb_session.dylib
 ```
 
-
-
 ### Q&A
 
-#### Mac相关问题
+#### Mac 相关问题
 
-本地Maven编译Thrift时如出现以下链接的问题，可以尝试将xcode-commandline版本从12降低到11.5
+本地 Maven 编译 Thrift 时如出现以下链接的问题，可以尝试将 xcode-commandline 版本从 12 降低到 11.5
 
 https://stackoverflow.com/questions/63592445/ld-unsupported-tapi-file-type-tapi-tbd-in-yaml-file/65518087#65518087
 
+#### Windows 相关问题
 
-
-#### Windows相关问题
-
-Maven编译Thrift时需要使用wget下载远端文件，可能出现以下报错：
+Maven 编译 Thrift 时需要使用 wget 下载远端文件，可能出现以下报错：
 
 ```
 Failed to delete cached file C:\Users\Administrator\.m2\repository\.cache\download-maven-plugin\index.ser
 ```
 
-解决方法:
+解决方法：
 
 - 尝试删除 ".m2\repository\\.cache\" 目录并重试。
-- 在添加 pom文件对应的 download-maven-plugin 中添加 "\<skipCache>true\</skipCache>"
-
-
+- 在添加 pom 文件对应的 download-maven-plugin 中添加 "\<skipCache>true\</skipCache>"

@@ -23,6 +23,13 @@ var config = {
         ["meta", {name: "Keywords", content: "TSDB, time series, time series database, IoTDB, IoT database, IoT data management,时序数据库, 时间序列管理, IoTDB, 物联网数据库, 实时数据库, 物联网数据管理, 物联网数据"}],
         ["meta", {name: "baidu-site-verification", content: "wfKETzB3OT"}],
         ["meta", {name: "google-site-verification", content: "mZWAoRY0yj_HAr-s47zHCGHzx5Ju-RVm5wDbPnwQYFo"}],
+		["script", {async: true, src: "https://www.googletagmanager.com/gtag/js?id=G-5MM3J6X84E"}],
+		['script', {}, `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-5MM3J6X84E');`
+		],
       ],
 
     // 静态网站部署的目录
@@ -45,7 +52,7 @@ var config = {
         repo: 'https://github.com/apache/iotdb.git',
 
         // github 地址的链接名
-        repoLabel: 'gitHub',
+        repoLabel: 'GitHub',
 
 		logo: '/img/logo.png',
 
@@ -70,18 +77,18 @@ var config = {
 			algolia: {},
 			nav: [
 				 {
-					text: 'Document',
+					text: 'Documentation',
 					items: [
-						{ text: 'In progress', link: '/UserGuide/Master/QuickStart/QuickStart' },
-						{ text: 'V0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
-						{ text: 'V0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
-						{ text: 'V0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
-						{ text: 'V0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
-						{ text: 'V0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
+						{ text: 'latest', link: '/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
+						{ text: 'v0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
+						{ text: 'v0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
+						{ text: 'v0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
+						{ text: 'v0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  {
-					text: 'System design',
+					text: 'Design',
 					link: '/SystemDesign/Architecture/Architecture'
 				  },
 				  {
@@ -551,10 +558,10 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Native API'],
 							['API/Programming-Other-Languages','Other Languages'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)']
 						]
 					},
 					{
@@ -608,7 +615,7 @@ var config = {
 						title: 'Cluster Setup',
 						children: [
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+							//['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -679,6 +686,7 @@ var config = {
 					},
 					{
 						title: 'IoTDB-SQL Language',
+						sidebarDepth: 1,
 						children: [
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','DDL (Data Definition Language)'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','DML (Data Manipulation Language)'],
@@ -688,12 +696,13 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-Python-Native-API','Python Native API'],
 							['API/Programming-Cpp-Native-API','C++ Native API'],
 							['API/Programming-Go-Native-API','Go Native API'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Time-zone','Time zone']
 						]
 					},
 					{
@@ -702,7 +711,9 @@ var config = {
 							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							// The trigger module has not been implemented yet,
 							// so the website should not show users how to use it to avoid misleading.
-							// ['Advanced-Features/Triggers','Trigger']
+							// ['Advanced-Features/Triggers','Trigger'],
+              ['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
+              ['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
 						]
 					},
 					{
@@ -1346,10 +1357,10 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Java 原生接口'],
 							['API/Programming-Other-Languages','其他语言原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (不推荐)']
 						]
 					},
 					{
@@ -1403,7 +1414,7 @@ var config = {
 						title: '集群搭建',
 						children: [
 							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
+							//['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -1468,6 +1479,7 @@ var config = {
 					},
 					{
 						title: 'IoTDB-SQL 语言',
+						sidebarDepth: 1,
 						children: [
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
@@ -1477,21 +1489,24 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Time-zone','时区']
 						]
 					},
 					{
 						title: '高级功能',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-              // The trigger module has not been implemented yet,
-              // so the website should not show users how to use it to avoid misleading.
-              // ['Advanced-Features/Triggers','触发器']
+						  // The trigger module has not been implemented yet,
+						  // so the website should not show users how to use it to avoid misleading.
+						  // ['Advanced-Features/Triggers','触发器'],
+              ['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
+              ['Advanced-Features/Continuous-Query','连续查询(CQ)'],
 						]
 					},
 					{
@@ -1554,6 +1569,12 @@ var config = {
 							['Appendix/Config-Manual','附录1: 配置参数'],
 							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
 							['Appendix/Status-Codes','附录3: 状态码']
+						]
+					},
+					{
+						title: '时间序列数据库比较',
+						children: [
+							['Comparison/TSDB-Comparison','比较']
 						]
 					}
 				],

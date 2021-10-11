@@ -35,6 +35,7 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,11 +43,8 @@ import java.util.Objects;
 public class VectorMeasurementSchema
     implements IMeasurementSchema, Comparable<VectorMeasurementSchema>, Serializable {
 
-  public static final String VECTOR_NAME_PREFIX = "$#$";
-
-  // this is equal to the time id in this vector
   private String vectorMeausurementId;
-  private String[] measurements;
+  private Map<String, Integer> measurementsToIndexMap;
   private byte[] types;
   private byte[] encodings;
   private TSEncodingBuilder[] encodingConverters;
@@ -61,7 +59,10 @@ public class VectorMeasurementSchema
       TSEncoding[] encodings,
       CompressionType compressionType) {
     this.vectorMeausurementId = measurementId;
-    this.measurements = measurements;
+    this.measurementsToIndexMap = new HashMap<>();
+    for (int i = 0; i < measurements.length; i++) {
+      measurementsToIndexMap.put(measurements[i], i);
+    }
     byte[] typesInByte = new byte[types.length];
     for (int i = 0; i < types.length; i++) {
       typesInByte[i] = types[i].serialize();
@@ -77,17 +78,12 @@ public class VectorMeasurementSchema
     this.compressor = compressionType.serialize();
   }
 
-  public VectorMeasurementSchema(
-      String[] measurements, byte[] types, byte[] encodings, byte compressor) {
-    this.measurements = measurements;
-    this.types = types;
-    this.encodings = encodings;
-    this.encodingConverters = new TSEncodingBuilder[measurements.length];
-    this.compressor = compressor;
-  }
-
-  public VectorMeasurementSchema(String[] measurements, TSDataType[] types) {
-    this.measurements = measurements;
+  public VectorMeasurementSchema(String measurementId, String[] measurements, TSDataType[] types) {
+    this.vectorMeausurementId = measurementId;
+    this.measurementsToIndexMap = new HashMap<>();
+    for (int i = 0; i < measurements.length; i++) {
+      measurementsToIndexMap.put(measurements[i], i);
+    }
     this.types = new byte[types.length];
     for (int i = 0; i < types.length; i++) {
       this.types[i] = types[i].serialize();
@@ -147,8 +143,7 @@ public class VectorMeasurementSchema
   public Encoder getTimeEncoder() {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType =
-        TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
@@ -164,6 +159,10 @@ public class VectorMeasurementSchema
 
   @Override
   public List<String> getValueMeasurementIdList() {
+    String[] measurements = new String[measurementsToIndexMap.size()];
+    for (Map.Entry<String, Integer> entry : measurementsToIndexMap.entrySet()) {
+      measurements[entry.getValue()] = entry.getKey();
+    }
     return Arrays.asList(measurements);
   }
 
@@ -203,18 +202,28 @@ public class VectorMeasurementSchema
 
   @Override
   public int getMeasurementIdColumnIndex(String measurementId) {
-    return getValueMeasurementIdList().indexOf(measurementId);
+    return measurementsToIndexMap.getOrDefault(measurementId, -1);
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return measurementsToIndexMap.size();
+  }
+
+  @Override
+  public boolean isCompatible(String measurementId) {
+    return measurementsToIndexMap.containsKey(measurementId);
   }
 
   @Override
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
-    byteLen +=
-        ReadWriteIOUtils.write(vectorMeausurementId.substring(VECTOR_NAME_PREFIX.length()), buffer);
-    byteLen += ReadWriteIOUtils.write(measurements.length, buffer);
+    byteLen += ReadWriteIOUtils.write(vectorMeausurementId, buffer);
+    byteLen += ReadWriteIOUtils.write(measurementsToIndexMap.size(), buffer);
 
-    for (String measurementId : measurements) {
-      byteLen += ReadWriteIOUtils.write(measurementId, buffer);
+    for (Map.Entry<String, Integer> entry : measurementsToIndexMap.entrySet()) {
+      byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
+      byteLen += ReadWriteIOUtils.write(entry.getValue(), buffer);
     }
     for (byte type : types) {
       byteLen += ReadWriteIOUtils.write(type, buffer);
@@ -230,13 +239,12 @@ public class VectorMeasurementSchema
   @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    byteLen +=
-        ReadWriteIOUtils.write(
-            vectorMeausurementId.substring(VECTOR_NAME_PREFIX.length()), outputStream);
-    byteLen += ReadWriteIOUtils.write(measurements.length, outputStream);
+    byteLen += ReadWriteIOUtils.write(vectorMeausurementId, outputStream);
+    byteLen += ReadWriteIOUtils.write(measurementsToIndexMap.size(), outputStream);
 
-    for (String measurementId : measurements) {
-      byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
+    for (Map.Entry<String, Integer> entry : measurementsToIndexMap.entrySet()) {
+      byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      byteLen += ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
     for (byte type : types) {
       byteLen += ReadWriteIOUtils.write(type, outputStream);
@@ -268,15 +276,15 @@ public class VectorMeasurementSchema
   public static VectorMeasurementSchema deserializeFrom(InputStream inputStream)
       throws IOException {
     VectorMeasurementSchema vectorMeasurementSchema = new VectorMeasurementSchema();
-    vectorMeasurementSchema.vectorMeausurementId =
-        VECTOR_NAME_PREFIX + ReadWriteIOUtils.readString(inputStream);
+    vectorMeasurementSchema.vectorMeausurementId = ReadWriteIOUtils.readString(inputStream);
 
     int measurementSize = ReadWriteIOUtils.readInt(inputStream);
-    String[] measurements = new String[measurementSize];
+    Map<String, Integer> measurementsToIndexMap = new HashMap<>();
     for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = ReadWriteIOUtils.readString(inputStream);
+      measurementsToIndexMap.put(
+          ReadWriteIOUtils.readString(inputStream), ReadWriteIOUtils.readInt(inputStream));
     }
-    vectorMeasurementSchema.measurements = measurements;
+    vectorMeasurementSchema.measurementsToIndexMap = measurementsToIndexMap;
 
     byte[] types = new byte[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
@@ -296,14 +304,14 @@ public class VectorMeasurementSchema
 
   public static VectorMeasurementSchema deserializeFrom(ByteBuffer buffer) {
     VectorMeasurementSchema vectorMeasurementSchema = new VectorMeasurementSchema();
-    vectorMeasurementSchema.vectorMeausurementId =
-        VECTOR_NAME_PREFIX + ReadWriteIOUtils.readString(buffer);
+    vectorMeasurementSchema.vectorMeausurementId = ReadWriteIOUtils.readString(buffer);
     int measurementSize = ReadWriteIOUtils.readInt(buffer);
-    String[] measurements = new String[measurementSize];
+    Map<String, Integer> measurementsToIndexMap = new HashMap<>();
     for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = ReadWriteIOUtils.readString(buffer);
+      measurementsToIndexMap.put(
+          ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readInt(buffer));
     }
-    vectorMeasurementSchema.measurements = measurements;
+    vectorMeasurementSchema.measurementsToIndexMap = measurementsToIndexMap;
 
     byte[] types = new byte[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
@@ -332,36 +340,38 @@ public class VectorMeasurementSchema
     VectorMeasurementSchema that = (VectorMeasurementSchema) o;
     return Arrays.equals(types, that.types)
         && Arrays.equals(encodings, that.encodings)
-        && Arrays.equals(measurements, that.measurements)
+        && Objects.equals(vectorMeausurementId, that.vectorMeausurementId)
         && Objects.equals(compressor, that.compressor);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(types, encodings, measurements, compressor);
+    return Objects.hash(vectorMeausurementId, types, encodings, compressor);
   }
 
-  /** compare by first measurementID. */
+  /** compare by vector name */
   @Override
   public int compareTo(VectorMeasurementSchema o) {
     if (equals(o)) {
       return 0;
     } else {
-      return this.measurements[0].compareTo(o.measurements[0]);
+      return this.vectorMeausurementId.compareTo(o.vectorMeausurementId);
     }
   }
 
   @Override
   public String toString() {
     StringContainer sc = new StringContainer("");
-    for (int i = 0; i < measurements.length; i++) {
+    sc.addTail(vectorMeausurementId, ",");
+    // string is not in real order
+    for (Map.Entry<String, Integer> entry : measurementsToIndexMap.entrySet()) {
       sc.addTail(
           "[",
-          measurements[i],
+          entry.getKey(),
           ",",
-          TSDataType.deserialize(types[i]).toString(),
+          TSDataType.deserialize(types[entry.getValue()]).toString(),
           ",",
-          TSEncoding.deserialize(encodings[i]).toString());
+          TSEncoding.deserialize(encodings[entry.getValue()]).toString());
       sc.addTail("],");
     }
     sc.addTail(CompressionType.deserialize(compressor).toString());

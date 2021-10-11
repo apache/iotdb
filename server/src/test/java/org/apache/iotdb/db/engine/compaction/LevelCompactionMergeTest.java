@@ -35,6 +35,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
@@ -47,6 +49,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -210,9 +213,6 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     long count = 0L;
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        System.out.println(batchData.getTimeByIndex(i));
-      }
       count += batchData.length();
     }
     assertEquals(489, count);
@@ -225,8 +225,151 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(prevPageLimit);
   }
 
+  /** test append chunk merge, the chunk is already large than merge_chunk_point_number */
+  @Test
+  public void testCompactionAppendChunkMerge() throws IOException {
+    int prevMergeChunkPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(1);
+
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionTsFileManagement.addAll(seqResources, true);
+    levelCompactionTsFileManagement.addAll(unseqResources, false);
+    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    CompactionMergeTask compactionMergeTask =
+        levelCompactionTsFileManagement
+        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+    compactionMergeWorking = true;
+    compactionMergeTask.call();
+    while (compactionMergeWorking) {
+      // wait
+    }
+    TsFileResource newTsFileResource =
+        levelCompactionTsFileManagement.getTsFileListByTimePartition(true, 0).get(0);
+    TsFileSequenceReader tsFileSequenceReader =
+        new TsFileSequenceReader(newTsFileResource.getTsFilePath());
+    Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
+        tsFileSequenceReader.readChunkMetadataInDevice(deviceIds[0]);
+    for (List<ChunkMetadata> chunkMetadataList : sensorChunkMetadataListMap.values()) {
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        assertEquals(20, chunkMetadata.getNumOfPoints());
+      }
+    }
+    tsFileSequenceReader.close();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMergeChunkPointNumberThreshold(prevMergeChunkPointNumberThreshold);
+  }
+
+  /** test not append chunk merge, the chunk is smaller than merge_chunk_point_number */
+  @Test
+  public void testCompactionNoAppendChunkMerge() throws IOException {
+    int prevMergeChunkPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(100000);
+
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionTsFileManagement.addAll(seqResources, true);
+    levelCompactionTsFileManagement.addAll(unseqResources, false);
+    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    CompactionMergeTask compactionMergeTask =
+        levelCompactionTsFileManagement
+        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+    compactionMergeWorking = true;
+    compactionMergeTask.call();
+    while (compactionMergeWorking) {
+      // wait
+    }
+    TsFileResource newTsFileResource =
+        levelCompactionTsFileManagement.getTsFileListByTimePartition(true, 0).get(0);
+    TsFileSequenceReader tsFileSequenceReader =
+        new TsFileSequenceReader(newTsFileResource.getTsFilePath());
+    Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
+        tsFileSequenceReader.readChunkMetadataInDevice(deviceIds[0]);
+    for (List<ChunkMetadata> chunkMetadataList : sensorChunkMetadataListMap.values()) {
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        assertEquals(500, chunkMetadata.getNumOfPoints());
+      }
+    }
+    tsFileSequenceReader.close();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMergeChunkPointNumberThreshold(prevMergeChunkPointNumberThreshold);
+  }
+
   /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack() {
+  private void closeCompactionMergeCallBack(
+      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
     this.compactionMergeWorking = false;
+  }
+
+  @Test
+  public void testCompactionDiffTimeSeries()
+      throws IOException, WriteProcessException, IllegalPathException {
+    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
+    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
+    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
+    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(2);
+    List<TsFileResource> compactionFiles = prepareTsFileResources();
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionTsFileManagement.addAll(compactionFiles, true);
+    QueryContext context = new QueryContext();
+    PartialPath path =
+        new PartialPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[1].getMeasurementId());
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[1].getType(),
+            context,
+            levelCompactionTsFileManagement.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        count++;
+      }
+    }
+    assertEquals(count, 1);
+
+    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    CompactionMergeTask compactionOnePartitionUtil =
+        levelCompactionTsFileManagement
+        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+    compactionMergeWorking = true;
+    compactionOnePartitionUtil.call();
+    while (compactionMergeWorking) {
+      // wait
+    }
+    context = new QueryContext();
+    tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[1].getType(),
+            context,
+            levelCompactionTsFileManagement.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        count++;
+      }
+    }
+    assertEquals(count, 1);
+    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 }

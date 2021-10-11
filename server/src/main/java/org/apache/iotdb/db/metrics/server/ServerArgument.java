@@ -193,10 +193,12 @@ public class ServerArgument {
       } else {
         return 0;
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       logger.error("Get CPU Ratio failed", e);
-      return 0;
     }
+    return 0;
   }
 
   /** cpu ratio for windows */
@@ -219,10 +221,12 @@ public class ServerArgument {
       } else {
         return 0;
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       logger.error("Get CPU Ratio failed", e);
-      return 0;
     }
+    return 0;
   }
 
   /** read cpu info(windows) */

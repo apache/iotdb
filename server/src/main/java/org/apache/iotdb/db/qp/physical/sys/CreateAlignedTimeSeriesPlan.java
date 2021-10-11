@@ -42,7 +42,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(CreateAlignedTimeSeriesPlan.class);
 
-  private PartialPath devicePath;
+  private PartialPath prefixPath;
   private List<String> measurements;
   private List<TSDataType> dataTypes;
   private List<TSEncoding> encodings;
@@ -55,14 +55,14 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   }
 
   public CreateAlignedTimeSeriesPlan(
-      PartialPath devicePath,
+      PartialPath prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       CompressionType compressor,
       List<String> aliasList) {
     super(false, Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
-    this.devicePath = devicePath;
+    this.prefixPath = prefixPath;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.encodings = encodings;
@@ -71,12 +71,12 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     this.canBeSplit = false;
   }
 
-  public PartialPath getDevicePath() {
-    return devicePath;
+  public PartialPath getPrefixPath() {
+    return prefixPath;
   }
 
-  public void setDevicePath(PartialPath devicePath) {
-    this.devicePath = devicePath;
+  public void setPrefixPath(PartialPath prefixPath) {
+    this.prefixPath = prefixPath;
   }
 
   public List<String> getMeasurements() {
@@ -123,7 +123,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   public String toString() {
     return String.format(
         "devicePath: %s, measurements: %s, dataTypes: %s, encodings: %s, compression: %s",
-        devicePath, measurements, dataTypes, encodings, compressor);
+        prefixPath, measurements, dataTypes, encodings, compressor);
   }
 
   @Override
@@ -131,7 +131,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     List<PartialPath> paths = new ArrayList<>();
     for (String measurement : measurements) {
       try {
-        paths.add(new PartialPath(devicePath.getFullPath(), measurement));
+        paths.add(new PartialPath(prefixPath.getFullPath(), measurement));
       } catch (IllegalPathException e) {
         logger.error("Failed to get paths of CreateAlignedTimeSeriesPlan. ", e);
       }
@@ -142,7 +142,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
-    byte[] bytes = devicePath.getFullPath().getBytes();
+    byte[] bytes = prefixPath.getFullPath().getBytes();
     stream.writeInt(bytes.length);
     stream.write(bytes);
 
@@ -173,7 +173,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void serialize(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
-    byte[] bytes = devicePath.getFullPath().getBytes();
+    byte[] bytes = prefixPath.getFullPath().getBytes();
     buffer.putInt(bytes.length);
     buffer.put(bytes);
 
@@ -208,7 +208,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     byte[] bytes = new byte[length];
     buffer.get(bytes);
 
-    devicePath = new PartialPath(new String(bytes));
+    prefixPath = new PartialPath(new String(bytes));
     int size = ReadWriteIOUtils.readInt(buffer);
     measurements = new ArrayList<>();
     for (int i = 0; i < size; i++) {
@@ -245,7 +245,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     }
     CreateAlignedTimeSeriesPlan that = (CreateAlignedTimeSeriesPlan) o;
 
-    return Objects.equals(devicePath, that.devicePath)
+    return Objects.equals(prefixPath, that.prefixPath)
         && Objects.equals(measurements, that.measurements)
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
@@ -254,6 +254,6 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(devicePath, measurements, dataTypes, encodings, compressor);
+    return Objects.hash(prefixPath, measurements, dataTypes, encodings, compressor);
   }
 }

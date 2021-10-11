@@ -71,8 +71,6 @@ public class TsFileProcessorTest {
   private QueryContext context;
   private static Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
 
-  protected static final int INIT_ARRAY_SIZE = 64;
-
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
@@ -96,14 +94,12 @@ public class TsFileProcessorTest {
             sgInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor) -> true,
-            true,
-            INIT_ARRAY_SIZE);
+            true);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
         deviceId,
@@ -173,14 +169,12 @@ public class TsFileProcessorTest {
             sgInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor) -> true,
-            true,
-            INIT_ARRAY_SIZE);
+            true);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
         deviceId,
@@ -276,14 +270,12 @@ public class TsFileProcessorTest {
             sgInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor) -> true,
-            true,
-            INIT_ARRAY_SIZE);
+            true);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
         deviceId,
@@ -333,14 +325,12 @@ public class TsFileProcessorTest {
             sgInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor) -> true,
-            true,
-            INIT_ARRAY_SIZE);
+            true);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     processor.query(

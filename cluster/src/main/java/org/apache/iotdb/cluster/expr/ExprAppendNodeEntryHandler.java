@@ -21,5 +21,4 @@ package org.apache.iotdb.cluster.expr;
 
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 
-public class ExprAppendNodeEntryHandler extends AppendNodeEntryHandler {
-}
+public class ExprAppendNodeEntryHandler extends AppendNodeEntryHandler {}

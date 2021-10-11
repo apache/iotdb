@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import java.util.Comparator;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
@@ -32,14 +31,13 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
-import org.apache.iotdb.cluster.expr.VotingLogList;
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
@@ -53,11 +51,14 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
+import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
@@ -68,7 +69,6 @@ import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
@@ -81,8 +81,8 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
-import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
@@ -93,6 +93,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.TimeValuePairUtils;
+import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -125,6 +127,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -132,30 +135,28 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 
 @SuppressWarnings("java:S1135")
 public class MetaGroupMember extends RaftMember {
 
-  /**
-   * the file that contains the identifier of this node
-   */
+  /** the file that contains the identifier of this node */
   static final String NODE_IDENTIFIER_FILE_NAME =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "node_identifier";
-  /**
-   * the file that contains the serialized partition table
-   */
+  /** the file that contains the serialized partition table */
   static final String PARTITION_FILE_NAME =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "partitions";
-  /**
-   * in case of data loss, some file changes would be made to a temporary file first
-   */
+  /** in case of data loss, some file changes would be made to a temporary file first */
   private static final String TEMP_SUFFIX = ".tmp";
+
+  private static final String MSG_MULTIPLE_ERROR =
+      "The following errors occurred when executing "
+          + "the query, please retry or contact the DBA: ";
 
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
   /**
@@ -169,12 +170,6 @@ public class MetaGroupMember extends RaftMember {
    * members in this node
    */
   private static final int REPORT_INTERVAL_SEC = 10;
-
-  /**
-   * how many times is a data record replicated, also the number of nodes in a data group
-   */
-  private static final int REPLICATION_NUM =
-      ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
   /**
    * during snapshot, hardlinks of data files are created to for downloading. hardlinks will be
@@ -199,13 +194,9 @@ public class MetaGroupMember extends RaftMember {
    */
   private Map<Integer, Node> idNodeMap = null;
 
-  /**
-   * nodes in the cluster and data partitioning
-   */
+  /** nodes in the cluster and data partitioning */
   private PartitionTable partitionTable;
-  /**
-   * router calculates the partition groups that a partitioned plan should be sent to
-   */
+  /** router calculates the partition groups that a partitioned plan should be sent to */
   private ClusterPlanRouter router;
   /**
    * each node contains multiple DataGroupMembers and they are managed by a DataClusterServer acting
@@ -213,9 +204,7 @@ public class MetaGroupMember extends RaftMember {
    */
   private DataClusterServer dataClusterServer;
 
-  /**
-   * each node starts a data heartbeat server to transfer heartbeat requests
-   */
+  /** each node starts a data heartbeat server to transfer heartbeat requests */
   private DataHeartbeatServer dataHeartbeatServer;
 
   /**
@@ -238,9 +227,7 @@ public class MetaGroupMember extends RaftMember {
    */
   private StartUpStatus startUpStatus;
 
-  /**
-   * hardLinkCleaner will periodically clean expired hardlinks created during snapshots
-   */
+  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread;
 
   private Coordinator coordinator;
@@ -258,8 +245,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   @TestOnly
-  public MetaGroupMember() {
-  }
+  public MetaGroupMember() {}
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator)
       throws QueryProcessException {
@@ -269,7 +255,7 @@ public class MetaGroupMember extends RaftMember {
         new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
         new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
-    setAllNodes(new ArrayList<>());
+    setAllNodes(new PartitionGroup());
     initPeerMap();
 
     dataClientProvider = new DataClientProvider(factory);
@@ -301,18 +287,16 @@ public class MetaGroupMember extends RaftMember {
    * Find the DataGroupMember that manages the partition of "storageGroupName"@"partitionId", and
    * close the partition through that member. Notice: only partitions owned by this node can be
    * closed by the method.
-   *
-   * @return true if the member is a leader and the partition is closed, false otherwise
    */
-  public void closePartition(String storageGroupName, long partitionId, boolean isSeq) {
-    Node header =
+  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
+    RaftNode raftNode =
         partitionTable.routeToHeaderByTime(
             storageGroupName, partitionId * StorageEngine.getTimePartitionInterval());
-    DataGroupMember localDataMember = getLocalDataMember(header);
+    DataGroupMember localDataMember = getLocalDataMember(raftNode);
     if (localDataMember == null || localDataMember.getCharacter() != NodeCharacter.LEADER) {
-      return;
+      return false;
     }
-    localDataMember.closePartition(storageGroupName, partitionId, isSeq);
+    return localDataMember.closePartition(storageGroupName, partitionId, isSeq);
   }
 
   public DataClusterServer getDataClusterServer() {
@@ -366,7 +350,7 @@ public class MetaGroupMember extends RaftMember {
     if (reportThread != null) {
       reportThread.shutdownNow();
       try {
-        reportThread.awaitTermination(10, TimeUnit.SECONDS);
+        reportThread.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for reportThread to end", e);
@@ -375,13 +359,13 @@ public class MetaGroupMember extends RaftMember {
     if (hardLinkCleanerThread != null) {
       hardLinkCleanerThread.shutdownNow();
       try {
-        hardLinkCleanerThread.awaitTermination(10, TimeUnit.SECONDS);
+        hardLinkCleanerThread.awaitTermination(
+            THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for hardlinkCleaner to end", e);
       }
     }
-
     logger.info("{}: stopped", name);
   }
 
@@ -398,8 +382,7 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Parse the seed nodes from the cluster configuration and add them into the node list. Each
-   * seedUrl should be like "{hostName}:{metaPort}:{dataPort}:{clientPort}" Ignore bad-formatted
-   * seedUrls.
+   * seedUrl should be like "{hostName}:{metaPort}" Ignore bad-formatted seedUrls.
    */
   protected void addSeedNodes() {
     if (allNodes.size() > 1) {
@@ -413,7 +396,7 @@ public class MetaGroupMember extends RaftMember {
       Node node = ClusterUtils.parseNode(seedUrl);
       if (node != null
           && (!node.getInternalIp().equals(thisNode.internalIp)
-          || node.getMetaPort() != thisNode.getMetaPort())
+              || node.getMetaPort() != thisNode.getMetaPort())
           && !allNodes.contains(node)) {
         // do not add the local node since it is added in the constructor
         allNodes.add(node);
@@ -425,22 +408,35 @@ public class MetaGroupMember extends RaftMember {
    * Apply the addition of a new node. Register its identifier, add it to the node list and
    * partition table, serialize the partition table and update the DataGroupMembers.
    */
-  public void applyAddNode(Node newNode) {
+  public void applyAddNode(AddNodeLog addNodeLog) {
+
+    long startTime = System.currentTimeMillis();
+    Node newNode = addNodeLog.getNewNode();
     synchronized (allNodes) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: adding a new node {} into {}", name, newNode, allNodes);
+      }
+
       if (!allNodes.contains(newNode)) {
-        logger.debug("Adding a new node {} into {}", newNode, allNodes);
         registerNodeIdentifier(newNode, newNode.getNodeIdentifier());
         allNodes.add(newNode);
+      }
 
-        // update the partition table
-        NodeAdditionResult result = partitionTable.addNode(newNode);
-        ((SlotPartitionTable) partitionTable).setLastLogIndex(logManager.getLastLogIndex());
-        savePartitionTable();
+      // update the partition table
+      savePartitionTable();
 
-        // update local data members
-        getDataClusterServer().addNode(newNode, result);
+      // update local data members
+      NodeAdditionResult result = partitionTable.getNodeAdditionResult(newNode);
+      getDataClusterServer().addNode(newNode, result);
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: success to add a new node {} into {}", name, newNode, allNodes);
       }
     }
+    logger.info(
+        "{}: execute adding node {} cost {} ms",
+        name,
+        newNode,
+        (System.currentTimeMillis()) - startTime);
   }
 
   /**
@@ -459,6 +455,7 @@ public class MetaGroupMember extends RaftMember {
         partitionTable = new SlotPartitionTable(allNodes, thisNode);
         logger.info("Partition table is set up");
       }
+      initIdNodeMap();
       router = new ClusterPlanRouter(partitionTable);
       this.coordinator.setRouter(router);
       startSubServers();
@@ -490,8 +487,6 @@ public class MetaGroupMember extends RaftMember {
   /**
    * This node is not a seed node and wants to join an established cluster. Pick up a node randomly
    * from the seed nodes and send a join request to it.
-   *
-   * @return true if the node has successfully joined the cluster, false otherwise.
    */
   public void joinCluster() throws ConfigInconsistentException, StartUpCheckFailureException {
     if (allNodes.size() == 1) {
@@ -539,6 +534,8 @@ public class MetaGroupMember extends RaftMember {
     newStartUpStatus.setReplicationNumber(
         ClusterDescriptor.getInstance().getConfig().getReplicationNum());
     newStartUpStatus.setClusterName(ClusterDescriptor.getInstance().getConfig().getClusterName());
+    newStartUpStatus.setMultiRaftFactor(
+        ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor());
     List<String> seedUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
     List<Node> seedNodeList = new ArrayList<>();
     for (String seedUrl : seedUrls) {
@@ -552,7 +549,7 @@ public class MetaGroupMember extends RaftMember {
    * Send a join cluster request to "node". If the joining is accepted, set the partition table,
    * start DataClusterServer and ClientServer and initialize DataGroupMembers.
    *
-   * @return rue if the node has successfully joined the cluster, false otherwise.
+   * @return true if the node has successfully joined the cluster, false otherwise.
    */
   private boolean joinCluster(Node node, StartUpStatus startUpStatus)
       throws TException, InterruptedException, ConfigInconsistentException {
@@ -594,6 +591,9 @@ public class MetaGroupMember extends RaftMember {
       setNodeIdentifier(genNodeIdentifier());
     } else if (resp.getRespNum() == Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT) {
       handleConfigInconsistency(resp);
+    } else if (resp.getRespNum() == Response.RESPONSE_DATA_MIGRATION_NOT_FINISH) {
+      logger.warn(
+          "The data migration of the previous membership change operation is not finished. Please try again later");
     } else {
       logger.warn("Joining the cluster is rejected by {} for response {}", node, resp.getRespNum());
     }
@@ -601,19 +601,33 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private void handleConfigInconsistency(AddNodeResponse resp) throws ConfigInconsistentException {
-    if (logger.isErrorEnabled()) {
-      CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
-      String parameters =
-          (checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval")
-              + (checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt")
-              + (checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number")
-              + (checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes")
-              + (checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName");
-      logger.error(
-          "The start up configuration{} conflicts the cluster. Please reset the configurations. ",
-          parameters.substring(1));
-    }
+    CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
+    String parameters =
+        (checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval")
+            + (checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt")
+            + (checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number")
+            + (checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes")
+            + (checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName")
+            + (checkStatusResponse.isMultiRaftFactorEquals() ? "" : ", multiRaftFactor");
+    logger.error(
+        "The start up configuration{} conflicts the cluster. Please reset the configurations. ",
+        parameters.substring(1));
     throw new ConfigInconsistentException();
+  }
+
+  @Override
+  long checkElectorLogProgress(ElectionRequest electionRequest) {
+    Node elector = electionRequest.getElector();
+    // check if the node is in the group
+    if (partitionTable != null && !allNodes.contains(elector)) {
+      logger.info(
+          "{}: the elector {} is not in the data group {}, so reject this election.",
+          name,
+          getPartitionGroup(),
+          elector);
+      return Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
+    }
+    return super.checkElectorLogProgress(electionRequest);
   }
 
   /**
@@ -661,8 +675,8 @@ public class MetaGroupMember extends RaftMember {
     newTable.deserialize(partitionTableBuffer);
     // avoid overwriting current partition table with a previous one
     if (partitionTable != null) {
-      long currIndex = ((SlotPartitionTable) partitionTable).getLastLogIndex();
-      long incomingIndex = newTable.getLastLogIndex();
+      long currIndex = partitionTable.getLastMetaLogIndex();
+      long incomingIndex = newTable.getLastMetaLogIndex();
       logger.info(
           "Current partition table index {}, new partition table index {}",
           currIndex,
@@ -687,7 +701,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private void updateNodeList(Collection<Node> nodes) {
-    setAllNodes(new ArrayList<>(nodes));
+    setAllNodes(new PartitionGroup(nodes));
     initPeerMap();
     logger.info("All nodes in the partition table: {}", allNodes);
     initIdNodeMap();
@@ -716,7 +730,7 @@ public class MetaGroupMember extends RaftMember {
         // leader through the first heartbeat. After the leader knows the node information of all
         // nodes, it can replace the incomplete node information previously saved locally, and build
         // partitionTable to send it to other followers.
-        setAllNodes(new ArrayList<>(idNodeMap.values()));
+        setAllNodes(new PartitionGroup(idNodeMap.values()));
         if (partitionTable == null) {
           partitionTable = new SlotPartitionTable(allNodes, thisNode);
           logger.info("Partition table is set up");
@@ -741,9 +755,7 @@ public class MetaGroupMember extends RaftMember {
     blindNodes.add(node);
   }
 
-  /**
-   * @return whether a node wants the partition table.
-   */
+  /** @return whether a node wants the partition table. */
   public boolean isNodeBlind(Node node) {
     return blindNodes.contains(node);
   }
@@ -756,9 +768,7 @@ public class MetaGroupMember extends RaftMember {
     blindNodes.remove(node);
   }
 
-  /**
-   * Register the identifier for the node if it does not conflict with other nodes.
-   */
+  /** Register the identifier for the node if it does not conflict with other nodes. */
   private void registerNodeIdentifier(Node node, int identifier) {
     synchronized (idNodeMap) {
       Node conflictNode = idNodeMap.get(identifier);
@@ -782,9 +792,7 @@ public class MetaGroupMember extends RaftMember {
     idNodeMap.put(thisNode.getNodeIdentifier(), thisNode);
   }
 
-  /**
-   * @return Whether all nodes' identifier is known.
-   */
+  /** @return Whether all nodes' identifier is known. */
   private boolean allNodesIdKnown() {
     return idNodeMap != null && idNodeMap.size() == allNodes.size();
   }
@@ -809,11 +817,13 @@ public class MetaGroupMember extends RaftMember {
     logger.info("Sub-servers started.");
   }
 
-  /**
-   * When the node restarts, it sends handshakes to all other nodes so they may know it is back.
-   */
+  /** When the node restarts, it sends handshakes to all other nodes so they may know it is back. */
   private void sendHandshake() {
     for (Node node : allNodes) {
+      if (ClusterUtils.nodeEqual(node, thisNode)) {
+        // no need to shake hands with yourself
+        continue;
+      }
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
@@ -838,7 +848,8 @@ public class MetaGroupMember extends RaftMember {
    * @param node cannot be the local node
    */
   public AddNodeResponse addNode(Node node, StartUpStatus startUpStatus)
-      throws AddSelfException, LogExecutionException {
+      throws AddSelfException, LogExecutionException, InterruptedException,
+          CheckConsistencyException {
     AddNodeResponse response = new AddNodeResponse();
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
@@ -865,19 +876,34 @@ public class MetaGroupMember extends RaftMember {
    * immediately. If the identifier of "node" conflicts with an existing node, the request will be
    * turned down.
    *
-   * @param node          cannot be the local node
+   * @param newNode cannot be the local node
    * @param startUpStatus the start up status of the new node
-   * @param response      the response that will be sent to "node"
+   * @param response the response that will be sent to "node"
    * @return true if the process is over, false if the request should be forwarded
    */
   private boolean processAddNodeLocally(
-      Node node, StartUpStatus startUpStatus, AddNodeResponse response)
-      throws LogExecutionException {
+      Node newNode, StartUpStatus startUpStatus, AddNodeResponse response)
+      throws LogExecutionException, InterruptedException, CheckConsistencyException {
     if (character != NodeCharacter.LEADER) {
       return false;
     }
-    if (allNodes.contains(node)) {
-      logger.debug("Node {} is already in the cluster", node);
+
+    if (!waitDataMigrationEnd()) {
+      response.setRespNum((int) Response.RESPONSE_DATA_MIGRATION_NOT_FINISH);
+      return true;
+    }
+
+    for (Node node : partitionTable.getAllNodes()) {
+      if (node.internalIp.equals(newNode.internalIp)
+          && newNode.dataPort == node.dataPort
+          && newNode.metaPort == node.metaPort
+          && newNode.clientPort == node.clientPort) {
+        newNode.nodeIdentifier = node.nodeIdentifier;
+        break;
+      }
+    }
+    if (allNodes.contains(newNode)) {
+      logger.debug("Node {} is already in the cluster", newNode);
       response.setRespNum((int) Response.RESPONSE_AGREE);
       synchronized (partitionTable) {
         response.setPartitionTableBytes(partitionTable.serialize());
@@ -885,9 +911,9 @@ public class MetaGroupMember extends RaftMember {
       return true;
     }
 
-    Node idConflictNode = idNodeMap.get(node.getNodeIdentifier());
+    Node idConflictNode = idNodeMap.get(newNode.getNodeIdentifier());
     if (idConflictNode != null) {
-      logger.debug("{}'s id conflicts with {}", node, idConflictNode);
+      logger.debug("{}'s id conflicts with {}", newNode, idConflictNode);
       response.setRespNum((int) Response.RESPONSE_IDENTIFIER_CONFLICT);
       return true;
     }
@@ -897,54 +923,92 @@ public class MetaGroupMember extends RaftMember {
       return true;
     }
 
+    AddNodeLog addNodeLog = new AddNodeLog();
     // node adding is serialized to reduce potential concurrency problem
     synchronized (logManager) {
-      AddNodeLog addNodeLog = new AddNodeLog();
+      // update partition table
+      PartitionTable table = new SlotPartitionTable(thisNode);
+      table.deserialize(partitionTable.serialize());
+      table.addNode(newNode);
+      table.setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
+
+      addNodeLog.setPartitionTable(table.serialize());
       addNodeLog.setCurrLogTerm(getTerm().get());
       addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+      addNodeLog.setMetaLogIndex(logManager.getLastLogIndex() + 1);
 
-      addNodeLog.setNewNode(node);
+      addNodeLog.setNewNode(newNode);
 
       logManager.append(addNodeLog);
+    }
 
-      int retryTime = 1;
-      while (true) {
-        logger.info("Send the join request of {} to other nodes, retry time: {}", node, retryTime);
-        AppendLogResult result = sendLogToAllGroups(addNodeLog);
-        switch (result) {
-          case OK:
-            logger.info("Join request of {} is accepted", node);
-            commitLog(addNodeLog);
+    int retryTime = 0;
+    while (true) {
+      logger.info(
+          "{}: Send the join request of {} to other nodes, retry time: {}",
+          name,
+          newNode,
+          retryTime);
+      AppendLogResult result = sendLogToFollowers(addNodeLog);
+      switch (result) {
+        case OK:
+          commitLog(addNodeLog);
+          logger.info("{}: Join request of {} is accepted", name, newNode);
 
-            synchronized (partitionTable) {
-              response.setPartitionTableBytes(partitionTable.serialize());
-            }
-            response.setRespNum((int) Response.RESPONSE_AGREE);
-            logger.info("Sending join response of {}", node);
-            return true;
-          case TIME_OUT:
-            logger.info("Join request of {} timed out", node);
-            retryTime++;
-            continue;
-          case LEADERSHIP_STALE:
-          default:
-            return false;
-        }
+          synchronized (partitionTable) {
+            response.setPartitionTableBytes(partitionTable.serialize());
+          }
+          response.setRespNum((int) Response.RESPONSE_AGREE);
+          logger.info("{}: Sending join response of {}", name, newNode);
+          return true;
+        case TIME_OUT:
+          logger.debug("{}: log {} timed out, retrying...", name, addNodeLog);
+          try {
+            Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          logger.info("{}: Join request of {} timed out", name, newNode);
+          retryTime++;
+          break;
+        case LEADERSHIP_STALE:
+        default:
+          return false;
       }
     }
+  }
+
+  /** Check if there has data migration due to previous change membership operation. */
+  private boolean waitDataMigrationEnd() throws InterruptedException, CheckConsistencyException {
+    // try 5 time
+    int retryTime = 0;
+    while (true) {
+      Map<PartitionGroup, Integer> res = collectAllPartitionMigrationStatus();
+      if (res != null && res.isEmpty()) {
+        return true;
+      }
+      if (++retryTime == 5) {
+        break;
+      }
+      Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
+    }
+    return false;
   }
 
   private boolean checkNodeConfig(StartUpStatus remoteStartUpStatus, AddNodeResponse response) {
     long remotePartitionInterval = remoteStartUpStatus.getPartitionInterval();
     int remoteHashSalt = remoteStartUpStatus.getHashSalt();
     int remoteReplicationNum = remoteStartUpStatus.getReplicationNumber();
+    int remoteMultiRaftFactor = remoteStartUpStatus.getMultiRaftFactor();
     String remoteClusterName = remoteStartUpStatus.getClusterName();
     List<Node> remoteSeedNodeList = remoteStartUpStatus.getSeedNodeList();
     long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     int localHashSalt = ClusterConstant.HASH_SALT;
-    int localReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
-    String localClusterName = ClusterDescriptor.getInstance().getConfig().getClusterName();
+    int localReplicationNum = config.getReplicationNum();
+    String localClusterName = config.getClusterName();
+    int localMultiRaftFactor = config.getMultiRaftFactor();
     boolean partitionIntervalEquals = true;
+    boolean multiRaftFactorEquals = true;
     boolean hashSaltEquals = true;
     boolean replicationNumEquals = true;
     boolean seedNodeEquals = true;
@@ -956,6 +1020,13 @@ public class MetaGroupMember extends RaftMember {
           "Remote partition interval conflicts with the leader's. Leader: {}, remote: {}",
           localPartitionInterval,
           remotePartitionInterval);
+    }
+    if (localMultiRaftFactor != remoteMultiRaftFactor) {
+      multiRaftFactorEquals = false;
+      logger.info(
+          "Remote multi-raft factor conflicts with the leader's. Leader: {}, remote: {}",
+          localMultiRaftFactor,
+          remoteMultiRaftFactor);
     }
     if (localHashSalt != remoteHashSalt) {
       hashSaltEquals = false;
@@ -991,7 +1062,8 @@ public class MetaGroupMember extends RaftMember {
         && hashSaltEquals
         && replicationNumEquals
         && seedNodeEquals
-        && clusterNameEquals)) {
+        && clusterNameEquals
+        && multiRaftFactorEquals)) {
       response.setRespNum((int) Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT);
       response.setCheckStatusResponse(
           new CheckStatusResponse(
@@ -999,7 +1071,8 @@ public class MetaGroupMember extends RaftMember {
               hashSaltEquals,
               replicationNumEquals,
               seedNodeEquals,
-              clusterNameEquals));
+              clusterNameEquals,
+              multiRaftFactorEquals));
       return false;
     }
     return true;
@@ -1025,6 +1098,11 @@ public class MetaGroupMember extends RaftMember {
       consistentNum.set(1);
       inconsistentNum.set(0);
       checkSeedNodesStatusOnce(consistentNum, inconsistentNum);
+      logger.debug(
+          "Status check result: {}-{}/{}",
+          consistentNum.get(),
+          inconsistentNum.get(),
+          getAllNodes().size());
       canEstablishCluster =
           analyseStartUpCheckResult(
               consistentNum.get(), inconsistentNum.get(), getAllNodes().size());
@@ -1054,21 +1132,24 @@ public class MetaGroupMember extends RaftMember {
       }
       pool.submit(
           () -> {
+            logger.debug("Checking status with {}", seedNode);
+            CheckStatusResponse response = null;
             try {
-              CheckStatusResponse response = checkStatus(seedNode);
-              if (response != null) {
-                // check the response
-                ClusterUtils.examineCheckStatusResponse(
-                    response, consistentNum, inconsistentNum, seedNode);
-              } else {
-                logger.warn(
-                    "Start up exception. Cannot connect to node {}. Try again in next turn.",
-                    seedNode);
-              }
+              response = checkStatus(seedNode);
+              logger.debug("After check status");
             } catch (Exception e) {
-              logger.error("Start up exception:", e);
+              logger.warn("Exception during status check", e);
             }
-
+            logger.debug("CheckStatusResponse from {}: {}", seedNode, response);
+            if (response != null) {
+              // check the response
+              ClusterUtils.examineCheckStatusResponse(
+                  response, consistentNum, inconsistentNum, seedNode);
+            } else {
+              logger.warn(
+                  "Start up exception. Cannot connect to node {}. Try again in next turn.",
+                  seedNode);
+            }
           });
     }
     pool.shutdown();
@@ -1083,8 +1164,8 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private CheckStatusResponse checkStatus(Node seedNode) {
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode, false);
+    if (config.isUseAsyncServer()) {
+      AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode);
       if (client == null) {
         return null;
       }
@@ -1098,10 +1179,12 @@ public class MetaGroupMember extends RaftMember {
       }
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode, false);
+      logger.debug("Client is acquired");
       if (client == null) {
         return null;
       }
       try {
+        logger.debug("calling rpc");
         return client.checkStatus(getStartUpStatus());
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
@@ -1111,135 +1194,6 @@ public class MetaGroupMember extends RaftMember {
       }
     }
     return null;
-  }
-
-  /**
-   * Send the log the all data groups and return a success only when each group's quorum has
-   * accepted this log.
-   */
-  private AppendLogResult sendLogToAllGroups(Log log) {
-    List<Node> nodeRing = partitionTable.getAllNodes();
-
-    AtomicLong newLeaderTerm = new AtomicLong(term.get());
-    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-    AppendEntryRequest request = buildAppendEntryRequest(log, true);
-
-    // ask for votes from each node
-    // a group is considered successfully received the log if such members receive the log
-    int groupQuorum = REPLICATION_NUM / 2 + 1;
-    Set<Integer>[] groupRemainings = askGroupVotes(nodeRing, request, leaderShipStale, log,
-        newLeaderTerm, groupQuorum);
-
-    if (!leaderShipStale.get()) {
-      // if all quorums of all groups have received this log, it is considered succeeded.
-      for (Set<Integer> remaining : groupRemainings) {
-        if (remaining.size() < groupQuorum) {
-          return AppendLogResult.TIME_OUT;
-        }
-      }
-    } else {
-      return AppendLogResult.LEADERSHIP_STALE;
-    }
-
-    return AppendLogResult.OK;
-  }
-
-  /**
-   * Send "request" to each node in "nodeRing" and when a node returns a success, decrease all
-   * counters of the groups it is in of "groupRemainings"
-   *
-   * @return a int array indicating how many votes are left in each group to make an agreement
-   */
-  @SuppressWarnings({"java:S2445", "java:S2274"})
-  // groupRemaining is shared with the handlers,
-  // and we do not wait infinitely to enable timeouts
-  private Set<Integer>[] askGroupVotes(
-      List<Node> nodeRing,
-      AppendEntryRequest request,
-      AtomicBoolean leaderShipStale,
-      Log log,
-      AtomicLong newLeaderTerm,
-      int quorumSize) {
-    // each node will be the header of a group, we use the node to represent the group
-    int nodeSize = nodeRing.size();
-    // the decreasing counters of how many nodes in a group has received the log, each time a
-    // node receive the log, the counters of all groups it is in will decrease by 1
-    Set<Integer>[] groupRemainings = new Set[nodeSize];
-    for (int i = 0; i < groupRemainings.length; i++) {
-      groupRemainings[i] = new HashSet<>();
-    }
-
-    synchronized (groupRemainings) {
-      // ask a vote from every node
-      for (int i = 0; i < nodeSize; i++) {
-        Node node = nodeRing.get(i);
-        if (node.equals(thisNode)) {
-          // this node automatically gives an agreement, decrease counters of all groups the local
-          // node is in
-          for (int j = 0; j < REPLICATION_NUM; j++) {
-            int groupIndex = i - j;
-            if (groupIndex < 0) {
-              groupIndex += groupRemainings.length;
-            }
-            groupRemainings[groupIndex].add(thisNode.nodeIdentifier);
-          }
-        } else {
-          askRemoteGroupVote(
-              node, groupRemainings, i, leaderShipStale, log, newLeaderTerm, request, quorumSize);
-        }
-      }
-
-      try {
-        groupRemainings.wait(RaftServer.getWriteOperationTimeoutMS());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when waiting for the group votes", e);
-      }
-    }
-    return groupRemainings;
-  }
-
-  private void askRemoteGroupVote(
-      Node node,
-      Set<Integer>[] groupRemainings,
-      int nodeIndex,
-      AtomicBoolean leaderShipStale,
-      Log log,
-      AtomicLong newLeaderTerm,
-      AppendEntryRequest request,
-      int quorumSize) {
-    AppendGroupEntryHandler handler =
-        new AppendGroupEntryHandler(
-            groupRemainings, nodeIndex, node, leaderShipStale, log, newLeaderTerm, this,
-            quorumSize);
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
-      try {
-        if (client != null) {
-          client.appendEntry(request, handler);
-        }
-      } catch (TException e) {
-        logger.error("Cannot send log to node {}", node, e);
-      }
-    } else {
-      SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
-      if (client == null) {
-        logger.error("No available client for {}", node);
-        return;
-      }
-      getSerialToParallelPool()
-          .submit(
-              () -> {
-                try {
-                  handler.onComplete(client.appendEntry(request));
-                } catch (TException e) {
-                  client.getInputProtocol().getTransport().close();
-                  handler.onError(e);
-                } finally {
-                  ClientUtils.putBackSyncClient(client);
-                }
-              });
-    }
   }
 
   public Set<Node> getIdConflictNodes() {
@@ -1257,9 +1211,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  /**
-   * Load the partition table from a local file if it can be found.
-   */
+  /** Load the partition table from a local file if it can be found. */
   private void loadPartitionTable() {
     File partitionFile = new File(PARTITION_FILE_NAME);
     if (!partitionFile.exists() && !recoverPartitionTableFile()) {
@@ -1364,9 +1316,7 @@ public class MetaGroupMember extends RaftMember {
         thisNode.getInternalIp(), thisNode.getMetaPort(), System.currentTimeMillis());
   }
 
-  /**
-   * Set the node's identifier to "identifier", also save it to a local file in text format.
-   */
+  /** Set the node's identifier to "identifier", also save it to a local file in text format. */
   private void setNodeIdentifier(int identifier) {
     logger.info("The identifier of this node has been set to {}", identifier);
     thisNode.setNodeIdentifier(identifier);
@@ -1390,7 +1340,7 @@ public class MetaGroupMember extends RaftMember {
   public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
     MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot();
     snapshot.deserialize(request.snapshotBytes);
-    snapshot.getDefaultInstaller(this).install(snapshot, -1);
+    snapshot.getDefaultInstaller(this).install(snapshot, -1, false);
   }
 
   /**
@@ -1432,8 +1382,9 @@ public class MetaGroupMember extends RaftMember {
     } else if (!ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       TSStatus result = forwardPlan(plan, leader.get(), null);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(
-            new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
+        result =
+            StatusUtils.getStatus(
+                result, new EndPoint(leader.get().getInternalIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -1455,13 +1406,39 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
+   * Forward a non-query plan to the data port of "receiver"
+   *
+   * @param plan a non-query plan
+   * @param header to determine which DataGroupMember of "receiver" will process the request.
+   * @return a TSStatus indicating if the forwarding is successful.
+   */
+  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
+      throws IOException {
+    RaftService.AsyncClient client =
+        getClientProvider().getAsyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
+    return forwardPlanAsync(plan, receiver, header, client);
+  }
+
+  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
+      throws IOException {
+    Client client;
+    try {
+      client =
+          getClientProvider().getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
+    } catch (TException e) {
+      throw new IOException(e);
+    }
+    return forwardPlanSync(plan, receiver, header, client);
+  }
+
+  /**
    * Get the data groups that should be queried when querying "path" with "filter". First, the time
    * interval qualified by the filter will be extracted. If any side of the interval is open, query
    * all groups. Otherwise compute all involved groups w.r.t. the time partitioning.
    */
   public List<PartitionGroup> routeFilter(Filter filter, PartialPath path)
       throws StorageEngineException, EmptyIntervalException {
-    Intervals intervals = PartitionUtils.extractTimeInterval(filter);
+    Intervals intervals = TimeValuePairUtils.extractTimeInterval(filter);
     if (intervals.isEmpty()) {
       throw new EmptyIntervalException(filter);
     }
@@ -1472,14 +1449,14 @@ public class MetaGroupMember extends RaftMember {
    * obtaining partition group based on path and intervals
    *
    * @param intervals time intervals, include minimum and maximum value
-   * @param path      partial path
+   * @param path partial path
    * @return data partition on which the current interval of the current path is stored
    * @throws StorageEngineException if Failed to get storage group path
    */
   public List<PartitionGroup> routeIntervals(Intervals intervals, PartialPath path)
       throws StorageEngineException {
     List<PartitionGroup> partitionGroups = new ArrayList<>();
-    PartialPath storageGroupName = null;
+    PartialPath storageGroupName;
     try {
       storageGroupName = IoTDB.metaManager.getStorageGroupPath(path);
     } catch (MetadataException e) {
@@ -1503,7 +1480,7 @@ public class MetaGroupMember extends RaftMember {
     } else {
       // compute the related data groups of all intervals
       // TODO-Cluster#690: change to a broadcast when the computation is too expensive
-      Set<Node> groupHeaders = new HashSet<>();
+      Set<RaftNode> groupHeaders = new HashSet<>();
       for (int i = 0; i < intervals.getIntervalSize(); i++) {
         // compute the headers of groups involved in every interval
         PartitionUtils.getIntervalHeaders(
@@ -1514,7 +1491,7 @@ public class MetaGroupMember extends RaftMember {
             groupHeaders);
       }
       // translate the headers to groups
-      for (Node groupHeader : groupHeaders) {
+      for (RaftNode groupHeader : groupHeaders) {
         partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
       }
     }
@@ -1522,18 +1499,18 @@ public class MetaGroupMember extends RaftMember {
   }
 
   @SuppressWarnings("java:S2274")
-  public Map<Node, Boolean> getAllNodeStatus() {
+  public Map<Node, Integer> getAllNodeStatus() {
     if (getPartitionTable() == null) {
       // the cluster is being built.
       return null;
     }
-    Map<Node, Boolean> nodeStatus = new HashMap<>();
+    Map<Node, Integer> nodeStatus = new HashMap<>();
     for (Node node : allNodes) {
-      nodeStatus.put(node, thisNode.equals(node));
+      nodeStatus.put(node, thisNode.equals(node) ? Status.LIVE : Status.OFFLINE);
     }
 
     try {
-      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      if (config.isUseAsyncServer()) {
         getNodeStatusAsync(nodeStatus);
       } else {
         getNodeStatusSync(nodeStatus);
@@ -1544,11 +1521,20 @@ public class MetaGroupMember extends RaftMember {
       Thread.currentThread().interrupt();
       logger.warn("Cannot get the status of all nodes", e);
     }
+
+    for (Node node : partitionTable.getAllNodes()) {
+      nodeStatus.putIfAbsent(node, Status.JOINING);
+    }
+    for (Node node : allNodes) {
+      if (!partitionTable.getAllNodes().contains(node)) {
+        nodeStatus.put(node, Status.LEAVING);
+      }
+    }
     return nodeStatus;
   }
 
   @SuppressWarnings({"java:S2445", "java:S2274"})
-  private void getNodeStatusAsync(Map<Node, Boolean> nodeStatus)
+  private void getNodeStatusAsync(Map<Node, Integer> nodeStatus)
       throws TException, InterruptedException {
     NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
     synchronized (nodeStatus) {
@@ -1562,7 +1548,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private void getNodeStatusSync(Map<Node, Boolean> nodeStatus) {
+  private void getNodeStatusSync(Map<Node, Integer> nodeStatus) {
     NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
     for (Node node : allNodes) {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
@@ -1578,6 +1564,47 @@ public class MetaGroupMember extends RaftMember {
         nodeStatusHandler.onComplete(response);
       }
     }
+  }
+
+  public Map<PartitionGroup, Integer> collectMigrationStatus(Node node) {
+    try {
+      if (config.isUseAsyncServer()) {
+        return collectMigrationStatusAsync(node);
+      } else {
+        return collectMigrationStatusSync(node);
+      }
+    } catch (TException e) {
+      logger.error("{}: Cannot get the status of node {}", name, node, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("{}: Cannot get the status of node {}", name, node, e);
+    }
+    return null;
+  }
+
+  private Map<PartitionGroup, Integer> collectMigrationStatusAsync(Node node)
+      throws TException, InterruptedException {
+    AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
+    GenericHandler<ByteBuffer> migrationStatusHandler = new GenericHandler<>(node, resultRef);
+    AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
+    if (client == null) {
+      return null;
+    }
+    client.collectMigrationStatus(migrationStatusHandler);
+    synchronized (resultRef) {
+      if (resultRef.get() == null) {
+        resultRef.wait(RaftServer.getConnectionTimeoutInMS());
+      }
+    }
+    return ClusterUtils.deserializeMigrationStatus(resultRef.get());
+  }
+
+  private Map<PartitionGroup, Integer> collectMigrationStatusSync(Node node) throws TException {
+    SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
+    if (client == null) {
+      return null;
+    }
+    return ClusterUtils.deserializeMigrationStatus(client.collectMigrationStatus());
   }
 
   @TestOnly
@@ -1600,7 +1627,8 @@ public class MetaGroupMember extends RaftMember {
    * @param node the node to be removed.
    */
   public long removeNode(Node node)
-      throws PartitionTableUnavailableException, LogExecutionException {
+      throws PartitionTableUnavailableException, LogExecutionException, InterruptedException,
+          CheckConsistencyException {
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
       throw new PartitionTableUnavailableException(thisNode);
@@ -1619,14 +1647,19 @@ public class MetaGroupMember extends RaftMember {
    * @param node the node to be removed.
    * @return Long.MIN_VALUE if further forwarding is required, or the execution result
    */
-  private long processRemoveNodeLocally(Node node) throws LogExecutionException {
+  private long processRemoveNodeLocally(Node node)
+      throws LogExecutionException, InterruptedException, CheckConsistencyException {
     if (character != NodeCharacter.LEADER) {
       return Response.RESPONSE_NULL;
     }
 
     // if we cannot have enough replica after the removal, reject it
-    if (allNodes.size() <= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
+    if (allNodes.size() <= config.getReplicationNum()) {
       return Response.RESPONSE_CLUSTER_TOO_SMALL;
+    }
+
+    if (!waitDataMigrationEnd()) {
+      return Response.RESPONSE_DATA_MIGRATION_NOT_FINISH;
     }
 
     // find the node to be removed in the node list
@@ -1645,37 +1678,50 @@ public class MetaGroupMember extends RaftMember {
       return Response.RESPONSE_REJECT;
     }
 
+    RemoveNodeLog removeNodeLog = new RemoveNodeLog();
     // node removal must be serialized to reduce potential concurrency problem
     synchronized (logManager) {
-      RemoveNodeLog removeNodeLog = new RemoveNodeLog();
+      // update partition table
+      PartitionTable table = new SlotPartitionTable((SlotPartitionTable) partitionTable);
+      table.removeNode(target);
+      table.setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
+
+      removeNodeLog.setPartitionTable(table.serialize());
       removeNodeLog.setCurrLogTerm(getTerm().get());
       removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+      removeNodeLog.setMetaLogIndex(logManager.getLastLogIndex() + 1);
 
       removeNodeLog.setRemovedNode(target);
 
       logManager.append(removeNodeLog);
+    }
 
-      int retryTime = 1;
-      while (true) {
-        logger.info(
-            "Send the node removal request of {} to other nodes, retry time: {}",
-            target,
-            retryTime);
-        AppendLogResult result = sendLogToAllGroups(removeNodeLog);
-
-        switch (result) {
-          case OK:
-            logger.info("Removal request of {} is accepted", target);
-            commitLog(removeNodeLog);
-            return Response.RESPONSE_AGREE;
-          case TIME_OUT:
-            logger.info("Removal request of {} timed out", target);
-            break;
+    int retryTime = 0;
+    while (true) {
+      logger.info(
+          "{}: Send the node removal request of {} to other nodes, retry time: {}",
+          name,
+          target,
+          retryTime);
+      AppendLogResult result = sendLogToFollowers(removeNodeLog);
+      switch (result) {
+        case OK:
+          commitLog(removeNodeLog);
+          logger.info("{}: Removal request of {} is accepted", name, target);
+          return Response.RESPONSE_AGREE;
+        case TIME_OUT:
+          logger.info("{}: Removal request of {} timed out", name, target);
+          try {
+            Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          retryTime++;
+          break;
           // retry
-          case LEADERSHIP_STALE:
-          default:
-            return Response.RESPONSE_NULL;
-        }
+        case LEADERSHIP_STALE:
+        default:
+          return Response.RESPONSE_NULL;
       }
     }
   }
@@ -1685,54 +1731,84 @@ public class MetaGroupMember extends RaftMember {
    * node is the local node, also stop heartbeat and catch-up service of metadata, but the heartbeat
    * and catch-up service of data are kept alive for other nodes to pull data. If the removed node
    * is a leader, send an exile to the removed node so that it can know it is removed.
-   *
-   * @param oldNode the node to be removed
    */
-  public void applyRemoveNode(Node oldNode) {
+  public void applyRemoveNode(RemoveNodeLog removeNodeLog) {
+
+    long startTime = System.currentTimeMillis();
+    Node oldNode = removeNodeLog.getRemovedNode();
     synchronized (allNodes) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Removing a node {} from {}", name, oldNode, allNodes);
+      }
+
       if (allNodes.contains(oldNode)) {
-        logger.debug("Removing a node {} from {}", oldNode, allNodes);
         allNodes.remove(oldNode);
         idNodeMap.remove(oldNode.nodeIdentifier);
-
-        // update the partition table
-        NodeRemovalResult result = partitionTable.removeNode(oldNode);
-        ((SlotPartitionTable) partitionTable).setLastLogIndex(logManager.getLastLogIndex());
-
-        // update DataGroupMembers, as the node is removed, the members of some groups are
-        // changed and there will also be one less group
-        getDataClusterServer().removeNode(oldNode, result);
-        // the leader is removed, start the next election ASAP
-        if (oldNode.equals(leader.get())) {
-          setCharacter(NodeCharacter.ELECTOR);
-          lastHeartbeatReceivedTime = Long.MIN_VALUE;
-        }
-
-        if (oldNode.equals(thisNode)) {
-          // use super.stop() so that the data server will not be closed because other nodes may
-          // want to pull data from this node
-          super.stop();
-          if (clientServer != null) {
-            clientServer.stop();
-          }
-        } else if (thisNode.equals(leader.get())) {
-          // as the old node is removed, it cannot know this by heartbeat or log, so it should be
-          // directly kicked out of the cluster
-          exileNode(oldNode);
-        }
-
-        // save the updated partition table
-        savePartitionTable();
       }
+
+      // save the updated partition table
+      savePartitionTable();
+
+      // update DataGroupMembers, as the node is removed, the members of some groups are
+      // changed and there will also be one less group
+      NodeRemovalResult result = partitionTable.getNodeRemovalResult();
+      getDataClusterServer().removeNode(oldNode, result);
+
+      // the leader is removed, start the next election ASAP
+      if (oldNode.equals(leader.get()) && !oldNode.equals(thisNode)) {
+        synchronized (term) {
+          setCharacter(NodeCharacter.ELECTOR);
+          setLeader(null);
+        }
+        synchronized (getHeartBeatWaitObject()) {
+          getHeartBeatWaitObject().notifyAll();
+        }
+      }
+
+      if (oldNode.equals(thisNode)) {
+        // use super.stop() so that the data server will not be closed because other nodes may
+        // want to pull data from this node
+        new Thread(
+                () -> {
+                  try {
+                    Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    // ignore
+                  }
+                  super.stop();
+                  if (clientServer != null) {
+                    clientServer.stop();
+                  }
+                  logger.info("{} has been removed from the cluster", name);
+                })
+            .start();
+      } else if (thisNode.equals(leader.get())) {
+        // as the old node is removed, it cannot know this by heartbeat or log, so it should be
+        // directly kicked out of the cluster
+        getAppendLogThreadPool().submit(() -> exileNode(removeNodeLog));
+      }
+
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Success to remove a node {} from {}", name, oldNode, allNodes);
+      }
+
+      logger.info(
+          "{}: execute removing node {} cost {} ms",
+          name,
+          oldNode,
+          (System.currentTimeMillis()) - startTime);
     }
   }
 
-  private void exileNode(Node node) {
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+  protected void exileNode(RemoveNodeLog removeNodeLog) {
+    logger.debug("Exile node {}: start.", removeNodeLog.getRemovedNode());
+    Node node = removeNodeLog.getRemovedNode();
+    if (config.isUseAsyncServer()) {
       AsyncMetaClient asyncMetaClient = (AsyncMetaClient) getAsyncClient(node);
       try {
         if (asyncMetaClient != null) {
-          asyncMetaClient.exile(new GenericHandler<>(node, null));
+          asyncMetaClient.exile(removeNodeLog.serialize(), new GenericHandler<>(node, null));
         }
       } catch (TException e) {
         logger.warn("Cannot inform {} its removal", node, e);
@@ -1743,7 +1819,7 @@ public class MetaGroupMember extends RaftMember {
         return;
       }
       try {
-        client.exile();
+        client.exile(removeNodeLog.serialize());
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
         logger.warn("Cannot inform {} its removal", node, e);
@@ -1785,9 +1861,62 @@ public class MetaGroupMember extends RaftMember {
     return report;
   }
 
+  /**
+   * Collect data migration status of data group in all cluster nodes.
+   *
+   * @return key: data group; value: slot num in data migration
+   */
+  public Map<PartitionGroup, Integer> collectAllPartitionMigrationStatus()
+      throws CheckConsistencyException {
+    syncLeader(null);
+    Map<PartitionGroup, Integer> res = new HashMap<>();
+    for (Node node : allNodes) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: start to get migration status of {}", name, node);
+      }
+      Map<PartitionGroup, Integer> oneNodeRes;
+      if (node.equals(thisNode)) {
+        oneNodeRes = collectMigrationStatus();
+      } else {
+        oneNodeRes = collectMigrationStatus(node);
+      }
+      if (oneNodeRes == null) {
+        return null;
+      }
+      for (Entry<PartitionGroup, Integer> entry : oneNodeRes.entrySet()) {
+        res.put(entry.getKey(), Math.max(res.getOrDefault(entry.getKey(), 0), entry.getValue()));
+      }
+    }
+    return res;
+  }
+
+  /**
+   * Collect data migration status of data group in all cluster nodes.
+   *
+   * @return key: data group; value: slot num in data migration
+   */
+  public Map<PartitionGroup, Integer> collectMigrationStatus() {
+    logger.info("{}: start to collect migration status locally.", name);
+    Map<PartitionGroup, Integer> groupSlotMap = new HashMap<>();
+    if (getPartitionTable() == null) {
+      return groupSlotMap;
+    }
+    Map<RaftNode, DataGroupMember> headerMap = getDataClusterServer().getHeaderGroupMap();
+    syncLocalApply(getPartitionTable().getLastMetaLogIndex(), false);
+    synchronized (headerMap) {
+      for (DataGroupMember dataMember : headerMap.values()) {
+        int num = dataMember.getSlotManager().getSloNumInDataMigration();
+        if (num > 0) {
+          groupSlotMap.put(dataMember.getPartitionGroup(), num);
+        }
+      }
+    }
+    return groupSlotMap;
+  }
+
   @Override
-  public void setAllNodes(List<Node> allNodes) {
-    super.setAllNodes(allNodes);
+  public void setAllNodes(PartitionGroup allNodes) {
+    super.setAllNodes(new PartitionGroup(allNodes));
     initPeerMap();
     idNodeMap = new HashMap<>();
     for (Node node : allNodes) {
@@ -1798,21 +1927,21 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Get a local DataGroupMember that is in the group of "header" and should process "request".
    *
-   * @param header  the header of the group which the local node is in
+   * @param header the header of the group which the local node is in
    * @param request the toString() of this parameter should explain what the request is and it is
-   *                only used in logs for tracing
+   *     only used in logs for tracing
    */
-  public DataGroupMember getLocalDataMember(Node header, Object request) {
+  public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
     return dataClusterServer.getDataMember(header, null, request);
   }
 
   /**
    * Get a local DataGroupMember that is in the group of "header" for an internal request.
    *
-   * @param header the header of the group which the local node is in
+   * @param raftNode the header of the group which the local node is in
    */
-  public DataGroupMember getLocalDataMember(Node header) {
-    return dataClusterServer.getDataMember(header, null, "Internal call");
+  public DataGroupMember getLocalDataMember(RaftNode raftNode) {
+    return dataClusterServer.getDataMember(raftNode, null, "Internal call");
   }
 
   public DataClientProvider getClientProvider() {
@@ -1834,6 +1963,10 @@ public class MetaGroupMember extends RaftMember {
   @TestOnly
   public void setClientProvider(DataClientProvider dataClientProvider) {
     this.dataClientProvider = dataClientProvider;
+  }
+
+  public void setRouter(ClusterPlanRouter router) {
+    this.router = router;
   }
 
   public void handleHandshake(Node sender) {

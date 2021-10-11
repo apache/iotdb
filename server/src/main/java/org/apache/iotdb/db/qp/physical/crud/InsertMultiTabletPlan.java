@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
@@ -39,7 +40,7 @@ import java.util.TreeMap;
  * reduce the number of raft logs. For details, please refer to
  * https://issues.apache.org/jira/browse/IOTDB-1099
  */
-public class InsertMultiTabletPlan extends InsertPlan {
+public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
 
   /**
    * the value is used to indict the parent InsertTabletPlan's index when the parent
@@ -89,6 +90,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
 
   /** record the result of creation of time series */
   private Map<Integer, TSStatus> results = new TreeMap<>();
+
+  boolean[] isExecuted;
 
   public InsertMultiTabletPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
@@ -176,7 +179,7 @@ public class InsertMultiTabletPlan extends InsertPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertTabletPlanList.get(0).getDeviceId();
+    return insertTabletPlanList.get(0).getPrefixPath();
   }
 
   public InsertTabletPlan getInsertTabletPlan(int index) {
@@ -326,5 +329,39 @@ public class InsertMultiTabletPlan extends InsertPlan {
                 ? parentInsertTabletPlanIndexList.hashCode()
                 : 0);
     return result;
+  }
+
+  @Override
+  public void setIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = true;
+  }
+
+  @Override
+  public boolean isExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    return isExecuted[i];
+  }
+
+  @Override
+  public int getBatchSize() {
+    return insertTabletPlanList.size();
+  }
+
+  @Override
+  public void unsetIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = false;
+    if (parentInsertTabletPlanIndexList != null && !parentInsertTabletPlanIndexList.isEmpty()) {
+      results.remove(getParentIndex(i));
+    } else {
+      results.remove(i);
+    }
   }
 }
