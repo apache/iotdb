@@ -20,7 +20,11 @@
 package org.apache.iotdb.influxdb;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
@@ -241,7 +245,11 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void flush() {
-    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
+    try {
+      session.executeNonQueryStatement("flush");
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      throw new InfluxDBException(e);
+    }
   }
 
   @Override
@@ -377,11 +385,27 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public Pong ping() {
-    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
+    final long started = System.currentTimeMillis();
+    String version = version();
+    Pong pong = new Pong();
+    pong.setVersion(version);
+    pong.setResponseTime(System.currentTimeMillis() - started);
+    return pong;
   }
 
   @Override
   public String version() {
-    throw new UnsupportedOperationException(METHOD_NOT_SUPPORTED);
+    try {
+      SessionDataSet sessionDataSet = session.executeQueryStatement("show version");
+      String version = null;
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<Field> fields = record.getFields();
+        version = fields.get(0).getStringValue();
+      }
+      return version;
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
   }
 }
