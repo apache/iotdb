@@ -67,6 +67,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -350,8 +351,8 @@ public class Session {
     metaSessionConnection = defaultSessionConnection;
     isClosed = false;
     if (enableCacheLeader || enableQueryRedirection) {
-      deviceIdToEndpoint = new HashMap<>();
-      endPointToSessionConnection = new HashMap<>();
+      deviceIdToEndpoint = new ConcurrentHashMap<>();
+      endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
     }
   }
@@ -829,6 +830,7 @@ public class Session {
                 }
               });
       if (connection == null) {
+        deviceIdToEndpoint.remove(deviceId);
         throw new IoTDBConnectionException(tmp.get());
       }
     }
