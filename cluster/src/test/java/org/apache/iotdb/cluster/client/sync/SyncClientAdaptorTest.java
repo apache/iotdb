@@ -245,7 +245,9 @@ public class SyncClientAdaptorTest {
               List<String> path,
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-            resultHandler.onComplete(new GetAllPathsResult(path));
+            List<Boolean> isVectorPaths = new ArrayList<>(path.size());
+            Collections.fill(isVectorPaths, false);
+            resultHandler.onComplete(new GetAllPathsResult(path, isVectorPaths));
           }
 
           @Override

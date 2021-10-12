@@ -61,26 +61,17 @@ public class AlignedTimeseriesSessionExample {
     createTemplate();
     createAlignedTimeseries();
 
-    insertAlignedRecord();
-    insertAlignedRecords();
-    insertAlignedRecordsOfOneDevices();
-
-    insertAlignedStringRecord();
-    insertAlignedStringRecords();
-
     insertTabletWithAlignedTimeseriesMethod1();
     insertTabletWithAlignedTimeseriesMethod2();
-    insertNullableTabletWithAlignedTimeseries();
-    insertTabletsWithAlignedTimeseries();
 
-    selectTest();
-    selectWithValueFilterTest();
-    selectWithGroupByTest();
-    selectWithLastTest();
-
-    selectWithAggregationTest();
-
-    selectWithAlignByDeviceTest();
+    //    selectTest();
+    //    selectWithValueFilterTest();
+    //    selectWithGroupByTest();
+    //    selectWithLastTest();
+    //
+    //    selectWithAggregationTest();
+    //
+    //    selectWithAlignByDeviceTest();
 
     session.close();
   }
