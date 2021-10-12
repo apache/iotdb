@@ -607,7 +607,7 @@
                 <plugin>
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
-                    <version>3.6.1.1688</version>
+                    <version>3.9.0.2155</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.rat</groupId>
