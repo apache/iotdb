@@ -40,6 +40,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,6 +75,19 @@ public class RemoteSeriesReaderByTimestampTest {
               public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
                   throws IOException {
                 return new AsyncDataClient(null, null, node, ClientCategory.DATA) {
+
+                  @Override
+                  public void querySingleSeriesByTimestamp(
+                      SingleSeriesQueryRequest request,
+                      org.apache.thrift.async.AsyncMethodCallback<java.lang.Long> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(() -> resultHandler.onComplete(1L)).start();
+                  }
+
                   @Override
                   public void fetchSingleSeriesByTimestamps(
                       RaftNode header,

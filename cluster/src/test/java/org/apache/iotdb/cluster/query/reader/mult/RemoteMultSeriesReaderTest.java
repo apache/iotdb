@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -33,11 +34,14 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -46,6 +50,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,6 +84,7 @@ public class RemoteMultSeriesReaderTest {
   private boolean prevUseAsyncServer;
   private List<PartialPath> paths;
   private List<TSDataType> dataTypes;
+  private TProtocolFactory protocolFactory;
 
   @Before
   public void setUp() throws IllegalPathException {
@@ -92,6 +102,10 @@ public class RemoteMultSeriesReaderTest {
     batchData.add(TestUtils.genBatchData(TSDataType.INT32, 0, 100));
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember();
+    protocolFactory =
+        ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
+            ? new TCompactProtocol.Factory()
+            : new TBinaryProtocol.Factory();
   }
 
   @After
@@ -264,8 +278,16 @@ public class RemoteMultSeriesReaderTest {
               }
 
               @Override
-              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
-                return new SyncDataClient(null) {
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category)
+                  throws TTransportException {
+                return new SyncDataClient(
+                    protocolFactory.getProtocol(
+                        RpcTransportFactory.INSTANCE.getTransport(
+                            new TSocket(
+                                TConfigurationConst.defaultTConfiguration,
+                                node.getInternalIp(),
+                                ClientUtils.getPort(node, category),
+                                ClusterConstant.getConnectionTimeoutInMS())))) {
                   @Override
                   public Map<String, ByteBuffer> fetchMultSeries(
                       RaftNode header, long readerId, List<String> paths) throws TException {
