@@ -857,14 +857,16 @@ STRING_LITERAL
     | BQUOTA_STRING
     ;
 
+DURATION
+    : (DECIMAL_LITERAL+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
+    ;
+
 DECIMAL_LITERAL
     : DEC_DIGIT+
     ;
 
-REAL_LITERAL
-    : DECIMAL_LITERAL DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)?
-    | DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)
-    | EXPONENT_NUM_PART
+EXPONENT_NUM_PART
+    : DEC_DIGIT+ ('e'|'E') ('+'|'-')? DEC_DIGIT+
     ;
 
 BOOLEAN_LITERAL
@@ -878,10 +880,6 @@ NULL_LITERAL
 
 NAN_LITERAL
     : N A N
-    ;
-
-DURATION
-    : (DECIMAL_LITERAL+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
     ;
 
 DATETIME
@@ -936,7 +934,6 @@ fragment DQUOTA_STRING:              '"' ('\\' . | ~'"' )*? '"';
 fragment SQUOTA_STRING:              '\'' ('\\' . | ~'\'' )*? '\'';
 fragment BQUOTA_STRING:              '`' ('\\' . | ~'`' )*? '`';
 fragment DEC_DIGIT:                  [0-9];
-fragment EXPONENT_NUM_PART:          DEC_DIGIT+ ('e'|'E') ('+'|'-')? DEC_DIGIT+ ;
 
 fragment NAME_CHAR
     :   'A'..'Z'

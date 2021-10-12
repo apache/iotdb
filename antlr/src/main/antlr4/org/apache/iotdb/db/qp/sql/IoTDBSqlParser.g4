@@ -668,7 +668,7 @@ nodeName
     | DURATION
     | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
-    | (MINUS|PLUS)? REAL_LITERAL
+    | (MINUS|PLUS)? EXPONENT_NUM_PART
     | BOOLEAN_LITERAL
     | keywordsCanBeId
     ;
@@ -679,8 +679,9 @@ nodeNameWithoutWildcard
     | DURATION
     | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
-    | (MINUS|PLUS)? REAL_LITERAL
+    | (MINUS|PLUS)? EXPONENT_NUM_PART
     | BOOLEAN_LITERAL
+    | (ID | OPERATOR_IN)? LS_BRACKET DECIMAL_LITERAL? ID? RS_BRACKET? ID?
     | keywordsCanBeId
     ;
 
@@ -689,6 +690,8 @@ keywordsCanBeId
     | encoding
     | compressor
     | privilege
+    | ASC
+    | DESC
     | DEVICE
     ;
 
@@ -697,11 +700,17 @@ usernameWithRoot
     | ID
     ;
 
+realLiteral
+    : DECIMAL_LITERAL DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)?
+    | DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)
+    | EXPONENT_NUM_PART
+    ;
+
 constant
     : dateExpression
     | STRING_LITERAL
     | (MINUS|PLUS)? DECIMAL_LITERAL
-    | (MINUS|PLUS)? REAL_LITERAL
+    | (MINUS|PLUS)? realLiteral
     | BOOLEAN_LITERAL
     | NULL_LITERAL
     | NAN_LITERAL
