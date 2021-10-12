@@ -1163,7 +1163,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     // TODO
     int levelLimitOfSourcePrefixPath;
     if (queryOp.isGroupByLevel()) {
-      levelLimitOfSourcePrefixPath = queryOp.getSpecialClauseComponent().getLevels()[0];
+      levelLimitOfSourcePrefixPath =
+          Arrays.stream(queryOp.getSpecialClauseComponent().getLevels()).min().getAsInt();
     } else {
       levelLimitOfSourcePrefixPath =
           queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength() - 1;
@@ -1820,7 +1821,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     parseTimeInterval(ctx.timeInterval(), groupByClauseComponent);
 
-    if (ctx.INT() != null) {
+    if (ctx.LEVEL() != null && ctx.INT() != null) {
       int[] levels = new int[ctx.INT().size()];
       for (int i = 0; i < ctx.INT().size(); i++) {
         levels[i] = Integer.parseInt(ctx.INT().get(i).getText());
