@@ -119,7 +119,7 @@
         <logback.version>1.2.3</logback.version>
         <joda.version>2.9.9</joda.version>
         <spark.version>2.4.3</spark.version>
-        <flink.version>1.11.1</flink.version>
+        <flink.version>1.14.0</flink.version>
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.4</commons.collections4>
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
