@@ -56,7 +56,7 @@ dclStatement
     ;
 
 utilityStatement
-    : mergeStatement | fullMergeStatement | flushStatement | clearCache
+    : merge | fullMerge | flush | clearCache
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showMergeInfo
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
@@ -304,14 +304,28 @@ specialClause
     | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
     | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
     | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
-    | fillClause slimitClause? (ALIGN_BY_DEVICE|DISABLE_ALIGN)? #fillStatement
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
     ;
 
 specialLimit
-    : limitClause slimitClause? (ALIGN_BY_DEVICE|DISABLE_ALIGN)? #limitStatement
-    | slimitClause limitClause? (ALIGN_BY_DEVICE|DISABLE_ALIGN)? #slimitStatement
-    | withoutNullClause limitClause? slimitClause? (ALIGN_BY_DEVICE|DISABLE_ALIGN)? #withoutNullStatement
-    | (ALIGN_BY_DEVICE|DISABLE_ALIGN) #alignByDeviceClauseOrDisableAlignStatement
+    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign? #limitStatement
+    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
+    | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
+    ;
+
+alignByDeviceClauseOrDisableAlign
+    : alignByDeviceClause
+    | disableAlign
+    ;
+
+alignByDeviceClause
+    : ALIGN_BY_DEVICE
+    | GROUP_BY_DEVICE
+    ;
+
+disableAlign
+    : DISABLE_ALIGN
     ;
 
 orderByTimeClause
@@ -325,8 +339,9 @@ groupByTimeClause
     ;
 
 groupByFillClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION RR_BRACKET fillClause
-     ;
+    : GROUP BY LR_BRACKET timeInterval COMMA DURATION  RR_BRACKET
+     FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
+    ;
 
 groupByLevelClause
     : GROUP BY LEVEL OPERATOR_EQ DECIMAL_LITERAL
@@ -412,7 +427,7 @@ createRole
 
 // Alter Password
 alterUser
-    : ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL
+    : ALTER USER userName=usernameWithRoot SET PASSWORD password=STRING_LITERAL
     ;
 
 // Grant User Privileges
@@ -467,7 +482,7 @@ listRole
 
 // List Privileges
 listPrivilegesUser
-    : LIST PRIVILEGES USER username=(ROOT|ID) ON prefixPath
+    : LIST PRIVILEGES USER userName=usernameWithRoot ON prefixPath
     ;
 
 // List Privileges of Roles On Specific Path
@@ -477,7 +492,7 @@ listPrivilegesRole
 
 // List Privileges of Users
 listUserPrivileges
-    : LIST USER PRIVILEGES username=(ROOT|ID)
+    : LIST USER PRIVILEGES userName=usernameWithRoot
     ;
 
 // List Privileges of Roles
@@ -487,7 +502,7 @@ listRolePrivileges
 
 // List Roles of Users
 listAllRoleOfUser
-    : LIST ALL ROLE OF USER username=(ROOT|ID)
+    : LIST ALL ROLE OF USER userName=usernameWithRoot
     ;
 
 // List Users of Role
@@ -501,17 +516,17 @@ listAllUserOfRole
  */
 
 // Merge
-mergeStatement
+merge
     : MERGE
     ;
 
 // Full Merge
-fullMergeStatement
+fullMerge
     : FULL MERGE
     ;
 
 // Flush
-flushStatement
+flush
     : FLUSH prefixPath? (COMMA prefixPath)* BOOLEAN_LITERAL?
     ;
 
@@ -530,14 +545,14 @@ showVersion
     : SHOW VERSION
     ;
 
-// Show Flush Task Info
+// Show Flush Info
 showFlushInfo
     : SHOW FLUSH INFO
     ;
 
 // Show Lock Info
 showLockInfo
-    : SHOW LOCK INFO
+    : SHOW LOCK INFO prefixPath
     ;
 
 // Show Merge Info
@@ -557,12 +572,12 @@ killQuery
 
 // Grant Watermark Embedding
 grantWatermarkEmbedding
-    : GRANT WATERMARK_EMBEDDING TO (ROOT|ID) (COMMA (ROOT|ID))*
+    : GRANT WATERMARK_EMBEDDING TO usernameWithRoot (COMMA usernameWithRoot)*
     ;
 
 // Revoke Watermark Embedding
 revokeWatermarkEmbedding
-    : REVOKE WATERMARK_EMBEDDING FROM (ROOT|ID) (COMMA (ROOT|ID))*
+    : REVOKE WATERMARK_EMBEDDING FROM usernameWithRoot (COMMA usernameWithRoot)*
     ;
 
 // Load Configuration
@@ -621,8 +636,8 @@ measurementName
     ;
 
 nodeName
-    : ID WILDCARD?
-    | WILDCARD
+    : ID (STAR|DOUBLE_STAR)?
+    | (STAR|DOUBLE_STAR)
     | DOUBLE_QUOTE_STRING_LITERAL
     | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
@@ -639,6 +654,11 @@ nodeNameWithoutWildcard
     | (MINUS|PLUS)? REAL_LITERAL
     | BOOLEAN_LITERAL
     | keywordsCanBeId
+    ;
+
+usernameWithRoot
+    : ROOT
+    | ID
     ;
 
 constant

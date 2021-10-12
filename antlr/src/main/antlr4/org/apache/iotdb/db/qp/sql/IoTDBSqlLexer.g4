@@ -43,6 +43,9 @@ DISABLE_ALIGN
     : DISABLE WS ALIGN
     ;
 
+GROUP_BY_DEVICE
+    : GROUP WS BY WS DEVICE
+    ;
 
 // Common Keywords
 
@@ -622,7 +625,7 @@ GORILLA
     ;
 
 PLAIN
-    : P I A I N
+    : P L A I N
     ;
 
 REGULAR
@@ -827,7 +830,7 @@ DOT : '.';
 COMMA : ',';
 SEMI: ';';
 STAR: '*';
-WILDCARD : STAR | STAR STAR;
+DOUBLE_STAR: '**';
 LR_BRACKET : '(';
 RR_BRACKET : ')';
 LS_BRACKET : '[';
