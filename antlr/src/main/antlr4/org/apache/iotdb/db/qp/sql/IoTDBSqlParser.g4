@@ -665,6 +665,7 @@ nodeName
     : ID (STAR|DOUBLE_STAR)?
     | (STAR|DOUBLE_STAR)
     | STRING_LITERAL
+    | DURATION
     | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
     | (MINUS|PLUS)? REAL_LITERAL
@@ -675,6 +676,7 @@ nodeName
 nodeNameWithoutWildcard
     : ID
     | STRING_LITERAL
+    | DURATION
     | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
     | (MINUS|PLUS)? REAL_LITERAL
