@@ -37,6 +37,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.session.util.ThreadUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -65,6 +67,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -77,6 +82,14 @@ public class Session {
   public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
   public static final String MSG_DONOT_ENABLE_REDIRECT =
       "Query do not enable redirect," + " please confirm the session and server conf.";
+  private static final ThreadPoolExecutor OPERATION_EXECUTOR =
+      new ThreadPoolExecutor(
+          Config.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
+          Config.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
+          0,
+          TimeUnit.MILLISECONDS,
+          new LinkedBlockingQueue<>(Config.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
+          ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
   protected String username;
   protected String password;
@@ -1035,7 +1048,7 @@ public class Session {
           request, deviceIds.get(i), times.get(i), measurementsList.get(i), valuesList.get(i));
     }
 
-    insertRecordsGroup(recordsGroup, SessionConnection::insertRecords);
+    insertByGroup(recordsGroup, SessionConnection::insertRecords);
   }
 
   private TSInsertStringRecordsReq genTSInsertStringRecordsReq(
@@ -1346,7 +1359,7 @@ public class Session {
           typesList.get(i),
           valuesList.get(i));
     }
-    insertRecordsGroup(recordsGroup, SessionConnection::insertRecords);
+    insertByGroup(recordsGroup, SessionConnection::insertRecords);
   }
 
   private TSInsertRecordsReq genTSInsertRecordsReq(
@@ -1499,7 +1512,7 @@ public class Session {
       updateTSInsertTabletsReq(request, entry.getValue(), sorted);
     }
 
-    insertRecordsGroup(tabletGroup, SessionConnection::insertTablets);
+    insertByGroup(tabletGroup, SessionConnection::insertTablets);
   }
 
   private TSInsertTabletsReq genTSInsertTabletsReq(List<Tablet> tablets, boolean sorted)
@@ -2023,7 +2036,7 @@ public class Session {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
-  private <T> void insertRecordsGroup(
+  private <T> void insertByGroup(
       Map<SessionConnection, T> recordsGroup, InsertConsumer<T> insertConsumer)
       throws IoTDBConnectionException, StatementExecutionException {
     List<CompletableFuture<Void>> completableFutures =
@@ -2053,7 +2066,8 @@ public class Session {
                           removeBrokenSessionConnection(connection);
                           throw new CompletionException(e);
                         }
-                      });
+                      },
+                      OPERATION_EXECUTOR);
                 })
             .collect(Collectors.toList());
 
