@@ -39,7 +39,7 @@ public class AggregationPlan extends RawDataQueryPlan {
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
 
-  private int level = -1;
+  private int[] levels;
   // group by level aggregation result path
   private final Map<String, AggregateResult> groupPathsResultMap = new LinkedHashMap<>();
 
@@ -69,12 +69,12 @@ public class AggregationPlan extends RawDataQueryPlan {
     this.deduplicatedAggregations = deduplicatedAggregations;
   }
 
-  public int getLevel() {
-    return level;
+  public int[] getLevels() {
+    return levels;
   }
 
-  public void setLevel(int level) {
-    this.level = level;
+  public void setLevels(int[] levels) {
+    this.levels = levels;
   }
 
   public Map<String, AggregateResult> getGroupPathsResultMap() {
@@ -90,7 +90,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       for (int i = 0; i < paths.size(); i++) {
         String transformedPath =
             AggregateUtils.generatePartialPathByLevel(
-                getDeduplicatedPaths().get(i).getFullPath(), getLevel());
+                getDeduplicatedPaths().get(i).getFullPath(), levels);
         String key = deduplicatedAggregations.get(i) + "(" + transformedPath + ")";
         AggregateResult result = groupPathsResultMap.get(key);
         if (result == null) {
@@ -108,7 +108,7 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   @Override
   public boolean isGroupByLevel() {
-    return level >= 0;
+    return levels != null;
   }
 
   @Override
@@ -120,12 +120,12 @@ public class AggregationPlan extends RawDataQueryPlan {
   public String getColumnForDisplay(String columnForReader, int pathIndex)
       throws IllegalPathException {
     String columnForDisplay = columnForReader;
-    if (level >= 0) {
+    if (isGroupByLevel()) {
       PartialPath path = paths.get(pathIndex);
       String aggregatePath =
           path.isMeasurementAliasExists()
-              ? AggregateUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), level)
-              : AggregateUtils.generatePartialPathByLevel(path.toString(), level);
+              ? AggregateUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), levels)
+              : AggregateUtils.generatePartialPathByLevel(path.toString(), levels);
       columnForDisplay = aggregations.get(pathIndex) + "(" + aggregatePath + ")";
     }
     return columnForDisplay;

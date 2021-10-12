@@ -32,7 +32,7 @@ public class SpecialClauseComponent {
   // if true, we don't need the row whose all columns are null
   protected boolean withoutAllNull;
 
-  protected int level = -1;
+  protected int[] levels;
 
   protected boolean isAlignByDevice = false;
   protected boolean isAlignByTime = true;
@@ -103,12 +103,12 @@ public class SpecialClauseComponent {
     this.withoutAllNull = withoutAllNull;
   }
 
-  public int getLevel() {
-    return level;
+  public int[] getLevels() {
+    return levels;
   }
 
-  public void setLevel(int level) {
-    this.level = level;
+  public void setLevels(int[] levels) {
+    this.levels = levels;
   }
 
   public boolean isAlignByDevice() {

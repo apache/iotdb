@@ -273,6 +273,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -1159,11 +1160,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private PartialPath parseIntoPath(IntoPathContext intoPathContext) {
-    int levelLimitOfSourcePrefixPath =
-        queryOp.getSpecialClauseComponent() != null
-            ? queryOp.getSpecialClauseComponent().getLevel()
-            : -1;
-    if (levelLimitOfSourcePrefixPath == -1) {
+    // TODO
+    int levelLimitOfSourcePrefixPath;
+    if (queryOp.isGroupByLevel()) {
+      levelLimitOfSourcePrefixPath = queryOp.getSpecialClauseComponent().getLevels()[0];
+    } else {
       levelLimitOfSourcePrefixPath =
           queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength() - 1;
     }
@@ -1261,7 +1262,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     sb.append(")");
     if (queryOp.isGroupByLevel()) {
       sb.append(", level = ");
-      sb.append(queryOp.getSpecialClauseComponent().getLevel());
+      int[] levels = queryOp.getSpecialClauseComponent().getLevels();
+      sb.append(levels[0]);
+      for (int i = 1; i < levels.length; i++) {
+        sb.append(String.format(", %d", levels[i]));
+      }
     }
     createContinuousQueryOperator.setQuerySql(sb.toString());
 
@@ -1318,10 +1323,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     parseCqGroupByTimeClause(ctx.cqGroupByTimeClause());
 
-    int groupByQueryLevel = queryOp.getSpecialClauseComponent().getLevel();
-    int fromPrefixLevelLimit = queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength();
-    if (groupByQueryLevel >= fromPrefixLevelLimit) {
-      throw new SQLParserException("CQ: Level should not exceed the <from_prefix> length.");
+    if (queryOp.isGroupByLevel()) {
+      int[] groupByQueryLevels = queryOp.getSpecialClauseComponent().getLevels();
+      int fromPrefixLevelLimit = queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength();
+      if (Arrays.stream(groupByQueryLevels).max().getAsInt() >= fromPrefixLevelLimit) {
+        throw new SQLParserException("CQ: Level should not exceed the <from_prefix> length.");
+      }
     }
 
     createContinuousQueryOperator.setTargetPath(parseIntoPath(ctx.intoPath()));
@@ -1341,7 +1348,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     groupByClauseComponent.setLeftCRightO(true);
 
     if (ctx.LEVEL() != null && ctx.INT() != null) {
-      groupByClauseComponent.setLevel(Integer.parseInt(ctx.INT().getText()));
+      int[] levels = new int[ctx.INT().size()];
+      for (int i = 0; i < ctx.INT().size(); i++) {
+        levels[i] = Integer.parseInt(ctx.INT().get(i).getText());
+      }
+      groupByClauseComponent.setLevels(levels);
     }
 
     queryOp.setSpecialClauseComponent(groupByClauseComponent);
@@ -1642,7 +1653,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   public void parseGroupByLevelClause(GroupByLevelClauseContext ctx) {
     SpecialClauseComponent groupByLevelClauseComponent = new SpecialClauseComponent();
-    groupByLevelClauseComponent.setLevel(Integer.parseInt(ctx.INT().getText()));
+    int[] levels = new int[ctx.INT().size()];
+    for (int i = 0; i < ctx.INT().size(); i++) {
+      levels[i] = Integer.parseInt(ctx.INT().get(i).getText());
+    }
+    groupByLevelClauseComponent.setLevels(levels);
+
     queryOp.setSpecialClauseComponent(groupByLevelClauseComponent);
   }
 
@@ -1805,8 +1821,13 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     parseTimeInterval(ctx.timeInterval(), groupByClauseComponent);
 
     if (ctx.INT() != null) {
-      groupByClauseComponent.setLevel(Integer.parseInt(ctx.INT().getText()));
+      int[] levels = new int[ctx.INT().size()];
+      for (int i = 0; i < ctx.INT().size(); i++) {
+        levels[i] = Integer.parseInt(ctx.INT().get(i).getText());
+      }
+      groupByClauseComponent.setLevels(levels);
     }
+
     queryOp.setSpecialClauseComponent(groupByClauseComponent);
   }
 

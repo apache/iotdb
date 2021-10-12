@@ -23,6 +23,9 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class AggregateUtils {
 
   /**
@@ -31,20 +34,21 @@ public class AggregateUtils {
    * will return "root.sg.dh.*.s1"
    *
    * @param originalPath the original timeseries path
-   * @param pathLevel the expected path level
    * @return result partial path
    */
-  public static String generatePartialPathByLevel(String originalPath, int pathLevel)
+  public static String generatePartialPathByLevel(String originalPath, int[] pathLevels)
       throws IllegalPathException {
     String[] tmpPath = MetaUtils.splitPathToDetachedPath(originalPath);
-    if (pathLevel >= tmpPath.length - 1) {
-      return originalPath;
+    Set<Integer> levelSet = new HashSet<>();
+    for (int level : pathLevels) {
+      levelSet.add(level);
     }
+
     StringBuilder transformedPath = new StringBuilder();
     transformedPath.append(tmpPath[0]);
     for (int k = 1; k < tmpPath.length - 1; k++) {
       transformedPath.append(TsFileConstant.PATH_SEPARATOR);
-      if (k == pathLevel) {
+      if (levelSet.contains(k)) {
         transformedPath.append(tmpPath[k]);
       } else {
         transformedPath.append(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);

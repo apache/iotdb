@@ -697,7 +697,7 @@ public class AggregationExecutor {
     SingleDataSet dataSet;
     RowRecord record = new RowRecord(0);
 
-    if (plan.getLevel() >= 0) {
+    if (plan.isGroupByLevel()) {
       Map<String, AggregateResult> groupPathsResultMap =
           plan.groupAggResultByLevel(aggregateResultList);
 

@@ -146,7 +146,7 @@ public class QueryOperator extends Operator {
   }
 
   public boolean isGroupByLevel() {
-    return specialClauseComponent != null && specialClauseComponent.getLevel() != -1;
+    return specialClauseComponent != null && specialClauseComponent.getLevels() != null;
   }
 
   public void check() throws LogicalOperatorException {

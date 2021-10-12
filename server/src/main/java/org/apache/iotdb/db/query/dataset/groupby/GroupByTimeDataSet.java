@@ -56,7 +56,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
     this.groupByTimePlan = plan;
 
     if (logger.isDebugEnabled()) {
-      logger.debug("paths " + this.paths + " level:" + plan.getLevel());
+      logger.debug("paths " + this.paths + " level:" + Arrays.toString(plan.getLevels()));
     }
 
     // get all records from GroupByDataSet, then we merge every record
