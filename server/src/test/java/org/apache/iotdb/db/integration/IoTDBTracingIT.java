@@ -32,10 +32,7 @@ import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.sql.Statement;
-
-import static org.junit.Assert.fail;
 
 public class IoTDBTracingIT {
 
@@ -65,17 +62,7 @@ public class IoTDBTracingIT {
 
       String insertTemplate = "INSERT INTO root.tracing.d1(timestamp, s1) VALUES(%d,%d)";
 
-      for (int i = 200; i < 300; i++) {
-        statement.execute(String.format(insertTemplate, i, i));
-      }
-      statement.execute("FLUSH root.tracing");
-
-      for (int i = 400; i < 500; i++) {
-        statement.execute(String.format(insertTemplate, i, i));
-      }
-      statement.execute("FLUSH root.tracing");
-
-      for (int i = 0; i < 100; i++) {
+      for (int i = 100; i < 200; i++) {
         statement.execute(String.format(insertTemplate, i, i));
       }
       statement.execute("FLUSH root.tracing");
@@ -86,38 +73,25 @@ public class IoTDBTracingIT {
   }
 
   @Test
-  public void tracingTest() throws SQLException {
-    Connection connection =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("tracing on");
-    } catch (Exception e) {
-      Assert.assertEquals("411: TRACING ON/OFF hasn't been supported yet", e.getMessage());
-    }
-
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("tracing off");
-    } catch (Exception e) {
-      Assert.assertEquals("411: TRACING ON/OFF hasn't been supported yet", e.getMessage());
-    }
-
-    try (Statement statement = connection.createStatement()) {
+  public void tracingTest() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("tracing select s1 from root.tracing.d1");
       AbstractIoTDBJDBCResultSet resultSet = (AbstractIoTDBJDBCResultSet) statement.getResultSet();
       Assert.assertTrue(resultSet.isSetTracingInfo());
       Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));
-      Assert.assertEquals(2, resultSet.getStatisticsByName("seqFileNum"));
-      Assert.assertEquals(1, resultSet.getStatisticsByName("unSeqFileNum"));
-      Assert.assertEquals(2, resultSet.getStatisticsByName("seqChunkNum"));
-      Assert.assertEquals(200, resultSet.getStatisticsByName("seqChunkPointNum"));
-      Assert.assertEquals(1, resultSet.getStatisticsByName("unSeqChunkNum"));
-      Assert.assertEquals(100, resultSet.getStatisticsByName("unSeqChunkPointNum"));
-      Assert.assertEquals(3, resultSet.getStatisticsByName("totalPageNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("seqFileNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqFileNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("seqChunkNum"));
+      Assert.assertEquals(100, resultSet.getStatisticsByName("seqChunkPointNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkPointNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("totalPageNum"));
       Assert.assertEquals(0, resultSet.getStatisticsByName("overlappedPageNum"));
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
     }
   }
 }
