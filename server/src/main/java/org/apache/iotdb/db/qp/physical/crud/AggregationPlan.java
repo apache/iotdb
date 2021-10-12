@@ -23,9 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.utils.AggregateUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -43,7 +41,7 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   private int level = -1;
   // group by level aggregation result path
-  private final Map<String, AggregateResult> levelAggPaths = new LinkedHashMap<>();
+  private final Map<String, AggregateResult> groupPathsResultMap = new LinkedHashMap<>();
 
   public AggregationPlan() {
     super();
@@ -79,28 +77,38 @@ public class AggregationPlan extends RawDataQueryPlan {
     this.level = level;
   }
 
-  public Map<String, AggregateResult> getAggPathByLevel() throws QueryProcessException {
-    if (!levelAggPaths.isEmpty()) {
-      return levelAggPaths;
+  public Map<String, AggregateResult> getGroupPathsResultMap() {
+    return groupPathsResultMap;
+  }
+
+  public Map<String, AggregateResult> groupAggResultByLevel(List<AggregateResult> aggregateResults)
+      throws QueryProcessException {
+    if (!groupPathsResultMap.isEmpty()) {
+      groupPathsResultMap.clear();
     }
-    List<PartialPath> seriesPaths = getPaths();
-    List<TSDataType> dataTypes = getDataTypes();
     try {
-      for (int i = 0; i < seriesPaths.size(); i++) {
+      for (int i = 0; i < paths.size(); i++) {
         String transformedPath =
-            AggregateUtils.generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), getLevel());
-        String key = getAggregations().get(i) + "(" + transformedPath + ")";
-        if (!levelAggPaths.containsKey(key)) {
-          AggregateResult aggRet =
-              AggregateResultFactory.getAggrResultByName(
-                  getAggregations().get(i), dataTypes.get(i));
-          levelAggPaths.put(key, aggRet);
+            AggregateUtils.generatePartialPathByLevel(
+                getDeduplicatedPaths().get(i).getFullPath(), getLevel());
+        String key = deduplicatedAggregations.get(i) + "(" + transformedPath + ")";
+        AggregateResult result = groupPathsResultMap.get(key);
+        if (result == null) {
+          groupPathsResultMap.put(key, aggregateResults.get(i));
+        } else {
+          result.merge(aggregateResults.get(i));
+          groupPathsResultMap.put(key, result);
         }
       }
     } catch (IllegalPathException e) {
       throw new QueryProcessException(e.getMessage());
     }
-    return levelAggPaths;
+    return groupPathsResultMap;
+  }
+
+  @Override
+  public boolean isGroupByLevel() {
+    return level >= 0;
   }
 
   @Override

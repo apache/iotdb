@@ -114,6 +114,10 @@ public abstract class QueryPlan extends PhysicalPlan {
     pathToIndex.put(columnName, index);
   }
 
+  public boolean isGroupByLevel() {
+    return false;
+  }
+
   public void setPathToIndex(Map<String, Integer> pathToIndex) {
     this.pathToIndex = pathToIndex;
   }
