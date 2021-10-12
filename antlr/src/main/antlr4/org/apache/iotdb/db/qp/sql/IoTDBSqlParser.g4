@@ -117,7 +117,7 @@ triggerAttribute
 
 // Create Continuous Query
 createContinuousQuery
-    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID resampleClause? cqSelectIntoClause
+    : CREATE (CONTINUOUS_QUERY | CQ) continuousQueryName=ID resampleClause? cqSelectIntoClause
     ;
 
 cqSelectIntoClause
@@ -182,7 +182,7 @@ dropTrigger
 
 // Drop Continuous Query
 dropContinuousQuery
-    : DROP (CONTINUOUS QUERY | CQ) continuousQueryName=ID
+    : DROP (CONTINUOUS_QUERY|CQ) continuousQueryName=ID
     ;
 
 // Set TTL
@@ -639,6 +639,7 @@ nodeName
     : ID (STAR|DOUBLE_STAR)?
     | (STAR|DOUBLE_STAR)
     | DOUBLE_QUOTE_STRING_LITERAL
+    | SINGLE_QUOTE_STRING_LITERAL
     | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
     | (MINUS|PLUS)? REAL_LITERAL
@@ -649,6 +650,7 @@ nodeName
 nodeNameWithoutWildcard
     : ID
     | DOUBLE_QUOTE_STRING_LITERAL
+    | SINGLE_QUOTE_STRING_LITERAL
     | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
     | (MINUS|PLUS)? REAL_LITERAL

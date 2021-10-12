@@ -23,10 +23,7 @@ lexer grammar IoTDBSqlLexer;
  * 1. Whitespace and Comment
  */
 
-WS
-    :
-    [ \t\r\n]+ -> skip
-    ;
+
 
 
 /**
@@ -37,6 +34,10 @@ WS
 
 ALIGN_BY_DEVICE
     : ALIGN WS BY WS DEVICE
+    ;
+
+CONTINUOUS_QUERY
+    : CONTINUOUS WS QUERY
     ;
 
 DISABLE_ALIGN
@@ -134,7 +135,7 @@ CONFIGURATION
     ;
 
 CONTINUOUS
-    : C O N T I N O U S
+    : C O N T I N U O U S
     ;
 
 COUNT
@@ -979,4 +980,9 @@ fragment FIRST_NAME_CHAR
 
 fragment CN_CHAR
     : '\u2E80'..'\u9FFF'
+    ;
+
+WS
+    :
+    [ \t\r\n]+ -> skip
     ;
