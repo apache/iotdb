@@ -343,26 +343,36 @@ public class SyncClient implements ISyncClient {
 
   /** UUID marks the identity of sender for receiver. */
   private String getOrCreateUUID(File uuidFile) throws IOException {
-    String uuid;
     if (!uuidFile.getParentFile().exists()) {
       uuidFile.getParentFile().mkdirs();
     }
-    if (!uuidFile.exists()) {
-      try (FileOutputStream out = new FileOutputStream(uuidFile)) {
-        uuid = generateUUID();
-        out.write(uuid.getBytes());
-      } catch (IOException e) {
-        logger.error("Cannot insert UUID to file {}", uuidFile.getPath());
-        throw new IOException(e);
-      }
-    } else {
-      try (BufferedReader bf = new BufferedReader((new FileReader(uuidFile.getAbsolutePath())))) {
+
+    String uuid;
+    if (uuidFile.exists()) {
+      try (BufferedReader bf = new BufferedReader((new FileReader(uuidFile)))) {
         uuid = bf.readLine();
       } catch (IOException e) {
-        logger.error("Cannot read UUID from file{}", uuidFile.getPath());
+        logger.error("Cannot read UUID from file {}", uuidFile.getPath());
         throw new IOException(e);
       }
+
+      if ((uuid == null) || (uuid.length() == 0)) {
+        logger.warn("UUID in file {} is empty.", uuidFile.getPath());
+        uuidFile.delete();
+      } else {
+        return uuid;
+      }
     }
+
+    // uuidFile not exist or uuid in uuidFile is invalid
+    try (FileOutputStream out = new FileOutputStream(uuidFile)) {
+      uuid = generateUUID();
+      out.write(uuid.getBytes());
+    } catch (IOException e) {
+      logger.error("Cannot insert UUID to file {}", uuidFile.getPath());
+      throw new IOException(e);
+    }
+
     return uuid;
   }
 

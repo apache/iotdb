@@ -1093,7 +1093,7 @@ public class MManager {
   public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
     Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
     for (PartialPath path : fullPaths) {
-      IMeasurementMNode node = mtree.getMeasurementMNode(path);
+      IMeasurementMNode node = getMeasurementMNode(path);
       if (!nodeToPartialPath.containsKey(node)) {
         nodeToPartialPath.put(node, path.copy());
       } else {

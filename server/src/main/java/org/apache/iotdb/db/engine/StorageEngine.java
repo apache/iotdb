@@ -59,13 +59,13 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -89,6 +89,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -115,7 +116,9 @@ public class StorageEngine implements IService {
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
    * will have a subfolder under the systemDir.
    */
-  private final String systemDir;
+  private final String systemDir =
+      FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+
   /** storage group name -> storage group processor */
   private final ConcurrentHashMap<PartialPath, VirtualStorageGroupManager> processorMap =
       new ConcurrentHashMap<>();
@@ -133,27 +136,7 @@ public class StorageEngine implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
-  private StorageEngine() {
-    systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
-
-    // build time Interval to divide time partition
-    if (!enablePartition) {
-      timePartitionInterval = Long.MAX_VALUE;
-    } else {
-      initTimePartition();
-    }
-
-    // create systemDir
-    try {
-      FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
-    } catch (IOException e) {
-      throw new StorageEngineFailureException(e);
-    }
-    // recover upgrade process
-    UpgradeUtils.recoverUpgrade();
-
-    recover();
-  }
+  private StorageEngine() {}
 
   public static StorageEngine getInstance() {
     return InstanceHolder.INSTANCE;
@@ -274,10 +257,30 @@ public class StorageEngine implements IService {
 
   @Override
   public void start() {
-    ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL");
+    // build time Interval to divide time partition
+    if (!enablePartition) {
+      timePartitionInterval = Long.MAX_VALUE;
+    } else {
+      initTimePartition();
+    }
+
+    // create systemDir
+    try {
+      FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
+    } catch (IOException e) {
+      throw new StorageEngineFailureException(e);
+    }
+
+    // recover upgrade process
+    UpgradeUtils.recoverUpgrade();
+
+    recover();
+
+    ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
     ttlCheckThread.scheduleAtFixedRate(
         this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
+
     startTimedService();
   }
 
@@ -296,8 +299,7 @@ public class StorageEngine implements IService {
   private void startTimedService() {
     // timed flush sequence memtable
     if (config.isEnableTimedFlushSeqMemtable()) {
-      seqMemtableTimedFlushCheckThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TimedFlushSeqMemtable");
+      seqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
       seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushSeqMemTable,
           config.getSeqMemtableFlushCheckInterval(),
@@ -307,8 +309,7 @@ public class StorageEngine implements IService {
     }
     // timed flush unsequence memtable
     if (config.isEnableTimedFlushUnseqMemtable()) {
-      unseqMemtableTimedFlushCheckThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TimedFlushUnSeqMemtable");
+      unseqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
       unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushUnseqMemTable,
           config.getUnseqMemtableFlushCheckInterval(),
@@ -318,8 +319,7 @@ public class StorageEngine implements IService {
     }
     // timed close tsfile
     if (config.isEnableTimedCloseTsFile()) {
-      tsFileTimedCloseCheckThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TsFileCloseChecker");
+      tsFileTimedCloseCheckThread = Executors.newSingleThreadScheduledExecutor();
       tsFileTimedCloseCheckThread.scheduleAtFixedRate(
           this::timedCloseTsFileProcessor,
           config.getCloseTsFileCheckInterval(),
@@ -370,7 +370,7 @@ public class StorageEngine implements IService {
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
     }
-    this.reset();
+    processorMap.clear();
   }
 
   private void stopTimedService(ScheduledExecutorService pool, String poolName) {
@@ -399,7 +399,7 @@ public class StorageEngine implements IService {
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
-    this.reset();
+    processorMap.clear();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
@@ -559,6 +559,7 @@ public class StorageEngine implements IService {
   }
 
   /** This function is just for unit test. */
+  @TestOnly
   public synchronized void reset() {
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
       virtualStorageGroupManager.reset();
@@ -794,6 +795,31 @@ public class StorageEngine implements IService {
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
       virtualStorageGroupManager.upgradeAll();
     }
+  }
+
+  public void getResourcesToBeSettled(
+      PartialPath sgPath,
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths)
+      throws StorageEngineException {
+    VirtualStorageGroupManager vsg = processorMap.get(sgPath);
+    if (vsg == null) {
+      throw new StorageEngineException(
+          "The Storage Group " + sgPath.toString() + " is not existed.");
+    }
+    if (!vsg.getIsSettling().compareAndSet(false, true)) {
+      throw new StorageEngineException(
+          "Storage Group " + sgPath.getFullPath() + " is already being settled now.");
+    }
+    vsg.getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+  }
+
+  public void setSettling(PartialPath sgPath, boolean isSettling) {
+    if (processorMap.get(sgPath) == null) {
+      return;
+    }
+    processorMap.get(sgPath).setSettling(isSettling);
   }
 
   /**

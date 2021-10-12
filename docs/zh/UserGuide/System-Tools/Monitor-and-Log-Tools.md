@@ -180,7 +180,9 @@ select last TOTAL_POINTS from root.stats."global"
 
 配置文件位置：conf/iotdb-engine.properties
 
-<center>**表 -配置参数以及描述项**
+<center>
+
+**表 -配置参数以及描述项**
 
 |参数|默认值|描述|
 |:---|:---|:---|

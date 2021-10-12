@@ -20,7 +20,6 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -36,11 +35,14 @@ import java.sql.*;
  * IoTDB server should be defined as integration test.
  */
 public class IoTDBCompleteIT {
+  private int prevVirtualStorageGroupNum;
 
   @Before
   public void setUp() {
     // test different partition
-    HashVirtualPartitioner.getInstance().setStorageGroupNum(16);
+    prevVirtualStorageGroupNum =
+        IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(16);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
@@ -48,8 +50,7 @@ public class IoTDBCompleteIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    HashVirtualPartitioner.getInstance()
-        .setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum());
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(prevVirtualStorageGroupNum);
   }
 
   @Test

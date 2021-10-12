@@ -157,6 +157,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(SyncServerManager.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
+    registerManager.register(SettleService.getINSTANCE());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
