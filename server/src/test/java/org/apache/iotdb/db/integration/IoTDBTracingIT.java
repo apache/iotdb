@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.Config;
@@ -39,6 +42,10 @@ public class IoTDBTracingIT {
   @Before
   public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setMergeFileStrategy(MergeFileStrategy.TRADE_OFF);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
@@ -57,6 +64,11 @@ public class IoTDBTracingIT {
       statement.execute("CREATE TIMESERIES root.tracing.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
 
       String insertTemplate = "INSERT INTO root.tracing.d1(timestamp, s1) VALUES(%d,%d)";
+
+      for (int i = 200; i < 300; i++) {
+        statement.execute(String.format(insertTemplate, i, i));
+      }
+      statement.execute("FLUSH root.tracing");
 
       for (int i = 400; i < 500; i++) {
         statement.execute(String.format(insertTemplate, i, i));
@@ -95,13 +107,13 @@ public class IoTDBTracingIT {
       AbstractIoTDBJDBCResultSet resultSet = (AbstractIoTDBJDBCResultSet) statement.getResultSet();
       Assert.assertTrue(resultSet.isSetTracingInfo());
       Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));
-      Assert.assertEquals(1, resultSet.getStatisticsByName("seqFileNum"));
+      Assert.assertEquals(2, resultSet.getStatisticsByName("seqFileNum"));
       Assert.assertEquals(1, resultSet.getStatisticsByName("unSeqFileNum"));
-      Assert.assertEquals(1, resultSet.getStatisticsByName("seqChunkNum"));
-      Assert.assertEquals(100, resultSet.getStatisticsByName("seqChunkPointNum"));
+      Assert.assertEquals(2, resultSet.getStatisticsByName("seqChunkNum"));
+      Assert.assertEquals(200, resultSet.getStatisticsByName("seqChunkPointNum"));
       Assert.assertEquals(1, resultSet.getStatisticsByName("unSeqChunkNum"));
       Assert.assertEquals(100, resultSet.getStatisticsByName("unSeqChunkPointNum"));
-      Assert.assertEquals(2, resultSet.getStatisticsByName("totalPageNum"));
+      Assert.assertEquals(3, resultSet.getStatisticsByName("totalPageNum"));
       Assert.assertEquals(0, resultSet.getStatisticsByName("overlappedPageNum"));
     } catch (Exception e) {
       e.printStackTrace();
