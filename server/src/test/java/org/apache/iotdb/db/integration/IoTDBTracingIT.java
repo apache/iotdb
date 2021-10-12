@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.Config;
@@ -39,10 +36,6 @@ public class IoTDBTracingIT {
   @Before
   public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setMergeFileStrategy(MergeFileStrategy.TRADE_OFF);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
@@ -88,8 +81,6 @@ public class IoTDBTracingIT {
       Assert.assertEquals(100, resultSet.getStatisticsByName("seqChunkPointNum"));
       Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkNum"));
       Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkPointNum"));
-      Assert.assertEquals(1, resultSet.getStatisticsByName("totalPageNum"));
-      Assert.assertEquals(0, resultSet.getStatisticsByName("overlappedPageNum"));
     } catch (Exception e) {
       e.printStackTrace();
     }
