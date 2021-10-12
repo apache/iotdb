@@ -23,7 +23,10 @@ lexer grammar IoTDBSqlLexer;
  * 1. Whitespace and Comment
  */
 
-
+WS
+    :
+    [ \t\r\n]+ -> skip
+    ;
 
 
 /**
@@ -849,17 +852,9 @@ REVERSE_QUOTE_SYMB : '`';
  */
 
 STRING_LITERAL
-    : DQUOTA_STRING
-    | SQUOTA_STRING
-    | BQUOTA_STRING
-    ;
-
-SINGLE_QUOTE_STRING_LITERAL
     : SQUOTA_STRING
-    ;
-
-DOUBLE_QUOTE_STRING_LITERAL
-    : DQUOTA_STRING
+    | DQUOTA_STRING
+    | BQUOTA_STRING
     ;
 
 DECIMAL_LITERAL
@@ -867,10 +862,9 @@ DECIMAL_LITERAL
     ;
 
 REAL_LITERAL
-    : (DEC_DIGIT+)? '.' DEC_DIGIT+
-    | DEC_DIGIT+ '.' EXPONENT_NUM_PART
-    | (DEC_DIGIT+)? '.' (DEC_DIGIT+ EXPONENT_NUM_PART)
-    | DEC_DIGIT+ EXPONENT_NUM_PART
+    : DECIMAL_LITERAL DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)?
+    | DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)
+    | EXPONENT_NUM_PART
     ;
 
 BOOLEAN_LITERAL
@@ -901,7 +895,9 @@ DATETIME
  * 6. Identifier
  */
 
-ID:                                  FIRST_NAME_CHAR NAME_CHAR*;
+ID
+    : FIRST_NAME_CHAR NAME_CHAR*
+    ;
 
 
 /**
@@ -936,11 +932,11 @@ fragment X: [xX];
 fragment Y: [yY];
 fragment Z: [zZ];
 
-fragment EXPONENT_NUM_PART:          E [-+]? DEC_DIGIT+;
-fragment DQUOTA_STRING:              '"' ( '\\'. | '""' | ~('"'| '\\') )* '"';
-fragment SQUOTA_STRING:              '\'' ('\\'. | '\'\'' | ~('\'' | '\\'))* '\'';
-fragment BQUOTA_STRING:              '`' ( '\\'. | '``' | ~('`'|'\\'))* '`';
+fragment DQUOTA_STRING:              '"' ('\\' . | ~'"' )*? '"';
+fragment SQUOTA_STRING:              '\'' ('\\' . | ~'\'' )*? '\'';
+fragment BQUOTA_STRING:              '`' ('\\' . | ~'`' )*? '`';
 fragment DEC_DIGIT:                  [0-9];
+fragment EXPONENT_NUM_PART:          DEC_DIGIT+ ('e'|'E') ('+'|'-')? DEC_DIGIT+ ;
 
 fragment NAME_CHAR
     :   'A'..'Z'
@@ -980,9 +976,4 @@ fragment FIRST_NAME_CHAR
 
 fragment CN_CHAR
     : '\u2E80'..'\u9FFF'
-    ;
-
-WS
-    :
-    [ \t\r\n]+ -> skip
     ;

@@ -404,7 +404,7 @@ measurementValue
 
 // Delete Statement
 deleteStatement
-    : DELETE prefixPath (COMMA prefixPath)* (whereClause)?
+    : DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)?
     ;
 
 whereClause
@@ -630,67 +630,6 @@ suffixPath
     : nodeName (DOT nodeName)*
     ;
 
-measurementName
-    : nodeNameWithoutWildcard
-    | LR_BRACKET nodeNameWithoutWildcard (COMMA nodeNameWithoutWildcard)+ RR_BRACKET
-    ;
-
-nodeName
-    : ID (STAR|DOUBLE_STAR)?
-    | (STAR|DOUBLE_STAR)
-    | DOUBLE_QUOTE_STRING_LITERAL
-    | SINGLE_QUOTE_STRING_LITERAL
-    | dateExpression
-    | (MINUS|PLUS)? DECIMAL_LITERAL
-    | (MINUS|PLUS)? REAL_LITERAL
-    | BOOLEAN_LITERAL
-    | keywordsCanBeId
-    ;
-
-nodeNameWithoutWildcard
-    : ID
-    | DOUBLE_QUOTE_STRING_LITERAL
-    | SINGLE_QUOTE_STRING_LITERAL
-    | dateExpression
-    | (MINUS|PLUS)? DECIMAL_LITERAL
-    | (MINUS|PLUS)? REAL_LITERAL
-    | BOOLEAN_LITERAL
-    | keywordsCanBeId
-    ;
-
-usernameWithRoot
-    : ROOT
-    | ID
-    ;
-
-constant
-    : dateExpression
-    | STRING_LITERAL
-    | (MINUS|PLUS)? DECIMAL_LITERAL
-    | (MINUS|PLUS)? REAL_LITERAL
-    | BOOLEAN_LITERAL
-    | NULL_LITERAL
-    | NAN_LITERAL
-    ;
-
-keywordsCanBeId
-    : dataType
-    | encoding
-    | compressor
-    | privilege
-    ;
-
-timeInterval
-    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
-    | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
-    ;
-
-timeValue
-    : dateFormat
-    | dateExpression
-    | DECIMAL_LITERAL
-    ;
-
 dataType
     : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
     ;
@@ -708,13 +647,7 @@ privileges
     ;
 
 privilege
-    : SINGLE_QUOTE_SYMB privilegeValue SINGLE_QUOTE_SYMB
-    | DOUBLE_QUOTE_SYMB privilegeValue DOUBLE_QUOTE_SYMB
-    | REVERSE_QUOTE_SYMB privilegeValue REVERSE_QUOTE_SYMB
-    ;
-
-privilegeValue
-    : SET_STORAGE_GROUP
+    : ALL | SET_STORAGE_GROUP
     | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES
     | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
     | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
@@ -723,6 +656,65 @@ privilegeValue
     | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY
     ;
 
+measurementName
+    : nodeNameWithoutWildcard
+    | LR_BRACKET nodeNameWithoutWildcard (COMMA nodeNameWithoutWildcard)+ RR_BRACKET
+    ;
+
+nodeName
+    : ID (STAR|DOUBLE_STAR)?
+    | (STAR|DOUBLE_STAR)
+    | STRING_LITERAL
+    | dateExpression
+    | (MINUS|PLUS)? DECIMAL_LITERAL
+    | (MINUS|PLUS)? REAL_LITERAL
+    | BOOLEAN_LITERAL
+    | keywordsCanBeId
+    ;
+
+nodeNameWithoutWildcard
+    : ID
+    | STRING_LITERAL
+    | dateExpression
+    | (MINUS|PLUS)? DECIMAL_LITERAL
+    | (MINUS|PLUS)? REAL_LITERAL
+    | BOOLEAN_LITERAL
+    | keywordsCanBeId
+    ;
+
+keywordsCanBeId
+    : dataType
+    | encoding
+    | compressor
+    | privilege
+    | DEVICE
+    ;
+
+usernameWithRoot
+    : ROOT
+    | ID
+    ;
+
+constant
+    : dateExpression
+    | STRING_LITERAL
+    | (MINUS|PLUS)? DECIMAL_LITERAL
+    | (MINUS|PLUS)? REAL_LITERAL
+    | BOOLEAN_LITERAL
+    | NULL_LITERAL
+    | NAN_LITERAL
+    ;
+
+timeInterval
+    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
+    | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
+    ;
+
+timeValue
+    : dateFormat
+    | dateExpression
+    | DECIMAL_LITERAL
+    ;
 
 // Expression & Predicate
 
@@ -742,7 +734,7 @@ expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPath
-    | literal=SINGLE_QUOTE_STRING_LITERAL
+    | literal=STRING_LITERAL
     ;
 
 functionName

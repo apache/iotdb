@@ -1832,7 +1832,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<IoTDBSqlParser.PrivilegeContext> privilegeList = ctx.privilege();
     List<String> privileges = new ArrayList<>();
     for (IoTDBSqlParser.PrivilegeContext privilege : privilegeList) {
-      privileges.add(removeStringQuote(privilege.getText()));
+      privileges.add(privilege.getText());
     }
     return privileges.toArray(new String[0]);
   }
