@@ -1449,7 +1449,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, SLIMIT, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, ';'}
 ```
 
 #### Column Control over Query Results
@@ -1641,7 +1641,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, SLIMIT, OFFSET, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, ';'}
 ```
 
 If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
@@ -1809,7 +1809,7 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 It should be noted that when the deleted path does not exist, IoTDB will not prompt that the path does not exist, but that the execution is successful, because SQL is a declarative programming method. Unless it is a syntax error, insufficient permissions and so on, it is not considered an error, as shown below:
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: The statement is executed successfully.
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
 ### Delete Time Partition (experimental)
