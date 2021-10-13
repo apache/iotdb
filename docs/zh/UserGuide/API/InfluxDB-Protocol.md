@@ -53,17 +53,23 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 3. tags : 各种有索引的属性。
 4. fields : 各种记录值（没有索引的属性）。
 
+![influxdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-data.png?raw=true)
+
 #### 2.2.2 IoTDB数据格式
 
 1. storage group： 存储组。
 2. path(time series ID)：存储路径。
 3. measurement： 物理量。
 
+![iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/iotdb-data.png?raw=true)
+
 #### 2.2.3 两者映射关系
 
 1. InfluxDB中的database和measurement可以看做IoTDB中的storage group。
 2. InfluxDB中的tags可以看做IoTDB中的path。
 3. InfluxDB中的fields可以看做IoTDB中measurement。
+
+![influxdb-vs-iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
 
 #### 2.2.4 转换中的问题
 1. 问题：InfluxDB中Tag的顺序不敏感，而在IoTDB中是敏感的。
@@ -78,6 +84,13 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 1. 内存中Map <Measurement, Map <Tag Key, Order> > table结构维护Tag之间的顺序
 2. InfluxDB中时序根据label顺序对应到IoTDB
+
+   | `root.TAG_INFO.database_name` | `root.TAG_INFO.measurement_name` | `root.TAG_INFO.tag_name` | `root.TAG_INFO.tag_order` |
+            | :---------------------------- | :------------------------------- | :----------------------- | :------------------------ |
+   | database                      | student                          | name                     | 0                         |
+   | database                      | student                          | phone                    | 1                         |
+   | database                      | student                          | sex                      | 2                         |
+   | database                      | student                          | address                  | 3                         |
 
 #### 2.3.2 实例
 
@@ -98,13 +111,6 @@ a. 插入数据
 ![influxdb-result](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-result.png?raw=true)
 
 
-对应的IoTDB的实际存储为：
-
-| Time | root.database.student.A.B.C.score | root.database.student.PH.PH.PH.D.score | root.database.student.A.B.C.D.score |
-| ---- | --------------------------------- | -------------------------------------- | ----------------------------------- |
-| 1    | 99                                | null                                   | Null                                |
-| 2    | Null                              | 98                                     | Null                                |
-| 3    | null                              | null                                   | 97                                  |
 
 
 3. (1)IoTDB对应的记录tag顺序的table为
@@ -137,16 +143,15 @@ a. 插入数据
 
    (2)第二条插入数据对应IoTDB时序为root.database.student.ph.ph.ph.D(其中ph表示占位符)
 
-   (3)第三条插入数据对应IoTDB时序为root.database.student.A.B.C.D
+   (3)第三条插入数据对应IoTDB时序为root.database.student.A.B.C.D 
+  
+   对应的IoTDB的实际存储为：
 
-5. 为了重启时候对table的恢复，在IoTDB中记录数据
-
-   | `root.TAG_INFO.database_name` | `root.TAG_INFO.measurement_name` | `root.TAG_INFO.tag_name` | `root.TAG_INFO.tag_order` |
-      | :---------------------------- | :------------------------------- | :----------------------- | :------------------------ |
-   | database                      | student                          | name                     | 0                         |
-   | database                      | student                          | phone                    | 1                         |
-   | database                      | student                          | sex                      | 2                         |
-   | database                      | student                          | address                  | 3                         |
+| Time | root.database.student.A.B.C.score | root.database.student.PH.PH.PH.D.score | root.database.student.A.B.C.D.score |
+| ---- | --------------------------------- | -------------------------------------- | ----------------------------------- |
+| 1    | 99                                | null                                   | Null                                |
+| 2    | Null                              | 98                                     | Null                                |
+| 3    | null                              | null                                   | 97                                  |
 
 b. 查询数据
 
