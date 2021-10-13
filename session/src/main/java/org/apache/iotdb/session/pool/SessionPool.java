@@ -1335,6 +1335,39 @@ public class SessionPool {
   }
 
   /**
+   * execure query sql users must call closeResultSet(SessionDataSetWrapper) if they do not use the
+   * SessionDataSet any more. users do not need to call sessionDataSet.closeOpeationHandler() any
+   * more.
+   *
+   * @param sql query statement
+   * @param timeoutInMs the timeout of this query, in milliseconds
+   * @return result set Notice that you must get the result instance. Otherwise a data leakage will
+   *     happen
+   */
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
+  public SessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        SessionDataSet resp = session.executeQueryStatement(sql, timeoutInMs);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        occupy(session);
+        return wrapper;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("executeQueryStatement failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    // never go here
+    return null;
+  }
+
+  /**
    * execute non query statement
    *
    * @param sql non query statement
