@@ -59,13 +59,13 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -795,6 +795,31 @@ public class StorageEngine implements IService {
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
       virtualStorageGroupManager.upgradeAll();
     }
+  }
+
+  public void getResourcesToBeSettled(
+      PartialPath sgPath,
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths)
+      throws StorageEngineException {
+    VirtualStorageGroupManager vsg = processorMap.get(sgPath);
+    if (vsg == null) {
+      throw new StorageEngineException(
+          "The Storage Group " + sgPath.toString() + " is not existed.");
+    }
+    if (!vsg.getIsSettling().compareAndSet(false, true)) {
+      throw new StorageEngineException(
+          "Storage Group " + sgPath.getFullPath() + " is already being settled now.");
+    }
+    vsg.getResourcesToBeSettled(seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
+  }
+
+  public void setSettling(PartialPath sgPath, boolean isSettling) {
+    if (processorMap.get(sgPath) == null) {
+      return;
+    }
+    processorMap.get(sgPath).setSettling(isSettling);
   }
 
   /**

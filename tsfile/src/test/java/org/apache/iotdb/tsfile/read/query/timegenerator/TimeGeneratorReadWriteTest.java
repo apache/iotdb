@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,6 +35,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -55,7 +55,7 @@ import java.io.IOException;
 public class TimeGeneratorReadWriteTest {
 
   private final String TEMPLATE_NAME = "template";
-  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("TimegeneratorReadWrite.tsfile");
+  private final String tsfilePath = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
 
   @Before
   public void before() throws IOException, WriteProcessException {
@@ -106,6 +106,9 @@ public class TimeGeneratorReadWriteTest {
     File f = new File(tsfilePath);
     if (f.exists()) {
       f.delete();
+    }
+    if (!f.getParentFile().exists()) {
+      Assert.assertTrue(f.getParentFile().mkdirs());
     }
 
     Schema schema = new Schema();
