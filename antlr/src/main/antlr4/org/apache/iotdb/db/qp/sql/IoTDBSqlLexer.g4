@@ -585,6 +585,10 @@ WRITABLE
 
 // Data Type Keywords
 
+DATATYPE_VALUE
+    : BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
+    ;
+
 BOOLEAN
     : B O O L E A N
     ;
@@ -612,8 +616,8 @@ TEXT
 
 // Encoding Type Keywords
 
-BITMAP
-    : B I T M A P
+ENCODING_VALE
+    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF
     ;
 
 DICTIONARY
@@ -647,24 +651,16 @@ TS_2DIFF
 
 // Compressor Type Keywords
 
+COMPRESSOR_VALUE
+    : GZIP | LZ4 | SNAPPY | UNCOMPRESSED
+    ;
+
 GZIP
     : G Z I P
     ;
 
 LZ4
     : L Z '4'
-    ;
-
-LZO
-    : L Z O
-    ;
-
-PAA
-    : P A A
-    ;
-
-PLA
-    : P L A
     ;
 
 SNAPPY
@@ -677,6 +673,16 @@ UNCOMPRESSED
 
 
 // Privileges Keywords
+
+PRIVILEGE_VALUE
+    : ALL | SET_STORAGE_GROUP
+    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES
+    | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
+    | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
+    | CREATE_ROLE | DELETE_ROLE | LIST_ROLE | GRANT_ROLE_PRIVILEGE | REVOKE_ROLE_PRIVILEGE
+    | CREATE_FUNCTION | DROP_FUNCTION | CREATE_TRIGGER | DROP_TRIGGER | START_TRIGGER | STOP_TRIGGER
+    | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY
+    ;
 
 SET_STORAGE_GROUP
     : S E T '_' S T O R A G E '_' G R O U P
@@ -782,6 +788,7 @@ DROP_CONTINUOUS_QUERY
     : D R O P '_' C O N T I N U O U S '_' Q U E R Y
     ;
 
+
 /**
  * 3. Operators
  */
@@ -839,17 +846,13 @@ LR_BRACKET : '(';
 RR_BRACKET : ')';
 LS_BRACKET : '[';
 RS_BRACKET : ']';
-L_BRACKET : '{';
-R_BRACKET : '}';
-UNDERLINE : '_';
-SINGLE_QUOTE_SYMB : '\'';
-DOUBLE_QUOTE_SYMB : '"';
-REVERSE_QUOTE_SYMB : '`';
 
 
 /**
  * 5. Literals
  */
+
+// String Literal
 
 STRING_LITERAL
     : SQUOTA_STRING
@@ -857,9 +860,34 @@ STRING_LITERAL
     | BQUOTA_STRING
     ;
 
-DURATION
+fragment DQUOTA_STRING
+    : '"' ('\\' . | ~'"' )*? '"'
+    ;
+
+fragment SQUOTA_STRING
+    : '\'' ('\\' . | ~'\'' )*? '\''
+    ;
+
+fragment BQUOTA_STRING
+    : '`' ('\\' . | ~'`' )*? '`'
+    ;
+
+
+// Date & Time Literal
+
+DURATION_LITERAL
     : (DECIMAL_LITERAL+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
     ;
+
+DATETIME_LITERAL
+    : DECIMAL_LITERAL ('-'|'/') DECIMAL_LITERAL ('-'|'/') DECIMAL_LITERAL ((T | WS)
+      DECIMAL_LITERAL ':' DECIMAL_LITERAL ':' DECIMAL_LITERAL (DOT DECIMAL_LITERAL)?
+      (('+' | '-') DECIMAL_LITERAL ':' DECIMAL_LITERAL)?)?
+    | NOW LR_BRACKET RR_BRACKET
+    ;
+
+
+// Number Literal
 
 DECIMAL_LITERAL
     : DEC_DIGIT+
@@ -869,10 +897,20 @@ EXPONENT_NUM_PART
     : DEC_DIGIT+ ('e'|'E') ('+'|'-')? DEC_DIGIT+
     ;
 
+fragment DEC_DIGIT
+    : [0-9]
+    ;
+
+
+// Boolean Literal
+
 BOOLEAN_LITERAL
 	: T R U E
 	| F A L S E
 	;
+
+
+// Other Literal
 
 NULL_LITERAL
     : N U L L
@@ -880,12 +918,6 @@ NULL_LITERAL
 
 NAN_LITERAL
     : N A N
-    ;
-
-DATETIME
-    : DECIMAL_LITERAL ('-'|'/') DECIMAL_LITERAL ('-'|'/') DECIMAL_LITERAL ((T | WS)
-      DECIMAL_LITERAL ':' DECIMAL_LITERAL ':' DECIMAL_LITERAL (DOT DECIMAL_LITERAL)?
-      (('+' | '-') DECIMAL_LITERAL ':' DECIMAL_LITERAL)?)?
     ;
 
 
@@ -896,44 +928,6 @@ DATETIME
 ID
     : FIRST_NAME_CHAR NAME_CHAR*
     ;
-
-
-/**
- * 7. Fragments
- */
-
-// Characters and write it this way for case sensitivity
-fragment A: [aA];
-fragment B: [bB];
-fragment C: [cC];
-fragment D: [dD];
-fragment E: [eE];
-fragment F: [fF];
-fragment G: [gG];
-fragment H: [hH];
-fragment I: [iI];
-fragment J: [jJ];
-fragment K: [kK];
-fragment L: [lL];
-fragment M: [mM];
-fragment N: [nN];
-fragment O: [oO];
-fragment P: [pP];
-fragment Q: [qQ];
-fragment R: [rR];
-fragment S: [sS];
-fragment T: [tT];
-fragment U: [uU];
-fragment V: [vV];
-fragment W: [wW];
-fragment X: [xX];
-fragment Y: [yY];
-fragment Z: [zZ];
-
-fragment DQUOTA_STRING:              '"' ('\\' . | ~'"' )*? '"';
-fragment SQUOTA_STRING:              '\'' ('\\' . | ~'\'' )*? '\'';
-fragment BQUOTA_STRING:              '`' ('\\' . | ~'`' )*? '`';
-fragment DEC_DIGIT:                  [0-9];
 
 fragment NAME_CHAR
     :   'A'..'Z'
@@ -974,3 +968,33 @@ fragment FIRST_NAME_CHAR
 fragment CN_CHAR
     : '\u2E80'..'\u9FFF'
     ;
+
+
+// Characters and write it this way for case sensitivity
+
+fragment A: [aA];
+fragment B: [bB];
+fragment C: [cC];
+fragment D: [dD];
+fragment E: [eE];
+fragment F: [fF];
+fragment G: [gG];
+fragment H: [hH];
+fragment I: [iI];
+fragment J: [jJ];
+fragment K: [kK];
+fragment L: [lL];
+fragment M: [mM];
+fragment N: [nN];
+fragment O: [oO];
+fragment P: [pP];
+fragment Q: [qQ];
+fragment R: [rR];
+fragment S: [sS];
+fragment T: [tT];
+fragment U: [uU];
+fragment V: [vV];
+fragment W: [wW];
+fragment X: [xX];
+fragment Y: [yY];
+fragment Z: [zZ];

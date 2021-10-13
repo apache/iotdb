@@ -85,9 +85,9 @@ alias
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType
-    (COMMA ENCODING OPERATOR_EQ encoding)?
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
+    : DATATYPE OPERATOR_EQ dataType=DATATYPE_VALUE
+    (COMMA ENCODING OPERATOR_EQ encoding=ENCODING_VALE)?
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
     (COMMA propertyClause)*
     tagClause?
     attributeClause?
@@ -125,12 +125,12 @@ cqSelectIntoClause
     ;
 
 cqGroupByTimeClause
-    : GROUP BY TIME LR_BRACKET DURATION RR_BRACKET
+    : GROUP BY TIME LR_BRACKET DURATION_LITERAL RR_BRACKET
       (COMMA LEVEL OPERATOR_EQ DECIMAL_LITERAL)?
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
+    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)?;
 
 // Create Snapshot for Schema
 createSnapshot
@@ -333,13 +333,13 @@ orderByTimeClause
     ;
 
 groupByTimeClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION (COMMA DURATION)? RR_BRACKET
-    | GROUP BY LR_BRACKET timeInterval COMMA DURATION (COMMA DURATION)? RR_BRACKET
+    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    | GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
     COMMA LEVEL OPERATOR_EQ DECIMAL_LITERAL
     ;
 
 groupByFillClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION  RR_BRACKET
+    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL  RR_BRACKET
      FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
     ;
 
@@ -356,18 +356,18 @@ withoutNullClause
     ;
 
 typeClause
-    : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET specificValueClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
+    : (dataType=DATATYPE_VALUE | ALL) LS_BRACKET linearClause RS_BRACKET
+    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousClause RS_BRACKET
+    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET specificValueClause RS_BRACKET
+    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
-    : LINEAR (COMMA aheadDuration=DURATION COMMA behindDuration=DURATION)?
+    : LINEAR (COMMA aheadDuration=DURATION_LITERAL COMMA behindDuration=DURATION_LITERAL)?
     ;
 
 previousClause
-    : PREVIOUS (COMMA DURATION)?
+    : PREVIOUS (COMMA DURATION_LITERAL)?
     ;
 
 specificValueClause
@@ -375,7 +375,7 @@ specificValueClause
     ;
 
 previousUntilLastClause
-    : PREVIOUSUNTILLAST (COMMA DURATION)?
+    : PREVIOUSUNTILLAST (COMMA DURATION_LITERAL)?
     ;
 
 // Insert Statement
@@ -392,9 +392,14 @@ insertValuesSpec
     ;
 
 insertMultiValue
-    : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
+    : LR_BRACKET DATETIME_LITERAL (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET DECIMAL_LITERAL (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
+    ;
+
+measurementName
+    : nodeNameWithoutWildcard
+    | LR_BRACKET nodeNameWithoutWildcard (COMMA nodeNameWithoutWildcard)+ RR_BRACKET
     ;
 
 measurementValue
@@ -510,6 +515,15 @@ listAllUserOfRole
     : LIST ALL USER OF ROLE roleName=ID
     ;
 
+privileges
+    : privilege=PRIVILEGE_VALUE (COMMA privilege=PRIVILEGE_VALUE)*
+    ;
+
+usernameWithRoot
+    : ROOT
+    | ID
+    ;
+
 
 /**
  * 5. Utility Statements
@@ -616,7 +630,7 @@ unloadFile
  * 6. Common Clauses
  */
 
-// IoTDB Objects
+// IoTDB Objects & Constant
 
 fullPath
     : ROOT (DOT nodeNameWithoutWildcard)*
@@ -630,80 +644,42 @@ suffixPath
     : nodeName (DOT nodeName)*
     ;
 
-dataType
-    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
-    ;
-
-encoding
-    : PLAIN | DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
-    ;
-
-compressor
-    : UNCOMPRESSED | SNAPPY | LZ4 | GZIP
-    ;
-
-privileges
-    : privilege (COMMA privilege)*
-    ;
-
-privilege
-    : ALL | SET_STORAGE_GROUP
-    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES
-    | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
-    | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
-    | CREATE_ROLE | DELETE_ROLE | LIST_ROLE | GRANT_ROLE_PRIVILEGE | REVOKE_ROLE_PRIVILEGE
-    | CREATE_FUNCTION | DROP_FUNCTION | CREATE_TRIGGER | DROP_TRIGGER | START_TRIGGER | STOP_TRIGGER
-    | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY
-    ;
-
-measurementName
-    : nodeNameWithoutWildcard
-    | LR_BRACKET nodeNameWithoutWildcard (COMMA nodeNameWithoutWildcard)+ RR_BRACKET
-    ;
-
 nodeName
-    : ID (STAR|DOUBLE_STAR)?
-    | (STAR|DOUBLE_STAR)
-    | STRING_LITERAL
-    | DURATION
-    | dateExpression
-    | (MINUS|PLUS)? DECIMAL_LITERAL
-    | (MINUS|PLUS)? EXPONENT_NUM_PART
-    | BOOLEAN_LITERAL
-    | keywordsCanBeId
+    : ID wildcard?
+    | wildcard
+    | (ID | OPERATOR_IN)? LS_BRACKET DECIMAL_LITERAL? ID? RS_BRACKET? ID?
+    | literalCanBeNodeName
+    | keywordsCanBeNodeName
     ;
 
 nodeNameWithoutWildcard
     : ID
-    | STRING_LITERAL
-    | DURATION
+    | (ID | OPERATOR_IN)? LS_BRACKET DECIMAL_LITERAL? ID? RS_BRACKET? ID?
+    | literalCanBeNodeName
+    | keywordsCanBeNodeName
+    ;
+
+wildcard
+    : STAR
+    | DOUBLE_STAR
+    ;
+
+literalCanBeNodeName
+    : STRING_LITERAL
+    | DURATION_LITERAL
     | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
     | (MINUS|PLUS)? EXPONENT_NUM_PART
-    | BOOLEAN_LITERAL
-    | (ID | OPERATOR_IN)? LS_BRACKET DECIMAL_LITERAL? ID? RS_BRACKET? ID?
-    | keywordsCanBeId
     ;
 
-keywordsCanBeId
-    : dataType
-    | encoding
-    | compressor
-    | privilege
+keywordsCanBeNodeName
+    : DATATYPE_VALUE
+    | ENCODING_VALE
+    | COMPRESSOR_VALUE
+    | PRIVILEGE_VALUE
     | ASC
     | DESC
     | DEVICE
-    ;
-
-usernameWithRoot
-    : ROOT
-    | ID
-    ;
-
-realLiteral
-    : DECIMAL_LITERAL DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)?
-    | DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)
-    | EXPONENT_NUM_PART
     ;
 
 constant
@@ -716,26 +692,28 @@ constant
     | NAN_LITERAL
     ;
 
+realLiteral
+    : DECIMAL_LITERAL DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)?
+    | DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)
+    | EXPONENT_NUM_PART
+    ;
+
 timeInterval
     : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
     | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
 
 timeValue
-    : dateFormat
+    : DATETIME_LITERAL
     | dateExpression
     | DECIMAL_LITERAL
     ;
 
+
 // Expression & Predicate
 
 dateExpression
-    : dateFormat ((PLUS | MINUS) DURATION)*
-    ;
-
-dateFormat
-    : DATETIME
-    | NOW LR_BRACKET RR_BRACKET
+    : DATETIME_LITERAL ((PLUS | MINUS) DURATION_LITERAL)*
     ;
 
 expression
