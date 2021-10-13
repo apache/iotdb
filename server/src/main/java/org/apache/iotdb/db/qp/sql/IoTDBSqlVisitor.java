@@ -211,22 +211,22 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseAttributeClauses(
       IoTDBSqlParser.AttributeClausesContext ctx,
       CreateTimeSeriesOperator createTimeSeriesOperator) {
-    final String dataType = ctx.dataType().getChild(0).getText().toUpperCase();
+    final String dataType = ctx.dataType.getText().toUpperCase();
     final TSDataType tsDataType = TSDataType.valueOf(dataType);
     createTimeSeriesOperator.setDataType(tsDataType);
 
     final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
     TSEncoding encoding = ioTDBDescriptor.getDefaultEncodingByType(tsDataType);
-    if (Objects.nonNull(ctx.encoding())) {
-      String encodingString = ctx.encoding().getChild(0).getText().toUpperCase();
+    if (Objects.nonNull(ctx.encoding)) {
+      String encodingString = ctx.encoding.getText().toUpperCase();
       encoding = TSEncoding.valueOf(encodingString);
     }
     createTimeSeriesOperator.setEncoding(encoding);
 
     CompressionType compressor;
     List<IoTDBSqlParser.PropertyClauseContext> properties = ctx.propertyClause();
-    if (ctx.compressor() != null) {
-      compressor = CompressionType.valueOf(ctx.compressor().getText().toUpperCase());
+    if (ctx.compressor != null) {
+      compressor = CompressionType.valueOf(ctx.compressor.getText().toUpperCase());
     } else {
       compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
@@ -317,11 +317,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     sb.append(ctx.cqSelectIntoClause().fromClause().prefixPath(0).getText());
 
     sb.append(" group by ([now() - ");
-    String groupByInterval = ctx.cqSelectIntoClause().cqGroupByTimeClause().DURATION().getText();
+    String groupByInterval =
+        ctx.cqSelectIntoClause().cqGroupByTimeClause().DURATION_LITERAL().getText();
     if (createContinuousQueryOperator.getForInterval() == 0) {
       sb.append(groupByInterval);
     } else {
-      List<TerminalNode> durations = ctx.resampleClause().DURATION();
+      List<TerminalNode> durations = ctx.resampleClause().DURATION_LITERAL();
       sb.append(durations.get(durations.size() - 1).getText());
     }
     sb.append(", now()), ");
@@ -386,7 +387,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
 
     groupByClauseComponent.setUnit(
-        parseTimeUnitOrSlidingStep(ctx.DURATION().getText(), true, groupByClauseComponent));
+        parseTimeUnitOrSlidingStep(ctx.DURATION_LITERAL().getText(), true, groupByClauseComponent));
 
     groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
     groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
@@ -403,16 +404,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseResampleClause(
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryOperator operator) {
 
-    if (ctx.DURATION().size() == 1) {
+    if (ctx.DURATION_LITERAL().size() == 1) {
       if (ctx.EVERY() != null) {
         operator.setEveryInterval(
-            DatetimeUtils.convertDurationStrToLong(ctx.DURATION(0).getText()));
+            DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
       } else if (ctx.FOR() != null) {
-        operator.setForInterval(DatetimeUtils.convertDurationStrToLong(ctx.DURATION(0).getText()));
+        operator.setForInterval(
+            DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
       }
-    } else if (ctx.DURATION().size() == 2) {
-      operator.setEveryInterval(DatetimeUtils.convertDurationStrToLong(ctx.DURATION(0).getText()));
-      operator.setForInterval(DatetimeUtils.convertDurationStrToLong(ctx.DURATION(1).getText()));
+    } else if (ctx.DURATION_LITERAL().size() == 2) {
+      operator.setEveryInterval(
+          DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
+      operator.setForInterval(
+          DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(1).getText()));
     }
   }
 
@@ -1058,11 +1062,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     groupByClauseComponent.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
     // parse timeUnit
     groupByClauseComponent.setUnit(
-        parseTimeUnitOrSlidingStep(ctx.DURATION(0).getText(), true, groupByClauseComponent));
+        parseTimeUnitOrSlidingStep(
+            ctx.DURATION_LITERAL(0).getText(), true, groupByClauseComponent));
     // parse sliding step
-    if (ctx.DURATION().size() == 2) {
+    if (ctx.DURATION_LITERAL().size() == 2) {
       groupByClauseComponent.setSlidingStep(
-          parseTimeUnitOrSlidingStep(ctx.DURATION(1).getText(), false, groupByClauseComponent));
+          parseTimeUnitOrSlidingStep(
+              ctx.DURATION_LITERAL(1).getText(), false, groupByClauseComponent));
       if (groupByClauseComponent.getSlidingStep() < groupByClauseComponent.getUnit()) {
         throw new SQLParserException(
             "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
@@ -1086,7 +1092,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     // parse timeUnit
     groupByFillClauseComponent.setUnit(
-        DatetimeUtils.convertDurationStrToLong(ctx.DURATION().getText()));
+        DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL().getText()));
     groupByFillClauseComponent.setSlidingStep(groupByFillClauseComponent.getUnit());
 
     parseTimeInterval(ctx.timeInterval(), groupByFillClauseComponent);
@@ -1135,6 +1141,39 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     queryOp.setSpecialClauseComponent(fillClauseComponent);
   }
 
+  private void parseTimeInterval(
+      IoTDBSqlParser.TimeIntervalContext timeInterval,
+      GroupByClauseComponent groupByClauseComponent) {
+    long startTime;
+    long endTime;
+    long currentTime = DatetimeUtils.currentTime();
+    if (timeInterval.datetimeLiteral(0).DECIMAL_LITERAL() != null) {
+      startTime = Long.parseLong(timeInterval.datetimeLiteral(0).DECIMAL_LITERAL().getText());
+    } else if (timeInterval.datetimeLiteral(0).dateExpression() != null) {
+      startTime =
+          parseDateExpression(timeInterval.datetimeLiteral(0).dateExpression(), currentTime);
+    } else {
+      startTime =
+          parseDateFormat(
+              timeInterval.datetimeLiteral(0).DATETIME_LITERAL().getText(), currentTime);
+    }
+    if (timeInterval.datetimeLiteral(1).DECIMAL_LITERAL() != null) {
+      endTime = Long.parseLong(timeInterval.datetimeLiteral(1).DECIMAL_LITERAL().getText());
+    } else if (timeInterval.datetimeLiteral(1).dateExpression() != null) {
+      endTime = parseDateExpression(timeInterval.datetimeLiteral(1).dateExpression(), currentTime);
+    } else {
+      endTime =
+          parseDateFormat(
+              timeInterval.datetimeLiteral(1).DATETIME_LITERAL().getText(), currentTime);
+    }
+
+    groupByClauseComponent.setStartTime(startTime);
+    groupByClauseComponent.setEndTime(endTime);
+    if (startTime >= endTime) {
+      throw new SQLParserException("Start time should be smaller than endTime in GroupBy");
+    }
+  }
+
   private void parseWithoutNullClause(IoTDBSqlParser.WithoutNullClauseContext ctx) {
     SpecialClauseComponent specialClauseComponent = queryOp.getSpecialClauseComponent();
     if (specialClauseComponent == null) {
@@ -1150,18 +1189,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     IFill fill;
     long preRange;
     if (ctx.previousUntilLastClause() != null) {
-      if (ctx.previousUntilLastClause().DURATION() != null) {
+      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
         preRange =
             DatetimeUtils.convertDurationStrToLong(
-                ctx.previousUntilLastClause().DURATION().getText());
+                ctx.previousUntilLastClause().DURATION_LITERAL().getText());
       } else {
         preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
       }
       fill = new PreviousFill(preRange, true);
     } else {
-      if (ctx.previousClause().DURATION() != null) {
+      if (ctx.previousClause().DURATION_LITERAL() != null) {
         preRange =
-            DatetimeUtils.convertDurationStrToLong(ctx.previousClause().DURATION().getText());
+            DatetimeUtils.convertDurationStrToLong(
+                ctx.previousClause().DURATION_LITERAL().getText());
       } else {
         preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
       }
@@ -1174,7 +1214,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private void parsePrimitiveTypeClause(
       IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
-    TSDataType dataType = parseType(ctx.dataType().getText());
+    TSDataType dataType = parseType(ctx.dataType.getText());
     if (ctx.linearClause() != null && dataType == TSDataType.TEXT) {
       throw new SQLParserException(
           String.format(
@@ -1185,19 +1225,22 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
 
     if (ctx.linearClause() != null) { // linear
-      if (ctx.linearClause().DURATION(0) != null) {
+      if (ctx.linearClause().DURATION_LITERAL(0) != null) {
         long beforeRange =
-            DatetimeUtils.convertDurationStrToLong(ctx.linearClause().DURATION(0).getText());
+            DatetimeUtils.convertDurationStrToLong(
+                ctx.linearClause().DURATION_LITERAL(0).getText());
         long afterRange =
-            DatetimeUtils.convertDurationStrToLong(ctx.linearClause().DURATION(1).getText());
+            DatetimeUtils.convertDurationStrToLong(
+                ctx.linearClause().DURATION_LITERAL(1).getText());
         fillTypes.put(dataType, new LinearFill(beforeRange, afterRange));
       } else {
         fillTypes.put(dataType, new LinearFill(defaultFillInterval, defaultFillInterval));
       }
     } else if (ctx.previousClause() != null) { // previous
-      if (ctx.previousClause().DURATION() != null) {
+      if (ctx.previousClause().DURATION_LITERAL() != null) {
         long preRange =
-            DatetimeUtils.convertDurationStrToLong(ctx.previousClause().DURATION().getText());
+            DatetimeUtils.convertDurationStrToLong(
+                ctx.previousClause().DURATION_LITERAL().getText());
         fillTypes.put(dataType, new PreviousFill(preRange));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
@@ -1210,10 +1253,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         throw new SQLParserException("fill value cannot be null");
       }
     } else { // previous until last
-      if (ctx.previousUntilLastClause().DURATION() != null) {
+      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
         long preRange =
             DatetimeUtils.convertDurationStrToLong(
-                ctx.previousUntilLastClause().DURATION().getText());
+                ctx.previousUntilLastClause().DURATION_LITERAL().getText());
         fillTypes.put(dataType, new PreviousFill(preRange, true));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval, true));
@@ -1270,8 +1313,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     long[] timeArray = new long[insertMultiValues.size()];
     for (int i = 0; i < insertMultiValues.size(); i++) {
       long timestamp;
-      if (insertMultiValues.get(i).dateFormat() != null) {
-        timestamp = parseDateFormat(insertMultiValues.get(i).dateFormat().getText());
+      if (insertMultiValues.get(i).DATETIME_LITERAL() != null) {
+        timestamp = parseDateFormat(insertMultiValues.get(i).DATETIME_LITERAL().getText());
       } else if (insertMultiValues.get(i).DECIMAL_LITERAL() != null) {
         timestamp = Long.parseLong(insertMultiValues.get(i).DECIMAL_LITERAL().getText());
       } else if (insertMultiValues.size() != 1) {
@@ -1544,6 +1587,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return operator;
   }
 
+  private String[] parsePrivilege(IoTDBSqlParser.PrivilegesContext ctx) {
+    List<TerminalNode> privilegeList = ctx.PRIVILEGE_VALUE();
+    List<String> privileges = new ArrayList<>();
+    for (TerminalNode privilege : privilegeList) {
+      privileges.add(privilege.getText());
+    }
+    return privileges.toArray(new String[0]);
+  }
+
   /** 5. Utility Statements */
 
   // Merge
@@ -1800,78 +1852,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
-  private void parseTimeInterval(
-      IoTDBSqlParser.TimeIntervalContext timeInterval,
-      GroupByClauseComponent groupByClauseComponent) {
-    long startTime;
-    long endTime;
-    long currentTime = DatetimeUtils.currentTime();
-    if (timeInterval.timeValue(0).DECIMAL_LITERAL() != null) {
-      startTime = Long.parseLong(timeInterval.timeValue(0).DECIMAL_LITERAL().getText());
-    } else if (timeInterval.timeValue(0).dateExpression() != null) {
-      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression(), currentTime);
-    } else {
-      startTime = parseDateFormat(timeInterval.timeValue(0).dateFormat().getText(), currentTime);
-    }
-    if (timeInterval.timeValue(1).DECIMAL_LITERAL() != null) {
-      endTime = Long.parseLong(timeInterval.timeValue(1).DECIMAL_LITERAL().getText());
-    } else if (timeInterval.timeValue(1).dateExpression() != null) {
-      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression(), currentTime);
-    } else {
-      endTime = parseDateFormat(timeInterval.timeValue(1).dateFormat().getText(), currentTime);
-    }
-
-    groupByClauseComponent.setStartTime(startTime);
-    groupByClauseComponent.setEndTime(endTime);
-    if (startTime >= endTime) {
-      throw new SQLParserException("Start time should be smaller than endTime in GroupBy");
-    }
-  }
-
-  private String[] parsePrivilege(IoTDBSqlParser.PrivilegesContext ctx) {
-    List<IoTDBSqlParser.PrivilegeContext> privilegeList = ctx.privilege();
-    List<String> privileges = new ArrayList<>();
-    for (IoTDBSqlParser.PrivilegeContext privilege : privilegeList) {
-      privileges.add(privilege.getText());
-    }
-    return privileges.toArray(new String[0]);
-  }
-
-  // Expression & Predicate
-
-  /**
-   * parse time expression, which is addition and subtraction expression of duration time, now() or
-   * DataTimeFormat time.
-   *
-   * <p>eg. now() + 1d - 2h
-   */
-  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
-    long time;
-    time = parseDateFormat(ctx.getChild(0).getText());
-    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if (ctx.getChild(i).getText().equals("+")) {
-        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
-      } else {
-        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
-      }
-    }
-    return time;
-  }
-
-  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, long currentTime) {
-    long time;
-    time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
-    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if (ctx.getChild(i).getText().equals("+")) {
-        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
-      } else {
-        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
-      }
-    }
-    return time;
-  }
-
-  /** function for parsing time format. */
+  /** function for parsing datetime literal. */
   public long parseDateFormat(String timestampStr) throws SQLParserException {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new SQLParserException("input timestamp cannot be empty");
@@ -1908,6 +1889,40 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
                   + "refer to user document for more info.",
               timestampStr));
     }
+  }
+
+  // Expression & Predicate
+
+  /**
+   * parse time expression, which is addition and subtraction expression of duration time, now() or
+   * DataTimeFormat time.
+   *
+   * <p>eg. now() + 1d - 2h
+   */
+  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
+    long time;
+    time = parseDateFormat(ctx.getChild(0).getText());
+    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
+      if (ctx.getChild(i).getText().equals("+")) {
+        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      } else {
+        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      }
+    }
+    return time;
+  }
+
+  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, long currentTime) {
+    long time;
+    time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
+    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
+      if (ctx.getChild(i).getText().equals("+")) {
+        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      } else {
+        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      }
+    }
+    return time;
   }
 
   @SuppressWarnings("squid:S3776")

@@ -378,6 +378,11 @@ previousUntilLastClause
     : PREVIOUSUNTILLAST (COMMA DURATION_LITERAL)?
     ;
 
+timeInterval
+    : LS_BRACKET startTime=datetimeLiteral COMMA endTime=datetimeLiteral RR_BRACKET
+    | LR_BRACKET startTime=datetimeLiteral COMMA endTime=datetimeLiteral RS_BRACKET
+    ;
+
 // Insert Statement
 insertStatement
     : INSERT INTO prefixPath insertColumnsSpec VALUES insertValuesSpec
@@ -630,7 +635,7 @@ unloadFile
  * 6. Common Clauses
  */
 
-// IoTDB Objects & Constant
+// IoTDB Objects
 
 fullPath
     : ROOT (DOT nodeNameWithoutWildcard)*
@@ -666,10 +671,10 @@ wildcard
 
 literalCanBeNodeName
     : STRING_LITERAL
-    | DURATION_LITERAL
-    | dateExpression
+    | datetimeLiteral
     | (MINUS|PLUS)? DECIMAL_LITERAL
     | (MINUS|PLUS)? EXPONENT_NUM_PART
+    | BOOLEAN_LITERAL
     ;
 
 keywordsCanBeNodeName
@@ -682,9 +687,12 @@ keywordsCanBeNodeName
     | DEVICE
     ;
 
+
+// Constant & Literal
+
 constant
-    : dateExpression
-    | STRING_LITERAL
+    : STRING_LITERAL
+    | dateExpression
     | (MINUS|PLUS)? DECIMAL_LITERAL
     | (MINUS|PLUS)? realLiteral
     | BOOLEAN_LITERAL
@@ -698,12 +706,7 @@ realLiteral
     | EXPONENT_NUM_PART
     ;
 
-timeInterval
-    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
-    | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
-    ;
-
-timeValue
+datetimeLiteral
     : DATETIME_LITERAL
     | dateExpression
     | DECIMAL_LITERAL
