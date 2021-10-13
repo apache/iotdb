@@ -2153,6 +2153,7 @@ public class StorageGroupProcessor {
     }
     try {
       if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {
+        compacting = true;
         new CompactionAllPartitionTask(logicalStorageGroupName).call();
       }
     } finally {
@@ -2161,7 +2162,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
+   * Load a new tsfile to storage group processor. The file may have overlap with other files.
    *
    * <p>or unsequence list.
    *
