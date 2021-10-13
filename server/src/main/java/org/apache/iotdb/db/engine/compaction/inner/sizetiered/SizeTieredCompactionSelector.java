@@ -97,7 +97,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     int submitTaskNum = 0;
     int currentCompactionCount = 0;
     try {
-      // traverse the tsfile from new to old
       Iterator<TsFileResource> iterator = tsFileResources.iterator();
       LOGGER.debug("Current file list is {}", tsFileResources.getArrayList());
       while (iterator.hasNext()) {

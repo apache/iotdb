@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
@@ -207,5 +208,40 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       return true;
     }
     return false;
+  }
+
+  @Override
+  public boolean checkValidAndSetMerging() {
+    long minVersionNum = Long.MAX_VALUE;
+    int compactionCount = -1;
+    try {
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        if (resource.isMerging() | !resource.isClosed() || !resource.getTsFile().exists()) {
+          return false;
+        }
+        TsFileNameGenerator.TsFileName tsFileName =
+            TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
+        if (tsFileName.getVersion() < minVersionNum) {
+          minVersionNum = tsFileName.getVersion();
+          compactionCount = tsFileName.getInnerCompactionCnt();
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.error("CompactionTask exists while check valid", e);
+    }
+    int maxFileCandidate =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    minVersionNum -= 1;
+    int modBase = 1;
+    for (int i = 0; i < compactionCount + 1; ++i) {
+      modBase *= maxFileCandidate;
+    }
+    if (minVersionNum % modBase != 0) {
+      return false;
+    }
+    for (TsFileResource resource : selectedTsFileResourceList) {
+      resource.setMerging(true);
+    }
+    return true;
   }
 }
