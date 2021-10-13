@@ -586,9 +586,6 @@ public class SyncClient implements ISyncClient {
         if (!isSyncConnect && !reconnect()) {
           continue;
         }
-        if (serviceClient.syncDeletedFileName(getFileNameWithSG(file)).code == SUCCESS_CODE) {
-          logger.info(
-              "Receiver has received deleted file name {} successfully.", getFileNameWithSG(file));
         if (serviceClient.syncDeletedFileName(getFileInfoWithVgAndTimePartition(file)).code
             == SUCCESS_CODE) {
           logger.info("Receiver has received deleted file name {} successfully.", file.getPath());
