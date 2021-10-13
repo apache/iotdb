@@ -40,9 +40,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
