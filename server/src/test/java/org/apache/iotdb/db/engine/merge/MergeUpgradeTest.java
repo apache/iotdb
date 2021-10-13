@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class MergeUpgradeTest {
 
@@ -90,7 +91,7 @@ public class MergeUpgradeTest {
       File seqfile =
           FSFactoryProducer.getFSFactory()
               .getFile(
-                  TestConstant.BASE_OUTPUT_PATH.concat(
+                  TestConstant.OUTPUT_DATA_DIR.concat(
                       "seq"
                           + IoTDBConstant.FILE_NAME_SEPARATOR
                           + i
@@ -107,7 +108,7 @@ public class MergeUpgradeTest {
     File unseqfile =
         FSFactoryProducer.getFSFactory()
             .getFile(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     "unseq"
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
@@ -133,7 +134,11 @@ public class MergeUpgradeTest {
   private void prepareOldFile(
       TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
       throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
+    File tsFile = tsFileResource.getTsFile();
+    if (!tsFile.getParentFile().exists()) {
+      assertTrue(tsFile.getParentFile().mkdirs());
+    }
+    TsFileWriter fileWriter = new TsFileWriter(tsFile);
     prepareData(tsFileResource, fileWriter, timeOffset, ptNum, valueOffset);
     fileWriter.close();
     if (changeVersion) {

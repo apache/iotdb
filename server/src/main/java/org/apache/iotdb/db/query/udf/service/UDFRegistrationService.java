@@ -203,7 +203,7 @@ public class UDFRegistrationService implements IService {
 
   public void deregister(String functionName) throws UDFRegistrationException {
     functionName = functionName.toUpperCase();
-    UDFRegistrationInformation information = registrationInformation.remove(functionName);
+    UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information == null) {
       String errorMessage = String.format("UDF %s does not exist.", functionName);
       logger.warn(errorMessage);
@@ -216,12 +216,10 @@ public class UDFRegistrationService implements IService {
       logger.error(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     }
-
     if (!information.isTemporary()) {
       try {
         appendDeregistrationLog(functionName);
       } catch (IOException e) {
-        registrationInformation.put(functionName, information);
         String errorMessage =
             String.format(
                 "Failed to append UDF log when deregistering UDF %s, because %s", functionName, e);
@@ -229,6 +227,7 @@ public class UDFRegistrationService implements IService {
         throw new UDFRegistrationException(errorMessage, e);
       }
     }
+    registrationInformation.remove(functionName);
   }
 
   private void appendRegistrationLog(String functionName, String className) throws IOException {

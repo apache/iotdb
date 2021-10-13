@@ -42,7 +42,7 @@ import java.util.Set;
 
 public class SeriesReaderByTimestampTest {
 
-  private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
+  private static final String SERIES_READER_TEST_SG = "root.sg1";
   private List<String> deviceIds = new ArrayList<>();
   private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 

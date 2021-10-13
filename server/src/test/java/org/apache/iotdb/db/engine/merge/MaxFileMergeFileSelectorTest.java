@@ -105,7 +105,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
           IllegalAccessException {
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 10
                     + "unseq"
                     + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -157,7 +157,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       throws IOException, WriteProcessException, NoSuchFieldException, IllegalAccessException {
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 10
                     + "unseq"
                     + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -210,7 +210,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       throws MergeException, IOException, WriteProcessException {
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 10
                     + "unseq"
                     + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -248,7 +248,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       for (int i = 0; i < seqFileNum; i++) {
         File file =
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     10
                         + "seq"
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -268,7 +268,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       for (int i = 0; i < unseqFileNum; i++) {
         File file =
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     10
                         + "unseq"
                         + IoTDBConstant.FILE_NAME_SEPARATOR

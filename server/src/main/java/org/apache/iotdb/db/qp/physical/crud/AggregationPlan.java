@@ -24,7 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.AggregateUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -88,7 +88,7 @@ public class AggregationPlan extends RawDataQueryPlan {
     try {
       for (int i = 0; i < seriesPaths.size(); i++) {
         String transformedPath =
-            FilePathUtils.generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), getLevel());
+            AggregateUtils.generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), getLevel());
         String key = getAggregations().get(i) + "(" + transformedPath + ")";
         if (!levelAggPaths.containsKey(key)) {
           AggregateResult aggRet =
@@ -128,8 +128,8 @@ public class AggregationPlan extends RawDataQueryPlan {
       PartialPath path = paths.get(pathIndex);
       String aggregatePath =
           path.isMeasurementAliasExists()
-              ? FilePathUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), level)
-              : FilePathUtils.generatePartialPathByLevel(path.toString(), level);
+              ? AggregateUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), level)
+              : AggregateUtils.generatePartialPathByLevel(path.toString(), level);
       columnForDisplay = aggregations.get(pathIndex) + "(" + aggregatePath + ")";
     }
     return columnForDisplay;

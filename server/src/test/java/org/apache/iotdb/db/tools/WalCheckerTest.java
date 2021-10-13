@@ -57,7 +57,9 @@ public class WalCheckerTest {
   @Test
   public void testEmpty() throws IOException, SystemCheckException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
-    tempRoot.mkdir();
+    if (!tempRoot.exists()) {
+      assertTrue(tempRoot.mkdirs());
+    }
 
     try {
       WalChecker checker = new WalChecker(tempRoot.getAbsolutePath());
@@ -70,12 +72,17 @@ public class WalCheckerTest {
   @Test
   public void testNormalCheck() throws IOException, SystemCheckException, IllegalPathException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
-    tempRoot.mkdir();
+    if (!tempRoot.exists()) {
+      assertTrue(tempRoot.mkdirs());
+    }
 
     try {
       for (int i = 0; i < 5; i++) {
         File subDir = new File(tempRoot, "storage_group" + i);
-        subDir.mkdir();
+        if (!subDir.exists()) {
+          assertTrue(subDir.mkdirs());
+        }
+
         LogWriter logWriter =
             new LogWriter(
                 subDir.getPath() + File.separator + WAL_FILE_NAME,
@@ -108,12 +115,17 @@ public class WalCheckerTest {
   @Test
   public void testAbnormalCheck() throws IOException, SystemCheckException, IllegalPathException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
-    tempRoot.mkdir();
+    if (!tempRoot.exists()) {
+      assertTrue(tempRoot.mkdirs());
+    }
 
     try {
       for (int i = 0; i < 5; i++) {
         File subDir = new File(tempRoot, "storage_group" + i);
-        subDir.mkdir();
+        if (!subDir.exists()) {
+          assertTrue(subDir.mkdirs());
+        }
+
         LogWriter logWriter =
             new LogWriter(
                 subDir.getPath() + File.separator + WAL_FILE_NAME,
@@ -148,18 +160,20 @@ public class WalCheckerTest {
   @Test
   public void testOneDamagedCheck() throws IOException, SystemCheckException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
-    tempRoot.mkdir();
+    if (!tempRoot.exists()) {
+      assertTrue(tempRoot.mkdirs());
+    }
 
     try {
       for (int i = 0; i < 5; i++) {
         File subDir = new File(tempRoot, "storage_group" + i);
-        subDir.mkdir();
+        if (!subDir.exists()) {
+          assertTrue(subDir.mkdirs());
+        }
 
-        FileOutputStream fileOutputStream = new FileOutputStream(new File(subDir, WAL_FILE_NAME));
-        try {
+        try (FileOutputStream fileOutputStream =
+            new FileOutputStream(new File(subDir, WAL_FILE_NAME))) {
           fileOutputStream.write(i);
-        } finally {
-          fileOutputStream.close();
         }
       }
 
