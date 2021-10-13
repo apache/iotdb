@@ -116,9 +116,9 @@ public class Session {
   // Cluster version cache
   protected boolean enableCacheLeader;
   protected SessionConnection metaSessionConnection;
-  protected Map<String, EndPoint> deviceIdToEndpoint;
-  protected Map<EndPoint, SessionConnection> endPointToSessionConnection;
-  private AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
+  protected volatile Map<String, EndPoint> deviceIdToEndpoint;
+  protected volatile Map<EndPoint, SessionConnection> endPointToSessionConnection;
+  private final AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
 
   protected boolean enableQueryRedirection = false;
 
@@ -817,6 +817,7 @@ public class Session {
   private void handleRedirection(String deviceId, EndPoint endpoint)
       throws IoTDBConnectionException {
     if (enableCacheLeader) {
+      AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       deviceIdToEndpoint.put(deviceId, endpoint);
       SessionConnection connection =
           endPointToSessionConnection.computeIfAbsent(
@@ -825,13 +826,13 @@ public class Session {
                 try {
                   return constructSessionConnection(this, endpoint, zoneId);
                 } catch (IoTDBConnectionException ex) {
-                  tmp.set(ex);
+                  exceptionReference.set(ex);
                   return null;
                 }
               });
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
-        throw new IoTDBConnectionException(tmp.get());
+        throw new IoTDBConnectionException(exceptionReference.get());
       }
     }
   }
