@@ -220,10 +220,7 @@ public class MLogWriter implements AutoCloseable {
 
       try (MLogWriter mLogWriter = new MLogWriter(schemaDir, newFileName + ".tmp");
           MLogTxtReader mLogTxtReader = new MLogTxtReader(schemaDir, oldFileName);
-          TagLogFile tagLogFile =
-              new TagLogFile(
-                  IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
-                  MetadataConstant.TAG_LOG)) {
+          TagLogFile tagLogFile = new TagLogFile(schemaDir, MetadataConstant.TAG_LOG)) {
         // upgrade from old character log file to new binary mlog
         while (mLogTxtReader.hasNext()) {
           String cmd = mLogTxtReader.next();
