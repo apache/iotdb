@@ -72,18 +72,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
 
   @Override
   public boolean selectAndSubmit() {
-    boolean taskSubmitted = false;
-    List<TsFileResource> selectedFileList = new ArrayList<>();
-    long selectedFileSize = 0L;
-    long targetCompactionFileSize = config.getTargetCompactionFileSize();
-    boolean enableSeqSpaceCompaction = config.isEnableSeqSpaceCompaction();
-    boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
-    int concurrentCompactionThread = config.getConcurrentCompactionThread();
-    PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
-        new PriorityQueue<>(10, new SizeTieredCompactionTaskComparator());
-
-    // this iterator traverses the list in reverse order
-    tsFileResources.readLock();
     LOGGER.debug(
         "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
             + "target file num is {}, current task num is {}, total task num is {}, "
@@ -94,78 +82,77 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         CompactionTaskManager.currentTaskNum.get(),
         CompactionTaskManager.getInstance().getTaskCount(),
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
-    int submitTaskNum = 0;
-    int currentCompactionCount = 0;
+    tsFileResources.readLock();
+    PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
+        new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
-      Iterator<TsFileResource> iterator = tsFileResources.iterator();
-      LOGGER.debug("Current file list is {}", tsFileResources.getArrayList());
-      while (iterator.hasNext()) {
-        TsFileResource currentFile = iterator.next();
-        TsFileNameGenerator.TsFileName currentName =
-            TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-        if (currentName.getInnerCompactionCnt() != currentCompactionCount) {
-          selectedFileList.clear();
-          selectedFileSize = 0L;
-          currentCompactionCount = currentName.getInnerCompactionCnt();
-        }
-        LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
-        // if no available thread for new compaction task
-        // or compaction of current type is disable
-        // just return
-        if ((!enableSeqSpaceCompaction && sequence) || (!enableUnseqSpaceCompaction && !sequence)) {
-          LOGGER.debug(
-              "{} [Compaction] Return selection because compaction is not enable",
-              logicalStorageGroupName + "-" + virtualStorageGroupName);
-          return taskSubmitted;
-        }
-        // the file size reach threshold
-        // or meet an unelectable file
-        if (currentFile.getTsFileSize() >= targetCompactionFileSize
-            || currentFile.isMerging()
-            || !currentFile.isClosed()) {
-          selectedFileList.clear();
-          selectedFileSize = 0L;
-          continue;
-        }
-        selectedFileList.add(currentFile);
-        selectedFileSize += currentFile.getTsFileSize();
-        LOGGER.debug(
-            "Add tsfile {}, current select file num is {}, size is {}",
-            currentFile,
-            selectedFileList.size(),
-            selectedFileSize);
-        // if the file size or file num reach threshold
-        if (selectedFileSize >= targetCompactionFileSize
-            || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
-          LOGGER.debug(
-              "Submit a {} inner space compaction task because {}",
-              sequence ? "sequence" : "unsequence",
-              selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
-          // submit the task
-          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-          selectedFileList = new ArrayList<>();
-          selectedFileSize = 0L;
+      int maxLevel = searchMaxFileLevel();
+      for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
+        if (!selectLevelTask(currentLevel, taskPriorityQueue)) {
+          break;
         }
       }
       while (taskPriorityQueue.size() > 0) {
-        if (createAndSubmitTask(taskPriorityQueue.poll().left)) {
-          taskSubmitted = true;
-          submitTaskNum += 1;
-        }
+        createAndSubmitTask(taskPriorityQueue.poll().left);
       }
-      if (taskSubmitted) {
-        LOGGER.info(
-            "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
-            logicalStorageGroupName + "-" + virtualStorageGroupName,
-            submitTaskNum);
-      }
-      return taskSubmitted;
-    } catch (IOException e) {
-      e.printStackTrace();
-      return taskSubmitted;
+    } catch (Exception e) {
+      LOGGER.error("Exception occurs while selecting files", e);
     } finally {
       tsFileResources.readUnlock();
     }
+    return true;
+  }
+
+  private boolean selectLevelTask(
+      int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
+      throws IOException {
+    boolean shouldContinueToSearch = true;
+    List<TsFileResource> selectedFileList = new ArrayList<>();
+    long selectedFileSize = 0L;
+    long targetCompactionFileSize = config.getTargetCompactionFileSize();
+
+    // this iterator traverses the list in reverse order
+    for (TsFileResource currentFile : tsFileResources) {
+      TsFileNameGenerator.TsFileName currentName =
+          TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
+      if (currentName.getInnerCompactionCnt() != level) {
+        selectedFileList.clear();
+        selectedFileSize = 0L;
+        continue;
+      }
+      LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
+      selectedFileList.add(currentFile);
+      selectedFileSize += currentFile.getTsFileSize();
+      LOGGER.debug(
+          "Add tsfile {}, current select file num is {}, size is {}",
+          currentFile,
+          selectedFileList.size(),
+          selectedFileSize);
+      // if the file size or file num reach threshold
+      if (selectedFileSize >= targetCompactionFileSize
+          || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
+        // submit the task
+        taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+        selectedFileList = new ArrayList<>();
+        selectedFileSize = 0L;
+        shouldContinueToSearch = false;
+      }
+    }
+    return shouldContinueToSearch;
+  }
+
+  private int searchMaxFileLevel() throws IOException {
+    int maxLevel = -1;
+    Iterator<TsFileResource> iterator = tsFileResources.iterator();
+    while (iterator.hasNext()) {
+      TsFileResource currentFile = iterator.next();
+      TsFileNameGenerator.TsFileName currentName =
+          TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
+      if (currentName.getInnerCompactionCnt() > maxLevel) {
+        maxLevel = currentName.getInnerCompactionCnt();
+      }
+    }
+    return maxLevel;
   }
 
   private boolean createAndSubmitTask(List<TsFileResource> selectedFileList) {
