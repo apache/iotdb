@@ -37,7 +37,7 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 ### 2.1 InfluxDB-Protocol适配器
 
-适配器是一个继承至InfluxDB基类的子类，实现了InfluxDB接口的所有方法，从而使InfluxDB原有的操作函数没有改变，但是会以IoTDB的协议写入IoTDB数据库中。
+该适配器的实现为一个继承了InfluxDB基类的子类， 这个子类实现了InfluxDB的所有接口,并没有改变InfluxDB原有的操作函数，最终以IoTDB的协议在IoTDB数据库中写入和读取。
 
 ![architecture-design](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
 
@@ -75,14 +75,14 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 1. 问题：InfluxDB中Tag的顺序不敏感，而在IoTDB中是敏感的。
 2. 关键点：需要记录每个tag对应的顺序，确保InfluxDB中label顺序不同的同一条时序对应到IoTDB中也是一条时序。
 3. 需要解决的事情：
-    1. 怎样映射tag key和它对应的order
+    1. 怎样把tag key映射到和它对应的order
     2. 在不知道所有的label key的情况下，怎么维护他们之间的顺序
 
 ### 2.3 解决方案
 
 #### 2.3.1 主要思想
 
-1. 内存中Map <Measurement, Map <Tag Key, Order> > table结构维护Tag之间的顺序
+1. 通过利用内存中的Map <Measurement, Map <Tag Key, Order> > table结构，来维护Tag之间的顺序
 2. InfluxDB中时序根据label顺序对应到IoTDB
 
    | root.TAG_INFO.database_name | root.TAG_INFO.measurement_name | root.TAG_INFO.tag_name | root.TAG_INFO.tag_order |
