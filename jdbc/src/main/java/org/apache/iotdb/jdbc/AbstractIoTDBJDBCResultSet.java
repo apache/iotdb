@@ -123,7 +123,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             null,
             statement.getFetchSize(),
             timeout);
-    this.ioTDBRpcTracingInfo = new IoTDBTracingInfo();
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     this.isRpcFetchResult = isRpcFetchResult;
