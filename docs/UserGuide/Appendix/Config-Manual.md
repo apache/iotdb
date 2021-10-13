@@ -69,8 +69,8 @@ The detail of each variables are as follows:
 
 |Name|JMX\_LOCAL|
 |:---:|:---|
-|Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring|
-|Type|Enum String: "true", "false"|
+|Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring.|
+|Values|Enum String: "true", "false"|
 |Default|true|
 |Effective|After restart system|
 
@@ -78,8 +78,8 @@ The detail of each variables are as follows:
 
 |Name|JMX\_PORT|
 |:---:|:---|
-|Description|JMX listening port. Please confirm that the port is not a system reserved port and is not occupied|
-|Type|Short Int: [0,65535]|
+|Description|JMX listening port. Please confirm that the port is not a system reserved port and is not occupied.|
+|Values|Short Int: [0,65535]|
 |Default|31999|
 |Effective|After restart system|
 
@@ -87,7 +87,7 @@ The detail of each variables are as follows:
 
 |Name|JMX\_IP|
 |:---:|:---|
-|Description|JMX listening address. Only take effect if JMX\_LOCAL=false. 0.0.0.0 is never allowed|
+|Description|JMX listening address. Only take effect if JMX\_LOCAL=false. 0.0.0.0 is never allowed.|
 |Type|String|
 |Default|127.0.0.1|
 |Effective|After restart system|
@@ -118,7 +118,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Name| rpc\_port |
 |:---:|:---|
 |Description|The jdbc service listens on the port. Please confirm that the port is not a system reserved port and is not occupied.|
-|Type|Short Int : [0,65535]|
+|Values|Short Int : [0,65535]|
 |Default|6667|
 |Effective|After restart system|
 
@@ -145,7 +145,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Name| rpc\_max\_concurrent\_client\_num |
 |:---:|:---|
 |Description|The maximum number of client connections.|
-|Type|Int32 [0,65535]|
+|Values|Int32 [0,65535]|
 |Default|65535|
 |Effective|After restart system|
 
@@ -153,8 +153,8 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| thrift\_max\_frame\_size |
 |:---:|:---|
-|Description|the max bytes in a RPC request/response|
-|Type| long |
+|Description|The max bytes in a RPC request/response.|
+|Type|Long|
 |Default|67108864 (should >= 8 * 1024 * 1024)|
 |Effective|After restart system|
 
@@ -162,8 +162,8 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| thrift\_init\_buffer\_size |
 |:---:|:---|
-|Description|Initialize buffer size|
-|Type|long|
+|Description|Initialize buffer size.|
+|Type|Long|
 |Default|1024|
 |Effective|After restart system|
 
@@ -173,7 +173,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| enable\_wal |
 |:---:|:---|
-|Description|Whether to enable the pre-write log. The default value is true(enabled), and false means closed. |
+|Description|Whether to enable the pre-write log. The default value is true(enabled), and false means closed.|
 |Type|Boolean|
 |Default|true|
 |Effective|Trigger|
@@ -211,25 +211,25 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| system\_dir |
 |:---:|:---|
-|Description|The IoTDB metadata storage path is stored in the data directory at the same level as the sbin directory by default. The starting directory of the relative path is related to the operating system, it is recommended to use the absolute path.|
+|Description|If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/data/system).|
 |Type|String|
-|Default|data/system(Windows：data\system)|
+|Default|data/system (Windows：data\\system)|
 |Effective|Trigger|
 
 * data\_dirs
 
 |Name| data\_dirs |
 |:---:|:---|
-|Description|The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Description|If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/data/data).|
 |Type|String|
-|Default|data/data(Windows：data\data)|
+|Default|data/data (Windows：data\\data)|
 |Effective|Trigger|
 
 * multi\_dir\_strategy
 
 |Name| multi\_dir\_strategy |
 |:---:|:---|
-|Description|IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. UserDfineStrategyPackage (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project.|
+|Description|The strategy is used to choose a directory from tsfile_dir for the system to store a new tsfile.System provides three strategies to choose from, or user can create his own strategy by extending org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy.The info of the three strategies are as follows: <br>1. SequenceStrategy: the system will choose the directory in sequence;<br>2. MaxDiskUsableSpaceFirstStrategy: the system will choose the directory whose disk has the maximum space;<br>3. MinFolderOccupiedSpaceFirstStrategy: the system will choose the directory whose folder has the minimum occupied space;<br>4. RandomOnDiskUsableSpaceStrategy: the system will randomly choose the directory based on usable space of disks. The more usable space, the greater the chance of being chosen;<br>Set SequenceStrategy,MaxDiskUsableSpaceFirstStrategy and MinFolderOccupiedSpaceFirstStrategy to apply the corresponding strategy.<br>If this property is unset, system will use MaxDiskUsableSpaceFirstStrategy as default strategy.<br>For this property, fully-qualified class name (include package name) and simple class name are both acceptable.|
 |Type|String|
 |Default|MaxDiskUsableSpaceFirstStrategy|
 |Effective|Trigger|
@@ -238,16 +238,16 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| wal\_dir |
 |:---:|:---|
-|Description|Write Ahead Log storage path. It is recommended to use an absolute path.|
+|Description|Write Ahead Log storage path.<br>It is recommended to use an absolute path.|
 |Type|String|
-|Default|data/wal(Windows：data\wal)|
+|Default|data/wal (Windows：data\\wal)|
 |Effective|After restart system|
 
 * tsfile\_storage\_fs
 
 |Name| tsfile\_storage\_fs |
 |:---:|:---|
-|Description|The storage file system of Tsfile and related data files. Currently LOCAL file system and HDFS are supported.|
+|Description|TSFile storage file system.<br>Currently, Tsfile are supported to be stored in LOCAL file system or HDFS.|
 |Type|String|
 |Default|LOCAL|
 |Effective|Only allowed to be modified in first start up|
@@ -256,7 +256,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| core\_site\_path |
 |:---:|:---|
-|Description|Absolute file path of core-site.xml if Tsfile and related data files are stored in HDFS.|
+|Description|If using HDFS, the absolute file path of Hadoop core-site.xml should be configured.|
 |Type|String|
 |Default|/etc/hadoop/conf/core-site.xml |
 |Effective|After restart system|
@@ -265,7 +265,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| hdfs\_site\_path |
 |:---:|:---|
-|Description|Absolute file path of hdfs-site.xml if Tsfile and related data files are stored in HDFS.|
+|Description|If using HDFS, the absolute file path of Hadoop hdfs-site.xml should be configured.|
 |Type|String|
 |Default|/etc/hadoop/conf/hdfs-site.xml|
 |Effective|After restart system|
@@ -274,7 +274,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| hdfs\_ip |
 |:---:|:---|
-|Description|IP of HDFS if Tsfile and related data files are stored in HDFS. **If there are more than one hdfs\_ip in configuration, Hadoop HA is used.**|
+|Description|If using HDFS, hadoop ip can be configured.<br>If there are more than one hdfs_ip, Hadoop HA is used.|
 |Type|String|
 |Default|localhost|
 |Effective|After restart system|
@@ -283,7 +283,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| hdfs\_port |
 |:---:|:---|
-|Description|Port of HDFS if Tsfile and related data files are stored in HDFS|
+|Description|If using HDFS, hadoop port can be configured.|
 |Type|String|
 |Default|9000 |
 |Effective|After restart system|
@@ -292,16 +292,16 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| hdfs\_nameservices |
 |:---:|:---|
-|Description|Nameservices of HDFS HA if using Hadoop HA|
+|Description|If there are more than one hdfs_ip, Hadoop HA is used.<br>Below are configuration for HA.<br>If using Hadoop HA, nameservices of hdfs can be configured.|
 |Type|String|
 |Default|hdfsnamespace|
 |Effective|After restart system|
 
 * dfs\_ha\_namenodes
 
-|Name| hdfs\_ha\_namenodes |
+|Name| dfs\_ha\_namenodes |
 |:---:|:---|
-|Description|Namenodes under DFS nameservices of HDFS HA if using Hadoop HA|
+|Description|If using Hadoop HA, namenodes under dfs nameservices can be configured.|
 |Type|String|
 |Default|nn1,nn2 |
 |Effective|After restart system|
@@ -310,7 +310,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| dfs\_ha\_automatic\_failover\_enabled |
 |:---:|:---|
-|Description|Whether using automatic failover if using Hadoop HA|
+|Description|If using Hadoop HA, automatic failover can be enabled or disabled.|
 |Type|Boolean|
 |Default|true|
 |Effective|After restart system|
@@ -319,7 +319,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| dfs\_client\_failover\_proxy\_provider |
 |:---:|:---|
-|Description|Proxy provider if using Hadoop HA and enabling automatic failover|
+|Description|If using Hadoop HA and enabling automatic failover, the proxy provider can be configured.|
 |Type|String|
 |Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider|
 |Effective|After restart system|
@@ -328,7 +328,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| hdfs\_use\_kerberos |
 |:---:|:---|
-|Description|Whether use kerberos to authenticate hdfs|
+|Description|If using kerberos to authenticate hdfs, this should be true.|
 |Type|Boolean|
 |Default|false|
 |Effective|After restart system|
@@ -337,7 +337,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| kerberos\_keytab\_file_path |
 |:---:|:---|
-|Description|Full path of kerberos keytab file|
+|Description|Full path of kerberos keytab file.|
 |Type|String|
 |Default|/path|
 |Effective|After restart system|
@@ -375,7 +375,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| wal\_buffer\_size |
 |:---:|:---|
-|Description|The size of the log buffer in each log node (in bytes)|
+|Description|The size of the log buffer in each log node (in bytes).|
 |Type|Int32|
 |Default|16777216|
 |Effective|Trigger|
@@ -384,7 +384,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| unseq\_tsfile\_size |
 |:---:|:---|
-|Description|The size of unsequence TsFile's file size (in byte)|
+|Description|The size of unsequence TsFile's file size (in byte).|
 |Type|Int32|
 |Default|1|
 |Effective|After restart system|
@@ -393,7 +393,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| seq\_tsfile\_size |
 |:---:|:---|
-|Description|The size of sequence TsFile's file size (in byte)|
+|Description|The size of sequence TsFile's file size (in byte).|
 |Type|Int32|
 |Default|1|
 |Effective|After restart system|
@@ -510,7 +510,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| concurrent\_flush\_thread |
 |:---:|:---|
-|Description|How many threads can concurrently flush. When <= 0, use CPU core number.|
+|Description|How many threads can concurrently flush.<br>When <= 0, use CPU core number.|
 |Type|Int32|
 |Default|0|
 |Effective|After restart system|
@@ -519,7 +519,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| concurrent\_query\_thread |
 |:---:|:---|
-|Description|How many threads can concurrently query. When <= 0, use CPU core number.|
+|Description|How many threads can concurrently query.<br>When <= 0, use CPU core number.|
 |Type|Int32|
 |Default|0|
 |Effective|After restart system|
@@ -528,7 +528,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| chunk\_buffer\_pool\_enable |
 |:---:|:---|
-|Description|Whether take over the memory management by IoTDB rather than JVM when serializing memtable as bytes in memory|
+|Description|Whether take over the memory management by IoTDB rather than JVM when serializing memtable as bytes in memory.|
 |Type|Boolean|
 |Default|false|
 |Effective|After restart system|
@@ -582,7 +582,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| mtree\_snapshot\_threshold\_time |
 |:---:|:---|
-|Description|Threshold interval time of MTree modification,default 1 hour(3600 seconds),if the last modification time is less than this threshold, MTree snapshot will not be created,and only take effect when enable_mtree_snapshot=true.|
+|Description|Threshold interval time of MTree modification,default 1 hour(3600 seconds).<br>If the last modification time is less than this threshold, MTree snapshot will not be created,and only take effect when enable_mtree_snapshot=true.|
 |Type|Int32|
 |Default|3600|
 |Effective|After restart system|
@@ -600,7 +600,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| time\_index\_level |
 |:---:|:---|
-|Description|Level of TimeIndex, which records the start time and end time of TsFileResource.Currently,DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.|
+|Description|Level of TimeIndex, which records the start time and end time of TsFileResource.<br>Currently,DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.|
 |Type|String|
 |Default|DEVICE_TIME_INDEX|
 |Effective|Trigger|
@@ -620,7 +620,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| write\_read\_schema\_free\_memory\_proportion |
 |:---:|:---|
-|Description|Memory Allocation Ratio: Write, Read, Schema and Free Memory.The parameter form is a:b:c:d, where a, b, c and d are integers. for example: 1:1:1:1 , 6:2:1:1.If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:2|
+|Description|Memory Allocation Ratio: Write, Read, Schema and Free Memory.<br>The parameter form is a : b : c : d, where a, b, c and d are integers,for example: 1:1:1:1 , 6:2:1:1.<br>If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:2|
 |Type|String|
 |Default|4:3:1:2|
 |Effective|After restart system|
@@ -629,7 +629,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| primitive\_array\_size |
 |:---:|:---|
-|Description|primitive array size (length of each array) in array pool.|
+|Description|Primitive array size (length of each array) in array pool.|
 |Type|Int32|
 |Default|32|
 |Effective|After restart system|
@@ -656,7 +656,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| reject\_proportion |
 |:---:|:---|
-|Description|Ratio of write memory for rejecting insertion, 0.8 by default|
+|Description|Ratio of write memory for rejecting insertion, 0.8 by default.|
 |Type|Float|
 |Default|0.8|
 |Effective|After restart system|
@@ -752,7 +752,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| enable\_unseq\_compaction |
 |:---:|:---|
-|Description|Works when the compaction_strategy is LEVEL_COMPACTION.Whether to merge unseq files into seq files or not.|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.<br>Whether to merge unseq files into seq files or not.|
 |Type|Boolean|
 |Default|true|
 |Effective|After restart system|
@@ -770,7 +770,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| seq\_file\_num\_in\_each\_level |
 |:---:|:---|
-|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max seq file num of each level.|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.<br>The max seq file num of each level.|
 |Type|Int32|
 |Default|6|
 |Effective|After restart system|
@@ -779,7 +779,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| seq\_level\_num |
 |:---:|:---|
-|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max num of seq level.|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.<br>The max num of seq level.|
 |Type|Int32|
 |Default|3|
 |Effective|After restart system|
@@ -788,7 +788,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| unseq\_file\_num\_in\_each\_level |
 |:---:|:---|
-|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max unseq file num of each level.|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.<br>The max unseq file num of each level.|
 |Type|Int32|
 |Default|10|
 |Effective|After restart system|
@@ -797,7 +797,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| unseq\_level\_num |
 |:---:|:---|
-|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max num of unseq level.|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.<br>The max num of unseq level.|
 |Type|Int32|
 |Default|1|
 |Effective|After restart system|
@@ -806,7 +806,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| max\_select\_unseq\_file\_num\_in\_each\_unseq\_compaction |
 |:---:|:---|
-|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max open file num in each unseq compaction task.|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.<br>The max open file num in each unseq compaction task.|
 |Type|Int32|
 |Default|2000|
 |Effective|After restart system|
@@ -815,7 +815,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| merge\_chunk\_point\_number |
 |:---:|:---|
-|Description|Works when the compaction_strategy is LEVEL_COMPACTION.When the average point number of chunks in the target file reaches this, merge the file to the top level.|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.<br>When the average point number of chunks in the target file reaches this, merge the file to the top level.|
 |Type|Int32|
 |Default|100000|
 |Effective|After restart system|
@@ -824,7 +824,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| merge\_chunk\_point\_number |
 |:---:|:---|
-|Description|Works when the compaction_strategy is LEVEL_COMPACTION.When point number of a page reaches this, use "append merge" instead of "deserialize merge".|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.<br>When point number of a page reaches this, use "append merge" instead of "deserialize merge".|
 |Type|Int32|
 |Default|100|
 |Effective|After restart system|
@@ -851,7 +851,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| merge\_memory\_budget |
 |:---:|:---|
-|Description|How much memory may be used in ONE merge task (in byte), 10% of maximum JVM memory by default.This is only a rough estimation, starting from a relatively small value to avoid OOM.|
+|Description|How much memory may be used in ONE merge task (in byte), 10% of maximum JVM memory by default.<br>This is only a rough estimation, starting from a relatively small value to avoid OOM.|
 |Type|Int32|
 |Default|2147483648|
 |Effective|After restart system|
@@ -869,7 +869,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| force\_full\_merge |
 |:---:|:---|
-|Description|When set to true, all unseq merges becomes full merge (the whole SeqFiles are re-written despite how much they are overflowed). This may increase merge overhead depending on how much the SeqFiles are overflowed.|
+|Description|When set to true, all unseq merges becomes full merge (the whole SeqFiles are re-written despite how much they are overflowed).<br>This may increase merge overhead depending on how much the SeqFiles are overflowed.|
 |Type|Boolean|
 |Default|true|
 |Effective|After restart system|
@@ -916,7 +916,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| chunk\_timeseriesmeta\_free\_memory\_proportion |
 |:---:|:---|
-|Description|Read memory Allocation Ratio: ChunkCache, TimeSeriesMetadataCache, memory used for constructing QueryDataSet and Free Memory Used in Query.The parameter form is a:b:c:d, where a, b, c and d are integers. for example: 1:1:1:1 , 1:2:3:4.|
+|Description|Read memory Allocation Ratio: ChunkCache, TimeSeriesMetadataCache, memory used for constructing QueryDataSet and Free Memory Used in Query.<br>The parameter form is a : b : c : d, where a, b, c and d are integers. For example: 1:1:1:1 , 1:2:3:4.|
 |Type|String|
 |Default|1:2:3:4|
 |Effective|After restart system|
@@ -925,7 +925,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| metadata\_node\_cache\_size |
 |:---:|:---|
-|Description|Cache size for MManager.This cache is used to improve insert speed where all path check and TSDataType will be cached in MManager with corresponding Path.|
+|Description|Cache size for MManager.<br>This cache is used to improve insert speed where all path check and TSDataType will be cached in MManager with corresponding Path.|
 |Type|Int32|
 |Default|300000|
 |Effective|After restart system|
@@ -996,7 +996,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| external\_sort\_threshold |
 |:---:|:---|
-|Description|The maximum number of simultaneous chunk reading for a single time series.If the num of simultaneous chunk reading is greater than external_sort_threshold, external sorting is used.|
+|Description|The maximum number of simultaneous chunk reading for a single time series.<br>If the num of simultaneous chunk reading is greater than external_sort_threshold, external sorting is used.|
 |Type|Int32|
 |Default|1000|
 |Effective|After restart system|
@@ -1184,7 +1184,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| nan\_string\_infer\_type |
 |:---:|:---|
-|Description|Register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT|
+|Description|Register time series as which type when receiving the Literal NaN.<br>Values can be DOUBLE, FLOAT or TEXT|
 |Values|DOUBLE, FLOAT or TEXT|
 |Default|DOUBLE|
 |Effective|After restart system|
@@ -1321,7 +1321,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| compressor |
 |:---:|:---|
-|Description|Compression configuration.Data compression method, supports UNCOMPRESSED, SNAPPY or LZ4. Default value is SNAPPY.|
+|Description|Compression configuration.<br>Data compression method, supports UNCOMPRESSED, SNAPPY or LZ4. Default value is SNAPPY.|
 |Values|Enum String : “UNCOMPRESSED”, “SNAPPY”|
 |Default|SNAPPY|
 |Effective|Trigger|
@@ -1355,137 +1355,67 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ### MQTT Broker Configuration
 
+* enable\_mqtt\_service
 
-
-### File Layer
-
-
-
-* bloomFilterErrorRate
-
-|Name| bloomFilterErrorRate |
+|Name| enable\_mqtt\_service |
 |:---:|:---|
-|Description| The false positive rate of bloom filter in each TsFile. Bloom filter checks whether a given time series is in the tsfile before loading metadata. This can improve the performance of loading metadata and skip the tsfile that doesn't contain specified time series. If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).|
-|Type|float, (0, 1)|
-|Default| 0.05 |
-|Effective|After restart system|
-
-### Engine Layer
-
-* time\_zone
-
-|Name| time\_zone |
-|:---:|:---|
-|Description| The time zone in which the server is located, the default is Beijing time (+8) |
-|Type|Time Zone String|
-|Default| +08:00 |
+|Description|Whether to enable the mqtt service.|
+|Type|Boolean|
+|Default|false|
 |Effective|Trigger|
 
-* base\_dir
+* mqtt\_host
 
-|Name| base\_dir |
+|Name| mqtt\_host |
 |:---:|:---|
-|Description| The IoTDB system folder. It is recommended to use an absolute path. |
+|Description|The mqtt service binding host.|
 |Type|String|
-|Default| data |
-|Effective|After restart system|
-
-* tsfile\_size\_threshold
-
-|Name| tsfile\_size\_threshold |
-|:---:|:---|
-|Description| max tsfile size|
-|Type|Long|
-|Default| 536870912 |
-|Effective| After restart system|
-
-* enable\_partition
-
-|Name| enable\_partition |
-|:---:|:---|
-|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
-|Type|Bool|
-|Default| false |
-|Effective|Only allowed to be modified in first start up|
-
-* partition\_interval
-
-|Name| partition\_interval |
-|:---:|:---|
-|Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
-|Type|Int64|
-|Default| 604800 |
-|Effective|Only allowed to be modified in first start up|
-
-
-* concurrent\_writing\_time\_partition
-
-|Name| concurrent\_writing\_time\_partition |
-|:---:|:---|
-|Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
-|Type|Int32|
-|Default| 1 |
-|Effective|After restart system|
-
-* tsfile\_size\_threshold
-
-|Name| tsfile\_size\_threshold |
-|:---:|:---|
-|Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
-|Type| Int64 |
-|Default| 536870912 |
-|Effective|After restart system|
-
-* flush\_wal\_threshold
-
-|Name| flush\_wal\_threshold |
-|:---:|:---|
-|Description| After the WAL reaches this value, it is flushed to disk, and it is possible to lose at most flush_wal_threshold operations. |
-|Type|Int32|
-|Default| 10000 |
+|Default|0.0.0.0|
 |Effective|Trigger|
 
-* force\_wal\_period\_in\_ms
+* mqtt\_port
 
-|Name| force\_wal\_period\_in\_ms |
+|Name| mqtt\_port |
 |:---:|:---|
-|Description| The period during which the log is periodically forced to flush to disk(in milliseconds) |
+|Description|The mqtt service binding port.|
 |Type|Int32|
-|Default| 10 |
+|Default|1883|
 |Effective|Trigger|
 
-* fetch\_size
+* mqtt\_handler\_pool\_size
 
-|Name| fetch\_size |
+|Name| mqtt\_handler\_pool\_size |
 |:---:|:---|
-|Description| The amount of data read each time in batch (the number of data strips, that is, the number of different timestamps.) |
+|Description|The handler pool size for handing the mqtt messages.|
 |Type|Int32|
-|Default| 10000 |
-|Effective|After restart system|
+|Default|1|
+|Effective|Trigger|
 
-* merge\_concurrent\_threads
+* mqtt\_payload\_formatter
 
-|Name| merge\_concurrent\_threads |
+|Name| mqtt\_payload\_formatter |
 |:---:|:---|
-|Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
+|Description|The mqtt message payload formatter.|
+|Type|String|
+|Default|json|
+|Effective|Trigger|
+
+* mqtt\_max\_message\_size
+
+|Name| mqtt\_max\_message\_size |
+|:---:|:---|
+|Description|Max length of mqtt message in byte|
 |Type|Int32|
-|Default| 0 |
-|Effective|After restart system|
+|Default|1048576|
+|Effective|Trigger|
 
-* enable\_stat\_monitor
-
-|Name| enable\_stat\_monitor |
-|:---:|:---|
-|Description| Whether to enable background statistics|
-|Type| Boolean |
-|Default| false |
-|Effective|After restart system|
+### Authorization Configuration
 
 * authorizer\_provider\_class
 
 |Name| authorizer\_provider\_class |
 |:---:|:---|
-|Description| the class name of the authorization service|
+|Description|Which class to serve for authorization.<br>By default, it is LocalFileAuthorizer.<br>Another choice is org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer|
 |Type| String |
 |Default|org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
 |Effective|After restart system|
@@ -1495,30 +1425,138 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| openID\_url |
 |:---:|:---|
-|Description| the openID server if OpenIdAuthorizer is enabled|
-|Type| String (a http url) |
-|Default|no |
+|Description|If OpenIdAuthorizer is enabled, then openID_url must be set.|
+|Type|String (a http url)|
+|Default|no|
 |Effective|After restart system|
 
-## Automatic Schema Creation and Type Inference
+### UDF Query Configuration
+
+* udf\_initial\_byte\_array\_length\_for\_memory\_control
+
+|Name| udf\_initial\_byte\_array\_length\_for\_memory\_control |
+|:---:|:---|
+|Description|Used to estimate the memory usage of text fields in a UDF query.<br>It is recommended to set this value to be slightly larger than the average length of all text records.|
+|Type|Int32|
+|Default|48|
+|Effective|After restart system|
+
+* udf\_memory\_budget\_in\_mb
+
+|Name| udf\_memory\_budget\_in\_mb |
+|:---:|:---|
+|Description|How much memory may be used in ONE UDF query (in MB).<br>The upper limit is 20% of allocated memory for read.|
+|Type|Float|
+|Default|30.0|
+|Effective|After restart system|
+
+* udf\_reader\_transformer\_collector\_memory\_proportion
+
+|Name| udf\_reader\_transformer\_collector\_memory\_proportion |
+|:---:|:---|
+|Description|UDF memory allocation ratio.<br>The parameter form is a : b : c, where a, b, and c are integers.|
+|Type|String|
+|Default|1:1:1|
+|Effective|After restart system|
+
+* udf\_root\_dir
+
+|Name| udf\_root\_dir |
+|:---:|:---|
+|Description|Uncomment following fields to configure the udf root directory.|
+|Type|String|
+|Default|ext/udf (Windows:ext\\udf)|
+|Effective|After restart system|
+
+* index\_root\_dir
+
+|Name| index\_root\_dir |
+|:---:|:---|
+|Description|Uncomment following fields to configure the index root directory.|
+|Type|String|
+|Default|data/index (Windows:data\\index)|
+|Effective|After restart system|
+
+* enable\_index
+
+|Name| enable\_index |
+|:---:|:---|
+|Description|Is index enable.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* concurrent\_index\_build\_thread
+
+|Name| concurrent\_index\_build\_thread |
+|:---:|:---|
+|Description|How many threads can concurrently build index. <br>When <= 0, use CPU core number.|
+|Type|Int32|
+|Default|0|
+|Effective|After restart system|
+
+* default\_index\_window\_range
+
+|Name| default\_index\_window\_range |
+|:---:|:---|
+|Description|The default size of sliding window used for the subsequence matching in index framework.|
+|Type|Int32|
+|Default|10|
+|Effective|After restart system|
+
+* index\_buffer\_size
+
+|Name| index\_buffer\_size |
+|:---:|:---|
+|Description|Buffer parameter for index processor.|
+|Type|Int32|
+|Default|134217728|
+|Effective|After restart system|
 
 * enable\_partition
 
 |Name| enable\_partition |
 |:---:|:---|
-|Description| whether enable data partition. If disabled, all data belongs to partition 0|
-|Type| BOOLEAN |
-|Default|false |
-|Effective|After restart system|
+|Description|Whether enable data partition. If disabled, all data belongs to partition 0.|
+|Type|Boolean|
+|Default|false|
+|Effective|Only allowed to be modified in first start up|
 
 * partition\_interval
 
 |Name| partition\_interval |
 |:---:|:---|
-|Description| time range for partitioning data inside each storage group, the unit is second|
-|Type| LONG |
-|Default| 604800 |
+|Description|Time range for partitioning data inside each storage group, the unit is second.|
+|Type|Int64|
+|Default|604800|
+|Effective|Only allowed to be modified in first start up|
+
+* concurrent\_writing\_time\_partition
+
+|Name| concurrent\_writing\_time\_partition |
+|:---:|:---|
+|Description|The maximum number of time partitions that can be written at the same time, the default is 500 partitions.|
+|Type|Int32|
+|Default|500|
 |Effective|After restart system|
+
+* admin\_name
+
+|Name| admin\_name |
+|:---:|:---|
+|Description|Admin username, default is root.|
+|Type|String|
+|Default|root|
+|Effective|Only allowed to be modified in first start up|
+
+* admin\_password
+
+|Name| admin\_password |
+|:---:|:---|
+|Description|Admin password, default is root.|
+|Type|String|
+|Default|root|
+|Effective|Only allowed to be modified in first start up|
 
 ## Enable GC log
 GC log is off by default.
