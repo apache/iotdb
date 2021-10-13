@@ -33,8 +33,8 @@ import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.sync.sender.manage.ISyncFileManager;
 import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.junit.After;
 import org.junit.Before;

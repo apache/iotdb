@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,9 +56,11 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
   @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
+    if (!tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
   }
 
   @Override

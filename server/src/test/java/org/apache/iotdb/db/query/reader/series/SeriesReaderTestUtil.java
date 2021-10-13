@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -39,6 +38,8 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;
@@ -90,18 +91,7 @@ public class SeriesReaderTestUtil {
       List<String> deviceIds)
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file =
-          new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  i
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+      File file = new File(TestConstant.getTestTsFilePath(SERIES_READER_TEST_SG, 0, 0, i));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
@@ -112,17 +102,7 @@ public class SeriesReaderTestUtil {
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
-          new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  i
-                      + "unseq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+          new File(TestConstant.getTestTsFilePath(SERIES_READER_TEST_SG, 0, 0, i + seqFileNum));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
@@ -140,16 +120,7 @@ public class SeriesReaderTestUtil {
 
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                unseqFileNum
-                    + "unseq"
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.getTestTsFilePath(SERIES_READER_TEST_SG, 0, 0, seqFileNum + unseqFileNum));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
@@ -167,7 +138,11 @@ public class SeriesReaderTestUtil {
       List<UnaryMeasurementSchema> measurementSchemas,
       List<String> deviceIds)
       throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
+    File file = tsFileResource.getTsFile();
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    TsFileWriter fileWriter = new TsFileWriter(file);
     Map<String, IMeasurementSchema> template = new HashMap<>();
     for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);

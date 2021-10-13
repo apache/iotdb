@@ -43,7 +43,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.VectorSeriesAggregateReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.AggregateUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -706,7 +706,7 @@ public class AggregationExecutor {
       Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
 
       List<AggregateResult> mergedAggResults =
-          FilePathUtils.mergeRecordByPath(plan, aggregateResultList, finalPaths);
+          AggregateUtils.mergeRecordByPath(plan, aggregateResultList, finalPaths);
 
       List<PartialPath> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();

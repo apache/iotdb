@@ -83,6 +83,7 @@ import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.SettleOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
@@ -562,6 +563,24 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       flushOperator.setStorageGroupList(storageGroups);
     }
     return flushOperator;
+  }
+
+  @Override
+  public Operator visitSettle(SqlBaseParser.SettleContext ctx) {
+    SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
+    if (ctx.pathOrString().prefixPath() != null) {
+      PartialPath sgPath = parsePrefixPath(ctx.pathOrString().prefixPath());
+      settleOperator.setSgPath(sgPath);
+      settleOperator.setIsSgPath(true);
+    } else if (!ctx.pathOrString().stringLiteral().getText().equals("")) {
+      String tsFilePath = removeStringQuote(ctx.pathOrString().stringLiteral().getText());
+      settleOperator.setTsFilePath(tsFilePath);
+      settleOperator.setIsSgPath(false);
+    } else {
+      // do nothing
+    }
+
+    return settleOperator;
   }
 
   @Override
