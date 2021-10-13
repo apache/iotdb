@@ -46,6 +46,8 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 ### 2.2 数据格式转换
 
+为了使适配器能够兼容InfluxDB协议，因此需要把InfluxDB存储的数据结构转换成IoTDB的存储数据结构。
+
 #### 2.2.1 InfluxDB数据格式
 
 1. database: 数据库名。
@@ -87,16 +89,16 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
    | root.TAG_INFO.database_name | root.TAG_INFO.measurement_name | root.TAG_INFO.tag_name | root.TAG_INFO.tag_order |
    | ---------------------------- | ------------------------------- | ----------------------- | ------------------------ |
-   | database                      | student                          | name                     | 0                         |
-   | database                      | student                          | phone                    | 1                         |
-   | database                      | student                          | sex                      | 2                         |
-   | database                      | student                          | address                  | 3                         |
+   | monitor                      | student                          | name                     | 0                         |
+   | monitor                      | student                          | phone                    | 1                         |
+   | monitor                      | student                          | sex                      | 2                         |
+   | monitor                      | student                          | address                  | 3                         |
 
 #### 2.3.2 实例
 
 a. 插入数据
 
-1. InfluxDB时序(database=database)：
+1. InfluxDB时序(database=monitor)：
 
    (1)student tags:{name=A,phone=B,sex=C} fields:{score=99}
 
@@ -104,7 +106,7 @@ a. 插入数据
 
    (3))student tags:{name=A,phone=B,sex=C,address=D} fields:{score=97}
 
-2. 简单对上述InfluxDB的时序进行解释，database是database；measurement是student；tag分别是name，phone、sex和address；field是score。
+2. 简单对上述InfluxDB的时序进行解释，database是monitor;measurement是student；tag分别是name，phone、sex和address；field是score。
 
 对应的InfluxDB的实际存储为：
 
@@ -117,37 +119,37 @@ a. 插入数据
 
    | database | measurement | tag_key | Order |
       | -------- | ----------- | ------- | ----- |
-   | database | student     | name    | 0     |
-   | database | student     | phone   | 1     |
-   | database | student     | sex     | 2     |
+   | monitor | student     | name    | 0     |
+   | monitor | student     | phone   | 1     |
+   | monitor | student     | sex     | 2     |
 
    (2)IoTDB对应的记录tag顺序的table为
 
    | database | measurement | tag_key | order |
       | -------- | ----------- | ------- | ----- |
-   | database | student     | name    | 0     |
-   | database | student     | phone   | 1     |
-   | database | student     | sex     | 2     |
-   | database | student     | address | 3     |
+   | monitor | student     | name    | 0     |
+   | monitor | student     | phone   | 1     |
+   | monitor | student     | sex     | 2     |
+   | monitor | student     | address | 3     |
 
    (3)IoTDB对应的记录tag顺序的table为
 
    | database | measurement | tag_key | order |
       | -------- | ----------- | ------- | ----- |
-   | database | student     | name    | 0     |
-   | database | student     | phone   | 1     |
-   | database | student     | sex     | 2     |
-   | database | student     | address | 3     |
+   | monitor | student     | name    | 0     |
+   | monitor | student     | phone   | 1     |
+   | monitor | student     | sex     | 2     |
+   | monitor | student     | address | 3     |
 
-4. (1)第一条插入数据对应IoTDB时序为root.database.student.A.B.C
+4. (1)第一条插入数据对应IoTDB时序为root.monitor.student.A.B.C
 
-   (2)第二条插入数据对应IoTDB时序为root.database.student.ph.ph.ph.D(其中ph表示占位符)
+   (2)第二条插入数据对应IoTDB时序为root.monitor.student.ph.ph.ph.D(其中ph表示占位符)
 
-   (3)第三条插入数据对应IoTDB时序为root.database.student.A.B.C.D 
+   (3)第三条插入数据对应IoTDB时序为root.monitor.student.A.B.C.D 
   
    对应的IoTDB的实际存储为：
 
-| Time | root.database.student.A.B.C.score | root.database.student.PH.PH.PH.D.score | root.database.student.A.B.C.D.score |
+| Time | root.monitor.student.A.B.C.score | root.monitor.student.PH.PH.PH.D.score | root.monitor.student.A.B.C.D.score |
 | ---- | --------------------------------- | -------------------------------------- | ----------------------------------- |
 | 1    | 99                                | null                                   | Null                                |
 | 2    | Null                              | 98                                     | Null                                |
@@ -155,6 +157,20 @@ a. 插入数据
 
 b. 查询数据
 
-1. 查询student中phone=B的数据。在database->student中phone的顺序为1，order最大值是3，对应到IoTDB的查询为：select * from root.database.student.*.B
-2. 查询student中phone=B且存储的score>97的数据，对应到IoTDB的查询为：select * from root.database.student.*.B where score>98
-3. 查询student中phone=B且存储的score>97且时间在最近七天内的的数据，对应到IoTDB的查询为：select * from root.database.student.*.B where score>98 and time > now()-7d
+1. 查询student中phone=B的数据。monitor->student中phone的顺序为1，order最大值是3，对应到IoTDB的查询为：
+ 
+   ```sql 
+   select * from root.monitor.student.*.B
+   ```
+
+2. 查询student中phone=B且存储的score>97的数据，对应到IoTDB的查询为：
+ 
+   ```sql
+   select * from root.monitor.student.*.B where score>98
+   ```
+
+3. 查询student中phone=B且存储的score>97且时间在最近七天内的的数据，对应到IoTDB的查询为：
+ 
+   ```sql
+   select * from root.monitor.student.*.B where score>98 and time > now()-7d
+   ```
