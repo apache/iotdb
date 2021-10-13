@@ -23,21 +23,37 @@ updates:
     schedule:
       interval: daily
     target-branch: "master"
+    labels:
+      - "master"
+      - "dependencies"
+      - "java"
 
   - package-ecosystem: maven
     directory: "/"
     schedule:
       interval: daily
     target-branch: "rel/0.12"
+    labels:
+      - "0.12"
+      - "dependencies"
+      - "java"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: daily
     target-branch: "master"
+    labels:
+      - "master"
+      - "dependencies"
+      - "github_actions"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: daily
     target-branch: "rel/0.12"
+    labels:
+      - "0.12"
+      - "dependencies"
+      - "github_actions"
