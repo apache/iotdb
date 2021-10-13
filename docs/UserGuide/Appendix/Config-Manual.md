@@ -39,7 +39,7 @@ The configuration files of the three configuration items are located in the IoTD
 For the convenience of users, IoTDB server provides users with hot modification function, that is, modifying some configuration parameters in `iotdb engine. Properties` during the system operation and applying them to the system immediately. 
 In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot modification.
 
-Trigger way: The client sends the command `load configuration` to the IoTDB server. See Chapter 4 for the usage of the client.
+Trigger way: The client sends the command `load configuration` to the IoTDB server. See [Command Line Interface(CLI)](https://iotdb.apache.org/UserGuide/Master/CLI/Command-Line-Interface.html) for the usage of the client.
 
 ## IoTDB Environment Configuration File
 
@@ -53,7 +53,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description|The maximum heap memory size that IoTDB can use at startup.|
 |Type|String|
-|Default| On Linux or MacOS, the default is one quarter of the memory. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
+|Default|On Linux or MacOS, the default is one quarter of the memory. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
 |Effective|After restart system|
 
 * HEAP\_NEWSIZE
@@ -62,7 +62,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description|The minimum heap memory size that IoTDB can use at startup.|
 |Type|String|
-|Default| On Linux or MacOS, the default is min{cores * 100M, one quarter of MAX\_HEAP\_SIZE}. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
+|Default|On Linux or MacOS, the default is min{cores * 100M, one quarter of MAX\_HEAP\_SIZE}. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
 |Effective|After restart system|
 
 * JMX\_LOCAL
@@ -73,7 +73,6 @@ The detail of each variables are as follows:
 |Type|Enum String: "true", "false"|
 |Default|true|
 |Effective|After restart system|
-
 
 * JMX\_PORT
 
@@ -103,88 +102,1263 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ## IoTDB System Configuration File
 
-### File Layer
+### RPC Configuration
 
-* compressor
+* rpc\_address
 
-|Name|compressor|
+|Name| rpc\_address |
 |:---:|:---|
-|Description|Data compression method|
-|Type|Enum String : “UNCOMPRESSED”, “SNAPPY”|
-|Default| UNCOMPRESSED |
+|Description|The jdbc service listens on the address.|
+|Type|String|
+|Default|"0.0.0.0"|
+|Effective|After restart system|
+
+* rpc\_port
+
+|Name| rpc\_port |
+|:---:|:---|
+|Description|The jdbc service listens on the port. Please confirm that the port is not a system reserved port and is not occupied.|
+|Type|Short Int : [0,65535]|
+|Default|6667|
+|Effective|After restart system|
+
+* rpc\_thrift\_compression\_enable
+
+|Name| rpc\_thrift\_compression\_enable |
+|:---:|:---|
+|Description|Whether enable thrift's compression (using GZIP).|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* rpc\_advanced\_compression\_enable
+
+|Name| rpc\_advanced\_compression\_enable |
+|:---:|:---|
+|Description|Whether enable thrift's advanced compression.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* rpc\_max\_concurrent\_client\_num
+
+|Name| rpc\_max\_concurrent\_client\_num |
+|:---:|:---|
+|Description|The maximum number of client connections.|
+|Type|Int32 [0,65535]|
+|Default|65535|
+|Effective|After restart system|
+
+* thrift\_max\_frame\_size
+
+|Name| thrift\_max\_frame\_size |
+|:---:|:---|
+|Description|the max bytes in a RPC request/response|
+|Type| long |
+|Default|67108864 (should >= 8 * 1024 * 1024)|
+|Effective|After restart system|
+
+* thrift\_init\_buffer\_size
+
+|Name| thrift\_init\_buffer\_size |
+|:---:|:---|
+|Description|Initialize buffer size|
+|Type|long|
+|Default|1024|
+|Effective|After restart system|
+
+### Write Ahead Log Configuration
+
+* enable\_wal
+
+|Name| enable\_wal |
+|:---:|:---|
+|Description|Whether to enable the pre-write log. The default value is true(enabled), and false means closed. |
+|Type|Boolean|
+|Default|true|
 |Effective|Trigger|
+
+* enable\_discard\_out\_of\_order\_data
+
+|Name| enable\_discard\_out\_of\_order\_data |
+|:---:|:---|
+|Description|Whether to discard out-of-order data, the default value is false, which means it is closed.|
+|Type|Boolean|
+|Default|false|
+|Effective|Trigger|
+
+* flush\_wal\_threshold
+
+|Name| flush\_wal\_threshold |
+|:---:|:---|
+|Description|When a certain amount of insert ahead log is reached, it will be flushed to disk,it is possible to lose at most flush_wal_threshold operations.|
+|Type|Int32|
+|Default|10000|
+|Effective|Trigger|
+
+* force\_wal\_period\_in\_ms
+
+|Name| force\_wal\_period\_in\_ms |
+|:---:|:---|
+|Description|The cycle when insert ahead log is periodically forced to be written to disk(in milliseconds),if force_wal_period_in_ms = 0 ,it means force insert ahead log to be written to disk after each refreshment and may slow down the ingestion on slow disk.|
+|Type|Int32|
+|Default|100|
+|Effective|Trigger|
+
+### Directory Configuration
+
+* system\_dir
+
+|Name| system\_dir |
+|:---:|:---|
+|Description|The IoTDB metadata storage path is stored in the data directory at the same level as the sbin directory by default. The starting directory of the relative path is related to the operating system, it is recommended to use the absolute path.|
+|Type|String|
+|Default|data/system(Windows：data\system)|
+|Effective|Trigger|
+
+* data\_dirs
+
+|Name| data\_dirs |
+|:---:|:---|
+|Description|The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Type|String|
+|Default|data/data(Windows：data\data)|
+|Effective|Trigger|
+
+* multi\_dir\_strategy
+
+|Name| multi\_dir\_strategy |
+|:---:|:---|
+|Description|IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. UserDfineStrategyPackage (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project.|
+|Type|String|
+|Default|MaxDiskUsableSpaceFirstStrategy|
+|Effective|Trigger|
+
+* wal\_dir
+
+|Name| wal\_dir |
+|:---:|:---|
+|Description|Write Ahead Log storage path. It is recommended to use an absolute path.|
+|Type|String|
+|Default|data/wal(Windows：data\wal)|
+|Effective|After restart system|
+
+* tsfile\_storage\_fs
+
+|Name| tsfile\_storage\_fs |
+|:---:|:---|
+|Description|The storage file system of Tsfile and related data files. Currently LOCAL file system and HDFS are supported.|
+|Type|String|
+|Default|LOCAL|
+|Effective|Only allowed to be modified in first start up|
+
+* core\_site\_path
+
+|Name| core\_site\_path |
+|:---:|:---|
+|Description|Absolute file path of core-site.xml if Tsfile and related data files are stored in HDFS.|
+|Type|String|
+|Default|/etc/hadoop/conf/core-site.xml |
+|Effective|After restart system|
+
+* hdfs\_site\_path
+
+|Name| hdfs\_site\_path |
+|:---:|:---|
+|Description|Absolute file path of hdfs-site.xml if Tsfile and related data files are stored in HDFS.|
+|Type|String|
+|Default|/etc/hadoop/conf/hdfs-site.xml|
+|Effective|After restart system|
+
+* hdfs\_ip
+
+|Name| hdfs\_ip |
+|:---:|:---|
+|Description|IP of HDFS if Tsfile and related data files are stored in HDFS. **If there are more than one hdfs\_ip in configuration, Hadoop HA is used.**|
+|Type|String|
+|Default|localhost|
+|Effective|After restart system|
+
+* hdfs\_port
+
+|Name| hdfs\_port |
+|:---:|:---|
+|Description|Port of HDFS if Tsfile and related data files are stored in HDFS|
+|Type|String|
+|Default|9000 |
+|Effective|After restart system|
+
+* dfs\_nameservices
+
+|Name| hdfs\_nameservices |
+|:---:|:---|
+|Description|Nameservices of HDFS HA if using Hadoop HA|
+|Type|String|
+|Default|hdfsnamespace|
+|Effective|After restart system|
+
+* dfs\_ha\_namenodes
+
+|Name| hdfs\_ha\_namenodes |
+|:---:|:---|
+|Description|Namenodes under DFS nameservices of HDFS HA if using Hadoop HA|
+|Type|String|
+|Default|nn1,nn2 |
+|Effective|After restart system|
+
+* dfs\_ha\_automatic\_failover\_enabled
+
+|Name| dfs\_ha\_automatic\_failover\_enabled |
+|:---:|:---|
+|Description|Whether using automatic failover if using Hadoop HA|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+* dfs\_client\_failover\_proxy\_provider
+
+|Name| dfs\_client\_failover\_proxy\_provider |
+|:---:|:---|
+|Description|Proxy provider if using Hadoop HA and enabling automatic failover|
+|Type|String|
+|Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider|
+|Effective|After restart system|
+
+* hdfs\_use\_kerberos
+
+|Name| hdfs\_use\_kerberos |
+|:---:|:---|
+|Description|Whether use kerberos to authenticate hdfs|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* kerberos\_keytab\_file_path
+
+|Name| kerberos\_keytab\_file_path |
+|:---:|:---|
+|Description|Full path of kerberos keytab file|
+|Type|String|
+|Default|/path|
+|Effective|After restart system|
+
+* kerberos\_principal
+
+|Name| kerberos\_principal |
+|:---:|:---|
+|Description|Kerberos pricipal|
+|Type|String|
+|Default|your principal|
+|Effective|After restart system|
+
+### Storage Engine Configuration
+
+* timestamp\_precision
+
+|Name| timestamp\_precision |
+|:---:|:---|
+|Description|Set timestamp precision as "ms", "us" or "ns".|
+|Type|String|
+|Default|ms|
+|Effective|Trigger|
+
+* default\_ttl
+
+|Name| default\_ttl |
+|:---:|:---|
+|Description|Data retention time, the data before now()-default_ttl will be discarded, the unit is ms.|
+|Type|Long|
+|Default|36000000|
+|Effective|After restart system|
+
+* wal\_buffer\_size
+
+|Name| wal\_buffer\_size |
+|:---:|:---|
+|Description|The size of the log buffer in each log node (in bytes)|
+|Type|Int32|
+|Default|16777216|
+|Effective|Trigger|
+
+* unseq\_tsfile\_size
+
+|Name| unseq\_tsfile\_size |
+|:---:|:---|
+|Description|The size of unsequence TsFile's file size (in byte)|
+|Type|Int32|
+|Default|1|
+|Effective|After restart system|
+
+* seq\_tsfile\_size
+
+|Name| seq\_tsfile\_size |
+|:---:|:---|
+|Description|The size of sequence TsFile's file size (in byte)|
+|Type|Int32|
+|Default|1|
+|Effective|After restart system|
+
+* mlog\_buffer\_size
+
+|Name| mlog\_buffer\_size |
+|:---:|:---|
+|Description|The size of mlog buffer in each metadata operation plan(in byte).|
+|Type|Int32|
+|Default|1048576|
+|Effective|Trigger|
+
+* memtable\_size\_threshold
+
+|Name| memtable\_size\_threshold |
+|:---:|:---|
+|Description|The memTable's size threshold,default threshold is 1 GB.|
+|Type|Long|
+|Default|1073741824|
+|Effective|when enable\_mem\_control is false & After restart system|
+
+* enable\_timed\_flush\_seq\_memtable
+
+|Name| enable\_timed\_flush\_seq\_memtable |
+|:---:|:---|
+|Description|Whether to timed flush sequence tsfiles' memtables.|
+|Type|Boolean|
+|Default|false|
+|Effective|Trigger|
+
+* seq\_memtable\_flush\_interval\_in\_ms
+
+|Name| seq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|Description|If a memTable's created time is older than current time minus this, the memtable will be flushed to disk.|
+|Type|Int32|
+|Default|3600000|
+|Effective|Trigger|
+
+* seq\_memtable\_flush\_check\_interval\_in\_ms
+
+|Name| seq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|Description|The interval to check whether sequence memtables need flushing.|
+|Type|Int32|
+|Default|600000|
+|Effective|Trigger|
+
+* enable\_timed\_flush\_unseq\_memtable
+
+|Name| enable\_timed\_flush\_unseq\_memtable |
+|:---:|:---|
+|Description|Whether to enable timed flush unsequence memtable|
+|Type|Boolean|
+|Default|true|
+|Effective|Trigger|
+
+* unseq\_memtable\_flush\_interval\_in\_ms
+
+|Name| unseq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|Description|If a memTable's created time is older than current time minus this, the memtable will be flushed to disk.|
+|Type|Int32|
+|Default|3600000|
+|Effective| Trigger |
+
+* unseq\_memtable\_flush\_check\_interval\_in\_ms
+
+|Name| unseq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|Description|The interval to check whether unsequence memtables need flushing.|
+|Type|Int32|
+|Default|600000|
+|Effective|Trigger|
+
+* enable\_timed\_close\_tsfile
+
+|Name| enable\_timed\_close\_tsfile |
+|:---:|:---|
+|Description|Whether to timed close tsfiles.|
+|Type|Boolean|
+|Default|true|
+|Effective|Trigger|
+
+* close\_tsfile\_interval\_after\_flushing\_in\_ms
+
+|Name| close\_tsfile\_interval\_after\_flushing\_in\_ms |
+|:---:|:---|
+|Description|If a TsfileProcessor's last working memtable flush time is older than current time minus this and its working memtable is null, the TsfileProcessor will be closed.|
+|Type|Int32|
+|Default|3600000|
+|Effective|Trigger|
+
+* close\_tsfile\_check\_interval\_in\_ms
+
+|Name| close\_tsfile\_check\_interval\_in\_ms |
+|:---:|:---|
+|Description|The interval to check whether tsfiles need closing.|
+|Type|Int32|
+|Default|600000|
+|Effective| Trigger |
+
+* avg\_series\_point\_number\_threshold
+
+|Name| avg\_series\_point\_number\_threshold |
+|:---:|:---|
+|Description|When the average point number of timeseries in memtable exceeds this, the memtable is flushed to disk. The default threshold is 10000.|
+|Type|Int32|
+|Default|10000|
+|Effective|After restart system|
+
+* concurrent\_flush\_thread
+
+|Name| concurrent\_flush\_thread |
+|:---:|:---|
+|Description|How many threads can concurrently flush. When <= 0, use CPU core number.|
+|Type|Int32|
+|Default|0|
+|Effective|After restart system|
+
+* concurrent\_query\_thread
+
+|Name| concurrent\_query\_thread |
+|:---:|:---|
+|Description|How many threads can concurrently query. When <= 0, use CPU core number.|
+|Type|Int32|
+|Default|0|
+|Effective|After restart system|
+
+* chunk\_buffer\_pool\_enable
+
+|Name| chunk\_buffer\_pool\_enable |
+|:---:|:---|
+|Description|Whether take over the memory management by IoTDB rather than JVM when serializing memtable as bytes in memory|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* batch\_size
+
+|Name| batch\_size |
+|:---:|:---|
+|Description|The amount of data iterate each time in server (the number of data strips, that is, the number of different timestamps.)|
+|Type|Int32|
+|Default|100000|
+|Effective|After restart system|
+
+* tag\_attribute\_total\_size
+
+|Name| tag\_attribute\_total\_size |
+|:---:|:---|
+|Description|Max size for tag and attribute of one time series,the unit is byte.|
+|Type|Int32|
+|Default|700|
+|Effective|Only allowed to be modified in first start up|
+
+* enable\_partial\_insert
+
+|Name| enable\_partial\_insert |
+|:---:|:---|
+|Description|In one insert (one device, one timestamp, multiple measurements),if enable partial insert, one measurement failure will not impact other measurements.|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+* enable\_mtree\_snapshot
+
+|Name| enable\_mtree\_snapshot |
+|:---:|:---|
+|Description|Whether to enable MTree snapshot. Default false from 0.11.0 on.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* mtree\_snapshot\_interval
+
+|Name| mtree\_snapshot\_interval |
+|:---:|:---|
+|Description|The least interval line numbers of mlog.txt when creating a checkpoint and saving snapshot of MTree. Unit: line numbers|
+|Type|Int32|
+|Default|100000|
+|Effective|After restart system|
+
+* mtree\_snapshot\_threshold\_time
+
+|Name| mtree\_snapshot\_threshold\_time |
+|:---:|:---|
+|Description|Threshold interval time of MTree modification,default 1 hour(3600 seconds),if the last modification time is less than this threshold, MTree snapshot will not be created,and only take effect when enable_mtree_snapshot=true.|
+|Type|Int32|
+|Default|3600|
+|Effective|After restart system|
+
+* virtual\_storage\_group\_num
+
+|Name| virtual\_storage\_group\_num |
+|:---:|:---|
+|Description|Number of virtual storage groups per user-defined storage group.|
+|Type|Int64|
+|Default|1|
+|Effective|Only allowed to be modified in first start up|
+
+* time\_index\_level
+
+|Name| time\_index\_level |
+|:---:|:---|
+|Description|Level of TimeIndex, which records the start time and end time of TsFileResource.Currently,DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.|
+|Type|String|
+|Default|DEVICE_TIME_INDEX|
+|Effective|Trigger|
+
+### Memory Control Configuration
+
+* enable\_mem\_control
+
+|Name| enable\_mem\_control |
+|:---:|:---|
+|Description|Whether to enable memory control.|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+* write\_read\_schema\_free\_memory\_proportion
+
+|Name| write\_read\_schema\_free\_memory\_proportion |
+|:---:|:---|
+|Description|Memory Allocation Ratio: Write, Read, Schema and Free Memory.The parameter form is a:b:c:d, where a, b, c and d are integers. for example: 1:1:1:1 , 6:2:1:1.If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:2|
+|Type|String|
+|Default|4:3:1:2|
+|Effective|After restart system|
+
+* primitive\_array\_size
+
+|Name| primitive\_array\_size |
+|:---:|:---|
+|Description|primitive array size (length of each array) in array pool.|
+|Type|Int32|
+|Default|32|
+|Effective|After restart system|
+
+* flush\_proportion
+
+|Name| flush\_proportion |
+|:---:|:---|
+|Description|Ratio of write memory for invoking flush disk, 0.4 by default.|
+|Type|Float|
+|Default|0.4|
+|Effective|After restart system|
+
+* buffered\_arrays\_memory\_proportion
+
+|Name| buffered\_arrays\_memory\_proportion |
+|:---:|:---|
+|Description|Ratio of write memory allocated for buffered arrays, 0.6 by default.|
+|Type|Float|
+|Default|0.6|
+|Effective|After restart system|
+
+* reject\_proportion
+
+|Name| reject\_proportion |
+|:---:|:---|
+|Description|Ratio of write memory for rejecting insertion, 0.8 by default|
+|Type|Float|
+|Default|0.8|
+|Effective|After restart system|
+
+* storage\_group\_report\_threshold
+
+|Name| storage\_group\_report\_threshold |
+|:---:|:---|
+|Description|If memory (in byte) of storage group increased more than this threshold, report to system. The default value is 16MB.|
+|Type|Int32|
+|Default|16777216|
+|Effective|After restart system|
+
+* max\_deduplicatedp\_path\_num
+
+|Name| max\_deduplicatedp\_path\_num |
+|:---:|:---|
+|Description|Allowed max numbers of deduplicated path in one query.|
+|Type|Int32|
+|Default|1000|
+|Effective|After restart system|
+
+* check\_period\_when\_insert\_blocked
+
+|Name| check\_period\_when\_insert\_blocked |
+|:---:|:---|
+|Description|When an inserting is rejected, waiting period (in ms) to check system again, 50 by default.|
+|Type|Int32|
+|Default|50|
+|Effective|After restart system|
+
+* max\_waiting\_time\_when\_insert\_blocked
+
+|Name| max\_waiting\_time\_when\_insert\_blocked |
+|:---:|:---|
+|Description|When the waiting time (in ms) of an inserting exceeds this, throw an exception. 10000 by default.|
+|Type|Int32|
+|Default|10000|
+|Effective|After restart system|
+
+* estimated\_series\_size
+
+|Name| estimated\_series\_size |
+|:---:|:---|
+|Description|Estimated metadata size (in byte) of one timeseries in Mtree.|
+|Type|Int32|
+|Default|300|
+|Effective|After restart system|
+
+* io\_task\_queue\_size\_for\_flushing
+
+|Name| io\_task\_queue\_size\_for\_flushing |
+|:---:|:---|
+|Description|Size of ioTaskQueue. The default value is 10.|
+|Type|Int32|
+|Default|10|
+|Effective|After restart system|
+
+### Upgrade Configurations
+
+* upgrade\_thread\_num
+
+|Name| upgrade\_thread\_num |
+|:---:|:---|
+|Description|When there exists old version(0.9.x/v1) data, how many thread will be set up to perform upgrade tasks, 1 by default.|
+|Type|Int32|
+|Default|1|
+|Effective|After restart system|
+
+### Query Configurations
+
+* default\_fill\_interval
+
+|Name| default\_fill\_interval |
+|:---:|:---|
+|Description|The default time period that used in fill query, -1 by default means infinite past time, in ms.|
+|Type|Int32|
+|Default|-1|
+|Effective|After restart system|
+
+### Merge Configurations
+
+* compaction\_strategy
+
+|Name| compaction\_strategy |
+|:---:|:---|
+|Description|LEVEL_COMPACTION by default, can be set to NO_COMPACTION according to requirments.|
+|Type|String|
+|Default|LEVEL_COMPACTION|
+|Effective|After restart system|
+
+* enable\_unseq\_compaction
+
+|Name| enable\_unseq\_compaction |
+|:---:|:---|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.Whether to merge unseq files into seq files or not.|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+* compaction\_interval
+
+|Name| compaction\_interval |
+|:---:|:---|
+|Description|Start compaction task at this delay, unit is ms.|
+|Type|Int32|
+|Default|30000|
+|Effective|Only LEVEL_COMPACTION,after restart system|
+
+* seq\_file\_num\_in\_each\_level
+
+|Name| seq\_file\_num\_in\_each\_level |
+|:---:|:---|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max seq file num of each level.|
+|Type|Int32|
+|Default|6|
+|Effective|After restart system|
+
+* seq\_level\_num
+
+|Name| seq\_level\_num |
+|:---:|:---|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max num of seq level.|
+|Type|Int32|
+|Default|3|
+|Effective|After restart system|
+
+* unseq\_file\_num\_in\_each\_level
+
+|Name| unseq\_file\_num\_in\_each\_level |
+|:---:|:---|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max unseq file num of each level.|
+|Type|Int32|
+|Default|10|
+|Effective|After restart system|
+
+* unseq\_level\_num
+
+|Name| unseq\_level\_num |
+|:---:|:---|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max num of unseq level.|
+|Type|Int32|
+|Default|1|
+|Effective|After restart system|
+
+* max\_select\_unseq\_file\_num\_in\_each\_unseq\_compaction
+
+|Name| max\_select\_unseq\_file\_num\_in\_each\_unseq\_compaction |
+|:---:|:---|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.The max open file num in each unseq compaction task.|
+|Type|Int32|
+|Default|2000|
+|Effective|After restart system|
+
+* merge\_chunk\_point\_number
+
+|Name| merge\_chunk\_point\_number |
+|:---:|:---|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.When the average point number of chunks in the target file reaches this, merge the file to the top level.|
+|Type|Int32|
+|Default|100000|
+|Effective|After restart system|
+
+* merge\_page\_point\_number
+
+|Name| merge\_chunk\_point\_number |
+|:---:|:---|
+|Description|Works when the compaction_strategy is LEVEL_COMPACTION.When point number of a page reaches this, use "append merge" instead of "deserialize merge".|
+|Type|Int32|
+|Default|100|
+|Effective|After restart system|
+
+* merge\_chunk\_subthread\_num
+
+|Name| merge\_chunk\_subthread\_num |
+|:---:|:---|
+|Description|How many threads will be set up to perform unseq merge chunk sub-tasks, 4 by default.Set to 1 when less than or equal to 0.|
+|Type|Int32|
+|Default|4|
+|Effective|After restart system|
+
+* merge\_fileSelection\_time\_budget
+
+|Name| merge\_fileSelection\_time\_budget |
+|:---:|:---|
+|Description|If one merge file selection runs for more than this time, it will be ended and its current selection will be used as final selection. Unit: millis.|
+|Type|Int32|
+|Default|30000|
+|Effective|After restart system|
+
+* merge\_memory\_budget
+
+|Name| merge\_memory\_budget |
+|:---:|:---|
+|Description|How much memory may be used in ONE merge task (in byte), 10% of maximum JVM memory by default.This is only a rough estimation, starting from a relatively small value to avoid OOM.|
+|Type|Int32|
+|Default|2147483648|
+|Effective|After restart system|
+
+* continue\_merge\_after\_reboot
+
+|Name| continue\_merge\_after\_reboot |
+|:---:|:---|
+|Description|When set to true, if some crashed merges are detected during system rebooting, such merges will be continued, otherwise, the unfinished parts of such merges will not be continued while the finished parts still remains as they are.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* force\_full\_merge
+
+|Name| force\_full\_merge |
+|:---:|:---|
+|Description|When set to true, all unseq merges becomes full merge (the whole SeqFiles are re-written despite how much they are overflowed). This may increase merge overhead depending on how much the SeqFiles are overflowed.|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+* compaction\_thread\_num
+
+|Name| compaction\_thread\_num |
+|:---:|:---|
+|Description|How many threads will be set up to perform compaction, 10 by default.Set to 1 when less than or equal to 0.|
+|Type|Int32|
+|Default|10|
+|Effective|After restart system|
+
+* merge\_write\_throughput\_mb\_per\_sec
+
+|Name| merge\_write\_throughput\_mb\_per\_sec |
+|:---:|:---|
+|Description|The limit of write throughput merge can reach per second.|
+|Type|Int32|
+|Default|8|
+|Effective|After restart system|
+
+* query\_timeout\_threshold
+
+|Name| query\_timeout\_threshold |
+|:---:|:---|
+|Description|The max executing time of query. unit: ms.|
+|Type|Int32|
+|Default|60000|
+|Effective|After restart system|
+
+### Metadata Cache Configuration
+
+* meta\_data\_cache\_enable
+
+|Name| meta\_data\_cache\_enable |
+|:---:|:---|
+|Description|Whether to cache meta data(ChunkMetadata and TimeSeriesMetadata) or not.|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+* chunk\_timeseriesmeta\_free\_memory\_proportion
+
+|Name| chunk\_timeseriesmeta\_free\_memory\_proportion |
+|:---:|:---|
+|Description|Read memory Allocation Ratio: ChunkCache, TimeSeriesMetadataCache, memory used for constructing QueryDataSet and Free Memory Used in Query.The parameter form is a:b:c:d, where a, b, c and d are integers. for example: 1:1:1:1 , 1:2:3:4.|
+|Type|String|
+|Default|1:2:3:4|
+|Effective|After restart system|
+
+* metadata\_node\_cache\_size
+
+|Name| metadata\_node\_cache\_size |
+|:---:|:---|
+|Description|Cache size for MManager.This cache is used to improve insert speed where all path check and TSDataType will be cached in MManager with corresponding Path.|
+|Type|Int32|
+|Default|300000|
+|Effective|After restart system|
+
+### LAST Cache Configuration
+
+* enable\_last\_cache
+
+|Name| enable\_last\_cache |
+|:---:|:---|
+|Description|Whether to enable LAST cache.|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+### Statistics Monitor configuration
+
+* enable\_stat\_monitor
+
+|Name| enable\_stat\_monitor |
+|:---:|:---|
+|Description|Set enable_stat_monitor true(or false) to enable(or disable) the StatMonitor that stores statistics info.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* enable\_monitor\_series\_write
+
+|Name| enable\_monitor\_series\_write |
+|:---:|:---|
+|Description|Set enable_monitor_series_write true (or false) to enable (or disable) the writing monitor time series.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+### WAL Direct Buffer Pool Configuration
+
+* wal\_pool\_trim\_interval\_ms
+
+|Name| wal\_pool\_trim\_interval\_ms |
+|:---:|:---|
+|Description|The interval to trim the wal pool.|
+|Type|Int32|
+|Default|10000|
+|Effective|After restart system|
+
+* max\_wal\_bytebuffer\_num\_for\_each\_partition
+
+|Name| max\_wal\_bytebuffer\_num\_for\_each\_partition |
+|:---:|:---|
+|Description|The max number of wal bytebuffer can be allocated for each time partition, if there is no unseq data you can set it to 4,it should be an even number.|
+|Type|Int32|
+|Default|6|
+|Effective|After restart system|
+
+### External sort Configuration
+
+* enable\_external\_sort
+
+|Name| enable\_external\_sort |
+|:---:|:---|
+|Description|Is external sort enable.|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+* external\_sort\_threshold
+
+|Name| external\_sort\_threshold |
+|:---:|:---|
+|Description|The maximum number of simultaneous chunk reading for a single time series.If the num of simultaneous chunk reading is greater than external_sort_threshold, external sorting is used.|
+|Type|Int32|
+|Default|1000|
+|Effective|After restart system|
+
+### Sync Server Configuration
+
+* is\_sync\_enable
+
+|Name| is\_sync\_enable |
+|:---:|:---|
+|Description|Whether to open the sync_server_port for receiving data from sync client, the default is closed.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* sync\_server\_port
+
+|Name| sync\_server\_port |
+|:---:|:---|
+|Description|Sync server port to listen.|
+|Type|Int32|
+|Default|5555|
+|Effective|After restart system|
+
+* ip\_white\_list
+
+|Name| ip\_white\_list |
+|:---:|:---|
+|Description|White IP list of Sync client.Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16.|
+|Type|String|
+|Default|0.0.0.0/0|
+|Effective|After restart system|
+
+### performance statistic configuration
+
+* enable\_performance\_stat
+
+|Name| enable\_performance\_stat |
+|:---:|:---|
+|Description|Is stat performance of sub-module enable.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* performance\_stat\_display\_interval
+
+|Name| performance\_stat\_display\_interval |
+|:---:|:---|
+|Description|The interval of display statistic result in ms.|
+|Type|Int32|
+|Default|60000|
+|Effective|After restart system|
+
+* performance\_stat\_display\_interval
+
+|Name| performance\_stat\_display\_interval |
+|:---:|:---|
+|Description|The interval of display statistic result in ms.|
+|Type|Int32|
+|Default|60000|
+|Effective|After restart system|
+
+* performance\_stat\_memory\_in\_kb
+
+|Name| performance\_stat\_memory\_in\_kb |
+|:---:|:---|
+|Description|The memory used for performance_stat in kb.|
+|Type|Int32|
+|Default|20|
+|Effective|After restart system|
+
+* enable\_performance\_tracing
+
+|Name| enable\_performance\_tracing |
+|:---:|:---|
+|Description|Is performance tracing enable.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* tracing\_dir
+
+|Name| tracing\_dir |
+|:---:|:---|
+|Description|Uncomment following fields to configure the tracing root directory.|
+|Type|String|
+|Default|data/tracing(Windows：data\tracing)|
+|Effective|After restart system|
+
+### Configurations for watermark module
+
+* watermark\_module\_opened
+
+|Name| watermark\_module\_opened |
+|:---:|:---|
+|Description|Whether to enable the watermark embedding function.|
+|Type|Boolean|
+|Default|false|
+|Effective|After restart system|
+
+* watermark\_secret\_key
+
+|Name| watermark\_secret\_key |
+|:---:|:---|
+|Description|Watermark embedding function key.|
+|Type|String|
+|Default|IoTDB * 2019@Beijing|
+|Effective|After restart system|
+
+* watermark\_bit\_string
+
+|Name| watermark\_bit\_string |
+|:---:|:---|
+|Description|Watermark bit string.|
+|Type|Int32|
+|Default|100101110100|
+|Effective|After restart system|
+
+* watermark\_method
+
+|Name| watermark\_method |
+|:---:|:---|
+|Description|Watermark embedding method.|
+|Type|String|
+|Default|GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)|
+|Effective|After restart system|
+
+### Configurations for creating schema automatically
+
+* enable\_auto\_auto\_create\_schema
+
+|Name| enable\_auto\_auto\_create\_schema |
+|:---:|:---|
+|Description|Whether creating schema automatically is enabled.|
+|Type|Boolean|
+|Default|true|
+|Effective|After restart system|
+
+* default\_storage\_group\_level
+
+|Name| default\_storage\_group\_level |
+|:---:|:---|
+|Description|Storage group level when creating schema automatically is enabled.|
+|Type|Int32|
+|Default|1|
+|Effective|After restart system|
+
+* boolean\_string\_infer\_type
+
+|Name| boolean\_string\_infer\_type |
+|:---:|:---|
+|Description|Register time series as which type when receiving boolean string "true" or "false"|
+|Values|BOOLEAN or TEXT|
+|Default|BOOLEAN|
+|Effective|After restart system|
+
+* integer\_string\_infer\_type
+
+|Name| integer\_string\_infer\_type |
+|:---:|:---|
+|Description|Register time series as which type when receiving an integer string "67".|
+|Values|INT32, INT64, DOUBLE, FLOAT or TEXT|
+|Default|FLOAT|
+|Effective|After restart system|
+
+* long\_string\_infer\_type
+
+|Name| long\_string\_infer\_type |
+|:---:|:---|
+|Description|Register time series as which type when receiving an integer string and using float may lose precision num > 2 ^ 24.|
+|Values|DOUBLE, FLOAT or TEXT|
+|Default|DOUBLE|
+|Effective|After restart system|
+
+* floating\_string\_infer\_type
+
+|Name| floating\_string\_infer\_type |
+|:---:|:---|
+|Description|Register time series as which type when receiving a floating number string "6.7"|
+|Values|DOUBLE, FLOAT or TEXT|
+|Default|FLOAT |
+|Effective|After restart system|
+
+* nan\_string\_infer\_type
+
+|Name| nan\_string\_infer\_type |
+|:---:|:---|
+|Description|Register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT|
+|Values|DOUBLE, FLOAT or TEXT|
+|Default|DOUBLE|
+|Effective|After restart system|
+
+* default\_boolean\_encoding
+
+|Name| default\_boolean\_encoding |
+|:---:|:---|
+|Description|BOOLEAN encoding when creating schema automatically is enabled.|
+|Values|PLAIN, RLE|
+|Default|RLE|
+|Effective|After restart system|
+
+* default\_int32\_encoding
+
+|Name| default\_int32\_encoding |
+|:---:|:---|
+|Description|INT32 encoding when creating schema automatically is enabled|
+|Values|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
+|Default|RLE|
+|Effective|After restart system|
+
+* default\_int64\_encoding
+
+|Name| default\_int64\_encoding |
+|:---:|:---|
+|Description|INT64 encoding when creating schema automatically is enabled.|
+|Values|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
+|Default|RLE|
+|Effective|After restart system|
+
+* default\_float\_encoding
+
+|Name| default\_float\_encoding |
+|:---:|:---|
+|Description|FLOAT encoding when creating schema automatically is enabled.|
+|Values|PLAIN, RLE, TS_2DIFF, GORILLA|
+|Default|GORILLA|
+|Effective|After restart system|
+
+* default\_double\_encoding
+
+|Name| default\_double\_encoding |
+|:---:|:---|
+|Description|DOUBLE encoding when creating schema automatically is enabled.|
+|Values|PLAIN, RLE, TS_2DIFF, GORILLA|
+|Default|GORILLA|
+|Effective|After restart system|
+
+* default\_text\_encoding
+
+|Name| default\_text\_encoding |
+|:---:|:---|
+|Description|TEXT encoding when creating schema automatically is enabled.|
+|Values| PLAIN |
+|Default|PLAIN|
+|Effective|After restart system|
+
+### Configurations for tsfile-format
 
 * group\_size\_in\_byte
 
 |Name|group\_size\_in\_byte|
 |:---:|:---|
-|Description|The data size written to the disk per time|
+|Description|The data size written to the disk per time.|
 |Type|Int32|
-|Default| 134217728 |
+|Default|134217728|
 |Effective|Trigger|
 
 * page\_size\_in\_byte
 
 |Name| page\_size\_in\_byte |
 |:---:|:---|
-|Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
+|Description|The memory size for each series writer to pack page, default value is 64KB.|
 |Type|Int32|
-|Default| 65536 |
+|Default|65536|
 |Effective|Trigger|
 
 * max\_number\_of\_points\_in\_page
 
 |Name| max\_number\_of\_points\_in\_page |
 |:---:|:---|
-|Description|The maximum number of data points (timestamps - valued groups) contained in a page|
+|Description|The maximum number of data points in a page, default 1024 * 1024.|
 |Type|Int32|
-|Default| 1048576 |
+|Default|1048576|
 |Effective|Trigger|
 
-* max\_degree\_of\_index\_node
+* time\_series\_data\_type
 
-|Name| max\_degree\_of\_index\_node |
+|Name| time\_series\_data\_type |
 |:---:|:---|
-|Description|The maximum degree of the metadata index tree (that is, the max number of each node's children)|
-|Type|Int32|
-|Default| 256 |
-|Effective|Only allowed to be modified in first start up|
+|Description|Data type configuration.Data type for input timestamp, supports INT32 or INT64.|
+|Type|String|
+|Default|INT64|
+|Effective|Trigger|
 
 * max\_string\_length
 
 |Name| max\_string\_length |
 |:---:|:---|
-|Description|The maximum length of a single string (number of character)|
+|Description|Max size limitation of input string.|
 |Type|Int32|
-|Default| 128 |
-|Effective|Trigger|
-
-* time\_encoder
-
-|Name| time\_encoder |
-|:---:|:---|
-|Description| Encoding type of time column|
-|Type|Enum String: “TS_2DIFF”,“PLAIN”,“RLE”|
-|Default| TS_2DIFF |
-|Effective|Trigger|
-
-* value\_encoder
-
-|Name| value\_encoder |
-|:---:|:---|
-|Description| Encoding type of value column|
-|Type|Enum String: “TS_2DIFF”,“PLAIN”,“RLE”|
-|Default| PLAIN |
+|Default|128|
 |Effective|Trigger|
 
 * float_precision
 
 |Name| float_precision |
 |:---:|:---|
-|Description| The precision of the floating point number.(The number of digits after the decimal point) |
+|Description|Floating-point precision.|
 |Type|Int32|
-|Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
+|Default|2|
 |Effective|Trigger|
+
+* time\_encoder
+
+|Name| time\_encoder |
+|:---:|:---|
+|Description|Encoder configuration.Encoder of time series, supports TS_2DIFF, PLAIN and RLE(run-length encoding), REGULAR and default value is TS_2DIFF.|
+|Values|Enum String: “TS_2DIFF”,“PLAIN”,“RLE”|
+|Default|TS_2DIFF|
+|Effective|Trigger|
+
+* value\_encoder
+
+|Name| value\_encoder |
+|:---:|:---|
+|Description|Encoder of value series. default value is PLAIN.|
+|Values|Enum String: “TS_2DIFF”,“PLAIN”,“RLE”|
+|Default|PLAIN|
+|Effective|Trigger|
+
+* compressor
+
+|Name| compressor |
+|:---:|:---|
+|Description|Compression configuration.Data compression method, supports UNCOMPRESSED, SNAPPY or LZ4. Default value is SNAPPY.|
+|Values|Enum String : “UNCOMPRESSED”, “SNAPPY”|
+|Default|SNAPPY|
+|Effective|Trigger|
+
+* max\_degree\_of\_index\_node
+
+|Name| max\_degree\_of\_index\_node |
+|:---:|:---|
+|Description|Maximum degree of a metadataIndex node, default value is 256.|
+|Type|Int32|
+|Default|256|
+|Effective|Only allowed to be modified in first start up|
+
+* frequency\_interval\_in\_minute
+
+|Name| frequency\_interval\_in\_minute |
+|:---:|:---|
+|Description|Time interval in minute for calculating query frequency.|
+|Type|Int32|
+|Default|1|
+|Effective|Trigger|
+
+* slow\_query\_threshold
+
+|Name| slow\_query\_threshold |
+|:---:|:---|
+|Description|Time cost(ms) threshold for slow query.|
+|Type|Int32|
+|Default|5000|
+|Effective|Trigger|
+
+### MQTT Broker Configuration
+
+
+
+### File Layer
+
 
 
 * bloomFilterErrorRate
@@ -196,46 +1370,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 0.05 |
 |Effective|After restart system|
 
-
-
 ### Engine Layer
-
-* rpc\_address
-
-|Name| rpc\_address |
-|:---:|:---|
-|Description| The jdbc service listens on the address.|
-|Type|String|
-|Default| "0.0.0.0" |
-|Effective|After restart system|
-
-* rpc\_port
-
-|Name| rpc\_port |
-|:---:|:---|
-|Description| The jdbc service listens on the port. Please confirm that the port is not a system reserved port and is not occupied.|
-|Type|Short Int : [0,65535]|
-|Default| 6667 |
-|Effective|After restart system|
-
-* rpc\_thrift\_compression\_enable
-
-|Name| rpc\_thrift\_compression\_enable |
-|:---:|:---|
-|Description| Whether enable thrift's compression (using GZIP).|
-|Type|Boolean|
-|Default| false |
-|Effective|After restart system|
-
-* rpc\_advanced\_compression\_enable
-
-|Name| rpc\_advanced\_compression\_enable |
-|:---:|:---|
-|Description| Whether enable thrift's advanced compression.|
-|Type|Boolean|
-|Default| false |
-|Effective|After restart system|
-
 
 * time\_zone
 
@@ -253,141 +1388,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The IoTDB system folder. It is recommended to use an absolute path. |
 |Type|String|
 |Default| data |
-|Effective|After restart system|
-
-* data\_dirs
-
-|Name| data\_dirs |
-|:---:|:---|
-|Description| The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
-|Type|String[]|
-|Default| data/data |
-|Effective|Trigger|
-
-* wal\_dir
-
-|Name| wal\_dir |
-|:---:|:---|
-|Description| Write Ahead Log storage path. It is recommended to use an absolute path. |
-|Type|String|
-|Default| data/wal |
-|Effective|After restart system|
-
-* enable\_wal
-
-|Name| enable\_wal |
-|:---:|:---|
-|Description| Whether to enable the pre-write log. The default value is true(enabled), and false means closed. |
-|Type|Bool|
-|Default| true |
-|Effective|Trigger|
-
-* enable\_mem\_control
-
-|Name| enable\_mem\_control |
-|:---:|:---|
-|Description| enable memory control to avoid OOM|
-|Type|Bool|
-|Default| true |
-|Effective|After restart system|
-
-* memtable\_size\_threshold
-
-|Name| memtable\_size\_threshold |
-|:---:|:---|
-|Description| max memtable size|
-|Type|Long|
-|Default| 1073741824 |
-|Effective| when enable\_mem\_control is false & After restart system|
-
-* enable\_timed\_flush\_seq\_memtable
-
-|Name| enable\_timed\_flush\_seq\_memtable |
-|:---:|:---|
-|Description| whether to enable timed flush sequence memtable |
-|Type|Bool|
-|Default| false |
-|Effective| Trigger |
-
-* seq\_memtable\_flush\_interval\_in\_ms
-
-|Name| seq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|Int32|
-|Default| 3600000 |
-|Effective| Trigger |
-
-* seq\_memtable\_flush\_check\_interval\_in\_ms
-
-|Name| seq\_memtable\_flush\_check\_interval\_in\_ms |
-|:---:|:---|
-|Description| the interval to check whether sequence memtables need flushing |
-|Type|Int32|
-|Default| 600000 |
-|Effective| Trigger |
-
-* enable\_timed\_flush\_unseq\_memtable
-
-|Name| enable\_timed\_flush\_unseq\_memtable |
-|:---:|:---|
-|Description| whether to enable timed flush unsequence memtable |
-|Type|Bool|
-|Default| false |
-|Effective| Trigger |
-
-* unseq\_memtable\_flush\_interval\_in\_ms
-
-|Name| unseq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|Int32|
-|Default| 3600000 |
-|Effective| Trigger |
-
-* unseq\_memtable\_flush\_check\_interval\_in\_ms
-
-|Name| unseq\_memtable\_flush\_check\_interval\_in\_ms |
-|:---:|:---|
-|Description| the interval to check whether unsequence memtables need flushing |
-|Type|Int32|
-|Default| 600000 |
-|Effective| Trigger |
-
-* enable\_timed\_close\_tsfile
-
-|Name| enable\_timed\_close\_tsfile |
-|:---:|:---|
-|Description| whether to timed close tsfiles |
-|Type|Bool|
-|Default| false |
-|Effective| Trigger |
-
-* close\_tsfile\_interval\_after\_flushing\_in\_ms
-
-|Name| close\_tsfile\_interval\_after\_flushing\_in\_ms |
-|:---:|:---|
-|Description| if a TsfileProcessor's last working memtable flush time is older than current time minus this and its working memtable is null, the TsfileProcessor will be closed |
-|Type|Int32|
-|Default| 3600000 |
-|Effective| Trigger |
-
-* close\_tsfile\_check\_interval\_in\_ms
-
-|Name| close\_tsfile\_check\_interval\_in\_ms |
-|:---:|:---|
-|Description| the interval to check whether tsfiles need closing |
-|Type|Int32|
-|Default| 600000 |
-|Effective| Trigger |
-
-* avg\_series\_point\_number\_threshold
-
-|Name| avg\_series\_point\_number\_threshold |
-|:---:|:---|
-|Description| max average number of point of each series in memtable|
-|Type|Int32|
-|Default| 10000 |
 |Effective|After restart system|
 
 * tsfile\_size\_threshold
@@ -427,15 +1427,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1 |
 |Effective|After restart system|
 
-* multi\_dir\_strategy
-
-|Name| multi\_dir\_strategy |
-|:---:|:---|
-|Description| IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. UserDfineStrategyPackage (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
-|Type|String|
-|Default| MaxDiskUsableSpaceFirstStrategy |
-|Effective|Trigger|
-
 * tsfile\_size\_threshold
 
 |Name| tsfile\_size\_threshold |
@@ -443,33 +1434,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
 |Type| Int64 |
 |Default| 536870912 |
-|Effective|After restart system|
-
-* tag\_attribute\_total\_size
-
-|Name| tag\_attribute\_total\_size |
-|:---:|:---|
-|Description| The maximum persistence size of tags and attributes of each time series.|
-|Type| Int32 |
-|Default| 700 |
-|Effective|Only allowed to be modified in first start up|
-
-* enable\_partial\_insert
-
-|Name| enable\_partial\_insert |
-|:---:|:---|
-|Description| Whether continue to write other measurements if some measurements are failed in one insertion.|
-|Type| Bool |
-|Default| true |
-|Effective|After restart system|
-
-* mtree\_snapshot\_interval
-
-|Name| mtree\_snapshot\_interval |
-|:---:|:---|
-|Description| The least interval line numbers of mlog.txt when creating a checkpoint and saving snapshot of MTree. Unit: line numbers|
-|Type| Int32 |
-|Default| 100000 |
 |Effective|After restart system|
 
 * flush\_wal\_threshold
@@ -517,125 +1481,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| false |
 |Effective|After restart system|
 
-* concurrent\_flush\_thread
-
-|Name| concurrent\_flush\_thread |
-|:---:|:---|
-|Description| The thread number used to perform the operation when IoTDB writes data in memory to disk. If the value is less than or equal to 0, then the number of CPU cores installed on the machine is used. The default is 0.|
-|Type| Int32 |
-|Default| 0 |
-|Effective|After restart system|
-
-* tsfile\_storage\_fs
-
-|Name| tsfile\_storage\_fs |
-|:---:|:---|
-|Description| The storage file system of Tsfile and related data files. Currently LOCAL file system and HDFS are supported.|
-|Type| String |
-|Default|LOCAL |
-|Effective|Only allowed to be modified in first start up|
-
-* core\_site\_path
-
-|Name| core\_site\_path |
-|:---:|:---|
-|Description| Absolute file path of core-site.xml if Tsfile and related data files are stored in HDFS.|
-|Type| String |
-|Default|/etc/hadoop/conf/core-site.xml |
-|Effective|After restart system|
-
-* hdfs\_site\_path
-
-|Name| hdfs\_site\_path |
-|:---:|:---|
-|Description| Absolute file path of hdfs-site.xml if Tsfile and related data files are stored in HDFS.|
-|Type| String |
-|Default|/etc/hadoop/conf/hdfs-site.xml |
-|Effective|After restart system|
-
-* hdfs\_ip
-
-|Name| hdfs\_ip |
-|:---:|:---|
-|Description| IP of HDFS if Tsfile and related data files are stored in HDFS. **If there are more than one hdfs\_ip in configuration, Hadoop HA is used.**|
-|Type| String |
-|Default|localhost |
-|Effective|After restart system|
-
-* hdfs\_port
-
-|Name| hdfs\_port |
-|:---:|:---|
-|Description| Port of HDFS if Tsfile and related data files are stored in HDFS|
-|Type| String |
-|Default|9000 |
-|Effective|After restart system|
-
-* dfs\_nameservices
-
-|Name| hdfs\_nameservices |
-|:---:|:---|
-|Description| Nameservices of HDFS HA if using Hadoop HA|
-|Type| String |
-|Default|hdfsnamespace |
-|Effective|After restart system|
-
-* dfs\_ha\_namenodes
-
-|Name| hdfs\_ha\_namenodes |
-|:---:|:---|
-|Description| Namenodes under DFS nameservices of HDFS HA if using Hadoop HA|
-|Type| String |
-|Default|nn1,nn2 |
-|Effective|After restart system|
-
-* dfs\_ha\_automatic\_failover\_enabled
-
-|Name| dfs\_ha\_automatic\_failover\_enabled |
-|:---:|:---|
-|Description| Whether using automatic failover if using Hadoop HA|
-|Type| Boolean |
-|Default|true |
-|Effective|After restart system|
-
-* dfs\_client\_failover\_proxy\_provider
-
-|Name| dfs\_client\_failover\_proxy\_provider |
-|:---:|:---|
-|Description| Proxy provider if using Hadoop HA and enabling automatic failover|
-|Type| String |
-|Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
-|Effective|After restart system|
-
-
-* hdfs\_use\_kerberos
-
-|Name| hdfs\_use\_kerberos |
-|:---:|:---|
-|Description| Whether use kerberos to authenticate hdfs|
-|Type| String |
-|Default|false |
-|Effective|After restart system|
-
-* kerberos\_keytab\_file_path
-
-|Name| kerberos\_keytab\_file_path |
-|:---:|:---|
-|Description| Full path of kerberos keytab file|
-|Type| String |
-|Default|/path |
-|Effective|After restart system|
-
-* kerberos\_principal
-
-|Name| kerberos\_principal |
-|:---:|:---|
-|Description| Kerberos pricipal|
-|Type| String |
-|Default|your principal |
-|Effective|After restart system|
-
-
 * authorizer\_provider\_class
 
 |Name| authorizer\_provider\_class |
@@ -655,71 +1500,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|no |
 |Effective|After restart system|
 
-* thrift\_max\_frame\_size
-
-|Name| thrift\_max\_frame\_size |
-|:---:|:---|
-|Description| the max bytes in a RPC request/response|
-|Type| long |
-|Default| 67108864 (should >= 8 * 1024 * 1024) |
-|Effective|After restart system|
-
-
 ## Automatic Schema Creation and Type Inference
-
-* enable\_auto\_create\_schema
-
-|Name| enable\_auto\_create\_schema |
-|:---:|:---|
-|Description| whether auto create the time series when a non-existed time series data comes|
-|Type| true or false |
-|Default|true |
-|Effective|After restart system|
-
-* default\_storage\_group\_level
-
-|Name| default\_storage\_group\_level |
-|:---:|:---|
-|Description| Storage group level when creating schema automatically is enabled. For example, if we receives a data point from root.sg0.d1.s2, we will set root.sg0 as the storage group if storage group level is 1. (root is level 0)|
-|Type| integer |
-|Default|1 |
-|Effective|After restart system|
-
-* boolean\_string\_infer\_type
-
-|Name| boolean\_string\_infer\_type |
-|:---:|:---|
-|Description| To which type the values "true" and "false" should be reslved|
-|Type| BOOLEAN or TEXT |
-|Default|BOOLEAN |
-|Effective|After restart system|
-
-* integer\_string\_infer\_type
-
-|Name| integer\_string\_infer\_type |
-|:---:|:---|
-|Description| To which type an integer string like "67" in a query should be resolved|
-|Type| INT32, INT64, DOUBLE, FLOAT or TEXT |
-|Default|DOUBLE |
-|Effective|After restart system|
-
-* nan\_string\_infer\_type
-
-|Name| nan\_string\_infer\_type |
-|:---:|:---|
-|Description| To which type the value NaN in a query should be resolved|
-|Type| DOUBLE, FLOAT or TEXT |
-|Default|FLOAT |
-|Effective|After restart system|
-
-* floating\_string\_infer\_type
-
-|Name| floating\_string\_infer\_type |
-|:---:|:---|
-|Description| To which type a floating number string like "6.7" in a query should be resolved|
-|Type| DOUBLE, FLOAT or TEXT |
-|Default|FLOAT |
-|Effective|After restart system|
 
 * enable\_partition
 
