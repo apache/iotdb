@@ -85,8 +85,8 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 1. 内存中Map <Measurement, Map <Tag Key, Order> > table结构维护Tag之间的顺序
 2. InfluxDB中时序根据label顺序对应到IoTDB
 
-   | `root.TAG_INFO.database_name` | `root.TAG_INFO.measurement_name` | `root.TAG_INFO.tag_name` | `root.TAG_INFO.tag_order` |
-            | :---------------------------- | :------------------------------- | :----------------------- | :------------------------ |
+   | root.TAG_INFO.database_name | root.TAG_INFO.measurement_name | root.TAG_INFO.tag_name | root.TAG_INFO.tag_order |
+   | ---------------------------- | ------------------------------- | ----------------------- | ------------------------ |
    | database                      | student                          | name                     | 0                         |
    | database                      | student                          | phone                    | 1                         |
    | database                      | student                          | sex                      | 2                         |
