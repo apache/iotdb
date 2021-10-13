@@ -32,7 +32,6 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 
 public class IoTDBTracingIT {
-
   @Before
   public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.envSetUp();
