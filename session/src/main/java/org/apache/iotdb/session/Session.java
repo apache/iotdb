@@ -118,7 +118,6 @@ public class Session {
   protected SessionConnection metaSessionConnection;
   protected volatile Map<String, EndPoint> deviceIdToEndpoint;
   protected volatile Map<EndPoint, SessionConnection> endPointToSessionConnection;
-  private final AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
 
   protected boolean enableQueryRedirection = false;
 
@@ -796,6 +795,7 @@ public class Session {
       throws IoTDBConnectionException {
     if (enableCacheLeader) {
       logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
+      AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       SessionConnection connection =
           endPointToSessionConnection.computeIfAbsent(
               e.getEndPoint(),
@@ -803,12 +803,12 @@ public class Session {
                 try {
                   return constructSessionConnection(this, e.getEndPoint(), zoneId);
                 } catch (IoTDBConnectionException ex) {
-                  tmp.set(ex);
+                  exceptionReference.set(ex);
                   return null;
                 }
               });
       if (connection == null) {
-        throw new IoTDBConnectionException(tmp.get());
+        throw new IoTDBConnectionException(exceptionReference.get());
       }
       metaSessionConnection = connection;
     }
@@ -839,6 +839,7 @@ public class Session {
 
   private void handleQueryRedirection(EndPoint endPoint) throws IoTDBConnectionException {
     if (enableQueryRedirection) {
+      AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       SessionConnection connection =
           endPointToSessionConnection.computeIfAbsent(
               endPoint,
@@ -849,12 +850,12 @@ public class Session {
                   sessionConnection.setEnableRedirect(enableQueryRedirection);
                   return sessionConnection;
                 } catch (IoTDBConnectionException ex) {
-                  tmp.set(ex);
+                  exceptionReference.set(ex);
                   return null;
                 }
               });
       if (connection == null) {
-        throw new IoTDBConnectionException(tmp.get());
+        throw new IoTDBConnectionException(exceptionReference.get());
       }
       defaultSessionConnection = connection;
     }
