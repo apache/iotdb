@@ -57,22 +57,13 @@ public class IoTDBContinuousQueryIT {
               Statement statement = connection.createStatement()) {
             do {
               for (String timeSeries : timeSeriesArray) {
-                boolean isSuccessful = false;
-                while (!isSuccessful) {
-                  try {
-                    statement.execute(
-                        String.format(
-                            "insert into %s(timestamp, temperature) values(now(), %.3f)",
-                            timeSeries, 200 * Math.random()));
-                    isSuccessful = true;
-                  } catch (SQLException throwable) {
-                    throwable.printStackTrace();
-                    fail(throwable.getMessage());
-                  }
-                }
+                statement.execute(
+                    String.format(
+                        "insert into %s(timestamp, temperature) values(now(), %.3f)",
+                        timeSeries, 200 * Math.random()));
               }
             } while (!isInterrupted());
-          } catch (SQLException e) {
+          } catch (Exception e) {
             exception = e;
           }
         }
