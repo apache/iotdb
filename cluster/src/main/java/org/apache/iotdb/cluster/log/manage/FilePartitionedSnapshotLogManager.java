@@ -133,10 +133,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     boolean slotExistsInPartition;
     HashSet<Integer> slots = null;
     if (dataGroupMember.getMetaGroupMember() != null) {
-      slots =
-          new HashSet<>(
-              ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-                  .getNodeSlots(dataGroupMember.getHeader()));
+      // if header node in raft group has removed, the result may be null
+      List<Integer> nodeSlots =
+          ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+              .getNodeSlots(dataGroupMember.getHeader());
+      // the method of 'HashSet(Collection<? extends E> c)' throws NPE,so we need check this part
+      if (nodeSlots != null) {
+        slots = new HashSet<>(nodeSlots);
+      }
     }
 
     for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {
