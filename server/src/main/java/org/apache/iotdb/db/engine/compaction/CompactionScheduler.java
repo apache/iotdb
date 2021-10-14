@@ -55,10 +55,6 @@ public class CompactionScheduler {
       new ConcurrentHashMap<>();
 
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
-    if (CompactionTaskManager.getInstance().getTaskCount()
-        >= config.getConcurrentCompactionThread()) {
-      return;
-    }
     tsFileManager.readLock();
     try {
       TsFileResourceList sequenceFileList =

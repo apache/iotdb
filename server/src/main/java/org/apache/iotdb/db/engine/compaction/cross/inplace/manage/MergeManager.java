@@ -156,6 +156,7 @@ public class MergeManager implements IService, MergeManagerMBean {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }
+      mergeChunkSubTaskPool = null;
       storageGroupMainTasks.clear();
       storageGroupSubTasks.clear();
       logger.info("MergeManager stopped");

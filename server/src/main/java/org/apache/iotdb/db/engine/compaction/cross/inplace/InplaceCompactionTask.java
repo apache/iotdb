@@ -66,7 +66,12 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
       List<TsFileResource> selectedUnSeqTsFileResourceList,
       int concurrentMergeCount,
       AtomicInteger currentTaskNum) {
-    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartitionId, currentTaskNum);
+    super(
+        logicalStorageGroupName + "-" + virtualStorageGroupName,
+        timePartitionId,
+        currentTaskNum,
+        selectedSeqTsFileResourceList,
+        selectedUnSeqTsFileResourceList);
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupName = virtualStorageGroupName;
     this.mergeResource = mergeResource;

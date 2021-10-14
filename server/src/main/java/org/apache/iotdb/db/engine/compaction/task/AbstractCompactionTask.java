@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * CompactionScheduler when the <i>doCompaction</i> finish.
  */
 public abstract class AbstractCompactionTask implements Callable<Void> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCompactionTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
@@ -57,9 +57,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       LOGGER.error(e.getMessage(), e);
     } finally {
       CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
-      if (this.currentTaskNum != null) {
-        this.currentTaskNum.decrementAndGet();
-      }
+      this.currentTaskNum.decrementAndGet();
     }
     return null;
   }
