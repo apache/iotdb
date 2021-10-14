@@ -846,7 +846,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
 
   private boolean createTimeseriesForFailedInsertion(InsertPlan plan)
       throws CheckConsistencyException, IllegalPathException {
-    logger.info("create time series for failed insertion {}", plan);
+    logger.debug("create time series for failed insertion {}", plan);
     // apply measurements according to failed measurements
     if (plan instanceof InsertMultiTabletPlan) {
       for (InsertTabletPlan insertPlan : ((InsertMultiTabletPlan) plan).getInsertTabletPlanList()) {
