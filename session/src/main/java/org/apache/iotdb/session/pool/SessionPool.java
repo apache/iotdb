@@ -218,8 +218,8 @@ public class SessionPool {
             logger.debug("no more sessions can be created, wait... queue.size={}", queue.size());
           }
           this.wait(1000);
-          long time = waitToGetSessionTimeoutInMs < 60_000 ? waitToGetSessionTimeoutInMs : 60_000;
-          if (System.currentTimeMillis() - start > time) {
+          long timeOut = Math.min(waitToGetSessionTimeoutInMs, 60_000);
+          if (System.currentTimeMillis() - start > timeOut) {
             logger.warn(
                 "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
                 (System.currentTimeMillis() - start) / 1000,
