@@ -91,7 +91,7 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     firstChunkMetadata.setFilePath(tsFileResource.getTsFile().getAbsolutePath());
     TimeSeriesMetadataCacheKey firstTimeSeriesMetadataCacheKey =
         new TimeSeriesMetadataCacheKey(
-            seqResources.get(1).getTsFile().getAbsolutePath(),
+            seqResources.get(1).getTsFilePath(),
             paths.get(0).getDevice(),
             paths.get(0).getMeasurement());
 
@@ -122,9 +122,12 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
       assertTrue(true);
     }
 
-    TimeseriesMetadata metadata =
-        TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, new TreeSet<>());
-    assertNull(metadata);
+    try {
+      TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, new TreeSet<>());
+      fail();
+    } catch (Exception e) {
+      assertTrue(true);
+    }
 
     reader.close();
   }

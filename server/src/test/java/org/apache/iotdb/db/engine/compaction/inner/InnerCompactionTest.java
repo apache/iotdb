@@ -129,16 +129,17 @@ public abstract class InnerCompactionTest {
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file =
-          new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              new File(
+                      TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                              .concat(
+                                      i
+                                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                                              + i
+                                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                                              + 0
+                                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                                              + 0
+                                              + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes((long) i);
@@ -147,16 +148,17 @@ public abstract class InnerCompactionTest {
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
-          new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  (10000 + i)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + (10000 + i)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              new File(
+                      TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                              .concat(
+                                      (10000 + i)
+                                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                                              + (10000 + i)
+                                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                                              + 0
+                                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                                              + 0
+                                              + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
@@ -165,16 +167,17 @@ public abstract class InnerCompactionTest {
     }
 
     File file =
-        new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            new File(
+                    TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                            .concat(
+                                    unseqFileNum
+                                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                                            + unseqFileNum
+                                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                                            + 0
+                                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                                            + 0
+                                            + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
