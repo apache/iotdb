@@ -69,16 +69,16 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 在InfluxDB中，Tag的顺序不同并不会影响实际的结果。
 
-eg:`workshop= A1, production= B1` 和 `producion= B1, workshop= A1`相等。
+eg:`workshop= A1, production= B1` 和 `producion= B1, workshop= A1`表达的含义相等。
 
 但在IoTDB中，一个path由多个部分组成，比如`root.monitor.factory.A1.B1`是由一个存储组`root.monitor.factory`和两个节点`A1`和`B1`组成的。
 
 那么节点的顺序就是需要考虑的，因为`root.monitor.factory.A1.B1`和`root.monitor.factory.B1.A1`是两条不同的序列，因此可以认为IoTDB中对Tag对顺序是敏感的。
 
-所以需要记录InfluxDB每个Tag对应的顺序，确保InfluxDB中即使Tag试运行不同的同一条时序对应到IoTDB中也是同一条时序。
+所以需要记录InfluxDB每个Tag对应的顺序，确保在InfluxDB中，即使Tag不同的同一条时序对应到IoTDB中也是同一条时序。
 
 需要解决的事情：
-   1. 怎样把InfluxDB中tag key映射到IoTDB中path的节点顺序中。
+   1. 怎样把InfluxDB中tag key映射到IoTDB中path中的节点顺序。
    2. 在不知道InfluxDB中可能会出现所有tag key的情况下，怎么维护它们之间的顺序。
 
 解决方案：
@@ -91,7 +91,7 @@ eg:`workshop= A1, production= B1` 和 `producion= B1, workshop= A1`相等。
    
    第二层的Key是String类型的Tag Key，第二层的Value是Integer类型的Tag Order，也就是Tag对应的实际顺序。
 
-   这样就可以先通过measurement定位，再通过tag key定位，最后就可以维护Tag对应的顺序了。
+   这样就可以先通过measurement定位，再通过tag key定位，最后就可以获得Tag对应的顺序了。
  
 3. 除了在内存中维护InfluxDB的Tag顺序外，还需要进行持久化操作，将InfluxDB的Tag顺序持久化到IoTDB数据库中里。
    存储组为`root.TAG_INFO`，分别以`database_name`,`measurement_name`,`tag_name`和`tag_order`来存储节点来记录数据。
@@ -103,7 +103,7 @@ eg:`workshop= A1, production= B1` 和 `producion= B1, workshop= A1`相等。
 |2021-10-12T01:21:26.907+08:00|                    monitor|                       factory|              workshop|                      1|
 |2021-10-12T01:21:27.310+08:00|                    monitor|                       factory|            production|                      2|
 |2021-10-12T01:21:27.313+08:00|                    monitor|                       factory|                  cell|                      3|
-|2021-10-12T01:21:47.314+08:00|                   building|                           cpu|              tempture|                      3|
+|2021-10-12T01:21:47.314+08:00|                   building|                           cpu|              tempture|                      1|
 +-----------------------------+---------------------------+------------------------------+----------------------+-----------------------+
 ```
 
