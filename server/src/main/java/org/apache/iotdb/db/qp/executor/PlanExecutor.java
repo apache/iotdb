@@ -1654,6 +1654,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       IoTDB.metaManager.deleteStorageGroups(deletePathList);
+      operateClearCache();
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
