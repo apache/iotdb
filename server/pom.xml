@@ -167,7 +167,7 @@
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>oauth2-oidc-sdk</artifactId>
-            <version>8.3</version>
+            <version>9.18</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
