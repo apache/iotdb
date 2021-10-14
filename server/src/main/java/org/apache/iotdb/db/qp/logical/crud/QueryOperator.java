@@ -149,6 +149,25 @@ public class QueryOperator extends Operator {
     return specialClauseComponent != null && specialClauseComponent.getLevels() != null;
   }
 
+  public int[] getLevels() {
+    return specialClauseComponent.getLevels();
+  }
+
+  public boolean hasSlimit() {
+    return specialClauseComponent != null && specialClauseComponent.hasSlimit();
+  }
+
+  public boolean hasSoffset() {
+    return specialClauseComponent != null && specialClauseComponent.hasSoffset();
+  }
+
+  public void resetSLimitOffset() {
+    if (specialClauseComponent != null) {
+      specialClauseComponent.setSeriesLimit(0);
+      specialClauseComponent.setSeriesOffset(0);
+    }
+  }
+
   public void check() throws LogicalOperatorException {
     if (isAlignByDevice() && selectComponent.hasTimeSeriesGeneratingFunction()) {
       throw new LogicalOperatorException("ALIGN BY DEVICE clause is not supported in UDF queries.");

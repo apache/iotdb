@@ -79,6 +79,10 @@ public class SpecialClauseComponent {
     return seriesLimit > 0;
   }
 
+  public boolean hasSoffset() {
+    return seriesOffset > 0;
+  }
+
   public boolean isAscending() {
     return ascending;
   }

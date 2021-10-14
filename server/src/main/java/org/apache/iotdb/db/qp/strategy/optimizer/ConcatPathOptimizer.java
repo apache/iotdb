@@ -36,8 +36,10 @@ import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -45,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -106,16 +109,39 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return;
     }
 
-    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator);
     List<ResultColumn> resultColumns = new ArrayList<>();
+    // Only used for group by level
+    GroupByLevelController groupByLevelController = null;
+    if (queryOperator.isGroupByLevel()
+        && (queryOperator.hasSlimit() || queryOperator.hasSoffset())) {
+      groupByLevelController = new GroupByLevelController(queryOperator);
+      queryOperator.resetSLimitOffset();
+      resultColumns = new LinkedList<>();
+    }
+
+    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator);
     for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
       resultColumn.removeWildcards(wildcardsRemover, resultColumns);
+      if (groupByLevelController != null) {
+        groupByLevelController.control(resultColumns);
+      }
       if (wildcardsRemover.checkIfPathNumberIsOverLimit(resultColumns)) {
         break;
       }
     }
     wildcardsRemover.checkIfSoffsetIsExceeded(resultColumns);
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
+  }
+
+  private boolean isCountStar(ResultColumn column) {
+    if (column.getExpression() instanceof FunctionExpression) {
+      FunctionExpression expression = (FunctionExpression) column.getExpression();
+      String[] nodes = expression.getPaths().get(0).getNodes();
+      return expression.isAggregationFunctionExpression()
+          && expression.getFunctionName().equals(SQLConstant.COUNT)
+          && nodes[nodes.length - 1].equals("*");
+    }
+    return false;
   }
 
   private void concatFilterAndRemoveWildcards(QueryOperator queryOperator)

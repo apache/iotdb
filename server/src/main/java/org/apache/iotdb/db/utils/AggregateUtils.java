@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.util.HashSet;
@@ -33,28 +31,25 @@ public class AggregateUtils {
    * given level will be replaced by "*", e.g. generatePartialPathByLevel("root.sg.dh.d1.s1", 2)
    * will return "root.sg.dh.*.s1"
    *
-   * @param originalPath the original timeseries path
    * @return result partial path
    */
-  public static String generatePartialPathByLevel(String originalPath, int[] pathLevels)
-      throws IllegalPathException {
-    String[] tmpPath = MetaUtils.splitPathToDetachedPath(originalPath);
+  public static String generatePartialPathByLevel(String[] nodes, int[] pathLevels) {
     Set<Integer> levelSet = new HashSet<>();
     for (int level : pathLevels) {
       levelSet.add(level);
     }
 
     StringBuilder transformedPath = new StringBuilder();
-    transformedPath.append(tmpPath[0]);
-    for (int k = 1; k < tmpPath.length - 1; k++) {
+    transformedPath.append(nodes[0]);
+    for (int k = 1; k < nodes.length - 1; k++) {
       transformedPath.append(TsFileConstant.PATH_SEPARATOR);
       if (levelSet.contains(k)) {
-        transformedPath.append(tmpPath[k]);
+        transformedPath.append(nodes[k]);
       } else {
         transformedPath.append(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
       }
     }
-    transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[tmpPath.length - 1]);
+    transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(nodes[nodes.length - 1]);
     return transformedPath.toString();
   }
 }
