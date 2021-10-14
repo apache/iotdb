@@ -82,7 +82,7 @@ eg:`workshop= A1, production= B1` 和 `producion= B1, workshop= A1`表达的含�
    2. 在不知道InfluxDB中可能会出现所有tag key的情况下，怎么维护它们之间的顺序。
 
 解决方案：
-1. 通过利用内存中的ap <Measurement, Map <Tag Key, Order> > Map结构，来维护Tag之间的顺序。
+1. 通过利用内存中的Map <Measurement, Map <Tag Key, Order> > Map结构，来维护Tag之间的顺序。
 
    ```java
    Map<String, Map<String, Integer>> measurementTagOrder
