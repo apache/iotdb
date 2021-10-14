@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
@@ -47,6 +48,7 @@ import java.util.HashSet;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_NAME;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
 
@@ -55,16 +57,16 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
   @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
+    assertTrue(tempSGDir.mkdirs());
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
   }
 
   @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    FileUtils.deleteDirectory(tempSGDir);
+    FileUtils.deleteDirectory(new File("target/testTsFile"));
   }
 
   @Test
@@ -72,7 +74,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
@@ -82,7 +84,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
                         + 0
                         + ".tsfile")));
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
-        new SizeTieredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+        new SizeTieredCompactionLogger(targetTsFileResource.getTsFilePath().concat(".compaction.log"));
     for (TsFileResource resource : seqResources) {
       sizeTieredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
     }
