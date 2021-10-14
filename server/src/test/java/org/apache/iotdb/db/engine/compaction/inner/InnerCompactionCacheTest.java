@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -48,6 +49,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -86,10 +88,10 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
       allSensors.add(path.getMeasurement());
     }
     ChunkMetadata firstChunkMetadata = reader.getChunkMetadataList(paths.get(0)).get(0);
-    firstChunkMetadata.setFilePath(tsFileResource.getTsFilePath());
+    firstChunkMetadata.setFilePath(tsFileResource.getTsFile().getAbsolutePath());
     TimeSeriesMetadataCacheKey firstTimeSeriesMetadataCacheKey =
         new TimeSeriesMetadataCacheKey(
-            seqResources.get(1).getTsFilePath(),
+            seqResources.get(1).getTsFile().getAbsolutePath(),
             paths.get(0).getDevice(),
             paths.get(0).getMeasurement());
 
@@ -120,12 +122,10 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
       assertTrue(true);
     }
 
-    try {
-      TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, new TreeSet<>());
-      fail();
-    } catch (Exception e) {
-      assertTrue(true);
-    }
+    TimeseriesMetadata metadata =
+        TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, new TreeSet<>());
+    assertNull(metadata);
+
     reader.close();
   }
 }
