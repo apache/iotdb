@@ -2199,6 +2199,7 @@ public class StorageGroupProcessor {
     for (long timePartition : timePartitions) {
       CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
     }
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
   }
 
   /**
