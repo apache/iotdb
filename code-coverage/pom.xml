@@ -65,7 +65,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.5</version>
+                <version>0.8.7</version>
                 <configuration>
                     <excludes>
                         <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
