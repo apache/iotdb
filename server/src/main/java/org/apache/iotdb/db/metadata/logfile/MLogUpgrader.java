@@ -152,6 +152,16 @@ public class MLogUpgrader {
         throw new IOException(String.format(DELETE_FAILED_FORMAT, tmpOldLogFile, e.getMessage()));
       }
     }
+
+    if (mLogWriter != null) {
+      mLogWriter.close();
+    }
+    if (mLogTxtReader != null) {
+      mLogTxtReader.close();
+    }
+    if (tagLogFile != null) {
+      tagLogFile.close();
+    }
   }
 
   public synchronized void operation(String cmd, boolean isSnapshot)
