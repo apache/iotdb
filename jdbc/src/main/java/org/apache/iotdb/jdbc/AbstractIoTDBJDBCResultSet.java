@@ -56,6 +56,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
   protected IoTDBJDBCDataSet ioTDBRpcDataSet;
+  protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private boolean isRpcFetchResult = true;
   private List<String> sgColumns;
   private BitSet aliasColumnMap;
@@ -1183,4 +1184,25 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   abstract String getValueByName(String columnName) throws SQLException;
 
   abstract Object getObjectByName(String columnName) throws SQLException;
+
+  public boolean isSetTracingInfo() {
+    if (ioTDBRpcTracingInfo == null) return false;
+    return ioTDBRpcTracingInfo.isSetTracingInfo();
+  }
+
+  public List<String> getActivityList() {
+    return ioTDBRpcTracingInfo.getActivityList();
+  }
+
+  public List<Long> getElapsedTimeList() {
+    return ioTDBRpcTracingInfo.getElapsedTimeList();
+  }
+
+  public long getStatisticsByName(String name) throws Exception {
+    return ioTDBRpcTracingInfo.getStatisticsByName(name);
+  }
+
+  public String getStatisticsInfoByName(String name) throws Exception {
+    return ioTDBRpcTracingInfo.getStatisticsInfoByName(name);
+  }
 }
