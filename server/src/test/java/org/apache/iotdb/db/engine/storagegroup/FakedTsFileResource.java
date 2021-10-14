@@ -21,22 +21,27 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 
+import java.io.File;
+
 public class FakedTsFileResource extends TsFileResource {
   /** time index */
   protected ITimeIndex timeIndex;
 
   private long tsFileSize;
+  private String fakeTsfileName;
 
-  public FakedTsFileResource(long tsFileSize) {
+  public FakedTsFileResource(long tsFileSize, String name) {
     this.tsFileSize = tsFileSize;
     super.closed = true;
     super.isMerging = false;
+    fakeTsfileName = name;
   }
 
-  public FakedTsFileResource(long tsFileSize, boolean isClosed, boolean isMerging) {
+  public FakedTsFileResource(long tsFileSize, boolean isClosed, boolean isMerging, String name) {
     this.tsFileSize = tsFileSize;
     super.closed = isClosed;
     super.isMerging = isMerging;
+    fakeTsfileName = name;
   }
 
   public FakedTsFileResource(long tsFileSize, long startTime, long endTime) {
@@ -62,5 +67,10 @@ public class FakedTsFileResource extends TsFileResource {
     builder.append(closed).append(",");
     builder.append(isMerging);
     return builder.toString();
+  }
+
+  @Override
+  public File getTsFile() {
+    return new File(fakeTsfileName);
   }
 }
