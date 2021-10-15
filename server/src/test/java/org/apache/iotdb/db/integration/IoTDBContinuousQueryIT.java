@@ -187,7 +187,7 @@ public class IoTDBContinuousQueryIT {
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT count(temperature) INTO temperature_cnt FROM root.ln.*.*.* "
-            + "GROUP BY time(1s), level=2 END");
+            + "GROUP BY time(1s), level=1,2 END");
 
     Thread.sleep(5500);
 
@@ -221,7 +221,7 @@ public class IoTDBContinuousQueryIT {
         "CREATE CQ cq1 "
             + "RESAMPLE EVERY 1s FOR 1s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(1s), level=2 END");
+            + "GROUP BY time(1s), level=1,2 END");
 
     final long creationTime = System.currentTimeMillis();
 
@@ -245,7 +245,7 @@ public class IoTDBContinuousQueryIT {
         "CREATE CONTINUOUS QUERY cq1 "
             + "RESAMPLE EVERY 2s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(1s), level=2 END");
+            + "GROUP BY time(1s), level=1,2 END");
 
     final long creationTime = System.currentTimeMillis();
 
@@ -268,7 +268,7 @@ public class IoTDBContinuousQueryIT {
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(1s), level=2 END");
+            + "GROUP BY time(1s), level=1,2 END");
 
     final long creationTime = System.currentTimeMillis();
 
@@ -286,7 +286,7 @@ public class IoTDBContinuousQueryIT {
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(1s), level=2 END");
+            + "GROUP BY time(1s), level=1,2 END");
 
     final long creationTime = System.currentTimeMillis();
 

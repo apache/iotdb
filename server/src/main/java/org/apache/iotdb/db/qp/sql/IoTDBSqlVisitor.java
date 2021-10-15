@@ -1164,7 +1164,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     int levelLimitOfSourcePrefixPath;
     if (queryOp.isGroupByLevel()) {
       levelLimitOfSourcePrefixPath =
-          Arrays.stream(queryOp.getSpecialClauseComponent().getLevels()).min().getAsInt();
+          Arrays.stream(queryOp.getSpecialClauseComponent().getLevels()).max().getAsInt();
     } else {
       levelLimitOfSourcePrefixPath =
           queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength() - 1;
