@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import com.google.common.collect.MinMaxPriorityQueue;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -27,6 +26,8 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
+
+import com.google.common.collect.MinMaxPriorityQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
