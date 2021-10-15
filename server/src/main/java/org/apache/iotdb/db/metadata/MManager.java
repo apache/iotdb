@@ -629,7 +629,7 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<PartialPath> allTimeseries = mtree.getFlatMeasurementPaths(prefixPath);
+      List<PartialPath> allTimeseries = mtree.getMeasurementPaths(prefixPath);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
       }
@@ -1111,8 +1111,9 @@ public class MManager {
   }
 
   /**
-   * Return all paths for given path if the path is abstract. Or return the path itself. Regular
-   * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
+   * Return all flat measurement paths for given path if the path is abstract. Or return the path
+   * itself. Regular expression in this method is formed by the amalgamation of seriesPath and the
+   * character '*'.
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */

@@ -869,7 +869,25 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all timeseries matching the given path pattern
+   * Get all measurement paths matching the given path pattern
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard.
+   */
+  public List<PartialPath> getMeasurementPaths(PartialPath pathPattern) throws MetadataException {
+    MeasurementCollector<List<PartialPath>> collector =
+        new MeasurementCollector<List<PartialPath>>(root, pathPattern) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) {
+            resultSet.add(node.getPartialPath());
+          }
+        };
+    collector.setResultSet(new LinkedList<>());
+    collector.traverse();
+    return collector.getResult();
+  }
+
+  /**
+   * Get all flat measurement paths matching the given path pattern
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
@@ -879,7 +897,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all timeseries paths matching the given path pattern
+   * Get all flat measurement paths matching the given path pattern
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
@@ -896,7 +914,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all time series schema matching the given path pattern order by insert frequency
+   * Get all flat measurement schema matching the given path pattern order by insert frequency
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
@@ -926,7 +944,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all time series schema matching the given path pattern
+   * Get all flat measurement schema matching the given path pattern
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
