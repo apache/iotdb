@@ -86,18 +86,17 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 #### 2.2.4 关键问题
 
-在 InfluxDB 的 SQL 语句中，tag 顺序的不同并不会影响实际的结果。
+在 InfluxDB 的 SQL 语句中，tag 出现的顺序的不同并不会影响实际的执行结果。
 
 例如：
-`insert factory, workshop=A1, production=B1, temperature=16.9` 和 `insert factory, production=B1, workshop=A1, temperature=16.9` 两条 SQL 的含义相等。
+`insert factory, workshop=A1, production=B1, temperature=16.9` 和 `insert factory, production=B1, workshop=A1, temperature=16.9` 两条 InfluxDB SQL 的含义（以及执行结果）相等。
 
-但在 IoTDB 中，上述插入的数据点可以存储在 `root.monitor.factory.A1.B1.temperature` 下，也可以存储在 `root.monitor.factory.B1.A1.temperature` 下。因此，IoTDB 路径中储存的 InfluxDB 
- 的 tag 的顺序就是需要考虑的，因为 `root.monitor.factory.A1.B1.temperature` 和 
-`root.monitor.factory.B1.A1.temperature` 是两条不同的序列。我们也可以认为，IoTDB 对 tag 的顺序是“敏感”的。
+但在 IoTDB 中，上述插入的数据点可以存储在 `root.monitor.factory.A1.B1.temperature` 下，也可以存储在 `root.monitor.factory.B1.A1.temperature` 下。因此，IoTDB 路径中储存的 InfluxDB 的 tag 的顺序是需要被特别考虑的，因为 `root.monitor.factory.A1.B1.temperature` 和 
+`root.monitor.factory.B1.A1.temperature` 是两条不同的序列。我们可以认为，IoTDB 元数据模型对 tag 顺序的处理是“敏感”的。
 
-因此，我们还需要在 IoTDB 中记录 InfluxDB 每个 tag 对应在 IoTDB 路径中的层级顺序，确保在执行 InfluxDB SQL 时，即使 tag 不同的同一条时序对应到IoTDB中也是同一条时序。
+基于上述的考虑，我们还需要在 IoTDB 中记录 InfluxDB 每个 tag 对应在 IoTDB 路径中的层级顺序，以确保在执行 InfluxDB SQL 时，不论 InfluxDB SQL 中  tag 出现的顺序如何，只要该 SQL 表达的是对同一个时间序列上的操作，那么适配器都可以唯一对应到 IoTDB 中的一条时间序列上进行操作。
 
-这里还需要考虑的一个问题是：InfluxDB的tag key及对应顺序关系如何持久化到IoTDB数据库中里，这样才不会丢失相关信息。
+这里还需要考虑的另一个问题是：InfluxDB 的 tag key 及对应顺序关系应该如何持久化到 IoTDB 数据库中，以确保不会丢失相关信息。
 
 需要解决的事情：
    1. 怎样把InfluxDB中tag key映射到IoTDB中path中的节点顺序。
