@@ -58,11 +58,11 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 
 ### Coding Examples
 
-This chapter provides an example of how to open a database connection, execute a SQL query, and display the results.
+This chapter provides an example of how to establish a database connection, execute SQL, and display the query results.
 
 It requires including the packages containing the JDBC classes needed for database programming.
 
-**NOTE: For faster insertion, the insertTablet() in Session is recommended.**
+**NOTE: For inserting faster, the executeBatch() in Session is recommended.**
 
 ```Java
 import java.sql.*;
