@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,7 +173,11 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     }
     try {
       // replace the old files with new file, the new is in same position as the old
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+      }
       tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
       for (TsFileResource resource : selectedTsFileResourceList) {
         tsFileResourceList.remove(resource);
       }
