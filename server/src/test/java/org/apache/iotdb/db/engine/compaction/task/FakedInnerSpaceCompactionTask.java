@@ -53,8 +53,14 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
 
   @Override
   protected void doCompaction() throws IOException {
-    TsFileNameGenerator.TsFileName name = TsFileNameGenerator.getTsFileName(selectedTsFileResourceList.get(0).getTsFile().getName());
-    String newName = TsFileNameGenerator.generateNewTsFileName(name.getTime(), name.getVersion(), name.getInnerCompactionCnt() + 1, name.getCrossCompactionCnt());
+    TsFileNameGenerator.TsFileName name =
+        TsFileNameGenerator.getTsFileName(selectedTsFileResourceList.get(0).getTsFile().getName());
+    String newName =
+        TsFileNameGenerator.generateNewTsFileName(
+            name.getTime(),
+            name.getVersion(),
+            name.getInnerCompactionCnt() + 1,
+            name.getCrossCompactionCnt());
     FakedTsFileResource targetTsFileResource = new FakedTsFileResource(0, newName);
     long targetFileSize = 0;
     for (TsFileResource resource : selectedTsFileResourceList) {

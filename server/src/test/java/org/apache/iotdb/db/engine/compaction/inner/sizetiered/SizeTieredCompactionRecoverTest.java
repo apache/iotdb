@@ -74,7 +74,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
     super.setUp();
-    tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat("tempSG"));
+    tempSGDir =
+        new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat("tempSG"));
     tempSGDir.mkdirs();
     tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
@@ -102,7 +103,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -122,15 +123,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                    TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -232,7 +234,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -252,15 +254,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -302,7 +305,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -335,7 +338,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -355,15 +358,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -409,7 +413,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -443,7 +447,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -463,15 +467,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -519,7 +524,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -558,7 +563,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -598,7 +603,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -630,15 +635,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     sizeTieredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     tsFileManager.addForRecover(targetTsFileResource, true);
     sizeTieredCompactionLogger.close();
@@ -651,7 +657,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
