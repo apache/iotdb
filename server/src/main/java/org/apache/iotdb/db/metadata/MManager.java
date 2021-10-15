@@ -626,9 +626,6 @@ public class MManager {
   public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     try {
       List<PartialPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
-      if (allTimeseries.isEmpty()) {
-        throw new PathNotExistException(pathPattern.getFullPath());
-      }
 
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));

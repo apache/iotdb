@@ -247,7 +247,7 @@ public class MManagerBasicTest {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
-  public void testCreateAlignedTimeseries() throws IllegalPathException {
+  public void testCreateAlignedTimeseries() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
@@ -286,21 +286,16 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
 
-    try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
-    } catch (MetadataException e) {
-      assertEquals(
-          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.vector.s2)",
-          e.getMessage());
-    }
+    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
 
-    try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
 
+    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
     assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
