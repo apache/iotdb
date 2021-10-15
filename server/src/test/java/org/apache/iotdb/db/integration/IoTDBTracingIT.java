@@ -18,51 +18,71 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
-import static org.junit.Assert.fail;
-
 public class IoTDBTracingIT {
-
-  @BeforeClass
-  public static void setUp() {
-    EnvironmentUtils.closeStatMonitor();
+  @Before
+  public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    prepareData();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
 
-  @Test
-  @Ignore // SQL is not supported yet
-  public void tracingTest() throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
+  private static void prepareData() {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      Assert.assertEquals(false, config.isEnablePerformanceTracing());
+      statement.execute("SET STORAGE GROUP TO root.sg_tracing");
+      statement.execute(
+          "CREATE TIMESERIES root.sg_tracing.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
 
-      statement.execute("tracing on");
-      Assert.assertEquals(true, config.isEnablePerformanceTracing());
+      String insertTemplate = "INSERT INTO root.sg_tracing.d1(timestamp, s1) VALUES(%d,%d)";
 
-      statement.execute("tracing off");
-      Assert.assertEquals(false, config.isEnablePerformanceTracing());
+      for (int i = 100; i < 200; i++) {
+        statement.execute(String.format(insertTemplate, i, i));
+      }
+      statement.execute("FLUSH root.tracing");
+
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void tracingTest() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("tracing select s1 from root.sg_tracing.d1");
+      AbstractIoTDBJDBCResultSet resultSet = (AbstractIoTDBJDBCResultSet) statement.getResultSet();
+      Assert.assertTrue(resultSet.isSetTracingInfo());
+      Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("seqFileNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqFileNum"));
+      Assert.assertEquals(1, resultSet.getStatisticsByName("seqChunkNum"));
+      Assert.assertEquals(100, resultSet.getStatisticsByName("seqChunkPointNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkNum"));
+      Assert.assertEquals(0, resultSet.getStatisticsByName("unSeqChunkPointNum"));
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }

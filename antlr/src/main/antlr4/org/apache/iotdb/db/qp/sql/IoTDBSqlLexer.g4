@@ -661,6 +661,10 @@ UNCOMPRESSED
 // Privileges Keywords
 
 PRIVILEGE_VALUE
+    : '\'' PRIVILEGE_VALUE_RANGE '\''
+    ;
+
+PRIVILEGE_VALUE_RANGE
     : ALL | SET_STORAGE_GROUP
     | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES
     | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
@@ -841,13 +845,25 @@ RS_BRACKET : ']';
 // String Literal
 
 STRING_LITERAL
-    : SINGLE_QUOTA_STRING
+    : SQUOTE_STRING
     ;
 
-fragment SINGLE_QUOTA_STRING
+QUOTED_STRING_LITERAL
+    : DQUOTE_STRING
+    | BQUOTE_STRING
+    ;
+
+fragment DQUOTE_STRING
+    : '"' ('\\' . | ~'"' )*? '"'
+    ;
+
+fragment SQUOTE_STRING
     : '\'' ('\\' . | ~'\'' )*? '\''
     ;
 
+fragment BQUOTE_STRING
+    : '`' ('\\' . | ~'`' )*? '`'
+    ;
 
 // Date & Time Literal
 

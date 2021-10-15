@@ -1551,7 +1551,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<TerminalNode> privilegeList = ctx.PRIVILEGE_VALUE();
     List<String> privileges = new ArrayList<>();
     for (TerminalNode privilege : privilegeList) {
-      privileges.add(privilege.getText());
+      privileges.add(removeStringQuote(privilege.getText()));
     }
     return privileges.toArray(new String[0]);
   }
@@ -2353,6 +2353,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
       return src.substring(1, src.length() - 1);
     } else if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
+      return src.substring(1, src.length() - 1);
+    } else if (src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
       return src.substring(1, src.length() - 1);
     } else {
       throw new SQLParserException("error format for string with quote:" + src);

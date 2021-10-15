@@ -675,8 +675,9 @@ wildcard
     ;
 
 literalCanBeNodeName
-    : STRING_LITERAL
+    : QUOTED_STRING_LITERAL
     | datetimeLiteral
+    | DURATION_LITERAL
     | (MINUS|PLUS)? INTEGER_LITERAL
     | (MINUS|PLUS)? EXPONENT_NUM_PART
     | BOOLEAN_LITERAL
@@ -686,7 +687,6 @@ keywordsCanBeNodeName
     : DATATYPE_VALUE
     | ENCODING_VALE
     | COMPRESSOR_VALUE
-    | PRIVILEGE_VALUE
     | ASC
     | DESC
     | DEVICE
