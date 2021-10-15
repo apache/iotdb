@@ -44,9 +44,9 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 ![class-diagram](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/class-diagram.png?raw=true)
 
 
-### 2.2 数据格式转换
+### 2.2 元数据格式转换
 
-为了使适配器能够兼容InfluxDB协议，因此需要把InfluxDB存储的数据结构转换成IoTDB的存储数据结构。
+InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。为了使适配器能够兼容 InfluxDB 协议，需要把 InfluxDB 的元数据结构转换成 IoTDB 的元数据结构。
 
 #### 2.2.1 InfluxDB数据格式
 
@@ -68,9 +68,11 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 #### 2.2.3 两者映射关系
 
 InfluxDB和IoTDB有着如下的映射关系：
-1. InfluxDB中的database和measurement可以看做IoTDB中的storage group。
-2. InfluxDB中的tag value可以看做IoTDB中的path。并且InfluxDB的tag key决定着对应的tag value出现path顺序。
-3. InfluxDB中的field key可以看做IoTDB中measurement。
+1. InfluxDB 中的 database 和 measurement 组合起来作为 IoTDB 中的 storage group。
+2. InfluxDB 中的 field key 作为 IoTDB 中 measurement 路径，InfluxDB 中的 field value 即是该路径下记录的测点值。
+3. InfluxDB 中的 tag 在 IoTDB 中使用 storage group 和 measurement 之间的路径表达。InfluxDB 的 tag key 由 storage group 和 measurement 之间路径的顺序隐式表达，tag value 记录为对应顺序的路径的名称。
+InfluxDB 元数据向 IoTDB 元数据的转换关系可以由下面的公示表示：
+`root.{database}.{measurement}.{tag value 1}.{tag value 2}...{tag value N-1}.{tag value N}.{field key}`
 
 ![influxdb-vs-iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
 
