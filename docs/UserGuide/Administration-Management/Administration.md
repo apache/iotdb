@@ -21,7 +21,7 @@
 
 # Administration Management
 
-IoTDB provides users with account privilege management operations, so as to ensure data security.
+IoTDB provides users with account privilege management operations, thereby providing users with authority management functions for data and ensuring data security.
 
 We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](../Appendix/SQL-Reference.md). 
 At the same time, in the JAVA programming environment, you can use the [Java JDBC](../API/Programming-JDBC.md) to execute privilege management statements in a single or batch mode. 
@@ -30,17 +30,17 @@ At the same time, in the JAVA programming environment, you can use the [Java JDB
 
 ### User
 
-The user is the legal user of the database. A user corresponds to a unique username and has a password as a means of authentication. Before using a database, a person must first provide a legitimate username and password to make himself/herself a user.
+The user is the legitimate user of the database. A user corresponds to a unique username and has a password as a means of authentication. Before using the database, a person must first provide a legal (that is, stored in the database) user name and password to make himself a user.
 
 ### Privilege
 
-The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
+The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, it is said that the user has the authority to perform the operation. Privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
 
 ### Role
 
 A role is a set of privileges and has a unique role name as an identifier. A user usually corresponds to a real identity (such as a traffic dispatcher), while a real identity may correspond to multiple users. These users with the same real identity tend to have the same privileges. Roles are abstractions that can unify the management of such privileges.
 
-### Default User
+### Default User and their roles
 
 There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
 
@@ -116,7 +116,7 @@ At present, there is no conflicting privilege in IoTDB, so the real privileges o
 
 It should be noted that if users have a privilege (corresponding to operation A) themselves and their roles contain the same privilege, then revoking the privilege from the users themselves alone can not prohibit the users from performing operation A, since it is necessary to revoke the privilege from the role, or revoke the role from the user. Similarly, revoking the privilege from the users's roles alone can not prohibit the users from performing operation A.
 
-At the same time, changes to roles are immediately reflected on all users who own the roles. For example, adding certain privileges to roles will immediately give all users who own the roles corresponding privileges, and deleting certain privileges will also deprive the corresponding users of the privileges (unless the users themselves have the privileges).
+At the same time, the modification of the role will be immediately reflected on all users who have the role. For example, adding certain privileges to roles will immediately give all users who have the roles corresponding privileges, and deleting certain privileges will also deprive the corresponding users of the privileges (unless the user have the privileges).
 
 ### List of Privileges Included in the System
 
