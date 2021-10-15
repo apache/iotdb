@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.utils.AggregateUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -39,6 +38,7 @@ public class AggregationPlan extends RawDataQueryPlan {
   private List<String> deduplicatedAggregations = new ArrayList<>();
 
   private int[] levels;
+  private GroupByLevelController groupByLevelController;
   // group by level aggregation result path
   private final Map<String, AggregateResult> groupPathsResultMap = new LinkedHashMap<>();
 
@@ -76,6 +76,10 @@ public class AggregationPlan extends RawDataQueryPlan {
     this.levels = levels;
   }
 
+  public void setGroupByLevelController(GroupByLevelController groupByLevelController) {
+    this.groupByLevelController = groupByLevelController;
+  }
+
   public Map<String, AggregateResult> getGroupPathsResultMap() {
     return groupPathsResultMap;
   }
@@ -86,16 +90,17 @@ public class AggregationPlan extends RawDataQueryPlan {
       groupPathsResultMap.clear();
     }
     for (int i = 0; i < paths.size(); i++) {
-      String transformedPath =
-          AggregateUtils.generatePartialPathByLevel(
-              getDeduplicatedPaths().get(i).getNodes(), levels);
-      String key = deduplicatedAggregations.get(i) + "(" + transformedPath + ")";
-      AggregateResult result = groupPathsResultMap.get(key);
+      String rawPath =
+          String.format(
+              "%s(%s)",
+              deduplicatedAggregations.get(i), getDeduplicatedPaths().get(i).getExactFullPath());
+      String transformedPath = groupByLevelController.getGroupedPath(rawPath);
+      AggregateResult result = groupPathsResultMap.get(transformedPath);
       if (result == null) {
-        groupPathsResultMap.put(key, aggregateResults.get(i));
+        groupPathsResultMap.put(transformedPath, aggregateResults.get(i));
       } else {
         result.merge(aggregateResults.get(i));
-        groupPathsResultMap.put(key, result);
+        groupPathsResultMap.put(transformedPath, result);
       }
     }
     return groupPathsResultMap;
@@ -112,17 +117,15 @@ public class AggregationPlan extends RawDataQueryPlan {
   }
 
   @Override
-  public String getColumnForDisplay(String columnForReader, int pathIndex)
-      throws IllegalPathException {
+  public String getColumnForDisplay(String columnForReader, int pathIndex) {
     String columnForDisplay = columnForReader;
     if (isGroupByLevel()) {
       PartialPath path = paths.get(pathIndex);
-      String[] nodes = path.getNodes();
-      if (path.isMeasurementAliasExists()) {
-        nodes[nodes.length - 1] = path.getMeasurementAlias();
-      }
-      String aggregatePath = AggregateUtils.generatePartialPathByLevel(nodes, levels);
-      columnForDisplay = aggregations.get(pathIndex) + "(" + aggregatePath + ")";
+      String functionName = aggregations.get(pathIndex);
+      String aggregatePath =
+          groupByLevelController.getGroupedPath(
+              String.format("%s(%s)", functionName, path.getExactFullPath()));
+      columnForDisplay = aggregatePath;
     }
     return columnForDisplay;
   }

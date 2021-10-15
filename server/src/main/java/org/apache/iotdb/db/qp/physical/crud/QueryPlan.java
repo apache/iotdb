@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -139,8 +138,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getExactFullPath();
   }
 
-  public String getColumnForDisplay(String columnForReader, int pathIndex)
-      throws IllegalPathException {
+  public String getColumnForDisplay(String columnForReader, int pathIndex) {
     return resultColumns.get(pathIndex).getResultColumnName();
   }
 

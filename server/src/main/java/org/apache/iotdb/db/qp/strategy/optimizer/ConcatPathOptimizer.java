@@ -39,7 +39,6 @@ import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -112,8 +111,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<ResultColumn> resultColumns = new ArrayList<>();
     // Only used for group by level
     GroupByLevelController groupByLevelController = null;
-    if (queryOperator.isGroupByLevel()
-        && (queryOperator.hasSlimit() || queryOperator.hasSoffset())) {
+    if (queryOperator.isGroupByLevel()) {
       groupByLevelController = new GroupByLevelController(queryOperator);
       queryOperator.resetSLimitOffset();
       resultColumns = new LinkedList<>();
@@ -123,7 +121,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
       resultColumn.removeWildcards(wildcardsRemover, resultColumns);
       if (groupByLevelController != null) {
-        groupByLevelController.control(resultColumns);
+        groupByLevelController.control(resultColumn, resultColumns);
       }
       if (wildcardsRemover.checkIfPathNumberIsOverLimit(resultColumns)) {
         break;
@@ -131,17 +129,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     wildcardsRemover.checkIfSoffsetIsExceeded(resultColumns);
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
-  }
-
-  private boolean isCountStar(ResultColumn column) {
-    if (column.getExpression() instanceof FunctionExpression) {
-      FunctionExpression expression = (FunctionExpression) column.getExpression();
-      String[] nodes = expression.getPaths().get(0).getNodes();
-      return expression.isAggregationFunctionExpression()
-          && expression.getFunctionName().equals(SQLConstant.COUNT)
-          && nodes[nodes.length - 1].equals("*");
+    if (groupByLevelController != null) {
+      queryOperator.getSpecialClauseComponent().setGroupByLevelController(groupByLevelController);
     }
-    return false;
   }
 
   private void concatFilterAndRemoveWildcards(QueryOperator queryOperator)
