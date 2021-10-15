@@ -167,11 +167,6 @@ public class CompactionTaskManager implements IService {
 
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
     if (!compactionTaskQueue.contains(compactionTask)) {
-      logger.info(
-          "Add a compaction task {} to queue, current queue size is {}, current task num is {}",
-          compactionTask,
-          compactionTaskQueue.size(),
-          currentTaskNum.get());
       compactionTaskQueue.add(compactionTask);
       return true;
     }
@@ -179,13 +174,23 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized void submitTaskFromTaskQueue() {
+    boolean submitted = false;
+    int originQueueSize = compactionTaskQueue.size();
     while (currentTaskNum.get()
             < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
         && compactionTaskQueue.size() > 0) {
       AbstractCompactionTask task = compactionTaskQueue.poll();
       if (task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
+        submitted = true;
       }
+    }
+    if (!submitted) {
+      logger.info(
+          "Didn't submit a task, current thread num is {}, origin queue size is {}, queue size is {}",
+          currentTaskNum.get(),
+          originQueueSize,
+          compactionTaskQueue.size());
     }
   }
 
@@ -193,10 +198,6 @@ public class CompactionTaskManager implements IService {
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
-      logger.info(
-          "submitted a compaction task, task num in taskExecutionPool = {}, currentTaskNum is {}",
-          getTaskCount(),
-          currentTaskNum.get());
       Future<Void> future = taskExecutionPool.submit(compactionMergeTask);
       CompactionScheduler.addPartitionCompaction(fullStorageGroupName, timePartition);
       compactionTaskFutures
