@@ -98,20 +98,27 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 这里还需要考虑的另一个问题是：InfluxDB 的 tag key 及对应顺序关系应该如何持久化到 IoTDB 数据库中，以确保不会丢失相关信息。
 
-解决方案：
-1. 通过利用内存中的Map <Measurement, Map <Tag Key, Order> > Map结构，来维护Tag之间的顺序。
+**解决方案：**
 
-   ```java
-   Map<String, Map<String, Integer>> measurementTagOrder
-   ```
-   可以看出Map是一个两层的，第一层的Key是String类型的Measurement，第一层的Value是一个<String,Integer>的Map。
+通过利用内存中的`Map<Measurement, Map<Tag Key, Order>>` 这样一个 Map 结构，来维护 tag 在 IoTDB 路径层级上的顺序。
+
+    ```java
+    Map<String, Map<String, Integer>> measurementTagOrder
+    ```
+
+可以看出 Map 是一个两层的结构。
+
+第一层的 Key 是 String 类型的 InfluxDB measurement，第一层的 Value 是一个 <String, Integer> 结构的 Map。
    
-   第二层的Key是String类型的Tag Key，第二层的Value是Integer类型的Tag Order，也就是Tag对应的实际顺序。
+第二层的 Key 是 String 类型的 InfluxDB tag key，第二层的 Value 是 Integer 类型的 tag order，也就是 tag 在 IoTDB 路径层级上的顺序。
 
-   这样就可以先通过measurement定位，再通过tag key定位，最后就可以获得Tag对应的顺序了。
+使用时，就可以先通过 InfluxDB measurement 定位，再通过 InfluxDB tag key 定位，最后就可以获得  tag 在 IoTDB 路径层级上的顺序了。
  
-3. 除了在内存中维护InfluxDB的Tag顺序外，还需要进行持久化操作，将InfluxDB的Tag顺序持久化到IoTDB数据库中里。
-   存储组为`root.TAG_INFO`，分别以`database_name`,`measurement_name`,`tag_name`和`tag_order`来存储节点来记录数据。
+除了在内存中维护 InfluxDB 的 tag 顺序外，还需要对该顺序信息进行持久化操作，即将 InfluxDB tag 在 IoTDB 路径层级上的顺序持久化到 IoTDB 数据库中。
+
+**存储方案如下：**
+
+存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储节点来记录数据。
 
 ```
 +-----------------------------+---------------------------+------------------------------+----------------------+-----------------------+
