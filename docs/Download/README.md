@@ -69,7 +69,7 @@
 Legacy version are available here: [https://archive.apache.org/dist/iotdb/](https://archive.apache.org/dist/iotdb/)
 
 
-**<font color=red>Attention</font>**:
+**<font color=red>Upgrade Notes</font>**:
 
 - Recommended OS parameters
   * Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
@@ -82,7 +82,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     ```
 
 - How to upgrade a minor version (e.g., from v0.11.0 to v0.11.3)?
-  * versions which have the same major version are compatible.
+  * Multiple minor versions which belong to the same major version are compatible with each other.
   * Just download and unzip the new version. Then modify the configuration files to keep consistent 
   with what you set in the old version.
   * stop the old vesion instance, and start the new one.
