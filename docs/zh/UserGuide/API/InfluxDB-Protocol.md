@@ -133,11 +133,11 @@ eg:
 
 1. 假定按照以下的顺序插入三条数据到InfluxDB中(database=monitor)：
    
-   (1)student tags:{name=A,phone=B,sex=C} fields:{score=99}
+   (1)`insert student,name=A,phone=B,sex=C score=99`
 
-   (2)student tags:{address=D} fields:{score=98}
+   (2)`insert student,address=D score=98` 
 
-   (3))student tags:{name=A,phone=B,sex=C,address=D} fields:{score=97}
+   (3)`insert student,name=A,phone=B,sex=C,address=D score=97`
 
 2. 简单对上述InfluxDB的时序进行解释，database是monitor;measurement是student；tag分别是name，phone、sex和address；field是score。
 
@@ -206,20 +206,39 @@ time                address name phone sex socre
 
 #### 2.3.2 查询数据
 
-1. 查询student中phone=B的数据。monitor->student中phone的顺序为1，order最大值是3，对应到IoTDB的查询为：
+1. 查询student中phone=B的数据。在database=monitor,measurement=student中tag=phone的顺序为1，order最大值是3，对应到IoTDB的查询为：
  
    ```sql 
    select * from root.monitor.student.*.B
    ```
 
-2. 查询student中phone=B且存储的score>97的数据，对应到IoTDB的查询为：
+2. 查询student中phone=B且score>97的数据，对应到IoTDB的查询为：
  
    ```sql
-   select * from root.monitor.student.*.B where score>97
+   select * from root.monitor.student.*.B where score>97 
    ```
 
-3. 查询student中phone=B且存储的score>97且时间在最近七天内的的数据，对应到IoTDB的查询为：
+3. 查询student中phone=B且score>97且时间在最近七天内的的数据，对应到IoTDB的查询为：
  
    ```sql
-   select * from root.monitor.student.*.B where score>97 and time > now()-7d
+   select * from root.monitor.student.*.B where score>97 and time > now()-7d 
    ```
+
+
+4. 查询student中name=A或score>97，由于tag存储在路径中，因此没有办法用一次查询同时完成tag和field的*或*语义查询，因此需要多次查询进行或运算求并集，对应到IoTDB的查询为：
+
+   ```sql
+   select * from root.monitor.student.A 
+   select * from root.monitor.student where score>97
+   ```
+   最后手动对上面两次查询结果求并集。
+
+5. 查询student中(name=A或phone=B或sex=C)且score>97，由于tag存储在路径中，因此没有办法用一次查询完成tag的**或**语义， 因此需要多次查询进行或运算求并集，对应到IoTDB的查询为：
+
+   ```sql
+   select * from root.monitor.student.A where score>97
+   select * from root.monitor.student.*.B where score>97
+   select * from root.monitor.student.*.*.C where score>97
+   ```
+   最后手动对上面三次查询结果求并集。
+
