@@ -19,7 +19,7 @@
 
 -->
 
-# 1.切换方案
+## 1.切换方案
 
 假如您原先接入 InfluxDB 的业务代码如下：
 
@@ -67,9 +67,41 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 #### 2.2.3 两者映射关系
 
+InfluxDB和IoTDB有着如下的映射关系：
+1. InfluxDB中的database和measurement可以看做IoTDB中的storage group。
+2. InfluxDB中的tag value可以看做IoTDB中的path。并且InfluxDB的tag key决定着对应的tag value出现path顺序。
+3. InfluxDB中的field key可以看做IoTDB中measurement。
+
+![influxdb-vs-iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
+
+如上图所示，可以看出：
+
+我们在 IoTDB 中使用 Storage Group 和 Measurement 之间的路径来表达 InfluxDB Tag 的概念，也就是图中右侧绿色方框的部分。
+
+实际映射的表达式如下：
+
+`{root.database.measurement}.{tag value1}.{tag value2}..{tag valueN-1}.{tag valueN}.fieldKey`
+
+其中InfluxDB中的database和measurement：`{root.database.measurement}`看作IoTDB中的存储组。
+
+InfluxDB中的tag value：`{tag value1}.{tag value2}..{tag valueN-1}.{tag valueN}`可以看作IoTDB中的path。
+
+InfluxDB中的fieldKey：`fieldKey`看作IoTDB中的measurement。
+
+Storage Group 和 Measurement 之间的每一层都代表一个 Tag。
+
+如果 tag key 的数量为 N，那么 Storage Group 和 Measurement 之间的路径的层数就是 N。
+
+我们对 Storage Group 和 Measurement 之间的每一层进行顺序编号，每一个序号都和一个 Tag Key 一一对应。
+
+我们通过一个内存中的Map数据结构来记录每一个序号和Tag Key之间的映射关系，同时也会利用IoTDB本身的数据库，来持久化两者的映射关系，在下文中会详细阐述。
+
+同时，我们使用 Storage Group 和 Measurement 之间每一层 路径的名字 来记 Tag Value， Tag Key 可以通过自身的序号找到对应路径层级下的 Tag Value.
+
 在InfluxDB中，Tag的顺序不同并不会影响实际的结果。
 
-eg:`workshop= A1, production= B1` 和 `producion= B1, workshop= A1`表达的含义相等。
+eg:
+`insert factory,workshop=A1,production=B1 tempture=16.9`和`insert factory,production=B1,workshop=A1 tempture=16.9`两条数据表达的含义相等。
 
 但在IoTDB中，一个path由多个部分组成，比如`root.monitor.factory.A1.B1`是由一个存储组`root.monitor.factory`和两个节点`A1`和`B1`组成的。
 
@@ -107,12 +139,7 @@ eg:`workshop= A1, production= B1` 和 `producion= B1, workshop= A1`表达的含�
 +-----------------------------+---------------------------+------------------------------+----------------------+-----------------------+
 ```
 
-因此，InfluxDB和IoTDB有着如下的映射关系：
-1. InfluxDB中的database和measurement可以看做IoTDB中的storage group。
-2. InfluxDB中的tag value可以看做IoTDB中的path。并且InfluxDB的tag key决定着对应的tag value出现path顺序。
-3. InfluxDB中的field key可以看做IoTDB中measurement。
 
-![influxdb-vs-iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
 
 ### 2.3 实例
 
