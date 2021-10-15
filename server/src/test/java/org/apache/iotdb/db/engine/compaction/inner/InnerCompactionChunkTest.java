@@ -154,6 +154,7 @@ public class InnerCompactionChunkTest extends InnerCompactionTest {
       }
     }
     reader.close();
+    targetTsfileResource.delete();
   }
 
   @Test

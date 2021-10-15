@@ -85,6 +85,21 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
                             + ".tsfile")));
+    File targetFile =
+        new File(
+            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                .concat(
+                    0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
+    if (targetFile.exists()) {
+      assertTrue(targetFile.delete());
+    }
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
         new SizeTieredCompactionLogger(
             targetTsFileResource.getTsFilePath().concat(".compaction.log"));
