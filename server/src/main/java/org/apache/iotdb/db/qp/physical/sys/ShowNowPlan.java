@@ -19,18 +19,22 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import com.sun.management.OperatingSystemMXBean;
-import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.lang.management.ManagementFactory;
-import java.text.DateFormat;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class ShowNowPlan extends ShowPlan {
+  private static final Logger logger = LoggerFactory.getLogger(ShowPlan.class);
+
+  String ipAddress;
+  String systemTime;
+  String cpuLoad;
+  String totalMemorySize;
+  String freeMemorySize;
 
   public ShowNowPlan() {
     super(ShowContentType.NOW);
@@ -40,21 +44,22 @@ public class ShowNowPlan extends ShowPlan {
     super(showContentType);
   }
 
-  public List<String> now() {
-    ArrayList<String> list = new ArrayList<>();
-    DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-    list.add(df.format(System.currentTimeMillis())); // 添加时间
-    final SystemInfo systemInfo = new SystemInfo();
-    OperatingSystemMXBean osmxb =
-        (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    CentralProcessor processor = systemInfo.getHardware().getProcessor();
-    list.add(processor.getSystemCpuLoad() * 100 + ""); // cpu load
-    String totalMemorySize =
-        new DecimalFormat("#.##").format(osmxb.getTotalPhysicalMemorySize() / 1024.0 / 1024 / 1024)
-            + "G";
-    String freePhysicalMemorySize =
-        new DecimalFormat("#.##").format(osmxb.getFreePhysicalMemorySize() / 1024.0 / 1024 / 1024)
-            + "G";
-    return list;
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.write(PhysicalPlanType.SHOW_NOW.ordinal());
+    //    putString(outputStream, ipAddress);
+    //    putString(outputStream, systemTime);
+    //    putString(outputStream, cpuLoad);
+    //    putString(outputStream, totalMemorySize);
+    //    putString(outputStream, freeMemorySize);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    ipAddress = readString(buffer);
+    systemTime = readString(buffer);
+    cpuLoad = readString(buffer);
+    totalMemorySize = readString(buffer);
+    freeMemorySize = readString(buffer);
   }
 }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.query;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
@@ -45,11 +47,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
+import org.apache.iotdb.db.query.dataset.ShowNowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
@@ -60,6 +64,7 @@ import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.db.utils.ShowNowUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -71,9 +76,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -526,6 +528,24 @@ public class LocalQueryExecutor {
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
       dataOutputStream.writeInt(allTimeseriesSchema.size());
       for (ShowTimeSeriesResult result : allTimeseriesSchema) {
+        result.serialize(outputStream);
+      }
+    }
+    return ByteBuffer.wrap(outputStream.toByteArray());
+  }
+
+  public ByteBuffer getShowNow(ByteBuffer planBuffer)
+      throws CheckConsistencyException, IOException, MetadataException {
+    // dataGroupMember.syncLeaderWithConsistencyCheck(false);
+
+    ShowNowPlan plan = (ShowNowPlan) PhysicalPlan.Factory.create(planBuffer);
+    List<ShowNowResult> showNow;
+    showNow = new ShowNowUtils().getShowNowResults();
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+      dataOutputStream.writeInt(showNow.size());
+      for (ShowNowResult result : showNow) {
         result.serialize(outputStream);
       }
     }

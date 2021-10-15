@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
@@ -302,5 +304,16 @@ public class QueryRouter implements IQueryRouter {
           ? udtfQueryExecutor.executeWithValueFilterNonAlign(context)
           : udtfQueryExecutor.executeWithoutValueFilterNonAlign(context);
     }
+  }
+
+  @Override
+  public QueryDataSet showNowQuery(ShowNowPlan showNowPlan, QueryContext context)
+      throws MetadataException {
+    ShowNowQueryExecutor showNowQueryExecutor = getShowNowQueryExecutor(showNowPlan);
+    return showNowQueryExecutor.execute(context, showNowPlan);
+  }
+
+  protected ShowNowQueryExecutor getShowNowQueryExecutor(ShowNowPlan showNowPlan) {
+    return new ShowNowQueryExecutor(showNowPlan);
   }
 }

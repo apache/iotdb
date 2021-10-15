@@ -419,6 +419,8 @@ service TSDataService extends RaftService {
 
   binary getAllMeasurementSchema(1: Node header, 2: binary planBinary)
 
+  binary getShowNow(1:Node header,2:binary planBinary)
+
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
   list<string> getUnregisteredTimeseries(1: Node header, 2: list<string> timeseriesList)

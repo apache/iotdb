@@ -80,7 +80,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -934,6 +933,11 @@ public class MManager {
     }
     return true;
   }
+
+  //  public List<ShowNowResult> showNow(ShowNowPlan plan, QueryContext context)
+  //      throws MetadataException {
+  //    return new ShowNowUtils().getShowNowResults();
+  //  }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {

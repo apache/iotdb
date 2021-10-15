@@ -45,7 +45,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -341,6 +340,16 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     try {
       resultHandler.onComplete(
           dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary));
+    } catch (CheckConsistencyException | IOException | MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void getShowNow(
+      Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try {
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getShowNow(planBinary));
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       resultHandler.onError(e);
     }

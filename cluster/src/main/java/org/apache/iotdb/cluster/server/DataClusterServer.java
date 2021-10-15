@@ -59,7 +59,6 @@ import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.DataSyncService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -495,6 +494,14 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
+  public void getShowNow(
+      Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    DataAsyncService service = getDataAsyncService(header, resultHandler, "show now");
+    service.getShowNow(header, planBinary, resultHandler);
+  }
+
+  @Override
   public void getAggrResult(
       GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     DataAsyncService service = getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -832,6 +839,11 @@ public class DataClusterServer extends RaftServer
   @Override
   public ByteBuffer getAllMeasurementSchema(Node header, ByteBuffer planBinary) throws TException {
     return getDataSyncService(header).getAllMeasurementSchema(header, planBinary);
+  }
+
+  @Override
+  public ByteBuffer getShowNow(Node header, ByteBuffer planBinary) throws TException {
+    return getDataSyncService(header).getShowNow(header, planBinary);
   }
 
   @Override

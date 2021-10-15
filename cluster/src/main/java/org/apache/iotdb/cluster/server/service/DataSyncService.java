@@ -331,6 +331,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
+  public ByteBuffer getShowNow(Node header, ByteBuffer planBinary) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().getShowNow(planBinary);
+    } catch (CheckConsistencyException | IOException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
   public List<ByteBuffer> getAggrResult(GetAggrResultRequest request) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getAggrResult(request);

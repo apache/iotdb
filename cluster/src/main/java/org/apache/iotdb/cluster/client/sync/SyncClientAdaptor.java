@@ -49,11 +49,13 @@ import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.ShowNowHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -205,6 +207,25 @@ public class SyncClientAdaptor {
     handler.setContact(client.getNode());
 
     client.getChildNodePathInNextLevel(header, path, handler);
+    synchronized (response) {
+      if (response.get() == null) {
+        response.wait(RaftServer.getReadOperationTimeoutMS());
+      }
+    }
+    return response.get();
+  }
+
+  public static ByteBuffer getAllShowNow(AsyncDataClient client, Node header, ShowNowPlan plan)
+      throws IOException, TException, InterruptedException {
+    ShowNowHandler handler = new ShowNowHandler();
+    AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
+    handler.setResponse(response);
+    handler.setContact(client.getNode());
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    plan.serialize(dataOutputStream);
+
+    client.getShowNow(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());

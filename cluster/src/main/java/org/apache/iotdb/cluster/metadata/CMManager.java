@@ -80,7 +80,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1586,6 +1585,117 @@ public class CMManager extends MManager {
     return showDevicesResults;
   }
 
+  //  @Override
+  //  public List<ShowNowResult> showNow(ShowNowPlan plan, QueryContext context)
+  //      throws MetadataException {
+  //    ConcurrentSkipListSet<ShowNowResult> resultSet = new ConcurrentSkipListSet<>();
+  //    ExecutorService pool =
+  //        new ThreadPoolExecutor(
+  //            THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new
+  // LinkedBlockingDeque<>());
+  //
+  //    // List<PartitionGroup> globalGroups;
+  //    // metaGroupMember.getPartitionTable();
+  //    // try {
+  //    // globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+  //    //      PartitionTable partitionTable =
+  //    // metaGroupMember.getPartitionTable().partitionByPathTime(plan.getPath(), 0);
+  //    //      List<Node> nodeList = partitionTable.getAllNodes();
+  //    // globalGroups.add(partitionGroup);
+  //    //    } catch (MetadataException e) {
+  //    //      // if the path location is not find, obtain the path location from all groups.
+  //    //      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+  //    //    }
+  //
+  //    List<Node> nodeList = metaGroupMember.getPartitionTable().getAllNodes();
+  //    List<Future<Void>> futureList = new ArrayList<>();
+  //    for (Node node : nodeList) {
+  //      futureList.add(
+  //          pool.submit(
+  //              () -> {
+  //                try {
+  //                  showNow(node, plan, resultSet, context);
+  //                  // showNow(group, plan, resultSet, context);
+  //                } catch (Exception e) {
+  //                  logger.error(
+  //                      "****************Cannot get show now result of {} from {}", plan, node);
+  //                }
+  //                return null;
+  //              }));
+  //    }
+  //    waitForThreadPool(futureList, pool, "showNow()");
+  //    List<ShowNowResult> showNowResults = applyShowNow(resultSet);
+  //    return showNowResults;
+  //  }
+
+  //  private void showNow(
+  //      Node node, ShowNowPlan plan, Set<ShowNowResult> resultSet, QueryContext context)
+  //      throws CheckConsistencyException, MetadataException {
+  //    if (node.equals(metaGroupMember.getThisNode())) {
+  //      showLocalNow(node, plan, resultSet, context);
+  //    } else {
+  //      showRemoteNow(node, plan, resultSet);
+  //    }
+  //  }
+  //
+  //  private void showLocalNow(
+  //      Node node, ShowNowPlan plan, Set<ShowNowResult> resultSet, QueryContext context)
+  //      throws CheckConsistencyException, MetadataException {
+  //    //    Node header = group.getHeader();
+  //    //    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+  //    //    localDataMember.syncLeaderWithConsistencyCheck(false);
+  //    try {
+  //      List<ShowNowResult> localResult = null;
+  //      try {
+  //        localResult = super.showNow(plan, context);
+  //      } catch (Exception e) {
+  //        e.printStackTrace();
+  //        logger.error("********CMManager showLocalNow");
+  //      }
+  //      try {
+  //        if (localResult != null) resultSet.addAll(localResult);
+  //      } catch (Exception e) {
+  //        logger.error("******************** showLocalNow 1665");
+  //        e.printStackTrace();
+  //      }
+  //      logger.debug("Fetched local now {} schemas from {}", localResult.size(), node);
+  //    } catch (Exception e) {
+  //      logger.error("Cannot execute show now plan  {} from {} locally.", plan, node);
+  //      throw e;
+  //    }
+  //  }
+  //
+  //  private void showRemoteNow(Node node, ShowNowPlan plan, Set<ShowNowResult> resultSet) {
+  //    ByteBuffer resultBinary = null;
+  //    // for (Node node : group) {
+  //    try {
+  //      resultBinary = showNow(node, plan);
+  //      //        if (resultBinary != null) {
+  //      //          break;
+  //      //        }
+  //    } catch (IOException e) {
+  //      logger.error(LOG_FAIL_CONNECT, node, e);
+  //    } catch (TException e) {
+  //      logger.error("Error occurs when getting  now in node {}.", node, e);
+  //    } catch (InterruptedException e) {
+  //      logger.error("Interrupted when getting  now in node {}.", node, e);
+  //      Thread.currentThread().interrupt();
+  //    }
+  //    // }
+  //
+  //    // resultSet.add(ShowNowResult.deserialize(resultBinary));
+  //
+  //    if (resultBinary != null) {
+  //      int size = resultBinary.getInt();
+  //      logger.debug("Fetched remote now {} schemas  from {}", size, node);
+  //      for (int i = 0; i < size; i++) {
+  //        resultSet.add(ShowNowResult.deserialize(resultBinary));
+  //      }
+  //    } else {
+  //      logger.error("Failed to execute show now {} in group: {}.", plan, node);
+  //    }
+  //  }
+
   @Override
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
@@ -1638,6 +1748,15 @@ public class CMManager extends MManager {
     logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
     return showTimeSeriesResults;
   }
+
+  //  private List<ShowNowResult> applyShowNow(ConcurrentSkipListSet<ShowNowResult> resultSet) {
+  //    List<ShowNowResult> showNowResults = new ArrayList<>();
+  //    Iterator<ShowNowResult> iterator = resultSet.iterator();
+  //    while (iterator.hasNext()) {
+  //      showNowResults.add(iterator.next());
+  //    }
+  //    return showNowResults;
+  //  }
 
   private List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(
       ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet, int limit, int offset) {
@@ -1794,6 +1913,38 @@ public class CMManager extends MManager {
       logger.error("Failed to execute show devices {} in group: {}.", plan, group);
     }
   }
+
+  //  private ByteBuffer showNow(Node node, ShowNowPlan plan)
+  //      throws IOException, TException, InterruptedException {
+  //    ByteBuffer resultBinary;
+  //
+  //    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+  //      AsyncDataClient client =
+  //          metaGroupMember
+  //              .getClientProvider()
+  //              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+  //      resultBinary = SyncClientAdaptor.getAllShowNow(client, node, plan);
+  //    } else {
+  //      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+  //          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+  //          SyncDataClient syncDataClient =
+  //              metaGroupMember
+  //                  .getClientProvider()
+  //                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+  //        plan.serialize(dataOutputStream);
+  //        try {
+  //          resultBinary =
+  //              syncDataClient.getShowNow(node,
+  // ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+  //        } catch (TException e) {
+  //          // the connection may be broken, close it to avoid it being reused
+  //          syncDataClient.getInputProtocol().getTransport().close();
+  //          throw e;
+  //        }
+  //      }
+  //    }
+  //    return resultBinary;
+  //  }
 
   private ByteBuffer showRemoteTimeseries(Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
       throws IOException, TException, InterruptedException {

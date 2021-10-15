@@ -311,6 +311,7 @@ public abstract class PhysicalPlan {
           break;
         case SHOW_NOW:
           plan = new ShowNowPlan();
+          break;
         case LOAD_CONFIGURATION:
           plan = new LoadConfigurationPlan();
           break;

@@ -110,6 +110,11 @@ public class IoTDBConstant {
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
   public static final String SYSTEM_TIME = "SystemTime";
+  public static final String CPU_LOAD = "CpuLoad";
+  public static final String TOTAL_MEMORYSIZE = "TotalMemorySize";
+  public static final String FREE_MEMORYSIZE = "FreeMemorySize";
+  public static final String IP_ADDRESS = "IpAddress";
+
   // sdt parameters
   public static final String LOSS = "loss";
   public static final String SDT = "sdt";

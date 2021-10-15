@@ -114,6 +114,7 @@ import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
+import org.apache.iotdb.db.query.dataset.ShowNowDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
@@ -195,7 +196,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SYSTEM_TIME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -591,24 +591,16 @@ public class PlanExecutor implements IPlanExecutor {
       case TRIGGERS:
         return processShowTriggers((ShowTriggersPlan) showPlan);
       case NOW:
-        return processShowNow();
+        return queryRouter.showNowQuery((ShowNowPlan) showPlan, context);
+        // return processShowNow((ShowNowPlan) showPlan, context);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
   }
 
-  private QueryDataSet processShowNow() {
-    ShowNowPlan showNowPlan = new ShowNowPlan(ShowPlan.ShowContentType.NOW);
-    SingleDataSet singleDataSet =
-        new SingleDataSet(
-            Collections.singletonList(new PartialPath(SYSTEM_TIME, false)),
-            Collections.singletonList(TSDataType.TEXT));
-    Field field = new Field(TSDataType.TEXT);
-    field.setBinaryV(new Binary(showNowPlan.now()));
-    RowRecord rowRecord = new RowRecord(0);
-    rowRecord.addField(field);
-    singleDataSet.setRecord(rowRecord);
-    return singleDataSet;
+  private QueryDataSet processShowNow(ShowNowPlan plan, QueryContext context)
+      throws MetadataException {
+    return new ShowNowDataSet(plan, context);
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
