@@ -247,7 +247,8 @@ public class MLogUpgrader {
         break;
       case MetadataOperationType.CREATE_ALIGNED_TIMESERIES:
       case MetadataOperationType.AUTO_CREATE_DEVICE_MNODE:
-        throw new MetadataException("Impossible operation!");
+        logger.warn("Impossible operation!");
+        break;
       case MetadataOperationType.DELETE_TIMESERIES:
         if (args.length > 2) {
           StringBuilder tmp = new StringBuilder();
