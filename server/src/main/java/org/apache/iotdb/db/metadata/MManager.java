@@ -629,7 +629,7 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
+      List<PartialPath> allTimeseries = mtree.getFlatMeasurementPaths(prefixPath);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
       }
@@ -1116,17 +1116,18 @@ public class MManager {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
-  public List<PartialPath> getAllTimeseriesPath(PartialPath pathPattern) throws MetadataException {
-    return mtree.getAllTimeseriesPath(pathPattern);
+  public List<PartialPath> getFlatMeasurementPaths(PartialPath pathPattern)
+      throws MetadataException {
+    return mtree.getFlatMeasurementPaths(pathPattern);
   }
 
   /**
    * Similar to method getAllTimeseriesPath(), but return Path with alias and filter the result by
    * limit and offset.
    */
-  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
+  public Pair<List<PartialPath>, Integer> getFlatMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    return mtree.getAllTimeseriesPathWithAlias(pathPattern, limit, offset);
+    return mtree.getFlatMeasurementPathsWithAlias(pathPattern, limit, offset);
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
@@ -1194,9 +1195,9 @@ public class MManager {
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     List<Pair<PartialPath, String[]>> ans;
     if (plan.isOrderByHeat()) {
-      ans = mtree.getAllMeasurementSchemaByHeatOrder(plan, context);
+      ans = mtree.getAllFlatMeasurementSchemaByHeatOrder(plan, context);
     } else {
-      ans = mtree.getAllMeasurementSchema(plan);
+      ans = mtree.getAllFlatMeasurementSchema(plan);
     }
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     for (Pair<PartialPath, String[]> ansString : ans) {

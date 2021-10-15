@@ -873,8 +873,9 @@ public class MTree implements Serializable {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
-  public List<PartialPath> getAllTimeseriesPath(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesPathWithAlias(pathPattern, 0, 0).left;
+  public List<PartialPath> getFlatMeasurementPaths(PartialPath pathPattern)
+      throws MetadataException {
+    return getFlatMeasurementPathsWithAlias(pathPattern, 0, 0).left;
   }
 
   /**
@@ -884,7 +885,7 @@ public class MTree implements Serializable {
    * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
    *     if we don't set offset.
    */
-  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
+  public Pair<List<PartialPath>, Integer> getFlatMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     FlatMeasurementPathCollector collector =
         new FlatMeasurementPathCollector(root, pathPattern, limit, offset);
@@ -899,7 +900,7 @@ public class MTree implements Serializable {
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
+  public List<Pair<PartialPath, String[]>> getAllFlatMeasurementSchemaByHeatOrder(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     FlatMeasurementSchemaCollector collector =
         new FlatMeasurementSchemaCollector(root, plan.getPath());
@@ -929,7 +930,7 @@ public class MTree implements Serializable {
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
+  public List<Pair<PartialPath, String[]>> getAllFlatMeasurementSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
     FlatMeasurementSchemaCollector collector =
         new FlatMeasurementSchemaCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());

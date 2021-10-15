@@ -543,7 +543,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     try {
-      assertTrue(manager.getAllTimeseriesPath(new PartialPath("root")).isEmpty());
+      assertTrue(manager.getFlatMeasurementPaths(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(

@@ -1019,9 +1019,9 @@ public class CMManager extends MManager {
   private List<PartialPath> getMatchedPathsLocally(PartialPath partialPath, boolean withAlias)
       throws MetadataException {
     if (!withAlias) {
-      return getAllTimeseriesPath(partialPath);
+      return getFlatMeasurementPaths(partialPath);
     } else {
-      return super.getAllTimeseriesPathWithAlias(partialPath, -1, -1).left;
+      return super.getFlatMeasurementPathsWithAlias(partialPath, -1, -1).left;
     }
   }
 
@@ -1222,7 +1222,7 @@ public class CMManager extends MManager {
 
   /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
   @Override
-  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
+  public Pair<List<PartialPath>, Integer> getFlatMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     Map<String, String> sgPathMap = groupPathByStorageGroup(pathPattern);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);
@@ -1305,7 +1305,7 @@ public class CMManager extends MManager {
   public List<String> getAllPaths(List<String> paths) throws MetadataException {
     List<String> ret = new ArrayList<>();
     for (String path : paths) {
-      getAllTimeseriesPath(new PartialPath(path)).stream()
+      getFlatMeasurementPaths(new PartialPath(path)).stream()
           .map(PartialPath::getFullPath)
           .forEach(ret::add);
     }
@@ -1721,7 +1721,7 @@ public class CMManager extends MManager {
     if (withAlias) {
       for (String path : paths) {
         List<PartialPath> allTimeseriesPathWithAlias =
-            super.getAllTimeseriesPathWithAlias(new PartialPath(path), -1, -1).left;
+            super.getFlatMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
         for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
           retPaths.add(timeseriesPathWithAlias.getFullPath());
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());
