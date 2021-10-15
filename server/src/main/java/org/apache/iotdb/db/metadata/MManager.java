@@ -682,6 +682,12 @@ public class MManager {
     TriggerEngine.drop(pair.right);
 
     IMNode node = measurementMNode.getParent();
+
+    if (node.isUseTemplate() && node.getSchemaTemplate().hasSchema(measurementMNode.getName())) {
+      // measurement represent by template doesn't affect the MTree structure and memory control
+      return storageGroupPath;
+    }
+
     while (node.isEmptyInternal()) {
       entityMNodeCache.removeObject(node.getPartialPath());
       node = node.getParent();
