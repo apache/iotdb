@@ -1276,7 +1276,7 @@ public class MManager {
    * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode leaf = mtree.getMeasurementMNode(fullPath);
+    IMeasurementMNode leaf = getMeasurementMNode(fullPath);
     return getSeriesSchema(fullPath, leaf);
   }
 
@@ -1375,7 +1375,7 @@ public class MManager {
     IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
       try {
-        mNodes[i] = mtree.getMeasurementMNode(deviceId.concatNode(measurements[i]));
+        mNodes[i] = getMeasurementMNode(deviceId.concatNode(measurements[i]));
       } catch (PathNotExistException | MNodeTypeMismatchException ignored) {
         logger.warn("MeasurementMNode {} does not exist in {}", measurements[i], deviceId);
       }
@@ -1698,7 +1698,7 @@ public class MManager {
       Long latestFlushedTime) {
     IMeasurementMNode node;
     try {
-      node = mtree.getMeasurementMNode(seriesPath);
+      node = getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
       return;
@@ -1768,7 +1768,7 @@ public class MManager {
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {
-      node = mtree.getMeasurementMNode(seriesPath);
+      node = getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
       return null;
@@ -1814,7 +1814,7 @@ public class MManager {
   public void resetLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {
-      node = mtree.getMeasurementMNode(seriesPath);
+      node = getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
       return;
