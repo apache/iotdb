@@ -171,11 +171,11 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
+  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     cacheLock.writeLock().lock();
-    mRemoteMetaCache.removeItem(prefixPath);
+    mRemoteMetaCache.removeItem(pathPattern);
     cacheLock.writeLock().unlock();
-    return super.deleteTimeseries(prefixPath);
+    return super.deleteTimeseries(pathPattern);
   }
 
   @Override

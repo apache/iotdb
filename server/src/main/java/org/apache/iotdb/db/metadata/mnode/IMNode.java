@@ -67,7 +67,7 @@ public interface IMNode extends Serializable {
 
   void setSchemaTemplate(Template schemaTemplate);
 
-  int getMeasurementMNodeCount();
+  boolean isEmptyInternal();
 
   boolean isStorageGroup();
 

@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -187,7 +186,7 @@ public class MManager {
 
   private MTree mtree;
   // device -> DeviceMNode
-  private RandomDeleteCache<PartialPath, IMNode> mNodeCache;
+  private RandomDeleteCache<PartialPath, IMNode> entityMNodeCache;
   private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
@@ -226,7 +225,7 @@ public class MManager {
     isRecovering = true;
 
     int cacheSize = config.getmManagerCacheSize();
-    mNodeCache =
+    entityMNodeCache =
         new RandomDeleteCache<PartialPath, IMNode>(cacheSize) {
 
           @Override
@@ -353,8 +352,8 @@ public class MManager {
       if (this.mtree != null) {
         this.mtree.clear();
       }
-      if (this.mNodeCache != null) {
-        this.mNodeCache.clear();
+      if (this.entityMNodeCache != null) {
+        this.entityMNodeCache.clear();
       }
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
@@ -477,7 +476,7 @@ public class MManager {
               plan.getAlias());
 
       // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.removeObject(path.getDevicePath());
+      entityMNodeCache.removeObject(path.getDevicePath());
 
       // update tag index
       if (plan.getTags() != null) {
@@ -582,7 +581,7 @@ public class MManager {
           prefixPath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
 
       // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.removeObject(prefixPath.getDevicePath());
+      entityMNodeCache.removeObject(prefixPath.getDevicePath());
 
       // update statistics and schemaDataTypeNumMap
       totalSeriesNumber.addAndGet(measurements.size());
@@ -621,34 +620,14 @@ public class MManager {
   /**
    * Delete all timeseries matching the given path pattern, may cross different storage group
    *
-   * @param prefixPath path to be deleted, could be root or a prefix path or a full path
+   * @param pathPattern path to be deleted, could be root or a prefix path or a full path
    * @return deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
-    if (isStorageGroup(prefixPath)) {
-      mNodeCache.clear();
-    }
+  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     try {
-      List<PartialPath> allTimeseries = mtree.getMeasurementPaths(prefixPath);
+      List<PartialPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
       if (allTimeseries.isEmpty()) {
-        throw new PathNotExistException(prefixPath.getFullPath());
-      }
-
-      // for not support deleting part of aligned timeseies
-      // should be removed after partial deletion is supported
-      IMNode lastNode = mtree.getNodeByPath(allTimeseries.get(0));
-      if (lastNode.isMeasurement()) {
-        IMeasurementMNode measurementMNode = lastNode.getAsMeasurementMNode();
-        if (measurementMNode.isMultiMeasurement()) {
-          if (measurementMNode.getAsMultiMeasurementMNode().getSubMeasurementList().size()
-              != allTimeseries.size()) {
-            throw new AlignedTimeseriesException(
-                "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
-          } else {
-            allTimeseries.clear();
-            allTimeseries.add(lastNode.getPartialPath());
-          }
-        }
+        throw new PathNotExistException(pathPattern.getFullPath());
       }
 
       // Monitor storage group seriesPath is not allowed to be deleted
@@ -705,8 +684,11 @@ public class MManager {
     // drop trigger with no exceptions
     TriggerEngine.drop(pair.right);
 
-    // TODO: delete the path node and all its ancestors
-    mNodeCache.clear();
+    IMNode node = measurementMNode.getParent();
+    while (node.isEmptyInternal()) {
+      entityMNodeCache.removeObject(node.getPartialPath());
+      node = node.getParent();
+    }
     totalSeriesNumber.addAndGet(-timeseriesNum);
     if (!allowToCreateNewSeries
         && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -755,7 +737,7 @@ public class MManager {
           logger.info("Current series number {} come back to normal level", totalSeriesNumber);
           allowToCreateNewSeries = true;
         }
-        mNodeCache.clear();
+        entityMNodeCache.clear();
 
         // try to delete storage group
         List<IMeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
@@ -805,7 +787,7 @@ public class MManager {
     IMNode node;
     boolean shouldSetStorageGroup;
     try {
-      node = mNodeCache.get(path);
+      node = entityMNodeCache.get(path);
       return node;
     } catch (CacheException e) {
       if (!autoCreateSchema) {
@@ -1313,7 +1295,7 @@ public class MManager {
       throws PathNotExistException {
     Set<IMeasurementSchema> res = new HashSet<>();
     try {
-      IMNode node = mNodeCache.get(devicePath);
+      IMNode node = entityMNodeCache.get(devicePath);
       Template template = node.getUpperTemplate();
 
       for (IMNode child : node.getChildren().values()) {
@@ -1365,7 +1347,7 @@ public class MManager {
   IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
-      node = mNodeCache.get(path);
+      node = entityMNodeCache.get(path);
       return node;
     } catch (CacheException e) {
       throw new PathNotExistException(path.getFullPath());
@@ -2156,7 +2138,7 @@ public class MManager {
     IEntityMNode entityMNode = mtree.setToEntity(node);
     entityMNode.setUseTemplate(true);
     if (node != entityMNode) {
-      mNodeCache.removeObject(entityMNode.getPartialPath());
+      entityMNodeCache.removeObject(entityMNode.getPartialPath());
     }
     if (!isRecovering) {
       try {
