@@ -460,9 +460,6 @@ public class IoTDBConfig {
   /** Is stat performance of sub-module enable. */
   private boolean enablePerformanceStat = false;
 
-  /** Is performance tracing enable. */
-  private boolean enablePerformanceTracing = false;
-
   /** The display of stat performance interval in ms. Unit: millisecond */
   private long performanceStatDisplayInterval = 60000;
 
@@ -1474,14 +1471,6 @@ public class IoTDBConfig {
 
   public void setEnablePerformanceStat(boolean enablePerformanceStat) {
     this.enablePerformanceStat = enablePerformanceStat;
-  }
-
-  public boolean isEnablePerformanceTracing() {
-    return enablePerformanceTracing;
-  }
-
-  public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {
-    this.enablePerformanceTracing = enablePerformanceTracing;
   }
 
   public long getPerformanceStatDisplayInterval() {
