@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -380,15 +380,18 @@ public class SeriesReader {
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
 
-    // try to calculate the total number of chunk and time-value points in chunk
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+    // for tracing: try to calculate the number of chunk and time-value points in chunk
+    if (context.isEnableTracing()) {
       long totalChunkPointsNum =
           chunkMetadataList.stream()
               .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
               .sum();
       TracingManager.getInstance()
-          .getTracingInfo(context.getQueryId())
-          .addChunkInfo(chunkMetadataList.size(), totalChunkPointsNum);
+          .addChunkInfo(
+              context.getQueryId(),
+              chunkMetadataList.size(),
+              totalChunkPointsNum,
+              timeSeriesMetadata.isSeq());
     }
 
     cachedChunkMetadata.addAll(chunkMetadataList);
@@ -559,9 +562,12 @@ public class SeriesReader {
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
-    if (CONFIG.isEnablePerformanceTracing()) {
-      addTotalPageNumInTracing(pageReaderList.size());
+
+    // for tracing: try to calculate the number of pages
+    if (context.isEnableTracing()) {
+      addTotalPageNumInTracing(context.getQueryId(), pageReaderList.size());
     }
+
     pageReaderList.forEach(
         pageReader -> {
           if (chunkMetaData.isSeq()) {
@@ -593,8 +599,8 @@ public class SeriesReader {
         });
   }
 
-  private void addTotalPageNumInTracing(int pageNum) {
-    TracingManager.getInstance().getTracingInfo(context.getQueryId()).addTotalPageNum(pageNum);
+  private void addTotalPageNumInTracing(long queryId, int pageNum) {
+    TracingManager.getInstance().addTotalPageNum(queryId, pageNum);
   }
 
   /**

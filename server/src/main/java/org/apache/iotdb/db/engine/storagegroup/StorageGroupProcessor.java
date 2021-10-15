@@ -1483,7 +1483,6 @@ public class StorageGroupProcessor {
         systemDir);
     writeLock("deleteFolder");
     try {
-      syncCloseAllWorkingTsFileProcessors();
       File storageGroupFolder =
           SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
       if (storageGroupFolder.exists()) {

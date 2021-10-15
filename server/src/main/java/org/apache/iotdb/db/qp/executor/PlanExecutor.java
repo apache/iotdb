@@ -117,10 +117,8 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowContinuousQueriesResult;
@@ -324,8 +322,7 @@ public class PlanExecutor implements IPlanExecutor {
         operateMerge((MergePlan) plan);
         return true;
       case TRACING:
-        operateTracing((TracingPlan) plan);
-        return true;
+        throw new QueryProcessException("TRACING ON/OFF hasn't been supported yet");
       case SET_SYSTEM_MODE:
         operateSetSystemMode((SetSystemModePlan) plan);
         return true;
@@ -474,18 +471,6 @@ public class PlanExecutor implements IPlanExecutor {
             queryTimeManager.killQuery(queryId);
           }
         }
-      }
-    }
-  }
-
-  /** when tracing off need Close the stream */
-  private void operateTracing(TracingPlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
-    if (!plan.isTracingOn()) {
-      TracingManager.getInstance().close();
-    } else {
-      if (!TracingManager.getInstance().getWriterStatus()) {
-        TracingManager.getInstance().openTracingWriteStream();
       }
     }
   }
@@ -1754,6 +1739,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       IoTDB.metaManager.deleteStorageGroups(deletePathList);
+      operateClearCache();
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
