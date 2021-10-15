@@ -18,24 +18,18 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,8 +47,6 @@ public class QueryResourceManager {
 
   private final AtomicLong queryIdAtom = new AtomicLong();
   private final QueryFileManager filePathsManager;
-  private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
-  private IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * Record temporary files used for external sorting.
@@ -100,11 +92,14 @@ public class QueryResourceManager {
         new SingleSeriesExpression(selectedPath, filter);
     QueryDataSource queryDataSource =
         StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
-    // calculate the distinct number of seq and unseq tsfiles
-    if (CONFIG.isEnablePerformanceTracing()) {
+
+    // for tracing: calculate the distinct number of seq and unseq tsfiles
+    if (context.isEnableTracing()) {
       TracingManager.getInstance()
-          .getTracingInfo(context.getQueryId())
-          .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
+          .addTsFileSet(
+              context.getQueryId(),
+              queryDataSource.getSeqResources(),
+              queryDataSource.getUnseqResources());
     }
     return queryDataSource;
   }
@@ -115,19 +110,6 @@ public class QueryResourceManager {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
-    try {
-      if (CONFIG.isEnablePerformanceTracing()
-          && TracingManager.getInstance().getTracingInfo(queryId) != null) {
-        TracingManager.getInstance().writeTracingInfo(queryId);
-        TracingManager.getInstance().writeEndTime(queryId);
-      }
-    } catch (IOException e) {
-      logger.error(
-          "Error while writing performance info to {}, {}",
-          CONFIG.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG,
-          e.getMessage());
-    }
-
     // close file stream of external sort files, and delete
     if (externalSortFileMap.get(queryId) != null) {
       for (IExternalSortFileDeserializer deserializer : externalSortFileMap.get(queryId)) {

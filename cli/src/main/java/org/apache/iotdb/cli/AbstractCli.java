@@ -19,6 +19,7 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -534,6 +535,12 @@ public abstract class AbstractCli {
               e.printStackTrace();
             }
           }
+          // output tracing activity
+          if (((AbstractIoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
+            maxSizeList = new ArrayList<>(2);
+            lists = cacheTracingInfo(resultSet, maxSizeList);
+            outputTracingInfo(lists, maxSizeList);
+          }
         }
       } else {
         println("Msg: " + SUCCESS_MESSAGE);
@@ -641,6 +648,54 @@ public abstract class AbstractCli {
     return lists;
   }
 
+  private static List<List<String>> cacheTracingInfo(ResultSet resultSet, List<Integer> maxSizeList)
+      throws Exception {
+    List<List<String>> lists = new ArrayList<>(2);
+    lists.add(0, new ArrayList<>());
+    lists.add(1, new ArrayList<>());
+
+    String ACTIVITY_STR = "Activity";
+    String ELAPSED_TIME_STR = "Elapsed Time";
+    lists.get(0).add(ACTIVITY_STR);
+    lists.get(1).add(ELAPSED_TIME_STR);
+    maxSizeList.add(0, ACTIVITY_STR.length());
+    maxSizeList.add(1, ELAPSED_TIME_STR.length());
+
+    List<String> activityList = ((AbstractIoTDBJDBCResultSet) resultSet).getActivityList();
+    List<Long> elapsedTimeList = ((AbstractIoTDBJDBCResultSet) resultSet).getElapsedTimeList();
+    String[] statisticsInfoList = {
+      "seriesPathNum", "seqFileNum", "unSeqFileNum", "seqChunkInfo", "unSeqChunkInfo", "pageNumInfo"
+    };
+
+    for (int i = 0; i < activityList.size(); i++) {
+
+      if (i == activityList.size() - 1) {
+        // cache Statistics
+        for (String infoName : statisticsInfoList) {
+          String info = ((AbstractIoTDBJDBCResultSet) resultSet).getStatisticsInfoByName(infoName);
+          lists.get(0).add(info);
+          lists.get(1).add("");
+          if (info.length() > maxSizeList.get(0)) {
+            maxSizeList.set(0, info.length());
+          }
+        }
+      }
+
+      String activity = activityList.get(i);
+      String elapsedTime = elapsedTimeList.get(i).toString();
+      if (activity.length() > maxSizeList.get(0)) {
+        maxSizeList.set(0, activity.length());
+      }
+      if (elapsedTime.length() > maxSizeList.get(1)) {
+        maxSizeList.set(1, elapsedTime.length());
+      }
+      lists.get(0).add(activity);
+      lists.get(1).add(elapsedTime);
+    }
+
+    return lists;
+  }
+
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
     printBlockLine(maxSizeList);
     printRow(lists, 0, maxSizeList);
@@ -655,6 +710,18 @@ public abstract class AbstractCli {
     } else {
       lineCount += maxPrintRowCount;
     }
+  }
+
+  private static void outputTracingInfo(List<List<String>> lists, List<Integer> maxSizeList) {
+    println();
+    println("Tracing Activties:");
+    printBlockLine(maxSizeList);
+    printRow(lists, 0, maxSizeList);
+    printBlockLine(maxSizeList);
+    for (int i = 1; i < lists.get(0).size(); i++) {
+      printRow(lists, i, maxSizeList);
+    }
+    printBlockLine(maxSizeList);
   }
 
   private static void resetArgs() {

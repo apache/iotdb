@@ -281,6 +281,7 @@ public class IoTDBStatement implements Statement {
                 queryId,
                 sessionId,
                 execResp.nonAlignQueryDataSet,
+                execResp.tracingInfo,
                 execReq.timeout,
                 execResp.operationType,
                 execResp.getSgColumns(),
@@ -298,6 +299,7 @@ public class IoTDBStatement implements Statement {
                 queryId,
                 sessionId,
                 execResp.queryDataSet,
+                execResp.tracingInfo,
                 execReq.timeout,
                 true);
       }
@@ -431,6 +433,7 @@ public class IoTDBStatement implements Statement {
               queryId,
               sessionId,
               execResp.nonAlignQueryDataSet,
+              execResp.tracingInfo,
               execReq.timeout,
               execResp.operationType,
               execResp.sgColumns,
@@ -448,6 +451,7 @@ public class IoTDBStatement implements Statement {
               queryId,
               sessionId,
               execResp.queryDataSet,
+              execResp.tracingInfo,
               execReq.timeout,
               execResp.operationType,
               execResp.columns,
