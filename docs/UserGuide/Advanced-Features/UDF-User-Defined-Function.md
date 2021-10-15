@@ -23,7 +23,7 @@
 
 # User Defined Function (UDF)
 
-IoTDB provides a variety of built-in functions to meet your computing needs, and you can also create user defined functions to meet more computing needs. 
+UDF (User Defined Function) is a user-defined function.IoTDB provides a variety of built-in functions to meet your computing needs, and you can also create user defined functions to meet more computing needs. 
 
 This document describes how to write, register and use a UDF.
 
@@ -31,11 +31,11 @@ This document describes how to write, register and use a UDF.
 
 ## UDF Types
 
-In IoTDB, you can expand two types of UDF:
+IoTDB supports two types of UDF functions, as shown in the following table.
 
 | UDF Class                                           | Description                                                  |
 | --------------------------------------------------- | ------------------------------------------------------------ |
-| UDTF（User Defined Timeseries Generating Function） | This type of function can take **multiple** time series as input, and output **one** time series, which can have any number of data points. |
+| UDTF（User Defined Timeseries Generating Function） | Custom timeseries generation function. This type of function can take **multiple** time series as input, and output **one** time series, which can have any number of data points. |
 | UDAF（User Defined Aggregation Function）           | Under development, please stay tuned.                        |
 
 
@@ -68,7 +68,7 @@ The following table shows all the interfaces available for user implementation.
 | `void transform(Row row, PointCollector collector) throws Exception` | This method is called by the framework. This data processing method will be called when you choose to use the `RowByRowAccessStrategy` strategy (set in `beforeStart`) to consume raw data. Input data is passed in by `Row`, and the transformation result should be output by `PointCollector`. You need to call the data collection method provided by `collector`  to determine the output data. | Required to implement at least one `transform` method |
 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` | This method is called by the framework. This data processing method will be called when you choose to use the `SlidingSizeWindowAccessStrategy` or `SlidingTimeWindowAccessStrategy` strategy (set in `beforeStart`) to consume raw data. Input data is passed in by `RowWindow`, and the transformation result should be output by `PointCollector`. You need to call the data collection method provided by `collector`  to determine the output data. | Required to implement at least one `transform` method |
 | `void terminate(PointCollector collector) throws Exception`  | This method is called by the framework. This method will be called once after all `transform` calls have been executed. In a single UDF query, this method will and will only be called once. You need to call the data collection method provided by `collector`  to determine the output data. | Optional                                              |
-| `void beforeDestroy() `                                      | This method is called by the framework after the last input data is processed, and will only be called once in the life cycle of each UDF instance. | Optional                                              |
+| `void beforeDestroy() `                                      | End method of UDTF. This method is called by the framework after the last input data is processed, and will only be called once in the life cycle of each UDF instance. | Optional                                              |
 
 In the life cycle of a UDTF instance, the calling sequence of each method is as follows:
 
@@ -96,10 +96,10 @@ Please refer to the Javadoc for the usage of `UDFParameterValidator`.
 
 ### void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception
 
-This method is mainly used to customize UDTF. In this method, the user can do the following things:
+This method is mainly used to customize UDTF. The methods of beforestart do three functions:
 
-1. Use UDFParameters to get the time series paths and parse key-value pair attributes entered by the user.
-2. Set the strategy to access the raw data and set the output data type in UDTFConfigurations.
+1. Helping users parse UDF parameters in SQL statements.
+2. Configure the necessary information when the UDF runs, that is, specify the strategy adopted when the UDF accesses the original data and the type of the output result sequence.
 3. Create resources, such as establishing external connections, opening files, etc.
 
 
@@ -107,7 +107,7 @@ This method is mainly used to customize UDTF. In this method, the user can do th
 
 #### UDFParameters
 
-`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is the paths (measurements) and their data types of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
+`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). Parameters include path parameters (and its sequence type) and property parameters entered as string key-value paris.
 
 
 Example：
@@ -162,7 +162,7 @@ The `setAccessStrategy` method is used to set the UDF's strategy for accessing t
 
 ##### setAccessStrategy
 
-Note that the raw data access strategy you set here determines which `transform` method the framework will call. Please implement the `transform` method corresponding to the raw data access strategy. Of course, you can also dynamically decide which strategy to set based on the attribute parameters parsed by `UDFParameters`. Therefore, two `transform` methods are also allowed to be implemented in one UDF.
+Note that the raw data access strategy you set here determines which `transform` method the framework will call. Please implement the `transform` method corresponding to the raw data access strategy. Of course, you can also dynamically decide which strategy to set based on the attribute parameters parsed by `UDFParameters`. Therefore, it is also allowed to implement two transform methods.
 
 The following are the strategies you can set:
 
@@ -180,13 +180,13 @@ The following are the strategies you can set:
 
 `SlidingTimeWindowAccessStrategy`: `SlidingTimeWindowAccessStrategy` has many constructors, you can pass 3 types of parameters to them:
 
-- Parameter 1: The display window on the time axis
+- Parameter 1: Timeline shows the start and end times of the time window
 - Parameter 2: Time interval for dividing the time axis (should be positive)
 - Parameter 3: Time sliding step (not required to be greater than or equal to the time interval, but must be a positive number)
 
 The first type of parameters are optional. If the parameters are not provided, the beginning time of the display window will be set to the same as the minimum timestamp of the query result set, and the ending time of the display window will be set to the same as the maximum timestamp of the query result set.
 
-The sliding step parameter is also optional. If the parameter is not provided, the sliding step will be set to the same as the time interval for dividing the time axis.
+The sliding step parameter is not required. If the parameter is not provided, the sliding step will be set to the same as the time interval for dividing the time axis.
 
 The relationship between the three types of parameters can be seen in the figure below. Please see the Javadoc for more details. 
 
@@ -238,7 +238,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 ### void transform(Row row, PointCollector collector) throws Exception
 
-You need to implement this method when you specify the strategy of UDF to read the original data as `RowByRowAccessStrategy`.
+When you specify in the beforeStart method that the UDF's policy for reading the raw data is `RowByRowAccessStrategy`, you need to implement this method and add logic to the method for processing the raw data.
 
 This method processes the raw data one row at a time. The raw data is input from `Row` and output by `PointCollector`. You can output any number of data points in one `transform` method call. It should be noted that the type of output data points must be the same as you set in the `beforeStart` method, and the timestamps of output data points must be strictly monotonically increasing.
 
@@ -276,7 +276,7 @@ public class Adder implements UDTF {
 
 ### void transform(RowWindow rowWindow, PointCollector collector) throws Exception
 
-You need to implement this method when you specify the strategy of UDF to read the original data as `SlidingTimeWindowAccessStrategy` or `SlidingSizeWindowAccessStrategy`.
+You need to implement this method when you specify the strategy of UDF to read the original data as `SlidingTimeWindowAccessStrategy` or `SlidingSizeWindowAccessStrategy`.Add logic for raw data processing to the method.
 
 This method processes a batch of data in a fixed number of rows or a fixed time interval each time, and we call the container containing this batch of data a window. The raw data is input from `RowWindow` and output by `PointCollector`. `RowWindow` can help you access a batch of `Row`, it provides a set of interfaces for random access and iterative access to this batch of `Row`. You can output any number of data points in one `transform` method call. It should be noted that the type of output data points must be the same as you set in the `beforeStart` method, and the timestamps of output data points must be strictly monotonically increasing.
 
@@ -370,7 +370,7 @@ public class Max implements UDTF {
 
 ### void beforeDestroy() 
 
-The method for terminating a UDF.
+The method for terminating a UDF.You can do functions like resource release in this method.
 
 This method is called by the framework. For a UDF instance, `beforeDestroy` will be called after the last record is processed. In the entire life cycle of the instance, `beforeDestroy` will only be called once.
 
@@ -410,8 +410,8 @@ Since UDF instances are dynamically loaded through reflection technology, you do
 
 Note: UDF function names are not case sensitive.
 
-Note: Please ensure that the function name given to the UDF is different from all built-in function names. A UDF with the same name as a built-in function cannot be registered.
-
+Note: Please ensure that the function name given to the UDF is different from all built-in function names. Registering the UDF with the name of the built-in function will fail.
+ 
 Note: We recommend that you do not use classes that have the same class name but different function logic in different JAR packages. For example, in `UDF(UDAF/UDTF): udf1, udf2`, the JAR package of udf1 is `udf1.jar` and the JAR package of udf2 is `udf2.jar`. Assume that both JAR packages contain the `org.apache.iotdb.udf.ExampleUDTF` class. If you use two UDFs in the same SQL statement at the same time, the system will randomly load either of them and may cause inconsistency in UDF execution behavior.
 
 
