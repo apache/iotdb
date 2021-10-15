@@ -32,8 +32,7 @@
 
 ### Installation
 
-The compilation of CPP client requires the module "compile-tools" to be built first. 
-"compile-tools" is mainly responsible for building Thrift libraries locally.
+Before compiling the C++ client, you need to compile the Thrift library locally at first. The compile-tools module is responsible for compiling Thrift, and then compiling client-cpp.
 
 
 
@@ -41,10 +40,9 @@ The compilation of CPP client requires the module "compile-tools" to be built fi
 
 - Bison
 
-Bison 2.3 is preinstalled on OSX, but this version is too low.
+The Bison 2.3 version is pre-installed on the Mac , but the version is too low to be used to compile Thrift.
 
 When building Thrift with Bison 2.3, the following error would pop out:
-
 
 ```shell
 invalid directive: '%code'
@@ -95,6 +93,7 @@ to specify the OpenSSL installation directory on your Mac.
 
 #### Build Thrift on Linux
 
+Under Linux, you need to make sure that g++ has been installed.
 To install all dependencies, run:
 
 Debian/Ubuntu:
@@ -138,7 +137,7 @@ to your mvn build command.
 
 #### Cmake generator on Windows
 
-There is a long list of supported Cmake generators on Windows environment. 
+CMake needs to use different generators according to different compilation platforms. The list of generators supported by CMake is as follows (the result of cmake --help). 
 
 
 ```
@@ -189,6 +188,8 @@ The compiling requires the module "compile-tools" to be built first.
 
 
 #### Compile and Test
+
+Here is the complete C++ cilent command:
 
 `mvn package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
 
