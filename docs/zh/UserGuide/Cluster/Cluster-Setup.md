@@ -59,7 +59,7 @@ git checkout rel/0.12
 > mvn clean package -pl cluster -am -DskipTests
 ```
 
-集群的二进制版本在目录 **cluster/target/{iotdb-project.version}**下
+集群的二进制版本在目录 **cluster/target/{iotdb-project.version}** 下
 
 ### 下载
 
@@ -98,7 +98,7 @@ git checkout rel/0.12
 
 `iotdb-engine.properties`、`iotdb-env.sh`/`iotdb-env.bat` 两个配置文件详细说明请参考 [附录/配置手册](https://github.com/apache/iotdb/blob/master/docs/zh/UserGuide/Appendix/Config-Manual.md)，与集群有关的配置项是在`iotdb-cluster.properties`文件中的，你可以直接查看 [配置文件](https://github.com/apache/iotdb/blob/master/cluster/src/assembly/resources/conf/iotdb-cluster.properties) 中的注释，也可以参考 [Cluster Configuration](#集群配置项)。
 
-配置文件位于**{cluster\_root\_dir}/conf**。
+配置文件位于 **{cluster\_root\_dir}/conf**。
 
 **你需要修改每个节点以下的配置项去启动你的IoTDB集群：**
 
@@ -214,7 +214,7 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 | 名字         | internal_meta_port                                           |
 | ------------ | ------------------------------------------------------------ |
-| 描述         | IoTDB meta 服务端口，用于元数据组（又称集群管理组）通信，元数据组管理集群配置和存储组信息** IoTDB 将为每个 meta 服务自动创建心跳端口。默认 meta 服务心跳端口为`internal_meta_port+1`，请确认这两个端口不是系统保留端口并且未被占用** |
+| 描述         | IoTDB meta 服务端口，用于元数据组（又称集群管理组）通信，元数据组管理集群配置和存储组信息**IoTDB 将为每个 meta 服务自动创建心跳端口。默认 meta 服务心跳端口为`internal_meta_port+1`，请确认这两个端口不是系统保留端口并且未被占用** |
 | 类型         | Int32                                                        |
 | 默认值       | 9003                                                         |
 | 改后生效方式 | 重启服务生效，集群建立后不可再修改                           |
@@ -223,7 +223,7 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 | 名字         | internal_data_port                                           |
 | ------------ | ------------------------------------------------------------ |
-| 描述         | IoTDB data 服务端口，用于数据组通信，数据组管理数据模式和数据的存储** IoTDB 将为每个 data 服务自动创建心跳端口。默认的 data 服务心跳端口为`internal_data_port+1`。请确认这两个端口不是系统保留端口并且未被占用** |
+| 描述         | IoTDB data 服务端口，用于数据组通信，数据组管理数据模式和数据的存储**IoTDB 将为每个 data 服务自动创建心跳端口。默认的 data 服务心跳端口为`internal_data_port+1`。请确认这两个端口不是系统保留端口并且未被占用** |
 | 类型         | Int32                                                        |
 | 默认值       | 40010                                                        |
 | 改后生效方式 | 重启服务生效，集群建立后不可再修改                           |

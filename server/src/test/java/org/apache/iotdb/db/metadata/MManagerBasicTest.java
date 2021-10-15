@@ -32,7 +32,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -1177,21 +1176,22 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
       // show timeseries
       //      showTimeSeriesPlan =
       //          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
-      //      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      //      result = manager.showTimeseries(showTimeSeriesPlan,
+      // EnvironmentUtils.TEST_QUERY_CONTEXT);
       //      assertEquals(4, result.size());
 
       // show timeseries root.laptop.d1.vector
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.*"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(3, result.size());
       for (int i = 0; i < result.size(); i++) {
         assertEquals("root.laptop.d1.vector.s" + (i + 1), result.get(i).getName());
@@ -1201,7 +1201,7 @@ public class MManagerBasicTest {
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
     } catch (MetadataException e) {
@@ -1215,7 +1215,7 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     } catch (MetadataException e) {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
@@ -1281,7 +1281,7 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
@@ -1289,14 +1289,14 @@ public class MManagerBasicTest {
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
 
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(new PartialPath("root.**"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(4, result.size());
       Set<String> set = new HashSet<>();
       for (int i = 1; i < result.size(); i++) {
@@ -1319,8 +1319,7 @@ public class MManagerBasicTest {
       ShowTimeSeriesPlan showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     } catch (MetadataException e) {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",

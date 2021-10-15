@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,9 +49,11 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
   @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
+    if (!tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
   }
 
   @Override
@@ -78,30 +81,32 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
         noCompactionTsFileManagement.contains(
             new TsFileResource(
                 new File(
-                    TestConstant.BASE_OUTPUT_PATH.concat(
-                        10
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 10
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + ".tsfile"))),
+                    TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                        .concat(
+                            10
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 10
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + ".tsfile"))),
             false));
     assertTrue(noCompactionTsFileManagement.contains(seqResources.get(0), false));
     assertFalse(
         noCompactionTsFileManagement.contains(
             new TsFileResource(
                 new File(
-                    TestConstant.BASE_OUTPUT_PATH.concat(
-                        10
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 10
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + ".tsfile"))),
+                    TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                        .concat(
+                            10
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 10
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + ".tsfile"))),
             false));
     assertFalse(noCompactionTsFileManagement.isEmpty(true));
     assertFalse(noCompactionTsFileManagement.isEmpty(false));
@@ -127,28 +132,30 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
     noCompactionTsFileManagement.add(
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"))),
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile"))),
         true);
     noCompactionTsFileManagement.add(
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"))),
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile"))),
         false);
     noCompactionTsFileManagement.forkCurrentFileList(0);
     noCompactionTsFileManagement.recover();
@@ -187,41 +194,44 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
     TsFileResource tsFileResource1 =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     TsFileResource tsFileResource2 =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    11
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 11
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        11
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 11
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     noCompactionTsFileManagement.add(tsFileResource1, true);
     noCompactionTsFileManagement.add(tsFileResource2, true);
     TsFileResource tsFileResource3 =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    12
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 12
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 2
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        12
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 12
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 2
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     noCompactionTsFileManagement.add(tsFileResource3, true);
     Iterator<TsFileResource> tsFileResourceIterator2 =
         noCompactionTsFileManagement.getIterator(true);

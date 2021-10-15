@@ -23,11 +23,11 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
@@ -174,6 +174,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "buffered_arrays_memory_proportion",
                   Double.toString(conf.getBufferedArraysMemoryProportion()))));
+
+      conf.setTimeIndexMemoryProportion(
+          Double.parseDouble(
+              properties.getProperty(
+                  "time_index_memory_proportion",
+                  Double.toString(conf.getTimeIndexMemoryProportion()))));
 
       conf.setFlushProportion(
           Double.parseDouble(
@@ -534,14 +540,6 @@ public class IoTDBDescriptor {
               properties
                   .getProperty(
                       "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
-      conf.setEnablePerformanceTracing(
-          Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_performance_tracing",
-                      Boolean.toString(conf.isEnablePerformanceTracing()))
                   .trim()));
 
       conf.setPerformanceStatDisplayInterval(

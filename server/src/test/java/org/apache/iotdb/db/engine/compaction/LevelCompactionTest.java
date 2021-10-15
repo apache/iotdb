@@ -75,6 +75,7 @@ abstract class LevelCompactionTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
@@ -94,7 +95,7 @@ abstract class LevelCompactionTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
-    EnvironmentUtils.cleanAllDir();
+    EnvironmentUtils.cleanEnv();
   }
 
   void prepareSeries() throws MetadataException {
@@ -126,15 +127,16 @@ abstract class LevelCompactionTest {
     for (int i = 0; i < seqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                  .concat(
+                      i
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + i
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes((long) i);
@@ -144,15 +146,16 @@ abstract class LevelCompactionTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  (10000 + i)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + (10000 + i)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                  .concat(
+                      (10000 + i)
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + (10000 + i)
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
@@ -162,15 +165,16 @@ abstract class LevelCompactionTest {
 
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                .concat(
+                    unseqFileNum
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + unseqFileNum
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
@@ -237,15 +241,16 @@ abstract class LevelCompactionTest {
     // prepare file 1
     File file1 =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                System.nanoTime()
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                .concat(
+                    System.nanoTime()
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
     TsFileResource tsFileResource1 = new TsFileResource(file1);
     tsFileResource1.setClosed(true);
     tsFileResource1.updatePlanIndexes((long) 0);
@@ -263,15 +268,16 @@ abstract class LevelCompactionTest {
     // prepare file 2
     File file2 =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                System.nanoTime()
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 1
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                .concat(
+                    System.nanoTime()
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
     TsFileResource tsFileResource2 = new TsFileResource(file2);
     tsFileResource2.setClosed(true);
     tsFileResource2.updatePlanIndexes((long) 1);
