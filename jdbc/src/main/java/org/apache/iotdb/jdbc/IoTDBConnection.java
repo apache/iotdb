@@ -327,8 +327,10 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void setReadOnly(boolean arg0) throws SQLException {
-    throw new SQLException("Does not support setReadOnly");
+  public void setReadOnly(boolean readonly) throws SQLException {
+    if (readonly) {
+      throw new SQLException("Does not support readOnly");
+    }
   }
 
   @Override
