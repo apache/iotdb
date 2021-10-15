@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
@@ -58,7 +57,9 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
-    assertTrue(tempSGDir.mkdirs());
+    if (!tempSGDir.exists()) {
+      assertTrue(tempSGDir.mkdirs());
+    }
     super.setUp();
   }
 
@@ -74,17 +75,19 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
-        new SizeTieredCompactionLogger(targetTsFileResource.getTsFilePath().concat(".compaction.log"));
+        new SizeTieredCompactionLogger(
+            targetTsFileResource.getTsFilePath().concat(".compaction.log"));
     for (TsFileResource resource : seqResources) {
       sizeTieredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
     }

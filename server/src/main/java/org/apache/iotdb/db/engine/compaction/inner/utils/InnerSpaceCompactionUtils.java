@@ -265,8 +265,9 @@ public class InnerSpaceCompactionUtils {
       boolean sequence)
       throws IOException, IllegalPathException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
+    RestorableTsFileIOWriter writer = null;
     try {
-      RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
+      writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
       Map<String, List<Modification>> modificationCache = new HashMap<>();
       RateLimiter compactionWriteRateLimiter =
           MergeManager.getINSTANCE().getMergeWriteRateLimiter();
@@ -468,6 +469,9 @@ public class InnerSpaceCompactionUtils {
     } finally {
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
+      }
+      if (writer.canWrite()) {
+        writer.close();
       }
     }
   }

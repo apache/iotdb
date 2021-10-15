@@ -44,7 +44,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBManageTsFileResourceIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();

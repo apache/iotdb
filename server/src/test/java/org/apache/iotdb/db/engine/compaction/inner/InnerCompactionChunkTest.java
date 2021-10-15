@@ -55,6 +55,7 @@ import java.util.Map.Entry;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class InnerCompactionChunkTest extends InnerCompactionTest {
 
@@ -172,6 +173,9 @@ public class InnerCompactionChunkTest extends InnerCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile"));
+    if (file.exists()) {
+      assertTrue(file.delete());
+    }
     TsFileResource targetTsfileResource = new TsFileResource(file);
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
     String device = COMPACTION_TEST_SG + PATH_SEPARATOR + "device0";
