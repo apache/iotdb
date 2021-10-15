@@ -20,7 +20,7 @@
 lexer grammar IoTDBSqlLexer;
 
 /**
- * 1. Whitespace and Comment
+ * 1. Whitespace
  */
 
 WS
@@ -32,24 +32,6 @@ WS
 /**
  * 2. Keywords
  */
-
-// Keyword Phrases
-
-ALIGN_BY_DEVICE
-    : ALIGN WS BY WS DEVICE
-    ;
-
-CONTINUOUS_QUERY
-    : CONTINUOUS WS QUERY
-    ;
-
-DISABLE_ALIGN
-    : DISABLE WS ALIGN
-    ;
-
-GROUP_BY_DEVICE
-    : GROUP WS BY WS DEVICE
-    ;
 
 // Common Keywords
 
@@ -436,6 +418,10 @@ SELECT
 
 SET
     : S E T
+    ;
+
+SETTLE
+    : S E T T L E
     ;
 
 SGLEVEL
@@ -855,41 +841,31 @@ RS_BRACKET : ']';
 // String Literal
 
 STRING_LITERAL
-    : SQUOTA_STRING
-    | DQUOTA_STRING
-    | BQUOTA_STRING
+    : SINGLE_QUOTA_STRING
     ;
 
-fragment DQUOTA_STRING
-    : '"' ('\\' . | ~'"' )*? '"'
-    ;
-
-fragment SQUOTA_STRING
+fragment SINGLE_QUOTA_STRING
     : '\'' ('\\' . | ~'\'' )*? '\''
-    ;
-
-fragment BQUOTA_STRING
-    : '`' ('\\' . | ~'`' )*? '`'
     ;
 
 
 // Date & Time Literal
 
 DURATION_LITERAL
-    : (DECIMAL_LITERAL+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
+    : (INTEGER_LITERAL+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
     ;
 
 DATETIME_LITERAL
-    : DECIMAL_LITERAL ('-'|'/') DECIMAL_LITERAL ('-'|'/') DECIMAL_LITERAL ((T | WS)
-      DECIMAL_LITERAL ':' DECIMAL_LITERAL ':' DECIMAL_LITERAL (DOT DECIMAL_LITERAL)?
-      (('+' | '-') DECIMAL_LITERAL ':' DECIMAL_LITERAL)?)?
+    : INTEGER_LITERAL ('-'|'/') INTEGER_LITERAL ('-'|'/') INTEGER_LITERAL ((T | WS)
+      INTEGER_LITERAL ':' INTEGER_LITERAL ':' INTEGER_LITERAL (DOT INTEGER_LITERAL)?
+      (('+' | '-') INTEGER_LITERAL ':' INTEGER_LITERAL)?)?
     | NOW LR_BRACKET RR_BRACKET
     ;
 
 
 // Number Literal
 
-DECIMAL_LITERAL
+INTEGER_LITERAL
     : DEC_DIGIT+
     ;
 
@@ -910,7 +886,7 @@ BOOLEAN_LITERAL
 	;
 
 
-// Other Literal
+// Other Literals
 
 NULL_LITERAL
     : N U L L

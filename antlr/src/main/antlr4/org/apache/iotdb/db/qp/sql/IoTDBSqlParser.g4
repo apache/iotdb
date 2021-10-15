@@ -56,7 +56,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache
+    : merge | fullMerge | flush | clearCache | settle
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showMergeInfo
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
@@ -117,7 +117,7 @@ triggerAttribute
 
 // Create Continuous Query
 createContinuousQuery
-    : CREATE (CONTINUOUS_QUERY | CQ) continuousQueryName=ID resampleClause? cqSelectIntoClause
+    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID resampleClause? cqSelectIntoClause
     ;
 
 cqSelectIntoClause
@@ -126,7 +126,7 @@ cqSelectIntoClause
 
 cqGroupByTimeClause
     : GROUP BY TIME LR_BRACKET DURATION_LITERAL RR_BRACKET
-      (COMMA LEVEL OPERATOR_EQ DECIMAL_LITERAL)?
+      (COMMA LEVEL OPERATOR_EQ INTEGER_LITERAL)?
     ;
 
 resampleClause
@@ -167,7 +167,7 @@ deleteTimeseries
 
 // Delete Partition
 deletePartition
-    : DELETE PARTITION prefixPath DECIMAL_LITERAL(COMMA DECIMAL_LITERAL)*
+    : DELETE PARTITION prefixPath INTEGER_LITERAL(COMMA INTEGER_LITERAL)*
     ;
 
 // Drop Function
@@ -182,12 +182,12 @@ dropTrigger
 
 // Drop Continuous Query
 dropContinuousQuery
-    : DROP (CONTINUOUS_QUERY|CQ) continuousQueryName=ID
+    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=ID
     ;
 
 // Set TTL
 setTTL
-    : SET TTL TO path=prefixPath time=DECIMAL_LITERAL
+    : SET TTL TO path=prefixPath time=INTEGER_LITERAL
     ;
 
 // Unset TTL
@@ -271,12 +271,12 @@ countDevices
 
 // Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ DECIMAL_LITERAL)?
+    : COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INTEGER_LITERAL)?
     ;
 
 // Count Nodes
 countNodes
-    : COUNT NODES prefixPath LEVEL OPERATOR_EQ DECIMAL_LITERAL
+    : COUNT NODES prefixPath LEVEL OPERATOR_EQ INTEGER_LITERAL
     ;
 
 
@@ -286,7 +286,7 @@ countNodes
 
 // Select Statement
 selectStatement
-    : selectClause intoClause? fromClause whereClause? specialClause?
+    : TRACING? selectClause intoClause? fromClause whereClause? specialClause?
     ;
 
 intoClause
@@ -320,12 +320,12 @@ alignByDeviceClauseOrDisableAlign
     ;
 
 alignByDeviceClause
-    : ALIGN_BY_DEVICE
-    | GROUP_BY_DEVICE
+    : ALIGN BY DEVICE
+    | GROUP BY DEVICE
     ;
 
 disableAlign
-    : DISABLE_ALIGN
+    : DISABLE ALIGN
     ;
 
 orderByTimeClause
@@ -335,7 +335,7 @@ orderByTimeClause
 groupByTimeClause
     : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
     | GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
-    COMMA LEVEL OPERATOR_EQ DECIMAL_LITERAL
+    COMMA LEVEL OPERATOR_EQ INTEGER_LITERAL
     ;
 
 groupByFillClause
@@ -344,7 +344,7 @@ groupByFillClause
     ;
 
 groupByLevelClause
-    : GROUP BY LEVEL OPERATOR_EQ DECIMAL_LITERAL
+    : GROUP BY LEVEL OPERATOR_EQ INTEGER_LITERAL
     ;
 
 fillClause
@@ -398,7 +398,7 @@ insertValuesSpec
 
 insertMultiValue
     : LR_BRACKET DATETIME_LITERAL (COMMA measurementValue)+ RR_BRACKET
-    | LR_BRACKET DECIMAL_LITERAL (COMMA measurementValue)+ RR_BRACKET
+    | LR_BRACKET INTEGER_LITERAL (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;
 
@@ -554,6 +554,11 @@ clearCache
     : CLEAR CACHE
     ;
 
+// Settle
+settle
+    : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
+    ;
+
 // Set System To ReadOnly/Writable
 setSystemStatus
     : SET SYSTEM TO (READONLY|WRITABLE)
@@ -586,7 +591,7 @@ showQueryProcesslist
 
 // Kill Query
 killQuery
-    : KILL QUERY DECIMAL_LITERAL?
+    : KILL QUERY INTEGER_LITERAL?
     ;
 
 // Grant Watermark Embedding
@@ -616,7 +621,7 @@ loadFile
 
 loadFilesClause
     : AUTOREGISTER OPERATOR_EQ BOOLEAN_LITERAL (COMMA loadFilesClause)?
-    | SGLEVEL OPERATOR_EQ DECIMAL_LITERAL (COMMA loadFilesClause)?
+    | SGLEVEL OPERATOR_EQ INTEGER_LITERAL (COMMA loadFilesClause)?
     | VERIFY OPERATOR_EQ BOOLEAN_LITERAL (COMMA loadFilesClause)?
     ;
 
@@ -652,14 +657,14 @@ suffixPath
 nodeName
     : ID wildcard?
     | wildcard
-    | (ID | OPERATOR_IN)? LS_BRACKET DECIMAL_LITERAL? ID? RS_BRACKET? ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
     | literalCanBeNodeName
     | keywordsCanBeNodeName
     ;
 
 nodeNameWithoutWildcard
     : ID
-    | (ID | OPERATOR_IN)? LS_BRACKET DECIMAL_LITERAL? ID? RS_BRACKET? ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
     | literalCanBeNodeName
     | keywordsCanBeNodeName
     ;
@@ -672,7 +677,7 @@ wildcard
 literalCanBeNodeName
     : STRING_LITERAL
     | datetimeLiteral
-    | (MINUS|PLUS)? DECIMAL_LITERAL
+    | (MINUS|PLUS)? INTEGER_LITERAL
     | (MINUS|PLUS)? EXPONENT_NUM_PART
     | BOOLEAN_LITERAL
     ;
@@ -693,7 +698,7 @@ keywordsCanBeNodeName
 constant
     : STRING_LITERAL
     | dateExpression
-    | (MINUS|PLUS)? DECIMAL_LITERAL
+    | (MINUS|PLUS)? INTEGER_LITERAL
     | (MINUS|PLUS)? realLiteral
     | BOOLEAN_LITERAL
     | NULL_LITERAL
@@ -701,15 +706,15 @@ constant
     ;
 
 realLiteral
-    : DECIMAL_LITERAL DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)?
-    | DOT (DECIMAL_LITERAL|EXPONENT_NUM_PART)
+    : INTEGER_LITERAL DOT (INTEGER_LITERAL|EXPONENT_NUM_PART)?
+    | DOT (INTEGER_LITERAL|EXPONENT_NUM_PART)
     | EXPONENT_NUM_PART
     ;
 
 datetimeLiteral
     : DATETIME_LITERAL
     | dateExpression
-    | DECIMAL_LITERAL
+    | INTEGER_LITERAL
     ;
 
 
@@ -788,7 +793,7 @@ selectClause
     ;
 
 topClause
-    : TOP DECIMAL_LITERAL
+    : TOP INTEGER_LITERAL
     ;
 
 resultColumn
@@ -814,7 +819,7 @@ propertyClause
     ;
 
 propertyValue
-    : DECIMAL_LITERAL
+    : INTEGER_LITERAL
     | ID
     | STRING_LITERAL
     | constant
@@ -828,19 +833,19 @@ attributeClause
 // Limit & Offset Clause
 
 limitClause
-    : LIMIT DECIMAL_LITERAL offsetClause?
-    | offsetClause? LIMIT DECIMAL_LITERAL
+    : LIMIT INTEGER_LITERAL offsetClause?
+    | offsetClause? LIMIT INTEGER_LITERAL
     ;
 
 offsetClause
-    : OFFSET DECIMAL_LITERAL
+    : OFFSET INTEGER_LITERAL
     ;
 
 slimitClause
-    : SLIMIT DECIMAL_LITERAL soffsetClause?
-    | soffsetClause? SLIMIT DECIMAL_LITERAL
+    : SLIMIT INTEGER_LITERAL soffsetClause?
+    | soffsetClause? SLIMIT INTEGER_LITERAL
     ;
 
 soffsetClause
-    : SOFFSET DECIMAL_LITERAL
+    : SOFFSET INTEGER_LITERAL
     ;

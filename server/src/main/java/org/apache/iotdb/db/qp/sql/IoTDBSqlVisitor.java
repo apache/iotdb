@@ -50,51 +50,10 @@ import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
-import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
-import org.apache.iotdb.db.qp.logical.sys.CountOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropContinuousQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
-import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
-import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
-import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
-import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
-import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
@@ -394,8 +353,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     groupByClauseComponent.setLeftCRightO(true);
 
-    if (ctx.LEVEL() != null && ctx.DECIMAL_LITERAL() != null) {
-      groupByClauseComponent.setLevel(Integer.parseInt(ctx.DECIMAL_LITERAL().getText()));
+    if (ctx.LEVEL() != null && ctx.INTEGER_LITERAL() != null) {
+      groupByClauseComponent.setLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     }
 
     queryOp.setSpecialClauseComponent(groupByClauseComponent);
@@ -524,7 +483,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new DeletePartitionOperator(SQLConstant.TOK_DELETE_PARTITION);
     deletePartitionOperator.setStorageGroupName(parsePrefixPath(ctx.prefixPath()));
     Set<Long> idSet = new HashSet<>();
-    for (TerminalNode terminalNode : ctx.DECIMAL_LITERAL()) {
+    for (TerminalNode terminalNode : ctx.INTEGER_LITERAL()) {
       idSet.add(Long.parseLong(terminalNode.getText()));
     }
     deletePartitionOperator.setPartitionIds(idSet);
@@ -566,7 +525,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_SET);
     operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()));
-    operator.setDataTTL(Long.parseLong(ctx.DECIMAL_LITERAL().getText()));
+    operator.setDataTTL(Long.parseLong(ctx.INTEGER_LITERAL().getText()));
     return operator;
   }
 
@@ -781,11 +740,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         (pathContext != null
             ? parsePrefixPath(pathContext)
             : new PartialPath(SQLConstant.getSingleRootArray()));
-    if (ctx.DECIMAL_LITERAL() != null) {
+    if (ctx.INTEGER_LITERAL() != null) {
       return new CountOperator(
           SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           path,
-          Integer.parseInt(ctx.DECIMAL_LITERAL().getText()));
+          Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else {
       return new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES, path);
     }
@@ -798,7 +757,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new CountOperator(
         SQLConstant.TOK_COUNT_NODES,
         parsePrefixPath(ctx.prefixPath()),
-        Integer.parseInt(ctx.DECIMAL_LITERAL().getText()));
+        Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
   }
 
   /** 3. Data Manipulation Language (DML) */
@@ -824,6 +783,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         queryOp.setWhereComponent(whereComponent);
       }
     }
+    queryOp.setEnableTracing(ctx.TRACING() != null);
     // 4. Check whether it's a select-into clause
     return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
   }
@@ -1080,8 +1040,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     parseTimeInterval(ctx.timeInterval(), groupByClauseComponent);
 
-    if (ctx.DECIMAL_LITERAL() != null) {
-      groupByClauseComponent.setLevel(Integer.parseInt(ctx.DECIMAL_LITERAL().getText()));
+    if (ctx.INTEGER_LITERAL() != null) {
+      groupByClauseComponent.setLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     }
     queryOp.setSpecialClauseComponent(groupByClauseComponent);
   }
@@ -1118,7 +1078,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseGroupByLevelClause(IoTDBSqlParser.GroupByLevelClauseContext ctx) {
     SpecialClauseComponent groupByLevelClauseComponent = new SpecialClauseComponent();
-    groupByLevelClauseComponent.setLevel(Integer.parseInt(ctx.DECIMAL_LITERAL().getText()));
+    groupByLevelClauseComponent.setLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     queryOp.setSpecialClauseComponent(groupByLevelClauseComponent);
   }
 
@@ -1147,8 +1107,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     long startTime;
     long endTime;
     long currentTime = DatetimeUtils.currentTime();
-    if (timeInterval.datetimeLiteral(0).DECIMAL_LITERAL() != null) {
-      startTime = Long.parseLong(timeInterval.datetimeLiteral(0).DECIMAL_LITERAL().getText());
+    if (timeInterval.datetimeLiteral(0).INTEGER_LITERAL() != null) {
+      startTime = Long.parseLong(timeInterval.datetimeLiteral(0).INTEGER_LITERAL().getText());
     } else if (timeInterval.datetimeLiteral(0).dateExpression() != null) {
       startTime =
           parseDateExpression(timeInterval.datetimeLiteral(0).dateExpression(), currentTime);
@@ -1157,8 +1117,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           parseDateFormat(
               timeInterval.datetimeLiteral(0).DATETIME_LITERAL().getText(), currentTime);
     }
-    if (timeInterval.datetimeLiteral(1).DECIMAL_LITERAL() != null) {
-      endTime = Long.parseLong(timeInterval.datetimeLiteral(1).DECIMAL_LITERAL().getText());
+    if (timeInterval.datetimeLiteral(1).INTEGER_LITERAL() != null) {
+      endTime = Long.parseLong(timeInterval.datetimeLiteral(1).INTEGER_LITERAL().getText());
     } else if (timeInterval.datetimeLiteral(1).dateExpression() != null) {
       endTime = parseDateExpression(timeInterval.datetimeLiteral(1).dateExpression(), currentTime);
     } else {
@@ -1315,8 +1275,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       long timestamp;
       if (insertMultiValues.get(i).DATETIME_LITERAL() != null) {
         timestamp = parseDateFormat(insertMultiValues.get(i).DATETIME_LITERAL().getText());
-      } else if (insertMultiValues.get(i).DECIMAL_LITERAL() != null) {
-        timestamp = Long.parseLong(insertMultiValues.get(i).DECIMAL_LITERAL().getText());
+      } else if (insertMultiValues.get(i).INTEGER_LITERAL() != null) {
+        timestamp = Long.parseLong(insertMultiValues.get(i).INTEGER_LITERAL().getText());
       } else if (insertMultiValues.size() != 1) {
         throw new SQLParserException("need timestamps when insert multi rows");
       } else {
@@ -1637,6 +1597,25 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new ClearCacheOperator(SQLConstant.TOK_CLEAR_CACHE);
   }
 
+  // Settle
+
+  @Override
+  public Operator visitSettle(IoTDBSqlParser.SettleContext ctx) {
+    SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
+    if (ctx.prefixPath() != null) {
+      // Storage Group
+      PartialPath sgPath = parsePrefixPath(ctx.prefixPath());
+      settleOperator.setSgPath(sgPath);
+      settleOperator.setIsSgPath(true);
+    } else {
+      // TsFile Path
+      String tsFilePath = removeStringQuote(ctx.tsFilePath.getText());
+      settleOperator.setTsFilePath(tsFilePath);
+      settleOperator.setIsSgPath(false);
+    }
+    return settleOperator;
+  }
+
   // Set System To ReadOnly/Writable
 
   @Override
@@ -1695,8 +1674,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitKillQuery(IoTDBSqlParser.KillQueryContext ctx) {
     KillQueryOperator killQueryOperator = new KillQueryOperator(TOK_KILL_QUERY);
-    if (ctx.DECIMAL_LITERAL() != null) {
-      killQueryOperator.setQueryId(Integer.parseInt(ctx.DECIMAL_LITERAL().getText()));
+    if (ctx.INTEGER_LITERAL() != null) {
+      killQueryOperator.setQueryId(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     }
     return killQueryOperator;
   }
@@ -1784,7 +1763,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.AUTOREGISTER() != null) {
       operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     } else if (ctx.SGLEVEL() != null) {
-      operator.setSgLevel(Integer.parseInt(ctx.DECIMAL_LITERAL().getText()));
+      operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     } else {
@@ -2215,7 +2194,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitTopClause(IoTDBSqlParser.TopClauseContext ctx) {
     Map<String, Object> props = new HashMap<>();
-    int top = Integer.parseInt(ctx.DECIMAL_LITERAL().getText());
+    int top = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     if (top <= 0 || top > 1000) {
       throw new SQLParserException(
           String.format(
@@ -2272,7 +2251,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseLimitClause(IoTDBSqlParser.LimitClauseContext ctx, Operator operator) {
     int limit;
     try {
-      limit = Integer.parseInt(ctx.DECIMAL_LITERAL().getText());
+      limit = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
       throw new SQLParserException("Out of range. LIMIT <N>: N should be Int32.");
     }
@@ -2299,7 +2278,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseOffsetClause(IoTDBSqlParser.OffsetClauseContext ctx, Operator operator) {
     int offset;
     try {
-      offset = Integer.parseInt(ctx.DECIMAL_LITERAL().getText());
+      offset = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
       throw new SQLParserException(
           "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.");
@@ -2324,7 +2303,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseSlimitClause(IoTDBSqlParser.SlimitClauseContext ctx) {
     int slimit;
     try {
-      slimit = Integer.parseInt(ctx.DECIMAL_LITERAL().getText());
+      slimit = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
       throw new SQLParserException("Out of range. SLIMIT <SN>: SN should be Int32.");
     }
@@ -2345,7 +2324,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseSoffsetClause(IoTDBSqlParser.SoffsetClauseContext ctx, QueryOperator queryOp) {
     int soffset;
     try {
-      soffset = Integer.parseInt(ctx.DECIMAL_LITERAL().getText());
+      soffset = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
       throw new SQLParserException(
           "Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
