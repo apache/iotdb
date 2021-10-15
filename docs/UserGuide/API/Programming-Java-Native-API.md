@@ -49,7 +49,7 @@ In root directory:
 
 
 
-### Native APIs
+### Native APIs Description
 
 Here we show the commonly used interfaces and their parameters in the Native API:
 
@@ -211,15 +211,44 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
+* Create a physical quantity template
 
+```
 
-### Native APIs for profiling network cost
+* name: template name
+* measurements: List of measurements, if it is a single measurement, just put it's name
+*     into a list and add to measurements if it is a vector measurement, put all measurements of
+*     the vector into a list and add to measurements
+* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
+*     list and add to dataTypes if it is a vector measurement, put all types of the vector
+*     into a list and add to dataTypes
+* encodings: List of encodings, if it is a single measurement, just put it's encoding into
+*     a list and add to encodings if it is a vector measurement, put all encodings of the
+*     vector into a list and add to encodings
+* compressors: List of compressors                            
+void createSchemaTemplate(
+      String templateName,
+      List<String> schemaName,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+```
 
-* Test the network and client cost of insertRecords. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+* Mount the physical quantity template named'templateName' to the path'prefixPath'. Before performing this step, you need to create a physical quantity template named'templateName'
 
 ```java
-void testInsertRecords(List<String> deviceIds, List<Long> times,
-              List<List<String>> measurementsList, List<List<String>> valuesList)
+void setSchemaTemplate(String templateName, String prefixPath)
+```
+
+
+
+### Test APIs Description
+
+* To test testInsertRecords, do not actually write data, just transmit the data to the server and then return.
+
+```java
+void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
   or
 ```java
@@ -228,41 +257,22 @@ void testInsertRecords(List<String> deviceIds, List<Long> times,
     List<List<Object>> valuesList)
 ```
 
-* Test the network and client cost of insertRecordsOfOneDevice. 
-This method NOT insert data into database and server just return after accept the request, 
-this method should be used to test other time cost in client
-
-```java
-void testInsertRecordsOfOneDevice(String deviceId, List<Long> times,
-    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-    List<List<Object>> valuesList)
-```
-
-* Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+* Test insertRecord, do not actually write data, just transfer the data to the server and then return.
 
 ```java
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
 ```
-  or
+or
 ```java
 void testInsertRecord(String deviceId, long time, List<String> measurements,
-    List<TSDataType> types, List<Object> values)
+      List<TSDataType> types, List<Object> values)
 ```
 
-* Test the network and client cost of insertTablet. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+* Test insertTablet, do not actually write data, only transfer the data to the server and then return.
 
 ```java
 void testInsertTablet(Tablet tablet)
 ```
-
-
-
-### Coding Examples
-
-To get more information of the following interfaces, please view session/src/main/java/org/apache/iotdb/session/Session.java
-
-The sample code of using these interfaces is in example/session/src/main/java/org/apache/iotdb/SessionExample.java，which provides an example of how to open an IoTDB session, execute a batch insertion.
-
 
 
 
@@ -294,139 +304,13 @@ For examples of aligned timeseries and measurement template, you can refer to `e
 
 
 
+### Coding Examples
 
-### New Interfaces
+To get more information of the following interfaces, please view session/src/main/java/org/apache/iotdb/session/Session.java
 
-```java
-void open(boolean enableRPCCompression)
-```
+The sample code of using these interfaces is in example/session/src/main/java/org/apache/iotdb/SessionExample.java，which provides an example of how to open an IoTDB session, execute a batch insertion.
 
-Open a session, with a parameter to specify whether to enable RPC compression. 
-Please pay attention that this RPC compression status of client must comply with the status of IoTDB server
 
-```java
-void insertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
-```
-
-Insert one record, in a way that user has to provide the type information of each measurement, which is different from the original insertRecord() interface.
-The values should be provided in their primitive types. This interface is more proficient than the one without type parameters.
-
-```java
-void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                   List<List<TSDataType>> typesList, List<List<Object>> valuesList)
-```
-
-Insert multiple records with type parameters. This interface is more proficient than the one without type parameters.
-
-```java
-void insertTablet(Tablet tablet, boolean sorted)
-```
-
-An additional insertTablet() interface that providing a "sorted" parameter indicating if the tablet is in order. A sorted tablet may accelerate the insertion process.
-
-```java
-void insertTablets(Map<String, Tablet> tablets)
-```
-
-A new insertTablets() for inserting multiple tablets. 
-
-```java
-void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-```
-
-insertTablets() with an additional "sorted" parameter. 
-
-```java
-void testInsertRecord(String deviceId, long time, List<String> measurements, List<TSDataType> types, 
-                      List<Object> values)
-void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                      List<List<TSDataType>> typesList, List<List<Object>> valuesList)
-void testInsertTablet(Tablet tablet, boolean sorted)
-void testInsertTablets(Map<String, Tablet> tablets)
-void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
-```
-
-The above interfaces are newly added to test responsiveness of new insert interfaces.
-
-```java
-void createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor, 	
-                      Map<String, String> props, Map<String, String> tags, Map<String, String> attributes, 
-                      String measurementAlias)
-```
-
-Create a timeseries with path, datatype, encoding and compression. Additionally, users can provide props, tags, attributes and measurementAlias。
-
-```java
-void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<TSEncoding> encodings, 
-                           List<CompressionType> compressors, List<Map<String, String>> propsList, 
-                           List<Map<String, String>> tagsList, List<Map<String, String>> attributesList, 
-                           List<String> measurementAliasList)
-```
-
-Create multiple timeseries with a single method. Users can provide props, tags, attributes and measurementAlias as well for detailed timeseries information.
-
-```java
-void createAlignedTimeseries(String devicePath, List<String> measurements,
-      List<TSDataType> dataTypes, List<TSEncoding> encodings,
-      CompressionType compressor, List<String> measurementAliasList);
-```
-
-Create aligned timeseries with device path, measurements, data types, encodings, compression.
-
-Attention: Alias of measurements are **not supported** currently.
-
-```java
-
-boolean checkTimeseriesExists(String path)
-```
-
-Add a method to check whether the specific timeseries exists.
-
-```java
-public Session(String host, int rpcPort, String username, String password,
-      boolean isEnableCacheLeader)
-```
-
-Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.
-
-```
-
-* name: template name
-* measurements: List of measurements, if it is a single measurement, just put it's name
-*     into a list and add to measurements if it is a vector measurement, put all measurements of
-*     the vector into a list and add to measurements
-* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
-*     list and add to dataTypes if it is a vector measurement, put all types of the vector
-*     into a list and add to dataTypes
-* encodings: List of encodings, if it is a single measurement, just put it's encoding into
-*     a list and add to encodings if it is a vector measurement, put all encodings of the
-*     vector into a list and add to encodings
-* compressors: List of compressors                            
-void createSchemaTemplate(
-      String templateName,
-      List<String> schemaName,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors)
-```
-
-Create a measurement template, the param description at above
-
-``` 
-
-void setSchemaTemplate(String templateName, String prefixPath)
-
-```
-
-Set the measurement template named 'templateName' at path 'prefixPath'. You should firstly create the template using
-
-```
-
-void createSchemaTemplate
-
-```
 
 ### Cluster information related APIs (only works in the cluster mode)
 
