@@ -46,9 +46,9 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 ### 2.2 元数据格式转换
 
-InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。为了使适配器能够兼容 InfluxDB 协议，需要把 InfluxDB 的元数据结构转换成 IoTDB 的元数据结构。
+InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。为了使适配器能够兼容 InfluxDB 协议，需要把 InfluxDB 的元数据模型转换成 IoTDB 的元数据模型。
 
-#### 2.2.1 InfluxDB数据格式
+#### 2.2.1 InfluxDB 元数据
 
 1. database: 数据库名。
 2. measurement: 测量指标名。
@@ -57,7 +57,7 @@ InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。
 
 ![influxdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-data.png?raw=true)
 
-#### 2.2.2 IoTDB数据格式
+#### 2.2.2 IoTDB 元数据
 
 1. storage group： 存储组。
 2. path(time series ID)：存储路径。
@@ -67,28 +67,20 @@ InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。
 
 #### 2.2.3 两者映射关系
 
-InfluxDB和IoTDB有着如下的映射关系：
+InfluxDB 元数据和 IoTDB 元数据有着如下的映射关系：
 1. InfluxDB 中的 database 和 measurement 组合起来作为 IoTDB 中的 storage group。
 2. InfluxDB 中的 field key 作为 IoTDB 中 measurement 路径，InfluxDB 中的 field value 即是该路径下记录的测点值。
 3. InfluxDB 中的 tag 在 IoTDB 中使用 storage group 和 measurement 之间的路径表达。InfluxDB 的 tag key 由 storage group 和 measurement 之间路径的顺序隐式表达，tag value 记录为对应顺序的路径的名称。
+
 InfluxDB 元数据向 IoTDB 元数据的转换关系可以由下面的公示表示：
+
 `root.{database}.{measurement}.{tag value 1}.{tag value 2}...{tag value N-1}.{tag value N}.{field key}`
 
 ![influxdb-vs-iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
 
 如上图所示，可以看出：
 
-我们在 IoTDB 中使用 Storage Group 和 Measurement 之间的路径来表达 InfluxDB Tag 的概念，也就是图中右侧绿色方框的部分。
-
-实际映射的表达式如下：
-
-`{root.database.measurement}.{tag value1}.{tag value2}..{tag valueN-1}.{tag valueN}.fieldKey`
-
-其中InfluxDB中的database和measurement：`{root.database.measurement}`看作IoTDB中的存储组。
-
-InfluxDB中的tag value：`{tag value1}.{tag value2}..{tag valueN-1}.{tag valueN}`可以看作IoTDB中的path。
-
-InfluxDB中的fieldKey：`fieldKey`看作IoTDB中的measurement。
+我们在 IoTDB 中使用 storage group 和 measurement 之间的路径来表达 InfluxDB tag 的概念，也就是图中右侧绿色方框的部分。
 
 Storage Group 和 Measurement 之间的每一层都代表一个 Tag。
 
