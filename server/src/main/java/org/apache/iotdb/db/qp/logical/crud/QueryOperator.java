@@ -161,6 +161,7 @@ public class QueryOperator extends Operator {
     return specialClauseComponent != null && specialClauseComponent.hasSoffset();
   }
 
+  /** Reset sLimit and sOffset to zero. */
   public void resetSLimitOffset() {
     if (specialClauseComponent != null) {
       specialClauseComponent.setSeriesLimit(0);

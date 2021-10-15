@@ -1160,7 +1160,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private PartialPath parseIntoPath(IntoPathContext intoPathContext) {
-    // TODO
     int levelLimitOfSourcePrefixPath;
     if (queryOp.isGroupByLevel()) {
       levelLimitOfSourcePrefixPath =

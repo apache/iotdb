@@ -32,12 +32,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * This class is used to control the row number of group by level query. For example, selected
+ * series[root.sg.d1.s1, root.sg.d2.s1, root.sg2.d1.s1], level = 1; the result rows will be
+ * [root.sg.*.s1, root.sg2.*.s1], sLimit and sOffset will be used to control the result rows rather
+ * than the selected series.
+ */
 public class GroupByLevelController {
 
-  int seriesLimit, seriesOffset;
+  private final int seriesLimit;
+  private int seriesOffset;
   Set<String> limitPaths;
   Set<String> offsetPaths;
-  int[] levels;
+  private final int[] levels;
+  int prevSize = 0;
 
   public GroupByLevelController(QueryOperator operator) {
     this.seriesLimit = operator.getSpecialClauseComponent().getSeriesLimit();
@@ -49,6 +57,9 @@ public class GroupByLevelController {
 
   public void control(List<ResultColumn> resultColumns) throws LogicalOptimizeException {
     Iterator<ResultColumn> iterator = resultColumns.iterator();
+    for (int i = 0; i < prevSize; i++) {
+      iterator.next();
+    }
     while (iterator.hasNext()) {
       ResultColumn resultColumn = iterator.next();
       Expression expression = resultColumn.getExpression();
@@ -60,7 +71,7 @@ public class GroupByLevelController {
             AggregateUtils.generatePartialPathByLevel(paths.get(0).getNodes(), levels);
         String pathWithFunction = String.format("%s(%s)", functionName, groupedPath);
 
-        if (seriesOffset > 0) {
+        if (seriesOffset > 0 && offsetPaths != null) {
           offsetPaths.add(pathWithFunction);
           if (offsetPaths.size() <= seriesOffset) {
             iterator.remove();
@@ -81,5 +92,6 @@ public class GroupByLevelController {
             expression.toString() + "can't be used in group by level.");
       }
     }
+    prevSize = resultColumns.size();
   }
 }
