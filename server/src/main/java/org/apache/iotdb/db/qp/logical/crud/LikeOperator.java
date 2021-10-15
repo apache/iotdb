@@ -30,9 +30,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Map;
 import java.util.Objects;
 
@@ -40,8 +37,6 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
 /** fuzzy query structure LikeOperator. */
 public class LikeOperator extends FunctionOperator {
-
-  private static final Logger logger = LoggerFactory.getLogger(LikeOperator.class);
 
   protected String value;
 
@@ -127,5 +122,9 @@ public class LikeOperator extends FunctionOperator {
   @Override
   public String toString() {
     return "[" + singlePath.getFullPath() + tokenSymbol + value + "]";
+  }
+
+  public String getValue() {
+    return value;
   }
 }

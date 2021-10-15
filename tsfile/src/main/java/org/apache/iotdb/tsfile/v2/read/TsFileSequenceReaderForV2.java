@@ -570,10 +570,6 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     return PageHeaderV2.deserializeFrom(tsFileInput.wrapAsInputStream(), type);
   }
 
-  public ByteBuffer readCompressedPage(PageHeader header) throws IOException {
-    return readData(-1, header.getCompressedSize());
-  }
-
   public long readVersion() throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
     if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {

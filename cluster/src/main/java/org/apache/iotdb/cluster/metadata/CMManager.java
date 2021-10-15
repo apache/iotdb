@@ -54,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
@@ -501,7 +502,7 @@ public class CMManager extends MManager {
     // for CreateMultiTimeSeriesPlan, use getPaths() to get all timeseries to get related storage
     // groups.
     if (plan instanceof BatchPlan) {
-      storageGroups.addAll(getStorageGroups(getValidStorageGroups(plan)));
+      storageGroups.addAll(getStorageGroups(getValidStorageGroups((BatchPlan) plan)));
     } else if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((InsertPlan) plan).getDeviceId())));
@@ -529,12 +530,13 @@ public class CMManager extends MManager {
     }
   }
 
-  private List<PartialPath> getValidStorageGroups(PhysicalPlan plan) {
+  private List<PartialPath> getValidStorageGroups(BatchPlan plan) {
     List<PartialPath> paths = new ArrayList<>();
-    for (int i = 0; i < plan.getPaths().size(); i++) {
+    List<PartialPath> originalPaths = plan.getPrefixPaths();
+    for (int i = 0; i < originalPaths.size(); i++) {
       // has permission to create sg
-      if (!((BatchPlan) plan).getResults().containsKey(i)) {
-        paths.add(plan.getPaths().get(i));
+      if (!plan.getResults().containsKey(i)) {
+        paths.add(originalPaths.get(i));
       }
     }
     return paths;
@@ -642,6 +644,22 @@ public class CMManager extends MManager {
     return allSuccess;
   }
 
+  public boolean createTimeseries(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+      throws CheckConsistencyException, IllegalPathException {
+    boolean allSuccess = true;
+    for (InsertRowPlan insertRowPlan : insertRowsOfOneDevicePlan.getRowPlans()) {
+      boolean success = createTimeseries(insertRowPlan);
+      allSuccess = allSuccess && success;
+      if (!success) {
+        logger.error(
+            "create timeseries for device={} failed, plan={}",
+            insertRowPlan.getDeviceId(),
+            insertRowPlan);
+      }
+    }
+    return allSuccess;
+  }
+
   /**
    * Create timeseries automatically for an InsertPlan.
    *
@@ -656,6 +674,10 @@ public class CMManager extends MManager {
 
     if (insertPlan instanceof InsertRowsPlan) {
       return createTimeseries((InsertRowsPlan) insertPlan);
+    }
+
+    if (insertPlan instanceof InsertRowsOfOneDevicePlan) {
+      return createTimeseries((InsertRowsOfOneDevicePlan) insertPlan);
     }
 
     List<String> seriesList = new ArrayList<>();
@@ -840,14 +862,17 @@ public class CMManager extends MManager {
    */
   public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, Node ignoredGroup)
       throws MetadataException {
+    // Remove duplicated prefix paths to optimize
+    Set<PartialPath> prefixPathSet = new HashSet<>(prefixPaths);
+    List<PartialPath> uniquePrefixPaths = new ArrayList<>(prefixPathSet);
     logger.debug(
         "{}: Pulling timeseries schemas of {}, ignored group {}",
         metaGroupMember.getName(),
-        prefixPaths,
+        uniquePrefixPaths,
         ignoredGroup);
     // split the paths by the data groups that should hold them
     Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
-    for (PartialPath prefixPath : prefixPaths) {
+    for (PartialPath prefixPath : uniquePrefixPaths) {
       if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath.getFullPath())) {
         continue;
       }
@@ -865,8 +890,8 @@ public class CMManager extends MManager {
       logger.debug(
           "{}: pulling schemas of {} and other {} paths from {} groups",
           metaGroupMember.getName(),
-          prefixPaths.get(0),
-          prefixPaths.size() - 1,
+          uniquePrefixPaths.get(0),
+          uniquePrefixPaths.size() - 1,
           partitionGroupPathMap.size());
     }
     for (Entry<PartitionGroup, List<String>> partitionGroupListEntry :

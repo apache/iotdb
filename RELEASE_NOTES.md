@@ -20,6 +20,34 @@
 
 -->
 
+# Apache IoTDB 0.12.3
+
+## Bug Fixes
+* [IOTDB-1275] Fix backgroup exec for cli -e function causes an infinite loop
+* [IOTDB-1287] Fix C++ class Session has 2 useless sort()
+* [IOTDB-1289] fix CPP mem-leak in SessionExample.cpp insertRecords()
+* [IOTDB-1484] fix auto create schema in cluster
+* [IOTDB-1578] Set unsequnce when loading TsFile with the same establish time
+* [IOTDB-1619] Fix an error msg when restart iotdb-cluster
+* [IOTDB-1629] fix the NPE when using value fill in cluster mode
+* [IOTDB-1632] Fix Value fill function fills even when the data exists
+* [IOTDB-1659] Fix Windows CLI cannot set maxPRC less than or equal to 0
+* [IOTDB-1670] Fix cli -e mode didn't fetch timestamp_precision from server
+* [IOTDB-1674] Fix command interpret error causing somaxconn warning failed
+* [IOTDB-1677] Fix not generate file apache-iotdb-0.x.x-client-cpp-linux-x86_64-bin.zip.sha512
+* [IOTDB-1678] Fix client-cpp session bug: can cause connection leak.
+* [IOTDB-1679] client-cpp: Session descontruction need release server resource
+* [IOTDB-1690] Fix align by device type cast error
+* [IOTDB-1693] fix IoTDB restart does not truncate broken ChunkGroup bug
+* [IOTDB-1703] Fix MManager slow recover with tag
+* [IOTDB-1723] Fix concurrency issue in compaction selection
+* [IOTDB-1726] Wrong hashCode() and equals() method in ChunkMetadata
+* [IOTDB-1850] Fix deserialize page merge rate limiter
+* [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
+* fix merge ClassCastException: MeasurementMNode
+* change sync version check to major version
+
+
 # Apache IoTDB 0.12.2
 
 ## New Features
@@ -27,20 +55,25 @@
 * [IOTDB-1399] Add a session interface to connect multiple nodes
 * [IOTDB-1466] Support device template
 * [IOTDB-1491] UDTF query supported in cluster
-* [IOTDB-1536] Support fuzzy query
 * [IOTDB-1496] Timed flush memtable
+* [IOTDB-1536] Support fuzzy query REGEXP
 * [IOTDB-1561] Support fill by specific value
 * [IOTDB-1565] Add sql: set system to readonly/writable
 * [IOTDB-1569] Timed close TsFileProcessor
+* [IOTDB-1586] Support mysql-style Like clause 
+* [ISSUE-3811] Provide a data type column for the last query dataset
 * TTL can be set to the prefix path of storage group
 * add JMX monitor to all ThreadPools in the server module 
 
 ## Improvements
 * [IOTDB-1566] Do not restrict concurrent write partitions
+* [IOTDB-1585] ModificationFile‘s write interface blocking
+* [IOTDB-1587] SessionPool optimization: a more aggressive Session creation strategy
 * Use StringCachedPool in TsFileResource to reduce the memory size 
 * write performance optimization when replicaNum == 1
 * Optimize Primitive Array Manager
 * Function Improvement: add overlapped page rate in Tracing
+
 
 ## Bug Fixes
 * [IOTDB-1282] fix C++ class SessionDataSet mem-leak
@@ -71,6 +104,12 @@
 * [IOTDB-1552] Only allow equivalent filter for TEXT data type
 * [IOTDB-1556] Abort auto create device when meet exception in setStorageGroup
 * [IOTDB-1574] Deleted file handler leak
+* [IOTDB-1580] Error result of order by time desc when enable time partition
+* [IOTDB-1584] Doesn't support order by time desc in cluster mode
+* [IOTDB-1588] Bug fix: MAX_TIME is incorrect in cluster mode
+* [IOTDB-1594] Fix show timeseries returns incorrect tag value
+* [IOTDB-1600] Fix InsertRowsOfOneDevicePlan being not supported in cluster mode
+* [IOTDB-1610] Fix TsFileRewriteTool writing incorrect data file
 * [ISSUE-3116] Bug when using natural month unit in time interval in group by query
 * [ISSUE-3316] Query result with the same time range is inconsistent in group by query
 * [ISSUE-3436] Fix query result not right after deleting multiple time interval of one timeseries
@@ -78,13 +117,17 @@
 * [ISSUE-3545] Fix Time interval value is disorder in group by month
 * [ISSUE-3653] fix Max_time and last return inconsistent result
 * [ISSUE-3690] Memory leaks on the server when cpp client invokes checkTimeseriesExists
-*  Fix DataMigrationExample OOM if migrate too many timeseries 
+* [ISSUE-3805] OOM caused by Chunk cache
+* [ISSUE-3865] Meaningless connection reset issues caused by low default value for SOMAXCONN
+* Fix DataMigrationExample OOM if migrate too many timeseries 
 * Handle false positive cases which may cause NPE of tsfile bloom filter 
 * Fix Windows shell error on JDK11 & fix iotdb-env.bat not working
 * Fix cluster auto create schema bug when retry locally 
 * Fix thrift out of sequence in cluster module
 * Skip non exist measurement in where clause in align by device
 * fix blocking query when selecting TsFile in compaction
+* Fix redundant data in compaction recover
+* Fix load tsfile with time partition enable 
 
 ## Incompatible changes
 * [IOTDB-1485] Replace tsfile_size_threshold by unseq_tsfile_size/seq_tsfile_size

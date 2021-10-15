@@ -146,7 +146,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
                 needToDecodeInfo.add(needToDecode);
                 ByteBuffer pageData =
                     !needToDecode
-                        ? ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader)
+                        ? reader.readCompressedPage(pageHeader)
                         : reader.readPage(pageHeader, header.getCompressionType());
                 pageHeadersInChunk.add(pageHeader);
                 dataInChunk.add(pageData);

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -338,6 +340,9 @@ public abstract class PhysicalPlan {
         case BATCH_INSERT_ROWS:
           plan = new InsertRowsPlan();
           break;
+        case BATCH_INSERT_ONE_DEVICE:
+          plan = new InsertRowsOfOneDevicePlan();
+          break;
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
@@ -355,6 +360,9 @@ public abstract class PhysicalPlan {
           break;
         case DROP_FUNCTION:
           plan = new DropFunctionPlan();
+          break;
+        case SET_SYSTEM_MODE:
+          plan = new SetSystemModePlan();
           break;
         default:
           throw new IOException("unrecognized log type " + type);
@@ -407,7 +415,8 @@ public abstract class PhysicalPlan {
     SET_USING_DEVICE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
     CREATE_FUNCTION,
-    DROP_FUNCTION
+    DROP_FUNCTION,
+    SET_SYSTEM_MODE
   }
 
   public long getIndex() {

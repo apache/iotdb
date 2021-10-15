@@ -59,13 +59,13 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -924,7 +924,7 @@ public class StorageEngine implements IService {
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.remove(storageGroupPath);
-    virtualStorageGroupManager.deleteStorageGroup(
+    virtualStorageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
   }
 
