@@ -88,8 +88,7 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 在 InfluxDB 的 SQL 语句中，tag 出现的顺序的不同并不会影响实际的执行结果。
 
-例如：
-`insert factory, workshop=A1, production=B1, temperature=16.9` 和 `insert factory, production=B1, workshop=A1, temperature=16.9` 两条 InfluxDB SQL 的含义（以及执行结果）相等。
+例如：`insert factory, workshop=A1, production=B1, temperature=16.9` 和 `insert factory, production=B1, workshop=A1, temperature=16.9` 两条 InfluxDB SQL 的含义（以及执行结果）相等。
 
 但在 IoTDB 中，上述插入的数据点可以存储在 `root.monitor.factory.A1.B1.temperature` 下，也可以存储在 `root.monitor.factory.B1.A1.temperature` 下。因此，IoTDB 路径中储存的 InfluxDB 的 tag 的顺序是需要被特别考虑的，因为 `root.monitor.factory.A1.B1.temperature` 和 
 `root.monitor.factory.B1.A1.temperature` 是两条不同的序列。我们可以认为，IoTDB 元数据模型对 tag 顺序的处理是“敏感”的。
@@ -100,11 +99,13 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 **解决方案：**
 
+**tag key 对应顺序关系在内存中的形式**
+
 通过利用内存中的`Map<Measurement, Map<Tag Key, Order>>` 这样一个 Map 结构，来维护 tag 在 IoTDB 路径层级上的顺序。
 
-    ```java
-    Map<String, Map<String, Integer>> measurementTagOrder
-    ```
+```java
+Map<String, Map<String, Integer>> measurementTagOrder
+```
 
 可以看出 Map 是一个两层的结构。
 
@@ -116,7 +117,7 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
  
 除了在内存中维护 InfluxDB 的 tag 顺序外，还需要对该顺序信息进行持久化操作，即将 InfluxDB tag 在 IoTDB 路径层级上的顺序持久化到 IoTDB 数据库中。
 
-**存储方案如下：**
+**tag key 对应顺序关系的持久化方案**
 
 存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储节点来记录数据。
 
