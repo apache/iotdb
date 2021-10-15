@@ -162,6 +162,7 @@ public abstract class Operator {
     TTL,
     KILL,
     FLUSH,
+    TRACING,
     CLEAR_CACHE,
     DELETE_PARTITION,
     LOAD_CONFIGURATION,
