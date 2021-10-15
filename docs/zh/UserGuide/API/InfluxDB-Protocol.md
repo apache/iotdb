@@ -88,7 +88,7 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 在 InfluxDB 的 SQL 语句中，tag 出现的顺序的不同并不会影响实际的执行结果。
 
-例如：`insert factory, workshop=A1, production=B1, temperature=16.9` 和 `insert factory, production=B1, workshop=A1, temperature=16.9` 两条 InfluxDB SQL 的含义（以及执行结果）相等。
+例如：`insert factory, workshop=A1, production=B1 temperature=16.9` 和 `insert factory, production=B1, workshop=A1 temperature=16.9` 两条 InfluxDB SQL 的含义（以及执行结果）相等。
 
 但在 IoTDB 中，上述插入的数据点可以存储在 `root.monitor.factory.A1.B1.temperature` 下，也可以存储在 `root.monitor.factory.B1.A1.temperature` 下。因此，IoTDB 路径中储存的 InfluxDB 的 tag 的顺序是需要被特别考虑的，因为 `root.monitor.factory.A1.B1.temperature` 和 
 `root.monitor.factory.B1.A1.temperature` 是两条不同的序列。我们可以认为，IoTDB 元数据模型对 tag 顺序的处理是“敏感”的。
@@ -103,8 +103,8 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 通过利用内存中的`Map<Measurement, Map<Tag Key, Order>>` 这样一个 Map 结构，来维护 tag 在 IoTDB 路径层级上的顺序。
 
-```java
-Map<String, Map<String, Integer>> measurementTagOrder
+``` java
+    Map<String, Map<String, Integer>> measurementTagOrder
 ```
 
 可以看出 Map 是一个两层的结构。
@@ -115,11 +115,9 @@ Map<String, Map<String, Integer>> measurementTagOrder
 
 使用时，就可以先通过 InfluxDB measurement 定位，再通过 InfluxDB tag key 定位，最后就可以获得  tag 在 IoTDB 路径层级上的顺序了。
  
-除了在内存中维护 InfluxDB 的 tag 顺序外，还需要对该顺序信息进行持久化操作，即将 InfluxDB tag 在 IoTDB 路径层级上的顺序持久化到 IoTDB 数据库中。
-
 **tag key 对应顺序关系的持久化方案**
 
-存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储节点来记录数据。
+存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储 tag key 极其对应的顺序关系。
 
 ```
 +-----------------------------+---------------------------+------------------------------+----------------------+-----------------------+
@@ -138,7 +136,7 @@ Map<String, Map<String, Integer>> measurementTagOrder
 
 #### 2.3.1 插入数据
 
-1. 假定按照以下的顺序插入三条数据到InfluxDB中(database=monitor)：
+1. 假定按照以下的顺序插入三条数据到 InfluxDB 中 (database=monitor)：
    
    (1)`insert student,name=A,phone=B,sex=C score=99`
 
@@ -146,7 +144,7 @@ Map<String, Map<String, Integer>> measurementTagOrder
 
    (3)`insert student,name=A,phone=B,sex=C,address=D score=97`
 
-2. 简单对上述InfluxDB的时序进行解释，database是monitor;measurement是student；tag分别是name，phone、sex和address；field是score。
+2. 简单对上述 InfluxDB 的时序进行解释，database 是 monitor; measurement 是student；tag 分别是 name，phone、sex 和 address；field 是 score。
 
 对应的InfluxDB的实际存储为：
 
@@ -161,7 +159,7 @@ time                address name phone sex socre
 
 3. IoTDB顺序插入三条数据的过程如下：
 
-   (1)插入第一条数据时，需要将新出现的三个tag key更新到table中，IoTDB对应的记录tag顺序的table为：
+   (1)插入第一条数据时，需要将新出现的三个 tag key 更新到 table 中，IoTDB 对应的记录 tag 顺序的 table 为：
 
    | database | measurement | tag_key | Order |
       | -------- | ----------- | ------- | ----- |
@@ -169,7 +167,7 @@ time                address name phone sex socre
    | monitor | student     | phone   | 1     |
    | monitor | student     | sex     | 2     |
 
-   (2)插入第二条数据时，由于此时记录tag顺序的table中已经有了三个tag key，因此需要将出现的第四个tag key=address更新记录。IoTDB对应的记录tag顺序的table为：
+   (2)插入第二条数据时，由于此时记录 tag 顺序的 table 中已经有了三个 tag key，因此需要将出现的第四个 tag key=address 更新记录。IoTDB 对应的记录 tag 顺序的 table 为：
 
    | database | measurement | tag_key | order |
       | -------- | ----------- | ------- | ----- |
@@ -178,7 +176,7 @@ time                address name phone sex socre
    | monitor | student     | sex     | 2     |
    | monitor | student     | address | 3     |
 
-   (3)插入第三条数据时，此时四个tag key都已经记录过，所以不需要更新记录，IoTDB对应的记录tag顺序的table为：
+   (3)插入第三条数据时，此时四个 tag key 都已经记录过，所以不需要更新记录，IoTDB 对应的记录 tag 顺序的 table 为：
 
    | database | measurement | tag_key | order |
       | -------- | ----------- | ------- | ----- |
@@ -187,15 +185,15 @@ time                address name phone sex socre
    | monitor | student     | sex     | 2     |
    | monitor | student     | address | 3     |
 
-4. (1)第一条插入数据对应IoTDB时序为root.monitor.student.A.B.C
+4. (1)第一条插入数据对应 IoTDB 时序为 root.monitor.student.A.B.C
 
-   (2)第二条插入数据对应IoTDB时序为root.monitor.student.PH.PH.PH.D(其中PH表示占位符)。
+   (2)第二条插入数据对应 IoTDB 时序为 root.monitor.student.PH.PH.PH.D (其中PH表示占位符)。
     
-   需要注意的是，由于该条数据的tag key=address是第四个出现的，但是自身却没有对应的前三个tag值，因此需要用PH占位符来代替。这样做的目的是保证每条数据中的tag顺序不会乱，是符合当前顺序表中的顺序，从而查询数据的时候可以进行指定tag过滤。
+   需要注意的是，由于该条数据的 tag key=address 是第四个出现的，但是自身却没有对应的前三个 tag 值，因此需要用 PH 占位符来代替。这样做的目的是保证每条数据中的 tag 顺序不会乱，是符合当前顺序表中的顺序，从而查询数据的时候可以进行指定 tag 过滤。
 
-   (3)第三条插入数据对应IoTDB时序为root.monitor.student.A.B.C.D 
+   (3)第三条插入数据对应 IoTDB 时序为 root.monitor.student.A.B.C.D 
   
-   对应的IoTDB的实际存储为：
+   对应的 IoTDB 的实际存储为：
 
 ```
 +-----------------------------+--------------------------------+-------------------------------------+----------------------------------+
