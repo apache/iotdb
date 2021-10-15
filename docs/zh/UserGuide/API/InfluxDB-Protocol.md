@@ -84,6 +84,8 @@ InfluxDB 元数据向 IoTDB 元数据的转换关系可以由下面的公示表�
 
 storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag key 的数量为 N，那么 storage group 和 measurement 之间的路径的层数就是 N。我们对 storage group 和 measurement 之间的每一层进行顺序编号，每一个序号都和一个 tag key 一一对应。同时，我们使用 storage group 和 measurement 之间每一层 **路径的名字** 来记 tag value，tag key 可以通过自身的序号找到对应路径层级下的 tag value.
 
+#### 2.2.4 关键问题
+
 在InfluxDB中，Tag的顺序不同并不会影响实际的结果。
 
 eg:
@@ -95,9 +97,12 @@ eg:
 
 所以需要记录InfluxDB每个Tag对应的顺序，确保在InfluxDB中，即使Tag不同的同一条时序对应到IoTDB中也是同一条时序。
 
+因此这时需要考虑的一个问题是InfluxDB的tag key及对应顺序关系如何持久化到IoTDB数据库中里，这样才不会丢失相关信息。
+
 需要解决的事情：
    1. 怎样把InfluxDB中tag key映射到IoTDB中path中的节点顺序。
    2. 在不知道InfluxDB中可能会出现所有tag key的情况下，怎么维护它们之间的顺序。
+   3. InfluxDB的tag key及对应顺序关系如何持久化到IoTDB数据库中。
 
 解决方案：
 1. 通过利用内存中的Map <Measurement, Map <Tag Key, Order> > Map结构，来维护Tag之间的顺序。
