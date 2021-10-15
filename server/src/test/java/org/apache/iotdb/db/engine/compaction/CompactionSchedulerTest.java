@@ -1621,7 +1621,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     boolean prevEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
