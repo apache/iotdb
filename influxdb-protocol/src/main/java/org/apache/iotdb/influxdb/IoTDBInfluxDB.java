@@ -149,7 +149,7 @@ public class IoTDBInfluxDB implements InfluxDB {
         try {
           updateNewTagIntoDB(measurement, entry.getKey(), measurementTagNum);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
-          e.printStackTrace();
+          throw new InfluxDBException(e.getMessage());
         }
         realTagOrders.put(measurementTagNum, entry.getKey());
         tagOrders.put(entry.getKey(), measurementTagNum);
