@@ -219,6 +219,10 @@ public class CompactionScheduler {
       TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
+    if ((sequence && !config.isEnableSeqSpaceCompaction())
+        || (!sequence && !config.isEnableUnseqSpaceCompaction())) {
+      return false;
+    }
     AbstractInnerSpaceCompactionSelector innerSpaceCompactionSelector =
         config
             .getInnerCompactionStrategy()
@@ -241,6 +245,9 @@ public class CompactionScheduler {
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
+    if (!config.isEnableCrossSpaceCompaction()) {
+      return false;
+    }
     AbstractCrossSpaceCompactionSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionStrategy()

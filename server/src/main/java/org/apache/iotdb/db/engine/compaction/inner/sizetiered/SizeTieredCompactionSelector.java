@@ -132,7 +132,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       if (selectedFileSize >= targetCompactionFileSize
           || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
         // submit the task
-        taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+        if (selectedFileList.size() > 1) {
+          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+        }
         selectedFileList = new ArrayList<>();
         selectedFileSize = 0L;
         shouldContinueToSearch = false;
