@@ -292,7 +292,7 @@ public abstract class Cases {
     for (Statement readStatement : readStatements) {
       ResultSet resultSet = readStatement.executeQuery("COUNT DEVICES");
       while (resultSet.next()) {
-        assertEquals(3000, resultSet.getInt(1));
+        assertEquals(n, resultSet.getInt(1));
       }
     }
   }
