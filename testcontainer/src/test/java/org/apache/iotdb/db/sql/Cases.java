@@ -54,6 +54,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public abstract class Cases {
@@ -285,6 +286,14 @@ public abstract class Cases {
       }
       Assert.assertEquals(n, cnt);
       resultSet.close();
+    }
+
+    // try to get devices on each node;
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet = readStatement.executeQuery("COUNT DEVICES");
+      while (resultSet.next()) {
+        assertEquals(3000, resultSet.getInt(1));
+      }
     }
   }
 
