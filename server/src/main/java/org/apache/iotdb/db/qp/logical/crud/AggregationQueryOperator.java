@@ -116,7 +116,8 @@ public class AggregationQueryOperator extends QueryOperator {
     AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
     aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
     if (isGroupByLevel()) {
-      aggregationPlan.setLevel(specialClauseComponent.getLevel());
+      aggregationPlan.setLevels(specialClauseComponent.getLevels());
+      aggregationPlan.setGroupByLevelController(specialClauseComponent.groupByLevelController);
       try {
         if (!verifyAllAggregationDataTypesEqual()) {
           throw new LogicalOperatorException("Aggregate among unmatched data types");
