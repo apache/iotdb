@@ -26,6 +26,7 @@ public class VotingLog {
   protected Log log;
   protected Set<Integer> stronglyAcceptedNodeIds;
   protected Set<Integer> weaklyAcceptedNodeIds;
+  public long acceptedTime;
 
   public VotingLog(Log log, int groupSize) {
     this.log = log;

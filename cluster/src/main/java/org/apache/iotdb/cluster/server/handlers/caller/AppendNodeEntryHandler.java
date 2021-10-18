@@ -78,7 +78,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       // the request already failed
       return;
     }
-    logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
+    logger.debug(
+        "{}: Append response {} from {} for {}", member.getName(), response, receiver, log);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;

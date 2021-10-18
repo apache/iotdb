@@ -243,18 +243,21 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_WINDOW_LENGTH(RAFT_MEMBER_RECEIVER, "window length", 1, true, ROOT),
+    RAFT_WAIT_AFTER_ACCEPTED(RAFT_MEMBER_SENDER, "wait after accepted", TIME_SCALE, true, ROOT),
     RAFT_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "weak accept", 1, true, ROOT);
 
     String className;
     String blockName;
     AtomicLong sum = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
+    long max;
     double scale;
     boolean valid;
     int level;
     Statistic parent;
     List<Statistic> children = new ArrayList<>();
-    long warningThreshold = 3 * 1000 * 1000 * 1000L;
+    long warningThreshold = 30 * 1000 * 1000 * 1000L;
 
     Statistic(String className, String blockName, double scale, boolean valid, Statistic parent) {
       this.className = className;
@@ -274,6 +277,7 @@ public class Timer {
       if (ENABLE_INSTRUMENTING) {
         sum.addAndGet(val);
         counter.incrementAndGet();
+        max = Math.max(max, val);
       }
     }
 
@@ -308,6 +312,7 @@ public class Timer {
     public void reset() {
       sum.set(0);
       counter.set(0);
+      max = 0;
     }
 
     /** WARN: no current safety guarantee. */
@@ -322,7 +327,7 @@ public class Timer {
       double s = sum.get() / scale;
       long cnt = counter.get();
       double avg = s / cnt;
-      return String.format("%s - %s: %.2f, %d, %.2f", className, blockName, s, cnt, avg);
+      return String.format("%s - %s: %.2f, %d, %.2f, %d", className, blockName, s, cnt, avg, max);
     }
   }
 

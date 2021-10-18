@@ -75,6 +75,7 @@ public class VotingLogList {
       List<VotingLog> acceptedLogs = logList.subList(0, lastEntryIndexToCommit + 1);
       for (VotingLog acceptedLog : acceptedLogs) {
         synchronized (acceptedLog) {
+          acceptedLog.acceptedTime = System.nanoTime();
           acceptedLog.notifyAll();
         }
       }

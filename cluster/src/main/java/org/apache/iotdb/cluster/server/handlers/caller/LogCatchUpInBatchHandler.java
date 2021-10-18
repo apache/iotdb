@@ -33,6 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_STRONG_ACCEPT;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_WEAK_ACCEPT;
 
 public class LogCatchUpInBatchHandler implements AsyncMethodCallback<AppendEntryResult> {
 
@@ -50,14 +52,14 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<AppendEntry
         "{}: Received a catch-up result size of {} from {}", memberName, logs.size(), follower);
 
     long resp = response.status;
-    if (resp == RESPONSE_AGREE) {
+    if (resp == RESPONSE_AGREE || resp == RESPONSE_STRONG_ACCEPT) {
       synchronized (appendSucceed) {
         appendSucceed.set(true);
         appendSucceed.notifyAll();
       }
       logger.debug("{}: Succeeded to send logs, size is {}", memberName, logs.size());
 
-    } else if (resp == RESPONSE_LOG_MISMATCH) {
+    } else if (resp == RESPONSE_LOG_MISMATCH || resp == RESPONSE_WEAK_ACCEPT) {
       // this is not probably possible
       logger.error(
           "{}: Log mismatch occurred when sending logs, whose size is {}", memberName, logs.size());

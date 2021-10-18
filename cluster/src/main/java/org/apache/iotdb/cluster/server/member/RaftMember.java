@@ -786,7 +786,7 @@ public abstract class RaftMember {
 
   public void setAllNodes(PartitionGroup allNodes) {
     this.allNodes = allNodes;
-    this.votingLogList = new VotingLogList(allNodes.size() / 2 + 1);
+    this.votingLogList = new VotingLogList(allNodes.size() / 2);
   }
 
   public Map<Node, Long> getLastCatchUpResponseTime() {
@@ -1148,37 +1148,40 @@ public abstract class RaftMember {
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest;
 
+    Log log;
+    if (plan instanceof LogPlan) {
+      try {
+        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+      } catch (UnknownLogTypeException e) {
+        logger.error("Can not parse LogPlan {}", plan, e);
+        return StatusUtils.PARSE_LOG_ERROR;
+      }
+    } else {
+      log = new PhysicalPlanLog();
+      ((PhysicalPlanLog) log).setPlan(plan);
+    }
+
+    if (log.serialize().capacity() + Integer.BYTES
+        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+      logger.error(
+          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+              + "or reduce the size of requests you send.");
+      return StatusUtils.INTERNAL_ERROR;
+    }
+
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
-    Log log;
     synchronized (logManager) {
       Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
           startTime);
 
-      if (plan instanceof LogPlan) {
-        try {
-          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
-        } catch (UnknownLogTypeException e) {
-          logger.error("Can not parse LogPlan {}", plan, e);
-          return StatusUtils.PARSE_LOG_ERROR;
-        }
-      } else {
-        log = new PhysicalPlanLog();
-        ((PhysicalPlanLog) log).setPlan(plan);
-        plan.setIndex(logManager.getLastLogIndex() + 1);
-      }
+      plan.setIndex(logManager.getLastLogIndex() + 1);
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
       // just like processPlanLocally,we need to check the size of log
-      if (log.serialize().capacity() + Integer.BYTES
-          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
-        logger.error(
-            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
-                + "or reduce the size of requests you send.");
-        return StatusUtils.INTERNAL_ERROR;
-      }
+
       // logDispatcher will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
@@ -1603,6 +1606,7 @@ public abstract class RaftMember {
       VotingLog log, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, int quorumSize) {
     // wait for the followers to vote
     long startTime = Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.getOperationStartTime();
+    long nextTimeToPrint = 3000;
     synchronized (log) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
@@ -1614,19 +1618,21 @@ public abstract class RaftMember {
           && (!ENABLE_WEAK_ACCEPTANCE
               || (stronglyAcceptedNodeNum + weaklyAcceptedNodeNum < quorumSize))) {
         try {
-          log.wait(1000);
+          log.wait(1);
+          logger.debug("{} ends waiting", log);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
         }
         alreadyWait = System.currentTimeMillis() - waitStart;
-        if (alreadyWait > 3000) {
+        if (alreadyWait > nextTimeToPrint) {
           logger.info(
               "Still not receive enough votes for {}, strongly accepted {}, weakly "
                   + "accepted {}",
               log,
               log.getStronglyAcceptedNodeIds(),
               log.getWeaklyAcceptedNodeIds());
+          nextTimeToPrint *= 2;
         }
         stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
         weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
@@ -1640,6 +1646,9 @@ public abstract class RaftMember {
             log.getWeaklyAcceptedNodeIds(),
             alreadyWait);
       }
+    }
+    if (log.acceptedTime != 0) {
+      Statistic.RAFT_WAIT_AFTER_ACCEPTED.calOperationCostTimeFromStart(log.acceptedTime);
     }
     Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.calOperationCostTimeFromStart(startTime);
 
@@ -2166,7 +2175,7 @@ public abstract class RaftMember {
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
    *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  private AppendEntryResult appendEntries(
+  protected AppendEntryResult appendEntries(
       long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
     logger.debug(
         "{}, prevLogIndex={}, prevLogTerm={}, leaderCommit={}",

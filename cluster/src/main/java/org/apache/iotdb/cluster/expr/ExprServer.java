@@ -84,7 +84,8 @@ public class ExprServer extends MetaClusterServer {
     ClusterDescriptor.getInstance().getConfig().setInternalMetaPort(port);
     ClusterDescriptor.getInstance().getConfig().setInternalIp(ip);
     ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(false);
-    ClusterDescriptor.getInstance().getConfig().setUseBatchInLogCatchUp(false);
+    ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(50000);
+    // ClusterDescriptor.getInstance().getConfig().setUseBatchInLogCatchUp(false);
     RaftMember.USE_LOG_DISPATCHER = true;
     RaftMember.USE_INDIRECT_LOG_DISPATCHER = useIndirectDispatcher;
     LogDispatcher.bindingThreadNum = dispatcherThreadNum;

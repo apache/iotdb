@@ -36,6 +36,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ExprBench {
 
   private AtomicLong requestCounter = new AtomicLong();
+  private AtomicLong latencySum = new AtomicLong();
+  private long maxLatency = 0;
   private int threadNum = 64;
   private int workloadSize = 64 * 1024;
   private SyncClientPool clientPool;
@@ -65,9 +67,15 @@ public class ExprBench {
                 long currRequsetNum = -1;
                 while (true) {
 
+                  long reqLatency = System.nanoTime();
                   try {
                     client.executeNonQueryPlan(request);
                     currRequsetNum = requestCounter.incrementAndGet();
+                    if (currRequsetNum > threadNum * 10) {
+                      reqLatency = System.nanoTime() - reqLatency;
+                      maxLatency = Math.max(maxLatency, reqLatency);
+                      latencySum.addAndGet(reqLatency);
+                    }
                   } catch (TException e) {
                     e.printStackTrace();
                   }
@@ -76,11 +84,13 @@ public class ExprBench {
                     long elapsedTime = System.currentTimeMillis() - startTime;
                     System.out.println(
                         String.format(
-                            "%d %d %f(%f)",
+                            "%d %d %f(%f) %f %f",
                             elapsedTime,
                             currRequsetNum,
                             (currRequsetNum + 0.0) / elapsedTime,
-                            currRequsetNum * workloadSize / (1024.0 * 1024.0) / elapsedTime));
+                            currRequsetNum * workloadSize / (1024.0 * 1024.0) / elapsedTime,
+                            maxLatency / 1000.0,
+                            (latencySum.get() + 0.0) / currRequsetNum));
                   }
 
                   if (currRequsetNum >= maxRequestNum) {

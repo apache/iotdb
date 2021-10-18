@@ -59,10 +59,11 @@ public class ExprMember extends MetaGroupMember {
   public static boolean bypassRaft = false;
   public static boolean useSlidingWindow = false;
 
-  private int windowSize = 10000;
-  private Log[] logWindow = new Log[windowSize];
+  private int windowCapacity = 10000;
+  private int windowLength = 0;
+  private Log[] logWindow = new Log[windowCapacity];
   private long firstPosPrevIndex = 0;
-  private long[] prevTerms = new long[windowSize];
+  private long[] prevTerms = new long[windowCapacity];
 
   private ExecutorService bypassPool;
 
@@ -163,16 +164,19 @@ public class ExprMember extends MetaGroupMember {
     // check the next entry
     Log log = logWindow[pos];
     boolean nextMismatch = false;
-    if (pos < windowSize - 1) {
+    if (pos < windowCapacity - 1) {
       long nextPrevTerm = prevTerms[pos + 1];
       if (nextPrevTerm != log.getCurrLogTerm()) {
         nextMismatch = true;
       }
     }
     if (nextMismatch) {
-      for (int i = pos + 1; i < windowSize; i++) {
+      for (int i = pos + 1; i < windowCapacity; i++) {
         if (logWindow[i] != null) {
           logWindow[i] = null;
+          if (i == windowLength - 1) {
+            windowLength = pos + 1;
+          }
         } else {
           break;
         }
@@ -193,7 +197,7 @@ public class ExprMember extends MetaGroupMember {
     long windowPrevLogTerm = prevTerms[0];
 
     int flushPos = 0;
-    for (; flushPos < windowSize; flushPos++) {
+    for (; flushPos < windowCapacity; flushPos++) {
       if (logWindow[flushPos] == null) {
         break;
       }
@@ -204,10 +208,10 @@ public class ExprMember extends MetaGroupMember {
     long success =
         logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
     if (success != -1) {
-      System.arraycopy(logWindow, flushPos, logWindow, 0, windowSize - flushPos);
-      System.arraycopy(prevTerms, flushPos, prevTerms, 0, windowSize - flushPos);
+      System.arraycopy(logWindow, flushPos, logWindow, 0, windowCapacity - flushPos);
+      System.arraycopy(prevTerms, flushPos, prevTerms, 0, windowCapacity - flushPos);
       for (int i = 1; i <= flushPos; i++) {
-        logWindow[windowSize - i] = null;
+        logWindow[windowCapacity - i] = null;
       }
     }
     firstPosPrevIndex = logManager.getLastLogIndex();
@@ -215,6 +219,32 @@ public class ExprMember extends MetaGroupMember {
     result.setLastLogIndex(firstPosPrevIndex);
     result.setLastLogTerm(logManager.getLastLogTerm());
     return success;
+  }
+
+  protected AppendEntryResult appendEntries(
+      long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
+    if (!useSlidingWindow) {
+      return super.appendEntries(prevLogIndex, prevLogTerm, leaderCommit, logs);
+    }
+
+    if (logs.isEmpty()) {
+      return new AppendEntryResult(Response.RESPONSE_AGREE).setHeader(getHeader());
+    }
+
+    AppendEntryResult result = null;
+    for (Log log : logs) {
+      result = appendEntry(prevLogIndex, prevLogTerm, leaderCommit, log);
+
+      if (result.status != Response.RESPONSE_AGREE
+          && result.status != Response.RESPONSE_STRONG_ACCEPT
+          && result.status != Response.RESPONSE_WEAK_ACCEPT) {
+        return result;
+      }
+      prevLogIndex = log.getCurrLogIndex();
+      prevLogTerm = log.getCurrLogTerm();
+    }
+
+    return result;
   }
 
   protected AppendEntryResult appendEntry(
@@ -235,16 +265,21 @@ public class ExprMember extends MetaGroupMember {
         result.status = Response.RESPONSE_STRONG_ACCEPT;
         result.setLastLogIndex(logManager.getLastLogIndex());
         result.setLastLogTerm(logManager.getLastLogTerm());
-      } else if (windowPos < windowSize) {
+      } else if (windowPos < windowCapacity) {
         // the new entry falls into the window
         logWindow[windowPos] = log;
         prevTerms[windowPos] = prevLogTerm;
+        if (windowLength < windowPos + 1) {
+          windowLength = windowPos + 1;
+        }
         checkLog(windowPos);
         if (windowPos == 0) {
           appendedPos = flushWindow(result, leaderCommit);
         } else {
           result.status = Response.RESPONSE_WEAK_ACCEPT;
         }
+
+        Statistic.RAFT_WINDOW_LENGTH.add(windowLength);
       } else {
         result.setStatus(Response.RESPONSE_LOG_MISMATCH);
         result.setHeader(getHeader());

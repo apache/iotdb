@@ -106,6 +106,7 @@ public class LogDispatcher {
                 return byteBuffer;
               });
     }
+
     for (int i = 0; i < nodeLogQueues.size(); i++) {
       BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);
       try {
@@ -250,7 +251,9 @@ public class LogDispatcher {
           synchronized (logBlockingDeque) {
             SendLogRequest poll = logBlockingDeque.take();
             currBatch.add(poll);
-            logBlockingDeque.drainTo(currBatch);
+            if (useBatchInLogCatchUp) {
+              logBlockingDeque.drainTo(currBatch);
+            }
           }
           if (logger.isDebugEnabled()) {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
