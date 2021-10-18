@@ -310,6 +310,29 @@ public class IoTDBQueryDemoIT {
   }
 
   @Test
+  public void nowTest() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean execute = statement.execute("show now()");
+      Assert.assertTrue(execute);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        Assert.assertEquals(1, metaData.getColumnCount());
+        Assert.assertEquals("SystemTime", metaData.getColumnName(1));
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+
+    } catch (SQLException throwables) {
+      throwables.printStackTrace();
+    }
+  }
+
+  @Test
   public void InTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {

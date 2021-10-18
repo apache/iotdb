@@ -74,6 +74,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowNowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
@@ -272,6 +273,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
+  }
+
+  @Override
+  public Operator visitShowNow(SqlBaseParser.ShowNowContext ctx) {
+    return new ShowNowOperator(SQLConstant.TOK_SHOW_NOW);
   }
 
   @Override

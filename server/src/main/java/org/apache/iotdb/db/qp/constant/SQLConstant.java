@@ -179,6 +179,7 @@ public class SQLConstant {
   public static final int TOK_SHOW_TRIGGERS = 104;
 
   public static final int TOK_LOCK_INFO = 105;
+  public static final int TOK_SHOW_NOW = 106;
 
   public static final int TOK_SET_SYSTEM_MODE = 106;
 

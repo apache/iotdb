@@ -99,6 +99,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -196,6 +197,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SYSTEM_TIME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -597,9 +599,25 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowFunctions((ShowFunctionsPlan) showPlan);
       case TRIGGERS:
         return processShowTriggers((ShowTriggersPlan) showPlan);
+      case NOW:
+        return processShowNow();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
+  }
+
+  private QueryDataSet processShowNow() {
+    ShowNowPlan showNowPlan = new ShowNowPlan(ShowPlan.ShowContentType.NOW);
+    SingleDataSet singleDataSet =
+        new SingleDataSet(
+            Collections.singletonList(new PartialPath(SYSTEM_TIME, false)),
+            Collections.singletonList(TSDataType.TEXT));
+    Field field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(showNowPlan.now()));
+    RowRecord rowRecord = new RowRecord(0);
+    rowRecord.addField(field);
+    singleDataSet.setRecord(rowRecord);
+    return singleDataSet;
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
