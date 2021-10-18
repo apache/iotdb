@@ -25,6 +25,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.AggregateUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -33,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -44,49 +45,50 @@ public class GroupByTimeDataSet extends QueryDataSet {
   private List<RowRecord> records = new ArrayList<>();
   private int index = 0;
 
+  protected long queryId;
   private GroupByTimePlan groupByTimePlan;
-  private final QueryContext context;
+  private QueryContext context;
 
   public GroupByTimeDataSet(
       QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
       throws QueryProcessException, IOException {
-    this.context = context;
+    this.queryId = context.getQueryId();
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
     this.groupByTimePlan = plan;
+    this.context = context;
 
     if (logger.isDebugEnabled()) {
       logger.debug("paths " + this.paths + " level:" + plan.getLevel());
     }
 
+    Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
+
     // get all records from GroupByDataSet, then we merge every record
     if (logger.isDebugEnabled()) {
       logger.debug("only group by level, paths:" + groupByTimePlan.getPaths());
     }
-
-    this.paths = new ArrayList<>();
-    this.dataTypes = new ArrayList<>();
-    Map<String, AggregateResult> groupPathResultMap;
     while (dataSet != null && dataSet.hasNextWithoutConstraint()) {
       RowRecord rawRecord = dataSet.nextWithoutConstraint();
       RowRecord curRecord = new RowRecord(rawRecord.getTimestamp());
-      groupPathResultMap =
-          plan.groupAggResultByLevel(Arrays.asList(dataSet.getCurAggregateResults()));
-      for (AggregateResult resultData : groupPathResultMap.values()) {
-        curRecord.addField(resultData.getResult(), resultData.getResultDataType());
+      List<AggregateResult> mergedAggResults =
+          AggregateUtils.mergeRecordByPath(plan, rawRecord, finalPaths);
+      for (AggregateResult resultData : mergedAggResults) {
+        TSDataType dataType = resultData.getResultDataType();
+        curRecord.addField(resultData.getResult(), dataType);
       }
       records.add(curRecord);
+    }
 
-      if (paths.isEmpty()) {
-        for (Map.Entry<String, AggregateResult> entry : groupPathResultMap.entrySet()) {
-          try {
-            this.paths.add(new PartialPath(entry.getKey()));
-          } catch (IllegalPathException e) {
-            logger.error("Query result IllegalPathException occurred: {}.", entry.getKey());
-          }
-          this.dataTypes.add(entry.getValue().getResultDataType());
-        }
+    this.dataTypes = new ArrayList<>();
+    this.paths = new ArrayList<>();
+    for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
+      try {
+        this.paths.add(new PartialPath(entry.getKey()));
+      } catch (IllegalPathException e) {
+        logger.error("Query result IllegalPathException occurred: {}.", entry.getKey());
       }
+      this.dataTypes.add(entry.getValue().getResultDataType());
     }
   }
 

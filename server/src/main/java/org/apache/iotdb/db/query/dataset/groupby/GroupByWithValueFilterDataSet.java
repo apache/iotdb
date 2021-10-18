@@ -128,13 +128,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           "need to call hasNext() before calling next()" + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    curAggregateResults = new AggregateResult[paths.size()];
+    List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      curAggregateResults[i] =
+      aggregateResultList.add(
           AggregateResultFactory.getAggrResultByName(
               groupByTimePlan.getDeduplicatedAggregations().get(i),
               groupByTimePlan.getDeduplicatedDataTypes().get(i),
-              ascending);
+              ascending));
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
@@ -145,14 +145,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       if (timestamp < curEndTime) {
         if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
           cachedTimestamps.addFirst(timestamp);
-          return constructRowRecord(curAggregateResults);
+          return constructRowRecord(aggregateResultList);
         }
         if (timestamp >= curStartTime) {
           timestampArray[timeArrayLength++] = timestamp;
         }
       } else {
         cachedTimestamps.addFirst(timestamp);
-        return constructRowRecord(curAggregateResults);
+        return constructRowRecord(aggregateResultList);
       }
     }
 
@@ -162,8 +162,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
-        curAggregateResults[i].updateResultUsingTimestamps(
-            timestampArray, timeArrayLength, allDataReaderList.get(i));
+        aggregateResultList
+            .get(i)
+            .updateResultUsingTimestamps(timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
 
       timeArrayLength = 0;
@@ -177,11 +178,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     if (timeArrayLength > 0) {
       // cal result using timestamp array
       for (int i = 0; i < paths.size(); i++) {
-        curAggregateResults[i].updateResultUsingTimestamps(
-            timestampArray, timeArrayLength, allDataReaderList.get(i));
+        aggregateResultList
+            .get(i)
+            .updateResultUsingTimestamps(timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
     }
-    return constructRowRecord(curAggregateResults);
+    return constructRowRecord(aggregateResultList);
   }
 
   @Override
@@ -266,7 +268,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     return timeArrayLength;
   }
 
-  private RowRecord constructRowRecord(AggregateResult[] aggregateResultList) {
+  private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {
     RowRecord record;
     if (leftCRightO) {
       record = new RowRecord(curStartTime);
@@ -274,7 +276,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       record = new RowRecord(curEndTime - 1);
     }
     for (int i = 0; i < paths.size(); i++) {
-      AggregateResult aggregateResult = aggregateResultList[i];
+      AggregateResult aggregateResult = aggregateResultList.get(i);
       record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());
     }
     return record;

@@ -43,6 +43,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.VectorSeriesAggregateReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.utils.AggregateUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -694,28 +695,36 @@ public class AggregationExecutor {
   private QueryDataSet constructDataSet(
       List<AggregateResult> aggregateResultList, AggregationPlan plan)
       throws QueryProcessException {
-    SingleDataSet dataSet;
     RowRecord record = new RowRecord(0);
+    for (AggregateResult resultData : aggregateResultList) {
+      TSDataType dataType = resultData.getResultDataType();
+      record.addField(resultData.getResult(), dataType);
+    }
 
+    SingleDataSet dataSet;
     if (plan.getLevel() >= 0) {
-      Map<String, AggregateResult> groupPathsResultMap =
-          plan.groupAggResultByLevel(aggregateResultList);
+      Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
+
+      List<AggregateResult> mergedAggResults =
+          AggregateUtils.mergeRecordByPath(plan, aggregateResultList, finalPaths);
 
       List<PartialPath> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();
-      for (AggregateResult resultData : groupPathsResultMap.values()) {
-        dataTypes.add(resultData.getResultDataType());
-        record.addField(resultData.getResult(), resultData.getResultDataType());
+      for (int i = 0; i < mergedAggResults.size(); i++) {
+        dataTypes.add(mergedAggResults.get(i).getResultDataType());
       }
-      dataSet = new SingleDataSet(paths, dataTypes);
-    } else {
-      for (AggregateResult resultData : aggregateResultList) {
+      RowRecord curRecord = new RowRecord(0);
+      for (AggregateResult resultData : mergedAggResults) {
         TSDataType dataType = resultData.getResultDataType();
-        record.addField(resultData.getResult(), dataType);
+        curRecord.addField(resultData.getResult(), dataType);
       }
+
+      dataSet = new SingleDataSet(paths, dataTypes);
+      dataSet.setRecord(curRecord);
+    } else {
       dataSet = new SingleDataSet(selectedSeries, dataTypes);
+      dataSet.setRecord(record);
     }
-    dataSet.setRecord(record);
 
     return dataSet;
   }

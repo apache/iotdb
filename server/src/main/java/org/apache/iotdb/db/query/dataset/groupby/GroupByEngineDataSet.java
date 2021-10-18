@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -51,7 +50,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   private boolean isSlidingStepByMonth = false;
   protected int intervalTimes;
   private static final long MS_TO_MONTH = 30 * 86400_000L;
-  protected AggregateResult[] curAggregateResults;
 
   public GroupByEngineDataSet() {}
 
@@ -173,10 +171,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   public long getStartTime() {
     return startTime;
-  }
-
-  public AggregateResult[] getCurAggregateResults() {
-    return curAggregateResults;
   }
 
   @TestOnly
