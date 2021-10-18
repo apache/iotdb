@@ -704,21 +704,17 @@ public class ClusterReaderFactory {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
 
-    List<String> fullPaths = Lists.newArrayList();
+    List<List<String>> fullPaths = Lists.newArrayList();
     paths.forEach(
         path -> {
+          // if vector path, add its vectorId and all sub sensors
           if (path instanceof VectorPartialPath) {
-            System.out.println("Before RPC" + path);
-            StringBuilder builder = new StringBuilder("VP$");
-            builder.append(path.getFullPath());
-            List<String> subSensorsList = ((VectorPartialPath) path).getSubSensorsList();
-            for (String subSensor : subSensorsList) {
-              builder.append(":");
-              builder.append(subSensor);
-            }
-            fullPaths.add(builder.toString());
+            List<String> result = new ArrayList<>();
+            result.add(path.getFullPath());
+            result.addAll(((VectorPartialPath) path).getSubSensorsList());
+            fullPaths.add(result);
           } else {
-            fullPaths.add(path.getFullPath());
+            fullPaths.add(Collections.singletonList(path.getFullPath()));
           }
         });
 

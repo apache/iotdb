@@ -304,23 +304,16 @@ public class LocalQueryExecutor {
     request
         .getPath()
         .forEach(
-            fullPath -> {
+            path -> {
               try {
-                System.out.println("After RPC: " + fullPath);
-                if (fullPath.startsWith("VP$")) {
-                  String[] array = fullPath.split(":");
-                  String vectorId = array[0].replace("VP$", "");
-                  System.out.println("After RPC: " + vectorId);
-                  List<String> subSensorsList = new ArrayList<>();
-                  for (int i = 1; i < array.length; i++) {
-                    subSensorsList.add(array[i]);
-                  }
-                  paths.add(new VectorPartialPath(vectorId, subSensorsList));
+                if (path.size() == 1) {
+                  paths.add(new PartialPath(path.get(0)));
                 } else {
-                  paths.add(new PartialPath(fullPath));
+                  List<String> subSensorsList = path.subList(1, path.size());
+                  paths.add(new VectorPartialPath(path.get(0), subSensorsList));
                 }
               } catch (IllegalPathException e) {
-                logger.warn("Failed to create partial path, fullPath is {}.", fullPath, e);
+                logger.warn("Failed to create partial path, fullPath is {}.", path, e);
               }
             });
 

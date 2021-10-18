@@ -199,7 +199,7 @@ struct SingleSeriesQueryRequest {
 }
 
 struct MultSeriesQueryRequest {
-  1: required list<string> path
+  1: required list<list<string>> path
   2: optional binary timeFilterBytes
   3: optional binary valueFilterBytes
   4: required long queryId
