@@ -38,8 +38,8 @@ import java.util.Set;
 /**
  * This class is used to control the row number of group by level query. For example, selected
  * series[root.sg.d1.s1, root.sg.d2.s1, root.sg2.d1.s1], level = 1; the result rows will be
- * [root.sg.*.s1, root.sg2.*.s1], sLimit and sOffset will be used to control the result rows rather
- * than the selected series.
+ * [root.sg.*.s1, root.sg2.*.s1], sLimit and sOffset will be used to control the result numbers
+ * rather than the selected series.
  */
 public class GroupByLevelController {
 
@@ -49,7 +49,7 @@ public class GroupByLevelController {
   Set<String> offsetPaths;
   private final int[] levels;
   int prevSize = 0;
-  /** root.sg.d1.s1 with level = 1 -> root.*.d1.s1 */
+  /** count(root.sg.d1.s1) with level = 1 -> count(root.*.d1.s1) */
   private Map<String, String> groupedPathMap;
 
   public GroupByLevelController(QueryOperator operator) {

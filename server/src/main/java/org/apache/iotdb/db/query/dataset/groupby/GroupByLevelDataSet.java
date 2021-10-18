@@ -20,11 +20,9 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -37,23 +35,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public class GroupByTimeDataSet extends QueryDataSet {
+public class GroupByLevelDataSet extends QueryDataSet {
 
-  private static final Logger logger = LoggerFactory.getLogger(GroupByTimeDataSet.class);
-
+  private static final Logger logger = LoggerFactory.getLogger(GroupByLevelDataSet.class);
   private List<RowRecord> records = new ArrayList<>();
   private int index = 0;
 
-  private GroupByTimePlan groupByTimePlan;
-  private final QueryContext context;
-
-  public GroupByTimeDataSet(
-      QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-      throws QueryProcessException, IOException {
-    this.context = context;
+  public GroupByLevelDataSet(GroupByTimePlan plan, GroupByEngineDataSet dataSet)
+      throws IOException {
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
-    this.groupByTimePlan = plan;
 
     if (logger.isDebugEnabled()) {
       logger.debug("paths " + this.paths + " level:" + Arrays.toString(plan.getLevels()));
@@ -61,7 +52,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
 
     // get all records from GroupByDataSet, then we merge every record
     if (logger.isDebugEnabled()) {
-      logger.debug("only group by level, paths:" + groupByTimePlan.getPaths());
+      logger.debug("only group by level, paths:" + plan.getPaths());
     }
 
     this.paths = new ArrayList<>();
