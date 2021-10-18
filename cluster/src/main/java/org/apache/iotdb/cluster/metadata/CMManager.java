@@ -196,7 +196,6 @@ public class CMManager extends MManager {
     }
 
     String measurement = fullPath.getMeasurement();
-    System.out.println("FullPath: " + fullPath.getExactFullPath());
     if (fullPath instanceof VectorPartialPath) {
       if (((VectorPartialPath) fullPath).getSubSensorsList().size() != 1) {
         return TSDataType.VECTOR;
@@ -204,7 +203,6 @@ public class CMManager extends MManager {
         measurement = ((VectorPartialPath) fullPath).getSubSensor(0);
       }
     }
-    System.out.println("Measurement: " + measurement);
 
     // try remote cache first
     try {
@@ -240,7 +238,6 @@ public class CMManager extends MManager {
         } else {
           cacheMeta(fullPath, measurementMNode, true);
         }
-        System.out.println(measurementSchema);
         return measurementMNode.getDataType(measurement);
       } else {
         throw e;

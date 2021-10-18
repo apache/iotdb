@@ -707,15 +707,7 @@ public class ClusterReaderFactory {
     List<List<String>> fullPaths = Lists.newArrayList();
     paths.forEach(
         path -> {
-          // if vector path, add its vectorId and all sub sensors
-          if (path instanceof VectorPartialPath) {
-            List<String> result = new ArrayList<>();
-            result.add(path.getFullPath());
-            result.addAll(((VectorPartialPath) path).getSubSensorsList());
-            fullPaths.add(result);
-          } else {
-            fullPaths.add(Collections.singletonList(path.getFullPath()));
-          }
+          fullPaths.add(getPathStringList(path));
         });
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
@@ -759,10 +751,11 @@ public class ClusterReaderFactory {
     return request;
   }
 
-  /** If vector path, return vectorId with all subSensors. Else just return path string. */
+  /** If vector path, return its vectorId with all subSensors. Else just return path string. */
   private List<String> getPathStringList(Path path) {
     if (path instanceof VectorPartialPath) {
-      List<String> pathWithSubSensors = new ArrayList<>();
+      List<String> pathWithSubSensors =
+          new ArrayList<>(((VectorPartialPath) path).getSubSensorsList().size() + 1);
       pathWithSubSensors.add(path.getFullPath());
       pathWithSubSensors.addAll(((VectorPartialPath) path).getSubSensorsList());
       return pathWithSubSensors;

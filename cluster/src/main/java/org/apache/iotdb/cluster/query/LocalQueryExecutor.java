@@ -278,7 +278,7 @@ public class LocalQueryExecutor {
     }
   }
 
-  private PartialPath getPathFromRequest(List<String> pathString) throws QueryProcessException {
+  private PartialPath getPathFromRequest(List<String> pathString) {
     try {
       if (pathString.size() == 1) {
         return new PartialPath(pathString.get(0));
@@ -286,7 +286,8 @@ public class LocalQueryExecutor {
         return new VectorPartialPath(pathString.get(0), pathString.subList(1, pathString.size()));
       }
     } catch (IllegalPathException e) {
-      throw new QueryProcessException(e.getMessage());
+      logger.error("Failed to create partial path, fullPath is {}.", pathString, e);
+      return null;
     }
   }
 
@@ -308,21 +309,7 @@ public class LocalQueryExecutor {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     List<PartialPath> paths = Lists.newArrayList();
-    request
-        .getPath()
-        .forEach(
-            path -> {
-              try {
-                if (path.size() == 1) {
-                  paths.add(new PartialPath(path.get(0)));
-                } else {
-                  List<String> subSensorsList = path.subList(1, path.size());
-                  paths.add(new VectorPartialPath(path.get(0), subSensorsList));
-                }
-              } catch (IllegalPathException e) {
-                logger.warn("Failed to create partial path, fullPath is {}.", path, e);
-              }
-            });
+    request.getPath().forEach(path -> paths.add(getPathFromRequest(path)));
 
     List<TSDataType> dataTypes = Lists.newArrayList();
     request.getDataTypeOrdinal().forEach(dataType -> dataTypes.add(TSDataType.values()[dataType]));
