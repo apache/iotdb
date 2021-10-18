@@ -22,7 +22,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -148,7 +147,10 @@ public abstract class Traverser {
     Template upperTemplate = node.getUpperTemplate();
     for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
       traverse(
-          new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, level + 1);
+          MeasurementMNode.getMeasurementMNode(
+              node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
+          idx + 1,
+          level + 1);
     }
   }
 
@@ -157,7 +159,7 @@ public abstract class Traverser {
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     for (IMNode child : node.getChildren().values()) {
       if (child.isMeasurement()) {
-        String alias = ((IMeasurementMNode) child).getAlias();
+        String alias = child.getAsMeasurementMNode().getAlias();
         if (!Pattern.matches(targetNameRegex, child.getName())
             && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
           continue;
@@ -185,12 +187,18 @@ public abstract class Traverser {
         continue;
       }
       traverse(
-          new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, level + 1);
+          MeasurementMNode.getMeasurementMNode(
+              node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
+          idx + 1,
+          level + 1);
     }
     if (multiLevelWildcard) {
       for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
         traverse(
-            new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx, level + 1);
+            MeasurementMNode.getMeasurementMNode(
+                node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
+            idx,
+            level + 1);
       }
     }
   }
@@ -216,7 +224,8 @@ public abstract class Traverser {
     IMeasurementSchema targetSchema = upperTemplate.getSchemaMap().get(targetName);
     if (targetSchema != null) {
       traverse(
-          new MeasurementMNode(node, targetSchema.getMeasurementId(), targetSchema, null),
+          MeasurementMNode.getMeasurementMNode(
+              node.getAsEntityMNode(), targetSchema.getMeasurementId(), targetSchema, null),
           idx + 1,
           level + 1);
     }
@@ -224,7 +233,10 @@ public abstract class Traverser {
     if (multiLevelWildcard) {
       for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
         traverse(
-            new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx, level + 1);
+            MeasurementMNode.getMeasurementMNode(
+                node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
+            idx,
+            level + 1);
       }
     }
   }

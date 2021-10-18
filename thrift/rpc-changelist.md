@@ -18,6 +18,28 @@
     under the License.
 
 -->
+
+# 0.12.x(version-1) -> 0.13.x(version-SNAPSHOT)
+
+Last Updated on 2021.10.14 by Minghui Liu.
+
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+
+## 2. Add New
+
+| Latest Changes    | Related Committers     |
+| ----------------- | ---------------------- |
+| Add TSTracingInfo | Minghui Liu            | 
+
+## 3. Update
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+
+
 # 0.11.x(version-2) -> 0.12.x(version-1)
 
 Last Updated on 2021.01.19 by Xiangwei Wei.

@@ -83,6 +83,7 @@ import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.SettleOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
@@ -562,6 +563,24 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       flushOperator.setStorageGroupList(storageGroups);
     }
     return flushOperator;
+  }
+
+  @Override
+  public Operator visitSettle(SqlBaseParser.SettleContext ctx) {
+    SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
+    if (ctx.pathOrString().prefixPath() != null) {
+      PartialPath sgPath = parsePrefixPath(ctx.pathOrString().prefixPath());
+      settleOperator.setSgPath(sgPath);
+      settleOperator.setIsSgPath(true);
+    } else if (!ctx.pathOrString().stringLiteral().getText().equals("")) {
+      String tsFilePath = removeStringQuote(ctx.pathOrString().stringLiteral().getText());
+      settleOperator.setTsFilePath(tsFilePath);
+      settleOperator.setIsSgPath(false);
+    } else {
+      // do nothing
+    }
+
+    return settleOperator;
   }
 
   @Override
@@ -1060,6 +1079,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         queryOp.setWhereComponent(whereComponent);
       }
     }
+    queryOp.setEnableTracing(ctx.TRACING() != null);
     // 4. Check whether it's a select-into clause
     return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
   }
@@ -1101,8 +1121,10 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitTopClause(TopClauseContext ctx) {
     Map<String, Object> props = new HashMap<>();
     int top = Integer.parseInt(ctx.INT().getText());
-    if (top < 0) {
-      throw new SQLParserException("TOP <N>: N should be greater than 0.");
+    if (top <= 0 || top > 1000) {
+      throw new SQLParserException(
+          String.format(
+              "TOP <N>: N should be greater than 0 and less than 1000, current N is %d", top));
     }
     props.put(TOP_K, top);
     queryOp.setProps(props);

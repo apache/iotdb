@@ -21,7 +21,13 @@ import io.netty.buffer.ByteBuf;
 
 import java.util.List;
 
-/** PayloadFormatter format the payload to the messages. */
+/**
+ * PayloadFormatter format the payload to the messages.
+ *
+ * <p>This is a SPI interface.
+ *
+ * @see JSONPayloadFormatter
+ */
 public interface PayloadFormatter {
   /**
    * format a payload to a list of messages

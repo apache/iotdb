@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -88,6 +89,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
   private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
+
+  /** manage TsFileResource degrade */
+  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   public LevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
@@ -148,6 +152,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           unSequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
         }
       }
+    }
+    for (TsFileResource tsFileResource : mergeTsFiles) {
+      tsFileResourceManager.removeTsFileResource(tsFileResource);
     }
   }
 
@@ -238,6 +245,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     } finally {
       writeUnlock();
     }
+    tsFileResourceManager.removeTsFileResource(tsFileResource);
   }
 
   @Override
@@ -261,6 +269,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       }
     } finally {
       writeUnlock();
+    }
+    for (TsFileResource tsFileResource : tsFileResourceList) {
+      tsFileResourceManager.removeTsFileResource(tsFileResource);
     }
   }
 
@@ -475,6 +486,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
           // complete compaction and delete source file
           deleteAllSubLevelFiles(isSeq, timePartition);
+
+          tsFileResourceManager.registerSealedTsFileResource(targetTsFileResource);
         } else {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
           TsFileResource targetResource = getRecoverTsFileResource(targetFile, isSeq);
@@ -519,6 +532,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 unSequenceRecoverTsFileResources.clear();
               }
               deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
+              tsFileResourceManager.registerSealedTsFileResource(targetResource);
             } finally {
               writeUnlock();
             }
@@ -712,6 +726,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
               }
               deleteLevelFilesInList(timePartition, toMergeTsFiles, i, sequence);
+              tsFileResourceManager.registerSealedTsFileResource(newResource);
               if (mergeResources.size() > i + 1) {
                 mergeResources.get(i + 1).add(newResource);
               }

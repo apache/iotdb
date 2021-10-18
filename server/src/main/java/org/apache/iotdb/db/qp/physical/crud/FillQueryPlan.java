@@ -49,9 +49,4 @@ public class FillQueryPlan extends RawDataQueryPlan {
   public void setFillType(Map<TSDataType, IFill> fillType) {
     this.fillType = fillType;
   }
-
-  @Override
-  public boolean isRawQuery() {
-    return false;
-  }
 }

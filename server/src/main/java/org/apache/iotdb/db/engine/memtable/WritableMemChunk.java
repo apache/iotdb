@@ -69,35 +69,35 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void write(
-      long[] times, Object bitMap, Object valueList, TSDataType dataType, int start, int end) {
+      long[] times, Object valueList, Object bitMap, TSDataType dataType, int start, int end) {
     switch (dataType) {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) valueList;
-        putBooleans(times, (BitMap) bitMap, boolValues, start, end);
+        putBooleans(times, boolValues, (BitMap) bitMap, start, end);
         break;
       case INT32:
         int[] intValues = (int[]) valueList;
-        putInts(times, (BitMap) bitMap, intValues, start, end);
+        putInts(times, intValues, (BitMap) bitMap, start, end);
         break;
       case INT64:
         long[] longValues = (long[]) valueList;
-        putLongs(times, (BitMap) bitMap, longValues, start, end);
+        putLongs(times, longValues, (BitMap) bitMap, start, end);
         break;
       case FLOAT:
         float[] floatValues = (float[]) valueList;
-        putFloats(times, (BitMap) bitMap, floatValues, start, end);
+        putFloats(times, floatValues, (BitMap) bitMap, start, end);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) valueList;
-        putDoubles(times, (BitMap) bitMap, doubleValues, start, end);
+        putDoubles(times, doubleValues, (BitMap) bitMap, start, end);
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) valueList;
-        putBinaries(times, (BitMap) bitMap, binaryValues, start, end);
+        putBinaries(times, binaryValues, (BitMap) bitMap, start, end);
         break;
       case VECTOR:
         Object[] vectorValues = (Object[]) valueList;
-        putVectors(times, (BitMap[]) bitMap, vectorValues, start, end);
+        putVectors(times, vectorValues, (BitMap[]) bitMap, start, end);
         break;
       default:
         throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
@@ -140,38 +140,38 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putLongs(long[] t, BitMap bitMap, long[] v, int start, int end) {
-    list.putLongs(t, v, start, end);
+  public void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end) {
+    list.putLongs(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putInts(long[] t, BitMap bitMap, int[] v, int start, int end) {
-    list.putInts(t, v, start, end);
+  public void putInts(long[] t, int[] v, BitMap bitMap, int start, int end) {
+    list.putInts(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putFloats(long[] t, BitMap bitMap, float[] v, int start, int end) {
-    list.putFloats(t, v, start, end);
+  public void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end) {
+    list.putFloats(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putDoubles(long[] t, BitMap bitMap, double[] v, int start, int end) {
-    list.putDoubles(t, v, start, end);
+  public void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end) {
+    list.putDoubles(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putBinaries(long[] t, BitMap bitMap, Binary[] v, int start, int end) {
-    list.putBinaries(t, v, start, end);
+  public void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end) {
+    list.putBinaries(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putBooleans(long[] t, BitMap bitMap, boolean[] v, int start, int end) {
-    list.putBooleans(t, v, start, end);
+  public void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end) {
+    list.putBooleans(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putVectors(long[] t, BitMap[] bitMaps, Object[] v, int start, int end) {
-    list.putVectors(t, bitMaps, v, start, end);
+  public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
+    list.putVectors(t, v, bitMaps, start, end);
   }
 
   @Override

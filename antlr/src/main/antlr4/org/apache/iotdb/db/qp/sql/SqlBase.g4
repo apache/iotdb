@@ -45,6 +45,7 @@ statement
     | DROP INDEX indexName=ID ON prefixPath #dropIndex //not support yet
     | MERGE #merge
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
+    | SETTLE pathOrString #settle
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
     | CREATE USER userName=ID password= stringLiteral#createUser
@@ -84,8 +85,8 @@ statement
     | SHOW MERGE #showMergeStatus
     | SHOW QUERY PROCESSLIST #showQueryProcesslist
     | KILL QUERY INT? #killQuery
-    | TRACING ON #tracingOn
-    | TRACING OFF #tracingOff
+    | TRACING ON #tracingOn // not support yet
+    | TRACING OFF #tracingOff // not support yet
     | SET SYSTEM TO READONLY #setSystemToReadOnly
     | SET SYSTEM TO WRITABLE #setSystemToWritable
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
@@ -107,7 +108,7 @@ statement
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
-    | selectClause intoClause? fromClause whereClause? specialClause? #selectStatement
+    | TRACING? selectClause intoClause? fromClause whereClause? specialClause? #selectStatement
     | CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID
       resampleClause?
       cqSelectIntoClause #createContinuousQueryStatement
@@ -1068,6 +1069,10 @@ FLUSH
     : F L U S H
     ;
 
+SETTLE
+    : S E T T L E
+    ;
+
 TASK
     : T A S K
     ;
@@ -1193,7 +1198,7 @@ PLA
    ;
 
 LZ4
-   : L Z '4' 
+   : L Z '4'
    ;
 
 LATEST
@@ -1421,6 +1426,11 @@ NaN : 'NaN';
 stringLiteral
    : SINGLE_QUOTE_STRING_LITERAL
    | DOUBLE_QUOTE_STRING_LITERAL
+   ;
+
+pathOrString
+   : prefixPath
+   | stringLiteral
    ;
 
 INT : [0-9]+;

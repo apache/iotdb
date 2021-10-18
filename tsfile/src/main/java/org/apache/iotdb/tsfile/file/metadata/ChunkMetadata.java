@@ -24,11 +24,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +62,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   /** ChunkLoader of metadata, used to create ChunkReaderWrap */
   private IChunkLoader chunkLoader;
 
-  private Statistics statistics;
+  private Statistics<? extends Serializable> statistics;
 
   private boolean isFromOldTsFile = false;
 
@@ -74,7 +76,10 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   private String filePath;
   private byte mask;
 
-  private ChunkMetadata() {}
+  // used for ChunkCache, Eg:"root.sg1/0/0"
+  private String tsFilePrefixPath;
+
+  public ChunkMetadata() {}
 
   /**
    * constructor of ChunkMetaData.
@@ -85,7 +90,10 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
    * @param statistics value statistics
    */
   public ChunkMetadata(
-      String measurementUid, TSDataType tsDataType, long fileOffset, Statistics statistics) {
+      String measurementUid,
+      TSDataType tsDataType,
+      long fileOffset,
+      Statistics<? extends Serializable> statistics) {
     this.measurementUid = measurementUid;
     this.tsDataType = tsDataType;
     this.offsetOfChunkHeader = fileOffset;
@@ -118,7 +126,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return statistics;
   }
 
@@ -238,16 +246,12 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
     ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader
         && version == that.version
-        && Objects.equals(measurementUid, that.measurementUid)
-        && tsDataType == that.tsDataType
-        && Objects.equals(deleteIntervalList, that.deleteIntervalList)
-        && Objects.equals(statistics, that.statistics);
+        && tsFilePrefixPath.equals(that.tsFilePrefixPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        measurementUid, deleteIntervalList, tsDataType, statistics, version, offsetOfChunkHeader);
+    return Objects.hash(tsFilePrefixPath, version, offsetOfChunkHeader);
   }
 
   @Override
@@ -292,7 +296,8 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   }
 
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
-    this.statistics.mergeStatistics(chunkMetadata.getStatistics());
+    Statistics<? extends Serializable> statistics = chunkMetadata.getStatistics();
+    this.statistics.mergeStatistics(statistics);
     this.ramSize = calculateRamSize();
   }
 
@@ -320,6 +325,9 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
 
   public void setFilePath(String filePath) {
     this.filePath = filePath;
+
+    // set tsFilePrefixPath
+    tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(filePath);
   }
 
   @Override

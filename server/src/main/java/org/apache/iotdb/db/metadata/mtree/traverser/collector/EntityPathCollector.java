@@ -26,7 +26,8 @@ import java.util.Set;
 import java.util.TreeSet;
 
 // This class implements the EntityMNode path collection function.
-// Compared with TSEntityPathCollector, this class only process entities that full match the path
+// Compared with BelongedEntityPathCollector, this class only process entities that full match the
+// path
 // pattern.
 public class EntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
 

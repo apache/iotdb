@@ -171,16 +171,19 @@ public class SyncClient implements ISyncClient {
    * @param lockFile lock file
    */
   private boolean lockInstance(File lockFile) {
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw")) {
+    RandomAccessFile randomAccessFile = null;
+    try {
+      randomAccessFile = new RandomAccessFile(lockFile, "rw");
       final FileLock fileLock = randomAccessFile.getChannel().tryLock();
       if (fileLock != null) {
+        final RandomAccessFile randomAccessFile2 = randomAccessFile;
         Runtime.getRuntime()
             .addShutdownHook(
                 new Thread(
                     () -> {
                       try {
                         fileLock.release();
-                        randomAccessFile.close();
+                        randomAccessFile2.close();
                       } catch (Exception e) {
                         logger.error("Unable to remove lock file: {}", lockFile, e);
                       }
@@ -189,6 +192,14 @@ public class SyncClient implements ISyncClient {
       }
     } catch (Exception e) {
       logger.error("Unable to create and/or lock file: {}", lockFile, e);
+    } finally {
+      if (randomAccessFile != null) {
+        try {
+          randomAccessFile.close();
+        } catch (Exception e) {
+          logger.error("Unable to close randomAccessFile: {}", randomAccessFile, e);
+        }
+      }
     }
     return false;
   }
@@ -339,26 +350,36 @@ public class SyncClient implements ISyncClient {
 
   /** UUID marks the identity of sender for receiver. */
   private String getOrCreateUUID(File uuidFile) throws IOException {
-    String uuid;
     if (!uuidFile.getParentFile().exists()) {
       uuidFile.getParentFile().mkdirs();
     }
-    if (!uuidFile.exists()) {
-      try (FileOutputStream out = new FileOutputStream(uuidFile)) {
-        uuid = generateUUID();
-        out.write(uuid.getBytes());
-      } catch (IOException e) {
-        logger.error("Cannot insert UUID to file {}", uuidFile.getPath());
-        throw new IOException(e);
-      }
-    } else {
-      try (BufferedReader bf = new BufferedReader((new FileReader(uuidFile.getAbsolutePath())))) {
+
+    String uuid;
+    if (uuidFile.exists()) {
+      try (BufferedReader bf = new BufferedReader((new FileReader(uuidFile)))) {
         uuid = bf.readLine();
       } catch (IOException e) {
-        logger.error("Cannot read UUID from file{}", uuidFile.getPath());
+        logger.error("Cannot read UUID from file {}", uuidFile.getPath());
         throw new IOException(e);
       }
+
+      if ((uuid == null) || (uuid.length() == 0)) {
+        logger.warn("UUID in file {} is empty.", uuidFile.getPath());
+        uuidFile.delete();
+      } else {
+        return uuid;
+      }
     }
+
+    // uuidFile not exist or uuid in uuidFile is invalid
+    try (FileOutputStream out = new FileOutputStream(uuidFile)) {
+      uuid = generateUUID();
+      out.write(uuid.getBytes());
+    } catch (IOException e) {
+      logger.error("Cannot insert UUID to file {}", uuidFile.getPath());
+      throw new IOException(e);
+    }
+
     return uuid;
   }
 

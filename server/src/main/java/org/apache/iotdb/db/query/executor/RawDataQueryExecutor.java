@@ -65,6 +65,7 @@ public class RawDataQueryExecutor {
       return dataSet;
     }
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
+
     try {
       return new RawQueryDataSetWithoutValueFilter(
           context.getQueryId(),

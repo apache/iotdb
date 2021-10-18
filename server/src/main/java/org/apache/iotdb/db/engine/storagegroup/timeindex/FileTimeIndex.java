@@ -22,8 +22,8 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -173,12 +173,34 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long getMinStartTime() {
+    return startTime;
+  }
+
+  @Override
   public long getEndTime(String deviceId) {
+    return endTime;
+  }
+
+  @Override
+  public long getMaxEndTime() {
     return endTime;
   }
 
   @Override
   public boolean checkDeviceIdExist(String deviceId) {
     return true;
+  }
+
+  @Override
+  public int compareDegradePriority(ITimeIndex timeIndex) {
+    if (timeIndex instanceof DeviceTimeIndex) {
+      return 1;
+    } else if (timeIndex instanceof FileTimeIndex) {
+      return Long.compare(startTime, timeIndex.getMinStartTime());
+    } else {
+      logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
+      throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
+    }
   }
 }

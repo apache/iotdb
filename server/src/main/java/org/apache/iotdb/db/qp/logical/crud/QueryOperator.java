@@ -41,6 +41,7 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
@@ -65,6 +66,8 @@ public class QueryOperator extends Operator {
   protected Map<String, Object> props;
   protected IndexType indexType;
 
+  protected boolean enableTracing;
+
   public QueryOperator() {
     super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
@@ -78,6 +81,7 @@ public class QueryOperator extends Operator {
     this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
     this.props = queryOperator.getProps();
     this.indexType = queryOperator.getIndexType();
+    this.enableTracing = queryOperator.isEnableTracing();
   }
 
   public SelectComponent getSelectComponent() {
@@ -149,21 +153,8 @@ public class QueryOperator extends Operator {
   }
 
   public void check() throws LogicalOperatorException {
-    if (isAlignByDevice()) {
-      if (selectComponent.hasTimeSeriesGeneratingFunction()) {
-        throw new LogicalOperatorException(
-            "ALIGN BY DEVICE clause is not supported in UDF queries.");
-      }
-
-      for (PartialPath path : selectComponent.getPaths()) {
-        String device = path.getDevice();
-        if (!device.isEmpty()) {
-          throw new LogicalOperatorException(
-              "The paths of the SELECT clause can only be single level. In other words, "
-                  + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
-                  + " For more details please refer to the SQL document.");
-        }
-      }
+    if (isAlignByDevice() && selectComponent.hasTimeSeriesGeneratingFunction()) {
+      throw new LogicalOperatorException("ALIGN BY DEVICE clause is not supported in UDF queries.");
     }
   }
 
@@ -181,6 +172,7 @@ public class QueryOperator extends Operator {
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
     rawDataQueryPlan.setPaths(selectComponent.getPaths());
     rawDataQueryPlan.setResultColumns(selectComponent.getResultColumns());
+    rawDataQueryPlan.setEnableTracing(enableTracing);
 
     // transform filter operator to expression
     if (whereComponent != null) {
@@ -227,7 +219,6 @@ public class QueryOperator extends Operator {
     List<PartialPath> devices = removeStarsInDeviceWithUnique(prefixPaths);
     List<ResultColumn> resultColumns = selectComponent.getResultColumns();
     List<String> aggregationFuncs = selectComponent.getAggregationFunctions();
-
     // to record result measurement columns
     List<String> measurements = new ArrayList<>();
     Map<String, MeasurementInfo> measurementInfoMap = new HashMap<>();
@@ -254,12 +245,14 @@ public class QueryOperator extends Operator {
         try {
           // remove stars in SELECT to get actual paths
           List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
+          if (suffixPath.getNodes().length > 1
+              && (actualPaths.isEmpty() || !(actualPaths.get(0) instanceof VectorPartialPath))) {
+            throw new QueryProcessException(AlignByDevicePlan.MEASUREMENT_ERROR_MESSAGE);
+          }
           if (resultColumn.hasAlias() && actualPaths.size() >= 2) {
             throw new QueryProcessException(
-                String.format(
-                    "alias %s can only be matched with one time series", resultColumn.getAlias()));
+                String.format(AlignByDevicePlan.ALIAS_ERROR_MESSAGE, resultColumn.getAlias()));
           }
-
           if (actualPaths.isEmpty()) {
             String nonExistMeasurement = getMeasurementName(fullPath, aggregation);
             if (measurementSetOfGivenSuffix.add(nonExistMeasurement)) {
@@ -319,6 +312,7 @@ public class QueryOperator extends Operator {
     alignByDevicePlan.setMeasurementInfoMap(measurementInfoMap);
     alignByDevicePlan.setDevices(devices);
     alignByDevicePlan.setPaths(paths);
+    alignByDevicePlan.setEnableTracing(enableTracing);
 
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
@@ -373,11 +367,15 @@ public class QueryOperator extends Operator {
         : (((FunctionExpression) expression).getPaths().get(0));
   }
 
+  /**
+   * If path is a vectorPartialPath, we return its measurementId + subMeasurement as the final
+   * measurement. e.g. path: root.sg.d1.vector1[s1], return "vector1.s1".
+   */
   private String getMeasurementName(PartialPath path, String aggregation) {
     String initialMeasurement = path.getMeasurement();
     if (path instanceof VectorPartialPath) {
       String subMeasurement = ((VectorPartialPath) path).getSubSensor(0);
-      initialMeasurement += "." + subMeasurement;
+      initialMeasurement += TsFileConstant.PATH_SEPARATOR + subMeasurement;
     }
     if (aggregation != null) {
       initialMeasurement = aggregation + "(" + initialMeasurement + ")";
@@ -484,5 +482,13 @@ public class QueryOperator extends Operator {
 
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
+  }
+
+  public boolean isEnableTracing() {
+    return enableTracing;
+  }
+
+  public void setEnableTracing(boolean enableTracing) {
+    this.enableTracing = enableTracing;
   }
 }

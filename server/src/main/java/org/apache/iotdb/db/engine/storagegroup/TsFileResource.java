@@ -22,14 +22,15 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.SettleTsFileCallBack;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -42,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -51,6 +53,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -133,6 +136,8 @@ public class TsFileResource {
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
+  private SettleTsFileCallBack settleTsFileCallBack;
+
   /**
    * indicate if this tsfile resource belongs to a sequence tsfile or not used for upgrading
    * v0.9.x/v1 -> 0.10/v2
@@ -153,6 +158,9 @@ public class TsFileResource {
   protected long minPlanIndex = Long.MAX_VALUE;
 
   private long version = 0;
+
+  /** memory cost for the TsFileResource when it's calculated for the first time */
+  private long ramSize;
 
   public TsFileResource() {}
 
@@ -237,7 +245,7 @@ public class TsFileResource {
     }
     if (timeTimeSeriesMetadata.getTSDataType() != null) {
       if (timeTimeSeriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-        Statistics<?> timeStatistics =
+        Statistics<? extends Serializable> timeStatistics =
             Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
 
         List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
@@ -303,7 +311,7 @@ public class TsFileResource {
         timeSeriesMetadata =
             new VectorTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
       } else {
-        Statistics<?> seriesStatistics =
+        Statistics<? extends Serializable> seriesStatistics =
             Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
         // flush chunkMetadataList one by one
         for (IChunkMetadata chunkMetadata : chunkMetadataList) {
@@ -706,6 +714,14 @@ public class TsFileResource {
     return upgradeTsFileResourceCallBack;
   }
 
+  public SettleTsFileCallBack getSettleTsFileCallBack() {
+    return settleTsFileCallBack;
+  }
+
+  public void setSettleTsFileCallBack(SettleTsFileCallBack settleTsFileCallBack) {
+    this.settleTsFileCallBack = settleTsFileCallBack;
+  }
+
   /** make sure Either the deviceToIndex is not empty Or the path contains a partition folder */
   public long getTimePartition() {
     return timeIndex.getTimePartition(file.getAbsolutePath());
@@ -773,7 +789,12 @@ public class TsFileResource {
 
   /** @return resource map size */
   public long calculateRamSize() {
-    return timeIndex.calculateRamSize();
+    ramSize = timeIndex.calculateRamSize();
+    return ramSize;
+  }
+
+  public long getRamSize() {
+    return ramSize;
   }
 
   public void delete() throws IOException {
@@ -847,8 +868,31 @@ public class TsFileResource {
     this.timeIndex = timeIndex;
   }
 
-  // change tsFile name
+  public byte getTimeIndexType() {
+    return timeIndexType;
+  }
 
+  public int compareIndexDegradePriority(TsFileResource tsFileResource) {
+    int cmp = timeIndex.compareDegradePriority(tsFileResource.timeIndex);
+    return cmp == 0 ? file.getAbsolutePath().compareTo(tsFileResource.file.getAbsolutePath()) : cmp;
+  }
+
+  /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
+  public long degradeTimeIndex() {
+    TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
+    // if current timeIndex is FileTimeIndex, no need to degrade
+    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
+    // get the minimum startTime
+    long startTime = timeIndex.getMinStartTime();
+    // get the maximum endTime
+    long endTime = timeIndex.getMaxEndTime();
+    // replace the DeviceTimeIndex with FileTimeIndex
+    timeIndex = new FileTimeIndex(startTime, endTime);
+    timeIndexType = 0;
+    return ramSize - timeIndex.calculateRamSize();
+  }
+
+  // change tsFile name
   public static String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
     return time
         + FILE_NAME_SEPARATOR

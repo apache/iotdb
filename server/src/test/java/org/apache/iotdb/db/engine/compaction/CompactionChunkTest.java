@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,9 +62,11 @@ public class CompactionChunkTest extends LevelCompactionTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
+    if (!tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
   }
 
   @After
@@ -79,15 +82,16 @@ public class CompactionChunkTest extends LevelCompactionTest {
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 1
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                .concat(
+                    0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
     TsFileResource targetTsfileResource = new TsFileResource(file);
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
     String device = COMPACTION_TEST_SG + PATH_SEPARATOR + "device0";
@@ -158,15 +162,16 @@ public class CompactionChunkTest extends LevelCompactionTest {
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 1
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                .concat(
+                    0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
     TsFileResource targetTsfileResource = new TsFileResource(file);
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
     String device = COMPACTION_TEST_SG + PATH_SEPARATOR + "device0";

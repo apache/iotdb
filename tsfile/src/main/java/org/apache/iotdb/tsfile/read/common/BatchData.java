@@ -22,7 +22,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
@@ -168,6 +168,10 @@ public class BatchData {
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
   }
 
   public BatchDataType getBatchDataType() {
@@ -633,7 +637,12 @@ public class BatchData {
   }
 
   public BatchDataIterator getBatchDataIterator() {
-    return new BatchDataIterator(this);
+    return new BatchDataIterator();
+  }
+
+  /** Only used for the batch data of vector time series. */
+  public IBatchDataIterator getBatchDataIterator(int subIndex) {
+    return new VectorBatchDataIterator(subIndex);
   }
 
   /**
@@ -689,6 +698,77 @@ public class BatchData {
           return new DescReadWriteBatchData(dataType);
         default:
           throw new IllegalArgumentException("Invalid input: " + type);
+      }
+    }
+  }
+
+  private class BatchDataIterator implements IPointReader, IBatchDataIterator {
+
+    @Override
+    public boolean hasNext() {
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public void next() {
+      BatchData.this.next();
+    }
+
+    @Override
+    public long currentTime() {
+      return BatchData.this.currentTime();
+    }
+
+    @Override
+    public Object currentValue() {
+      return BatchData.this.currentValue();
+    }
+
+    @Override
+    public void reset() {
+      BatchData.this.resetBatchData();
+    }
+
+    @Override
+    public int totalLength() {
+      return BatchData.this.length();
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      return hasNext();
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      TimeValuePair timeValuePair = new TimeValuePair(currentTime(), currentTsPrimitiveType());
+      next();
+      return timeValuePair;
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return new TimeValuePair(currentTime(), currentTsPrimitiveType());
+    }
+
+    @Override
+    public void close() {}
+  }
+
+  private class VectorBatchDataIterator extends BatchDataIterator {
+
+    private final int subIndex;
+
+    private VectorBatchDataIterator(int subIndex) {
+      this.subIndex = subIndex;
+    }
+
+    @Override
+    public Object currentValue() {
+      if (dataType == TSDataType.VECTOR) {
+        return getVector()[subIndex].getValue();
+      } else {
+        return null;
       }
     }
   }
