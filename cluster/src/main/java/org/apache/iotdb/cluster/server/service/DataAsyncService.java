@@ -346,10 +346,9 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getShowNow(
-      Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void getShowNow(Node header, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
-      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getShowNow(planBinary));
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getShowNow());
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       resultHandler.onError(e);
     }

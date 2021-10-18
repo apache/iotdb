@@ -321,8 +321,13 @@ public class IoTDBQueryDemoIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData metaData = resultSet.getMetaData();
-        Assert.assertEquals(1, metaData.getColumnCount());
-        Assert.assertEquals("SystemTime", metaData.getColumnName(1));
+        Assert.assertEquals(5, metaData.getColumnCount());
+        Assert.assertEquals("IpAddress", metaData.getColumnName(1));
+        Assert.assertEquals("SystemTime", metaData.getColumnName(2));
+        Assert.assertEquals("CpuLoad", metaData.getColumnName(3));
+        Assert.assertEquals("TotalMemorySize", metaData.getColumnName(4));
+        Assert.assertEquals("FreeMemorySize", metaData.getColumnName(5));
+
       } catch (Exception e) {
         e.printStackTrace();
       }

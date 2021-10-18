@@ -13,21 +13,19 @@ import java.net.InetAddress;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
 public class ShowNowUtils {
   private static final Logger logger = LoggerFactory.getLogger(ShowNowUtils.class);
 
-  String ipAddress;
-  String systemTime;
-  String cpuLoad;
-  String totalMemorySize;
-  String freeMemorySize;
+  private String ipAddress;
+  private String systemTime;
+  private String cpuLoad;
+  private String totalMemorySize;
+  private String freeMemorySize;
 
-  public List<String> now() {
-    ArrayList<String> list = new ArrayList<>();
+  public List<ShowNowResult> getShowNowResults() {
     DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
     SystemInfo systemInfo = new SystemInfo();
     try {
@@ -49,23 +47,11 @@ public class ShowNowUtils {
       systemTime = df.format(System.currentTimeMillis());
       cpuLoad = new DecimalFormat("#.##").format(processor.getSystemCpuLoad() * 100) + "%";
     } catch (Exception e) {
-      logger.error("***************    抓取到错误");
       e.printStackTrace();
     }
-
-    list.add(ipAddress);
-    list.add(systemTime);
-    list.add(cpuLoad);
-    list.add(totalMemorySize);
-    list.add(freeMemorySize);
-    return list;
-  }
-
-  public List<ShowNowResult> getShowNowResults() {
-    List<String> list = now();
     List<ShowNowResult> showNowResults = new LinkedList<>();
     showNowResults.add(
-        new ShowNowResult(list.get(0), list.get(1), list.get(2), list.get(3), list.get(4)));
+        new ShowNowResult(ipAddress, systemTime, cpuLoad, totalMemorySize, freeMemorySize));
     return showNowResults;
   }
 }

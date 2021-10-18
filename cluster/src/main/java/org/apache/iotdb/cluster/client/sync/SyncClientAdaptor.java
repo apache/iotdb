@@ -225,7 +225,7 @@ public class SyncClientAdaptor {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     plan.serialize(dataOutputStream);
 
-    client.getShowNow(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
+    client.getShowNow(header, handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());

@@ -494,11 +494,9 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public void getShowNow(
-      Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler)
-      throws TException {
+  public void getShowNow(Node header, AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, resultHandler, "show now");
-    service.getShowNow(header, planBinary, resultHandler);
+    service.getShowNow(header, resultHandler);
   }
 
   @Override
@@ -842,8 +840,8 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public ByteBuffer getShowNow(Node header, ByteBuffer planBinary) throws TException {
-    return getDataSyncService(header).getShowNow(header, planBinary);
+  public ByteBuffer getShowNow(Node header) throws TException {
+    return getDataSyncService(header).getShowNow(header);
   }
 
   @Override

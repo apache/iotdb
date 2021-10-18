@@ -331,9 +331,9 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer getShowNow(Node header, ByteBuffer planBinary) throws TException {
+  public ByteBuffer getShowNow(Node header) throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getShowNow(planBinary);
+      return dataGroupMember.getLocalQueryExecutor().getShowNow();
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       throw new TException(e);
     }

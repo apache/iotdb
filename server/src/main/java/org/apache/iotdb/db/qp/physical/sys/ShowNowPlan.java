@@ -19,17 +19,10 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public class ShowNowPlan extends ShowPlan {
-  private static final Logger logger = LoggerFactory.getLogger(ShowPlan.class);
-
   String ipAddress;
   String systemTime;
   String cpuLoad;
@@ -47,19 +40,26 @@ public class ShowNowPlan extends ShowPlan {
   @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
     outputStream.write(PhysicalPlanType.SHOW_NOW.ordinal());
-    //    putString(outputStream, ipAddress);
-    //    putString(outputStream, systemTime);
-    //    putString(outputStream, cpuLoad);
-    //    putString(outputStream, totalMemorySize);
-    //    putString(outputStream, freeMemorySize);
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    ipAddress = readString(buffer);
-    systemTime = readString(buffer);
-    cpuLoad = readString(buffer);
-    totalMemorySize = readString(buffer);
-    freeMemorySize = readString(buffer);
+  public String toString() {
+    return "ShowNowPlan{"
+        + "ipAddress='"
+        + ipAddress
+        + '\''
+        + ", systemTime='"
+        + systemTime
+        + '\''
+        + ", cpuLoad='"
+        + cpuLoad
+        + '\''
+        + ", totalMemorySize='"
+        + totalMemorySize
+        + '\''
+        + ", freeMemorySize='"
+        + freeMemorySize
+        + '\''
+        + '}';
   }
 }

@@ -47,7 +47,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -534,14 +533,8 @@ public class LocalQueryExecutor {
     return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
-  public ByteBuffer getShowNow(ByteBuffer planBuffer)
-      throws CheckConsistencyException, IOException, MetadataException {
-    // dataGroupMember.syncLeaderWithConsistencyCheck(false);
-
-    ShowNowPlan plan = (ShowNowPlan) PhysicalPlan.Factory.create(planBuffer);
-    List<ShowNowResult> showNow;
-    showNow = new ShowNowUtils().getShowNowResults();
-
+  public ByteBuffer getShowNow() throws CheckConsistencyException, IOException, MetadataException {
+    List<ShowNowResult> showNow = new ShowNowUtils().getShowNowResults();
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
       dataOutputStream.writeInt(showNow.size());
