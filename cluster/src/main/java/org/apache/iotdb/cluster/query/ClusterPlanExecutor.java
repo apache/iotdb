@@ -132,7 +132,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
-    Map<String, String> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
+    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }
@@ -162,7 +162,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+            .getLocalDataMember(partitionGroup.getHeader())
             .syncLeaderWithConsistencyCheck(false);
         int localResult = getLocalDeviceCount(pathUnderSG);
         logger.debug(
