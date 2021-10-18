@@ -306,13 +306,16 @@ public class LocalQueryExecutor {
         .forEach(
             fullPath -> {
               try {
-                if (fullPath.contains("$#$")) {
+                System.out.println("After RPC: " + fullPath);
+                if (fullPath.startsWith("VP$")) {
                   String[] array = fullPath.split(":");
+                  String vectorId = array[0].replace("VP$", "");
+                  System.out.println("After RPC: " + vectorId);
                   List<String> subSensorsList = new ArrayList<>();
                   for (int i = 1; i < array.length; i++) {
                     subSensorsList.add(array[i]);
                   }
-                  paths.add(new VectorPartialPath(array[0], subSensorsList));
+                  paths.add(new VectorPartialPath(vectorId, subSensorsList));
                 } else {
                   paths.add(new PartialPath(fullPath));
                 }

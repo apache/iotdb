@@ -708,12 +708,12 @@ public class ClusterReaderFactory {
     paths.forEach(
         path -> {
           if (path instanceof VectorPartialPath) {
-            StringBuilder builder = new StringBuilder(path.getFullPath());
+            System.out.println("Before RPC" + path);
+            StringBuilder builder = new StringBuilder("VP$");
+            builder.append(path.getFullPath());
             List<String> subSensorsList = ((VectorPartialPath) path).getSubSensorsList();
             for (String subSensor : subSensorsList) {
               builder.append(":");
-              builder.append(path.getFullPath());
-              builder.append(".");
               builder.append(subSensor);
             }
             fullPaths.add(builder.toString());
@@ -752,6 +752,7 @@ public class ClusterReaderFactory {
     if (valueFilter != null) {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
+    System.out.println("Before RPC: " + path);
     request.setPath(path.getFullPath());
     request.setHeader(partitionGroup.getHeader());
     request.setQueryId(context.getQueryId());
