@@ -217,12 +217,7 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    PartialPath path = null;
-    try {
-      path = new PartialPath(request.getPath());
-    } catch (IllegalPathException e) {
-      // ignore
-    }
+    PartialPath path = getPathFromRequest(request.getPath());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -280,6 +275,18 @@ public class LocalQueryExecutor {
         batchReader.close();
       }
       return -1;
+    }
+  }
+
+  private PartialPath getPathFromRequest(List<String> pathString) throws QueryProcessException {
+    try {
+      if (pathString.size() == 1) {
+        return new PartialPath(pathString.get(0));
+      } else {
+        return new VectorPartialPath(pathString.get(0), pathString.subList(1, pathString.size()));
+      }
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
@@ -545,8 +552,6 @@ public class LocalQueryExecutor {
    * Create an IReaderByTime of a path, register it in the query manager to get a reader id for it
    * and send the id back to the requester. If the reader does not have any data, an id of -1 will
    * be returned.
-   *
-   * @param request
    */
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, StorageEngineException {
@@ -558,12 +563,7 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    PartialPath path = null;
-    try {
-      path = new PartialPath(request.getPath());
-    } catch (IllegalPathException e) {
-      // ignore
-    }
+    PartialPath path = getPathFromRequest(request.getPath());
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 

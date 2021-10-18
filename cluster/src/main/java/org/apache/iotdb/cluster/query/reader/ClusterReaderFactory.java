@@ -748,8 +748,7 @@ public class ClusterReaderFactory {
     if (valueFilter != null) {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
-    System.out.println("Before RPC: " + path);
-    request.setPath(path.getFullPath());
+    request.setPath(getPathStringList(path));
     request.setHeader(partitionGroup.getHeader());
     request.setQueryId(context.getQueryId());
     request.setRequester(metaGroupMember.getThisNode());
@@ -758,6 +757,18 @@ public class ClusterReaderFactory {
     request.setAscending(ascending);
     request.setRequiredSlots(requiredSlots);
     return request;
+  }
+
+  /** If vector path, return vectorId with all subSensors. Else just return path string. */
+  private List<String> getPathStringList(Path path) {
+    if (path instanceof VectorPartialPath) {
+      List<String> pathWithSubSensors = new ArrayList<>();
+      pathWithSubSensors.add(path.getFullPath());
+      pathWithSubSensors.addAll(((VectorPartialPath) path).getSubSensorsList());
+      return pathWithSubSensors;
+    } else {
+      return Collections.singletonList(path.getFullPath());
+    }
   }
 
   /**

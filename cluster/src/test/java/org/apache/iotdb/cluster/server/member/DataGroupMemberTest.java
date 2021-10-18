@@ -740,7 +740,7 @@ public class DataGroupMemberTest extends BaseMember {
         partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), raftId)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(TestUtils.getTestSeries(0, 0));
+    request.setPath(Collections.singletonList(TestUtils.getTestSeries(0, 0)));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(1));
     request.setQueryId(0);
@@ -808,7 +808,7 @@ public class DataGroupMemberTest extends BaseMember {
         partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), raftId)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(TestUtils.getTestSeries(0, 0));
+    request.setPath(Collections.singletonList(TestUtils.getTestSeries(0, 0)));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(1));
     request.setQueryId(0);
@@ -876,7 +876,7 @@ public class DataGroupMemberTest extends BaseMember {
         partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), 0)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(TestUtils.getTestSeries(0, 0));
+    request.setPath(Collections.singletonList(TestUtils.getTestSeries(0, 0)));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(1));
     request.setQueryId(0);
@@ -944,7 +944,7 @@ public class DataGroupMemberTest extends BaseMember {
         partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), 0)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(TestUtils.getTestSeries(0, 0));
+    request.setPath(Collections.singletonList(TestUtils.getTestSeries(0, 0)));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(10));
     request.setQueryId(0);
