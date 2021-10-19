@@ -40,6 +40,14 @@ public interface IEntityMNode extends IMNode {
 
   Map<String, ILastCacheContainer> getTemplateLastCaches();
 
+  /**
+   * When a measurement, represented by template or MeasurementMNode, is going to be added to a
+   * node, the node should be set to entity. Before invoking this method, lock the related MTree
+   * part first.
+   *
+   * @param node node to be transformed
+   * @return generated entityMNode
+   */
   static IEntityMNode setToEntity(IMNode node) {
     IEntityMNode entityMNode;
     if (node.isEntity()) {
@@ -59,6 +67,14 @@ public interface IEntityMNode extends IMNode {
     return entityMNode;
   }
 
+  /**
+   * When there's no measurement, represented by template or MeasurementMNode, is under this
+   * entityMNode, it should not act as entity anymore. Before invoking this method, lock related
+   * MTree structure first.
+   *
+   * @param entityMNode node to be transformed
+   * @return generated NoEntity node
+   */
   static IMNode setToInternal(IEntityMNode entityMNode) {
     IMNode node;
     IMNode parent = entityMNode.getParent();

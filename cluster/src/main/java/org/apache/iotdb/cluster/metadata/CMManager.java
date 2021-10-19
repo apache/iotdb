@@ -751,7 +751,7 @@ public class CMManager extends MManager {
       throws IllegalPathException {
     List<String> measurements = new ArrayList<>();
     for (String series : seriesList) {
-      measurements.addAll(MetaUtils.getMeasurementsInPartialPath(new PartialPath(series)));
+      measurements.add((new PartialPath(series)).getMeasurement());
     }
 
     List<TSDataType> dataTypes = new ArrayList<>(measurements.size());

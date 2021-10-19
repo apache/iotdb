@@ -67,6 +67,8 @@ public interface IMNode extends Serializable {
 
   void setSchemaTemplate(Template schemaTemplate);
 
+  // EmptyInternal means there's no child or template under this node
+  // and this node is not the root nor a storageGroup nor a measurement.
   boolean isEmptyInternal();
 
   boolean isStorageGroup();
