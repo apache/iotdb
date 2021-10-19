@@ -86,7 +86,7 @@ alias
 
 attributeClauses
     : DATATYPE OPERATOR_EQ dataType=DATATYPE_VALUE
-    (COMMA ENCODING OPERATOR_EQ encoding=ENCODING_VALE)?
+    (COMMA ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
     (COMMA propertyClause)*
     tagClause?
@@ -521,7 +521,12 @@ listAllUserOfRole
     ;
 
 privileges
-    : privilege=PRIVILEGE_VALUE (COMMA privilege=PRIVILEGE_VALUE)*
+    : privilegeValue (COMMA privilegeValue)*
+    ;
+
+privilegeValue
+    : ALL
+    | PRIVILEGE_VALUE
     ;
 
 usernameWithRoot
@@ -685,7 +690,7 @@ literalCanBeNodeName
 
 keywordsCanBeNodeName
     : DATATYPE_VALUE
-    | ENCODING_VALE
+    | ENCODING_VALUE
     | COMPRESSOR_VALUE
     | ASC
     | DESC

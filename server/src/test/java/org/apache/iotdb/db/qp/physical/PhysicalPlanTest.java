@@ -185,7 +185,7 @@ public class PhysicalPlanTest {
   @Test
   public void testAuthor() throws QueryProcessException {
     String sql =
-        "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
+        "grant role xm privileges SET_STORAGE_GROUP,DELETE_TIMESERIES on root.vehicle.d1.s1";
     Planner processor = new Planner();
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
     assertEquals(

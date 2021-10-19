@@ -1548,10 +1548,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private String[] parsePrivilege(IoTDBSqlParser.PrivilegesContext ctx) {
-    List<TerminalNode> privilegeList = ctx.PRIVILEGE_VALUE();
+    List<IoTDBSqlParser.PrivilegeValueContext> privilegeList = ctx.privilegeValue();
     List<String> privileges = new ArrayList<>();
-    for (TerminalNode privilege : privilegeList) {
-      privileges.add(removeStringQuote(privilege.getText()));
+    for (IoTDBSqlParser.PrivilegeValueContext privilegeValue : privilegeList) {
+      privileges.add(privilegeValue.getText());
     }
     return privileges.toArray(new String[0]);
   }
