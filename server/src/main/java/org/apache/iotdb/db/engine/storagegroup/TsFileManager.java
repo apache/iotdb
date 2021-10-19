@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.exception.WriteLockFailedException;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,6 +102,7 @@ public class TsFileManager {
       for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
         if (entry.getValue().contains(tsFileResource)) {
           entry.getValue().remove(tsFileResource);
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
           break;
         }
       }
@@ -112,6 +114,7 @@ public class TsFileManager {
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     for (TsFileResource resource : tsFileResourceList) {
       remove(resource, sequence);
+      TsFileResourceManager.getInstance().removeTsFileResource(resource);
     }
   }
 

@@ -63,13 +63,13 @@ public class InnerCompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
-    tsFileResources.add(new FakedTsFileResource(30));
-    tsFileResources.add(new FakedTsFileResource(30));
-    tsFileResources.add(new FakedTsFileResource(30));
-    tsFileResources.add(new FakedTsFileResource(100));
-    tsFileResources.add(new FakedTsFileResource(30));
-    tsFileResources.add(new FakedTsFileResource(40));
-    tsFileResources.add(new FakedTsFileResource(40));
+    tsFileResources.add(new FakedTsFileResource(30, "0-0-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(30, "1-1-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(30, "2-2-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(100, "3-3-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(30, "4-4-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(40, "5-5-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(40, "6-6-0-0.tsfile"));
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
         "testSG",
@@ -79,19 +79,12 @@ public class InnerCompactionSchedulerTest {
         tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
-    long waitingTime = 0;
-    while (CompactionTaskManager.getInstance().getTaskCount() != 0) {
-      try {
-        Thread.sleep(100);
-        waitingTime += 100;
-        if (waitingTime > MAX_WAITING_TIME) {
-          Assert.fail();
-          break;
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+    try {
+      Thread.sleep(1000);
+    } catch (Exception e) {
+
     }
     Assert.assertEquals(3, tsFileResources.size());
 
@@ -106,9 +99,9 @@ public class InnerCompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
-    tsFileResources.add(new FakedTsFileResource(30));
-    tsFileResources.add(new FakedTsFileResource(40, true, true));
-    tsFileResources.add(new FakedTsFileResource(40));
+    tsFileResources.add(new FakedTsFileResource(30, "0-0-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(40, true, true, "1-1-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(40, "2-2-0-0.tsfile"));
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
         "testSG",
         "0",
@@ -117,6 +110,7 @@ public class InnerCompactionSchedulerTest {
         tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getTaskCount() != 0) {

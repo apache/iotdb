@@ -32,8 +32,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -46,6 +46,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -63,6 +65,8 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 import static org.junit.Assert.assertEquals;
 
 public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
+  private static final Logger logger =
+      LoggerFactory.getLogger(SizeTieredCompactionRecoverTest.class);
 
   File tempSGDir;
 
@@ -74,7 +78,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
+    tempSGDir =
+        new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0).concat("tempSG"));
     tempSGDir.mkdirs();
     tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
@@ -93,7 +98,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -103,7 +107,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -123,15 +127,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -190,7 +195,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             true,
             CompactionTaskManager.currentTaskNum)
         .call();
-    context = new QueryContext();
     path =
         new PartialPath(
             deviceIds[0]
@@ -200,7 +204,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -225,7 +229,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -235,7 +238,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -255,15 +258,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -296,7 +300,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             true,
             CompactionTaskManager.currentTaskNum)
         .call();
-    context = new QueryContext();
     path =
         new PartialPath(
             deviceIds[0]
@@ -306,7 +309,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -330,7 +333,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -340,7 +342,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -360,15 +362,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -405,7 +408,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             true,
             CompactionTaskManager.currentTaskNum)
         .call();
-    context = new QueryContext();
     path =
         new PartialPath(
             deviceIds[0]
@@ -415,7 +417,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -440,7 +442,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -450,7 +451,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -470,15 +471,16 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -517,17 +519,17 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             true,
             CompactionTaskManager.currentTaskNum)
         .call();
-    context = new QueryContext();
     path =
         new PartialPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
+    logger.warn("TsFiles in list is {}", tsFileManager.getTsFileList(true));
     tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -557,7 +559,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     sizeTieredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
     sizeTieredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     sizeTieredCompactionLogger.close();
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -567,7 +568,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -598,7 +599,6 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     sizeTieredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     sizeTieredCompactionLogger.logSequence(true);
     sizeTieredCompactionLogger.close();
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -608,7 +608,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -640,19 +640,19 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     sizeTieredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     tsFileManager.addForRecover(targetTsFileResource, true);
     sizeTieredCompactionLogger.close();
-    QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -662,7 +662,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
             null,

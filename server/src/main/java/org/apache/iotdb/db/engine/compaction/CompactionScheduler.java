@@ -55,10 +55,6 @@ public class CompactionScheduler {
       new ConcurrentHashMap<>();
 
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
-    if (CompactionTaskManager.getInstance().getTaskCount()
-        >= config.getConcurrentCompactionThread()) {
-      return;
-    }
     tsFileManager.readLock();
     try {
       TsFileResourceList sequenceFileList =
@@ -219,10 +215,11 @@ public class CompactionScheduler {
       TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
-    if ((sequence && !config.isEnableSeqSpaceCompaction())
-        || (!sequence && !config.isEnableUnseqSpaceCompaction())) {
+    if ((!config.isEnableSeqSpaceCompaction() && sequence)
+        || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
       return false;
     }
+
     AbstractInnerSpaceCompactionSelector innerSpaceCompactionSelector =
         config
             .getInnerCompactionStrategy()

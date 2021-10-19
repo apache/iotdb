@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
@@ -30,6 +29,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -173,7 +173,11 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     }
     try {
       // replace the old files with new file, the new is in same position as the old
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+      }
       tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
       for (TsFileResource resource : selectedTsFileResourceList) {
         tsFileResourceList.remove(resource);
       }
@@ -213,7 +217,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     long minVersionNum = Long.MAX_VALUE;
-    int compactionCount = -1;
     try {
       for (TsFileResource resource : selectedTsFileResourceList) {
         if (resource.isMerging() | !resource.isClosed() || !resource.getTsFile().exists()) {
@@ -223,21 +226,10 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
         if (tsFileName.getVersion() < minVersionNum) {
           minVersionNum = tsFileName.getVersion();
-          compactionCount = tsFileName.getInnerCompactionCnt();
         }
       }
     } catch (IOException e) {
       LOGGER.error("CompactionTask exists while check valid", e);
-    }
-    int maxFileCandidate =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    minVersionNum -= 1;
-    int modBase = 1;
-    for (int i = 0; i < compactionCount + 1; ++i) {
-      modBase *= maxFileCandidate;
-    }
-    if (minVersionNum % modBase != 0) {
-      return false;
     }
     for (TsFileResource resource : selectedTsFileResourceList) {
       resource.setMerging(true);

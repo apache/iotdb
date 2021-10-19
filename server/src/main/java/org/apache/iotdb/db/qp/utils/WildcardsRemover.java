@@ -39,7 +39,6 @@ import java.util.List;
 public class WildcardsRemover {
 
   private int soffset = 0;
-
   private int currentOffset = 0;
   private int currentLimit = Integer.MAX_VALUE;
 

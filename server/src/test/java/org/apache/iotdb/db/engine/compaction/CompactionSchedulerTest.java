@@ -189,7 +189,7 @@ public class CompactionSchedulerTest {
             tsFileManager.getTsFileList(false).size());
       }
       if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-        logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+        logger.warn("Has waited for  {} s, Schedule again", totalWaitingTime / 1000);
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       }
     }
@@ -224,6 +224,7 @@ public class CompactionSchedulerTest {
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 0) {
       try {
@@ -352,6 +353,7 @@ public class CompactionSchedulerTest {
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 0) {
       try {
@@ -475,6 +477,7 @@ public class CompactionSchedulerTest {
     }
     assertEquals(100, tsFileManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 0) {
       try {
@@ -572,6 +575,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 0) {
       try {
@@ -686,7 +690,15 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(false).size());
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 1) {
       try {
@@ -719,6 +731,7 @@ public class CompactionSchedulerTest {
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 0) {
       try {
@@ -809,6 +822,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 1) {
       try {
@@ -832,7 +846,15 @@ public class CompactionSchedulerTest {
         e.printStackTrace();
       }
     }
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 0) {
       try {
@@ -922,6 +944,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(true).size() > 1) {
       try {
@@ -953,6 +976,7 @@ public class CompactionSchedulerTest {
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 0) {
       try {
@@ -1048,6 +1072,7 @@ public class CompactionSchedulerTest {
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 0) {
       try {
@@ -1098,7 +1123,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     boolean prevEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
@@ -1137,6 +1162,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(true).size() > 50) {
       try {
@@ -1161,28 +1187,25 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(false).size());
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    totalWaitingTime = 0;
     while (CompactionTaskManager.currentTaskNum.get() > 0) {
       try {
         Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again ", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      } catch (Exception e) {
+
+      }
+    }
+    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+    totalWaitingTime = 0;
+    while (tsFileManager.getTsFileList(true).size() > 25) {
+      try {
+        Thread.sleep(100);
+      } catch (Exception e) {
+
+      }
+      totalWaitingTime += 100;
+      if (totalWaitingTime > MAX_WAITING_TIME) {
+        fail();
       }
     }
     assertTrue(tsFileManager.getTsFileList(true).size() <= 25);
@@ -1212,6 +1235,9 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
     boolean prevEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    boolean prevEnableCrossCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
@@ -1251,6 +1277,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 50) {
       try {
@@ -1275,7 +1302,15 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(true).size());
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 25) {
       try {
@@ -1312,6 +1347,9 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableCrossSpaceCompaction(prevEnableCrossCompaction);
   }
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
@@ -1364,6 +1402,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(true).size() > 50) {
       try {
@@ -1388,7 +1427,15 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(false).size());
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(true).size() > 25) {
       try {
@@ -1478,6 +1525,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 98) {
@@ -1503,7 +1551,15 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(true).size());
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 96) {
       try {
@@ -1554,7 +1610,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     boolean prevEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
@@ -1593,6 +1649,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(true).size() > 99) {
       try {
@@ -1617,7 +1674,15 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(false).size());
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(true).size() > 98) {
       try {
@@ -1707,6 +1772,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 99) {
       try {
@@ -1731,7 +1797,15 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(true).size());
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 98) {
       try {
@@ -1821,6 +1895,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(true).size() > 99) {
       try {
@@ -1845,7 +1920,15 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(false).size());
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(true).size() > 98) {
       try {
@@ -1935,6 +2018,7 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 98) {
       try {
@@ -1959,7 +2043,15 @@ public class CompactionSchedulerTest {
       }
     }
     assertEquals(100, tsFileManager.getTsFileList(true).size());
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
     while (tsFileManager.getTsFileList(false).size() > 96) {
       try {

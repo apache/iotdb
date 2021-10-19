@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -86,7 +87,7 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
       allSensors.add(path.getMeasurement());
     }
     ChunkMetadata firstChunkMetadata = reader.getChunkMetadataList(paths.get(0)).get(0);
-    firstChunkMetadata.setFilePath(tsFileResource.getTsFilePath());
+    firstChunkMetadata.setFilePath(tsFileResource.getTsFile().getAbsolutePath());
     TimeSeriesMetadataCacheKey firstTimeSeriesMetadataCacheKey =
         new TimeSeriesMetadataCacheKey(
             seqResources.get(1).getTsFilePath(),
@@ -100,6 +101,21 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
+    File targetFile =
+        new File(
+            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                .concat(
+                    0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
+    if (targetFile.exists()) {
+      assertTrue(targetFile.delete());
+    }
     SizeTieredCompactionTask sizeTieredCompactionTask =
         new SizeTieredCompactionTask(
             COMPACTION_TEST_SG,
@@ -126,6 +142,7 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     } catch (Exception e) {
       assertTrue(true);
     }
+
     reader.close();
   }
 }

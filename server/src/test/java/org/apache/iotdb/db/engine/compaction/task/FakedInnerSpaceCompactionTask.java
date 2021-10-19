@@ -21,9 +21,11 @@ package org.apache.iotdb.db.engine.compaction.task;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -50,8 +52,16 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
   }
 
   @Override
-  protected void doCompaction() {
-    FakedTsFileResource targetTsFileResource = new FakedTsFileResource(0);
+  protected void doCompaction() throws IOException {
+    TsFileNameGenerator.TsFileName name =
+        TsFileNameGenerator.getTsFileName(selectedTsFileResourceList.get(0).getTsFile().getName());
+    String newName =
+        TsFileNameGenerator.generateNewTsFileName(
+            name.getTime(),
+            name.getVersion(),
+            name.getInnerCompactionCnt() + 1,
+            name.getCrossCompactionCnt());
+    FakedTsFileResource targetTsFileResource = new FakedTsFileResource(0, newName);
     long targetFileSize = 0;
     for (TsFileResource resource : selectedTsFileResourceList) {
       targetFileSize += resource.getTsFileSize();
@@ -61,5 +71,20 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
     for (TsFileResource tsFileResource : selectedTsFileResourceList) {
       this.tsFileResourceList.remove(tsFileResource);
     }
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
+    return false;
+  }
+
+  @Override
+  public boolean checkValidAndSetMerging() {
+    for (TsFileResource resource : selectedTsFileResourceList) {
+      if (resource.isMerging() || !resource.isClosed()) {
+        return false;
+      }
+    }
+    return true;
   }
 }
