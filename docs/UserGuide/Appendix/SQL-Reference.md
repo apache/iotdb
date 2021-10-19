@@ -21,14 +21,6 @@
 
 # Appendix 2: SQL Reference
 
-In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
-
-* Schema Statement: statements about schema management are all listed in this section.
-* Data Management Statement: statements about data management (such as: data insertion, data query, etc.) are all listed in this section.
-* Database Management Statement: statements about database management and authentication are all listed in this section.
-* Functions: functions that IoTDB offers are all listed in this section.
-
-All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
 ## Show Version
 
@@ -60,10 +52,8 @@ Note: FullPath can not include wildcard `*` or `**`
 
 ```
 DELETE STORAGE GROUP <PathPattern> [COMMA <PathPattern>]*
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
-Eg: IoTDB > DELETE STORAGE GROUP root.**
+Eg: IoTDB > DELETE STORAGE GROUP root.ln
+Eg: IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 * Create Timeseries Statement
@@ -171,8 +161,8 @@ Note: This statement can only be used in IoTDB Client. If you need to show all t
 
 ```
 SHOW TIMESERIES <Path>
-Eg: IoTDB > SHOW TIMESERIES root.**
-Eg: IoTDB > SHOW TIMESERIES root.ln.**
+Eg: IoTDB > SHOW TIMESERIES root.*
+Eg: IoTDB > SHOW TIMESERIES root.ln.*
 Eg: IoTDB > SHOW TIMESERIES root.ln.*.*.status
 Eg: IoTDB > SHOW TIMESERIES root.ln.wf01.wt01.status
 Note: The path can be timeseries path or path pattern.
@@ -210,9 +200,9 @@ limitClause
     | offsetClause? LIMIT INT
     ;
     
-Eg: show timeseries root.ln.** where unit='c'
-Eg: show timeseries root.ln.** where description contains 'test1'
-Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
+Eg: show timeseries root.ln.* where unit='c'
+Eg: show timeseries root.ln.* where description contains 'test1'
+Eg: show timeseries root.ln.* where unit='c' limit 10 offset 10
 ```
 
 * Show Storage Group Statement
@@ -245,8 +235,8 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT TIMESERIES <Path>
-Eg: IoTDB > COUNT TIMESERIES root.**
-Eg: IoTDB > COUNT TIMESERIES root.ln.**
+Eg: IoTDB > COUNT TIMESERIES root.*
+Eg: IoTDB > COUNT TIMESERIES root.ln.*
 Eg: IoTDB > COUNT TIMESERIES root.ln.*.*.status
 Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 Note: The path can be timeseries path or path pattern.
@@ -255,8 +245,8 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>
-Eg: IoTDB > COUNT TIMESERIES root.** GROUP BY LEVEL=1
-Eg: IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
+Eg: IoTDB > COUNT TIMESERIES root.* GROUP BY LEVEL=1
+Eg: IoTDB > COUNT TIMESERIES root.ln.* GROUP BY LEVEL=2
 Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=3
 Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
@@ -266,8 +256,8 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT NODES <Path> LEVEL=<INTEGER>
-Eg: IoTDB > COUNT NODES root.** LEVEL=2
-Eg: IoTDB > COUNT NODES root.ln.** LEVEL=2
+Eg: IoTDB > COUNT NODES root.* LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.* LEVEL=2
 Eg: IoTDB > COUNT NODES root.ln.* LEVEL=3
 Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 Note: The path can be full path or path pattern.
@@ -287,8 +277,8 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 SHOW DEVICES <PathPattern> (WITH STORAGE GROUP)? limitClause?
-Eg: IoTDB > SHOW DEVICES root.**
-Eg: IoTDB > SHOW DEVICES root.ln.**
+Eg: IoTDB > SHOW DEVICES root.*
+Eg: IoTDB > SHOW DEVICES root.ln.*
 Eg: IoTDB > SHOW DEVICES root.*.wf01
 Eg: IoTDB > SHOW DEVICES root.ln WITH STORAGE GROUP
 Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
@@ -476,10 +466,10 @@ SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByCl
 orderByTimeClause: order by time (asc | desc)?
 
 Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS]) order by time desc
-Eg: SELECT * from root.** order by time desc
-Eg: SELECT * from root.** order by time desc align by device 
-Eg: SELECT * from root.** order by time desc disable align
-Eg: SELECT last * from root.** order by time desc
+Eg: SELECT * from root.* order by time desc
+Eg: SELECT * from root.* order by time desc align by device 
+Eg: SELECT * from root.* order by time desc disable align
+Eg: SELECT last * from root.* order by time desc
 ```
 
 * Limit Statement
@@ -1180,7 +1170,7 @@ eg. _abc123
 
 ```
 
-## Literals
+## Constants
 
 
 ```
