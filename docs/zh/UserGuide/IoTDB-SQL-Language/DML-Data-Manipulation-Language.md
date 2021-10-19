@@ -37,7 +37,7 @@ IoTDB 为用户提供多种插入实时数据的方式，例如在 [Cli/Shell �
 
 ```sql
 IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
 ```
 
 以上示例代码将长整型的 timestamp 以及值为 true 的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的 timestamp 以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会返回执行时间，代表数据插入已完成。 
@@ -350,7 +350,7 @@ It costs 0.008s
 例如：
 
 ```   sql
-select s1, string_contains(s1, "s"="warn"), string_matches(s1, "regex"="[^\\s]+37229") from root.sg1.d4;
+select s1, string_contains(s1, 's'='warn'), string_matches(s1, 'regex'='[^\\s]+37229') from root.sg1.d4;
 ```
 
 结果：
@@ -379,7 +379,7 @@ It costs 0.007s
 例如：
 
 ```   sql
-select s1, top_k(s1, "k"="2"), bottom_k(s1, "k"="2") from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
+select s1, top_k(s1, 'k'='2'), bottom_k(s1, 'k'='2') from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
 ```
 
 结果：
