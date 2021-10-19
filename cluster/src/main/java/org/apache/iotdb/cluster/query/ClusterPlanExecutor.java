@@ -226,8 +226,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           client.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count =
-              SyncClientAdaptor.getAllDevices(client, partitionGroup.getHeader(), pathsToCount)
-                  .size();
+              SyncClientAdaptor.getDeviceCount(client, partitionGroup.getHeader(), pathsToCount);
         } else {
           try (SyncDataClient syncDataClient =
               metaGroupMember
@@ -235,7 +234,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             try {
               syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
-              count = syncDataClient.getAllDevices(partitionGroup.getHeader(), pathsToCount).size();
+              count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
             } catch (TException e) {
               // the connection may be broken, close it to avoid it being reused
               syncDataClient.getInputProtocol().getTransport().close();

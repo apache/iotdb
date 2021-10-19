@@ -463,6 +463,8 @@ service TSDataService extends RaftService {
 
   int getPathCount(1: Node header 2: list<string> pathsToQuery 3: int level)
 
+  int getDeviceCount(1: RaftNode header, 2: list<string> pathsToQuery)
+
   /**
   * During slot transfer, when a member has pulled snapshot from a group, the member will use this
   * method to inform the group that one replica of such slots has been pulled.

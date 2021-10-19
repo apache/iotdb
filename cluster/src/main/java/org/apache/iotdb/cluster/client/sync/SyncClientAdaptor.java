@@ -368,6 +368,16 @@ public class SyncClientAdaptor {
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
+  public static Integer getDeviceCount(
+      AsyncDataClient client, RaftNode header, List<String> pathsToQuery)
+      throws InterruptedException, TException {
+    AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
+    GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
+
+    client.getDeviceCount(header, pathsToQuery, handler);
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+  }
+
   public static Set<String> getAllDevices(
       AsyncDataClient client, Node header, List<String> pathsToQuery)
       throws InterruptedException, TException {
