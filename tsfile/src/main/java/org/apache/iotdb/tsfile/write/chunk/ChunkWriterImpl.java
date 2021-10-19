@@ -338,7 +338,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public long getCurrentChunkSize() {
+  public long getSerializedChunkSize() {
     if (pageBuffer.size() == 0) {
       return 0;
     }

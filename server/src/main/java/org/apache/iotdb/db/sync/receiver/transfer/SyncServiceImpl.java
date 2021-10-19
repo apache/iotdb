@@ -78,7 +78,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus check(ConfirmInfo info) {
     String ipAddress = info.address, uuid = info.uuid;
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
-    if (!info.version.equals(IoTDBConstant.MAJOR_VERSION)) {
+    if (!getMajorVersion(info.version).equals(IoTDBConstant.MAJOR_VERSION)) {
       return getErrorResult(
           String.format(
               "Version mismatch: the sender <%s>, the receiver <%s>",
@@ -104,6 +104,12 @@ public class SyncServiceImpl implements SyncService.Iface {
       return getErrorResult(
           "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
     }
+  }
+
+  private String getMajorVersion(String version) {
+    return version.equals("UNKNOWN")
+        ? "UNKNOWN"
+        : version.split("\\.")[0] + "." + version.split("\\.")[1];
   }
 
   private boolean checkRecovery() {
@@ -164,34 +170,44 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   @Override
-  public SyncStatus syncDeletedFileName(String fileName) {
+  public SyncStatus syncDeletedFileName(String fileInfo) {
+    String filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
     try {
-      syncLog
-          .get()
-          .finishSyncDeletedFileName(
-              new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
+      syncLog.get().finishSyncDeletedFileName(new File(getSyncDataPath(), filePath));
       FileLoaderManager.getInstance()
           .getFileLoader(senderName.get())
-          .addDeletedFileName(
-              new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
+          .addDeletedFileName(new File(getSyncDataPath(), filePath));
     } catch (IOException e) {
       logger.error("Can not sync deleted file", e);
       return getErrorResult(
-          String.format("Can not sync deleted file %s because %s", fileName, e.getMessage()));
+          String.format("Can not sync deleted file %s because %s", filePath, e.getMessage()));
     }
     return getSuccessResult();
   }
 
+  private String getFilePathByFileInfo(String fileInfo) { // for different os
+    String filePath = "";
+    String[] fileInfos = fileInfo.split(SyncConstant.SYNC_DIR_NAME_SEPARATOR);
+    for (int i = 0; i < fileInfos.length - 1; i++) {
+      filePath += fileInfos[i] + File.separator;
+    }
+    return filePath + fileInfos[fileInfos.length - 1];
+  }
+
   @SuppressWarnings("squid:S2095") // Suppress unclosed resource warning
   @Override
-  public SyncStatus initSyncData(String filename) {
+  public SyncStatus initSyncData(String fileInfo) {
+    File file;
+    String filePath = fileInfo;
+    logger.info("initSyncData receive: " + fileInfo); // change back
     try {
-      File file;
       if (currentSG.get() == null) { // schema mlog.txt file
-        file = new File(getSyncDataPath(), filename);
+        file = new File(getSyncDataPath(), filePath);
       } else {
-        file = new File(getSyncDataPath(), currentSG.get() + File.separatorChar + filename);
+        filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
+        file = new File(getSyncDataPath(), filePath);
       }
+      logger.info("initSyncData file: " + file); // change back
       file.delete();
       currentFile.set(file);
       if (!file.getParentFile().exists()) {
@@ -203,11 +219,13 @@ public class SyncServiceImpl implements SyncService.Iface {
       currentFileWriter.set(new FileOutputStream(file));
       syncLog.get().startSyncTsFiles();
       messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
+      logger.info(
+          "initSyncData currentFileWriter: " + currentFileWriter.get().toString()); // change back
     } catch (IOException | NoSuchAlgorithmException e) {
-      logger.error("Can not init sync resource for file {}", filename, e);
+      logger.error("Can not init sync resource for file {}", filePath, e);
       return getErrorResult(
           String.format(
-              "Can not init sync resource for file %s because %s", filename, e.getMessage()));
+              "Can not init sync resource for file %s because %s", filePath, e.getMessage()));
     }
     return getSuccessResult();
   }
@@ -216,6 +234,11 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus syncData(ByteBuffer buff) {
     try {
       int pos = buff.position();
+      logger.info("syncData currentSG: " + currentSG.get()); // change back
+      logger.info("syncData currentFileWriter: " + currentFileWriter.get().toString());
+      logger.info(
+          "syncData currentFileWriterChannel is Open: "
+              + currentFileWriter.get().getChannel().isOpen());
       currentFileWriter.get().getChannel().write(buff);
       buff.position(pos);
       messageDigest.get().update(buff);

@@ -26,6 +26,10 @@ public class Config {
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
   public static final boolean DEFAULT_CACHE_LEADER_MODE = true;
 
+  public static final int CPU_CORES = Runtime.getRuntime().availableProcessors();
+  public static final int DEFAULT_SESSION_EXECUTOR_THREAD_NUM = 2 * CPU_CORES;
+  public static final int DEFAULT_SESSION_EXECUTOR_TASK_NUM = 1_000;
+
   public static final int RETRY_NUM = 3;
   public static final long RETRY_INTERVAL_MS = 1000;
 

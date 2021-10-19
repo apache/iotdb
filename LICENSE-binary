@@ -216,10 +216,10 @@ following license. See licenses/ for text of these licenses.
 Apache Software Foundation License 2.0
 --------------------------------------
 commons-cli:commons-cli:1.3.1
-commons-codec:commons-codec:1.13
+commons-codec:commons-codec:1.15
 org.apache.commons:commons-collections4:4.0
 commons-io:commons-io:2.5
-org.apache.commons:commons-lang3:3.8.1
+org.apache.commons:commons-lang3:3.12.0
 commons-lang:commons-lang:2.6
 com.nimbusds:content-type:2.0
 com.google.code.gson:gson:2.8.6
@@ -239,7 +239,7 @@ org.eclipse.jetty:jetty-servlet:9.4.24.v20191120
 org.eclipse.jetty:jetty-util:9.4.24.v20191120
 org.eclipse.jetty:jetty-webapp:9.4.24.v20191120
 org.eclipse.jetty:jetty-xml:9.4.24.v20191120
-io.jsonwebtoken:jjwt-api:0.10.7
+io.jsonwebtoken:jjwt-api:0.11.2
 io.jsonwebtoken:jjwt-impl:0.10.7
 io.jsonwebtoken:jjwt-jackson:0.10.7
 net.minidev:json-smart:2.3
@@ -252,29 +252,29 @@ io.dropwizard.metrics:metrics-json:3.2.6
 io.dropwizard.metrics:metrics-jvm:3.2.6
 com.librato.metrics:metrics-librato:5.1.0
 de.fraunhofer.iosb.io.moquette:moquette-broker:0.14.3
-io.netty:netty-buffer:4.1.53.Final
-io.netty:netty-codec:4.1.53.Final
-io.netty:netty-codec-http:4.1.53.Final
-io.netty:netty-codec-mqtt:4.1.53.Final
-io.netty:netty-common:4.1.53.Final
-io.netty:netty-handler:4.1.53.Final
-io.netty:netty-resolver:4.1.53.Final
-io.netty:netty-transport:4.1.53.Final
-io.netty:netty-transport-native-epoll:4.1.53.Final:linux-x86_64
-io.netty:netty-transport-native-unix-common:4.1.53.Final
+io.netty:netty-buffer:4.1.68.Final
+io.netty:netty-codec:4.1.68.Final
+io.netty:netty-codec-http:4.1.68.Final
+io.netty:netty-codec-mqtt:4.1.68.Final
+io.netty:netty-common:4.1.68.Final
+io.netty:netty-handler:4.1.68.Final
+io.netty:netty-resolver:4.1.68.Final
+io.netty:netty-transport:4.1.68.Final
+io.netty:netty-transport-native-epoll:4.1.68.Final:linux-x86_64
+io.netty:netty-transport-native-unix-common:4.1.68.Final
 com.nimbusds:nimbus-jose-jwt:8.14.1
 com.nimbusds:oauth2-oidc-sdk:8.3
 org.osgi:org.osgi.core:6.0.0
 org.osgi:osgi.cmpn:6.0.0
 org.ops4j.pax.jdbc:pax-jdbc-common:1.4.5
 org.xerial.snappy:snappy-java:1.1.7.2
-io.airlift.airline:0.8
+io.airlift.airline:0.9
 net.minidev:accessors-smart:1.2
 
 
 BSD 2-Clause
 ------------
-jline:jline:2.14.5
+jline:jline:2.14.6
 
 
 BSD 3-Clause
@@ -289,7 +289,7 @@ MIT License
 org.slf4j:slf4j-api
 me.tongfei:progressbar:0.7.3
 com.bugsnag:bugsnag:3.6.1
-org.slf4j:jcl-over-slf4j:1.7.25
+org.slf4j:jcl-over-slf4j:1.7.32
 
 
 EPL 1.0
@@ -304,4 +304,4 @@ CDDL 1.1
 javax.annotation:javax.annotation-api:1.3.2
 javax.servlet:javax.servlet-api:3.1.0
 javax.xml.bind:jaxb-api:2.4.0-b180725.0427
-org.glassfish.jaxb:jaxb-runtime:2.4.0-b180725.0644
+org.glassfish.jaxb:jaxb-runtime:3.0.2
