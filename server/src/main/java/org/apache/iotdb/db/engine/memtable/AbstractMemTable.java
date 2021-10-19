@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
@@ -365,28 +364,16 @@ public abstract class AbstractMemTable implements IMemTable {
     while (iter.hasNext()) {
       Entry<String, IWritableMemChunk> entry = iter.next();
       IWritableMemChunk chunk = entry.getValue();
+      // the key is measurement rather than component of multiMeasurement
       PartialPath fullPath = devicePath.concatNode(entry.getKey());
-      IMeasurementSchema schema = chunk.getSchema();
       if (originalPath.matchFullPath(fullPath)) {
-        // matchFullPath ensures this branch could work on delete data of unary measurement and
-        // delete timeseries or aligned timeseries
+        // matchFullPath ensures this branch could work on delete data of unary or multi measurement
+        // and delete timeseries or aligned timeseries
         if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
           iter.remove();
         }
         int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
         totalPointsNum -= deletedPointsNumber;
-      }
-      // for vector type
-      else if (schema.getType() == TSDataType.VECTOR) {
-        // this branch processes deleting data of vector measurement
-        List<String> measurements = MetaUtils.getMeasurementsInPartialPath(originalPath);
-        if (measurements.containsAll(schema.getSubMeasurementsList())) {
-          if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
-            iter.remove();
-          }
-          int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
-          totalPointsNum -= deletedPointsNumber;
-        }
       }
     }
   }
