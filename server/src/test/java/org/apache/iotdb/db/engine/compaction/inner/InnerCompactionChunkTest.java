@@ -64,9 +64,10 @@ public class InnerCompactionChunkTest extends InnerCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
-    if (!tempSGDir.exists()) {
-      Assert.assertTrue(tempSGDir.mkdirs());
+    if (tempSGDir.exists()) {
+      FileUtils.deleteDirectory(tempSGDir);
     }
+    Assert.assertTrue(tempSGDir.mkdirs());
     super.setUp();
   }
 
