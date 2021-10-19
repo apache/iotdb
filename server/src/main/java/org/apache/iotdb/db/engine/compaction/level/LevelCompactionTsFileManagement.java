@@ -617,6 +617,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to
             // seq file
+            compactionSelectionLock.lock();
+            try {
+              if (!checkAndSetFilesMergingIfNotSet(
+                  getTsFileListByTimePartition(true, timePartition), mergeResources.get(i))) {
+                // if any of the source file is being merged
+                // end the selection
+                return false;
+              }
+            } finally {
+              compactionSelectionLock.unlock();
+            }
             isSeqMerging = false;
             isMergeExecutedInCurrentTask =
                 merge(
@@ -625,12 +636,19 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                     mergeResources.get(i),
                     Long.MAX_VALUE);
           } else {
-            compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             List<TsFileResource> toMergeTsFiles =
                 mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
+            compactionSelectionLock.lock();
+            try {
+              if (!checkAndSetFilesMergingIfNotSet(toMergeTsFiles, null)) {
+                return false;
+              }
+            } finally {
+              compactionSelectionLock.unlock();
+            }
+            compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
-              mergeResource.setMerging(true);
               compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
             }
             File newLevelFile =

@@ -29,7 +29,11 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 
 /**
  * Mainly used in the distributed version, when multiple InsertTabletPlans belong to a raft
@@ -88,6 +92,8 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   /** record the result of creation of time series */
   private Map<Integer, TSStatus> results = new TreeMap<>();
 
+  private List<PartialPath> prefixPaths;
+
   boolean[] isExecuted;
 
   public InsertMultiTabletPlan() {
@@ -124,11 +130,14 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public List<PartialPath> getPrefixPaths() {
-    Set<PartialPath> result = new HashSet<>();
-    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      result.add(insertTabletPlan.getDeviceId());
+    if (prefixPaths != null) {
+      return prefixPaths;
     }
-    return new ArrayList<>(result);
+    prefixPaths = new ArrayList<>(insertTabletPlanList.size());
+    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+      prefixPaths.add(insertTabletPlan.getDeviceId());
+    }
+    return prefixPaths;
   }
 
   @Override

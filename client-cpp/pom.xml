@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.12.3-SNAPSHOT</version>
+        <version>0.12.4-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp</artifactId>
@@ -98,8 +98,8 @@
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
                 <iotdb.server.script>start-server.bat</iotdb.server.script>
-                <boost.include.dir/>
-                <boost.library.dir/>
+                <boost.include.dir />
+                <boost.library.dir />
             </properties>
         </profile>
         <profile>
@@ -132,7 +132,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>copy-thrift-source</id>
@@ -198,7 +198,7 @@
                     <plugin>
                         <groupId>com.googlecode.cmake-maven-project</groupId>
                         <artifactId>cmake-maven-plugin</artifactId>
-                        <version>3.7.2-b1</version>
+                        <version>3.19.2-b1</version>
                         <executions>
                             <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                             <execution>
@@ -298,7 +298,7 @@
                     <plugin>
                         <groupId>com.googlecode.cmake-maven-project</groupId>
                         <artifactId>cmake-maven-plugin</artifactId>
-                        <version>3.7.2-b1</version>
+                        <version>3.19.2-b1</version>
                         <executions>
                             <!-- Generate Cmake build directory to compile testing program -->
                             <execution>

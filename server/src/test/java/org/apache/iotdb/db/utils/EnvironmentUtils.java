@@ -41,11 +41,13 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -309,8 +311,9 @@ public class EnvironmentUtils {
     createDir(config.getWalDir());
     // create query
     createDir(config.getQueryDir());
-    createDir(TestConstant.OUTPUT_DATA_DIR);
+    createDir(TestConstant.BASE_OUTPUT_PATH);
     // create data
+    createDir(TestConstant.OUTPUT_DATA_DIR);
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
     }
@@ -325,6 +328,8 @@ public class EnvironmentUtils {
 
   private static void createDir(String dir) {
     File file = new File(dir);
-    file.mkdirs();
+    if (!file.exists()) {
+      Assert.assertTrue(file.mkdirs());
+    }
   }
 }

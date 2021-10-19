@@ -69,7 +69,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
+    tempSGDir = new File(TestConstant.OUTPUT_DATA_DIR.concat("tempSG"));
     tempSGDir.mkdirs();
   }
 
@@ -124,7 +124,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(true);
     deleteFileIfExists(
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -136,7 +136,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
@@ -259,7 +259,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(true);
     deleteFileIfExists(
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -271,7 +271,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
@@ -364,7 +364,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(true);
     deleteFileIfExists(
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -376,7 +376,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
@@ -473,7 +473,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(true);
     deleteFileIfExists(
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -485,7 +485,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
@@ -603,7 +603,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(false);
     deleteFileIfExists(
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -615,7 +615,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
@@ -769,7 +769,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(true);
     deleteFileIfExists(
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -781,7 +781,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
@@ -838,7 +838,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(true);
     deleteFileIfExists(
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
+            TestConstant.OUTPUT_DATA_DIR.concat(
                 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
@@ -850,7 +850,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
+                TestConstant.OUTPUT_DATA_DIR.concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0

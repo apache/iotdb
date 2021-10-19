@@ -97,7 +97,9 @@ public class SeqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
+    tsF =
+        SystemFileFactory.INSTANCE.getFile(
+            logNodePrefix, TestConstant.TSFILE_PREFIX_PATH + "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
     IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));

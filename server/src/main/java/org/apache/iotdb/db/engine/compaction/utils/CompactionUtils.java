@@ -213,7 +213,8 @@ public class CompactionUtils {
       targetResource.updateEndTime(device, timeValuePair.getTimestamp());
     }
     // wait for limit write
-    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
+    MergeManager.mergeRateLimiterAcquire(
+        compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(writer);
   }
 
@@ -431,7 +432,10 @@ public class CompactionUtils {
       writer.endFile();
       targetResource.close();
     } finally {
-      writer.close();
+      if (writer.canWrite()) {
+        // avoid double close
+        writer.close();
+      }
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
       }
