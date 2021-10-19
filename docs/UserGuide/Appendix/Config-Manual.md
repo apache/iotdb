@@ -22,9 +22,11 @@
 # Appendix 1: Configuration Parameters
 
 
-Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.
+To facilitate IoTDB Sever configuration and management, IoTDB Sever provides users with three configuration items, enable users to configure a service when it is started or running.
 
-In total, we provide users three kinds of configurations module: 
+The configuration files for all three configuration items are located in the IoTDB installation directory: $IOTDB_HOME/conf folder, where there are two files related to server configuration, respectively: iotdb-env.sh and iotdb-engine.properties. Users can configure related configuration itens for system running by changing one of the configuration items.
+
+The configuration file is described as follows: 
 
 * environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
 * system configuration file (`iotdb-engine.properties`). 
@@ -43,7 +45,7 @@ Trigger way: The client sends the command `load configuration` to the IoTDB serv
 
 ## IoTDB Environment Configuration File
 
-The environment configuration file is mainly used to configure the Java environment related parameters when IoTDB Server is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the IoTDB Server starts. Users can view the contents of the environment configuration file by viewing the `iotdb-env.sh` (or `iotdb-env.bat`) file.
+SyStem configuration items are the core configuration for the IoTDB server running. It is mainly used to set the parameters of IoTDB Server file and engine layer, so as to facilitate users to adjust the relevant configuration of the server according to their own needs, in order to achieve better performance. System configuration items can be divided into two major modules: file layer and engine layer configuration. Users can view and modify the contents of both configuratiob items through the iotdb-engine.properties. 
 
 The detail of each variables are as follows:
 
