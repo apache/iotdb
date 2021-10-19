@@ -85,8 +85,8 @@ statement
     | SHOW MERGE #showMergeStatus
     | SHOW QUERY PROCESSLIST #showQueryProcesslist
     | KILL QUERY INT? #killQuery
-    | TRACING ON #tracingOn
-    | TRACING OFF #tracingOff
+    | TRACING ON #tracingOn // not support yet
+    | TRACING OFF #tracingOff // not support yet
     | SET SYSTEM TO READONLY #setSystemToReadOnly
     | SET SYSTEM TO WRITABLE #setSystemToWritable
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
@@ -108,7 +108,7 @@ statement
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
-    | selectClause intoClause? fromClause whereClause? specialClause? #selectStatement
+    | TRACING? selectClause intoClause? fromClause whereClause? specialClause? #selectStatement
     | CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID
       resampleClause?
       cqSelectIntoClause #createContinuousQueryStatement
@@ -302,7 +302,7 @@ groupByTimeClause
             COMMA DURATION
             (COMMA DURATION)?
             RR_BRACKET
-            COMMA LEVEL OPERATOR_EQ INT
+            COMMA LEVEL OPERATOR_EQ INT (COMMA INT)*
     ;
 
 groupByFillClause
@@ -314,7 +314,7 @@ groupByFillClause
      ;
 
 groupByLevelClause
-    : GROUP BY LEVEL OPERATOR_EQ INT
+    : GROUP BY LEVEL OPERATOR_EQ INT (COMMA INT)*
     ;
 
 typeClause
@@ -369,7 +369,7 @@ cqGroupByTimeClause
     : GROUP BY TIME LR_BRACKET
       DURATION
       RR_BRACKET
-      (COMMA LEVEL OPERATOR_EQ INT)?
+      (COMMA LEVEL OPERATOR_EQ INT (COMMA INT)*)?
     ;
 
 comparisonOperator
