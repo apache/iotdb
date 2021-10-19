@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.utils.TestOnly;
 
@@ -112,6 +113,9 @@ public class MetaUtils {
    * @return measurement names. For example: [s1, s2, s3]
    */
   public static List<String> getMeasurementsInPartialPath(PartialPath fullPath) {
+    if (fullPath instanceof VectorPartialPath) {
+      return ((VectorPartialPath) fullPath).getSubSensorsList();
+    }
     return Arrays.asList(fullPath.getMeasurement());
   }
 

@@ -618,9 +618,13 @@ public class MManager {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group
+   * Delete all timeseries matching the given path pattern, may cross different storage group The
+   * given pathPattern only match measurement but not flat measurement. For example, given MTree:
+   * root.sg.d.vector(s1, s2), root.sg.d.s2; give pathPattern root.**.s2 and then only root.sg.d.s2
+   * will be deleted; give pathPattern like root.sg.d.* or root.sg.d.vector and then the deletion
+   * will work on root.sg.d.vector(s1, s2)
    *
-   * @param pathPattern path to be deleted, could be root or a prefix path or a full path
+   * @param pathPattern path to be deleted
    * @return deletion failed Timeseries
    */
   public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {

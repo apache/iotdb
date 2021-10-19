@@ -368,6 +368,8 @@ public abstract class AbstractMemTable implements IMemTable {
       PartialPath fullPath = devicePath.concatNode(entry.getKey());
       IMeasurementSchema schema = chunk.getSchema();
       if (originalPath.matchFullPath(fullPath)) {
+        // matchFullPath ensures this branch could work on delete data of unary measurement and
+        // delete timeseries or aligned timeseries
         if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
           iter.remove();
         }
@@ -376,6 +378,7 @@ public abstract class AbstractMemTable implements IMemTable {
       }
       // for vector type
       else if (schema.getType() == TSDataType.VECTOR) {
+        // this branch processes deleting data of vector measurement
         List<String> measurements = MetaUtils.getMeasurementsInPartialPath(originalPath);
         if (measurements.containsAll(schema.getSubMeasurementsList())) {
           if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
