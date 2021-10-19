@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.integration;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.server.service.DataGroupEngine;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -46,6 +47,7 @@ public abstract class BaseSingleNodeTest {
     initConfigs();
     daemon = ClusterIoTDB.getInstance();
     daemon.initLocalEngines();
+    DataGroupEngine.getInstance().resetFactory();
     daemon.activeStartNodeMode();
   }
 
