@@ -24,12 +24,20 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.read.common.Path;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class ClusterQueryUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(ClusterQueryUtils.class);
 
   private ClusterQueryUtils() {
     // util class
@@ -62,6 +70,32 @@ public class ClusterQueryUtils {
   public static void checkPathExistence(List<PartialPath> paths) throws QueryProcessException {
     for (PartialPath path : paths) {
       checkPathExistence(path);
+    }
+  }
+
+  public static PartialPath getPathFromRequest(List<String> pathString) {
+    try {
+      if (pathString.size() == 1) {
+        return new PartialPath(pathString.get(0));
+      } else {
+        return new VectorPartialPath(pathString.get(0), pathString.subList(1, pathString.size()));
+      }
+    } catch (IllegalPathException e) {
+      logger.error("Failed to create partial path, fullPath is {}.", pathString, e);
+      return null;
+    }
+  }
+
+  /** If vector path, return its vectorId with all subSensors. Else just return path string. */
+  public static List<String> getPathStringList(Path path) {
+    if (path instanceof VectorPartialPath) {
+      List<String> pathWithSubSensors =
+          new ArrayList<>(((VectorPartialPath) path).getSubSensorsList().size() + 1);
+      pathWithSubSensors.add(path.getFullPath());
+      pathWithSubSensors.addAll(((VectorPartialPath) path).getSubSensorsList());
+      return pathWithSubSensors;
+    } else {
+      return Collections.singletonList(path.getFullPath());
     }
   }
 }

@@ -64,14 +64,14 @@ public class AlignedTimeseriesSessionExample {
     insertTabletWithAlignedTimeseriesMethod1();
     insertTabletWithAlignedTimeseriesMethod2();
 
-    //    selectTest();
-    //    selectWithValueFilterTest();
-    //    selectWithGroupByTest();
-    //    selectWithLastTest();
-    //
-    //    selectWithAggregationTest();
-    //
-    //    selectWithAlignByDeviceTest();
+    selectTest();
+    selectWithValueFilterTest();
+    selectWithGroupByTest();
+    selectWithLastTest();
+
+    selectWithAggregationTest();
+
+    selectWithAlignByDeviceTest();
 
     session.close();
   }

@@ -47,7 +47,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -92,6 +91,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathFromRequest;
 
 public class LocalQueryExecutor {
 
@@ -275,19 +276,6 @@ public class LocalQueryExecutor {
         batchReader.close();
       }
       return -1;
-    }
-  }
-
-  private PartialPath getPathFromRequest(List<String> pathString) {
-    try {
-      if (pathString.size() == 1) {
-        return new PartialPath(pathString.get(0));
-      } else {
-        return new VectorPartialPath(pathString.get(0), pathString.subList(1, pathString.size()));
-      }
-    } catch (IllegalPathException e) {
-      logger.error("Failed to create partial path, fullPath is {}.", pathString, e);
-      return null;
     }
   }
 

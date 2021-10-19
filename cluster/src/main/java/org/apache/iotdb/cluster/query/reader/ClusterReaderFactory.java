@@ -52,7 +52,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -90,6 +89,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStringList;
 
 @SuppressWarnings("java:S107")
 public class ClusterReaderFactory {
@@ -705,10 +706,7 @@ public class ClusterReaderFactory {
     }
 
     List<List<String>> fullPaths = Lists.newArrayList();
-    paths.forEach(
-        path -> {
-          fullPaths.add(getPathStringList(path));
-        });
+    paths.forEach(path -> fullPaths.add(getPathStringList(path)));
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
     dataTypes.forEach(dataType -> dataTypeOrdinals.add(dataType.ordinal()));
@@ -740,7 +738,7 @@ public class ClusterReaderFactory {
     if (valueFilter != null) {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
-    request.setPath(getPathStringList(path));
+    request.setPath(ClusterQueryUtils.getPathStringList(path));
     request.setHeader(partitionGroup.getHeader());
     request.setQueryId(context.getQueryId());
     request.setRequester(metaGroupMember.getThisNode());
@@ -749,19 +747,6 @@ public class ClusterReaderFactory {
     request.setAscending(ascending);
     request.setRequiredSlots(requiredSlots);
     return request;
-  }
-
-  /** If vector path, return its vectorId with all subSensors. Else just return path string. */
-  private List<String> getPathStringList(Path path) {
-    if (path instanceof VectorPartialPath) {
-      List<String> pathWithSubSensors =
-          new ArrayList<>(((VectorPartialPath) path).getSubSensorsList().size() + 1);
-      pathWithSubSensors.add(path.getFullPath());
-      pathWithSubSensors.addAll(((VectorPartialPath) path).getSubSensorsList());
-      return pathWithSubSensors;
-    } else {
-      return Collections.singletonList(path.getFullPath());
-    }
   }
 
   /**

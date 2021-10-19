@@ -263,9 +263,8 @@ struct LastQueryRequest {
 }
 
 struct GetAllPathsResult {
-  1: required list<string> paths
+  1: required list<list<string>> paths
   2: optional list<string> aliasList
-  3: required list<bool> isVectorPath
 }
 
 
