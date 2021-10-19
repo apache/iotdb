@@ -269,17 +269,15 @@ public abstract class RaftMember implements RaftMemberMBean {
     appendLogThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors() * 10, name + "-AppendLog");
-    if (!config.isUseAsyncServer()) {
-      serialToParallelPool =
-          IoTDBThreadPoolFactory.newThreadPool(
-              allNodes.size(),
-              Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
-              1000L,
-              TimeUnit.MILLISECONDS,
-              new LinkedBlockingQueue<>(),
-              new IoTThreadFactory(getName() + "-SerialToParallel"),
-              getName() + "-SerialToParallel");
-    }
+    serialToParallelPool =
+        IoTDBThreadPoolFactory.newThreadPool(
+            allNodes.size(),
+            Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
+            1000L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(),
+            new IoTThreadFactory(getName() + "-SerialToParallel"),
+            getName() + "-SerialToParallel");
     commitLogPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("RaftCommitLog");
   }
 
