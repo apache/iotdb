@@ -46,7 +46,7 @@ If the receiver receives the data of root.sg2.d0.s0 of the sender 1 first, the r
 #### Sync Receiver
 The parameter configuration of the sync receiver is located in the configuration file `iotdb-engine.properties` of IoTDB, and its directory is `$IOTDB_HOME/conf/iotdb-engine.properties`. In this configuration file, there are four parameters related to the sync receiver. The configuration instructions are as follows:
 
-|parameter: is_sync_enable||
+|parameter| is_sync_enable||
 |--- |--- |
 |Description |Sync function switch, which is configured as true to indicate that the receiver is allowed to receive the data from the sender and load it. When set to false, it means that the receiver is not allowed to receive the data from any sender. |
 |Type|Boolean|
@@ -54,7 +54,7 @@ The parameter configuration of the sync receiver is located in the configuration
 |Modalities for Entry into Force after Modification|Restart receiver|
 
 
-|parameter: IP_white_list||
+|parameter| IP_white_list||
 |--- |--- |
 |Description |Set up a white list of sender IP addresses, which is expressed in the form of network segments and separated by commas between multiple network segments. When the sender transfers data to the receiver, only when the IP address of the sender is within the network segment set by the whitelist can the receiver allow the sync operation. If the whitelist is empty, the receiver does not allow any sender to sync data. The default receiver accepts all IP sync requests.|
 |Type|String|
@@ -62,7 +62,7 @@ The parameter configuration of the sync receiver is located in the configuration
 |Modalities for Entry into Force after Modification|Restart receiver|
 
 
-|parameter: sync_server_port||
+|parameter| sync_server_port||
 |--- |--- |
 |Description |Sync receiver port to listen. Make sure that the port is not a system reserved port and is not occupied. This paramter is valid only when the parameter is_sync_enable is set to TRUE. |
 |Type|Short Int : [0,65535]|
@@ -72,7 +72,7 @@ The parameter configuration of the sync receiver is located in the configuration
 #### Sync Sender
 The parameters of the sync sender are configured in a separate configuration file iotdb-sync-client.properties with the installation directory of ```$IOTDB_HOME/conf/iotdb-sync-client.properties```. In this configuration file, there are five parameters related to the sync sender. The configuration instructions are as follows:
 
-|parameter: server_ip||
+|parameter| server_ip||
 |--- |--- |
 |Description |IP address of sync receiver. |
 |Type|String|
@@ -80,7 +80,7 @@ The parameters of the sync sender are configured in a separate configuration fil
 |Modalities for Entry into Force after Modification|Restart client|
 
 
-|parameter: server_port||
+|parameter| server_port||
 |--- |--- |
 |Description |Listening port of sync receiver, it is necessary to ensure that the port is consistent with the configuration of the listening port set in receiver. |
 |Type|Short Int : [0,65535]|
@@ -88,7 +88,7 @@ The parameters of the sync sender are configured in a separate configuration fil
 |Modalities for Entry into Force after Modification|Restart client|
 
 
-|parameter: sync_period_in_second||
+|parameter| sync_period_in_second||
 |--- |--- |
 |Description |The period time of sync process, the time unit is second. |
 |Type|Int : [0,2147483647]|
@@ -96,13 +96,7 @@ The parameters of the sync sender are configured in a separate configuration fil
 |Modalities for Entry into Force after Modification|Restart client|
 
 
-|parameter: iotdb_schema_directory||
-|--- |--- |
-|Description |The absolute path of the sender's IoTDB schema file, such as `$IOTDB_HOME/data/system/schema/mlog.txt` (if the user does not manually set the path of schema metadata, the path is the default path of IoTDB engine). This parameter is not valid by default and is set manually when the user needs it. |
-|Type|String|
-|Modalities for Entry into Force after Modification|Restart client|
-
-|parameter: sync_storage_groups||
+|parameter| sync_storage_groups||
 |--- |--- |
 |Description |This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma. If the list is empty, it means that all storage groups participate in synchronization. By default, it is an empty list. |
 |Type|String|
@@ -110,7 +104,7 @@ The parameters of the sync sender are configured in a separate configuration fil
 |Modalities for Entry into Force after Modification|Restart client|
 
 
-|parameter: max_number_of_sync_file_retry||
+|parameter| max_number_of_sync_file_retry||
 |--- |--- |
 |Description |The maximum number of retry when syncing a file to receiver fails. |
 |Type|Int : [0,2147483647]|
