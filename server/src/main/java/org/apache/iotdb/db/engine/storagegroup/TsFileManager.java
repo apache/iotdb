@@ -114,6 +114,7 @@ public class TsFileManager {
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     for (TsFileResource resource : tsFileResourceList) {
       remove(resource, sequence);
+      TsFileResourceManager.getInstance().removeTsFileResource(resource);
     }
   }
 
@@ -142,7 +143,6 @@ public class TsFileManager {
       selectedMap
           .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
           .add(tsFileResource);
-      TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
     } finally {
       writeUnlock();
     }
