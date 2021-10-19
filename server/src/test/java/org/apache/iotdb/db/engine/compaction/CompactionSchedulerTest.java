@@ -1197,26 +1197,15 @@ public class CompactionSchedulerTest {
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     totalWaitingTime = 0;
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+    while (tsFileManager.getTsFileList(true).size() > 25) {
       try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again ", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+        Thread.sleep(100);
+      } catch (Exception e) {
+
+      }
+      totalWaitingTime += 100;
+      if (totalWaitingTime > MAX_WAITING_TIME) {
+        fail();
       }
     }
     assertTrue(tsFileManager.getTsFileList(true).size() <= 25);

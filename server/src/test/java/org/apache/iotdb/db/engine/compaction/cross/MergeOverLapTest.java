@@ -60,18 +60,23 @@ public class MergeOverLapTest extends MergeTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     ptNum = 1000;
-    super.setUp();
     tempSGDir = new File(TestConstant.getTestTsFileDir("root.sg1", 0, 0));
     if (!tempSGDir.exists()) {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
+    super.setUp();
   }
 
   @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    FileUtils.deleteDirectory(tempSGDir);
+    if (tempSGDir == null) {
+      tempSGDir = new File(TestConstant.getTestTsFileDir("root.sg1", 0, 0));
+      if (tempSGDir.exists()) {
+        FileUtils.deleteDirectory(tempSGDir);
+      }
+    }
   }
 
   @Override

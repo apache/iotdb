@@ -46,6 +46,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -63,6 +65,8 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 import static org.junit.Assert.assertEquals;
 
 public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
+  private static final Logger logger =
+      LoggerFactory.getLogger(SizeTieredCompactionRecoverTest.class);
 
   File tempSGDir;
 
@@ -520,6 +524,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
+    logger.warn("TsFiles in list is {}", tsFileManager.getTsFileList(true));
     tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
