@@ -48,7 +48,7 @@ public interface IEntityMNode extends IMNode {
       if (node.isStorageGroup()) {
         entityMNode =
             new StorageGroupEntityMNode(
-                node.getParent(), node.getName(), ((StorageGroupMNode) node).getDataTTL());
+                node.getParent(), node.getName(), node.getAsStorageGroupMNode().getDataTTL());
       } else {
         entityMNode = new EntityMNode(node.getParent(), node.getName());
       }
@@ -57,5 +57,21 @@ public interface IEntityMNode extends IMNode {
       }
     }
     return entityMNode;
+  }
+
+  static IMNode setToInternal(IEntityMNode entityMNode) {
+    IMNode node;
+    IMNode parent = entityMNode.getParent();
+    if (entityMNode.isStorageGroup()) {
+      node =
+          new StorageGroupMNode(
+              parent, entityMNode.getName(), entityMNode.getAsStorageGroupMNode().getDataTTL());
+    } else {
+      node = new InternalMNode(parent, entityMNode.getName());
+    }
+    if (parent != null) {
+      parent.replaceChild(entityMNode.getName(), node);
+    }
+    return node;
   }
 }

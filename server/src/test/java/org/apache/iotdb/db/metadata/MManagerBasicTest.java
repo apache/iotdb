@@ -286,14 +286,21 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
 
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
+    } catch (MetadataException e) {
+      assertEquals(
+          e.getMessage(),
+          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.s2]");
+    }
 
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
+    } catch (MetadataException e) {
+      assertEquals(
+          e.getMessage(),
+          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.*]");
+    }
 
     manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
@@ -1440,6 +1447,29 @@ public class MManagerBasicTest {
       Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d2")));
       Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.*")));
       Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.a.s3"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.a.s3"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      Assert.assertEquals(4, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      Assert.assertEquals(3, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.a.s3"));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.a.s3"));
+      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();

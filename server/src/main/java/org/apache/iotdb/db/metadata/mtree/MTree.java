@@ -498,13 +498,28 @@ public class MTree implements Serializable {
     }
 
     IMeasurementMNode deletedNode = getMeasurementMNode(path);
-    IMNode curNode = deletedNode;
+    IEntityMNode parent = deletedNode.getParent();
     // delete the last node of path
-    curNode.getParent().deleteChild(path.getMeasurement());
+    parent.deleteChild(path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      deletedNode.getParent().deleteAliasChild((curNode.getAsMeasurementMNode().getAlias()));
+      parent.deleteAliasChild((deletedNode.getAlias()));
     }
-    curNode = curNode.getParent();
+    IMNode curNode = parent;
+    if (!parent.isUseTemplate()) {
+      boolean hasMeasurement = false;
+      for (IMNode child : parent.getChildren().values()) {
+        if (child.isMeasurement()) {
+          hasMeasurement = true;
+          break;
+        }
+      }
+      if (!hasMeasurement) {
+        synchronized (this) {
+          curNode = IEntityMNode.setToInternal(parent);
+        }
+      }
+    }
+
     // delete all empty ancestors except storage group and MeasurementMNode
     while (curNode.isEmptyInternal()) {
       // if current storage group has no time series, return the storage group name
