@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
@@ -164,14 +163,6 @@ public class IoTDB implements IoTDBMBean {
 
   private void deactivate() {
     logger.info("Deactivating IoTDB...");
-    // some user may call Tracing on but do not close tracing.
-    // so, when remove the system, we have to close the tracing
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-      TracingManager.getInstance().close();
-    }
-    PrimitiveArrayManager.close();
-    SystemInfo.getInstance().close();
-
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB is deactivated.");
@@ -197,9 +188,6 @@ public class IoTDB implements IoTDBMBean {
   public void shutdown() throws Exception {
     // TODO shutdown is not equal to stop()
     logger.info("Deactivating IoTDB...");
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-      TracingManager.getInstance().close();
-    }
     registerManager.shutdownAll();
     PrimitiveArrayManager.close();
     SystemInfo.getInstance().close();

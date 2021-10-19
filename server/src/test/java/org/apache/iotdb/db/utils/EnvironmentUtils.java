@@ -38,7 +38,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -148,11 +147,6 @@ public class EnvironmentUtils {
     IoTDB.metaManager.clear();
 
     QueryTimeManager.getInstance().clear();
-
-    // close tracing
-    if (config.isEnablePerformanceTracing()) {
-      TracingManager.getInstance().close();
-    }
 
     // close array manager
     PrimitiveArrayManager.close();
@@ -274,6 +268,7 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
+
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }

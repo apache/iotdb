@@ -543,14 +543,6 @@ public class IoTDBDescriptor {
                       "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
                   .trim()));
 
-      conf.setEnablePerformanceTracing(
-          Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_performance_tracing",
-                      Boolean.toString(conf.isEnablePerformanceTracing()))
-                  .trim()));
-
       conf.setPerformanceStatDisplayInterval(
           Long.parseLong(
               properties

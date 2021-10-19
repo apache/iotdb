@@ -402,6 +402,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
+        null,
         (long) 60 * 1000,
         true);
   }
@@ -445,6 +446,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
+        null,
         null,
         (long) 60 * 1000,
         true);
@@ -502,6 +504,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -714,6 +717,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -817,6 +821,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -870,6 +875,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
+        null,
         null,
         (long) 60 * 1000,
         true);
@@ -984,6 +990,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
+        null,
         (long) 60 * 1000,
         true);
   }
@@ -1086,6 +1093,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -1158,6 +1166,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -1210,6 +1219,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
+        null,
         (long) 60 * 1000,
         true);
   }
@@ -1257,6 +1267,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
+        null,
         null,
         (long) 60 * 1000,
         true);
@@ -1473,6 +1484,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -1528,6 +1540,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
+        null,
         (long) 60 * 1000,
         true);
   }
@@ -1571,6 +1584,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
+        null,
         null,
         (long) 60 * 1000,
         true);
@@ -1648,6 +1662,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -1726,6 +1741,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -1779,6 +1795,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
+        null,
         (long) 60 * 1000,
         true);
   }
@@ -1818,6 +1835,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
+        null,
         null,
         (long) 60 * 1000,
         true);
@@ -1937,6 +1955,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -1979,6 +1998,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -2147,6 +2167,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -2317,6 +2338,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -2533,6 +2555,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         tsdataset,
+        null,
         (long) 60 * 1000,
         false);
   }
@@ -2574,6 +2597,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
+        null,
         null,
         (long) 60 * 1000,
         true);
@@ -2627,6 +2651,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
+        null,
         null,
         (long) 60 * 1000,
         true);

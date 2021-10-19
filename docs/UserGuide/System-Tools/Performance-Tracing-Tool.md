@@ -20,44 +20,34 @@
 -->
 ## Performance Tracing Tool
 
-IoTDB supports the use of `TRACING` statements to enable and disable performance tracing of query statements, which is disabled by default. Users can use performance tracking tool to analyze potential performance problems in some queries. By default, the log files for performance tracing are stored in the directory `./data/tracing`.
+> Note: TRACING ON/OFF hasn't been supported yet.
 
-Turn on Tracing：
+IoTDB supports the use of the `TRACING` clause to enable performance tracing of executed statements. Users can use the performance tracing tool to analyze potential performance problems in some statements.
 
-`IoTDB> TRACING ON`
+Traceable statement: `SELECT` only.
 
-Turn off Tracing：
-
-`IoTDB> TRACING OFF`
-
-Since the cost of an IoTDB query mainly depends on the number of time series queried, the number of tsfile files accessed, the total number of chunks to be scanned, and the average size of each chunk (the number of data points contained in the chunk). Therefore, the current performance analysis includes the following contents:
-
-- Start time
-- Query statement
-- Number of series paths
-- Number of sequence files
-- Statistics of each sequence file
-- Number of unSequence files
-- Statistics of each unSequence file
-- Number of chunks
-- Average size of chunks
-- Total cost time
+The current performance analysis includes the following contents:
+1. The elapsed time of each stage of the execution process.
+2. Statistics related to performance analysis. For query statements, it includes the number of time series queried, the number of Tsfile files accessed, the total number of chunks to be scanned, and the average number of data points contained in the chunk, the total number of pages read, and the number of overlapped pages.
 
 ### Example
 
-For example, execute `select * from root`, the contents of the tracing log file will include the following contents:
+For example, execute `tracing select * from root`, will display the following contents:
 
 ```
-Query Id: 2 - Start time: 2020-06-28 10:53:54.727
-Query Id: 2 - Query Statement: select * from root
-Query Id: 2 - Number of series paths: 3
-Query Id: 2 - Number of sequence files: 1
-Query Id: 2 - SeqFile_1603336100446-1-0.tsfile root.sg.d1[1, 10000]
-Query Id: 2 - Number of unsequence files: 1
-Query Id: 2 - UnSeqFile_1603354798303-2-0.tsfile root.sg.d1[9, 1000]
-Query Id: 2 - Number of chunks: 3
-Query Id: 2 - Average size of chunks: 4113
-Query Id: 2 - Total cost time: 11ms
+Tracing Activties:
++------------------------------------------------------+------------+
+|                                              Activity|Elapsed Time|
++------------------------------------------------------+------------+
+|Start to execute statement: tracing select * from root|           0|
+|                            Parse SQL to physical plan|           4|
+|                              Create and cache dataset|          16|
+|                              * Num of series paths: 3|            |
+|                       * Num of sequence files read: 2|            |
+|                     * Num of unsequence files read: 1|            |
+|        * Num of sequence chunks: 6, avg points: 100.0|            |
+|      * Num of unsequence chunks: 3, avg points: 100.0|            |
+|         * Num of Pages: 9, overlapped pages: 0 (0.0%)|            |
+|                                      Request complete|          20|
++------------------------------------------------------+------------+
 ```
-
-In order to avoid disordered output information caused by multiple queries being executed at the same time, the Query ID is added before each output information. Users can use `grep "Query ID: 2" tracing.txt` to extract all tracing information of one query.

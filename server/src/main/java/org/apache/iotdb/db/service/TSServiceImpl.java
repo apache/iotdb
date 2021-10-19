@@ -80,7 +80,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
-import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.control.tracing.TracingConstant;
+import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
@@ -128,6 +129,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -193,6 +195,9 @@ public class TSServiceImpl implements TSIService.Iface {
   private static final AtomicInteger queryCount = new AtomicInteger(0);
   private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
   private final SessionManager sessionManager = SessionManager.getInstance();
+  private final TracingManager tracingManager = TracingManager.getInstance();
+
+  private long startTime = -1L;
 
   protected Planner processor;
   protected IPlanExecutor executor;
@@ -591,6 +596,8 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     String statement = req.getStatement();
+    startTime = System.currentTimeMillis();
+
     try {
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
@@ -748,20 +755,25 @@ public class TSServiceImpl implements TSIService.Iface {
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
 
-    final long startTime = System.currentTimeMillis();
+    final long queryStartTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
-    QueryContext context = genQueryContext(queryId, plan.isDebug(), startTime, statement, timeout);
+    QueryContext context =
+        genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
+
+    if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
+      context.setEnableTracing(true);
+      tracingManager.setStartTime(queryId, this.startTime);
+      tracingManager.registerActivity(
+          queryId,
+          String.format(TracingConstant.ACTIVITY_START_EXECUTE, statement),
+          this.startTime);
+      tracingManager.registerActivity(queryId, TracingConstant.ACTIVITY_PARSE_SQL, queryStartTime);
+      if (!(plan instanceof AlignByDevicePlan)) {
+        tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
+      }
+    }
 
     try {
-      if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-        TracingManager tracingManager = TracingManager.getInstance();
-        if (!(plan instanceof AlignByDevicePlan)) {
-          tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
-        } else {
-          tracingManager.writeQueryInfo(queryId, statement, startTime);
-        }
-      }
-
       String username = sessionManager.getUsername(sessionId);
       plan.setLoginUserName(username);
 
@@ -775,6 +787,10 @@ public class TSServiceImpl implements TSIService.Iface {
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(context, plan, fetchSize);
+      if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
+        tracingManager.registerActivity(
+            queryId, TracingConstant.ACTIVITY_CREATE_DATASET, System.currentTimeMillis());
+      }
 
       if (newDataSet.getEndPoint() != null && enableRedirect) {
         // redirect query
@@ -791,7 +807,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
-      } else if (plan instanceof UDFPlan) {
+      } else if (plan instanceof UDFPlan
+          || (plan instanceof QueryPlan && ((QueryPlan) plan).isGroupByLevel())) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
 
@@ -830,13 +847,13 @@ public class TSServiceImpl implements TSIService.Iface {
 
       resp.setQueryId(queryId);
 
-      if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
-        TracingManager.getInstance()
-            .writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
+      if (plan instanceof AlignByDevicePlan && ((QueryPlan) plan).isEnableTracing()) {
+        tracingManager.setSeriesPathNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
       }
+
       if (config.isEnableMetricService()) {
         long endTime = System.currentTimeMillis();
-        SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
+        SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, queryStartTime, endTime);
         synchronized (sqlArgumentList) {
           sqlArgumentList.add(sqlArgument);
           if (sqlArgumentList.size() >= MAX_SIZE) {
@@ -846,13 +863,21 @@ public class TSServiceImpl implements TSIService.Iface {
       }
       queryTimeManager.unRegisterQuery(queryId, false);
 
+      if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
+        tracingManager.registerActivity(
+            queryId, TracingConstant.ACTIVITY_REQUEST_COMPLETE, System.currentTimeMillis());
+
+        TSTracingInfo tsTracingInfo = fillRpcReturnTracingInfo(queryId);
+        resp.setTracingInfo(tsTracingInfo);
+      }
+
       return resp;
     } catch (Exception e) {
       sessionManager.releaseQueryResourceNoExceptions(queryId);
       throw e;
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
-      long costTime = System.currentTimeMillis() - startTime;
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
+      long costTime = System.currentTimeMillis() - queryStartTime;
       if (costTime >= config.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
       }
@@ -868,7 +893,7 @@ public class TSServiceImpl implements TSIService.Iface {
   /** get ResultSet schema */
   private TSExecuteStatementResp getQueryColumnHeaders(
       PhysicalPlan physicalPlan, String username, boolean isJdbcQuery)
-      throws AuthException, TException, QueryProcessException, MetadataException {
+      throws AuthException, TException, MetadataException {
 
     List<String> respColumns = new ArrayList<>();
     List<String> columnsTypes = new ArrayList<>();
@@ -892,11 +917,11 @@ public class TSServiceImpl implements TSIService.Iface {
       // because the query dataset and query id is different although the header of last query is
       // same.
       return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
-      Map<String, AggregateResult> finalPaths = ((AggregationPlan) plan).getAggPathByLevel();
-      for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
-        respColumns.add(entry.getKey());
-        columnsTypes.add(entry.getValue().getResultDataType().toString());
+    } else if (plan.isGroupByLevel()) {
+      for (Map.Entry<String, AggregateResult> groupPathResult :
+          ((AggregationPlan) plan).getGroupPathsResultMap().entrySet()) {
+        respColumns.add(groupPathResult.getKey());
+        columnsTypes.add(groupPathResult.getValue().getResultDataType().toString());
       }
     } else {
       List<String> respSgColumns = new ArrayList<>();
@@ -1046,9 +1071,8 @@ public class TSServiceImpl implements TSIService.Iface {
     queryCount.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute select into: {}", sessionManager.getCurrSessionId(), statement);
-    if (config.isEnablePerformanceTracing()) {
-      TracingManager.getInstance()
-          .writeQueryInfo(queryId, statement, startTime, queryPlan.getPaths().size());
+    if (physicalPlan instanceof QueryPlan && ((QueryPlan) physicalPlan).isEnableTracing()) {
+      tracingManager.setSeriesPathNum(queryId, queryPlan.getPaths().size());
     }
 
     try {
@@ -1176,6 +1200,10 @@ public class TSServiceImpl implements TSIService.Iface {
       throws TException, AuthException, IOException, QueryProcessException, InterruptedException {
     WatermarkEncoder encoder = getWatermarkEncoder(userName);
     return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
+  }
+
+  private TSTracingInfo fillRpcReturnTracingInfo(long queryId) {
+    return tracingManager.fillRpcReturnTracingInfo(queryId);
   }
 
   private WatermarkEncoder getWatermarkEncoder(String userName) throws TException, AuthException {
