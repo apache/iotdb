@@ -77,6 +77,7 @@ We call the middle part of a path between two "." as a layer, and thus `root.A.B
 It is worth noting that in the path, root is a reserved character, which is only allowed to appear at the beginning of the time series mentioned below. If root appears in other layers, it cannot be parsed and an error is reported.
 
 Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. 
+The double quotation mark supports the use of escape characters to nest double quotation marks, such as root.sg.d1."s.\"t\"1".
 
 The characters supported in LayerName without double quotes are as below:
 
