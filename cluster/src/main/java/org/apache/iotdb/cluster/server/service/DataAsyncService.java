@@ -433,7 +433,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getDeviceCount(
-      RaftNode header, List<String> pathsToQuery, AsyncMethodCallback<Integer> resultHandler)
+      Node header, List<String> pathsToQuery, AsyncMethodCallback<Integer> resultHandler)
       throws TException {
     try {
       resultHandler.onComplete(

@@ -369,7 +369,7 @@ public class SyncClientAdaptor {
   }
 
   public static Integer getDeviceCount(
-      AsyncDataClient client, RaftNode header, List<String> pathsToQuery)
+      AsyncDataClient client, Node header, List<String> pathsToQuery)
       throws InterruptedException, TException {
     AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
     GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
