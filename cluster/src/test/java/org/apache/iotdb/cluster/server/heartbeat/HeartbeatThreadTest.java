@@ -177,13 +177,8 @@ public class HeartbeatThreadTest {
     member = null;
     testThread.interrupt();
     testThread.join();
-    File dir = new File(SyncLogDequeSerializer.getLogDir(1));
-    for (File file : dir.listFiles()) {
-      file.delete();
-    }
-    dir.delete();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
-    EnvironmentUtils.cleanAllDir();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

@@ -247,7 +247,9 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    FileUtils.deleteDirectory(new File(dir));
+    synchronized (EnvironmentUtils.class) {
+      FileUtils.deleteDirectory(new File(dir));
+    }
   }
 
   /** disable the system monitor</br> this function should be called before all code in the setup */
