@@ -50,6 +50,7 @@ public class SessionPoolTest {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
   private static final long DEFAULT_QUERY_TIMEOUT = -1;
+
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
