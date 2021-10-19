@@ -539,7 +539,7 @@ public class IoTDBSessionSimpleIT {
       session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
     } catch (BatchExecutionException e) {
       assertEquals(
-          "No matched timeseries or aligned timeseries for Path [root.sg1.d1.t6]", e.getMessage());
+          "No matched timeseries or aligned timeseries for Path [root.sg1.d1.t6];", e.getMessage());
     }
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
