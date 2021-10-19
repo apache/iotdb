@@ -189,7 +189,7 @@ public class CompactionSchedulerTest {
             tsFileManager.getTsFileList(false).size());
       }
       if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-        logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+        logger.warn("Has waited for  {} s, Schedule again", totalWaitingTime / 1000);
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       }
     }
