@@ -1098,7 +1098,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-thrift-executable</id>
