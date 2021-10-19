@@ -38,7 +38,7 @@ several open sourced time series databases are introduced to the world.
 However, few of them are developed for IoT or IIoT (Industrial IoT) scenario in particular. 
 
 
-3 kinds of TSDBs are compared here.
+This article compares IoTDB with other three types of time series databases.
 
 * InfluxDB - Native Time series database
 
@@ -63,8 +63,7 @@ Druid focuses on data analysis with OLAP workload. We omit them here.
 
 
 ## Comparison 
-The above time series databases are compared from two aspects: the feature comparison and the performance
-comparison.
+This article will compare time series databases from both functional and performance perspectives.
 
 
 ### Feature Comparison
@@ -135,8 +134,7 @@ Legend:
 
 * Order by time:
   
-  Order by time seems quite trivial for time series database. But... if we consider another feature, called align by time,
-  something becomes interesting.  And, that is why we mark OpenTSDB and KairosDB unsupported.
+  For a time series database, Order by time just seems like a trivial feature. However, things become more interesting when we consider another feature called " align by time    ". This is the reason that we marked OpenTSDB and KairosDB as "not supported".
   
   Actually, in each time series, all these TSDBs support order data by timestamps.
   
@@ -210,7 +208,8 @@ Legend:
 
 **Conclusion**:
 
-Well, if we compare the basic features, we can find that OpenTSDB and KairosDB somehow lack some important query features.
+By comparing the basic functions, we can find that: 
+OpenTSDB and KairosDB somehow lack some important query features.
 TimescaleDB can not be freely used in business.
 IoTDB and InfluxDB can meet most requirements of time series data management, while they have some difference.
 
@@ -234,6 +233,7 @@ I listed some interesting features that these systems may differ.
 | *Flink integration*          | **++** |    -     |    -     |    -     |      -      |
 
 
+Specifically.
 * Align by time: have been introduced. Let's skip it..
 
 * Compression: 
@@ -276,9 +276,9 @@ I listed some interesting features that these systems may differ.
   Sharing nothing architecture is good, but sometimes you have to add new servers even your CPU and memory is idle but the disk is full...
   Besides, if we can save the data file directly to HDFS, it will be more easy to use Spark and other softwares to analyze data, without ETL.
   
-  * IoTDB supports writing data locally or on HDFS directly. IoTDB also allows user to extend to store data on other NFS.
-  * InfluxDB, KairosDB have to write data locally.
-  * OpenTSDB has to write data on HDFS.
+    * IoTDB supports writing data locally or on HDFS directly. IoTDB also allows user to extend to store data on other NFS.
+    * InfluxDB, KairosDB have to write data locally.
+    * OpenTSDB has to write data on HDFS.
 
 **Conclusion**:    
 
@@ -299,24 +299,16 @@ It is somehow right. But, if you consider the performance, you may change your m
 | *Downsampling Query* |  ++   |    +     |    +-    |     +-      |
 | *Latest Query*       |  ++   |    +     |    +-    |      +      |
 
-* Write:
+**Write performance**:
 
 We test the performance of writing from two aspects: *batch size* and *client num*. The number of storage group is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series total).
-
-* Read:
-
-10 clients read data concurrently. The number of storage group is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
-The data type is *double*, encoding type is *GORILLA*
-
-* Compression:
 
 We test and compare file sizes of TsFile(the file format of IoTDB) and some others famous dataset formats, which are Parquet, ORC and Csv, after the same datasets are written.
 
 The IoTDB version is v0.11.1.
 
-**Write performance**:
 
-* batch size:
+* batch size *:
 
 10 clients write data concurrently.
 IoTDB uses batch insertion API and the batch size is distributed from 0 to 6000 (write N data points per write API call).
@@ -343,6 +335,8 @@ The write throughput (points/second) is:
 <center>Figure 3. Client Num with Write Throughput (points/second) IoTDB v0.11.1</center>
 
 **Query performance**
+10 clients read data concurrently. The number of storage group is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
+The data type is *double*, encoding type is *GORILLA*.
 
 ![Raw data query 1 col](https://user-images.githubusercontent.com/24886743/106251377-daef8200-624f-11eb-9678-b1d5440be2de.png)
 <center>Figure 4. Raw data query 1 col time cost(ms) IoTDB v0.11.1</center>
