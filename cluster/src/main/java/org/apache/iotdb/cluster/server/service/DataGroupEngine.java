@@ -90,6 +90,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   public DataGroupEngine(
       DataGroupMember.Factory dataMemberFactory, MetaGroupMember metaGroupMember) {
     DataGroupEngine.metaGroupMember = metaGroupMember;
+    this.dataMemberFactory = dataMemberFactory;
     this.stoppedMemberManager = new StoppedMemberManager(dataMemberFactory);
   }
 

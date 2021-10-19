@@ -27,7 +27,6 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
-import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -45,7 +44,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
@@ -177,13 +175,8 @@ public class HeartbeatThreadTest {
     member = null;
     testThread.interrupt();
     testThread.join();
-    File dir = new File(SyncLogDequeSerializer.getLogDir(1));
-    for (File file : dir.listFiles()) {
-      file.delete();
-    }
-    dir.delete();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
-    EnvironmentUtils.cleanAllDir();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

@@ -279,7 +279,7 @@ public class DataGroupMemberTest extends BaseMember {
           }
         };
     PartitionedSnapshotLogManager logManager = getLogManager(nodes, dataGroupMember);
-    dataGroupMember.setThisNode(TestUtils.getNode(0));
+    dataGroupMember.setThisNode(node);
     dataGroupMember.setLogManager(logManager);
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
