@@ -150,11 +150,18 @@ public class SessionPoolTest {
   @Test
   public void executeQueryStatement() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
-    correctQuery(pool);
+    correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
     pool.close();
   }
 
-  private void correctQuery(SessionPool pool) {
+  @Test
+  public void executeQueryStatementWithTimeout() {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+    correctQuery(pool, 2000);
+    pool.close();
+  }
+
+  private void correctQuery(SessionPool pool, long timeoutInMs) {
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
     // now let's query
@@ -163,8 +170,15 @@ public class SessionPoolTest {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper =
-                  pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+              SessionDataSetWrapper wrapper;
+              if (timeoutInMs == DEFAULT_QUERY_TIMEOUT) {
+                wrapper =
+                    pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+              } else {
+                wrapper =
+                    pool.executeQueryStatement(
+                        "select * from root.sg1.d1 where time = " + no, timeoutInMs);
+              }
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
               logger.error("correctQuery failed", e);
@@ -261,7 +275,7 @@ public class SessionPoolTest {
               null,
               false,
               Config.DEFAULT_CONNECTION_TIMEOUT_MS);
-      correctQuery(pool);
+      correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
       return;
     } catch (StatementExecutionException e) {
@@ -293,7 +307,7 @@ public class SessionPoolTest {
                 null,
                 false,
                 Config.DEFAULT_CONNECTION_TIMEOUT_MS);
-        correctQuery(pool);
+        correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
         pool.close();
       } catch (StatementExecutionException es) {
         fail("should be TTransportException but get an exception: " + e.getMessage());

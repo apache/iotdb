@@ -33,7 +33,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -120,7 +121,7 @@ public class QueryRouter implements IQueryRouter {
           "paths:"
               + aggregationPlan.getPaths()
               + " level:"
-              + aggregationPlan.getLevel()
+              + Arrays.toString(aggregationPlan.getLevels())
               + " duplicatePaths:"
               + aggregationPlan.getDeduplicatedPaths()
               + " deduplicatePaths:"
@@ -164,7 +165,11 @@ public class QueryRouter implements IQueryRouter {
           IOException {
 
     if (logger.isDebugEnabled()) {
-      logger.debug("paths:" + groupByTimePlan.getPaths() + " level:" + groupByTimePlan.getLevel());
+      logger.debug(
+          "paths:"
+              + groupByTimePlan.getPaths()
+              + " level:"
+              + Arrays.toString(groupByTimePlan.getLevels()));
     }
 
     GroupByEngineDataSet dataSet = null;
@@ -192,8 +197,8 @@ public class QueryRouter implements IQueryRouter {
     // we support group by level for count operation
     // details at https://issues.apache.org/jira/browse/IOTDB-622
     // and UserGuide/Operation Manual/DML
-    if (groupByTimePlan.getLevel() >= 0) {
-      return groupByLevelWithoutTimeIntervalDataSet(context, groupByTimePlan, dataSet);
+    if (groupByTimePlan.isGroupByLevel()) {
+      return new GroupByLevelDataSet(groupByTimePlan, dataSet);
     }
     return dataSet;
   }
@@ -230,12 +235,6 @@ public class QueryRouter implements IQueryRouter {
       QueryContext context, GroupByTimePlan plan)
       throws StorageEngineException, QueryProcessException {
     return new GroupByWithValueFilterDataSet(context, plan);
-  }
-
-  protected GroupByTimeDataSet groupByLevelWithoutTimeIntervalDataSet(
-      QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-      throws QueryProcessException, IOException {
-    return new GroupByTimeDataSet(context, plan, dataSet);
   }
 
   @Override

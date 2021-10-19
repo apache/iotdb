@@ -1443,7 +1443,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 SQL 语句将不会执行，并且相应的错误提示如下：
 
 ```
-Msg: 401: Error occured while parsing SQL to physical plan: line 1:101 mismatched input 'limit' expecting {<EOF>, SLIMIT, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: Error occured while parsing SQL to physical plan: line 1:101 mismatched input 'limit' expecting {<EOF>, ';'}
 ```
 
 #### 列控制
@@ -1635,7 +1635,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 SQL 语句将不会执行，并且相应的错误提示如下：
 
 ```
-Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, SLIMIT, OFFSET, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, ';'}
 ```
 
 当 LIMIT 子句的参数 OFFSET 超过结果集的大小时，IoTDB 将返回空结果集。 例如，执行以下 SQL 语句：
@@ -1781,7 +1781,7 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 
 ```sql
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: The statement is executed successfully.
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
 ### 删除时间分区 （实验性功能）

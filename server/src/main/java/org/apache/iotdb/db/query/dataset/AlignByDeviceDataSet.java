@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -169,7 +168,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.expression = deviceToFilterMap.get(currentDevice.getFullPath());
       }
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      // for tracing: try to calculate the number of series paths
+      if (context.isEnableTracing()) {
         pathsNum += executeColumns.size();
       }
 

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -46,6 +45,7 @@ public abstract class QueryPlan extends PhysicalPlan {
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
   private boolean enableRedirect = false;
+  private boolean enableTracing = false;
 
   // if true, we don't need the row whose any column is null
   private boolean withoutAnyNull;
@@ -114,6 +114,10 @@ public abstract class QueryPlan extends PhysicalPlan {
     pathToIndex.put(columnName, index);
   }
 
+  public boolean isGroupByLevel() {
+    return false;
+  }
+
   public void setPathToIndex(Map<String, Integer> pathToIndex) {
     this.pathToIndex = pathToIndex;
   }
@@ -135,8 +139,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getExactFullPath();
   }
 
-  public String getColumnForDisplay(String columnForReader, int pathIndex)
-      throws IllegalPathException {
+  public String getColumnForDisplay(String columnForReader, int pathIndex) {
     return resultColumns.get(pathIndex).getResultColumnName();
   }
 
@@ -146,6 +149,14 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setEnableRedirect(boolean enableRedirect) {
     this.enableRedirect = enableRedirect;
+  }
+
+  public boolean isEnableTracing() {
+    return enableTracing;
+  }
+
+  public void setEnableTracing(boolean enableTracing) {
+    this.enableTracing = enableTracing;
   }
 
   public List<ResultColumn> getResultColumns() {
