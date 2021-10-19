@@ -149,7 +149,27 @@ public class QueryOperator extends Operator {
   }
 
   public boolean isGroupByLevel() {
-    return specialClauseComponent != null && specialClauseComponent.getLevel() != -1;
+    return specialClauseComponent != null && specialClauseComponent.getLevels() != null;
+  }
+
+  public int[] getLevels() {
+    return specialClauseComponent.getLevels();
+  }
+
+  public boolean hasSlimit() {
+    return specialClauseComponent != null && specialClauseComponent.hasSlimit();
+  }
+
+  public boolean hasSoffset() {
+    return specialClauseComponent != null && specialClauseComponent.hasSoffset();
+  }
+
+  /** Reset sLimit and sOffset to zero. */
+  public void resetSLimitOffset() {
+    if (specialClauseComponent != null) {
+      specialClauseComponent.setSeriesLimit(0);
+      specialClauseComponent.setSeriesOffset(0);
+    }
   }
 
   public void check() throws LogicalOperatorException {

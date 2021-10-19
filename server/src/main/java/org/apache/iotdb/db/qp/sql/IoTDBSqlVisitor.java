@@ -81,14 +81,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.File;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -289,7 +282,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     sb.append(")");
     if (queryOp.isGroupByLevel()) {
       sb.append(", level = ");
-      sb.append(queryOp.getSpecialClauseComponent().getLevel());
+      int[] levels = queryOp.getSpecialClauseComponent().getLevels();
+      sb.append(levels[0]);
+      for (int i = 1; i < levels.length; i++) {
+        sb.append(String.format(", %d", levels[i]));
+      }
     }
     createContinuousQueryOperator.setQuerySql(sb.toString());
 
@@ -331,10 +328,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     parseCqGroupByTimeClause(ctx.cqGroupByTimeClause());
 
-    int groupByQueryLevel = queryOp.getSpecialClauseComponent().getLevel();
-    int fromPrefixLevelLimit = queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength();
-    if (groupByQueryLevel >= fromPrefixLevelLimit) {
-      throw new SQLParserException("CQ: Level should not exceed the <from_prefix> length.");
+    if (queryOp.isGroupByLevel()) {
+      int[] groupByQueryLevels = queryOp.getSpecialClauseComponent().getLevels();
+      int fromPrefixLevelLimit = queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength();
+      if (Arrays.stream(groupByQueryLevels).max().getAsInt() >= fromPrefixLevelLimit) {
+        throw new SQLParserException("CQ: Level should not exceed the <from_prefix> length.");
+      }
     }
 
     createContinuousQueryOperator.setTargetPath(parseIntoPath(ctx.intoPath()));
@@ -354,7 +353,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     groupByClauseComponent.setLeftCRightO(true);
 
     if (ctx.LEVEL() != null && ctx.INTEGER_LITERAL() != null) {
-      groupByClauseComponent.setLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+      int[] levels = new int[ctx.INTEGER_LITERAL().size()];
+      for (int i = 0; i < ctx.INTEGER_LITERAL().size(); i++) {
+        levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
+      }
+      groupByClauseComponent.setLevels(levels);
     }
 
     queryOp.setSpecialClauseComponent(groupByClauseComponent);
@@ -812,11 +815,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private PartialPath parseIntoPath(IoTDBSqlParser.IntoPathContext intoPathContext) {
-    int levelLimitOfSourcePrefixPath =
-        queryOp.getSpecialClauseComponent() != null
-            ? queryOp.getSpecialClauseComponent().getLevel()
-            : -1;
-    if (levelLimitOfSourcePrefixPath == -1) {
+    int levelLimitOfSourcePrefixPath;
+    if (queryOp.isGroupByLevel()) {
+      levelLimitOfSourcePrefixPath =
+          Arrays.stream(queryOp.getSpecialClauseComponent().getLevels()).max().getAsInt();
+    } else {
       levelLimitOfSourcePrefixPath =
           queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength() - 1;
     }
@@ -1040,8 +1043,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     parseTimeInterval(ctx.timeInterval(), groupByClauseComponent);
 
-    if (ctx.INTEGER_LITERAL() != null) {
-      groupByClauseComponent.setLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+    if (ctx.LEVEL() != null && ctx.INTEGER_LITERAL() != null) {
+      int[] levels = new int[ctx.INTEGER_LITERAL().size()];
+      for (int i = 0; i < ctx.INTEGER_LITERAL().size(); i++) {
+        levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
+      }
+      groupByClauseComponent.setLevels(levels);
     }
     queryOp.setSpecialClauseComponent(groupByClauseComponent);
   }
@@ -1078,7 +1085,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseGroupByLevelClause(IoTDBSqlParser.GroupByLevelClauseContext ctx) {
     SpecialClauseComponent groupByLevelClauseComponent = new SpecialClauseComponent();
-    groupByLevelClauseComponent.setLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+    int[] levels = new int[ctx.INTEGER_LITERAL().size()];
+    for (int i = 0; i < ctx.INTEGER_LITERAL().size(); i++) {
+      levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
+    }
+    groupByLevelClauseComponent.setLevels(levels);
+
     queryOp.setSpecialClauseComponent(groupByLevelClauseComponent);
   }
 
