@@ -185,9 +185,7 @@ public class IoTDBInfluxDBIT {
 
   @Test
   public void testInsert1() {
-    String[] expected = {
-      "china, 99, null, 110, ", "null, null, 97, null, ",
-    };
+    String[] expected = {"china, 99, null, 110, ", "null, null, 97, null, "};
     int expectLength = 2;
     try {
       SessionDataSet sessionDataSet =
