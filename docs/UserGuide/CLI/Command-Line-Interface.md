@@ -159,7 +159,8 @@ So as username you use the token and the password has to be empty, e.g.
 Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
-How to get the token is dependent on your OpenID Connect setup and not covered here.
+You need to replace {my-access-token}（note, including{}) with users' token here.
+How to get tokens depends on your OIDC settings.
 In the simplest case you can get this via the command line with the `passwort-grant`.
 For example, if you use keycloack as OIDC and you have a realm with a client `iotdb` defined as public you could use
 the following `curl` command to fetch a token (replace all `{}` with appropriate values).
@@ -183,7 +184,7 @@ This has to be passed as username (with parameter `-u`) and empty password to th
 
 ### Batch Operation of Cli
 
--e parameter is designed for the Cli/shell tool in the situation where you would like to manipulate IoTDB in batches through scripts. By using the -e parameter, you can operate IoTDB without entering the cli's input mode.
+The -e parameter can be used when you want to do batch operations on IOTDB via the CLI/Sheel via scripts. By using the -e parameter, you can operate IoTDB without entering the cli's input mode.
 
 In order to avoid confusion between statements and other parameters, the current situation only supports the -e parameter as the last parameter.
 
