@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.12.3-SNAPSHOT</version>
+        <version>0.12.4-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-cluster</artifactId>
@@ -106,7 +106,7 @@
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <version>4.0.2</version>
+            <version>4.1.0</version>
             <scope>test</scope>
         </dependency>
         <!-- for mocked test-->
