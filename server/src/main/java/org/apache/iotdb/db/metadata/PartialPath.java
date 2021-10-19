@@ -134,8 +134,15 @@ public class PartialPath extends Path implements Comparable<Path> {
    * @return A new PartialPath with altered prefix
    */
   public PartialPath alterPrefixPath(PartialPath prefixPath) {
-    String[] newNodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
-    System.arraycopy(prefixPath.getNodes(), 0, newNodes, 0, prefixPath.getNodeLength());
+    int newLength = Math.max(nodes.length, prefixPath.getNodeLength());
+    int startIndex = Math.min(nodes.length, prefixPath.getNodeLength());
+    if (nodes[startIndex - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      newLength += 1;
+      startIndex -= 1;
+    }
+    String[] newNodes = Arrays.copyOf(prefixPath.getNodes(), newLength);
+    System.arraycopy(
+        nodes, startIndex, newNodes, prefixPath.getNodeLength(), nodes.length - startIndex);
     return new PartialPath(newNodes);
   }
 
