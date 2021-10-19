@@ -51,6 +51,7 @@ public class IoTDBInfluxDB implements InfluxDB {
   public IoTDBInfluxDB(String url, String userName, String password) {
     URI uri;
     try {
+      session.insertRecords();
       uri = new URI(url);
     } catch (URISyntaxException e) {
       throw new IllegalArgumentException("Unable to parse url: " + url, e);
