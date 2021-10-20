@@ -809,7 +809,7 @@
                     <dependency>
                         <groupId>org.sonatype.ossindex.maven</groupId>
                         <artifactId>ossindex-maven-enforcer-rules</artifactId>
-                        <version>1.0.0</version>
+                        <version>3.1.0</version>
                     </dependency>
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
