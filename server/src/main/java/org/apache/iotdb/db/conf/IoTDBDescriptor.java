@@ -328,10 +328,17 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_page_point_number",
                   Integer.toString(conf.getMergePagePointNumberThreshold()))));
-      conf.setCompactionInterval(
+      conf.setCompactionScheduleInterval(
           Long.parseLong(
               properties.getProperty(
-                  "compaction_interval", Long.toString(conf.getCompactionInterval()))));
+                  "compaction_schedule_interval",
+                  Long.toString(conf.getCompactionScheduleInterval()))));
+
+      conf.setCompactionSubmissionInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "compaction_submission_interval",
+                  Long.toString(conf.getCompactionSubmissionInterval()))));
 
       conf.setEnableCrossSpaceCompaction(
           Boolean.parseBoolean(

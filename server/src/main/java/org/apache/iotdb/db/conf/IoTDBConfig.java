@@ -393,8 +393,11 @@ public class IoTDBConfig {
    */
   private int mergePagePointNumberThreshold = 100;
 
-  /** The interval of compaction task submission in each virtual storage group. The unit is ms. */
-  private long compactionInterval = 10_000L;
+  /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
+  private long compactionScheduleInterval = 10_000L;
+
+  /** The interval of compaction task submission from queue in CompactionTaskMananger */
+  private long compactionSubmissionInterval = 1_000L;
 
   /**
    * The max open file num in each unseq compaction task. We use the unseq file num as the open file
@@ -2387,12 +2390,12 @@ public class IoTDBConfig {
     this.targetCompactionFileSize = targetCompactionFileSize;
   }
 
-  public long getCompactionInterval() {
-    return compactionInterval;
+  public long getCompactionScheduleInterval() {
+    return compactionScheduleInterval;
   }
 
-  public void setCompactionInterval(long compactionInterval) {
-    this.compactionInterval = compactionInterval;
+  public void setCompactionScheduleInterval(long compactionScheduleInterval) {
+    this.compactionScheduleInterval = compactionScheduleInterval;
   }
 
   public int getMaxCompactionCandidateFileNum() {
@@ -2401,5 +2404,13 @@ public class IoTDBConfig {
 
   public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
     this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
+  }
+
+  public long getCompactionSubmissionInterval() {
+    return compactionSubmissionInterval;
+  }
+
+  public void setCompactionSubmissionInterval(long interval) {
+    compactionSubmissionInterval = interval;
   }
 }
