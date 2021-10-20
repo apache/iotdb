@@ -52,7 +52,7 @@ public class ElectionHandlerTest {
   public void tearDown() throws IOException, StorageEngineException {
     member.closeLogManager();
     member.stop();
-    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test

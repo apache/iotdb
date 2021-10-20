@@ -176,7 +176,7 @@ public class HeartbeatThreadTest {
     testThread.interrupt();
     testThread.join();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
-    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test

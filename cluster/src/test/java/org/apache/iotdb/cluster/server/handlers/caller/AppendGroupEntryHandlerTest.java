@@ -61,7 +61,7 @@ public class AppendGroupEntryHandlerTest {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
     member.stop();
     member.closeLogManager();
-    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test
