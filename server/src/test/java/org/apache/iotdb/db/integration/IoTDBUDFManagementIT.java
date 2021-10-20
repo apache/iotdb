@@ -83,7 +83,7 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("select udf(*, *) from root.vehicle");
 
       ResultSet resultSet = statement.executeQuery("show functions");
@@ -114,7 +114,7 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("select udf(*, *) from root.vehicle");
 
       ResultSet resultSet = statement.executeQuery("show functions");
@@ -127,7 +127,7 @@ public class IoTDBUDFManagementIT {
       resultSet.close();
       statement.execute("drop function udf");
 
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("select udf(*, *) from root.vehicle");
 
       resultSet = statement.executeQuery("show functions");
@@ -162,7 +162,7 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("drop function udf");
       statement.execute("select udf(*, *) from root.vehicle");
     } catch (SQLException throwable) {
@@ -176,7 +176,7 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function aVg as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function aVg as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
       assertTrue(
@@ -193,7 +193,7 @@ public class IoTDBUDFManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function MAX_VALUE as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+          "create function MAX_VALUE as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
       assertTrue(
@@ -209,10 +209,10 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       try {
-        statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+        statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (SQLException throwable) {
         assertTrue(throwable.getMessage().contains("Failed to register"));
@@ -226,10 +226,10 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       try {
-        statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+        statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (SQLException throwable) {
         assertTrue(
@@ -247,7 +247,7 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("drop function udf");
 
       try {
@@ -301,7 +301,7 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function adder as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
       assertTrue(
@@ -355,7 +355,7 @@ public class IoTDBUDFManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       ResultSet resultSet = statement.executeQuery("show functions");
       assertEquals(3, resultSet.getMetaData().getColumnCount());

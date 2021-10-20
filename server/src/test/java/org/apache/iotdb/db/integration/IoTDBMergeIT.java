@@ -336,4 +336,63 @@ public class IoTDBMergeIT {
       assertEquals(10000, cnt);
     }
   }
+
+  @Test
+  public void testShowMergeStatus() throws SQLException {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      for (int i = 1; i <= 3; i++) {
+        try {
+          statement.execute(
+              "CREATE TIMESERIES root.mergeTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
+        }
+      }
+
+      for (int j = 1; j <= 10; j++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                j, j + 1, j + 2, j + 3));
+      }
+      statement.execute("FLUSH");
+      for (int j = 1; j <= 10; j++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                j, j + 10, j + 20, j + 30));
+      }
+      statement.execute("FLUSH");
+      statement.execute("MERGE");
+      try {
+        Thread.sleep(10000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
+      int cnt;
+      try (ResultSet resultSet = statement.executeQuery("SHOW MERGE INFO")) {
+        cnt = 0;
+        int colNum = resultSet.getMetaData().getColumnCount();
+        while (resultSet.next()) {
+          StringBuilder stringBuilder = new StringBuilder();
+          for (int i = 0; i < colNum; i++) {
+            stringBuilder.append(resultSet.getString(i + 1)).append(",");
+          }
+          System.out.println(stringBuilder);
+          cnt++;
+        }
+      }
+      // it is uncertain whether the sub tasks are created at this time point, and we are only
+      // sure that the main task is created
+      assertEquals(4, cnt);
+    }
+  }
 }

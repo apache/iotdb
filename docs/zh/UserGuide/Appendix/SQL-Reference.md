@@ -226,8 +226,8 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示 Merge 状态语句
 
 ```
-SHOW MERGE
-Eg: IoTDB > SHOW MERGE
+SHOW MERGE INFO
+Eg: IoTDB > SHOW MERGE INFO
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -789,7 +789,7 @@ GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 userName:=identifier  
 nodeName:=identifier (DOT identifier)*  
 privileges:= string (COMMA string)*
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * 赋予角色权限
@@ -799,7 +799,7 @@ GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 roleName:=identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
 ```
 
 * 赋予用户角色
@@ -818,7 +818,7 @@ REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 userName:=identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * 撤销角色权限
@@ -828,7 +828,7 @@ REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 roleName:= identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
 ```
 
 * 撤销用户角色
@@ -1057,15 +1057,6 @@ Eg DELETE PARTITION root.sg1 0,1,2
 ```
 partitionId 可以通过查看数据文件夹获取，或者是计算 `timestamp / partitionInterval`得到。 
 
-## 性能追踪
-
-IoTDB 支持使用 `TRACING` 语句来追踪查询语句的执行，通过日志文件输出该查询访问的 Tsfile 文件数，chunk 数等信息，默认输出位置位于 `./data/tracing`. 性能追踪功能默认处于关闭状态，用户可以使用 TRACING ON/OFF 命令来打开/关闭该功能。
-
-```
-TRACING ON    //打开性能追踪
-TRACING OFF   //关闭性能追踪
-```
-
 ## 中止查询
 
 - 显示正在执行的查询列表
@@ -1121,9 +1112,8 @@ Boolean := TRUE | FALSE | 0 | 1 (case insensitive)
 ```
 
 ```
-StringLiteral := ( '\'' ( ~('\'') )* '\'' | '\"' ( ~('\"') )* '\"');
+StringLiteral := ( '\'' ( ~('\'') )* '\'';
 eg. 'abc'
-eg. "abc"
 ```
 
 ```

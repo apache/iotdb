@@ -387,7 +387,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   protected List<PartialPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+    return IoTDB.metaManager.getFlatMeasurementPaths(path);
   }
 
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {

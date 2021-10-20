@@ -247,7 +247,7 @@ public class MManagerBasicTest {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
-  public void testCreateAlignedTimeseries() throws IllegalPathException {
+  public void testCreateAlignedTimeseries() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
@@ -290,17 +290,19 @@ public class MManagerBasicTest {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
     } catch (MetadataException e) {
       assertEquals(
-          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.vector.s2)",
-          e.getMessage());
+          e.getMessage(),
+          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.s2]");
     }
 
     try {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
     } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      assertEquals(
+          e.getMessage(),
+          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.*]");
     }
 
+    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
     assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
@@ -543,7 +545,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     try {
-      assertTrue(manager.getAllTimeseriesPath(new PartialPath("root")).isEmpty());
+      assertTrue(manager.getFlatMeasurementPaths(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(
@@ -1446,6 +1448,29 @@ public class MManagerBasicTest {
       Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.*")));
       Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
 
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.a.s3"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.a.s3"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      Assert.assertEquals(4, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      Assert.assertEquals(3, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.a.s3"));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.a.s3"));
+      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1566,7 +1591,6 @@ public class MManagerBasicTest {
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertEquals(3, manager.getAllTimeseriesFlatCount(node.getPartialPath().concatNode("**")));
-      assertEquals(1, node.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertNull(insertRowPlan.getMeasurementMNodes()[2]);
@@ -1652,7 +1676,7 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(1, node.getMeasurementMNodeCount());
+      assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 

@@ -778,7 +778,8 @@ public class LocalQueryExecutor {
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
-        List<PartialPath> path = getCMManager().getAllTimeseriesPath(new PartialPath(seriesPath));
+        List<PartialPath> path =
+            getCMManager().getFlatMeasurementPaths(new PartialPath(seriesPath));
         if (path.size() != 1) {
           throw new MetadataException(
               String.format("Timeseries number of the name [%s] is not 1.", seriesPath));
@@ -1010,6 +1011,17 @@ public class LocalQueryExecutor {
       } else {
         count += getCMManager().getNodesCountInGivenLevel(new PartialPath(s), level);
       }
+    }
+    return count;
+  }
+
+  public int getDeviceCount(List<String> pathsToQuery)
+      throws CheckConsistencyException, MetadataException {
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+
+    int count = 0;
+    for (String s : pathsToQuery) {
+      count += getCMManager().getDevicesNum(new PartialPath(s));
     }
     return count;
   }

@@ -321,8 +321,6 @@ public class PlanExecutor implements IPlanExecutor {
       case FULL_MERGE:
         operateMerge((MergePlan) plan);
         return true;
-      case TRACING:
-        throw new QueryProcessException("TRACING ON/OFF hasn't been supported yet");
       case SET_SYSTEM_MODE:
         operateSetSystemMode((SetSystemModePlan) plan);
         return true;
@@ -354,10 +352,6 @@ public class PlanExecutor implements IPlanExecutor {
         return operateStartTrigger((StartTriggerPlan) plan);
       case STOP_TRIGGER:
         return operateStopTrigger((StopTriggerPlan) plan);
-      case CREATE_INDEX:
-        throw new QueryProcessException("Create index hasn't been supported yet");
-      case DROP_INDEX:
-        throw new QueryProcessException("Drop index hasn't been supported yet");
       case KILL:
         try {
           operateKillQuery((KillQueryPlan) plan);
@@ -714,7 +708,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<PartialPath> getPathsName(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+    return IoTDB.metaManager.getFlatMeasurementPaths(path);
   }
 
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
@@ -1212,7 +1206,8 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       for (PartialPath path :
-          IoTDB.metaManager.getAllTimeseriesPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
+          IoTDB.metaManager.getFlatMeasurementPaths(
+              devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
         existSeriesSet.add(path.getMeasurement());
         existSeriesSet.add(path.getMeasurementAlias());
       }
@@ -1956,10 +1951,6 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     return dataSet;
-  }
-
-  protected String deleteTimeSeries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.deleteTimeseries(path);
   }
 
   @SuppressWarnings("unused") // for the distributed version

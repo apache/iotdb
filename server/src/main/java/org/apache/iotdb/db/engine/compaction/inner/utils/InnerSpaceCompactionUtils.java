@@ -470,7 +470,7 @@ public class InnerSpaceCompactionUtils {
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
       }
-      if (writer.canWrite()) {
+      if (writer != null && writer.canWrite()) {
         writer.close();
       }
     }
