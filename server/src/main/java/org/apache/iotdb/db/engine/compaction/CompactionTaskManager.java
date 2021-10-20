@@ -190,13 +190,6 @@ public class CompactionTaskManager implements IService {
         submitted = true;
       }
     }
-    if (!submitted) {
-      logger.info(
-          "Didn't submit a task, current thread num is {}, origin queue size is {}, queue size is {}",
-          currentTaskNum.get(),
-          originQueueSize,
-          compactionTaskQueue.size());
-    }
   }
 
   public synchronized void submitTask(
