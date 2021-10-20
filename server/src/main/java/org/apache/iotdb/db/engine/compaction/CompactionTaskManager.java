@@ -59,7 +59,7 @@ public class CompactionTaskManager implements IService {
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
   private ScheduledExecutorService compactionTaskSubmissionThreadPool;
-  private final long TASK_SUBMIT_INTERVAL = 10_000;
+  private final long TASK_SUBMIT_INTERVAL = 1_000;
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
