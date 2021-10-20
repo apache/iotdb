@@ -173,10 +173,10 @@ Registering a trigger can be carried out as follows:
    CREATE TRIGGER alert-listener-sg1d1s1
    AFTER INSERT
    ON root.sg1.d1.s1
-   AS "org.apache.iotdb.db.engine.trigger.example.AlertListener"
+   AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
    WITH (
-     "lo" = "0", 
-     "hi" = "100.0"
+     'lo' = '0', 
+     'hi' = '100.0'
    )
    ```
 
@@ -833,10 +833,10 @@ You can try this trigger by following the steps below:
   CREATE TRIGGER window-avg-alerter
   AFTER INSERT
   ON root.sg1.d1.s1
-  AS "org.apache.iotdb.trigger.TriggerExample"
+  AS 'org.apache.iotdb.trigger.TriggerExample'
   WITH (
-    "lo" = "0",
-    "hi" = "10.0"
+    'lo' = '0',
+    'hi' = '10.0'
   )
   ```
 

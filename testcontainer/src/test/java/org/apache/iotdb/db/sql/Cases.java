@@ -182,10 +182,10 @@ public abstract class Cases {
         "create timeseries root.ln.wf01.wt02.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
     initDataArray =
         new String[] {
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, \"Nanjing\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, \"Nanjing\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, \"Singapore\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, \"Shanghai\")"
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, 'Nanjing')",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, 'Nanjing')",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, 'Singapore')",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, 'Shanghai')"
         };
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
@@ -368,7 +368,7 @@ public abstract class Cases {
     try {
       PhysicalPlan plan =
           processor.parseSQLToPhysicalPlan(
-              "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+              "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
         Assert.fail();
       }

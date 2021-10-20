@@ -31,7 +31,7 @@
 
 #### 加载 tsfile 文件
 
-加载 tsfile 文件的指令为：`load "<path/dir>" [autoregister=true/false][,sglevel=int][,verify=true/false]`
+加载 tsfile 文件的指令为：`load <path/dir> [autoregister=true/false][,sglevel=int][,verify=true/false]`
 
 该指令有两种用法：
 
@@ -49,15 +49,15 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 
 示例：
 
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile"`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" sglevel=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" verify=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=true,sglevel=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" verify=false,sglevel=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false,verify=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false,sglevel=1,verify=true`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile'`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=false`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=true`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' sglevel=1`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' verify=true`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=true,sglevel=1`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' verify=false,sglevel=1`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=false,verify=true`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=false,sglevel=1,verify=true`
 
 
 2. 通过指定文件夹路径(绝对路径)批量加载文件。
@@ -66,11 +66,11 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 
 示例：
 
-* `load "/Users/Desktop/data"`
-* `load "/Users/Desktop/data" autoregister=false`
-* `load "/Users/Desktop/data" autoregister=true`
-* `load "/Users/Desktop/data" autoregister=true,sglevel=1`
-* `load "/Users/Desktop/data" autoregister=false,sglevel=1,verify=true`
+* `load '/Users/Desktop/data'`
+* `load '/Users/Desktop/data' autoregister=false`
+* `load '/Users/Desktop/data' autoregister=true`
+* `load '/Users/Desktop/data' autoregister=true,sglevel=1`
+* `load '/Users/Desktop/data' autoregister=false,sglevel=1,verify=true`
 
 #### 删除 tsfile 文件
 
@@ -80,8 +80,8 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 
 示例：
 
-* `remove "root.vehicle/1575028885956-101-0.tsfile"`
-* `remove "1575028885956-101-0.tsfile"`
+* `remove 'root.vehicle/1575028885956-101-0.tsfile'`
+* `remove '1575028885956-101-0.tsfile'`
 
 #### 卸载 tsfile 文件至指定目录
 
@@ -91,5 +91,5 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 
 示例：
 
-* `unload "root.vehicle/1575029224130-101-0.tsfile" "/data/data/tmp"`
-* `unload "1575029224130-101-0.tsfile" "/data/data/tmp"`
+* `unload 'root.vehicle/1575029224130-101-0.tsfile' '/data/data/tmp'`
+* `unload '1575029224130-101-0.tsfile' '/data/data/tmp'`
