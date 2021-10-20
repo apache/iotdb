@@ -107,7 +107,7 @@ public class SingleNodeTest extends BaseSingleNodeTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create user user1 \"1234\"");
+      statement.execute("create user user1 '1234'");
       try (Connection connection1 =
               DriverManager.getConnection(
                   Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "user1", "1234");

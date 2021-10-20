@@ -403,7 +403,7 @@ CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME>
 Here is an example:
 
 ```sql
-CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.ExampleUDTF'
 ```
 
 Since UDF instances are dynamically loaded through reflection technology, you do not need to restart the server during the UDF registration process.
@@ -471,8 +471,8 @@ Then the result set will include the results of  `example(root.sg.d1.s1, root.sg
 You can pass any number of key-value pair parameters to the UDF when constructing a UDF query. The key and value in the key-value pair need to be enclosed in single or double quotes. Note that key-value pair parameters can only be passed in after all time series have been passed in. Here is a set of examples:
 
 ``` sql
-SELECT example(s1, "key1"="value1", "key2"="value2"), example(*, "key3"="value3") FROM root.sg.d1;
-SELECT example(s1, s2, "key1"="value1", "key2"="value2") FROM root.sg.d1;
+SELECT example(s1, 'key1'='value1', 'key2'='value2'), example(*, 'key3'='value3') FROM root.sg.d1;
+SELECT example(s1, s2, 'key1'='value1', 'key2'='value2') FROM root.sg.d1;
 ```
 
 

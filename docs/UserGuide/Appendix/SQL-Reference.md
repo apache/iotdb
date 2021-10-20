@@ -236,8 +236,8 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * Show Merge Status Statement
 
 ```
-SHOW MERGE
-Eg: IoTDB > SHOW MERGE
+SHOW MERGE INFO
+Eg: IoTDB > SHOW MERGE INFO
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -798,7 +798,7 @@ GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 userName:=identifier  
 nodeName:=identifier (DOT identifier)*  
 privileges:= string (COMMA string)*
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * Grant Role Privileges
@@ -808,7 +808,7 @@ GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 roleName:=identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
 ```
 
 * Grant User Role
@@ -827,7 +827,7 @@ REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 userName:=identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * Revoke Role Privileges
@@ -837,7 +837,7 @@ REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 roleName:= identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
 ```
 
 * Revoke Role From User
@@ -1091,15 +1091,6 @@ This example will delete the first 3 time partitions of storage group root.sg1.
 ```
 The partitionId can be found in data folders or converted using `timestamp / partitionInterval`.
 
-## Performance Tracing
-
-IoTDB supports tracking the execution of query statements by using `TRACING` statements. The number of tsfile files and chunks accessed by the query etc are output through the log file. The default output location is in `./data/tracing`. The performance tracing function is turned off by default. Users can use the TRACING ON/OFF command to turn this function on/off.
-
-```
-TRACING ON    // Open performance tracing
-TRACING OFF   // Close performance tracing
-```
-
 ## Kill query
 
 - Show the list of queries in progress
@@ -1155,8 +1146,7 @@ Boolean := TRUE | FALSE | 0 | 1 (case insensitive)
 ```
 
 ```
-StringLiteral := ( '\'' ( ~('\'') )* '\'' | '\"' ( ~('\"') )* '\"');
-eg. 'abc'
+StringLiteral := ( '\'' ( ~('\'') )* '\'';
 eg. 'abc'
 ```
 

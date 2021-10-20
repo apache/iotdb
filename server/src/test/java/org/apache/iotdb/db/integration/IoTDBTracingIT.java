@@ -49,10 +49,11 @@ public class IoTDBTracingIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.tracing");
-      statement.execute("CREATE TIMESERIES root.tracing.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
+      statement.execute("SET STORAGE GROUP TO root.sg_tracing");
+      statement.execute(
+          "CREATE TIMESERIES root.sg_tracing.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
 
-      String insertTemplate = "INSERT INTO root.tracing.d1(timestamp, s1) VALUES(%d,%d)";
+      String insertTemplate = "INSERT INTO root.sg_tracing.d1(timestamp, s1) VALUES(%d,%d)";
 
       for (int i = 100; i < 200; i++) {
         statement.execute(String.format(insertTemplate, i, i));
@@ -70,7 +71,7 @@ public class IoTDBTracingIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("tracing select s1 from root.tracing.d1");
+      statement.execute("tracing select s1 from root.sg_tracing.d1");
       AbstractIoTDBJDBCResultSet resultSet = (AbstractIoTDBJDBCResultSet) statement.getResultSet();
       Assert.assertTrue(resultSet.isSetTracingInfo());
       Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));

@@ -178,9 +178,11 @@ void insertRecord(String prefixPath, long time, List<String> measurements,
 * 插入多个 Record。提供数据类型后，服务器不需要做类型推断，可以提高性能
 
 ```java
-void insertRecords(List<String> deviceIds, List<Long> times,
-    List<List<String>> measurementsList,
-    List<List<Object>> valuesList)
+void insertRecords(List<String> deviceIds,
+        List<Long> times,
+        List<List<String>> measurementsList,
+        List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
 ```
 
 * 插入同属于一个 device 的多个 Record。
