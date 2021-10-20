@@ -66,4 +66,11 @@ docker exec -it c82321c70137 /bin/bash
 
 Then, for the latest version (or, >=0.10.x), run `start-cli.sh`, for version 0.9.x and 0.8.1, run `start-client.sh`.
 
+# How to run IoTDB-grafana-connector
+
+```
+docker run -it -v /D/your_application.properties_folder:/iotdb-grafana/config -p 8888:8888 apache/iotdb:<version>-grafana
+```
+
+
 Enjoy it!
