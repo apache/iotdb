@@ -708,7 +708,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<PartialPath> getPathsName(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+    return IoTDB.metaManager.getFlatMeasurementPaths(path);
   }
 
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
@@ -1203,7 +1203,8 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       for (PartialPath path :
-          IoTDB.metaManager.getAllTimeseriesPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
+          IoTDB.metaManager.getFlatMeasurementPaths(
+              devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
         existSeriesSet.add(path.getMeasurement());
         existSeriesSet.add(path.getMeasurementAlias());
       }
@@ -1947,10 +1948,6 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     return dataSet;
-  }
-
-  protected String deleteTimeSeries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.deleteTimeseries(path);
   }
 
   @SuppressWarnings("unused") // for the distributed version
