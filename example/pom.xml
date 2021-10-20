@@ -31,7 +31,7 @@
     <artifactId>iotdb-examples</artifactId>
     <name>IoTDB Examples</name>
     <properties>
-        <zookeeper.version>3.4.6</zookeeper.version>
+        <zookeeper.version>3.7.0</zookeeper.version>
     </properties>
     <modules>
         <module>kafka</module>
