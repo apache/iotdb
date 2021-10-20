@@ -41,7 +41,7 @@ Run-length encoding can also be used to encode floating-point numbers, while it 
 
 * GORILLA
 
-GORILLA encoding is lossless. It is more suitable for numerical sequence with similar values and is not recommended for sequence data with large fluctuations.
+GORILLA encoding is lossless encoding. It is more suitable for numerical sequence with similar values and is not recommended for sequence data with large fluctuations.
 
 Currently, there are two versions of GORILLA encoding implementation, it is recommended to use `GORILLA` instead of `GORILLA_V1` (deprecated).
 
@@ -50,7 +50,7 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 * DICTIONARY
 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
-* Correspondence between data type and encoding
+* The Correspondence between data types and encodings
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
