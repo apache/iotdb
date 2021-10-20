@@ -33,6 +33,13 @@ import java.util.List;
 public enum InnerCompactionStrategy {
   SIZE_TIERED_COMPACTION;
 
+  public static InnerCompactionStrategy getInnerCompactionStrategy(String name) {
+    if (name.equalsIgnoreCase("SIZE_TIERED_COMPACTION")) {
+      return SIZE_TIERED_COMPACTION;
+    }
+    throw new RuntimeException("Illegal Compaction Strategy " + name);
+  }
+
   public AbstractInnerSpaceCompactionTask getCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroup,

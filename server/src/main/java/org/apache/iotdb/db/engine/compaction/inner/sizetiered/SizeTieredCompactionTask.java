@@ -46,7 +46,7 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.TARGET_NAME;
 
 /**
- * SizeTiredCompactionTask compact serveral inner space files selected by {@link
+ * SizeTiredCompactionTask compact several inner space files selected by {@link
  * SizeTieredCompactionSelector} into one file.
  */
 public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {

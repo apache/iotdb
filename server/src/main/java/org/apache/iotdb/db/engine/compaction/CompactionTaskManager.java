@@ -165,6 +165,11 @@ public class CompactionTaskManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
+  /**
+   * This method submit the compaction task to the PriorityQueue in CompactionTaskManager. Notice!
+   * The task will not be submitted immediately. If the queue size is larger than max size, the task
+   * with last priority will be removed from the task.
+   */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
     if (!compactionTaskQueue.contains(compactionTask)) {
       logger.debug(
@@ -178,20 +183,26 @@ public class CompactionTaskManager implements IService {
     return false;
   }
 
+  /**
+   * This method will submit task cached in queue with most priority to execution thread pool if
+   * there is available thread.
+   */
   public synchronized void submitTaskFromTaskQueue() {
-    boolean submitted = false;
-    int originQueueSize = compactionTaskQueue.size();
     while (currentTaskNum.get()
             < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
         && compactionTaskQueue.size() > 0) {
       AbstractCompactionTask task = compactionTaskQueue.poll();
       if (task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
-        submitted = true;
       }
     }
   }
 
+  /**
+   * This method will directly submit a task to thread pool if there is available thread.
+   *
+   * @throws RejectedExecutionException
+   */
   public synchronized void submitTask(
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
@@ -226,10 +237,6 @@ public class CompactionTaskManager implements IService {
       }
       subIterator.remove();
     }
-  }
-
-  public boolean isTerminated() {
-    return taskExecutionPool == null || taskExecutionPool.isTerminated();
   }
 
   public int getTaskCount() {

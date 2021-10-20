@@ -41,12 +41,14 @@ import java.util.List;
 import java.util.PriorityQueue;
 
 /**
- * SizeTiredSelector selects files based on the total size or total number of files, and the
- * selected files are always continuous. When the total size of consecutively selected files exceeds
- * the threshold or the number exceeds the threshold, these files are submitted to the inner space
- * compaction task. If a file that is being compacted or not closed is encountered when the
- * threshold is not reached, the selected files will be put into a queue. If the system is idle, the
- * candidate task in queue will be submitted.
+ * SizeTieredCompactionSelector selects files to be compacted based on the size of files. The
+ * selector traverses the file list from old to new. If the size of selected files or the number of
+ * select files exceed given threshold, a compaction task will be submitted to task queue in
+ * CompactionTaskManager. In CompactionTaskManager, tasks are ordered by {@link
+ * org.apache.iotdb.db.engine.compaction.CompactionTaskComparator}. To maximize compaction
+ * efficiency, selector searches compaction task from 0 compaction files(that is, file that never
+ * been compacted, named level 0 file) to higher level files. If a compaction task is found in some
+ * level, selector will not search higher level anymore.
  */
 public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");

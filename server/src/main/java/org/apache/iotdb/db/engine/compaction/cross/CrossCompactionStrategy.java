@@ -32,6 +32,13 @@ import java.util.List;
 public enum CrossCompactionStrategy {
   INPLACE_COMPACTION;
 
+  public static CrossCompactionStrategy getCrossCompactionStrategy(String name) {
+    if (name.equalsIgnoreCase("INPLACE_COMPACTION")) {
+      return INPLACE_COMPACTION;
+    }
+    throw new RuntimeException("Illegal Cross Compaction Strategy " + name);
+  }
+
   public AbstractCrossSpaceCompactionTask getCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
