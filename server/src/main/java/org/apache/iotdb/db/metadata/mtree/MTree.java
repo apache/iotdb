@@ -34,13 +34,7 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.mtree.traverser.PathGrouperByStorageGroup;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.BelongedEntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
@@ -259,7 +253,7 @@ public class MTree implements Serializable {
             childrenMap.put(child.getName(), child);
             if (child.isMeasurement()) {
               if (!node.isEntity()) {
-                node = IEntityMNode.setToEntity(node);
+                node = MNodeUtils.setToEntity(node);
               }
               String alias = child.getAsMeasurementMNode().getAlias();
               if (alias != null) {
@@ -392,7 +386,7 @@ public class MTree implements Serializable {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
-      IEntityMNode entityMNode = IEntityMNode.setToEntity(cur);
+      IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
 
       IMeasurementMNode measurementMNode =
           MeasurementMNode.getMeasurementMNode(
@@ -465,7 +459,7 @@ public class MTree implements Serializable {
         throw new PathAlreadyExistException(devicePath.getFullPath() + "." + leafName);
       }
 
-      IEntityMNode entityMNode = IEntityMNode.setToEntity(cur);
+      IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
 
       int measurementsSize = measurements.size();
 
@@ -515,7 +509,7 @@ public class MTree implements Serializable {
       }
       if (!hasMeasurement) {
         synchronized (this) {
-          curNode = IEntityMNode.setToInternal(parent);
+          curNode = MNodeUtils.setToInternal(parent);
         }
       }
     }
@@ -575,7 +569,7 @@ public class MTree implements Serializable {
     // synchronize check and replace, we need replaceChild become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      return IEntityMNode.setToEntity(node);
+      return MNodeUtils.setToEntity(node);
     }
   }
   // endregion
