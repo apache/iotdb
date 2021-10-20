@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -35,8 +35,10 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -51,14 +53,18 @@ import static org.junit.Assert.fail;
 
 public class IoTDBSimpleQueryIT {
 
+  boolean autoCreateSchemaEnabled;
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
+    autoCreateSchemaEnabled = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
   }
 
   @Test
@@ -75,8 +81,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
     assertNull(mNode.getSchema().getProps());
   }
 
@@ -96,8 +102,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
 
     // check if SDT property is set
     assertEquals(2, mNode.getSchema().getProps().size());
@@ -121,8 +127,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
 
     // check if SDT property is set
     assertEquals(4, mNode.getSchema().getProps().size());
@@ -177,7 +183,7 @@ public class IoTDBSimpleQueryIT {
       String[] results = {"root.turbine.d1.s1", "root.turbine.d1.s2"};
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select last ** from root")) {
         while (resultSet.next()) {
           String path = resultSet.getString("timeseries");
           assertEquals(results[count], path);
@@ -272,7 +278,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute(sql);
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      ResultSet resultSet = statement.executeQuery("select * from root.**");
       int count = 0;
 
       String[] timestamps = {"1", "7", "15", "16", "17", "18"};
@@ -319,7 +325,8 @@ public class IoTDBSimpleQueryIT {
       statement.execute("flush");
 
       for (int i = 1; i < originalValues.length; i++) {
-        String sql = "select * from root where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
+        String sql =
+            "select * from root.** where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
         ResultSet resultSet = statement.executeQuery(sql);
 
         while (resultSet.next()) {
@@ -370,7 +377,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute(sql);
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      ResultSet resultSet = statement.executeQuery("select * from root.**");
       int count = 0;
 
       // will not store time = 16 since time distance to last stored time 15 is within compMinTime
@@ -407,7 +414,7 @@ public class IoTDBSimpleQueryIT {
       }
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      ResultSet resultSet = statement.executeQuery("select * from root.**");
       int count = 0;
 
       String[] timestamps = {"1", "21", "41", "49"};
@@ -589,7 +596,7 @@ public class IoTDBSimpleQueryIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      ResultSet resultSet = statement.executeQuery("select * from root.**");
       // has an empty time column
       Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
       try {
@@ -613,7 +620,7 @@ public class IoTDBSimpleQueryIT {
           fail();
         }
 
-        resultSet = statement.executeQuery("select * from root align by device");
+        resultSet = statement.executeQuery("select * from root.** align by device");
         // has time and device columns
         Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
@@ -669,7 +676,8 @@ public class IoTDBSimpleQueryIT {
           };
 
       int cur = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root order by time desc")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.** order by time desc")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("Time")
@@ -1079,7 +1087,7 @@ public class IoTDBSimpleQueryIT {
 
       long count = 0;
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -1238,6 +1246,79 @@ public class IoTDBSimpleQueryIT {
 
     } catch (SQLException e) {
       fail();
+    }
+  }
+
+  @Test
+  public void testStorageGroupWithHyphenInName() throws ClassNotFoundException, MetadataException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.group-with-hyphen");
+    } catch (SQLException e) {
+      fail();
+    }
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("SHOW STORAGE GROUP");
+      if (hasResultSet) {
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i));
+            }
+            Assert.assertEquals(builder.toString(), "root.group-with-hyphen");
+          }
+        }
+      }
+    } catch (SQLException e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testDisableAlign() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=BOOLEAN");
+      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1 disable align");
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BIGINT, Types.BOOLEAN};
+      int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        Assert.assertEquals(types[i], metaData.getColumnType(i + 1));
+      }
+    }
+  }
+
+  @Test
+  public void testEnableAlign() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=BOOLEAN");
+      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1");
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BOOLEAN};
+      int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        Assert.assertEquals(types[i], metaData.getColumnType(i + 1));
+      }
     }
   }
 }

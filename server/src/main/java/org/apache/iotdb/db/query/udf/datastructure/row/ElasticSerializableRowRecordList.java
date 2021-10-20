@@ -116,6 +116,10 @@ public class ElasticSerializableRowRecordList {
     return size;
   }
 
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
+  }
+
   public long getTime(int index) throws IOException {
     return cache
         .get(index / internalRowRecordListCapacity)
@@ -136,11 +140,17 @@ public class ElasticSerializableRowRecordList {
     if (!disableMemoryControl) {
       totalByteArrayLengthLimit +=
           (long) indexListOfTextFields.length * byteArrayLengthForMemoryControl;
-      for (int indexListOfTextField : indexListOfTextFields) {
-        Binary binary = (Binary) rowRecord[indexListOfTextField];
-        totalByteArrayLength += binary == null ? 0 : binary.getLength();
+
+      if (rowRecord == null) {
+        totalByteArrayLength +=
+            (long) indexListOfTextFields.length * byteArrayLengthForMemoryControl;
+      } else {
+        for (int indexListOfTextField : indexListOfTextFields) {
+          Binary binary = (Binary) rowRecord[indexListOfTextField];
+          totalByteArrayLength += binary == null ? 0 : binary.getLength();
+        }
+        checkMemoryUsage();
       }
-      checkMemoryUsage();
     }
   }
 
@@ -158,7 +168,7 @@ public class ElasticSerializableRowRecordList {
     }
 
     int newByteArrayLengthForMemoryControl = byteArrayLengthForMemoryControl;
-    while (newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
+    while ((long) newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
       newByteArrayLengthForMemoryControl *= 2;
     }
     int newInternalTVListCapacity =

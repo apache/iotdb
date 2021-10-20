@@ -39,6 +39,7 @@ import java.util.ArrayList;
  * TsFileWriteWithTSRecord or TsFileWriteWithTablet to generate the test.tsfile first
  */
 public class TsFileRead {
+
   private static final String DEVICE1 = "device_1";
 
   private static void queryAndPrint(

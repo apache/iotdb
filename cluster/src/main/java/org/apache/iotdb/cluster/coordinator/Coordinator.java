@@ -21,13 +21,18 @@ package org.apache.iotdb.cluster.coordinator;
 
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -40,12 +45,15 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -62,8 +70,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 
 /** Coordinator of client non-query request */
 public class Coordinator {
@@ -159,30 +170,50 @@ public class Coordinator {
    * nodes.
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
-    if (plan instanceof DeleteTimeSeriesPlan || plan instanceof DeletePlan) {
-      try {
+    try {
+      if (plan instanceof DeleteTimeSeriesPlan) {
         // as delete related plans may have abstract paths (paths with wildcards), we convert
         // them to full paths so the executor nodes will not need to query the metadata holders,
         // eliminating the risk that when they are querying the metadata holders, the timeseries
         // has already been deleted
         ((CMManager) IoTDB.metaManager).convertToFullPaths(plan);
-      } catch (PathNotExistException e) {
-        if (plan.getPaths().isEmpty()) {
-          // only reports an error when there is no matching path
-          return StatusUtils.getStatus(StatusUtils.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
-        }
+      } else {
+        // function convertToFullPaths has already sync leader
+        metaGroupMember.syncLeaderWithConsistencyCheck(true);
       }
-    }
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(true);
-      List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-      logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
-      return forwardPlan(globalGroups, plan);
+    } catch (PathNotExistException e) {
+      if (plan.getPaths().isEmpty()) {
+        // only reports an error when there is no matching path
+        return StatusUtils.getStatus(StatusUtils.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
+      }
     } catch (CheckConsistencyException e) {
       logger.debug(
           "Forwarding global data plan {} to meta leader {}", plan, metaGroupMember.getLeader());
       metaGroupMember.waitLeader();
       return metaGroupMember.forwardPlan(plan, metaGroupMember.getLeader(), null);
+    }
+    try {
+      createSchemaIfNecessary(plan);
+    } catch (MetadataException | CheckConsistencyException e) {
+      logger.error("{}: Cannot find storage groups for {}", name, plan);
+      return StatusUtils.NO_STORAGE_GROUP;
+    }
+    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
+    return forwardPlan(globalGroups, plan);
+  }
+
+  public void createSchemaIfNecessary(PhysicalPlan plan)
+      throws MetadataException, CheckConsistencyException {
+    if (plan instanceof SetSchemaTemplatePlan) {
+      try {
+        IoTDB.metaManager.getBelongedStorageGroup(
+            new PartialPath(((SetSchemaTemplatePlan) plan).getPrefixPath()));
+      } catch (IllegalPathException e) {
+        // the plan has been checked
+      } catch (StorageGroupNotSetException e) {
+        ((CMManager) IoTDB.metaManager).createSchema(plan);
+      }
     }
   }
 
@@ -198,6 +229,11 @@ public class Coordinator {
       return StatusUtils.PARTITION_TABLE_NOT_READY;
     }
 
+    if (!checkPrivilegeForBatchExecution(plan)) {
+      return concludeFinalStatus(
+          plan, plan.getPaths().size(), true, null, false, null, Collections.emptyList());
+    }
+
     // split the plan into sub-plans that each only involve one data group
     Map<PhysicalPlan, PartitionGroup> planGroupMap;
     try {
@@ -211,8 +247,10 @@ public class Coordinator {
     if (planGroupMap == null || planGroupMap.isEmpty()) {
       if ((plan instanceof InsertPlan
               || plan instanceof CreateTimeSeriesPlan
+              || plan instanceof CreateAlignedTimeSeriesPlan
               || plan instanceof CreateMultiTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
           ((CMManager) IoTDB.metaManager).createSchema(plan);
@@ -230,6 +268,20 @@ public class Coordinator {
   }
 
   /**
+   * check if batch execution plan has privilege on any sg
+   *
+   * @param plan
+   * @return
+   */
+  private boolean checkPrivilegeForBatchExecution(PhysicalPlan plan) {
+    if (plan instanceof BatchPlan) {
+      return ((BatchPlan) plan).getResults().size() != plan.getPaths().size();
+    } else {
+      return true;
+    }
+  }
+
+  /**
    * Forward a plan to all DataGroupMember groups. Only when all nodes time out, will a TIME_OUT be
    * returned. The error messages from each group (if any) will be compacted into one string.
    *
@@ -243,19 +295,29 @@ public class Coordinator {
     for (PartitionGroup partitionGroup : partitionGroups) {
       if (partitionGroup.contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
-        logger.debug("Execute {} in a local group of {}", plan, partitionGroup.getHeader());
         status =
             metaGroupMember
                 .getLocalDataMember(partitionGroup.getHeader())
                 .executeNonQueryPlan(plan);
+        logger.debug(
+            "Execute {} in a local group of {} with status {}",
+            plan,
+            partitionGroup.getHeader(),
+            status);
       } else {
         // forward the query to the group that should handle it
-        logger.debug("Forward {} to a remote group of {}", plan, partitionGroup.getHeader());
         status = forwardPlan(plan, partitionGroup);
+        logger.debug(
+            "Forward {} to a remote group of {} with status {}",
+            plan,
+            partitionGroup.getHeader(),
+            status);
       }
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && (!(plan instanceof DeleteTimeSeriesPlan)
-              || status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
+          && !(plan instanceof SetSchemaTemplatePlan
+              && status.getCode() == TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode())
+          && !(plan instanceof DeleteTimeSeriesPlan
+              && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(
             String.format(
@@ -273,6 +335,82 @@ public class Coordinator {
     return status;
   }
 
+  public void sendLogToAllDataGroups(Log log) throws ChangeMembershipException {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Send log {} to all data groups: start", log);
+    }
+
+    Map<PhysicalPlan, PartitionGroup> planGroupMap = router.splitAndRouteChangeMembershipLog(log);
+    List<String> errorCodePartitionGroups = new CopyOnWriteArrayList<>();
+    CountDownLatch counter = new CountDownLatch(planGroupMap.size());
+    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+      metaGroupMember
+          .getAppendLogThreadPool()
+          .submit(() -> forwardChangeMembershipPlan(log, entry, errorCodePartitionGroups, counter));
+    }
+    try {
+      counter.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ChangeMembershipException(
+          String.format("Can not wait all data groups to apply %s", log));
+    }
+    if (!errorCodePartitionGroups.isEmpty()) {
+      throw new ChangeMembershipException(
+          String.format("Apply %s failed with status {%s}", log, errorCodePartitionGroups));
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("Send log {} to all data groups: end", log);
+    }
+  }
+
+  private void forwardChangeMembershipPlan(
+      Log log,
+      Map.Entry<PhysicalPlan, PartitionGroup> entry,
+      List<String> errorCodePartitionGroups,
+      CountDownLatch counter) {
+    int retryTime = 0;
+    long startTime = System.currentTimeMillis();
+    try {
+      while (true) {
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "Send change membership log {} to data group {}, retry time: {}",
+              log,
+              entry.getValue(),
+              retryTime);
+        }
+        try {
+          TSStatus status = forwardToSingleGroup(entry);
+          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "Success to send change membership log {} to data group {}",
+                  log,
+                  entry.getValue());
+            }
+            return;
+          }
+          long cost = System.currentTimeMillis() - startTime;
+          if (cost > ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS()) {
+            errorCodePartitionGroups.add(
+                String.format(
+                    "Forward change membership log %s to data group %s", log, entry.getValue()));
+            return;
+          }
+          Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          errorCodePartitionGroups.add(e.getMessage());
+          return;
+        }
+        retryTime++;
+      }
+    } finally {
+      counter.countDown();
+    }
+  }
+
   /** split a plan into several sub-plans, each belongs to only one data group. */
   private Map<PhysicalPlan, PartitionGroup> splitPlan(PhysicalPlan plan)
       throws UnsupportedPlanException, CheckConsistencyException {
@@ -284,12 +422,13 @@ public class Coordinator {
       metaGroupMember.syncLeaderWithConsistencyCheck(true);
       try {
         planGroupMap = router.splitAndRoutePlan(plan);
-      } catch (MetadataException ex) {
+      } catch (MetadataException | UnknownLogTypeException ex) {
         // ignore
       }
-    } catch (MetadataException e) {
+    } catch (MetadataException | UnknownLogTypeException e) {
       logger.error("Cannot route plan {}", plan, e);
     }
+    logger.debug("route plan {} with partitionGroup {}", plan, planGroupMap);
     return planGroupMap;
   }
 
@@ -302,33 +441,24 @@ public class Coordinator {
   private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
-    if (planGroupMap.size() == 1) {
+    // need to create substatus for multiPlan
+
+    // InsertTabletPlan, InsertMultiTabletPlan, InsertRowsPlan and CreateMultiTimeSeriesPlan
+    // contains many rows,
+    // each will correspond to a TSStatus as its execution result,
+    // as the plan is split and the sub-plans may have interleaving ranges,
+    // we must assure that each TSStatus is placed to the right position
+    // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
+    // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
+    // failure and success should be placed into proper positions in TSStatus.subStatus
+    if (plan instanceof InsertMultiTabletPlan
+        || plan instanceof CreateMultiTimeSeriesPlan
+        || plan instanceof InsertRowsPlan) {
+      status = forwardMultiSubPlan(planGroupMap, plan);
+    } else if (planGroupMap.size() == 1) {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
-      if (plan instanceof InsertTabletPlan
-          || plan instanceof InsertMultiTabletPlan
-          || plan instanceof CreateMultiTimeSeriesPlan
-          || plan instanceof InsertRowsPlan) {
-        // InsertTabletPlan, InsertMultiTabletPlan, InsertRowsPlan and CreateMultiTimeSeriesPlan
-        // contains many rows,
-        // each will correspond to a TSStatus as its execution result,
-        // as the plan is split and the sub-plans may have interleaving ranges,
-        // we must assure that each TSStatus is placed to the right position
-        // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
-        // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
-        // failure and success should be placed into proper positions in TSStatus.subStatus
-        status = forwardMultiSubPlan(planGroupMap, plan);
-      } else {
-        status = forwardToMultipleGroup(planGroupMap);
-      }
-    }
-    if (plan instanceof InsertPlan
-        && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-        && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-      TSStatus tmpStatus = createTimeseriesForFailedInsertion(planGroupMap, ((InsertPlan) plan));
-      if (tmpStatus != null) {
-        status = tmpStatus;
-      }
+      status = forwardToMultipleGroup(planGroupMap);
     }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.isSetRedirectNode()) {
@@ -338,26 +468,6 @@ public class Coordinator {
     return status;
   }
 
-  private TSStatus createTimeseriesForFailedInsertion(
-      Map<PhysicalPlan, PartitionGroup> planGroupMap, InsertPlan plan) {
-    // try to create timeseries
-    if (plan.getFailedMeasurements() != null) {
-      plan.getPlanFromFailed();
-    }
-    boolean hasCreate;
-    try {
-      hasCreate = ((CMManager) IoTDB.metaManager).createTimeseries(plan);
-    } catch (IllegalPathException | CheckConsistencyException e) {
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-    if (hasCreate) {
-      return forwardPlan(planGroupMap, plan);
-    } else {
-      logger.error("{}, Cannot auto create timeseries.", thisNode);
-    }
-    return null;
-  }
-
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
     TSStatus result;
     if (entry.getValue().contains(thisNode)) {
@@ -365,12 +475,15 @@ public class Coordinator {
       long startTime =
           Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
               .getOperationStartTime();
-      logger.debug(
-          "Execute {} in a local group of {}", entry.getKey(), entry.getValue().getHeader());
       result =
           metaGroupMember
               .getLocalDataMember(entry.getValue().getHeader())
               .executeNonQueryPlan(entry.getKey());
+      logger.debug(
+          "Execute {} in a local group of {}, {}",
+          entry.getKey(),
+          entry.getValue().getHeader(),
+          result);
       Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
           .calOperationCostTimeFromStart(startTime);
     } else {
@@ -415,9 +528,10 @@ public class Coordinator {
     }
     TSStatus status;
     if (errorCodePartitionGroups.isEmpty()) {
-      status = StatusUtils.OK;
       if (allRedirect) {
-        status = StatusUtils.getStatus(status, endPoint);
+        status = StatusUtils.getStatus(TSStatusCode.NEED_REDIRECTION, endPoint);
+      } else {
+        status = StatusUtils.OK;
       }
     } else {
       status =
@@ -441,7 +555,7 @@ public class Coordinator {
     boolean noFailure = true;
     boolean isBatchFailure = false;
     EndPoint endPoint = null;
-    int totalRowNum = 0;
+    int totalRowNum = parentPlan.getPaths().size();
     // send sub-plans to each belonging data group and collect results
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
@@ -458,7 +572,7 @@ public class Coordinator {
           // and the second dimension is the number of rows per InsertTabletPlan
           totalRowNum = ((InsertMultiTabletPlan) parentPlan).getTabletsSize();
         } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
-          totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getPaths().size();
+          totalRowNum = parentPlan.getPaths().size();
         } else if (parentPlan instanceof InsertRowsPlan) {
           totalRowNum = ((InsertRowsPlan) parentPlan).getRowCount();
         }
@@ -533,7 +647,24 @@ public class Coordinator {
         }
       }
     }
+    return concludeFinalStatus(
+        parentPlan,
+        totalRowNum,
+        noFailure,
+        endPoint,
+        isBatchFailure,
+        subStatus,
+        errorCodePartitionGroups);
+  }
 
+  private TSStatus concludeFinalStatus(
+      PhysicalPlan parentPlan,
+      int totalRowNum,
+      boolean noFailure,
+      EndPoint endPoint,
+      boolean isBatchFailure,
+      TSStatus[] subStatus,
+      List<String> errorCodePartitionGroups) {
     if (parentPlan instanceof InsertMultiTabletPlan
         && !((InsertMultiTabletPlan) parentPlan).getResults().isEmpty()) {
       if (subStatus == null) {
@@ -576,16 +707,6 @@ public class Coordinator {
       }
     }
 
-    return concludeFinalStatus(
-        noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
-  }
-
-  private TSStatus concludeFinalStatus(
-      boolean noFailure,
-      EndPoint endPoint,
-      boolean isBatchFailure,
-      TSStatus[] subStatus,
-      List<String> errorCodePartitionGroups) {
     TSStatus status;
     if (noFailure) {
       status = StatusUtils.OK;
@@ -640,7 +761,7 @@ public class Coordinator {
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
+  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
     RaftService.AsyncClient client =
         metaGroupMember
@@ -649,9 +770,9 @@ public class Coordinator {
     return this.metaGroupMember.forwardPlanAsync(plan, receiver, header, client);
   }
 
-  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header)
+  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
-    RaftService.Client client = null;
+    RaftService.Client client;
     try {
       client =
           metaGroupMember

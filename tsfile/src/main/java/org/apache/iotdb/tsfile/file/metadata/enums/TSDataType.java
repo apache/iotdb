@@ -41,7 +41,10 @@ public enum TSDataType {
   DOUBLE((byte) 4),
 
   /** TEXT */
-  TEXT((byte) 5);
+  TEXT((byte) 5),
+
+  /** VECTOR */
+  VECTOR((byte) 6);
 
   private final byte type;
 
@@ -60,13 +63,24 @@ public enum TSDataType {
   }
 
   private static TSDataType getTsDataType(byte type) {
-    for (TSDataType tsDataType : TSDataType.values()) {
-      if (type == tsDataType.type) {
-        return tsDataType;
-      }
+    switch (type) {
+      case 0:
+        return TSDataType.BOOLEAN;
+      case 1:
+        return TSDataType.INT32;
+      case 2:
+        return TSDataType.INT64;
+      case 3:
+        return TSDataType.FLOAT;
+      case 4:
+        return TSDataType.DOUBLE;
+      case 5:
+        return TSDataType.TEXT;
+      case 6:
+        return TSDataType.VECTOR;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + type);
     }
-
-    throw new IllegalArgumentException("Invalid input: " + type);
   }
 
   public static TSDataType deserializeFrom(ByteBuffer buffer) {
@@ -96,6 +110,7 @@ public enum TSDataType {
       case TEXT:
       case INT64:
       case DOUBLE:
+      case VECTOR:
         return 8;
       default:
         throw new UnSupportedDataTypeException(this.toString());

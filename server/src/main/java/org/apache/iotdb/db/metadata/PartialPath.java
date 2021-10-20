@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -31,6 +32,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
@@ -40,12 +45,11 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
 
-  private String[] nodes;
+  protected String[] nodes;
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
-  private String measurementAlias = "";
-  // alias of time series used in SELECT AS
-  private String tsAlias = "";
+  protected String measurementAlias = "";
 
+  public PartialPath() {}
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
    * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
@@ -136,24 +140,49 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   /**
-   * Test if this PartialPath matches a full path. rPath is supposed to be a full timeseries path
-   * without wildcards. e.g. "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not
-   * match "root.sg.device" and "root.sg.vehicle.s1"
+   * Test if this PartialPath matches a full path. This partialPath acts as a full path pattern.
+   * rPath is supposed to be a full timeseries path without wildcards. e.g. "root.sg.device.*"
+   * matches path "root.sg.device.s1" whereas it does not match "root.sg.device" and
+   * "root.sg.vehicle.s1"
    *
    * @param rPath a plain full path of a timeseries
    * @return true if a successful match, otherwise return false
    */
   public boolean matchFullPath(PartialPath rPath) {
-    String[] rNodes = rPath.getNodes();
-    if (rNodes.length < nodes.length) {
+    return matchFullPath(rPath.getNodes(), 0, 0, false);
+  }
+
+  private boolean matchFullPath(
+      String[] pathNodes, int pathIndex, int patternIndex, boolean multiLevelWild) {
+    if (pathIndex == pathNodes.length && patternIndex == nodes.length) {
+      return true;
+    } else if (patternIndex == nodes.length && multiLevelWild) {
+      return matchFullPath(pathNodes, pathIndex + 1, patternIndex, true);
+    } else if (pathIndex >= pathNodes.length || patternIndex >= nodes.length) {
       return false;
     }
-    for (int i = 0; i < nodes.length; i++) {
-      if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
-        return false;
+
+    String pathNode = pathNodes[pathIndex];
+    String patternNode = nodes[patternIndex];
+    boolean isMatch = false;
+    if (patternNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, true);
+    } else {
+      if (patternNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
+        if (Pattern.matches(patternNode.replace("*", ".*"), pathNode)) {
+          isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
+        }
+      } else {
+        if (patternNode.equals(pathNode)) {
+          isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
+        }
+      }
+
+      if (!isMatch && multiLevelWild) {
+        isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex, true);
       }
     }
-    return true;
+    return isMatch;
   }
 
   @Override
@@ -168,6 +197,15 @@ public class PartialPath extends Path implements Comparable<Path> {
       fullPath = s.toString();
       return fullPath;
     }
+  }
+
+  public PartialPath copy() {
+    PartialPath result = new PartialPath();
+    result.nodes = nodes;
+    result.fullPath = fullPath;
+    result.device = device;
+    result.measurementAlias = measurementAlias;
+    return result;
   }
 
   @Override
@@ -237,18 +275,6 @@ public class PartialPath extends Path implements Comparable<Path> {
     return measurementAlias != null && !measurementAlias.isEmpty();
   }
 
-  public String getTsAlias() {
-    return tsAlias;
-  }
-
-  public void setTsAlias(String tsAlias) {
-    this.tsAlias = tsAlias;
-  }
-
-  public boolean isTsAliasExists() {
-    return tsAlias != null && !tsAlias.isEmpty();
-  }
-
   @Override
   public String getFullPathWithAlias() {
     return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
@@ -311,5 +337,13 @@ public class PartialPath extends Path implements Comparable<Path> {
       }
     }
     return ret;
+  }
+
+  /**
+   * If the partialPath is VectorPartialPath and it has only one sub sensor, return the sub sensor's
+   * full path. Otherwise, return the partialPath's fullPath
+   */
+  public String getExactFullPath() {
+    return getFullPath();
   }
 }

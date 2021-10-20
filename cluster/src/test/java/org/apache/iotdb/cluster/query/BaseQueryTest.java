@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.server.member.MemberTest;
+import org.apache.iotdb.cluster.server.member.BaseMember;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
@@ -48,10 +48,10 @@ import static org.junit.Assert.assertNull;
  * allNodes: node0, node1... node9 localNode: node0 pathList: root.sg0.s0, root.sg0.s1...
  * root.sg0.s9 (all double type)
  */
-public class BaseQueryTest extends MemberTest {
+public class BaseQueryTest extends BaseMember {
 
-  List<PartialPath> pathList;
-  List<TSDataType> dataTypes;
+  protected List<PartialPath> pathList;
+  protected List<TSDataType> dataTypes;
 
   protected static void checkAggregations(
       List<AggregateResult> aggregationResults, Object[] answer) {

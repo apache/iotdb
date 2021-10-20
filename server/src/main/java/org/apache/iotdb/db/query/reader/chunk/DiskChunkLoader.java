@@ -29,13 +29,15 @@ import java.io.IOException;
 /** To read one chunk from disk, and only used in iotdb server module */
 public class DiskChunkLoader implements IChunkLoader {
 
-  public DiskChunkLoader() {
-    // do nothing
+  private final boolean debug;
+
+  public DiskChunkLoader(boolean debug) {
+    this.debug = debug;
   }
 
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
-    return ChunkCache.getInstance().get(chunkMetaData);
+    return ChunkCache.getInstance().get(chunkMetaData, debug);
   }
 
   @Override

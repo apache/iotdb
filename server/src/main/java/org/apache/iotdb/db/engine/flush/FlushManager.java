@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+import static java.io.File.separator;
+
 public class FlushManager implements FlushManagerMBean, IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
@@ -90,6 +92,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
+  /** a flush thread handles flush task */
   class FlushThread extends WrappedRunnable {
 
     @Override
@@ -110,7 +113,8 @@ public class FlushManager implements FlushManagerMBean, IService {
       // update stat monitor cache to system during each flush()
       if (config.isEnableStatMonitor() && config.isEnableMonitorSeriesWrite()) {
         try {
-          StatMonitor.getInstance().saveStatValue(tsFileProcessor.getStorageGroupName());
+          StatMonitor.getInstance()
+              .saveStatValue(tsFileProcessor.getStorageGroupName().split(separator)[0]);
         } catch (StorageEngineException | MetadataException e) {
           LOGGER.error("Inserting monitor series data error.", e);
         }
@@ -118,7 +122,11 @@ public class FlushManager implements FlushManagerMBean, IService {
     }
   }
 
-  /** Add TsFileProcessor to asyncTryToFlush manager */
+  /**
+   * Add tsFileProcessor to asyncTryToFlush manager
+   *
+   * @param tsFileProcessor tsFileProcessor to be flushed
+   */
   @SuppressWarnings("squid:S2445")
   public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {

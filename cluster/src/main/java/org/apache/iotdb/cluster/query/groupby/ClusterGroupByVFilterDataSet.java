@@ -33,7 +33,6 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 import java.util.ArrayList;
@@ -60,10 +59,9 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
   }
 
   @Override
-  protected TimeGenerator getTimeGenerator(
-      IExpression expression, QueryContext context, RawDataQueryPlan rawDataQueryPlan)
+  protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan rawDataQueryPlan)
       throws StorageEngineException {
-    return new ClusterTimeGenerator(expression, context, metaGroupMember, rawDataQueryPlan);
+    return new ClusterTimeGenerator(context, metaGroupMember, rawDataQueryPlan, false);
   }
 
   @Override
@@ -79,6 +77,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
         dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
         dataType,
         context,
-        dataQueryPlan.isAscending());
+        dataQueryPlan.isAscending(),
+        null);
   }
 }

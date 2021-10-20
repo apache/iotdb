@@ -58,7 +58,7 @@ public class MemUtilsTest {
     dataTypes.add(TSDataType.DOUBLE.ordinal());
     sizeSum += 8 + TSDataType.DOUBLE.getDataTypeSize();
     dataTypes.add(TSDataType.TEXT.ordinal());
-    sizeSum += TSDataType.TEXT.getDataTypeSize();
+    sizeSum += 8 + TSDataType.TEXT.getDataTypeSize();
     InsertTabletPlan insertPlan = new InsertTabletPlan(device, measurements, dataTypes);
     Assert.assertEquals(sizeSum, MemUtils.getRecordSize(insertPlan, 0, 1, false));
   }

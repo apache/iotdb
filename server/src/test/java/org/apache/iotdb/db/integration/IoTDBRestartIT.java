@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -306,7 +308,7 @@ public class IoTDBRestartIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("select * from root.**");
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -339,7 +341,7 @@ public class IoTDBRestartIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("select * from root.**");
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -349,6 +351,55 @@ public class IoTDBRestartIT {
       assertEquals(1, cnt);
     }
 
+    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
+    EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    int avgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
+    config.setAvgSeriesPointNumberThreshold(2);
+    long tsFileSize = config.getSeqTsFileSize();
+    long unFsFileSize = config.getSeqTsFileSize();
+    config.setSeqTsFileSize(10000000);
+    config.setUnSeqTsFileSize(10000000);
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=INT64");
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1)");
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(2,1)");
+      statement.execute("create timeseries root.turbine1.d1.s2 with datatype=BOOLEAN");
+      statement.execute("insert into root.turbine1.d1(timestamp,s2) values(3,true)");
+      statement.execute("insert into root.turbine1.d1(timestamp,s2) values(4,true)");
+    }
+
+    Thread.sleep(1000);
+    EnvironmentUtils.restartDaemon();
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      long[] result = new long[] {1L, 2L};
+      statement.execute("select s1 from root.turbine1.d1 where time < 3");
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        assertEquals(resultSet.getLong(1), result[cnt]);
+        cnt++;
+      }
+      assertEquals(2, cnt);
+    }
+
+    config.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+    config.setSeqTsFileSize(tsFileSize);
+    config.setUnSeqTsFileSize(unFsFileSize);
     EnvironmentUtils.cleanEnv();
   }
 

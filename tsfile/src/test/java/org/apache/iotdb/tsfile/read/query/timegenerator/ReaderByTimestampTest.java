@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -62,7 +62,7 @@ public class ReaderByTimestampTest {
   @Test
   public void readByTimestamp() throws IOException {
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
-    List<ChunkMetadata> chunkMetadataList =
+    List<IChunkMetadata> chunkMetadataList =
         metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s1"));
     AbstractFileSeriesReader seriesReader =
         new FileSeriesReader(seriesChunkLoader, chunkMetadataList, null);

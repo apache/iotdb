@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -39,13 +40,13 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -120,6 +121,11 @@ public class TsFileIOWriter {
     startFile();
   }
 
+  /** for test only */
+  public TsFileIOWriter(TsFileOutput output, boolean test) {
+    this.out = output;
+  }
+
   /**
    * Writes given bytes to output stream. This method is called when total memory size exceeds the
    * chunk group size threshold.
@@ -161,37 +167,50 @@ public class TsFileIOWriter {
   }
 
   /**
+   * For TsFileReWriteTool / UpgradeTool. Use this method to determine if needs to start a
+   * ChunkGroup.
+   *
+   * @return isWritingChunkGroup
+   */
+  public boolean isWritingChunkGroup() {
+    return currentChunkGroupDeviceId != null;
+  }
+
+  /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
-   * @param measurementSchema - schema of this time series
+   * @param measurementId - measurementId of this time series
    * @param compressionCodecName - compression name of this time series
    * @param tsDataType - data type
    * @param statistics - Chunk statistics
    * @param dataSize - the serialized size of all pages
+   * @param mask - 0x80 for time chunk, 0x40 for value chunk, 0x00 for common chunk
    * @throws IOException if I/O error occurs
    */
   public void startFlushChunk(
-      MeasurementSchema measurementSchema,
+      String measurementId,
       CompressionType compressionCodecName,
       TSDataType tsDataType,
       TSEncoding encodingType,
-      Statistics<?> statistics,
+      Statistics<? extends Serializable> statistics,
       int dataSize,
-      int numOfPages)
+      int numOfPages,
+      int mask)
       throws IOException {
 
     currentChunkMetadata =
-        new ChunkMetadata(
-            measurementSchema.getMeasurementId(), tsDataType, out.getPosition(), statistics);
+        new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
+    currentChunkMetadata.setMask((byte) mask);
 
     ChunkHeader header =
         new ChunkHeader(
-            measurementSchema.getMeasurementId(),
+            measurementId,
             dataSize,
             tsDataType,
             compressionCodecName,
             encodingType,
-            numOfPages);
+            numOfPages,
+            mask);
     header.serializeTo(out.wrapAsStream());
   }
 
@@ -226,6 +245,7 @@ public class TsFileIOWriter {
    *
    * @throws IOException if I/O error occurs
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endFile() throws IOException {
     long metaOffset = out.getPosition();
 
@@ -233,15 +253,44 @@ public class TsFileIOWriter {
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
     // group ChunkMetadata by series
-    Map<Path, List<ChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
+    // only contains ordinary path and time column of vector series
+    Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
+
+    // time column -> ChunkMetadataList TreeMap of value columns in vector
+    Map<Path, Map<Path, List<IChunkMetadata>>> vectorToPathsMap = new HashMap<>();
+
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-        Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
-        chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
+      List<ChunkMetadata> chunkMetadatas = chunkGroupMetadata.getChunkMetadataList();
+      int idx = 0;
+      while (idx < chunkMetadatas.size()) {
+        IChunkMetadata chunkMetadata = chunkMetadatas.get(idx);
+        if (chunkMetadata.getMask() == 0) {
+          Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
+          chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
+          idx++;
+        } else if (chunkMetadata.isTimeColumn()) {
+          // time column of a vector series
+          Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
+          chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
+          idx++;
+          Map<Path, List<IChunkMetadata>> chunkMetadataListMapInVector =
+              vectorToPathsMap.computeIfAbsent(series, key -> new TreeMap<>());
+
+          // value columns of a vector series
+          while (idx < chunkMetadatas.size() && chunkMetadatas.get(idx).isValueColumn()) {
+            chunkMetadata = chunkMetadatas.get(idx);
+            Path vectorSeries =
+                new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
+            chunkMetadataListMapInVector
+                .computeIfAbsent(vectorSeries, k -> new ArrayList<>())
+                .add(chunkMetadata);
+            idx++;
+          }
+        }
       }
     }
 
-    MetadataIndexNode metadataIndex = flushMetadataIndex(chunkMetadataListMap);
+    MetadataIndexNode metadataIndex = flushMetadataIndex(chunkMetadataListMap, vectorToPathsMap);
     TsFileMetadata tsFileMetaData = new TsFileMetadata();
     tsFileMetaData.setMetadataIndex(metadataIndex);
     tsFileMetaData.setMetaOffset(metaOffset);
@@ -280,48 +329,80 @@ public class TsFileIOWriter {
   /**
    * Flush TsFileMetadata, including ChunkMetadataList and TimeseriesMetaData
    *
+   * @param chunkMetadataListMap chunkMetadata that Path.mask == 0
+   * @param vectorToPathsMap Map Path to chunkMataList, Key is Path(timeColumn) and Value is it's
+   *     sub chunkMetadataListMap
    * @return MetadataIndexEntry list in TsFileMetadata
    */
-  private MetadataIndexNode flushMetadataIndex(Map<Path, List<ChunkMetadata>> chunkMetadataListMap)
+  private MetadataIndexNode flushMetadataIndex(
+      Map<Path, List<IChunkMetadata>> chunkMetadataListMap,
+      Map<Path, Map<Path, List<IChunkMetadata>>> vectorToPathsMap)
       throws IOException {
 
     // convert ChunkMetadataList to this field
     deviceTimeseriesMetadataMap = new LinkedHashMap<>();
     // create device -> TimeseriesMetaDataList Map
-    for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
-      Path path = entry.getKey();
-      String device = path.getDevice();
-
-      // create TimeseriesMetaData
-      PublicBAOS publicBAOS = new PublicBAOS();
-      TSDataType dataType = entry.getValue().get(entry.getValue().size() - 1).getDataType();
-      Statistics seriesStatistics = Statistics.getStatsByType(dataType);
-
-      int chunkMetadataListLength = 0;
-      boolean serializeStatistic = (entry.getValue().size() > 1);
-      // flush chunkMetadataList one by one
-      for (ChunkMetadata chunkMetadata : entry.getValue()) {
-        if (!chunkMetadata.getDataType().equals(dataType)) {
-          continue;
-        }
-        chunkMetadataListLength += chunkMetadata.serializeTo(publicBAOS, serializeStatistic);
-        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
-      }
-      TimeseriesMetadata timeseriesMetadata =
-          new TimeseriesMetadata(
-              serializeStatistic ? (byte) 1 : (byte) 0,
-              chunkMetadataListLength,
-              path.getMeasurement(),
-              dataType,
-              seriesStatistics,
-              publicBAOS);
-      deviceTimeseriesMetadataMap
-          .computeIfAbsent(device, k -> new ArrayList<>())
-          .add(timeseriesMetadata);
+    for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
+      // for ordinary path
+      flushOneChunkMetadata(entry.getKey(), entry.getValue(), vectorToPathsMap);
     }
 
     // construct TsFileMetadata and return
     return MetadataIndexConstructor.constructMetadataIndex(deviceTimeseriesMetadataMap, out);
+  }
+
+  /**
+   * Flush one chunkMetadata
+   *
+   * @param path Path of chunk
+   * @param chunkMetadataList List of chunkMetadata about path(previous param)
+   * @param vectorToPathsMap Key is Path(timeColumn) and Value is it's sub chunkMetadataListMap
+   */
+  private void flushOneChunkMetadata(
+      Path path,
+      List<IChunkMetadata> chunkMetadataList,
+      Map<Path, Map<Path, List<IChunkMetadata>>> vectorToPathsMap)
+      throws IOException {
+    // create TimeseriesMetaData
+    PublicBAOS publicBAOS = new PublicBAOS();
+    TSDataType dataType = chunkMetadataList.get(chunkMetadataList.size() - 1).getDataType();
+    Statistics seriesStatistics = Statistics.getStatsByType(dataType);
+
+    int chunkMetadataListLength = 0;
+    boolean serializeStatistic = (chunkMetadataList.size() > 1);
+    // flush chunkMetadataList one by one
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      if (!chunkMetadata.getDataType().equals(dataType)) {
+        continue;
+      }
+      chunkMetadataListLength += chunkMetadata.serializeTo(publicBAOS, serializeStatistic);
+      seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+    }
+
+    TimeseriesMetadata timeseriesMetadata =
+        new TimeseriesMetadata(
+            (byte)
+                ((serializeStatistic ? (byte) 1 : (byte) 0) | chunkMetadataList.get(0).getMask()),
+            chunkMetadataListLength,
+            path.getMeasurement(),
+            dataType,
+            seriesStatistics,
+            publicBAOS);
+    deviceTimeseriesMetadataMap
+        .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+        .add(timeseriesMetadata);
+
+    // for VECTOR
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      // chunkMetadata is time column of a vector series
+      if (chunkMetadata.isTimeColumn()) {
+        Map<Path, List<IChunkMetadata>> vectorMap = vectorToPathsMap.get(path);
+        for (Map.Entry<Path, List<IChunkMetadata>> entry : vectorMap.entrySet()) {
+          flushOneChunkMetadata(entry.getKey(), entry.getValue(), vectorToPathsMap);
+        }
+      }
+      break;
+    }
   }
 
   /**
@@ -371,8 +452,8 @@ public class TsFileIOWriter {
     out.write(new byte[] {MetaMarker.SEPARATOR});
   }
 
-  void writeChunkMaskForTest() throws IOException {
-    out.write(new byte[] {MetaMarker.CHUNK_HEADER});
+  void writeChunkGroupMarkerForTest() throws IOException {
+    out.write(new byte[] {MetaMarker.CHUNK_GROUP_HEADER});
   }
 
   public File getFile() {
@@ -396,7 +477,7 @@ public class TsFileIOWriter {
       Iterator<ChunkMetadata> chunkMetaDataIterator =
           chunkGroupMetaData.getChunkMetadataList().iterator();
       while (chunkMetaDataIterator.hasNext()) {
-        ChunkMetadata chunkMetaData = chunkMetaDataIterator.next();
+        IChunkMetadata chunkMetaData = chunkMetaDataIterator.next();
         Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
         int startTimeIdx = startTimeIdxes.get(path);
 

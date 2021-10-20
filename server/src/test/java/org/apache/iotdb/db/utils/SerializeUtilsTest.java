@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -82,18 +81,6 @@ public class SerializeUtilsTest {
     Set<Integer> anotherIntlist = new TreeSet<>();
     SerializeUtils.deserializeIntSet(anotherIntlist, buffer);
     Assert.assertEquals(intSet, anotherIntlist);
-  }
-
-  @Test
-  public void serdesNodeTest() {
-    Node node = new Node("127.0.0.1", 6667, 1, 6535, 4678, "127.0.0.1");
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    DataOutputStream outputStream = new DataOutputStream(baos);
-    SerializeUtils.serialize(node, outputStream);
-    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    Node anotherNode = new Node("127.0.0.1", 6667, 1, 6535, 4678, "127.0.0.1");
-    SerializeUtils.deserialize(anotherNode, buffer);
-    Assert.assertEquals(node, anotherNode);
   }
 
   @Test

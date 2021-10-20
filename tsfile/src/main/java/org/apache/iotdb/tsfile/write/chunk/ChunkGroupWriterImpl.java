@@ -25,7 +25,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -51,9 +53,15 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
+  public void tryToAddSeriesWriter(IMeasurementSchema schema, int pageSizeThreshold) {
     if (!chunkWriters.containsKey(schema.getMeasurementId())) {
-      IChunkWriter seriesWriter = new ChunkWriterImpl(schema);
+      IChunkWriter seriesWriter = null;
+      // initialize depend on schema type
+      if (schema instanceof VectorMeasurementSchema) {
+        seriesWriter = new VectorChunkWriterImpl(schema);
+      } else if (schema instanceof UnaryMeasurementSchema) {
+        seriesWriter = new ChunkWriterImpl(schema);
+      }
       this.chunkWriters.put(schema.getMeasurementId(), seriesWriter);
     }
   }
@@ -72,17 +80,82 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public void write(Tablet tablet) throws WriteProcessException {
-    List<MeasurementSchema> timeseries = tablet.getSchemas();
+    List<IMeasurementSchema> timeseries = tablet.getSchemas();
     for (int i = 0; i < timeseries.size(); i++) {
       String measurementId = timeseries.get(i).getMeasurementId();
       TSDataType dataType = timeseries.get(i).getType();
       if (!chunkWriters.containsKey(measurementId)) {
         throw new NoMeasurementException("measurement id" + measurementId + " not found!");
       }
-      writeByDataType(tablet, measurementId, dataType, i);
+      if (dataType.equals(TSDataType.VECTOR)) {
+        writeVectorDataType(tablet, measurementId, i);
+      } else {
+        writeByDataType(tablet, measurementId, dataType, i);
+      }
     }
   }
 
+  /**
+   * write if data type is VECTOR this method write next n column values (belong to one vector), and
+   * return n to increase index
+   *
+   * @param tablet table
+   * @param measurement vector measurement
+   * @param index measurement start index
+   */
+  private void writeVectorDataType(Tablet tablet, String measurement, int index) {
+    // reference: MemTableFlushTask.java
+    int batchSize = tablet.rowSize;
+    VectorMeasurementSchema vectorMeasurementSchema =
+        (VectorMeasurementSchema) tablet.getSchemas().get(index);
+    List<TSDataType> valueDataTypes = vectorMeasurementSchema.getSubMeasurementsTSDataTypeList();
+    IChunkWriter vectorChunkWriter = chunkWriters.get(measurement);
+    for (int row = 0; row < batchSize; row++) {
+      long time = tablet.timestamps[row];
+      for (int columnIndex = 0; columnIndex < valueDataTypes.size(); columnIndex++) {
+        boolean isNull = false;
+        // check isNull by bitMap in tablet
+        if (tablet.bitMaps != null
+            && tablet.bitMaps[columnIndex] != null
+            && tablet.bitMaps[columnIndex].isMarked(row)) {
+          isNull = true;
+        }
+        switch (valueDataTypes.get(columnIndex)) {
+          case BOOLEAN:
+            vectorChunkWriter.write(time, ((boolean[]) tablet.values[columnIndex])[row], isNull);
+            break;
+          case INT32:
+            vectorChunkWriter.write(time, ((int[]) tablet.values[columnIndex])[row], isNull);
+            break;
+          case INT64:
+            vectorChunkWriter.write(time, ((long[]) tablet.values[columnIndex])[row], isNull);
+            break;
+          case FLOAT:
+            vectorChunkWriter.write(time, ((float[]) tablet.values[columnIndex])[row], isNull);
+            break;
+          case DOUBLE:
+            vectorChunkWriter.write(time, ((double[]) tablet.values[columnIndex])[row], isNull);
+            break;
+          case TEXT:
+            vectorChunkWriter.write(time, ((Binary[]) tablet.values[columnIndex])[row], isNull);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", valueDataTypes.get(columnIndex)));
+        }
+      }
+      vectorChunkWriter.write(time);
+    }
+  }
+
+  /**
+   * write by data type dataType should not be VECTOR! VECTOR type should use writeVector
+   *
+   * @param tablet table contain all time and value
+   * @param measurementId current measurement
+   * @param dataType current data type
+   * @param index which column values should be write
+   */
   private void writeByDataType(
       Tablet tablet, String measurementId, TSDataType dataType, int index) {
     int batchSize = tablet.rowSize;

@@ -118,7 +118,7 @@ public class SingleDataSetTest {
       throws QueryProcessException, TException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count nodes root.test level=2");
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count nodes root.test.** level=2");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof SingleDataSet);
     Assert.assertEquals("[count]", dataSet.getPaths().toString());

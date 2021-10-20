@@ -23,10 +23,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
 
 import java.io.IOException;
 
@@ -45,7 +45,7 @@ public class AsyncDataHeartbeatClient extends AsyncDataClient {
     super(
         protocolFactory,
         clientManager,
-        new TNonblockingSocket(
+        TNonblockingSocketWrapper.wrap(
             node.getInternalIp(),
             node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
             RaftServer.getConnectionTimeoutInMS()));

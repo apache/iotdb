@@ -24,7 +24,7 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -64,27 +64,28 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
+  public void updateResultFromPageData(IBatchDataIterator batchIterator) {
     if (hasFinalResult()) {
       return;
     }
-    if (dataInThisPage.hasCurrent()) {
-      setValue(dataInThisPage.currentValue());
-      timestamp = dataInThisPage.currentTime();
+    if (batchIterator.hasNext()) {
+      setValue(batchIterator.currentValue());
+      timestamp = batchIterator.currentTime();
     }
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+  public void updateResultFromPageData(
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
     if (hasFinalResult()) {
       return;
     }
-    if (dataInThisPage.hasCurrent()
-        && dataInThisPage.currentTime() < maxBound
-        && dataInThisPage.currentTime() >= minBound) {
-      setValue(dataInThisPage.currentValue());
-      timestamp = dataInThisPage.currentTime();
-      dataInThisPage.next();
+    if (batchIterator.hasNext()
+        && batchIterator.currentTime() < maxBound
+        && batchIterator.currentTime() >= minBound) {
+      setValue(batchIterator.currentValue());
+      timestamp = batchIterator.currentTime();
+      batchIterator.next();
     }
   }
 
@@ -94,11 +95,31 @@ public class FirstValueAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
+    int currentPos = 0;
+    long[] timesForFirstValue = new long[TIME_LENGTH_FOR_FIRST_VALUE];
+    while (currentPos < length) {
+      int timeLength = Math.min(length - currentPos, TIME_LENGTH_FOR_FIRST_VALUE);
+      System.arraycopy(timestamps, currentPos, timesForFirstValue, 0, timeLength);
+      Object[] values = dataReader.getValuesInTimestamps(timesForFirstValue, timeLength);
+      for (int i = 0; i < timeLength; i++) {
+        if (values[i] != null) {
+          setValue(values[i]);
+          timestamp = timesForFirstValue[i];
+          return;
+        }
+      }
+      currentPos += timeLength;
+    }
+  }
 
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    if (hasFinalResult()) {
+      return;
+    }
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        setValue(value);
+      if (values[i] != null) {
+        setValue(values[i]);
         timestamp = timestamps[i];
         break;
       }

@@ -19,16 +19,22 @@
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -44,8 +50,16 @@ import static org.junit.Assert.fail;
 // this test is not for testing the correctness of Session API. So we just implement one of the API.
 public class SessionPoolTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
+  private static final long DEFAULT_QUERY_TIMEOUT = -1;
+  private final CompactionStrategy defaultCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
+
   @Before
   public void setUp() throws Exception {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
@@ -54,6 +68,7 @@ public class SessionPoolTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(defaultCompaction);
   }
 
   @Test
@@ -72,20 +87,21 @@ public class SessionPoolTest {
                   Collections.singletonList(TSDataType.INT64),
                   Collections.singletonList(3L));
             } catch (IoTDBConnectionException | StatementExecutionException e) {
-              fail();
+              fail(e.getMessage());
             }
           });
     }
     service.shutdown();
     try {
       assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
+      assertTrue(pool.currentAvailableSize() <= 3);
+      assertEquals(0, pool.currentOccupiedSize());
     } catch (InterruptedException e) {
-      e.printStackTrace();
-      fail();
+      logger.error("insert failed", e);
+      fail(e.getMessage());
+    } finally {
+      pool.close();
     }
-    assertTrue(pool.currentAvailableSize() <= 3);
-    assertEquals(0, pool.currentOccupiedSize());
-    pool.close();
   }
 
   @Test
@@ -99,11 +115,12 @@ public class SessionPoolTest {
           Collections.singletonList("s"),
           Collections.singletonList(TSDataType.INT64),
           Collections.singletonList(3L));
+      assertEquals(1, pool.currentAvailableSize());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       // do nothing
+    } finally {
+      pool.close();
     }
-    assertEquals(1, pool.currentAvailableSize());
-    pool.close();
   }
 
   @Test
@@ -122,7 +139,7 @@ public class SessionPoolTest {
               // this is incorrect becasue wrapper is not closed.
               // so all other 7 queries will be blocked
             } catch (IoTDBConnectionException | StatementExecutionException e) {
-              fail();
+              fail(e.getMessage());
             }
           });
     }
@@ -132,20 +149,28 @@ public class SessionPoolTest {
       assertEquals(0, pool.currentAvailableSize());
       assertTrue(pool.currentOccupiedSize() <= 3);
     } catch (InterruptedException e) {
-      e.printStackTrace();
-      fail();
+      logger.error("incorrectExecuteQueryStatement failed,", e);
+      fail(e.getMessage());
+    } finally {
+      pool.close();
     }
-    pool.close();
   }
 
   @Test
   public void executeQueryStatement() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
-    correctQuery(pool);
+    correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
     pool.close();
   }
 
-  private void correctQuery(SessionPool pool) {
+  @Test
+  public void executeQueryStatementWithTimeout() {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+    correctQuery(pool, 2000);
+    pool.close();
+  }
+
+  private void correctQuery(SessionPool pool, long timeoutInMs) {
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
     // now let's query
@@ -154,12 +179,19 @@ public class SessionPoolTest {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper =
-                  pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+              SessionDataSetWrapper wrapper;
+              if (timeoutInMs == DEFAULT_QUERY_TIMEOUT) {
+                wrapper =
+                    pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+              } else {
+                wrapper =
+                    pool.executeQueryStatement(
+                        "select * from root.sg1.d1 where time = " + no, timeoutInMs);
+              }
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
-              e.printStackTrace();
-              fail();
+              logger.error("correctQuery failed", e);
+              fail(e.getMessage());
             }
           });
     }
@@ -169,13 +201,13 @@ public class SessionPoolTest {
       assertTrue(pool.currentAvailableSize() <= 3);
       assertEquals(0, pool.currentOccupiedSize());
     } catch (InterruptedException e) {
-      e.printStackTrace();
-      fail();
+      logger.error("correctQuery failed", e);
+      fail(e.getMessage());
     }
   }
 
   @Test
-  public void executeRawDataQuery() throws InterruptedException {
+  public void executeRawDataQuery() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
@@ -192,22 +224,38 @@ public class SessionPoolTest {
               }
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
-              e.printStackTrace();
-              fail();
+              logger.error("executeRawDataQuery", e);
+              fail(e.getMessage());
             }
           });
     }
-    service.shutdown();
-    assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
-    assertTrue(pool.currentAvailableSize() <= 3);
-    assertEquals(0, pool.currentOccupiedSize());
-    pool.close();
+    try {
+      service.shutdown();
+      assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
+      assertTrue(pool.currentAvailableSize() <= 3);
+      assertEquals(0, pool.currentOccupiedSize());
+    } catch (InterruptedException e) {
+      fail(e.getMessage());
+    } finally {
+      pool.close();
+    }
   }
 
   @Test
   public void tryIfTheServerIsRestart() {
     SessionPool pool =
-        new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false, null, false);
+        new SessionPool(
+            "127.0.0.1",
+            6667,
+            "root",
+            "root",
+            3,
+            1,
+            6000,
+            false,
+            null,
+            false,
+            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
     write10Data(pool, true);
     SessionDataSetWrapper wrapper = null;
     try {
@@ -219,12 +267,66 @@ public class SessionPoolTest {
       }
     } catch (IoTDBConnectionException e) {
       pool.closeResultSet(wrapper);
+      pool.close();
+      EnvironmentUtils.stopDaemon();
+
       EnvironmentUtils.reactiveDaemon();
-      correctQuery(pool);
+      pool =
+          new SessionPool(
+              "127.0.0.1",
+              6667,
+              "root",
+              "root",
+              3,
+              1,
+              6000,
+              false,
+              null,
+              false,
+              Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+      correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
       return;
     } catch (StatementExecutionException e) {
-      fail("should be TTransportException but get an exception: " + e.getMessage());
+      // After receiving the stop request, thrift calls shutdownNow() to process the executing task.
+      // However, when the executing task is blocked, it will report InterruptedException error.
+      // And IoTDB warps it as one StatementExecutionException.
+      // If the thrift task thread is running, the thread will not be affected and will continue to
+      // run, only if the interrupt flag of the thread is set to true. So here, we call the close
+      // function on the client and wait for some time before the thrift server can exit normally.
+      try {
+        while (wrapper.hasNext()) {
+          wrapper.next();
+        }
+      } catch (IoTDBConnectionException ec) {
+        pool.closeResultSet(wrapper);
+        pool.close();
+        EnvironmentUtils.stopDaemon();
+        EnvironmentUtils.reactiveDaemon();
+        pool =
+            new SessionPool(
+                "127.0.0.1",
+                6667,
+                "root",
+                "root",
+                3,
+                1,
+                6000,
+                false,
+                null,
+                false,
+                Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
+        pool.close();
+      } catch (StatementExecutionException es) {
+        fail("should be TTransportException but get an exception: " + e.getMessage());
+      }
+      return;
+    } finally {
+      if (wrapper != null) {
+        pool.closeResultSet(wrapper);
+      }
+      pool.close();
     }
     fail("should throw exception but not");
   }
@@ -232,10 +334,21 @@ public class SessionPoolTest {
   @Test
   public void tryIfTheServerIsRestartButDataIsGotten() {
     SessionPool pool =
-        new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null, false);
+        new SessionPool(
+            "127.0.0.1",
+            6667,
+            "root",
+            "root",
+            3,
+            1,
+            60000,
+            false,
+            null,
+            false,
+            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
-    SessionDataSetWrapper wrapper = null;
+    SessionDataSetWrapper wrapper;
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
       // user does not know what happens.
@@ -244,27 +357,55 @@ public class SessionPoolTest {
       while (wrapper.hasNext()) {
         wrapper.next();
       }
+      pool.closeResultSet(wrapper);
       assertEquals(1, pool.currentAvailableSize());
       assertEquals(0, pool.currentOccupiedSize());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      e.printStackTrace();
-      fail();
+      logger.error("tryIfTheServerIsRestartButDataIsGotten", e);
+      fail(e.getMessage());
+    } finally {
+      pool.close();
     }
-    pool.close();
   }
 
   @Test
-  public void restart() throws Exception {
+  public void restart() {
     SessionPool pool =
-        new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false, null, false);
+        new SessionPool(
+            "127.0.0.1",
+            6667,
+            "root",
+            "root",
+            1,
+            1,
+            1000,
+            false,
+            null,
+            false,
+            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
     write10Data(pool, true);
     // stop the server.
+    pool.close();
     EnvironmentUtils.stopDaemon();
+    pool =
+        new SessionPool(
+            "127.0.0.1",
+            6667,
+            "root",
+            "root",
+            1,
+            1,
+            1000,
+            false,
+            null,
+            false,
+            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
     // all this ten data will fail.
     write10Data(pool, false);
     // restart the server
     EnvironmentUtils.reactiveDaemon();
     write10Data(pool, true);
+    pool.close();
   }
 
   private void write10Data(SessionPool pool, boolean failWhenThrowException) {
@@ -279,7 +420,7 @@ public class SessionPoolTest {
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         // will fail this 10 times.
         if (failWhenThrowException) {
-          fail();
+          fail(e.getMessage());
         }
       }
     }
@@ -288,7 +429,18 @@ public class SessionPoolTest {
   @Test
   public void testClose() {
     SessionPool pool =
-        new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null, false);
+        new SessionPool(
+            "127.0.0.1",
+            6667,
+            "root",
+            "root",
+            3,
+            1,
+            60000,
+            false,
+            null,
+            false,
+            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
     pool.close();
     try {
       pool.insertRecord(
@@ -300,10 +452,40 @@ public class SessionPoolTest {
     } catch (IoTDBConnectionException e) {
       Assert.assertEquals("Session pool is closed", e.getMessage());
     } catch (StatementExecutionException e) {
-      fail();
+      fail(e.getMessage());
     }
     // some other test cases are not covered:
     // e.g., thread A created a new session, but not returned; thread B close the pool; A get the
     // session.
+  }
+
+  @Test
+  public void testBuilder() {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .maxSize(10)
+            .user("abc")
+            .password("123")
+            .fetchSize(1)
+            .waitToGetSessionTimeoutInMs(2)
+            .enableCacheLeader(true)
+            .enableCompression(true)
+            .zoneId(ZoneOffset.UTC)
+            .connectionTimeoutInMs(3)
+            .build();
+
+    assertEquals("localhost", pool.getHost());
+    assertEquals(1234, pool.getPort());
+    assertEquals("abc", pool.getUser());
+    assertEquals("123", pool.getPassword());
+    assertEquals(10, pool.getMaxSize());
+    assertEquals(1, pool.getFetchSize());
+    assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
+    assertTrue(pool.isEnableCacheLeader());
+    assertTrue(pool.isEnableCompression());
+    assertEquals(3, pool.getConnectionTimeoutInMs());
+    assertEquals(ZoneOffset.UTC, pool.getZoneId());
   }
 }

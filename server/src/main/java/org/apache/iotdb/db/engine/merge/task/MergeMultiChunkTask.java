@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -195,6 +195,16 @@ public class MergeMultiChunkTask {
     mergeLogger.logTSEnd();
   }
 
+  private String getMaxSensor(List<PartialPath> sensors) {
+    String maxSensor = sensors.get(0).getMeasurement();
+    for (int i = 1; i < sensors.size(); i++) {
+      if (maxSensor.compareTo(sensors.get(i).getMeasurement()) < 0) {
+        maxSensor = sensors.get(i).getMeasurement();
+      }
+    }
+    return maxSensor;
+  }
+
   private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders) throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     String deviceId = currMergingPaths.get(0).getDevice();
@@ -238,7 +248,8 @@ public class MergeMultiChunkTask {
       return;
     }
 
-    String lastSensor = currMergingPaths.get(currMergingPaths.size() - 1).getMeasurement();
+    // need the max sensor in lexicographic order
+    String lastSensor = getMaxSensor(currMergingPaths);
     String currSensor = null;
     Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = new TreeMap<>();
     // find all sensor to merge in order, if exceed, then break
@@ -269,6 +280,10 @@ public class MergeMultiChunkTask {
             modifications[i] = resource.getModifications(currTsFile, currMergingPaths.get(i));
             seqChunkMeta[i] = measurementChunkMetadataListEntry.getValue();
             modifyChunkMetaData(seqChunkMeta[i], modifications[i]);
+            for (ChunkMetadata chunkMetadata : seqChunkMeta[i]) {
+              resource.updateStartTime(currTsFile, deviceId, chunkMetadata.getStartTime());
+              resource.updateEndTime(currTsFile, deviceId, chunkMetadata.getEndTime());
+            }
 
             if (Thread.interrupted()) {
               Thread.currentThread().interrupt();
@@ -297,7 +312,7 @@ public class MergeMultiChunkTask {
 
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
     for (PartialPath path : currMergingPaths) {
-      MeasurementSchema schema = resource.getSchema(path);
+      IMeasurementSchema schema = resource.getSchema(path);
       mergeFileWriter.addSchema(path, schema);
     }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
@@ -451,7 +466,6 @@ public class MergeMultiChunkTask {
       IChunkWriter chunkWriter,
       TsFileResource currFile)
       throws IOException {
-
     int unclosedChunkPoint = lastUnclosedChunkPoint;
     boolean chunkModified =
         (currMeta.getDeleteIntervalList() != null && !currMeta.getDeleteIntervalList().isEmpty());
@@ -549,7 +563,6 @@ public class MergeMultiChunkTask {
     for (int i = 0; i < batchData.length(); i++) {
       long time = batchData.getTimeByIndex(i);
       // merge data in batch and data in unseqReader
-
       boolean overwriteSeqPoint = false;
       // unseq point.time <= sequence point.time, write unseq point
       while (currTimeValuePairs[pathIdx] != null
@@ -619,7 +632,7 @@ public class MergeMultiChunkTask {
       while (!chunkIdxHeap.isEmpty()) {
         int pathIdx = chunkIdxHeap.poll();
         PartialPath path = currMergingPaths.get(pathIdx);
-        MeasurementSchema measurementSchema = resource.getSchema(path);
+        IMeasurementSchema measurementSchema = resource.getSchema(path);
         IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
         if (Thread.interrupted()) {
           Thread.currentThread().interrupt();

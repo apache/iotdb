@@ -31,7 +31,7 @@ Next Introduce the first part: including the result set header construction way 
 
 ### Raw data query
 
-The header construction logic of raw data query is in the `getWideQueryHeaders()` method.
+The result set table header construction logic for the raw data query is mainly in the `getWideQueryHeaders()` method.
 
 - org.apache.iotdb.db.service.TSServiceImpl.getWideQueryHeaders
 
@@ -59,7 +59,7 @@ SQL2：`SELECT count(s1), max_time(s1) FROM root.sg.d1;` ->
 
 ### Align by device query
 
-The header construction logic of align by device query is in the `getAlignByDeviceQueryHeaders()` method.
+The result set table header construction logic for the Align by device query is mainly in the `getAlignByDeviceQueryHeaders()` method.
 
 - org.apache.iotdb.db.service.TSServiceImpl.getAlignByDeviceQueryHeaders
 
@@ -85,13 +85,13 @@ SQL：`SELECT '111', s1, s2, *, s5 FROM root.sg.d1 ALIGN BY DEVICE;`
 | ---- | ------ | --- | --- | --- | --- | --- | --- |
 |      |        |     |     |     |     |     |     |
 
-### LastQuery
+### Latest data query
 
-The header construction logic of last query is in the static method `LAST_RESP`.
+The result set table header construction logic for the Latest data query is mainly in the static method `LAST_RESP`.
 
 - org.apache.iotdb.db.service.StaticResps.LAST_RESP
 
-The latest data query calculates the result with the largest timestamp of the timeseries to be queried and displays it in three columns: time, timeseries and the corresponding value.
+The latest data query calculates the result with the largest timestamp of the timeseries to be queried and displays it in four columns: time, timeseries, data type and the corresponding value.
 
 Next, we will give an example：
 
@@ -99,10 +99,10 @@ Assuming there are two timeseries now: `root.sg.d1.s1`, `root.sg.d1.s2`， then 
 
 SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 
-| Time | timeseries    | value |
-| ---- | ------------- | ----- |
-| ...  | root.sg.d1.s1 | ...   |
-| ...  | root.sg.d1.s2 | ...   |
+| Time | timeseries    | value | dataType|
+| ---- | ------------- | ----- |----- |
+| ...  | root.sg.d1.s1 | ...   |...   |
+| ...  | root.sg.d1.s2 | ...   |...   |
 
 ## Generate non repeated result set
 
@@ -154,7 +154,7 @@ To restore the final result set, we need to construct a mapping set `columnOrdin
 
 - org.apache.iotdb.jdbc.AbstractIoTDBResultSet.AbstractIoTDBResultSet()
 
-In order to construct metadata information in final result set, a complete column name list is needed. The `columnnamelist` given above does not contain a timestamp. Therefore, it's necessary to determine whether a timestamp needs to be printed. If so, add the `Time` column to the header to form a complete header.
+In order to construct metadata information in final result set, a complete list of column names needs to be constructed. The `columnnamelist` given above does not contain a timestamp. Therefore, it's necessary to determine whether a timestamp needs to be printed. If so, add the `Time` column to the header to form a complete header.
 
 The complete header in example is：
 
@@ -162,7 +162,7 @@ The complete header in example is：
 | ---- | ------------- | ------------- | ------------- |
 |      |               |               |               |
 
-Then calculating `columnordinalmap`, judge whether to print a timestamp first. If so, record the timestamp as the first column.
+Then let's calculate `columnordinalmap`, judge whether to print a timestamp first. If so, record the timestamp as the first column.
 
 Then traverse the column name list in the header and then check whether `columnnameindex` is initialized. This field comes from `pathtoindex` calculated during deduplication, which records the location of each timeseries path in the query. If it is initialized, record the position + 2 as its position in the result set. If not, record the positions in traversal order, which is consistent with the query order in server side.
 

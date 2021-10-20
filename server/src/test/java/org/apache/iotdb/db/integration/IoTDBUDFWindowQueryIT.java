@@ -60,9 +60,9 @@ public class IoTDBUDFWindowQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(1);
-    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(1);
-    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(5);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(5);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(5);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
@@ -107,15 +107,15 @@ public class IoTDBUDFWindowQueryIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+          "create function counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
       statement.execute(
-          "create function accumulator as \"org.apache.iotdb.db.query.udf.example.Accumulator\"");
+          "create function accumulator as 'org.apache.iotdb.db.query.udf.example.Accumulator'");
       statement.execute(
-          "create function time_window_tester as \"org.apache.iotdb.db.query.udf.example.SlidingTimeWindowConstructionTester\"");
+          "create function time_window_tester as 'org.apache.iotdb.db.query.udf.example.SlidingTimeWindowConstructionTester'");
       statement.execute(
-          "create function size_window_0 as \"org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester0\"");
+          "create function size_window_0 as 'org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester0'");
       statement.execute(
-          "create function size_window_1 as \"org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester1\"");
+          "create function size_window_1 as 'org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester1'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -133,12 +133,13 @@ public class IoTDBUDFWindowQueryIT {
   public void testRowByRow() {
     String sql =
         String.format(
-            "select counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+            "select counter(s1, '%s'='%s') from root.vehicle.d1",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       int count = 0;
       assertEquals(2, resultSet.getMetaData().getColumnCount());
@@ -194,12 +195,13 @@ public class IoTDBUDFWindowQueryIT {
   private void testSlidingSizeWindow(int windowSize) {
     String sql =
         String.format(
-            "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+            "select accumulator(s1, '%s'='%s', '%s'='%s') from root.vehicle.d1",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_SLIDING_SIZE, WINDOW_SIZE_KEY, windowSize);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
@@ -316,7 +318,7 @@ public class IoTDBUDFWindowQueryIT {
       int timeInterval, int slidingStep, int displayWindowBegin, int displayWindowEnd) {
     String sql =
         String.format(
-            "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+            "select accumulator(s1, s1, s1, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.vehicle.d1",
             ACCESS_STRATEGY_KEY,
             ACCESS_STRATEGY_SLIDING_TIME,
             TIME_INTERVAL_KEY,
@@ -328,9 +330,10 @@ public class IoTDBUDFWindowQueryIT {
             DISPLAY_WINDOW_END_KEY,
             displayWindowEnd);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
@@ -390,14 +393,15 @@ public class IoTDBUDFWindowQueryIT {
   public void testSlidingTimeWindowWithTimeIntervalOnly(int timeInterval) {
     String sql =
         String.format(
-            "select time_window_tester(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+            "select time_window_tester(s1, '%s'='%s') from root.vehicle.d1",
             TIME_INTERVAL_KEY, timeInterval);
 
     int displayWindowBegin = 0;
     int displayWindowEnd = ITERATION_TIMES;
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
@@ -510,7 +514,7 @@ public class IoTDBUDFWindowQueryIT {
       int windowSize, int slidingStep, int consumptionPoint) {
     String sql =
         String.format(
-            "select size_window_0(s1, \"%s\"=\"%s\", \"%s\"=\"%s\"), size_window_1(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+            "select size_window_0(s1, '%s'='%s', '%s'='%s'), size_window_1(s1, '%s'='%s') from root.vehicle.d1",
             "windowSize",
             windowSize,
             "slidingStep",
@@ -518,9 +522,10 @@ public class IoTDBUDFWindowQueryIT {
             "consumptionPoint",
             consumptionPoint);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(3, resultSet.getMetaData().getColumnCount());
 

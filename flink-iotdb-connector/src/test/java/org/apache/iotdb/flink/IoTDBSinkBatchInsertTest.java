@@ -18,6 +18,7 @@
 
 package org.apache.iotdb.flink;
 
+import org.apache.iotdb.flink.options.IoTDBSinkOptions;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import com.google.common.collect.Lists;
@@ -40,9 +41,9 @@ public class IoTDBSinkBatchInsertTest {
 
   @Before
   public void setUp() {
-    IoTDBOptions options = new IoTDBOptions();
+    IoTDBSinkOptions options = new IoTDBSinkOptions();
     options.setTimeseriesOptionList(
-        Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
+        Lists.newArrayList(new IoTDBSinkOptions.TimeseriesOption("root.sg.D01.temperature")));
     ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
     ioTDBSink.withBatchSize(3);
 

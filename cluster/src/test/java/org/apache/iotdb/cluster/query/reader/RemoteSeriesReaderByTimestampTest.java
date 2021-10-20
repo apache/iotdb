@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -45,11 +46,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 public class RemoteSeriesReaderByTimestampTest {
@@ -68,10 +69,10 @@ public class RemoteSeriesReaderByTimestampTest {
           public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
             return new AsyncDataClient(null, null, node, null) {
               @Override
-              public void fetchSingleSeriesByTimestamp(
-                  Node header,
+              public void fetchSingleSeriesByTimestamps(
+                  RaftNode header,
                   long readerId,
-                  long time,
+                  List<Long> timestamps,
                   AsyncMethodCallback<ByteBuffer> resultHandler)
                   throws TException {
                 if (failedNodes.contains(node)) {
@@ -83,24 +84,24 @@ public class RemoteSeriesReaderByTimestampTest {
                           ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                           DataOutputStream dataOutputStream =
                               new DataOutputStream(byteArrayOutputStream);
-                          boolean isNull = true;
-                          while (batchData.hasCurrent()) {
-                            long currentTime = batchData.currentTime();
-                            Object value = batchData.currentValue();
-                            if (currentTime == time) {
-                              SerializeUtils.serializeObject(value, dataOutputStream);
+                          Object[] results = new Object[timestamps.size()];
+                          for (int i = 0; i < timestamps.size(); i++) {
+                            while (batchData.hasCurrent()) {
+                              long currentTime = batchData.currentTime();
+                              if (currentTime == timestamps.get(i)) {
+                                results[i] = batchData.currentValue();
+                                batchData.next();
+                                break;
+                              } else if (currentTime > timestamps.get(i)) {
+                                results[i] = null;
+                                break;
+                              }
+                              // time < timestamp, continue
                               batchData.next();
-                              isNull = false;
-                              break;
-                            } else if (currentTime > time) {
-                              break;
                             }
-                            // time < timestamp, continue
-                            batchData.next();
                           }
-                          if (isNull) {
-                            SerializeUtils.serializeObject(null, dataOutputStream);
-                          }
+                          SerializeUtils.serializeObjects(results, dataOutputStream);
+
                           resultHandler.onComplete(
                               ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
                         })
@@ -146,10 +147,16 @@ public class RemoteSeriesReaderByTimestampTest {
 
       RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
 
+      long[] times = new long[100];
       for (int i = 0; i < 100; i++) {
-        assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+        times[i] = i;
       }
-      assertNull(reader.getValueInTimestamp(101));
+      Object[] results = reader.getValuesInTimestamps(times, times.length);
+      for (int i = 0; i < 100; i++) {
+        assertEquals(i * 1.0, results[i]);
+      }
+      times[0] = 101;
+      assertEquals(null, reader.getValuesInTimestamps(times, 1)[0]);
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
@@ -180,8 +187,13 @@ public class RemoteSeriesReaderByTimestampTest {
               + (endTime - startTime));
       // normal read
       assertEquals(TestUtils.getNode(0), sourceInfo.getCurrentNode());
+      long[] times = new long[50];
       for (int i = 0; i < 50; i++) {
-        assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+        times[i] = i;
+      }
+      Object[] results = reader.getValuesInTimestamps(times, 50);
+      for (int i = 0; i < 50; i++) {
+        assertEquals(i * 1.0, results[i]);
       }
 
       endTime = System.currentTimeMillis();
@@ -191,14 +203,22 @@ public class RemoteSeriesReaderByTimestampTest {
               + (endTime - startTime));
       failedNodes.add(TestUtils.getNode(0));
       for (int i = 50; i < 80; i++) {
-        assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+        times[i - 50] = i;
+      }
+      results = reader.getValuesInTimestamps(times, 30);
+      for (int i = 50; i < 80; i++) {
+        assertEquals(i * 1.0, results[i - 50]);
       }
       assertEquals(TestUtils.getNode(1), sourceInfo.getCurrentNode());
 
       // a bad client, change to another node again
       failedNodes.add(TestUtils.getNode(1));
       for (int i = 80; i < 90; i++) {
-        assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+        times[i - 80] = i;
+      }
+      results = reader.getValuesInTimestamps(times, 10);
+      for (int i = 80; i < 90; i++) {
+        assertEquals(i * 1.0, results[i - 80]);
       }
       assertEquals(TestUtils.getNode(2), sourceInfo.getCurrentNode());
 
@@ -211,7 +231,8 @@ public class RemoteSeriesReaderByTimestampTest {
       failedNodes.add(TestUtils.getNode(2));
 
       try {
-        reader.getValueInTimestamp(90);
+        times[0] = 90;
+        reader.getValuesInTimestamps(times, 1);
         fail();
       } catch (IOException e) {
         assertEquals("no available client.", e.getMessage());

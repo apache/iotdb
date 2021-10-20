@@ -48,7 +48,7 @@ public class StringDataPoint extends DataPoint {
       LOG.warn("given IChunkWriter is null, do nothing and return");
       return;
     }
-    writer.write(time, value);
+    writer.write(time, value, false);
   }
 
   @Override

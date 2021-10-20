@@ -229,4 +229,9 @@ public class HDFSFactory implements FSFactory {
       return null;
     }
   }
+
+  @Override
+  public boolean deleteIfExists(File file) {
+    return file.delete();
+  }
 }

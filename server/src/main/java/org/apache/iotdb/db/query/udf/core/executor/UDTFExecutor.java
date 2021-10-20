@@ -20,35 +20,42 @@
 package org.apache.iotdb.db.query.udf.core.executor;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.time.ZoneId;
+import java.util.Map;
 
 public class UDTFExecutor {
 
-  protected final UDFContext context;
+  protected final FunctionExpression expression;
   protected final UDTFConfigurations configurations;
+
   protected UDTF udtf;
   protected ElasticSerializableTVList collector;
 
-  public UDTFExecutor(UDFContext context, ZoneId zoneId) {
-    this.context = context;
+  public UDTFExecutor(FunctionExpression expression, ZoneId zoneId) {
+    this.expression = expression;
     configurations = new UDTFConfigurations(zoneId);
   }
 
-  public void beforeStart(long queryId, float collectorMemoryBudgetInMB)
+  public void beforeStart(
+      long queryId,
+      float collectorMemoryBudgetInMB,
+      Map<Expression, TSDataType> expressionDataTypeMap)
       throws QueryProcessException {
-    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(context);
+    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(expression);
 
-    UDFParameters parameters = new UDFParameters(context.getPaths(), context.getAttributes());
+    UDFParameters parameters = new UDFParameters(expression, expressionDataTypeMap);
 
     try {
       udtf.validate(new UDFParameterValidator(parameters));
@@ -103,8 +110,8 @@ public class UDTFExecutor {
             + e);
   }
 
-  public UDFContext getContext() {
-    return context;
+  public FunctionExpression getExpression() {
+    return expression;
   }
 
   public UDTFConfigurations getConfigurations() {

@@ -35,7 +35,7 @@ public class MManagerWhiteBox {
       MManager manager = constructor.newInstance();
       new File(logFilePath).getParentFile().mkdirs();
       Whitebox.setInternalState(manager, "logFilePath", logFilePath);
-      manager.init();
+      manager.initForMultiMManagerTest();
       return manager;
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
       e.printStackTrace();

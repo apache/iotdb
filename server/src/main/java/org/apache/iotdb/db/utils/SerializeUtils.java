@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchData.BatchDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -119,72 +118,14 @@ public class SerializeUtils {
     }
   }
 
-  public static void serialize(Node node, DataOutputStream dataOutputStream) {
-    try {
-      byte[] internalIpBytes = node.internalIp.getBytes();
-      dataOutputStream.writeInt(internalIpBytes.length);
-      dataOutputStream.write(internalIpBytes);
-      dataOutputStream.writeInt(node.metaPort);
-      dataOutputStream.writeInt(node.nodeIdentifier);
-      dataOutputStream.writeInt(node.dataPort);
-      dataOutputStream.writeInt(node.clientPort);
-      byte[] clientIpBytes = node.clientIp.getBytes();
-      dataOutputStream.writeInt(clientIpBytes.length);
-      dataOutputStream.write(clientIpBytes);
-    } catch (IOException e) {
-      // unreachable
-    }
-  }
-
-  public static void deserialize(Node node, ByteBuffer buffer) {
-    int internalIpLength = buffer.getInt();
-    byte[] internalIpBytes = new byte[internalIpLength];
-    buffer.get(internalIpBytes);
-    node.setInternalIp(new String(internalIpBytes));
-    node.setMetaPort(buffer.getInt());
-    node.setNodeIdentifier(buffer.getInt());
-    node.setDataPort(buffer.getInt());
-    node.setClientPort(buffer.getInt());
-    int clientIpLength = buffer.getInt();
-    byte[] clientIpBytes = new byte[clientIpLength];
-    buffer.get(clientIpBytes);
-    node.setClientIp(new String(clientIpBytes));
-  }
-
-  public static void deserialize(Node node, DataInputStream stream) throws IOException {
-    int ipLength = stream.readInt();
-    byte[] ipBytes = new byte[ipLength];
-    int readIpSize = stream.read(ipBytes);
-    if (readIpSize != ipLength) {
-      throw new IOException(
-          String.format(
-              "No sufficient bytes read when deserializing the ip of a node: %d/%d",
-              readIpSize, ipLength));
-    }
-    node.setInternalIp(new String(ipBytes));
-    node.setMetaPort(stream.readInt());
-    node.setNodeIdentifier(stream.readInt());
-    node.setDataPort(stream.readInt());
-    node.setClientPort(stream.readInt());
-
-    int clientIpLength = stream.readInt();
-    byte[] clientIpBytes = new byte[clientIpLength];
-    int readClientIpSize = stream.read(clientIpBytes);
-    if (readClientIpSize != clientIpLength) {
-      throw new IOException(
-          String.format(
-              "No sufficient bytes read when deserializing the clientIp of a node: %d/%d",
-              readClientIpSize, clientIpLength));
-    }
-    node.setClientIp(new String(clientIpBytes));
-  }
-
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void serializeBatchData(BatchData batchData, DataOutputStream outputStream) {
     try {
       int length = batchData.length();
       TSDataType dataType = batchData.getDataType();
       outputStream.writeInt(length);
       outputStream.write(dataType.ordinal());
+      outputStream.write(batchData.getBatchDataType().ordinal());
       switch (dataType) {
         case BOOLEAN:
           for (int i = 0; i < length; i++) {
@@ -224,12 +165,49 @@ public class SerializeUtils {
             outputStream.writeInt(batchData.getIntByIndex(i));
           }
           break;
+        case VECTOR:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            TsPrimitiveType[] values = batchData.getVectorByIndex(i);
+            outputStream.writeInt(values.length);
+            for (TsPrimitiveType value : values) {
+              if (value == null) {
+                outputStream.write(0);
+              } else {
+                outputStream.write(1);
+                outputStream.write(value.getDataType().serialize());
+                switch (value.getDataType()) {
+                  case BOOLEAN:
+                    outputStream.writeBoolean(value.getBoolean());
+                    break;
+                  case DOUBLE:
+                    outputStream.writeDouble(value.getDouble());
+                    break;
+                  case FLOAT:
+                    outputStream.writeFloat(value.getFloat());
+                    break;
+                  case TEXT:
+                    Binary binary = value.getBinary();
+                    outputStream.writeInt(binary.getLength());
+                    outputStream.write(binary.getValues());
+                    break;
+                  case INT64:
+                    outputStream.writeLong(value.getLong());
+                    break;
+                  case INT32:
+                    outputStream.writeInt(value.getInt());
+                    break;
+                }
+              }
+            }
+          }
       }
     } catch (IOException ignored) {
       // ignored
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static BatchData deserializeBatchData(ByteBuffer buffer) {
     if (buffer == null || (buffer.limit() - buffer.position()) == 0) {
       return null;
@@ -237,7 +215,7 @@ public class SerializeUtils {
 
     int length = buffer.getInt();
     TSDataType dataType = TSDataType.values()[buffer.get()];
-    BatchData batchData = new BatchData(dataType);
+    BatchData batchData = BatchDataType.deserialize(buffer.get(), dataType);
     switch (dataType) {
       case INT32:
         for (int i = 0; i < length; i++) {
@@ -273,7 +251,44 @@ public class SerializeUtils {
           batchData.putBoolean(buffer.getLong(), buffer.get() == 1);
         }
         break;
+      case VECTOR:
+        for (int i = 0; i < length; i++) {
+          long time = buffer.getLong();
+          int valuesLength = buffer.getInt();
+          TsPrimitiveType[] values = new TsPrimitiveType[valuesLength];
+          for (int j = 0; j < valuesLength; j++) {
+            boolean notNull = (buffer.get() == 1);
+            if (notNull) {
+              switch (TSDataType.values()[buffer.get()]) {
+                case BOOLEAN:
+                  values[j] = new TsPrimitiveType.TsBoolean(buffer.get() == 1);
+                  break;
+                case DOUBLE:
+                  values[j] = new TsPrimitiveType.TsDouble(buffer.getDouble());
+                  break;
+                case FLOAT:
+                  values[j] = new TsPrimitiveType.TsFloat(buffer.getFloat());
+                  break;
+                case TEXT:
+                  int len = buffer.getInt();
+                  byte[] bytes = new byte[len];
+                  buffer.get(bytes);
+                  values[j] = new TsPrimitiveType.TsBinary(new Binary(bytes));
+                  break;
+                case INT64:
+                  values[j] = new TsPrimitiveType.TsLong(buffer.getLong());
+                  break;
+                case INT32:
+                  values[j] = new TsPrimitiveType.TsInt(buffer.getInt());
+                  break;
+              }
+            }
+          }
+          batchData.putVector(time, values);
+        }
+        break;
     }
+    batchData.resetBatchData();
     return batchData;
   }
 

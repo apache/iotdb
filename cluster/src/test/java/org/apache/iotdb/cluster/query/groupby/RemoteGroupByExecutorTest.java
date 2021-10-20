@@ -41,8 +41,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertTrue;
 
@@ -54,36 +55,32 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       Filter timeFilter = null;
       List<Integer> aggregationTypes = new ArrayList<>();
       for (int i = 0; i < AggregationType.values().length; i++) {
         aggregationTypes.add(i);
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
       List<GroupByExecutor> groupByExecutors =
           readerFactory.getGroupByExecutors(
-              path,
-              Collections.singleton(path.getMeasurement()),
-              dataType,
-              context,
-              timeFilter,
-              aggregationTypes,
-              true);
+              path, deviceMeasurements, dataType, context, timeFilter, aggregationTypes, true);
 
       for (int i = 0; i < groupByExecutors.size(); i++) {
         GroupByExecutor groupByExecutor = groupByExecutors.get(i);
         Object[] answers;
-        if (i == 1) {
+        if (groupByExecutors.size() == 1) {
           // a series is only managed by one group
           List<AggregateResult> aggregateResults;
-          answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0};
+          answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0, 4.0};
           aggregateResults = groupByExecutor.calcResult(0, 5);
           checkAggregations(aggregateResults, answers);
 
-          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
+          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
           aggregateResults = groupByExecutor.calcResult(5, 10);
           checkAggregations(aggregateResults, answers);
         } else {
@@ -116,36 +113,35 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       Filter timeFilter = TimeFilter.gtEq(3);
       List<Integer> aggregationTypes = new ArrayList<>();
       for (int i = 0; i < AggregationType.values().length; i++) {
         aggregationTypes.add(i);
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
       List<GroupByExecutor> groupByExecutors =
           readerFactory.getGroupByExecutors(
-              path,
-              Collections.singleton(path.getMeasurement()),
-              dataType,
-              context,
-              timeFilter,
-              aggregationTypes,
-              true);
+              path, deviceMeasurements, dataType, context, timeFilter, aggregationTypes, true);
 
       for (int i = 0; i < groupByExecutors.size(); i++) {
         GroupByExecutor groupByExecutor = groupByExecutors.get(i);
         Object[] answers;
-        if (i == 1) {
+        if (groupByExecutors.size() == 1) {
           // a series is only managed by one group
           List<AggregateResult> aggregateResults;
-          answers = new Object[] {2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0};
+          answers =
+              new Object[] {
+                2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0,
+              };
           aggregateResults = groupByExecutor.calcResult(0, 5);
           checkAggregations(aggregateResults, answers);
 
-          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
+          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
           aggregateResults = groupByExecutor.calcResult(5, 10);
           checkAggregations(aggregateResults, answers);
         } else {

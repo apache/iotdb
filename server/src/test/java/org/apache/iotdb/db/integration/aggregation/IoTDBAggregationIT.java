@@ -38,6 +38,7 @@ import java.util.Locale;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.extreme;
 import static org.apache.iotdb.db.constant.TestConstant.first_value;
 import static org.apache.iotdb.db.constant.TestConstant.last_value;
 import static org.apache.iotdb.db.constant.TestConstant.max_time;
@@ -45,10 +46,12 @@ import static org.apache.iotdb.db.constant.TestConstant.max_value;
 import static org.apache.iotdb.db.constant.TestConstant.min_time;
 import static org.apache.iotdb.db.constant.TestConstant.min_value;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
 public class IoTDBAggregationIT {
 
+  private static final double DETLA = 1e-6;
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
 
@@ -693,9 +696,72 @@ public class IoTDBAggregationIT {
   }
 
   @Test
+  public void extremeTest() {
+    String[] retArray = new String[] {"0,8499", "0,2499"};
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT extreme(s0) FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(extreme(d0s0));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      hasResultSet = statement.execute("SELECT extreme(s0) FROM root.vehicle.d0 WHERE time < 2500");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(extreme(d0s0));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+
+      // keep the correctness of `order by time desc`
+      hasResultSet =
+          statement.execute(
+              "SELECT extreme(s0) "
+                  + "FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000 order by time desc");
+
+      Assert.assertTrue(hasResultSet);
+      cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(extreme(d0s0));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void avgSumTest() {
-    String[] retArray =
-        new String[] {"0,1.4508E7,7250.374812593702", "0,626750.0,1250.9980039920158"};
+    double[][] retArray = {
+      {0.0, 1.4508E7, 7250.374812593702},
+      {0.0, 626750.0, 1250.9980039920158}
+    };
+
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -709,13 +775,11 @@ public class IoTDBAggregationIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[3];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          ans[2] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -729,13 +793,11 @@ public class IoTDBAggregationIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[3];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          ans[2] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(2, cnt);
@@ -751,13 +813,11 @@ public class IoTDBAggregationIT {
       cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[3];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          ans[2] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -835,13 +895,13 @@ public class IoTDBAggregationIT {
   /** test aggregation query with more than one functions on one series */
   @Test
   public void mergeAggrOnOneSeriesTest() {
-    String[] retArray =
-        new String[] {
-          "0,1.4508E7,7250.374812593702,7250.374812593702,1.4508E7",
-          "0,626750.0,1250.9980039920158,1250.9980039920158,626750.0",
-          "0,1.4508E7,2001,7250.374812593702,7250.374812593702",
-          "0,1.4508E7,2001,7250.374812593702,7250.374812593702,2001,1.4508E7"
-        };
+    double[][] retArray = {
+      {0.0, 1.4508E7, 7250.374812593702, 7250.374812593702, 1.4508E7},
+      {0.0, 626750.0, 1250.9980039920158, 1250.9980039920158, 626750.0},
+      {0.0, 1.4508E7, 2001, 7250.374812593702, 7250.374812593702},
+      {0.0, 1.4508E7, 2001, 7250.374812593702, 7250.374812593702, 2001, 1.4508E7}
+    };
+
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -855,17 +915,13 @@ public class IoTDBAggregationIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2))
-                  + ","
-                  + resultSet.getString(avg(d0s0))
-                  + ","
-                  + resultSet.getString(sum(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[5];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          ans[2] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          ans[3] = Double.valueOf(resultSet.getString(avg(d0s0)));
+          ans[4] = Double.valueOf(resultSet.getString(sum(d0s2)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -879,17 +935,13 @@ public class IoTDBAggregationIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2))
-                  + ","
-                  + resultSet.getString(avg(d0s0))
-                  + ","
-                  + resultSet.getString(sum(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[5];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          ans[2] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          ans[3] = Double.valueOf(resultSet.getString(avg(d0s0)));
+          ans[4] = Double.valueOf(resultSet.getString(sum(d0s2)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(2, cnt);
@@ -903,17 +955,13 @@ public class IoTDBAggregationIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(count(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2))
-                  + ","
-                  + resultSet.getString(avg(d0s0));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[5];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          ans[2] = Double.valueOf(resultSet.getString(count(d0s0)));
+          ans[3] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          ans[4] = Double.valueOf(resultSet.getString(avg(d0s0)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(3, cnt);
@@ -927,21 +975,15 @@ public class IoTDBAggregationIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s2))
-                  + ","
-                  + resultSet.getString(count(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2))
-                  + ","
-                  + resultSet.getString(avg(d0s1))
-                  + ","
-                  + resultSet.getString(count(d0s2))
-                  + ","
-                  + resultSet.getString(sum(d0s0));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[7];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s2)));
+          ans[2] = Double.valueOf(resultSet.getString(count(d0s0)));
+          ans[3] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          ans[4] = Double.valueOf(resultSet.getString(avg(d0s1)));
+          ans[5] = Double.valueOf(resultSet.getString(count(d0s2)));
+          ans[6] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(4, cnt);

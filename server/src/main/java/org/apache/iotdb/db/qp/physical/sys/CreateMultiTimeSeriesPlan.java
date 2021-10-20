@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -33,17 +35,20 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * create multiple timeSeries, could be split to several sub Plans to execute in different DataGroup
  */
-public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
+public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan {
 
   private List<PartialPath> paths;
+  private List<PartialPath> prefixPaths;
   private List<TSDataType> dataTypes;
   private List<TSEncoding> encodings;
   private List<CompressionType> compressors;
@@ -51,6 +56,8 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   private List<Map<String, String>> props = null;
   private List<Map<String, String>> tags = null;
   private List<Map<String, String>> attributes = null;
+
+  boolean[] isExecuted;
 
   /** record the result of creation of time series */
   private Map<Integer, TSStatus> results = new TreeMap<>();
@@ -139,6 +146,15 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     return results;
   }
 
+  @Override
+  public List<PartialPath> getPrefixPaths() {
+    if (prefixPaths != null) {
+      return prefixPaths;
+    }
+    prefixPaths = paths.stream().map(PartialPath::getDevicePath).collect(Collectors.toList());
+    return prefixPaths;
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, paths.size());
   }
@@ -152,6 +168,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     stream.write(type);
     stream.writeInt(paths.size());
+    stream.writeInt(dataTypes.size()); // size of datatypes, encodings for aligned timeseries
 
     for (PartialPath path : paths) {
       putString(stream, path.getFullPath());
@@ -209,6 +226,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(paths.size());
+    buffer.putInt(dataTypes.size()); // size of datatypes, encodings for aligned timeseries
 
     for (PartialPath path : paths) {
       putString(buffer, path.getFullPath());
@@ -264,16 +282,17 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int totalSize = buffer.getInt();
+    int dataTypeSize = buffer.getInt();
     paths = new ArrayList<>(totalSize);
     for (int i = 0; i < totalSize; i++) {
       paths.add(new PartialPath(readString(buffer)));
     }
     dataTypes = new ArrayList<>(totalSize);
-    for (int i = 0; i < totalSize; i++) {
+    for (int i = 0; i < dataTypeSize; i++) {
       dataTypes.add(TSDataType.values()[buffer.get()]);
     }
     encodings = new ArrayList<>(totalSize);
-    for (int i = 0; i < totalSize; i++) {
+    for (int i = 0; i < dataTypeSize; i++) {
       encodings.add(TSEncoding.values()[buffer.get()]);
     }
     compressors = new ArrayList<>(totalSize);
@@ -322,5 +341,57 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   @Override
   public int hashCode() {
     return Objects.hash(paths, dataTypes, encodings, compressors);
+  }
+
+  @Override
+  public void checkIntegrity() throws QueryProcessException {
+    if (paths == null || paths.isEmpty()) {
+      throw new QueryProcessException("sub timeseries are empty");
+    }
+    if (paths.size() != dataTypes.size()) {
+      throw new QueryProcessException(
+          String.format(
+              "Measurements length [%d] does not match " + " datatype length [%d]",
+              paths.size(), dataTypes.size()));
+    }
+    for (PartialPath path : paths) {
+      if (path == null) {
+        throw new QueryProcessException("Paths contain null: " + Arrays.toString(paths.toArray()));
+      }
+    }
+  }
+
+  @Override
+  public void setIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = true;
+  }
+
+  @Override
+  public boolean isExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    return isExecuted[i];
+  }
+
+  @Override
+  public int getBatchSize() {
+    return paths.size();
+  }
+
+  @Override
+  public void unsetIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = false;
+    if (indexes != null && !indexes.isEmpty()) {
+      results.remove(indexes.get(i));
+    } else {
+      results.remove(i);
+    }
   }
 }

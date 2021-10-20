@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -45,8 +46,10 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
@@ -61,12 +64,16 @@ import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -102,6 +109,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
+
 /**
  * RaftMember process the common raft logic like leader election, log appending, catch-up and so on.
  */
@@ -131,9 +140,12 @@ public abstract class RaftMember {
   /** the lock is to make sure that only one thread can apply snapshot at the same time */
   private final Object snapshotApplyLock = new Object();
 
+  private final Object heartBeatWaitObject = new Object();
+
   protected Node thisNode = ClusterConstant.EMPTY_NODE;
+
   /** the nodes that belong to the same raft group as thisNode. */
-  protected List<Node> allNodes;
+  protected PartitionGroup allNodes;
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   /** the name of the member, to distinguish several members in the logs. */
@@ -217,11 +229,20 @@ public abstract class RaftMember {
   private ExecutorService serialToParallelPool;
   /** a thread pool that is used to do commit log tasks asynchronous in heartbeat thread */
   private ExecutorService commitLogPool;
+
   /**
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
    * which avoids the followers receiving out-of-order logs, forcing them to wait for previous logs.
    */
   private LogDispatcher logDispatcher;
+
+  /** If this node can not be the leader, this parameter will be set true. */
+  private volatile boolean skipElection = false;
+
+  /**
+   * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
+   */
+  protected PlanExecutor localExecutor;
 
   protected RaftMember() {}
 
@@ -314,6 +335,7 @@ public abstract class RaftMember {
    * induce side effects.
    */
   public void stop() {
+    setSkipElection(true);
     closeLogManager();
     if (heartBeatService == null) {
       return;
@@ -323,9 +345,9 @@ public abstract class RaftMember {
     catchUpService.shutdownNow();
     appendLogThreadPool.shutdownNow();
     try {
-      heartBeatService.awaitTermination(10, TimeUnit.SECONDS);
-      catchUpService.awaitTermination(10, TimeUnit.SECONDS);
-      appendLogThreadPool.awaitTermination(10, TimeUnit.SECONDS);
+      heartBeatService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
+      catchUpService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
+      appendLogThreadPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error(
@@ -336,7 +358,8 @@ public abstract class RaftMember {
     if (serialToParallelPool != null) {
       serialToParallelPool.shutdownNow();
       try {
-        serialToParallelPool.awaitTermination(10, TimeUnit.SECONDS);
+        serialToParallelPool.awaitTermination(
+            THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for asyncThreadPool to end", e);
@@ -346,12 +369,13 @@ public abstract class RaftMember {
     if (commitLogPool != null) {
       commitLogPool.shutdownNow();
       try {
-        commitLogPool.awaitTermination(10, TimeUnit.SECONDS);
+        commitLogPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
       }
     }
+    leader.set(ClusterConstant.EMPTY_NODE);
     catchUpService = null;
     heartBeatService = null;
     appendLogThreadPool = null;
@@ -381,8 +405,8 @@ public abstract class RaftMember {
         // a leader with a term lower than this node is invalid, send it the local term to inform
         // it to resign
         response.setTerm(thisTerm);
-        if (logger.isTraceEnabled()) {
-          logger.trace("{} received a heartbeat from a stale leader {}", name, request.getLeader());
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} received a heartbeat from a stale leader {}", name, request.getLeader());
         }
       } else {
         // try updating local term
@@ -399,37 +423,19 @@ public abstract class RaftMember {
         response.setTerm(Response.RESPONSE_AGREE);
         // tell the leader who I am in case of catch-up
         response.setFollower(thisNode);
+        // tell the leader the local log progress so it may decide whether to perform a catch up
+        response.setLastLogIndex(logManager.getLastLogIndex());
+        response.setLastLogTerm(logManager.getLastLogTerm());
 
-        synchronized (logManager) {
-          // tell the leader the local log progress so it may decide whether to perform a catch up
-          response.setLastLogIndex(logManager.getLastLogIndex());
-          response.setLastLogTerm(logManager.getLastLogTerm());
-        }
-
-        if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
-          // there are more local logs that can be committed, commit them in a ThreadPool so the
-          // heartbeat response will not be blocked
-          CommitLogTask commitLogTask =
-              new CommitLogTask(
-                  logManager, request.getCommitLogIndex(), request.getCommitLogTerm());
-          commitLogTask.registerCallback(new CommitLogCallback(this));
-          // if the log is not consistent, the commitment will be blocked until the leader makes the
-          // node catch up
-          if (commitLogPool != null && !commitLogPool.isShutdown()) {
-            commitLogPool.submit(commitLogTask);
-          }
-
+        if (logger.isDebugEnabled()) {
           logger.debug(
-              "{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
-                  + "localLast: {}-{}",
+              "{}: log commit log index = {}, max have applied commit index = {}",
               name,
-              request.getCommitLogIndex(),
-              request.getCommitLogTerm(),
               logManager.getCommitLogIndex(),
-              logManager.getCommitLogTerm(),
-              logManager.getLastLogIndex(),
-              logManager.getLastLogTerm());
+              logManager.getMaxHaveAppliedCommitIndex());
         }
+
+        tryUpdateCommitIndex(leaderTerm, request.getCommitLogIndex(), request.getCommitLogTerm());
 
         if (logger.isTraceEnabled()) {
           logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
@@ -439,11 +445,40 @@ public abstract class RaftMember {
     }
   }
 
+  private void tryUpdateCommitIndex(long leaderTerm, long commitIndex, long commitTerm) {
+    if (leaderTerm >= term.get() && logManager.getCommitLogIndex() < commitIndex) {
+      // there are more local logs that can be committed, commit them in a ThreadPool so the
+      // heartbeat response will not be blocked
+      CommitLogTask commitLogTask = new CommitLogTask(logManager, commitIndex, commitTerm);
+      commitLogTask.registerCallback(new CommitLogCallback(this));
+      // if the log is not consistent, the commitment will be blocked until the leader makes the
+      // node catch up
+      if (commitLogPool != null && !commitLogPool.isShutdown()) {
+        commitLogPool.submit(commitLogTask);
+      }
+
+      logger.debug(
+          "{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
+              + "localLast: {}-{}",
+          name,
+          commitIndex,
+          commitTerm,
+          logManager.getCommitLogIndex(),
+          logManager.getCommitLogTerm(),
+          logManager.getLastLogIndex(),
+          logManager.getLastLogTerm());
+    }
+  }
+
   /**
    * Process an ElectionRequest. If the request comes from the last leader, accept it. Else decide
    * whether to accept by examining the log status of the elector.
    */
   public long processElectionRequest(ElectionRequest electionRequest) {
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "{}: start to handle request from elector {}", name, electionRequest.getElector());
+    }
     synchronized (term) {
       long currentTerm = term.get();
       long response =
@@ -508,7 +543,9 @@ public abstract class RaftMember {
     }
 
     long startTime = Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.getOperationStartTime();
+    int logByteSize = request.getEntry().length;
     Log log = LogParser.getINSTANCE().parse(request.entry);
+    log.setByteSize(logByteSize);
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
@@ -529,12 +566,15 @@ public abstract class RaftMember {
 
     long response;
     List<Log> logs = new ArrayList<>();
+    int logByteSize = 0;
     long startTime = Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.getOperationStartTime();
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
       Log log;
+      logByteSize = buffer.limit() - buffer.position();
       try {
         log = LogParser.getINSTANCE().parse(buffer);
+        log.setByteSize(logByteSize);
       } catch (BufferUnderflowException e) {
         buffer.reset();
         throw e;
@@ -553,6 +593,13 @@ public abstract class RaftMember {
           response);
     }
     return response;
+  }
+
+  public PlanExecutor getLocalExecutor() throws QueryProcessException {
+    if (localExecutor == null) {
+      localExecutor = new PlanExecutor();
+    }
+    return localExecutor;
   }
 
   /**
@@ -649,7 +696,11 @@ public abstract class RaftMember {
     return allNodes;
   }
 
-  public void setAllNodes(List<Node> allNodes) {
+  public PartitionGroup getPartitionGroup() {
+    return allNodes;
+  }
+
+  public void setAllNodes(PartitionGroup allNodes) {
     this.allNodes = allNodes;
   }
 
@@ -686,7 +737,8 @@ public abstract class RaftMember {
     logger.info("{}: Start to make {} catch up", name, follower);
     if (!catchUpService.isShutdown()) {
       Future<?> future =
-          catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this, lastLogIdx));
+          catchUpService.submit(
+              new CatchUpTask(follower, getRaftGroupId(), peerMap.get(follower), this, lastLogIdx));
       catchUpService.submit(
           () -> {
             try {
@@ -867,9 +919,15 @@ public abstract class RaftMember {
   protected boolean waitUntilCatchUp(CheckConsistency checkConsistency)
       throws CheckConsistencyException {
     long leaderCommitId = Long.MIN_VALUE;
+    RequestCommitIndexResponse response;
     try {
-      leaderCommitId = config.isUseAsyncServer() ? requestCommitIdAsync() : requestCommitIdSync();
-      return syncLocalApply(leaderCommitId);
+      response = config.isUseAsyncServer() ? requestCommitIdAsync() : requestCommitIdSync();
+      leaderCommitId = response.getCommitLogIndex();
+
+      tryUpdateCommitIndex(
+          response.getTerm(), response.getCommitLogIndex(), response.getCommitLogTerm());
+
+      return syncLocalApply(leaderCommitId, true);
     } catch (TException e) {
       logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
     } catch (InterruptedException e) {
@@ -881,6 +939,7 @@ public abstract class RaftMember {
             leaderCommitId, logManager.getMaxHaveAppliedCommitIndex());
       }
     }
+    logger.debug("Start to sync with leader, leader commit id is {}", leaderCommitId);
     return false;
   }
 
@@ -888,12 +947,22 @@ public abstract class RaftMember {
    * sync local applyId to leader commitId
    *
    * @param leaderCommitId leader commit id
+   * @param fastFail if enable, when log differ too much, return false directly.
    * @return true if leaderCommitId <= localAppliedId
    */
-  private boolean syncLocalApply(long leaderCommitId) {
+  public boolean syncLocalApply(long leaderCommitId, boolean fastFail) {
     long startTime = System.currentTimeMillis();
     long waitedTime = 0;
-    long localAppliedId = 0;
+    long localAppliedId;
+
+    if (fastFail) {
+      if (leaderCommitId - logManager.getMaxHaveAppliedCommitIndex() > config.getMaxSyncLogLag()) {
+        logger.info(
+            "{}: The raft log of this member is too backward to provide service directly.", name);
+        return false;
+      }
+    }
+
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
       try {
         localAppliedId = logManager.getMaxHaveAppliedCommitIndex();
@@ -902,7 +971,8 @@ public abstract class RaftMember {
           // this node has caught up
           if (logger.isDebugEnabled()) {
             waitedTime = System.currentTimeMillis() - startTime;
-            logger.debug("{}: synchronized with the leader after {}ms", name, waitedTime);
+            logger.debug(
+                "{}: synchronized to target index {} after {}ms", name, leaderCommitId, waitedTime);
           }
           return true;
         }
@@ -911,15 +981,18 @@ public abstract class RaftMember {
         // the node may have some inconsistent logs with the leader
         waitedTime = System.currentTimeMillis() - startTime;
         synchronized (syncLock) {
-          syncLock.wait(RaftServer.getHeartBeatIntervalMs());
+          syncLock.wait(RaftServer.getHeartbeatIntervalMs());
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
       }
     }
-    logger.warn("{}: Failed to synchronize with the leader after {}ms", name, waitedTime);
-
+    logger.warn(
+        "{}: Failed to synchronize to target index {} after {}ms",
+        name,
+        leaderCommitId,
+        waitedTime);
     return false;
   }
 
@@ -936,18 +1009,38 @@ public abstract class RaftMember {
     }
 
     logger.debug("{}: Processing plan {}", name, plan);
-    if (readOnly) {
+    if (readOnly && !(plan instanceof LogPlan)) {
       return StatusUtils.NODE_READ_ONLY;
     }
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
-    PhysicalPlanLog log = new PhysicalPlanLog();
+
+    Log log;
     // assign term and index to the new log and append it
     synchronized (logManager) {
+      if (plan instanceof LogPlan) {
+        try {
+          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+        } catch (UnknownLogTypeException e) {
+          logger.error("Can not parse LogPlan {}", plan, e);
+          return StatusUtils.PARSE_LOG_ERROR;
+        }
+      } else {
+        log = new PhysicalPlanLog();
+        ((PhysicalPlanLog) log).setPlan(plan);
+        plan.setIndex(logManager.getLastLogIndex() + 1);
+      }
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-      log.setPlan(plan);
-      plan.setIndex(log.getCurrLogIndex());
+      // if a single log exceeds the threshold
+      // we need to return error code to the client as in server mode
+      if (log.serialize().capacity() + Integer.BYTES
+          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+        logger.error(
+            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+                + "or reduce the size of requests you send.");
+        return StatusUtils.INTERNAL_ERROR;
+      }
       logManager.append(log);
     }
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
@@ -957,7 +1050,7 @@ public abstract class RaftMember {
         return StatusUtils.OK;
       }
     } catch (LogExecutionException e) {
-      return handleLogExecutionException(log, e);
+      return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
   }
@@ -967,22 +1060,41 @@ public abstract class RaftMember {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
     }
-    PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest;
 
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
+    Log log;
     synchronized (logManager) {
       Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
           startTime);
 
+      if (plan instanceof LogPlan) {
+        try {
+          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+        } catch (UnknownLogTypeException e) {
+          logger.error("Can not parse LogPlan {}", plan, e);
+          return StatusUtils.PARSE_LOG_ERROR;
+        }
+      } else {
+        log = new PhysicalPlanLog();
+        ((PhysicalPlanLog) log).setPlan(plan);
+        plan.setIndex(logManager.getLastLogIndex() + 1);
+      }
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-      log.setPlan(plan);
-      plan.setIndex(log.getCurrLogIndex());
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+      // just like processPlanLocally,we need to check the size of log
+      if (log.serialize().capacity() + Integer.BYTES
+          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+        logger.error(
+            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+                + "or reduce the size of requests you send.");
+        return StatusUtils.INTERNAL_ERROR;
+      }
+      // logDispatcher will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
 
@@ -1020,7 +1132,7 @@ public abstract class RaftMember {
           break;
       }
     } catch (LogExecutionException e) {
-      return handleLogExecutionException(log, e);
+      return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
   }
@@ -1050,9 +1162,12 @@ public abstract class RaftMember {
   }
 
   @SuppressWarnings("java:S2274") // enable timeout
-  protected long requestCommitIdAsync() throws TException, InterruptedException {
+  protected RequestCommitIndexResponse requestCommitIdAsync()
+      throws TException, InterruptedException {
     // use Long.MAX_VALUE to indicate a timeout
-    AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
+    RequestCommitIndexResponse response =
+        new RequestCommitIndexResponse(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
+    AtomicReference<RequestCommitIndexResponse> commitIdResult = new AtomicReference<>(response);
     AsyncClient client = getAsyncClient(leader.get());
     if (client == null) {
       // cannot connect to the leader
@@ -1061,29 +1176,30 @@ public abstract class RaftMember {
     }
     synchronized (commitIdResult) {
       client.requestCommitIndex(getHeader(), new GenericHandler<>(leader.get(), commitIdResult));
-      commitIdResult.wait(RaftServer.getSyncLeaderMaxWaitMs());
+      commitIdResult.wait(RaftServer.getReadOperationTimeoutMS());
     }
     return commitIdResult.get();
   }
 
-  private long requestCommitIdSync() throws TException {
+  private RequestCommitIndexResponse requestCommitIdSync() throws TException {
     Client client = getSyncClient(leader.get());
+    RequestCommitIndexResponse response;
     if (client == null) {
       // cannot connect to the leader
       logger.warn(MSG_NO_LEADER_IN_SYNC, name);
       // use Long.MAX_VALUE to indicate a timeouts
-      return Long.MAX_VALUE;
+      response = new RequestCommitIndexResponse(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
+      return response;
     }
-    long commitIndex;
     try {
-      commitIndex = client.requestCommitIndex(getHeader());
+      response = client.requestCommitIndex(getHeader());
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
     } finally {
       ClientUtils.putBackSyncClient(client);
     }
-    return commitIndex;
+    return response;
   }
 
   /**
@@ -1132,6 +1248,10 @@ public abstract class RaftMember {
     return serialToParallelPool;
   }
 
+  public ExecutorService getAppendLogThreadPool() {
+    return appendLogThreadPool;
+  }
+
   public Object getSyncLock() {
     return syncLock;
   }
@@ -1151,6 +1271,7 @@ public abstract class RaftMember {
     long thatTerm = electionRequest.getTerm();
     long thatLastLogIndex = electionRequest.getLastLogIndex();
     long thatLastLogTerm = electionRequest.getLastLogTerm();
+    Node elector = electionRequest.getElector();
 
     // check the log progress of the elector
     long resp = checkLogProgress(thatLastLogIndex, thatLastLogTerm);
@@ -1166,7 +1287,7 @@ public abstract class RaftMember {
           logManager.getLastLogTerm());
       setCharacter(NodeCharacter.FOLLOWER);
       lastHeartbeatReceivedTime = System.currentTimeMillis();
-      setVoteFor(electionRequest.getElector());
+      setVoteFor(elector);
       updateHardState(thatTerm, getVoteFor());
     } else {
       logger.info(
@@ -1210,7 +1331,7 @@ public abstract class RaftMember {
    *     communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  public TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
+  public TSStatus forwardPlan(PhysicalPlan plan, Node node, RaftNode header) {
     if (node == null || node.equals(thisNode)) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
@@ -1242,7 +1363,7 @@ public abstract class RaftMember {
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header) {
+  private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header) {
     AsyncClient client = getAsyncClient(receiver);
     if (client == null) {
       logger.debug("{}: can not get client for node={}", name, receiver);
@@ -1254,7 +1375,7 @@ public abstract class RaftMember {
   }
 
   public TSStatus forwardPlanAsync(
-      PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
+      PhysicalPlan plan, Node receiver, RaftNode header, AsyncClient client) {
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
@@ -1272,7 +1393,7 @@ public abstract class RaftMember {
     }
   }
 
-  private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header) {
+  private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, RaftNode header) {
     Client client = getSyncClient(receiver);
     if (client == null) {
       logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
@@ -1281,7 +1402,8 @@ public abstract class RaftMember {
     return forwardPlanSync(plan, receiver, header, client);
   }
 
-  public TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
+  public TSStatus forwardPlanSync(
+      PhysicalPlan plan, Node receiver, RaftNode header, Client client) {
     try {
       ExecutNonQueryReq req = new ExecutNonQueryReq();
       req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
@@ -1448,10 +1570,17 @@ public abstract class RaftMember {
     }
   }
 
-  private TSStatus handleLogExecutionException(PhysicalPlanLog log, LogExecutionException e) {
-    Throwable cause = IOUtils.getRootCause(e);
+  protected TSStatus handleLogExecutionException(Object log, Throwable cause) {
     if (cause instanceof BatchProcessException) {
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) cause).getFailingStatus()));
+    }
+    if (cause instanceof DuplicatedTemplateException) {
+      return StatusUtils.DUPLICATED_TEMPLATE.deepCopy().setMessage(cause.getMessage());
+    }
+    if (cause instanceof StorageGroupNotSetException) {
+      TSStatus status = StatusUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST);
+      status.setMessage(cause.getMessage());
+      return status;
     }
     TSStatus tsStatus =
         StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, cause.getMessage());
@@ -1462,7 +1591,6 @@ public abstract class RaftMember {
       tsStatus.setCode(((IoTDBException) cause).getErrorCode());
     }
     if (!(cause instanceof PathNotExistException)
-        && !(cause instanceof StorageGroupNotSetException)
         && !(cause instanceof PathAlreadyExistException)
         && !(cause instanceof StorageGroupAlreadySetException)) {
       logger.debug("{} cannot be executed because ", log, cause);
@@ -1474,7 +1602,9 @@ public abstract class RaftMember {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     if (serializeNow) {
-      request.setEntry(log.serialize());
+      ByteBuffer byteBuffer = log.serialize();
+      log.setByteSize(byteBuffer.array().length);
+      request.setEntry(byteBuffer);
     }
     request.setLeader(getThisNode());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
@@ -1508,7 +1638,8 @@ public abstract class RaftMember {
         logger.info("{} has update it's term to {}", getName(), newTerm);
         term.set(newTerm);
         setVoteFor(null);
-        setLeader(ClusterConstant.EMPTY_NODE);
+        setCharacter(NodeCharacter.ELECTOR);
+        setLeader(null);
         updateHardState(newTerm, getVoteFor());
       }
 
@@ -1530,7 +1661,7 @@ public abstract class RaftMember {
   }
 
   /** @return the header of the data raft group or null if this is in a meta group. */
-  public Node getHeader() {
+  public RaftNode getHeader() {
     return null;
   }
 
@@ -1573,10 +1704,10 @@ public abstract class RaftMember {
       long startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.getOperationStartTime();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       if (character != NodeCharacter.LEADER) {
-        logger.debug("Has lose leadership, so need not to send log");
+        logger.debug("{}: Has lose leadership, so need not to send log", name);
         return false;
       }
-      AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
+      AppendLogResult result = sendLogToFollowers(log);
       Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.calOperationCostTimeFromStart(startTime);
       switch (result) {
         case OK:
@@ -1588,7 +1719,7 @@ public abstract class RaftMember {
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
           try {
-            Thread.sleep(1000);
+            Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
           }
@@ -1609,14 +1740,13 @@ public abstract class RaftMember {
    * Send the given log to all the followers and decide the result by how many followers return a
    * success.
    *
-   * @param requiredQuorum the number of votes needed to make the log valid, when requiredQuorum <=
-   *     0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
-  private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
+  protected AppendLogResult sendLogToFollowers(Log log) {
+    int requiredQuorum = allNodes.size() / 2;
     if (requiredQuorum <= 0) {
       // use half of the members' size as the quorum
-      return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
+      return sendLogToFollowers(log, new AtomicInteger(requiredQuorum));
     } else {
       // make sure quorum does not exceed the number of members - 1
       return sendLogToFollowers(
@@ -1802,7 +1932,7 @@ public abstract class RaftMember {
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
    *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  private long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
+  protected long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     long resp = checkPrevLogIndex(prevLogIndex);
     if (resp != Response.RESPONSE_AGREE) {
       return resp;
@@ -1939,9 +2069,25 @@ public abstract class RaftMember {
     return Response.RESPONSE_AGREE;
   }
 
+  public int getRaftGroupId() {
+    return allNodes.getId();
+  }
+
   enum AppendLogResult {
     OK,
     TIME_OUT,
     LEADERSHIP_STALE
+  }
+
+  public Object getHeartBeatWaitObject() {
+    return heartBeatWaitObject;
+  }
+
+  public boolean isSkipElection() {
+    return skipElection;
+  }
+
+  public void setSkipElection(boolean skipElection) {
+    this.skipElection = skipElection;
   }
 }

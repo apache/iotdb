@@ -22,21 +22,31 @@ public interface CacheHitRatioMonitorMXBean {
 
   double getChunkHitRatio();
 
-  long getChunkCacheUsedMemory();
+  long getChunkEvictionCount();
 
   long getChunkCacheMaxMemory();
 
-  double getChunkCacheUsedMemoryProportion();
+  double getChunkCacheAverageLoadPenalty();
 
   long getChunkCacheAverageSize();
 
   double getTimeSeriesMetadataHitRatio();
 
-  long getTimeSeriesMetadataCacheUsedMemory();
+  long getTimeSeriesMetadataCacheEvictionCount();
 
   long getTimeSeriesMetadataCacheMaxMemory();
 
-  double getTimeSeriesCacheUsedMemoryProportion();
+  double getTimeSeriesCacheAverageLoadPenalty();
 
   long getTimeSeriesMetaDataCacheAverageSize();
+
+  long getTotalMemTableSize();
+
+  double getFlushThershold();
+
+  double getRejectThershold();
+
+  int flushingMemTableNum();
+
+  int totalMemTableNum();
 }

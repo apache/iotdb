@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
@@ -188,7 +189,7 @@ public class IoTDBEngineTimeGeneratorIT {
   /** value >= 14 && time > 500 */
   @Test
   public void testOneSeriesWithValueAndTimeFilter()
-      throws IOException, StorageEngineException, IllegalPathException {
+      throws IOException, StorageEngineException, IllegalPathException, QueryProcessException {
     // System.out.println("Test >>> root.vehicle.d0.s0 >= 14 && time > 500");
 
     PartialPath pd0s0 =
@@ -198,8 +199,12 @@ public class IoTDBEngineTimeGeneratorIT {
 
     SingleSeriesExpression singleSeriesExpression =
         new SingleSeriesExpression(pd0s0, FilterFactory.and(valueGtEq, timeGt));
-    ServerTimeGenerator timeGenerator =
-        new ServerTimeGenerator(singleSeriesExpression, TEST_QUERY_CONTEXT, new RawDataQueryPlan());
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    List<PartialPath> paths = new ArrayList<>();
+    paths.add(pd0s0);
+    queryPlan.setDeduplicatedPathsAndUpdate(paths);
+    queryPlan.setExpression(singleSeriesExpression);
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(TEST_QUERY_CONTEXT, queryPlan);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -214,7 +219,7 @@ public class IoTDBEngineTimeGeneratorIT {
   /** root.vehicle.d1.s0 >= 5, and d1.s0 has no data */
   @Test
   public void testEmptySeriesWithValueFilter()
-      throws IOException, StorageEngineException, IllegalPathException {
+      throws IOException, StorageEngineException, IllegalPathException, QueryProcessException {
     // System.out.println("Test >>> root.vehicle.d1.s0 >= 5");
 
     PartialPath pd1s0 =
@@ -225,10 +230,9 @@ public class IoTDBEngineTimeGeneratorIT {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     List<PartialPath> paths = new ArrayList<>();
     paths.add(pd1s0);
-    queryPlan.setDeduplicatedPaths(paths);
-
-    ServerTimeGenerator timeGenerator =
-        new ServerTimeGenerator(singleSeriesExpression, TEST_QUERY_CONTEXT, queryPlan);
+    queryPlan.setDeduplicatedPathsAndUpdate(paths);
+    queryPlan.setExpression(singleSeriesExpression);
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(TEST_QUERY_CONTEXT, queryPlan);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -240,7 +244,7 @@ public class IoTDBEngineTimeGeneratorIT {
   /** root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900 */
   @Test
   public void testMultiSeriesWithValueFilterAndTimeFilter()
-      throws IOException, StorageEngineException, IllegalPathException {
+      throws IOException, StorageEngineException, IllegalPathException, QueryProcessException {
     System.out.println(
         "Test >>> root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900");
 
@@ -264,9 +268,9 @@ public class IoTDBEngineTimeGeneratorIT {
     List<PartialPath> paths = new ArrayList<>();
     paths.add(pd0s0);
     paths.add(pd0s2);
-    queryPlan.setDeduplicatedPaths(paths);
-    ServerTimeGenerator timeGenerator =
-        new ServerTimeGenerator(andExpression, TEST_QUERY_CONTEXT, queryPlan);
+    queryPlan.setDeduplicatedPathsAndUpdate(paths);
+    queryPlan.setExpression(andExpression);
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(TEST_QUERY_CONTEXT, queryPlan);
     int cnt = 0;
     while (timeGenerator.hasNext()) {
       long time = timeGenerator.next();

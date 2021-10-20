@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -52,8 +52,7 @@ public class ClusterQueryUtils {
   public static void checkPathExistence(PartialPath path) throws QueryProcessException {
     if (!IoTDB.metaManager.isPathExist(path)) {
       try {
-        ((CMManager) IoTDB.metaManager)
-            .pullTimeSeriesSchemas(Collections.singletonList(path), null);
+        MetaPuller.getInstance().pullTimeSeriesSchemas(Collections.singletonList(path), null);
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       }

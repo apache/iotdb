@@ -58,12 +58,26 @@ public enum CompressionType {
    * @return CompressionType
    */
   public static CompressionType deserialize(byte compressor) {
-    for (CompressionType compressionType : CompressionType.values()) {
-      if (compressor == compressionType.index) {
-        return compressionType;
-      }
+    switch (compressor) {
+      case 0:
+        return CompressionType.UNCOMPRESSED;
+      case 1:
+        return CompressionType.SNAPPY;
+      case 2:
+        return CompressionType.GZIP;
+      case 3:
+        return CompressionType.LZO;
+      case 4:
+        return CompressionType.SDT;
+      case 5:
+        return CompressionType.PAA;
+      case 6:
+        return CompressionType.PLA;
+      case 7:
+        return CompressionType.LZ4;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + compressor);
     }
-    throw new IllegalArgumentException("Invalid input: " + compressor);
   }
 
   public static int getSerializedSize() {

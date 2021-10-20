@@ -18,6 +18,8 @@
 
 package org.apache.iotdb.flink;
 
+import org.apache.iotdb.flink.options.IoTDBSinkOptions;
+
 import com.google.common.collect.Lists;
 import org.junit.Test;
 
@@ -30,9 +32,9 @@ public class DefaultIoTSerializationSchemaTest {
 
   @Test
   public void serialize() {
-    IoTDBOptions options = new IoTDBOptions();
+    IoTDBSinkOptions options = new IoTDBSinkOptions();
     options.setTimeseriesOptionList(
-        Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
+        Lists.newArrayList(new IoTDBSinkOptions.TimeseriesOption("root.sg.D01.temperature")));
     DefaultIoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
 
     Map<String, String> tuple = new HashMap();

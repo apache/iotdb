@@ -32,6 +32,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -133,19 +134,20 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       }
       // lazy reset batch data for calculation
       batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
+      IBatchDataIterator batchIterator = batchData.getBatchDataIterator();
       if (ascending) {
         // skip points that cannot be calculated
-        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
-          batchData.next();
+        while (batchIterator.hasNext() && batchIterator.currentTime() < curStartTime) {
+          batchIterator.next();
         }
       } else {
-        while (batchData.hasCurrent() && batchData.currentTime() >= curEndTime) {
-          batchData.next();
+        while (batchIterator.hasNext() && batchIterator.currentTime() >= curEndTime) {
+          batchIterator.next();
         }
       }
 
-      if (batchData.hasCurrent()) {
-        result.updateResultFromPageData(batchData, curStartTime, curEndTime);
+      if (batchIterator.hasNext()) {
+        result.updateResultFromPageData(batchIterator, curStartTime, curEndTime);
       }
     }
     lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
@@ -331,6 +333,9 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       // stop calc and cached current batchData
       if (ascending && batchData.currentTime() >= curEndTime) {
         preCachedData = batchData;
+        // reset the last position to current Index
+        lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+        lastReadCurListIndex = batchData.getReadCurListIndex();
         return true;
       }
 

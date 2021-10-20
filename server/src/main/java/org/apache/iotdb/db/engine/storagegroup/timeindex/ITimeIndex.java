@@ -29,6 +29,8 @@ import java.util.Set;
 
 public interface ITimeIndex {
 
+  int SPANS_MULTI_TIME_PARTITIONS_FLAG_ID = -1;
+
   /**
    * serialize to outputStream
    *
@@ -60,44 +62,43 @@ public interface ITimeIndex {
    *
    * @return device names
    */
-  Set<String> getDevices();
+  Set<String> getDevices(String tsFilePath);
 
   /** @return whether end time is empty (Long.MIN_VALUE) */
   boolean endTimeEmpty();
 
   /**
-   * @param timeLowerBound time lower bound
+   * @param ttlLowerBound time lower bound
    * @return whether any of the device lives over the given time bound
    */
-  boolean stillLives(long timeLowerBound);
+  boolean stillLives(long ttlLowerBound);
 
   /** @return Calculate file index ram size */
   long calculateRamSize();
 
   /**
-   * Calculate file index ram increment when insert data in TsFileProcessor
-   *
-   * @param deviceToBeChecked device to be checked
-   * @return ramIncrement
-   */
-  long estimateRamIncrement(String deviceToBeChecked);
-
-  /**
    * get time partition
    *
-   * @param tsfilePath tsfile absolute path
+   * @param tsFilePath tsFile absolute path
    * @return partition
    */
-  long getTimePartition(String tsfilePath);
+  long getTimePartition(String tsFilePath);
 
   /**
-   * get time partition with check. If data of tsfile cross partitions, an exception will be thrown
+   * get time partition with check. If data of tsFile spans partitions, an exception will be thrown
    *
-   * @param tsfilePath tsfile path
+   * @param tsFilePath tsFile path
    * @return partition
-   * @throws PartitionViolationException data of tsfile cross partitions
+   * @throws PartitionViolationException data of tsFile spans partitions
    */
-  long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException;
+  long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException;
+
+  /**
+   * Check whether the tsFile spans multiple time partitions.
+   *
+   * @return true if the tsFile spans multiple time partitions, otherwise false.
+   */
+  boolean isSpanMultiTimePartitions();
 
   /**
    * update start time
@@ -116,6 +117,22 @@ public interface ITimeIndex {
   void updateEndTime(String deviceId, long time);
 
   /**
+   * put start time
+   *
+   * @param deviceId device name
+   * @param time start time
+   */
+  void putStartTime(String deviceId, long time);
+
+  /**
+   * put end time
+   *
+   * @param deviceId device name
+   * @param time end time
+   */
+  void putEndTime(String deviceId, long time);
+
+  /**
    * get start time of device
    *
    * @param deviceId device name
@@ -130,4 +147,36 @@ public interface ITimeIndex {
    * @return end time
    */
   long getEndTime(String deviceId);
+
+  /**
+   * check whether deviceId exists in TsFile
+   *
+   * @param deviceId device name
+   * @return true if the deviceId may exist in TsFile, otherwise false.
+   */
+  boolean checkDeviceIdExist(String deviceId);
+
+  /**
+   * get min start time of device
+   *
+   * @return min start time
+   */
+  long getMinStartTime();
+
+  /**
+   * get max end time of device
+   *
+   * @return max end time
+   */
+  long getMaxEndTime();
+
+  /**
+   * compare the priority of two ITimeIndex
+   *
+   * @param timeIndex another timeIndex
+   * @return value is less than 0 if the priority of this timeIndex is higher than the argument,
+   *     value is equal to 0 if the priority of this timeIndex is equal to the argument, value is
+   *     larger than 0 if the priority of this timeIndex is less than the argument
+   */
+  int compareDegradePriority(ITimeIndex timeIndex);
 }

@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class ClusterAggregateExecutor extends AggregationExecutor {
@@ -51,8 +50,9 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
    *
    * @param aggregationPlan
    */
-  public ClusterAggregateExecutor(AggregationPlan aggregationPlan, MetaGroupMember metaMember) {
-    super(aggregationPlan);
+  public ClusterAggregateExecutor(
+      QueryContext context, AggregationPlan aggregationPlan, MetaGroupMember metaMember) {
+    super(context, aggregationPlan);
     this.metaMember = metaMember;
     this.readerFactory = new ClusterReaderFactory(metaMember);
     this.aggregator = new ClusterAggregator(metaMember);
@@ -60,24 +60,28 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
 
   @Override
   protected void aggregateOneSeries(
-      Map.Entry<PartialPath, List<Integer>> pathToAggrIndexes,
-      AggregateResult[] aggregateResultList,
-      Set<String> measurements,
-      Filter timeFilter,
-      QueryContext context)
+      PartialPath seriesPath,
+      List<Integer> indexes,
+      Set<String> allMeasurementsInDevice,
+      Filter timeFilter)
       throws StorageEngineException {
-    PartialPath seriesPath = pathToAggrIndexes.getKey();
-    TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
+    TSDataType tsDataType = dataTypes.get(indexes.get(0));
     List<String> aggregationNames = new ArrayList<>();
 
-    for (int i : pathToAggrIndexes.getValue()) {
+    for (int i : indexes) {
       aggregationNames.add(aggregations.get(i));
     }
     List<AggregateResult> aggregateResult =
         aggregator.getAggregateResult(
-            seriesPath, measurements, aggregationNames, tsDataType, timeFilter, context, ascending);
+            seriesPath,
+            allMeasurementsInDevice,
+            aggregationNames,
+            tsDataType,
+            timeFilter,
+            context,
+            ascending);
     int rstIndex = 0;
-    for (int i : pathToAggrIndexes.getValue()) {
+    for (int i : indexes) {
       aggregateResultList[i] = aggregateResult.get(rstIndex++);
     }
   }
@@ -85,7 +89,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
   @Override
   protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan rawDataQueryPlan)
       throws StorageEngineException {
-    return new ClusterTimeGenerator(expression, context, metaMember, rawDataQueryPlan);
+    return new ClusterTimeGenerator(context, metaMember, rawDataQueryPlan, false);
   }
 
   @Override
@@ -97,6 +101,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
         dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
         dataType,
         context,
-        dataQueryPlan.isAscending());
+        dataQueryPlan.isAscending(),
+        null);
   }
 }

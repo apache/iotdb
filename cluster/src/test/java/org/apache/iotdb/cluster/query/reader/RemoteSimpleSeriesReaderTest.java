@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -79,7 +80,7 @@ public class RemoteSimpleSeriesReaderTest {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void fetchSingleSeries(
-                  Node header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
+                  RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
                   throws TException {
                 if (failedNodes.contains(node)) {
                   throw new TException("Node down.");

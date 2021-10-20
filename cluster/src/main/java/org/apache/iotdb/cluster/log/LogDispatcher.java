@@ -92,7 +92,13 @@ public class LogDispatcher {
   public void offer(SendLogRequest log) {
     // do serialization here to avoid taking LogManager for too long
     if (!nodeLogQueues.isEmpty()) {
-      log.serializedLogFuture = serializationService.submit(() -> log.getLog().serialize());
+      log.serializedLogFuture =
+          serializationService.submit(
+              () -> {
+                ByteBuffer byteBuffer = log.getLog().serialize();
+                log.getLog().setByteSize(byteBuffer.array().length);
+                return byteBuffer;
+              });
     }
     for (int i = 0; i < nodeLogQueues.size(); i++) {
       BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);

@@ -34,46 +34,49 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
 
   private ChunkReaderByTimestamp chunkReaderByTimestamp;
   private BatchData data;
+  private long currentTime = Long.MIN_VALUE;
 
   public DiskChunkReaderByTimestamp(ChunkReaderByTimestamp chunkReaderByTimestamp) {
     this.chunkReaderByTimestamp = chunkReaderByTimestamp;
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
+    Object[] result = new Object[length];
 
-    if (!hasNext()) {
-      return null;
-    }
-
-    while (data != null) {
-      Object value = data.getValueInTimestamp(timestamp);
-      if (value != null) {
-        return value;
+    for (int i = 0; i < length; i++) {
+      if (timestamps[i] < currentTime) {
+        throw new IOException("time must be increasing when use ReaderByTimestamp");
       }
-      if (data.hasCurrent()) {
-        return null;
-      } else {
-        chunkReaderByTimestamp.setCurrentTimestamp(timestamp);
-        if (chunkReaderByTimestamp.hasNextSatisfiedPage()) {
-          data = chunkReaderByTimestamp.nextPageData();
-        } else {
-          return null;
+      currentTime = timestamps[i];
+      while (hasNext()) {
+        data = next();
+        if (data.getMinTimestamp() > currentTime) {
+          result[i] = null;
+          break;
+        }
+        result[i] = data.getValueInTimestamp(currentTime);
+        // fill cache
+        if (!data.hasCurrent() && chunkReaderByTimestamp.hasNextSatisfiedPage()) {
+          data = next();
         }
       }
     }
-
-    return null;
+    return result;
   }
 
-  private boolean hasNext() throws IOException {
-    if (data != null && data.hasCurrent()) {
-      return true;
+  private boolean hasCacheData() {
+    return data != null && data.hasCurrent();
+  }
+
+  private boolean hasNext() {
+    return hasCacheData() || chunkReaderByTimestamp.hasNextSatisfiedPage();
+  }
+
+  private BatchData next() throws IOException {
+    if (hasCacheData()) {
+      return data;
     }
-    if (chunkReaderByTimestamp != null && chunkReaderByTimestamp.hasNextSatisfiedPage()) {
-      data = chunkReaderByTimestamp.nextPageData();
-      return true;
-    }
-    return false;
+    return chunkReaderByTimestamp.nextPageData();
   }
 }

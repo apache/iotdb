@@ -21,7 +21,9 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -38,12 +40,12 @@ public class PullMeasurementSchemaHandler implements AsyncMethodCallback<PullSch
 
   private Node owner;
   private List<String> prefixPaths;
-  private AtomicReference<List<MeasurementSchema>> timeseriesSchemas;
+  private AtomicReference<List<IMeasurementSchema>> timeseriesSchemas;
 
   public PullMeasurementSchemaHandler(
       Node owner,
       List<String> prefixPaths,
-      AtomicReference<List<MeasurementSchema>> timeseriesSchemas) {
+      AtomicReference<List<IMeasurementSchema>> timeseriesSchemas) {
     this.owner = owner;
     this.prefixPaths = prefixPaths;
     this.timeseriesSchemas = timeseriesSchemas;
@@ -53,9 +55,12 @@ public class PullMeasurementSchemaHandler implements AsyncMethodCallback<PullSch
   public void onComplete(PullSchemaResp response) {
     ByteBuffer buffer = response.schemaBytes;
     int size = buffer.getInt();
-    List<MeasurementSchema> schemas = new ArrayList<>(size);
+    List<IMeasurementSchema> schemas = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      schemas.add(MeasurementSchema.deserializeFrom(buffer));
+      schemas.add(
+          buffer.get() == 0
+              ? UnaryMeasurementSchema.partialDeserializeFrom(buffer)
+              : VectorMeasurementSchema.partialDeserializeFrom(buffer));
     }
     synchronized (timeseriesSchemas) {
       timeseriesSchemas.set(schemas);

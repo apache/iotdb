@@ -22,10 +22,13 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.rescon.CachedStringPool;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,6 +41,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DeviceTimeIndex implements ITimeIndex {
+
+  private static final Logger logger = LoggerFactory.getLogger(DeviceTimeIndex.class);
 
   public static final int INIT_ARRAY_SIZE = 64;
 
@@ -53,6 +58,12 @@ public class DeviceTimeIndex implements ITimeIndex {
    */
   protected long[] endTimes;
 
+  /** min start time */
+  private long minStartTime = Long.MAX_VALUE;
+
+  /** max end time */
+  private long maxEndTime = Long.MIN_VALUE;
+
   /** device -> index of start times array and end times array */
   protected Map<String, Integer> deviceToIndex;
 
@@ -60,14 +71,6 @@ public class DeviceTimeIndex implements ITimeIndex {
     this.deviceToIndex = new ConcurrentHashMap<>();
     this.startTimes = new long[INIT_ARRAY_SIZE];
     this.endTimes = new long[INIT_ARRAY_SIZE];
-    initTimes(startTimes, Long.MAX_VALUE);
-    initTimes(endTimes, Long.MIN_VALUE);
-  }
-
-  public DeviceTimeIndex(int deviceNumInLastClosedTsFile) {
-    this.deviceToIndex = new ConcurrentHashMap<>();
-    this.startTimes = new long[deviceNumInLastClosedTsFile];
-    this.endTimes = new long[deviceNumInLastClosedTsFile];
     initTimes(startTimes, Long.MAX_VALUE);
     initTimes(endTimes, Long.MIN_VALUE);
   }
@@ -88,24 +91,31 @@ public class DeviceTimeIndex implements ITimeIndex {
       ReadWriteIOUtils.write(endTimes[i], outputStream);
     }
 
+    Map<String, Integer> stringMemoryReducedMap = new ConcurrentHashMap<>();
     for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
       String deviceName = stringIntegerEntry.getKey();
       int index = stringIntegerEntry.getValue();
+      // To reduce the String number in memory,
+      // use the deviceId from cached pool
+      stringMemoryReducedMap.put(cachedDevicePool.computeIfAbsent(deviceName, k -> k), index);
       ReadWriteIOUtils.write(deviceName, outputStream);
       ReadWriteIOUtils.write(index, outputStream);
     }
+    deviceToIndex = stringMemoryReducedMap;
   }
 
   @Override
   public DeviceTimeIndex deserialize(InputStream inputStream) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
-    Map<String, Integer> deviceMap = new ConcurrentHashMap<>();
-    long[] startTimesArray = new long[deviceNum];
-    long[] endTimesArray = new long[deviceNum];
+
+    startTimes = new long[deviceNum];
+    endTimes = new long[deviceNum];
 
     for (int i = 0; i < deviceNum; i++) {
-      startTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
-      endTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
+      startTimes[i] = ReadWriteIOUtils.readLong(inputStream);
+      endTimes[i] = ReadWriteIOUtils.readLong(inputStream);
+      minStartTime = Math.min(minStartTime, startTimes[i]);
+      maxEndTime = Math.max(maxEndTime, endTimes[i]);
     }
 
     for (int i = 0; i < deviceNum; i++) {
@@ -114,21 +124,22 @@ public class DeviceTimeIndex implements ITimeIndex {
       // use the deviceId from memory instead of the deviceId read from disk
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       int index = ReadWriteIOUtils.readInt(inputStream);
-      deviceMap.put(cachedPath, index);
+      deviceToIndex.put(cachedPath, index);
     }
-    return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
+    return this;
   }
 
   @Override
   public DeviceTimeIndex deserialize(ByteBuffer buffer) {
     int deviceNum = buffer.getInt();
-    Map<String, Integer> deviceMap = new ConcurrentHashMap<>(deviceNum);
-    long[] startTimesArray = new long[deviceNum];
-    long[] endTimesArray = new long[deviceNum];
+    startTimes = new long[deviceNum];
+    endTimes = new long[deviceNum];
 
     for (int i = 0; i < deviceNum; i++) {
-      startTimesArray[i] = buffer.getLong();
-      endTimesArray[i] = buffer.getLong();
+      startTimes[i] = buffer.getLong();
+      endTimes[i] = buffer.getLong();
+      minStartTime = Math.min(minStartTime, startTimes[i]);
+      maxEndTime = Math.max(maxEndTime, endTimes[i]);
     }
 
     for (int i = 0; i < deviceNum; i++) {
@@ -137,9 +148,9 @@ public class DeviceTimeIndex implements ITimeIndex {
       // use the deviceId from memory instead of the deviceId read from disk
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       int index = buffer.getInt();
-      deviceMap.put(cachedPath, index);
+      deviceToIndex.put(cachedPath, index);
     }
-    return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
+    return this;
   }
 
   @Override
@@ -149,7 +160,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices() {
+  public Set<String> getDevices(String tsFilePath) {
     return deviceToIndex.keySet();
   }
 
@@ -164,13 +175,13 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean stillLives(long timeLowerBound) {
-    if (timeLowerBound == Long.MAX_VALUE) {
+  public boolean stillLives(long ttlLowerBound) {
+    if (ttlLowerBound == Long.MAX_VALUE) {
       return true;
     }
     for (long endTime : endTimes) {
       // the file cannot be deleted if any device still lives
-      if (endTime >= timeLowerBound) {
+      if (endTime >= ttlLowerBound) {
         return true;
       }
     }
@@ -182,24 +193,6 @@ public class DeviceTimeIndex implements ITimeIndex {
     return RamUsageEstimator.sizeOf(deviceToIndex)
         + RamUsageEstimator.sizeOf(startTimes)
         + RamUsageEstimator.sizeOf(endTimes);
-  }
-
-  @Override
-  public long estimateRamIncrement(String deviceToBeChecked) {
-    long ramIncrement = 0L;
-    if (!deviceToIndex.containsKey(deviceToBeChecked)) {
-      // 80 is the Map.Entry header ram size
-      if (deviceToIndex.isEmpty()) {
-        ramIncrement += 80;
-      }
-      // Map.Entry ram size
-      ramIncrement += RamUsageEstimator.sizeOf(deviceToBeChecked) + 16;
-      // if needs to extend the startTimes and endTimes arrays
-      if (deviceToIndex.size() >= startTimes.length) {
-        ramIncrement += startTimes.length * Long.BYTES;
-      }
-    }
-    return ramIncrement;
   }
 
   private int getDeviceIndex(String deviceId) {
@@ -229,45 +222,52 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String tsfilePath) {
+  public long getTimePartition(String tsFilePath) {
     try {
       if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
         return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
       }
-      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsfilePath);
+      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
     } catch (NumberFormatException e) {
       return 0;
     }
   }
 
-  @Override
-  public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
-    long partitionId = -1;
-    for (Long startTime : startTimes) {
-      long p = StorageEngine.getTimePartition(startTime);
-      if (partitionId == -1) {
+  /** @return the time partition id, if spans multi time partitions, return -1. */
+  private long getTimePartitionWithCheck() {
+    long partitionId = SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
+    for (int index : deviceToIndex.values()) {
+      long p = StorageEngine.getTimePartition(startTimes[index]);
+      if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
         partitionId = p;
       } else {
         if (partitionId != p) {
-          throw new PartitionViolationException(tsfilePath);
+          return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
         }
       }
-    }
-    for (Long endTime : endTimes) {
-      long p = StorageEngine.getTimePartition(endTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(tsfilePath);
-        }
+
+      p = StorageEngine.getTimePartition(endTimes[index]);
+      if (partitionId != p) {
+        return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
       }
-    }
-    if (partitionId == -1) {
-      throw new PartitionViolationException(tsfilePath);
     }
     return partitionId;
+  }
+
+  @Override
+  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
+    long partitionId = getTimePartitionWithCheck();
+    if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
+      throw new PartitionViolationException(tsFilePath);
+    }
+    return partitionId;
+  }
+
+  @Override
+  public boolean isSpanMultiTimePartitions() {
+    long partitionId = getTimePartitionWithCheck();
+    return partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
   }
 
   @Override
@@ -277,6 +277,7 @@ public class DeviceTimeIndex implements ITimeIndex {
       int index = getDeviceIndex(deviceId);
       startTimes[index] = time;
     }
+    minStartTime = Math.min(minStartTime, time);
   }
 
   @Override
@@ -286,6 +287,21 @@ public class DeviceTimeIndex implements ITimeIndex {
       int index = getDeviceIndex(deviceId);
       endTimes[index] = time;
     }
+    maxEndTime = Math.max(maxEndTime, time);
+  }
+
+  @Override
+  public void putStartTime(String deviceId, long time) {
+    int index = getDeviceIndex(deviceId);
+    startTimes[index] = time;
+    minStartTime = Math.min(minStartTime, time);
+  }
+
+  @Override
+  public void putEndTime(String deviceId, long time) {
+    int index = getDeviceIndex(deviceId);
+    endTimes[index] = time;
+    maxEndTime = Math.max(maxEndTime, time);
   }
 
   @Override
@@ -302,5 +318,32 @@ public class DeviceTimeIndex implements ITimeIndex {
       return Long.MIN_VALUE;
     }
     return endTimes[deviceToIndex.get(deviceId)];
+  }
+
+  @Override
+  public boolean checkDeviceIdExist(String deviceId) {
+    return deviceToIndex.containsKey(deviceId);
+  }
+
+  @Override
+  public long getMinStartTime() {
+    return minStartTime;
+  }
+
+  @Override
+  public long getMaxEndTime() {
+    return maxEndTime;
+  }
+
+  @Override
+  public int compareDegradePriority(ITimeIndex timeIndex) {
+    if (timeIndex instanceof DeviceTimeIndex) {
+      return Long.compare(getMinStartTime(), timeIndex.getMinStartTime());
+    } else if (timeIndex instanceof FileTimeIndex) {
+      return -1;
+    } else {
+      logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
+      throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
+    }
   }
 }

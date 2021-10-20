@@ -20,10 +20,10 @@ package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.utils.TestOnly;
 
 public class HashVirtualPartitioner implements VirtualPartitioner {
 
+  /** total number of virtual storage groups */
   public static int STORAGE_GROUP_NUM =
       IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
 
@@ -36,11 +36,6 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
   @Override
   public int deviceToVirtualStorageGroupId(PartialPath deviceId) {
     return toStorageGroupId(deviceId);
-  }
-
-  @TestOnly
-  public void setStorageGroupNum(int i) {
-    STORAGE_GROUP_NUM = i;
   }
 
   @Override

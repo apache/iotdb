@@ -30,15 +30,17 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -61,11 +63,13 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<PartialPath, MeasurementSchema> measurementSchemaMap =
+  private Map<TsFileResource, Map<String, Pair<Long, Long>>> startEndTimeCache =
+      new HashMap<>(); // pair<startTime, endTime>
+  private Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
       new HashMap<>(); // is this too waste?
-  private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<IMeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
-  private long timeLowerBound = Long.MIN_VALUE;
+  private long ttlLowerBound = Long.MIN_VALUE;
 
   private boolean cacheDeviceMeta = false;
 
@@ -78,12 +82,12 @@ public class MergeResource {
   private boolean filterResource(TsFileResource res) {
     return res.getTsFile().exists()
         && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(timeLowerBound));
+        && (!res.isClosed() || res.stillLives(ttlLowerBound));
   }
 
   public MergeResource(
-      Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long timeLowerBound) {
-    this.timeLowerBound = timeLowerBound;
+      Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
+    this.ttlLowerBound = ttlLowerBound;
     this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
@@ -103,7 +107,7 @@ public class MergeResource {
     chunkWriterCache.clear();
   }
 
-  public MeasurementSchema getSchema(PartialPath path) {
+  public IMeasurementSchema getSchema(PartialPath path) {
     return measurementSchemaMap.get(path);
   }
 
@@ -133,7 +137,7 @@ public class MergeResource {
   public List<ChunkMetadata> queryChunkMetadata(PartialPath path, TsFileResource seqFile)
       throws IOException {
     TsFileSequenceReader sequenceReader = getFileReader(seqFile);
-    return sequenceReader.getChunkMetadataList(path);
+    return sequenceReader.getChunkMetadataList(path, true);
   }
 
   /**
@@ -171,7 +175,7 @@ public class MergeResource {
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
    * the same measurement and data type shares the same instance.
    */
-  public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
+  public IChunkWriter getChunkWriter(IMeasurementSchema measurementSchema) {
     return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
   }
 
@@ -241,10 +245,11 @@ public class MergeResource {
   public void removeOutdatedSeqReaders() throws IOException {
     Iterator<Entry<TsFileResource, TsFileSequenceReader>> entryIterator =
         fileReaderCache.entrySet().iterator();
+    HashSet<TsFileResource> fileSet = new HashSet<>(seqFiles);
     while (entryIterator.hasNext()) {
       Entry<TsFileResource, TsFileSequenceReader> entry = entryIterator.next();
       TsFileResource tsFile = entry.getKey();
-      if (!seqFiles.contains(tsFile)) {
+      if (!fileSet.contains(tsFile)) {
         TsFileSequenceReader reader = entry.getValue();
         reader.close();
         entryIterator.remove();
@@ -256,11 +261,35 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void setMeasurementSchemaMap(Map<PartialPath, MeasurementSchema> measurementSchemaMap) {
+  public void setMeasurementSchemaMap(Map<PartialPath, IMeasurementSchema> measurementSchemaMap) {
     this.measurementSchemaMap = measurementSchemaMap;
   }
 
   public void clearChunkWriterCache() {
     this.chunkWriterCache.clear();
+  }
+
+  public void updateStartTime(TsFileResource tsFileResource, String device, long startTime) {
+    Map<String, Pair<Long, Long>> deviceStartEndTimePairMap =
+        startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
+    Pair<Long, Long> startEndTimePair =
+        deviceStartEndTimePairMap.getOrDefault(device, new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
+    long newStartTime = startEndTimePair.left > startTime ? startTime : startEndTimePair.left;
+    deviceStartEndTimePairMap.put(device, new Pair<>(newStartTime, startEndTimePair.right));
+    startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
+  }
+
+  public void updateEndTime(TsFileResource tsFileResource, String device, long endTime) {
+    Map<String, Pair<Long, Long>> deviceStartEndTimePairMap =
+        startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
+    Pair<Long, Long> startEndTimePair =
+        deviceStartEndTimePairMap.getOrDefault(device, new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
+    long newEndTime = startEndTimePair.right < endTime ? endTime : startEndTimePair.right;
+    deviceStartEndTimePairMap.put(device, new Pair<>(startEndTimePair.left, newEndTime));
+    startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
+  }
+
+  public Map<String, Pair<Long, Long>> getStartEndTime(TsFileResource tsFileResource) {
+    return startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
   }
 }

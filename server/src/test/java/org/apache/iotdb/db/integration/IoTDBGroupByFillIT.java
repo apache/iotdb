@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.logical.crud.AggregationQueryOperator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -90,8 +92,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 48), 5ms) FILL(int32[previous])");
 
       assertTrue(hasResultSet);
@@ -111,8 +112,7 @@ public class IoTDBGroupByFillIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 48), 5ms) FILL(int32[previous]) order by time desc");
 
       assertTrue(hasResultSet);
@@ -141,8 +141,7 @@ public class IoTDBGroupByFillIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "select count(temperature) from "
-              + "root.ln.wf01.wt01 "
+          "select count(temperature) from root.ln.wf01.wt01 "
               + "GROUP BY ([17, 48), 5ms) FILL(int32[previous])");
     } catch (IoTDBSQLException e) {
       assertTrue(e.getMessage().contains("Group By Fill only support last_value function"));
@@ -155,8 +154,7 @@ public class IoTDBGroupByFillIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "select count(temperature) from "
-              + "root.ln.wf01.wt01 "
+          "select count(temperature) from root.ln.wf01.wt01 "
               + "GROUP BY ([17, 48), 5ms) FILL(int32[previous]) order by time desc");
     } catch (IoTDBSQLException e) {
       assertTrue(e.getMessage().contains("Group By Fill only support last_value function"));
@@ -178,8 +176,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(int32[previous])");
 
       assertTrue(hasResultSet);
@@ -199,8 +196,7 @@ public class IoTDBGroupByFillIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(int32[previous]) order by time desc");
 
       assertTrue(hasResultSet);
@@ -244,8 +240,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature), last_value(hardware) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature), last_value(hardware) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(int32[previous], double[previous])");
 
       assertTrue(hasResultSet);
@@ -267,8 +262,7 @@ public class IoTDBGroupByFillIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(temperature), last_value(hardware) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature), last_value(hardware) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(int32[previous], double[previous]) order by time desc");
 
       assertTrue(hasResultSet);
@@ -305,8 +299,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ((5, 40], 5ms) FILL(int32[previous])");
 
       assertTrue(hasResultSet);
@@ -326,8 +319,7 @@ public class IoTDBGroupByFillIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ((5, 40], 5ms) FILL(int32[previous]) order by time desc");
 
       assertTrue(hasResultSet);
@@ -370,8 +362,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature), last_value(hardware) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature), last_value(hardware) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(ALL[previous])");
 
       assertTrue(hasResultSet);
@@ -393,8 +384,7 @@ public class IoTDBGroupByFillIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(temperature), last_value(hardware) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature), last_value(hardware) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(ALL[previous]) order by time desc");
 
       assertTrue(hasResultSet);
@@ -430,8 +420,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast])");
 
       assertTrue(hasResultSet);
@@ -450,8 +439,7 @@ public class IoTDBGroupByFillIT {
       }
       hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast]) order by time desc");
 
       assertTrue(hasResultSet);
@@ -479,8 +467,7 @@ public class IoTDBGroupByFillIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "select count(temperature) from "
-              + "root.ln.wf01.wt01 "
+          "select count(temperature) from root.ln.wf01.wt01 "
               + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast])");
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());
@@ -494,8 +481,7 @@ public class IoTDBGroupByFillIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "select count(temperature) from "
-              + "root.ln.wf01.wt01 "
+          "select count(temperature) from root.ln.wf01.wt01 "
               + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast]) order by time desc");
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());
@@ -519,8 +505,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast])");
 
       assertTrue(hasResultSet);
@@ -540,9 +525,8 @@ public class IoTDBGroupByFillIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast])order by time desc");
+              "select last_value(temperature) from root.ln.wf01.wt01 "
+                  + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast]) order by time desc");
 
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -584,8 +568,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature), last_value(hardware) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature), last_value(hardware) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast], double[previousUntilLast])");
 
       assertTrue(hasResultSet);
@@ -607,8 +590,7 @@ public class IoTDBGroupByFillIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(temperature), last_value(hardware) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature), last_value(hardware) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast], double[previousUntilLast]) order by time desc");
 
       assertTrue(hasResultSet);
@@ -644,8 +626,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 48), 5ms) FILL(float[previousUntilLast])");
 
       assertTrue(hasResultSet);
@@ -665,8 +646,7 @@ public class IoTDBGroupByFillIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 48), 5ms) FILL(float[previousUntilLast]) order by time desc");
 
       assertTrue(hasResultSet);
@@ -699,8 +679,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ((4, 44], 5ms) FILL(int32[previousUntilLast])");
 
       assertTrue(hasResultSet);
@@ -745,8 +724,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature), last_value(hardware) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature), last_value(hardware) from root.ln.wf01.wt01 "
                   + "GROUP BY ([2, 48), 5ms) FILL(ALL[previousUntilLast])");
 
       assertTrue(hasResultSet);
@@ -785,8 +763,7 @@ public class IoTDBGroupByFillIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(temperature) from "
-                  + "root.ln.wf01.wt01 "
+              "select last_value(temperature) from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 48), 5ms) FILL(int32[previous]) "
                   + "limit 5 offset 2");
 
@@ -808,6 +785,26 @@ public class IoTDBGroupByFillIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Test group by fill without aggregation function used in select clause. The expected situation
+   * is throwing an exception.
+   */
+  @Test
+  public void TestGroupByFillWithoutAggregationFunc() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          "select temperature from root.ln.wf01.wt01 "
+              + "group by ([0, 100), 5ms) FILL(int32[previous])");
+
+      fail("No expected exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(AggregationQueryOperator.ERROR_MESSAGE1));
     }
   }
 

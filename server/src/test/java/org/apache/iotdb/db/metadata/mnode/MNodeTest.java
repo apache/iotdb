@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.junit.Before;
@@ -45,18 +45,19 @@ public class MNodeTest {
   @Test
   public void testReplaceChild() throws InterruptedException {
     // after replacing a with c, the timeseries root.a.b becomes root.c.b
-    MNode rootNode = new MNode(null, "root");
+    InternalMNode rootNode = new InternalMNode(null, "root");
 
-    MNode aNode = new MNode(rootNode, "a");
+    IEntityMNode aNode = new EntityMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode);
 
-    MNode bNode = new MNode(aNode, "b");
+    IMeasurementMNode bNode = MeasurementMNode.getMeasurementMNode(aNode, "b", null, null);
+
     aNode.addChild(bNode.getName(), bNode);
     aNode.addAlias("aliasOfb", bNode);
 
     for (int i = 0; i < 500; i++) {
       service.submit(
-          new Thread(() -> rootNode.replaceChild(aNode.getName(), new MNode(null, "c"))));
+          new Thread(() -> rootNode.replaceChild(aNode.getName(), new EntityMNode(null, "c"))));
     }
 
     if (!service.isShutdown()) {
@@ -67,5 +68,32 @@ public class MNodeTest {
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
     assertEquals("root.c.b", multiFullPaths.get(0));
     assertEquals("root.c.b", rootNode.getChild("c").getChild("aliasOfb").getFullPath());
+  }
+
+  @Test
+  public void testAddChild() {
+    InternalMNode rootNode = new InternalMNode(null, "root");
+
+    IMNode speedNode =
+        rootNode
+            .addChild(new InternalMNode(null, "sg1"))
+            .addChild(new InternalMNode(null, "a"))
+            .addChild(new InternalMNode(null, "b"))
+            .addChild(new InternalMNode(null, "c"))
+            .addChild(new InternalMNode(null, "d"))
+            .addChild(new InternalMNode(null, "device"))
+            .addChild(new InternalMNode(null, "speed"));
+    assertEquals("root.sg1.a.b.c.d.device.speed", speedNode.getFullPath());
+
+    IMNode temperatureNode =
+        rootNode
+            .getChild("sg1")
+            .addChild(new InternalMNode(null, "aa"))
+            .addChild(new InternalMNode(null, "bb"))
+            .addChild(new InternalMNode(null, "cc"))
+            .addChild(new InternalMNode(null, "dd"))
+            .addChild(new InternalMNode(null, "device11"))
+            .addChild(new InternalMNode(null, "temperature"));
+    assertEquals("root.sg1.aa.bb.cc.dd.device11.temperature", temperatureNode.getFullPath());
   }
 }

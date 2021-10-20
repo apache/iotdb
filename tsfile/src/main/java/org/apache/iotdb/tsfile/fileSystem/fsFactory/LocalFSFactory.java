@@ -34,6 +34,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 
 public class LocalFSFactory implements FSFactory {
 
@@ -130,5 +131,10 @@ public class LocalFSFactory implements FSFactory {
   @Override
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     return new File(fileFolder).listFiles(file -> file.getName().startsWith(prefix));
+  }
+
+  @Override
+  public boolean deleteIfExists(File file) throws IOException {
+    return Files.deleteIfExists(file.toPath());
   }
 }

@@ -31,6 +31,8 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import org.junit.Test;
 
@@ -46,7 +48,7 @@ public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
   public void test()
       throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       GroupByTimePlan groupByPlan = new GroupByTimePlan();
       List<PartialPath> pathList = new ArrayList<>();
@@ -58,7 +60,7 @@ public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
         aggregations.add(SQLConstant.COUNT);
       }
       groupByPlan.setPaths(pathList);
-      groupByPlan.setDeduplicatedPaths(pathList);
+      groupByPlan.setDeduplicatedPathsAndUpdate(pathList);
       groupByPlan.setDataTypes(dataTypes);
       groupByPlan.setDeduplicatedDataTypes(dataTypes);
       groupByPlan.setAggregations(aggregations);
@@ -68,6 +70,7 @@ public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
       groupByPlan.setEndTime(20);
       groupByPlan.setSlidingStep(5);
       groupByPlan.setInterval(5);
+      groupByPlan.setExpression(new GlobalTimeExpression(new GroupByFilter(5, 5, 0, 20)));
 
       ClusterGroupByNoVFilterDataSet dataSet =
           new ClusterGroupByNoVFilterDataSet(queryContext, groupByPlan, testMetaMember);

@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.read;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 
@@ -59,45 +60,65 @@ public class MeasurementChunkMetadataListMapIteratorTest {
 
   @Test
   public void test0() throws IOException {
-    test(1, 1);
+    testCorrectness(1, 1);
+    testSequentiality(1, 1);
   }
 
   @Test
   public void test1() throws IOException {
-    test(1, 10);
+    testCorrectness(1, 10);
+    testSequentiality(1, 10);
   }
 
   @Test
   public void test2() throws IOException {
-    test(2, 1);
+    testCorrectness(2, 1);
+    testSequentiality(2, 1);
   }
 
   @Test
   public void test3() throws IOException {
-    test(2, 2);
+    testCorrectness(2, 2);
+    testSequentiality(2, 2);
   }
 
   @Test
   public void test4() throws IOException {
-    test(2, 100);
+    testCorrectness(2, 100);
+    testSequentiality(2, 100);
   }
 
   @Test
   public void test5() throws IOException {
-    test(50, 2);
+    testCorrectness(50, 2);
+    testSequentiality(50, 2);
   }
 
   @Test
   public void test6() throws IOException {
-    test(50, 50);
+    testCorrectness(50, 50);
+    testSequentiality(50, 50);
   }
 
   @Test
   public void test7() throws IOException {
-    test(50, 100);
+    testCorrectness(50, 100);
+    testSequentiality(50, 100);
   }
 
-  public void test(int deviceNum, int measurementNum) throws IOException {
+  @Test
+  public void test8() throws IOException {
+    testCorrectness(33, 733);
+    testSequentiality(33, 733);
+  }
+
+  @Test
+  public void test9() throws IOException {
+    testCorrectness(733, 33);
+    testSequentiality(733, 33);
+  }
+
+  public void testCorrectness(int deviceNum, int measurementNum) throws IOException {
     FileGenerator.generateFile(10000, deviceNum, measurementNum);
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH)) {
@@ -105,7 +126,7 @@ public class MeasurementChunkMetadataListMapIteratorTest {
 
       List<String> devices = fileReader.getAllDevices();
 
-      Map<String, Map<String, List<ChunkMetadata>>> expectedDeviceMeasurementChunkMetadataListMap =
+      Map<String, Map<String, List<IChunkMetadata>>> expectedDeviceMeasurementChunkMetadataListMap =
           new HashMap<>();
       for (String device : devices) {
         for (String measurement : deviceMeasurementListMap.get(device)) {
@@ -117,10 +138,10 @@ public class MeasurementChunkMetadataListMapIteratorTest {
       }
 
       for (String device : devices) {
-        Map<String, List<ChunkMetadata>> expected =
+        Map<String, List<IChunkMetadata>> expected =
             expectedDeviceMeasurementChunkMetadataListMap.get(device);
 
-        Map<String, List<ChunkMetadata>> actual = new HashMap<>();
+        Map<String, List<IChunkMetadata>> actual = new HashMap<>();
         Iterator<Map<String, List<ChunkMetadata>>> iterator =
             fileReader.getMeasurementChunkMetadataListMapIterator(device);
         while (iterator.hasNext()) {
@@ -130,19 +151,24 @@ public class MeasurementChunkMetadataListMapIteratorTest {
           }
         }
 
-        check(expected, actual);
+        checkCorrectness(expected, actual);
       }
+
+      // test not exist device
+      Iterator<Map<String, List<ChunkMetadata>>> iterator =
+          fileReader.getMeasurementChunkMetadataListMapIterator("dd");
+      Assert.assertFalse(iterator.hasNext());
     }
 
     FileGenerator.after();
   }
 
-  private void check(
-      Map<String, List<ChunkMetadata>> expected, Map<String, List<ChunkMetadata>> actual) {
+  private void checkCorrectness(
+      Map<String, List<IChunkMetadata>> expected, Map<String, List<IChunkMetadata>> actual) {
     Assert.assertEquals(expected.keySet(), actual.keySet());
     for (String measurement : expected.keySet()) {
-      List<ChunkMetadata> expectedChunkMetadataList = expected.get(measurement);
-      List<ChunkMetadata> actualChunkMetadataList = actual.get(measurement);
+      List<IChunkMetadata> expectedChunkMetadataList = expected.get(measurement);
+      List<IChunkMetadata> actualChunkMetadataList = actual.get(measurement);
       Assert.assertEquals(expectedChunkMetadataList.size(), actualChunkMetadataList.size());
       final int size = expectedChunkMetadataList.size();
       for (int i = 0; i < size; ++i) {
@@ -150,5 +176,28 @@ public class MeasurementChunkMetadataListMapIteratorTest {
             expectedChunkMetadataList.get(i).toString(), actualChunkMetadataList.get(i).toString());
       }
     }
+  }
+
+  public void testSequentiality(int deviceNum, int measurementNum) throws IOException {
+    FileGenerator.generateFile(10000, deviceNum, measurementNum);
+
+    try (TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH)) {
+      for (String device : fileReader.getAllDevices()) {
+        Iterator<Map<String, List<ChunkMetadata>>> iterator =
+            fileReader.getMeasurementChunkMetadataListMapIterator(device);
+
+        String lastMeasurement = null;
+        while (iterator.hasNext()) {
+          for (String measurement : iterator.next().keySet()) {
+            if (lastMeasurement != null) {
+              Assert.assertTrue(lastMeasurement.compareTo(measurement) < 0);
+            }
+            lastMeasurement = measurement;
+          }
+        }
+      }
+    }
+
+    FileGenerator.after();
   }
 }

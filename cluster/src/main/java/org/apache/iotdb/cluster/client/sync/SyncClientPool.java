@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SyncClientPool {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncClientPool.class);
-  private static final long WAIT_CLIENT_TIMEOUT_MS = 5 * 1000L;
+  private long waitClientTimeoutMS;
   private int maxConnectionForEachNode;
   private Map<ClusterNode, Deque<Client>> clientCaches = new ConcurrentHashMap<>();
   private Map<ClusterNode, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
@@ -46,6 +46,7 @@ public class SyncClientPool {
 
   public SyncClientPool(SyncClientFactory syncClientFactory) {
     this.syncClientFactory = syncClientFactory;
+    this.waitClientTimeoutMS = ClusterDescriptor.getInstance().getConfig().getWaitClientTimeoutMS();
     this.maxConnectionForEachNode =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
   }
@@ -79,7 +80,7 @@ public class SyncClientPool {
 
     // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
-    synchronized (this) {
+    synchronized (clientStack) {
       if (clientStack.isEmpty()) {
         int nodeClientNum = nodeClientNumMap.getOrDefault(clusterNode, 0);
         if (nodeClientNum >= maxConnectionForEachNode) {
@@ -112,12 +113,11 @@ public class SyncClientPool {
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
       try {
-        this.wait(WAIT_CLIENT_TIMEOUT_MS);
+        clientStack.wait(waitClientTimeoutMS);
         if (clientStack.isEmpty()
-            && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
+            && System.currentTimeMillis() - waitStart >= waitClientTimeoutMS) {
           logger.warn(
-              "Cannot get an available client after {}ms, create a new one",
-              WAIT_CLIENT_TIMEOUT_MS);
+              "Cannot get an available client after {}ms, create a new one", waitClientTimeoutMS);
           Client client = syncClientFactory.getSyncClient(clusterNode, this);
           nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue + 1);
           return client;
@@ -144,7 +144,7 @@ public class SyncClientPool {
     ClusterNode clusterNode = new ClusterNode(node);
     // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
-    synchronized (this) {
+    synchronized (clientStack) {
       if (client.getInputProtocol() != null && client.getInputProtocol().getTransport().isOpen()) {
         clientStack.push(client);
         NodeStatusManager.getINSTANCE().activate(node);
@@ -158,7 +158,7 @@ public class SyncClientPool {
           NodeStatusManager.getINSTANCE().deactivate(node);
         }
       }
-      this.notifyAll();
+      clientStack.notifyAll();
     }
   }
 

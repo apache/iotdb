@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -43,7 +44,7 @@ import java.util.Objects;
  * For the statistics in the Unseq file TimeSeriesMetadata, only firstValue, lastValue, startTime
  * and endTime can be used.</br>
  */
-public abstract class Statistics<T> {
+public abstract class Statistics<T extends Serializable> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
   /**
@@ -63,7 +64,7 @@ public abstract class Statistics<T> {
    * @param type - data type
    * @return Statistics
    */
-  public static Statistics getStatsByType(TSDataType type) {
+  public static Statistics<? extends Serializable> getStatsByType(TSDataType type) {
     switch (type) {
       case INT32:
         return new IntegerStatistics();
@@ -77,6 +78,8 @@ public abstract class Statistics<T> {
         return new DoubleStatistics();
       case FLOAT:
         return new FloatStatistics();
+      case VECTOR:
+        return new TimeStatistics();
       default:
         throw new UnknownColumnTypeException(type.toString());
     }
@@ -96,6 +99,8 @@ public abstract class Statistics<T> {
         return DoubleStatistics.DOUBLE_STATISTICS_FIXED_RAM_SIZE;
       case FLOAT:
         return FloatStatistics.FLOAT_STATISTICS_FIXED_RAM_SIZE;
+      case VECTOR:
+        return TimeStatistics.TIME_STATISTICS_FIXED_RAM_SIZE;
       default:
         throw new UnknownColumnTypeException(type.toString());
     }
@@ -167,7 +172,8 @@ public abstract class Statistics<T> {
    *
    * @throws StatisticsClassException cannot merge statistics
    */
-  public void mergeStatistics(Statistics stats) {
+  @SuppressWarnings("unchecked")
+  public void mergeStatistics(Statistics<? extends Serializable> stats) {
     if (this.getClass() == stats.getClass()) {
       if (stats.startTime < this.startTime) {
         this.startTime = stats.startTime;
@@ -177,73 +183,48 @@ public abstract class Statistics<T> {
       }
       // must be sure no overlap between two statistics
       this.count += stats.count;
-      mergeStatisticsValue(stats);
+      mergeStatisticsValue((Statistics<T>) stats);
       isEmpty = false;
     } else {
-      String thisClass = this.getClass().toString();
-      String statsClass = stats.getClass().toString();
+      Class<?> thisClass = this.getClass();
+      Class<?> statsClass = stats.getClass();
       LOG.warn("Statistics classes mismatched,no merge: {} v.s. {}", thisClass, statsClass);
 
-      throw new StatisticsClassException(this.getClass(), stats.getClass());
+      throw new StatisticsClassException(thisClass, statsClass);
     }
   }
 
   public void update(long time, boolean value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, int value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, long value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, float value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, double value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, Binary value) {
+    update(time);
+    updateStats(value);
+  }
+
+  public void update(long time) {
     if (time < startTime) {
       startTime = time;
     }
@@ -251,65 +232,39 @@ public abstract class Statistics<T> {
       endTime = time;
     }
     count++;
-    updateStats(value);
   }
 
   public void update(long[] time, boolean[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, int[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, long[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, float[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, double[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, Binary[] values, int batchSize) {
+    update(time, batchSize);
+    updateStats(values, batchSize);
+  }
+
+  public void update(long[] time, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
     }
@@ -317,10 +272,9 @@ public abstract class Statistics<T> {
       endTime = time[batchSize - 1];
     }
     count += batchSize;
-    updateStats(values, batchSize);
   }
 
-  protected abstract void mergeStatisticsValue(Statistics stats);
+  protected abstract void mergeStatisticsValue(Statistics<T> stats);
 
   public boolean isEmpty() {
     return isEmpty;
@@ -389,9 +343,9 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
-      throws IOException {
-    Statistics statistics = getStatsByType(dataType);
+  public static Statistics<? extends Serializable> deserialize(
+      InputStream inputStream, TSDataType dataType) throws IOException {
+    Statistics<? extends Serializable> statistics = getStatsByType(dataType);
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream));
     statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
@@ -400,8 +354,9 @@ public abstract class Statistics<T> {
     return statistics;
   }
 
-  public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) {
-    Statistics statistics = getStatsByType(dataType);
+  public static Statistics<? extends Serializable> deserialize(
+      ByteBuffer buffer, TSDataType dataType) {
+    Statistics<? extends Serializable> statistics = getStatsByType(dataType);
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));

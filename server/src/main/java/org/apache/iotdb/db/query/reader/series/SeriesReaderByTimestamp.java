@@ -47,7 +47,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
       boolean ascending) {
     UnaryFilter timeFilter =
         ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
-    seriesReader =
+    this.seriesReader =
         new SeriesReader(
             seriesPath,
             allSensors,
@@ -67,13 +67,22 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || !hasAvailableData(batchData, timestamp)) && !hasNext(timestamp)) {
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
+    if (length <= 0) {
       return null;
     }
+    Object[] results = new Object[length];
+    seriesReader.setTimeFilter(timestamps[0]);
+    for (int i = 0; i < length; i++) {
+      if ((batchData == null || !hasAvailableData(batchData, timestamps[i]))
+          && !hasNext(timestamps[i])) {
+        // there is no more data
+        break;
+      }
+      results[i] = batchData.getValueInTimestamp(timestamps[i]);
+    }
 
-    return batchData.getValueInTimestamp(timestamp);
+    return results;
   }
 
   @Override

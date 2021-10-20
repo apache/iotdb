@@ -25,9 +25,11 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
+import ch.qos.logback.classic.Level;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -46,6 +48,10 @@ public class IoTDBRemovePartitionIT {
 
   @Before
   public void setUp() throws Exception {
+    ch.qos.logback.classic.Logger rootLogger =
+        (ch.qos.logback.classic.Logger)
+            LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+    rootLogger.setLevel(Level.toLevel("trace"));
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
@@ -58,6 +64,11 @@ public class IoTDBRemovePartitionIT {
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
     EnvironmentUtils.cleanEnv();
+
+    ch.qos.logback.classic.Logger rootLogger =
+        (ch.qos.logback.classic.Logger)
+            LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+    rootLogger.setLevel(Level.toLevel("warn"));
   }
 
   @Test
@@ -73,8 +84,8 @@ public class IoTDBRemovePartitionIT {
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test1")) {
         int count = 0;
         while (resultSet.next()) {
-          assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
-          assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(2));
+          assertEquals(count / 2 * 100L + count % 2 * 50, resultSet.getLong(1));
+          assertEquals(count / 2 * 100L + count % 2 * 50, resultSet.getLong(2));
           count++;
         }
         assertEquals(20, count);

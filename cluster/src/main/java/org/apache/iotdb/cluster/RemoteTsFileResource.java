@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -82,7 +83,7 @@ public class RemoteTsFileResource extends TsFileResource {
   }
 
   public void serialize(DataOutputStream dataOutputStream) {
-    SerializeUtils.serialize(source, dataOutputStream);
+    NodeSerializeUtils.serialize(source, dataOutputStream);
     try {
       // the path here is only for the remote node to get a download link, so it does not matter
       // if it is absolute
@@ -102,7 +103,7 @@ public class RemoteTsFileResource extends TsFileResource {
 
   public void deserialize(ByteBuffer buffer) {
     source = new Node();
-    SerializeUtils.deserialize(source, buffer);
+    NodeSerializeUtils.deserialize(source, buffer);
     setFile(new File(SerializeUtils.deserializeString(buffer)));
 
     timeIndex =

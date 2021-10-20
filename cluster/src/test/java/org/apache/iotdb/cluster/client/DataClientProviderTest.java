@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.client;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -29,7 +30,9 @@ import org.apache.iotdb.cluster.utils.ClusterNode;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -40,6 +43,23 @@ import java.util.concurrent.Executors;
 import static org.junit.Assert.assertNotNull;
 
 public class DataClientProviderTest {
+  private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
+  private int maxClientPerNodePerMember;
+  private long waitClientTimeoutMS;
+
+  @Before
+  public void setUp() {
+    maxClientPerNodePerMember = clusterConfig.getMaxClientPerNodePerMember();
+    waitClientTimeoutMS = clusterConfig.getWaitClientTimeoutMS();
+    clusterConfig.setMaxClientPerNodePerMember(2);
+    clusterConfig.setWaitClientTimeoutMS(10L);
+  }
+
+  @After
+  public void tearDown() {
+    clusterConfig.setMaxClientPerNodePerMember(maxClientPerNodePerMember);
+    clusterConfig.setWaitClientTimeoutMS(waitClientTimeoutMS);
+  }
 
   @Test
   public void testAsync() throws IOException {
@@ -111,7 +131,6 @@ public class DataClientProviderTest {
     try {
       boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(2);
       DataClientProvider provider = new DataClientProvider(new Factory());
       SyncDataClient client = null;
       try {
@@ -127,8 +146,8 @@ public class DataClientProviderTest {
         service.submit(() -> provider.getSyncDataClient(node, 100));
       }
 
-      // wait time should be great then 5000ms
-      Thread.currentThread().sleep(6000);
+      // wait time should be great then 10 * 5ms
+      Thread.currentThread().sleep(1000);
       int totalNumber = provider.getDataSyncClientPool().getNodeClientNumMap().get(node);
       Assert.assertEquals(6, totalNumber);
 
@@ -136,15 +155,15 @@ public class DataClientProviderTest {
         service.submit(() -> provider.getSyncDataClient(node, 100));
       }
 
-      Thread.currentThread().sleep(1000);
+      Thread.currentThread().sleep(100);
       // return one client to pool
       provider.getDataSyncClientPool().putClient(node, client);
       // wait all finish
-      Thread.currentThread().sleep(6000);
+      Thread.currentThread().sleep(1000);
       totalNumber = provider.getDataSyncClientPool().getNodeClientNumMap().get(node);
 
-      // 6 + 4 - 1
-      Assert.assertEquals(9, totalNumber);
+      // 6 + 4
+      Assert.assertEquals(10, totalNumber);
 
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
     } catch (Exception e) {
@@ -177,7 +196,6 @@ public class DataClientProviderTest {
     try {
       boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(2);
       DataClientProvider provider = new DataClientProvider(new Factory());
       AsyncDataClient client = null;
       try {
@@ -193,8 +211,8 @@ public class DataClientProviderTest {
         service.submit(() -> provider.getAsyncDataClient(node, 100));
       }
 
-      // wait time should be great then 5000ms
-      Thread.currentThread().sleep(6000);
+      // wait time should be great then 10ms
+      Thread.currentThread().sleep(1000);
       int totalNumber = provider.getDataAsyncClientPool().getNodeClientNumMap().get(node);
       Assert.assertEquals(6, totalNumber);
 
@@ -202,15 +220,15 @@ public class DataClientProviderTest {
         service.submit(() -> provider.getAsyncDataClient(node, 100));
       }
 
-      Thread.currentThread().sleep(1000);
-      // return one client to pool
+      Thread.currentThread().sleep(100);
+      // return one client to pool, but number do not -1
       provider.getDataAsyncClientPool().putClient(node, client);
       // wait all finish
-      Thread.currentThread().sleep(6000);
+      Thread.currentThread().sleep(1000);
       totalNumber = provider.getDataAsyncClientPool().getNodeClientNumMap().get(node);
 
-      // 6 + 4 - 1
-      Assert.assertEquals(9, totalNumber);
+      // 6 + 4
+      Assert.assertEquals(10, totalNumber);
 
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
     } catch (Exception e) {

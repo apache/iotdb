@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 
 import java.io.IOException;
 
@@ -33,20 +33,32 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() >= minBound) {
-      setValue(dataInThisPage.currentTime());
-      dataInThisPage.next();
+  public void updateResultFromPageData(
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
+    while (batchIterator.hasNext() && batchIterator.currentTime() >= minBound) {
+      setValue(batchIterator.currentTime());
+      batchIterator.next();
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
         setLongValue(timestamps[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        setLongValue(timestamps[i]);
+        return;
       }
     }
   }

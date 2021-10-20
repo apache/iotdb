@@ -85,6 +85,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
+    if (timeFilter == null) {
+      throw new QueryProcessException("TimeFilter cannot be null in GroupBy query.");
+    }
 
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
@@ -102,7 +105,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
                   groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
                   dataTypes.get(i),
                   context,
-                  timeFilter,
+                  timeFilter.copy(),
                   null,
                   groupByTimePlan.isAscending()));
           resultIndexes.put(path, new ArrayList<>());
@@ -132,23 +135,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       record = new RowRecord(curEndTime - 1);
     }
 
-    AggregateResult[] fields = new AggregateResult[paths.size()];
-
-    try {
-      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-        GroupByExecutor executor = pathToExecutorEntry.getValue();
-        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
-        for (int i = 0; i < aggregations.size(); i++) {
-          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
-          fields[resultIndex] = aggregations.get(i);
-        }
-      }
-    } catch (QueryProcessException e) {
-      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
-      throw new IOException(e.getMessage(), e);
-    }
-
-    for (AggregateResult res : fields) {
+    curAggregateResults = getNextAggregateResult();
+    for (AggregateResult res : curAggregateResults) {
       if (res == null) {
         record.addField(null);
         continue;
@@ -156,6 +144,24 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       record.addField(res.getResult(), res.getResultDataType());
     }
     return record;
+  }
+
+  private AggregateResult[] getNextAggregateResult() throws IOException {
+    curAggregateResults = new AggregateResult[paths.size()];
+    try {
+      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+        GroupByExecutor executor = pathToExecutorEntry.getValue();
+        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
+        for (int i = 0; i < aggregations.size(); i++) {
+          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
+          curAggregateResults[resultIndex] = aggregations.get(i);
+        }
+      }
+    } catch (QueryProcessException e) {
+      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+      throw new IOException(e.getMessage(), e);
+    }
+    return curAggregateResults;
   }
 
   @Override

@@ -18,8 +18,7 @@
 
 package org.apache.iotdb.flink;
 
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.flink.options.IoTDBSinkOptions;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,9 +49,9 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
   private static final long serialVersionUID = 1L;
   private static final Logger LOG = LoggerFactory.getLogger(IoTDBSink.class);
 
-  private IoTDBOptions options;
+  private IoTDBSinkOptions options;
   private IoTSerializationSchema<IN> serializationSchema;
-  private Map<String, IoTDBOptions.TimeseriesOption> timeseriesOptionMap;
+  private Map<String, IoTDBSinkOptions.TimeseriesOption> timeseriesOptionMap;
   private transient SessionPool pool;
   private transient ScheduledExecutorService scheduledExecutor;
 
@@ -61,12 +60,12 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
   private List<Event> batchList;
   private int sessionPoolSize = 2;
 
-  public IoTDBSink(IoTDBOptions options, IoTSerializationSchema<IN> schema) {
+  public IoTDBSink(IoTDBSinkOptions options, IoTSerializationSchema<IN> schema) {
     this.options = options;
     this.serializationSchema = schema;
     this.batchList = new LinkedList<>();
     this.timeseriesOptionMap = new HashMap<>();
-    for (IoTDBOptions.TimeseriesOption timeseriesOption : options.getTimeseriesOptionList()) {
+    for (IoTDBSinkOptions.TimeseriesOption timeseriesOption : options.getTimeseriesOptionList()) {
       timeseriesOptionMap.put(timeseriesOption.getPath(), timeseriesOption);
     }
   }
@@ -77,7 +76,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     initScheduler();
   }
 
-  void initSession() throws Exception {
+  void initSession() {
     pool =
         new SessionPool(
             options.getHost(),
@@ -85,21 +84,6 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
             options.getUser(),
             options.getPassword(),
             sessionPoolSize);
-
-    try {
-      pool.setStorageGroup(options.getStorageGroup());
-    } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-        throw e;
-      }
-    }
-
-    for (IoTDBOptions.TimeseriesOption option : options.getTimeseriesOptionList()) {
-      if (!pool.checkTimeseriesExists(option.getPath())) {
-        pool.createTimeseries(
-            option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
-      }
-    }
   }
 
   void initScheduler() {
@@ -191,7 +175,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
         && measurements.size() == values.size()) {
       for (int i = 0; i < measurements.size(); i++) {
         String measurement = device + TsFileConstant.PATH_SEPARATOR + measurements.get(i);
-        IoTDBOptions.TimeseriesOption timeseriesOption = timeseriesOptionMap.get(measurement);
+        IoTDBSinkOptions.TimeseriesOption timeseriesOption = timeseriesOptionMap.get(measurement);
         if (timeseriesOption != null && TSDataType.TEXT.equals(timeseriesOption.getDataType())) {
           // The TEXT data type should be covered by " or '
           values.set(i, "'" + values.get(i) + "'");

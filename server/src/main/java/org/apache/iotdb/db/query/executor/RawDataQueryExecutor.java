@@ -36,7 +36,6 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -61,7 +60,12 @@ public class RawDataQueryExecutor {
   /** without filter or with global time filter. */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    QueryDataSet dataSet = needRedirect(context, false);
+    if (dataSet != null) {
+      return dataSet;
+    }
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
+
     try {
       return new RawQueryDataSetWithoutValueFilter(
           context.getQueryId(),
@@ -79,6 +83,10 @@ public class RawDataQueryExecutor {
 
   public final QueryDataSet executeNonAlign(QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    QueryDataSet dataSet = needRedirect(context, false);
+    if (dataSet != null) {
+      return dataSet;
+    }
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     return new NonAlignEngineDataSet(
         context.getQueryId(),
@@ -133,8 +141,12 @@ public class RawDataQueryExecutor {
    */
   public final QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    TimeGenerator timestampGenerator =
-        getTimeGenerator(queryPlan.getExpression(), context, queryPlan);
+    QueryDataSet dataSet = needRedirect(context, true);
+    if (dataSet != null) {
+      return dataSet;
+    }
+
+    TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     List<Boolean> cached =
         markFilterdPaths(
             queryPlan.getExpression(),
@@ -191,9 +203,20 @@ public class RawDataQueryExecutor {
         queryPlan.isAscending());
   }
 
-  protected TimeGenerator getTimeGenerator(
-      IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
+  protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
-    return new ServerTimeGenerator(expression, context, queryPlan);
+    return new ServerTimeGenerator(context, queryPlan);
+  }
+
+  /**
+   * Check whether need to redirect query to other node.
+   *
+   * @param context query context
+   * @param hasValueFilter if has value filter, we need to check timegenerator
+   * @return dummyDataSet to avoid more cost, if null, no need
+   */
+  protected QueryDataSet needRedirect(QueryContext context, boolean hasValueFilter)
+      throws StorageEngineException, QueryProcessException {
+    return null;
   }
 }

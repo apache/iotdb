@@ -21,7 +21,8 @@
 [English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
-[![Build Status](https://www.travis-ci.org/apache/iotdb.svg?branch=master)](https://www.travis-ci.org/apache/iotdb)
+[![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
+[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
 [![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
@@ -32,9 +33,10 @@
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
 
 # 简介
-IoTDB (Internet of Things Database) 是一个时序数据的数据管理系统，可以为用户提供数据收集、存储和分析等特定的服务。IoTDB由于其轻量级的结构、高性能和可用的特性，以及与Hadoop和Spark生态的无缝集成，满足了工业IoTDB领域中海量数据存储、高吞吐量数据写入和复杂数据分析的需求。
+IoTDB (Internet of Things Database) 是一款时序数据库管理系统，可以为用户提供数据收集、存储和分析等服务。IoTDB由于其轻量级架构、高性能和高可用的特性，以及与 Hadoop 和 Spark 生态的无缝集成，满足了工业 IoT 领域中海量数据存储、高吞吐量数据写入和复杂数据查询分析的需求。
 
 # 主要特点
 
@@ -77,14 +79,22 @@ IoTDB的主要特点如下:
 
 # 快速开始
 
-这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](http://iotdb.apache.org/zh/UserGuide/Master/Get%20Started/QuickStart.html)。
+这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
 
 ## 环境准备
 
 要使用IoTDB，您需要:
-1. Java >= 1.8 (目前 1.8、11和13 已经被验证可用。请确保环变量境路径已正确设置)。
+1. Java >= 1.8 (目前 1.8、11 到 17 已经被验证可用。请确保环变量境路径已正确设置)。
 2. Maven >= 3.6 (如果希望从源代码编译和安装IoTDB)。
 3. 设置 max open files 为 65535，以避免"too many open files"错误。
+4. （可选） 将 somaxconn 设置为 65535 以避免系统在高负载时出现 "connection reset" 错误。 
+    ```
+    # Linux
+    > sudo sysctl -w net.core.somaxconn=65535
+   
+    # FreeBSD or Darwin
+    > sudo sysctl -w kern.ipc.somaxconn=65535
+    ```
 
 ## 安装
 
@@ -96,17 +106,27 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 * 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
 
-在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅《用户指南》第3章。
+在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
 
 ## 从源码构建
 
-如果您使用Windows，请跳过此段。我们使用Thrift作为RPC模块来提供客户端-服务器间的通信和协议支持，因此在编译阶段我们需要使用Thrift 0.13.0
-（或更高）编译器生成对应的Java代码。Thrift只提供了Windows下的二进制编译器，Unix下需要通过源码自行编译。但我们预先编译了一个Thrift编译器，并将其上传到了GitHub
-，借助一个Maven插件，在编译时可以自动将其下载。该预编译的Thrift编译器在gcc8，Ubuntu, CentOS, MacOS下可以工作，但是在更低的gcc
-版本以及其他操作系统上尚未确认。如果您在编译时发现了Thrift编译器相关的问题，请升级您的gcc版本或者依照Thrift
-官方的指示自行编译编译器，并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
-如果您已经安装了一个兼容的Thrift编译器，您可以在运行Maven时通过以下参数指定使用您的编译器：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`。
-您也可以使用以下Maven参数来更换Thrift编译器的下载地址：`-Dthrift.download-url=<THE REMOTE URL FOR DOWNLOADING> -Dthrift.exec.absolute.path=<THE DOWNLOADED BINARY FILE NAME>`。
+### 关于准备Thrift编译器
+
+如果您使用Windows，请跳过此段。
+
+我们使用Thrift作为RPC模块来提供客户端-服务器间的通信和协议支持，因此在编译阶段我们需要使用Thrift 0.13.0
+（或更高）编译器生成对应的Java代码。 Thrift只提供了Windows下的二进制编译器，Unix下需要通过源码自行编译。
+
+如果你有安装权限，可以通过`apt install`, `yum install`, `brew install`来安装thrift编译器，然后在下面的编译命令中
+都添加如下参数即可：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<你的thrift可执行文件路径>`。
+
+
+同时我们预先编译了一个Thrift编译器，并将其上传到了GitHub ，借助一个Maven插件，在编译时可以自动将其下载。
+该预编译的Thrift编译器在gcc8，Ubuntu, CentOS, MacOS下可以工作，但是在更低的gcc
+版本以及其他操作系统上尚未确认。
+如果您发现因为网络问题总是提示下载不到thrift文件，那么您需要手动下载，并并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
+如果您放到其他地方，就需要在运行maven的命令中添加：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<你的thrift可执行文件路径>`。
+
 如果您对Maven足够熟悉，您也可以直接修改我们的根pom文件来避免每次编译都使用上述参数。
 Thrift官方网址为：https://thrift.apache.org/
 
@@ -116,10 +136,15 @@ Thrift官方网址为：https://thrift.apache.org/
 git clone https://github.com/apache/iotdb.git
 ```
 
-默认的主分支是dev分支，如果你想使用某个发布版本x.x.x，请切换分支:
+默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换分支:
 
 ```
 git checkout release/x.x.x
+```
+
+从0.11.3开始，版本的标签风格改为vx.x.x：
+```
+git checkout vx.x.x
 ```
 
 在 iotdb 根目录下执行 maven 编译:
@@ -128,9 +153,13 @@ git checkout release/x.x.x
 > mvn clean package -DskipTests
 ```
 
-执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
+通过添加 `-P compile-cpp` 可以进行c++客户端API的编译。
 
-> 注意:"thrift/target/generated-sources/thrift" 和 "antlr/target/generated-sources/antlr4" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。
+执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-all-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
+
+**注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift/target/generated-sources/thrift`" 和 "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
+
+**IDEA的操作方法：在上述maven命令编译好后，右键项目名称，选择"`Maven->Reload project`"，即可。**
 
 ### 配置
 
@@ -139,7 +168,7 @@ git checkout release/x.x.x
 * 系统配置模块(`iotdb-engine.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[Chapter3: Server](http://iotdb.apache.org/zh/UserGuide/Master/Server/Config%20Manual.html)。
+有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Appendix/Config-Manual.html)。
 
 ## 开始
 
@@ -215,12 +244,12 @@ IoTDB> SET STORAGE GROUP TO root.ln
 
 ```
 IoTDB> SHOW STORAGE GROUP
-+-----------------------------------+
-|                      Storage Group|
-+-----------------------------------+
-|                            root.ln|
-+-----------------------------------+
-storage group number = 1
++-------------+
+|storage group|
++-------------+
+|      root.ln|
++-------------+
+Total line number = 1
 ```
 
 在设置存储组之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
@@ -239,25 +268,25 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 
 ```
 IoTDB> SHOW TIMESERIES
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-|  root.ln.wf01.wt01.temperature|  null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-Total timeseries number = 2
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+Total line number = 2
 ```
 
 2. 查询指定的 timeseries(root.ln.wf01.wt01.status):
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-Total timeseries number = 1
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+Total line number = 1
 ```
 
 插入 timeseries 数据是IoTDB的一个基本操作，你可以使用`INSERT` 命令来完成这个操作。
@@ -272,12 +301,12 @@ IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,fa
 
 ```
 IoTDB> SELECT status FROM root.ln.wf01.wt01
-+-----------------------+------------------------+
-|                   Time|root.ln.wf01.wt01.status|
-+-----------------------+------------------------+
-|1970-01-01T08:00:00.100|                    true|
-|1970-01-01T08:00:00.200|                   false|
-+-----------------------+------------------------+
++-----------------------------+------------------------+
+|                         Time|root.ln.wf01.wt01.status|
++-----------------------------+------------------------+
+|1970-01-01T08:00:00.100+08:00|                    true|
+|1970-01-01T08:00:00.200+08:00|                   false|
++-----------------------------+------------------------+
 Total line number = 2
 ```
 
@@ -285,12 +314,34 @@ Total line number = 2
 
 ```
 IoTDB> SELECT * FROM root.ln.wf01.wt01
-+-----------------------+--------------------------+-----------------------------+
-|                   Time|  root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+-----------------------+--------------------------+-----------------------------+
-|1970-01-01T08:00:00.100|                      true|                         null|
-|1970-01-01T08:00:00.200|                     false|                        20.71|
-+-----------------------+--------------------------+-----------------------------+
++-----------------------------+-----------------------------+------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|root.ln.wf01.wt01.status|
++-----------------------------+-----------------------------+------------------------+
+|1970-01-01T08:00:00.100+08:00|                         null|                    true|
+|1970-01-01T08:00:00.200+08:00|                        20.71|                   false|
++-----------------------------+-----------------------------+------------------------+
+Total line number = 2
+```
+
+如果需要修改 Cli 中的时区，您可以使用以下语句:
+
+```
+IoTDB> SET time_zone=+00:00
+Time zone has set to +00:00
+IoTDB> SHOW time_zone
+Current time zone: Z
+```
+
+之后查询结果将会以更新后的新时区显示:
+
+```
+IoTDB> SELECT * FROM root.ln.wf01.wt01
++------------------------+-----------------------------+------------------------+
+|                    Time|root.ln.wf01.wt01.temperature|root.ln.wf01.wt01.status|
++------------------------+-----------------------------+------------------------+
+|1970-01-01T00:00:00.100Z|                         null|                    true|
+|1970-01-01T00:00:00.200Z|                        20.71|                   false|
++------------------------+-----------------------------+------------------------+
 Total line number = 2
 ```
 
@@ -302,7 +353,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](https://iotdb.apache.org/zh/UserGuide/Master/Appendix/SQL-Reference.html)。
 
 ### 停止 IoTDB
 
@@ -351,6 +402,10 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ### Wechat Group
 
-* 添加好友 tietouqiao，我们会邀请您进群
+* 添加好友 `tietouqiao` 或者 `liutaohua001`，我们会邀请您进群
+
+### Slack
+
+* https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
 
 获取更多内容，请查看 [加入社区](https://github.com/apache/iotdb/issues/1995) 

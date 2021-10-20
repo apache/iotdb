@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.LinkedList;
 
@@ -34,6 +35,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
 
   public DescReadWriteBatchData(TSDataType dataType) {
     super();
+    this.batchDataType = BatchDataType.DescReadWrite;
     this.dataType = dataType;
     this.readCurListIndex = 0;
     this.readCurArrayIndex = 0;
@@ -68,6 +70,10 @@ public class DescReadWriteBatchData extends DescReadBatchData {
       case TEXT:
         binaryRet = new LinkedList<>();
         binaryRet.add(new Binary[capacity]);
+        break;
+      case VECTOR:
+        vectorRet = new LinkedList<>();
+        vectorRet.add(new TsPrimitiveType[capacity][]);
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
@@ -291,6 +297,43 @@ public class DescReadWriteBatchData extends DescReadBatchData {
     }
     timeRet.get(0)[writeCurArrayIndex] = t;
     binaryRet.get(0)[writeCurArrayIndex] = v;
+
+    writeCurArrayIndex--;
+    count++;
+  }
+
+  /**
+   * put vector data.
+   *
+   * @param t timestamp
+   * @param v vector data.
+   */
+  @Override
+  public void putVector(long t, TsPrimitiveType[] v) {
+    if (writeCurArrayIndex == -1) {
+      if (capacity >= CAPACITY_THRESHOLD) {
+        ((LinkedList<long[]>) timeRet).addFirst(new long[capacity]);
+        ((LinkedList<TsPrimitiveType[][]>) vectorRet).addFirst(new TsPrimitiveType[capacity][]);
+        writeCurListIndex++;
+        writeCurArrayIndex = capacity - 1;
+      } else {
+        int newCapacity = capacity << 1;
+
+        long[] newTimeData = new long[newCapacity];
+        TsPrimitiveType[][] newValueData = new TsPrimitiveType[newCapacity][];
+
+        System.arraycopy(timeRet.get(0), 0, newTimeData, newCapacity - capacity, capacity);
+        System.arraycopy(vectorRet.get(0), 0, newValueData, newCapacity - capacity, capacity);
+
+        timeRet.set(0, newTimeData);
+        vectorRet.set(0, newValueData);
+
+        writeCurArrayIndex = newCapacity - capacity - 1;
+        capacity = newCapacity;
+      }
+    }
+    timeRet.get(0)[writeCurArrayIndex] = t;
+    vectorRet.get(0)[writeCurArrayIndex] = v;
 
     writeCurArrayIndex--;
     count++;

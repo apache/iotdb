@@ -153,7 +153,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Integer> stats) {
     IntegerStatistics intStats = (IntegerStatistics) stats;
     if (isEmpty) {
       initializeStats(

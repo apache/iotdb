@@ -38,8 +38,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MergeGroupByExecutorTest extends BaseQueryTest {
 
@@ -49,32 +50,28 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       Filter timeFilter = null;
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       MergeGroupByExecutor groupByExecutor =
           new MergeGroupByExecutor(
-              path,
-              Collections.singleton(path.getMeasurement()),
-              dataType,
-              context,
-              timeFilter,
-              testMetaMember,
-              true);
+              path, deviceMeasurements, dataType, context, timeFilter, testMetaMember, true);
       AggregationType[] types = AggregationType.values();
       for (AggregationType type : types) {
         groupByExecutor.addAggregateResult(
             AggregateResultFactory.getAggrResultByType(type, TSDataType.DOUBLE, true));
       }
-
       Object[] answers;
       List<AggregateResult> aggregateResults;
-      answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0};
+
+      answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0, 4.0};
       aggregateResults = groupByExecutor.calcResult(0, 5);
       checkAggregations(aggregateResults, answers);
 
-      answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
+      answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
       aggregateResults = groupByExecutor.calcResult(5, 10);
       checkAggregations(aggregateResults, answers);
     } finally {
@@ -88,19 +85,15 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       Filter timeFilter = TimeFilter.gtEq(3);
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       MergeGroupByExecutor groupByExecutor =
           new MergeGroupByExecutor(
-              path,
-              Collections.singleton(path.getMeasurement()),
-              dataType,
-              context,
-              timeFilter,
-              testMetaMember,
-              true);
+              path, deviceMeasurements, dataType, context, timeFilter, testMetaMember, true);
       AggregationType[] types = AggregationType.values();
       for (AggregationType type : types) {
         groupByExecutor.addAggregateResult(
@@ -109,11 +102,11 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
 
       Object[] answers;
       List<AggregateResult> aggregateResults;
-      answers = new Object[] {2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0};
+      answers = new Object[] {2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0};
       aggregateResults = groupByExecutor.calcResult(0, 5);
       checkAggregations(aggregateResults, answers);
 
-      answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
+      answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
       aggregateResults = groupByExecutor.calcResult(5, 10);
       checkAggregations(aggregateResults, answers);
     } finally {

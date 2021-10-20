@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.reader.series;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -33,7 +33,7 @@ import java.util.List;
 public abstract class AbstractFileSeriesReader implements IBatchReader {
 
   protected IChunkLoader chunkLoader;
-  protected List<ChunkMetadata> chunkMetadataList;
+  protected List<IChunkMetadata> chunkMetadataList;
   protected ChunkReader chunkReader;
   private int chunkToRead;
 
@@ -41,7 +41,7 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
 
   /** constructor of FileSeriesReader. */
   public AbstractFileSeriesReader(
-      IChunkLoader chunkLoader, List<ChunkMetadata> chunkMetadataList, Filter filter) {
+      IChunkLoader chunkLoader, List<IChunkMetadata> chunkMetadataList, Filter filter) {
     this.chunkLoader = chunkLoader;
     this.chunkMetadataList = chunkMetadataList;
     this.filter = filter;
@@ -59,7 +59,7 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
     // current chunk does not have additional batch, init new chunk reader
     while (chunkToRead < chunkMetadataList.size()) {
 
-      ChunkMetadata chunkMetaData = nextChunkMeta();
+      IChunkMetadata chunkMetaData = nextChunkMeta();
       if (chunkSatisfied(chunkMetaData)) {
         // chunk metadata satisfy the condition
         initChunkReader(chunkMetaData);
@@ -77,16 +77,16 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
     return chunkReader.nextPageData();
   }
 
-  protected abstract void initChunkReader(ChunkMetadata chunkMetaData) throws IOException;
+  protected abstract void initChunkReader(IChunkMetadata chunkMetaData) throws IOException;
 
-  protected abstract boolean chunkSatisfied(ChunkMetadata chunkMetaData);
+  protected abstract boolean chunkSatisfied(IChunkMetadata chunkMetaData);
 
   @Override
   public void close() throws IOException {
     chunkLoader.close();
   }
 
-  private ChunkMetadata nextChunkMeta() {
+  private IChunkMetadata nextChunkMeta() {
     return chunkMetadataList.get(chunkToRead++);
   }
 }

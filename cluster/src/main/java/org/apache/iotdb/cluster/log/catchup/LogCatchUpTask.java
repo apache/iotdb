@@ -60,17 +60,20 @@ public class LogCatchUpTask implements Callable<Boolean> {
   private List<Log> logs;
   private boolean useBatch = ClusterDescriptor.getInstance().getConfig().isUseBatchInLogCatchUp();
   boolean abort = false;
+  private int raftId;
 
-  LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember) {
+  LogCatchUpTask(List<Log> logs, Node node, int raftId, RaftMember raftMember) {
     this.logs = logs;
     this.node = node;
+    this.raftId = raftId;
     this.raftMember = raftMember;
   }
 
   @TestOnly
-  LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember, boolean useBatch) {
+  LogCatchUpTask(List<Log> logs, Node node, int raftId, RaftMember raftMember, boolean useBatch) {
     this.logs = logs;
     this.node = node;
+    this.raftId = raftId;
     this.raftMember = raftMember;
     this.useBatch = useBatch;
   }
@@ -266,7 +269,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     }
     // do append entries
     if (logger.isInfoEnabled()) {
-      logger.info("{}: sending {} logs to {}", raftMember.getName(), node, logList.size());
+      logger.info("{}: sending {} logs to {}", raftMember.getName(), logList.size(), node);
     }
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       abort = !appendEntriesAsync(logList, request);
@@ -274,7 +277,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       abort = !appendEntriesSync(logList, request);
     }
     if (!abort && logger.isInfoEnabled()) {
-      logger.info("{}: sent {} logs to {}", raftMember.getName(), node, logList.size());
+      logger.info("{}: sent {} logs to {}", raftMember.getName(), logList.size(), node);
     }
     logList.clear();
   }

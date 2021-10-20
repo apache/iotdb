@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -40,9 +40,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class VirtualStorageGroupManager {
 
+  /** logger of this class */
   private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupManager.class);
 
   /** virtual storage group partitioner */
@@ -51,11 +56,28 @@ public class VirtualStorageGroupManager {
   /** all virtual storage group processor */
   StorageGroupProcessor[] virtualStorageGroupProcessor;
 
+  /**
+   * recover status of each virtual storage group processor, null if this logical storage group is
+   * new created
+   */
+  private AtomicBoolean[] isVsgReady;
+
+  private AtomicBoolean isSettling = new AtomicBoolean();
+
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
 
   public VirtualStorageGroupManager() {
+    this(false);
+  }
+
+  public VirtualStorageGroupManager(boolean needRecovering) {
     virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
+    isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
+    boolean recoverReady = !needRecovering;
+    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
+      isVsgReady[i] = new AtomicBoolean(recoverReady);
+    }
   }
 
   /** push forceCloseAllWorkingTsFileProcessors down to all sg */
@@ -85,6 +107,33 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  /** push check sequence memtable flush interval down to all sg */
+  public void timedFlushSeqMemTable() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedFlushSeqMemTable();
+      }
+    }
+  }
+
+  /** push check unsequence memtable flush interval down to all sg */
+  public void timedFlushUnseqMemTable() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedFlushUnseqMemTable();
+      }
+    }
+  }
+
+  /** push check TsFileProcessor close interval down to all sg */
+  public void timedCloseTsFileProcessor() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedCloseTsFileProcessor();
+      }
+    }
+  }
+
   /**
    * get processor from device id
    *
@@ -94,14 +143,14 @@ public class VirtualStorageGroupManager {
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public StorageGroupProcessor getProcessor(
-      PartialPath partialPath, StorageGroupMNode storageGroupMNode)
+      PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
 
     StorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
     if (processor == null) {
       // if finish recover
-      if (StorageEngine.getInstance().isAllSgReady()) {
+      if (isVsgReady[loc].get()) {
         synchronized (storageGroupMNode) {
           processor = virtualStorageGroupProcessor[loc];
           if (processor == null) {
@@ -115,7 +164,9 @@ public class VirtualStorageGroupManager {
       } else {
         // not finished recover, refuse the request
         throw new StorageEngineException(
-            "the sg " + partialPath + " may not ready now, please wait and retry later",
+            String.format(
+                "the virtual storage group %s[%d] may not ready now, please wait and retry later",
+                storageGroupMNode.getFullPath(), loc),
             TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
@@ -124,53 +175,39 @@ public class VirtualStorageGroupManager {
   }
 
   /**
-   * recover
+   * async recover all virtual storage groups in this logical storage group
    *
    * @param storageGroupMNode logical sg mnode
+   * @param pool thread pool to run virtual storage group recover task
+   * @param futures virtual storage group recover tasks
    */
-  public void recover(StorageGroupMNode storageGroupMNode) {
-    List<Thread> threadList = new ArrayList<>(partitioner.getPartitionCount());
+  public void asyncRecover(
+      IStorageGroupMNode storageGroupMNode, ExecutorService pool, List<Future<Void>> futures) {
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
       int cur = i;
-      Thread recoverThread =
-          new Thread(
-              new Runnable() {
-                @Override
-                public void run() {
-                  StorageGroupProcessor processor = null;
-                  try {
-                    processor =
-                        StorageEngine.getInstance()
-                            .buildNewStorageGroupProcessor(
-                                storageGroupMNode.getPartialPath(),
-                                storageGroupMNode,
-                                String.valueOf(cur));
-                  } catch (StorageGroupProcessorException e) {
-                    logger.error(
-                        "failed to recover storage group processor in "
-                            + storageGroupMNode.getFullPath()
-                            + " virtual storage group id is "
-                            + cur);
-                  }
-                  virtualStorageGroupProcessor[cur] = processor;
-                }
-              });
-
-      threadList.add(recoverThread);
-      recoverThread.start();
-    }
-
-    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-      try {
-        threadList.get(i).join();
-      } catch (InterruptedException e) {
-        logger.error(
-            "failed to recover storage group processor in "
-                + storageGroupMNode.getFullPath()
-                + " virtual storage group id is "
-                + i);
-        Thread.currentThread().interrupt();
-      }
+      Callable<Void> recoverVsgTask =
+          () -> {
+            isVsgReady[cur].set(false);
+            StorageGroupProcessor processor = null;
+            try {
+              processor =
+                  StorageEngine.getInstance()
+                      .buildNewStorageGroupProcessor(
+                          storageGroupMNode.getPartialPath(),
+                          storageGroupMNode,
+                          String.valueOf(cur));
+            } catch (StorageGroupProcessorException e) {
+              logger.error(
+                  "failed to recover virtual storage group {}[{}]",
+                  storageGroupMNode.getFullPath(),
+                  cur,
+                  e);
+            }
+            virtualStorageGroupProcessor[cur] = processor;
+            isVsgReady[cur].set(true);
+            return null;
+          };
+      futures.add(pool.submit(recoverVsgTask));
     }
   }
 
@@ -201,7 +238,7 @@ public class VirtualStorageGroupManager {
             isSeq);
       }
 
-      processor.writeLock();
+      processor.writeLock("VirtualCloseStorageGroupProcessor-204");
       try {
         if (isSeq) {
           // to avoid concurrent modification problem, we need a new array list
@@ -239,13 +276,13 @@ public class VirtualStorageGroupManager {
             processor.getVirtualStorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
             isSeq,
             partitionId);
-        processor.writeLock();
-        // to avoid concurrent modification problem, we need a new array list
-        List<TsFileProcessor> processors =
-            isSeq
-                ? new ArrayList<>(processor.getWorkSequenceTsFileProcessors())
-                : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
+        processor.writeLock("VirtualCloseStorageGroupProcessor-242");
         try {
+          // to avoid concurrent modification problem, we need a new array list
+          List<TsFileProcessor> processors =
+              isSeq
+                  ? new ArrayList<>(processor.getWorkSequenceTsFileProcessors())
+                  : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
           for (TsFileProcessor tsfileProcessor : processors) {
             if (tsfileProcessor.getTimeRangeId() == partitionId) {
               if (isSync) {
@@ -264,11 +301,16 @@ public class VirtualStorageGroupManager {
   }
 
   /** push delete operation down to all virtual storage group processors */
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.delete(path, startTime, endTime, planIndex);
+        storageGroupProcessor.delete(path, startTime, endTime, planIndex, timePartitionFilter);
       }
     }
   }
@@ -290,6 +332,18 @@ public class VirtualStorageGroupManager {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         storageGroupProcessor.upgrade();
+      }
+    }
+  }
+
+  public void getResourcesToBeSettled(
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths) {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.addSettleFilesToList(
+            seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
       }
     }
   }
@@ -322,7 +376,7 @@ public class VirtualStorageGroupManager {
   }
 
   /** push deleteStorageGroup operation down to all virtual storage group processors */
-  public void deleteStorageGroup(String path) {
+  public void deleteStorageGroupSystemFolder(String path) {
     for (StorageGroupProcessor processor : virtualStorageGroupProcessor) {
       if (processor != null) {
         processor.deleteFolder(path);
@@ -393,6 +447,7 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  /** release resource of direct wal buffer */
   public void releaseWalDirectByteBufferPool() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
@@ -404,5 +459,13 @@ public class VirtualStorageGroupManager {
   /** only for test */
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
+  }
+
+  public void setSettling(boolean settling) {
+    isSettling.set(settling);
+  }
+
+  public AtomicBoolean getIsSettling() {
+    return isSettling;
   }
 }

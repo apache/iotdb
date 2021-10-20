@@ -33,7 +33,54 @@ public abstract class QueryDataSet {
   protected int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
   protected int rowOffset = 0;
   protected int alreadyReturnedRowNum = 0;
+  protected int fetchSize = 10000;
   protected boolean ascending;
+  /*
+   *  whether current data group has data for query.
+   *  If not null(must be in cluster mode),
+   *  we need to redirect the query to any data group which has some data to speed up query.
+   */
+  protected EndPoint endPoint = null;
+
+  /** if any column is null, we don't need that row */
+  protected boolean withoutAnyNull;
+
+  /** Only if all columns are null, we don't need that row */
+  protected boolean withoutAllNull;
+
+  /** For redirect query. Need keep consistent with EndPoint in rpc.thrift. */
+  public static class EndPoint {
+    private String ip = null;
+    private int port = 0;
+
+    public EndPoint(String ip, int port) {
+      this.ip = ip;
+      this.port = port;
+    }
+
+    public EndPoint() {}
+
+    public String getIp() {
+      return ip;
+    }
+
+    public void setIp(String ip) {
+      this.ip = ip;
+    }
+
+    public int getPort() {
+      return port;
+    }
+
+    public void setPort(int port) {
+      this.port = port;
+    }
+
+    @Override
+    public String toString() {
+      return "ip:port=" + ip + ":" + port;
+    }
+  }
 
   public QueryDataSet() {}
 
@@ -56,7 +103,12 @@ public abstract class QueryDataSet {
     // proceed to the OFFSET row by skipping rows
     while (rowOffset > 0) {
       if (hasNextWithoutConstraint()) {
-        nextWithoutConstraint(); // DO NOT use next()
+        RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
+        // filter rows whose columns are null according to the rule
+        if ((withoutAllNull && rowRecord.isAllNull())
+            || (withoutAnyNull && rowRecord.hasNullField())) {
+          continue;
+        }
         rowOffset--;
       } else {
         return false;
@@ -79,6 +131,10 @@ public abstract class QueryDataSet {
       alreadyReturnedRowNum++;
     }
     return nextWithoutConstraint();
+  }
+
+  public void setFetchSize(int fetchSize) {
+    this.fetchSize = fetchSize;
   }
 
   public abstract RowRecord nextWithoutConstraint() throws IOException;
@@ -113,5 +169,33 @@ public abstract class QueryDataSet {
 
   public boolean hasLimit() {
     return rowLimit > 0;
+  }
+
+  public EndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  public void setEndPoint(EndPoint endPoint) {
+    this.endPoint = endPoint;
+  }
+
+  public boolean isWithoutAnyNull() {
+    return withoutAnyNull;
+  }
+
+  public void setWithoutAnyNull(boolean withoutAnyNull) {
+    this.withoutAnyNull = withoutAnyNull;
+  }
+
+  public boolean isWithoutAllNull() {
+    return withoutAllNull;
+  }
+
+  public void setWithoutAllNull(boolean withoutAllNull) {
+    this.withoutAllNull = withoutAllNull;
+  }
+
+  public void decreaseAlreadyReturnedRowNum() {
+    alreadyReturnedRowNum--;
   }
 }

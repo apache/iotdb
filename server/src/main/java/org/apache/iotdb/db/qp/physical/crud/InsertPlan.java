@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,12 +32,14 @@ import java.util.List;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
-  protected PartialPath deviceId;
+  protected PartialPath prefixPath;
+  protected PartialPath originalPrefixPath;
+  protected boolean isAligned;
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
   // get from MManager
-  protected MeasurementMNode[] measurementMNodes;
+  protected IMeasurementMNode[] measurementMNodes;
 
   // record the failed measurements, their reasons, and positions in "measurements"
   List<String> failedMeasurements;
@@ -49,12 +51,20 @@ public abstract class InsertPlan extends PhysicalPlan {
     super.canBeSplit = false;
   }
 
-  public PartialPath getDeviceId() {
-    return deviceId;
+  public PartialPath getPrefixPath() {
+    return prefixPath;
   }
 
-  public void setDeviceId(PartialPath deviceId) {
-    this.deviceId = deviceId;
+  public void setPrefixPath(PartialPath prefixPath) {
+    this.prefixPath = prefixPath;
+  }
+
+  /*
+  the original prefixPath needs to be recorded and recovered by recoverFromFailure because cluster may try to execute this plan twice
+   */
+  public void setPrefixPathForAlignTimeSeries(PartialPath prefixPath) {
+    this.originalPrefixPath = this.prefixPath;
+    this.prefixPath = prefixPath;
   }
 
   public String[] getMeasurements() {
@@ -73,11 +83,11 @@ public abstract class InsertPlan extends PhysicalPlan {
     this.dataTypes = dataTypes;
   }
 
-  public MeasurementMNode[] getMeasurementMNodes() {
+  public IMeasurementMNode[] getMeasurementMNodes() {
     return measurementMNodes;
   }
 
-  public void setMeasurementMNodes(MeasurementMNode[] mNodes) {
+  public void setMeasurementMNodes(IMeasurementMNode[] mNodes) {
     this.measurementMNodes = mNodes;
   }
 
@@ -91,6 +101,14 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public int getFailedMeasurementNumber() {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
   }
 
   public abstract long getMinTime();
@@ -109,6 +127,24 @@ public abstract class InsertPlan extends PhysicalPlan {
     failedExceptions.add(e);
     failedIndices.add(index);
     measurements[index] = null;
+  }
+
+  public void markFailedMeasurementAlignedInsertion(Exception e) {
+    if (failedMeasurements == null) {
+      failedMeasurements = new ArrayList<>();
+      failedExceptions = new ArrayList<>();
+      failedIndices = new ArrayList<>();
+    }
+
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
+      failedMeasurements.add(measurements[i]);
+      failedExceptions.add(e);
+      failedIndices.add(i);
+      measurements[i] = null;
+    }
   }
 
   /**
@@ -130,8 +166,8 @@ public abstract class InsertPlan extends PhysicalPlan {
       }
     }
     if (measurementMNodes != null) {
-      MeasurementMNode[] temp = measurementMNodes.clone();
-      measurementMNodes = new MeasurementMNode[failedIndices.size()];
+      IMeasurementMNode[] temp = measurementMNodes.clone();
+      measurementMNodes = new IMeasurementMNode[failedIndices.size()];
       for (int i = 0; i < failedIndices.size(); i++) {
         measurementMNodes[i] = temp[failedIndices.get(i)];
       }
@@ -144,6 +180,9 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   /** Reset measurements from failed measurements (if any), as if no failure had ever happened. */
   public void recoverFromFailure() {
+    if (isAligned && originalPrefixPath != null) {
+      prefixPath = originalPrefixPath;
+    }
     if (failedMeasurements == null) {
       return;
     }
@@ -159,7 +198,7 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
-    if (deviceId == null) {
+    if (prefixPath == null) {
       throw new QueryProcessException("DeviceId is null");
     }
     if (measurements == null) {

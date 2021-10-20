@@ -20,7 +20,7 @@
 -->
 # Building C++ Client
 
-To compile cpp client, add "-P client-cpp" option to maven build command.
+To compile cpp client, add "-P compile-cpp" option to maven build command.
 
 The compiling requires the module "compile-tools" to be built first.
 For more information, please refer to "compile-tools/README.md".
@@ -28,7 +28,7 @@ For more information, please refer to "compile-tools/README.md".
 
 ## Compile and Test:
 
-`mvn integration-test -P client-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
+`mvn integration-test -P compile-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
 
 To compile on Windows, please install Boost first and add following Maven settings:
 ```
@@ -37,7 +37,7 @@ To compile on Windows, please install Boost first and add following Maven settin
 
 e.g.,
 ```
-mvn integration-test -P client-cpp -pl client-cpp,server,example/client-cpp-example -am 
+mvn integration-test -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am 
 -D"iotdb.test.skip"=true -D"tsfile.test.skip"=true -D"jdbc.test.skip"=true 
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
 ```

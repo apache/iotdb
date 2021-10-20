@@ -95,6 +95,8 @@ public class IOTDBGroupByInnerIntervalIT {
             + "values(29, 50.5, false, 550)",
       };
 
+  private static final double DETLA = 1e-6;
+
   private static final String TIMESTAMP_STR = "Time";
 
   @Before
@@ -112,15 +114,14 @@ public class IOTDBGroupByInnerIntervalIT {
 
   @Test
   public void countSumAvgInnerIntervalTest() {
-    String[] retArray1 =
-        new String[] {
-          "1,3,6.6,2.2",
-          "6,3,23.1,7.7",
-          "11,3,36.599999999999994,12.2",
-          "16,2,35.400000000000006,17.700000000000003",
-          "21,2,45.5,22.75",
-          "26,3,90.9,30.299999999999997"
-        };
+    double[][] retArray1 = {
+      {1.0, 3.0, 6.6, 2.2},
+      {6.0, 3.0, 23.1, 7.7},
+      {11.0, 3.0, 36.6, 12.2},
+      {16.0, 2.0, 35.4, 17.7},
+      {21.0, 2.0, 45.5, 22.75},
+      {26.0, 3.0, 90.9, 30.3}
+    };
 
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -136,15 +137,13 @@ public class IOTDBGroupByInnerIntervalIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
-                  + ","
-                  + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
-                  + ","
-                  + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          double[] ans = new double[4];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(count("root.ln.wf01.wt01.temperature")));
+          ans[2] = Double.valueOf(resultSet.getString(sum("root.ln.wf01.wt01.temperature")));
+          ans[3] = Double.valueOf(resultSet.getString(avg("root.ln.wf01.wt01.temperature")));
+          assertArrayEquals(retArray1[cnt], ans, DETLA);
+
           cnt++;
         }
         assertEquals(retArray1.length, cnt);
@@ -158,15 +157,14 @@ public class IOTDBGroupByInnerIntervalIT {
 
   @Test
   public void countSumAvgInnerIntervalTestWithValueFilter() {
-    String[] retArray1 =
-        new String[] {
-          "1,1,3.3,3.3",
-          "6,3,23.1,7.7",
-          "11,3,36.599999999999994,12.2",
-          "16,2,35.400000000000006,17.700000000000003",
-          "21,2,45.5,22.75",
-          "26,3,90.9,30.299999999999997"
-        };
+    double[][] retArray1 = {
+      {1.0, 1.0, 3.3, 3.3},
+      {6.0, 3.0, 23.1, 7.7},
+      {11.0, 3.0, 36.6, 12.2},
+      {16.0, 2.0, 35.4, 17.7},
+      {21.0, 2.0, 45.5, 22.75},
+      {26.0, 3.0, 90.9, 30.3}
+    };
 
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -182,29 +180,26 @@ public class IOTDBGroupByInnerIntervalIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
-                  + ","
-                  + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
-                  + ","
-                  + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          double[] ans = new double[4];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(count("root.ln.wf01.wt01.temperature")));
+          ans[2] = Double.valueOf(resultSet.getString(sum("root.ln.wf01.wt01.temperature")));
+          ans[3] = Double.valueOf(resultSet.getString(avg("root.ln.wf01.wt01.temperature")));
+          assertArrayEquals(retArray1[cnt], ans, DETLA);
           cnt++;
         }
         assertEquals(retArray1.length, cnt);
       }
 
-      String[] retArray2 =
-          new String[] {
-            "26,3,90.9,30.299999999999997",
-            "21,2,45.5,22.75",
-            "16,2,35.400000000000006,17.700000000000003",
-            "11,3,36.6,12.2",
-            "6,3,23.1,7.699999999999999",
-            "1,1,3.3,3.3",
-          };
+      double[][] retArray2 = {
+        {26.0, 3.0, 90.9, 30.3},
+        {21.0, 2.0, 45.5, 22.75},
+        {16.0, 2.0, 35.4, 17.7},
+        {11.0, 3.0, 36.6, 12.2},
+        {6.0, 3.0, 23.1, 7.7},
+        {1.0, 1.0, 3.3, 3.3}
+      };
+
       hasResultSet =
           statement.execute(
               "select count(temperature), sum(temperature), avg(temperature) from "
@@ -215,15 +210,12 @@ public class IOTDBGroupByInnerIntervalIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
-                  + ","
-                  + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
-                  + ","
-                  + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray2[cnt], ans);
+          double[] ans = new double[4];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(count("root.ln.wf01.wt01.temperature")));
+          ans[2] = Double.valueOf(resultSet.getString(sum("root.ln.wf01.wt01.temperature")));
+          ans[3] = Double.valueOf(resultSet.getString(avg("root.ln.wf01.wt01.temperature")));
+          assertArrayEquals(retArray2[cnt], ans, DETLA);
           cnt++;
         }
         assertEquals(retArray2.length, cnt);
@@ -236,15 +228,14 @@ public class IOTDBGroupByInnerIntervalIT {
 
   @Test
   public void countSumAvgInnerIntervalTestWithTimeFilter() {
-    String[] retArray1 =
-        new String[] {
-          "1,0,0.0,null",
-          "6,3,23.1,7.7",
-          "11,3,36.599999999999994,12.2",
-          "16,2,35.400000000000006,17.700000000000003",
-          "21,2,45.5,22.75",
-          "26,3,90.9,30.299999999999997"
-        };
+    String retArray = "1,0,0.0,null";
+    double[][] retArray1 = {
+      {6.0, 3.0, 23.1, 7.7},
+      {11.0, 3.0, 36.6, 12.2},
+      {16.0, 2.0, 35.4, 17.7},
+      {21.0, 2.0, 45.5, 22.75},
+      {26.0, 3.0, 90.9, 30.3}
+    };
 
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -254,13 +245,11 @@ public class IOTDBGroupByInnerIntervalIT {
               "select count(temperature), sum(temperature), avg(temperature) from "
                   + "root.ln.wf01.wt01 where time > 3"
                   + " GROUP BY ([1, 30), 3ms, 5ms)");
-
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
+        if (resultSet.next()) {
+          String res =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
@@ -268,12 +257,20 @@ public class IOTDBGroupByInnerIntervalIT {
                   + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
                   + ","
                   + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray, res);
+        }
+        cnt = 0;
+        while (resultSet.next()) {
+          double[] ans = new double[4];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(count("root.ln.wf01.wt01.temperature")));
+          ans[2] = Double.valueOf(resultSet.getString(sum("root.ln.wf01.wt01.temperature")));
+          ans[3] = Double.valueOf(resultSet.getString(avg("root.ln.wf01.wt01.temperature")));
+          assertArrayEquals(retArray1[cnt], ans, DETLA);
           cnt++;
         }
         assertEquals(retArray1.length, cnt);
       }
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

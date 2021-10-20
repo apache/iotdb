@@ -107,7 +107,7 @@ public class ShowTimeSeriesResult extends ShowResult {
       throws IOException {
     ReadWriteIOUtils.write(param != null, outputStream);
     if (param != null) {
-      ReadWriteIOUtils.write(tags.size(), outputStream);
+      ReadWriteIOUtils.write(param.size(), outputStream);
       for (Entry<String, String> entry : param.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
         ReadWriteIOUtils.write(entry.getValue(), outputStream);

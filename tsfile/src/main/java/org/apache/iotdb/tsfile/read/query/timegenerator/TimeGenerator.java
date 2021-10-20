@@ -31,7 +31,9 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree
@@ -41,7 +43,8 @@ import java.util.*;
  */
 public abstract class TimeGenerator {
 
-  private HashMap<Path, List<LeafNode>> leafCache = new HashMap<>();
+  private HashMap<Path, List<LeafNode>> leafNodeCache = new HashMap<>();
+  private HashMap<Path, List<Object>> leafValuesCache;
   protected Node operatorNode;
   private boolean hasOrNode;
 
@@ -50,18 +53,43 @@ public abstract class TimeGenerator {
   }
 
   public long next() throws IOException {
+    if (!hasOrNode) {
+      if (leafValuesCache == null) {
+        leafValuesCache = new HashMap<>();
+      }
+      leafNodeCache.forEach(
+          (path, nodes) ->
+              leafValuesCache
+                  .computeIfAbsent(path, k -> new ArrayList<>())
+                  .add(nodes.get(0).currentValue()));
+    }
     return operatorNode.next();
   }
 
-  public Object getValue(Path path, long time) {
-    for (LeafNode leafNode : leafCache.get(path)) {
-      if (!leafNode.currentTimeIs(time)) {
-        continue;
-      }
-      return leafNode.currentValue();
+  /** ATTENTION: this method should only be used when there is no `OR` node */
+  public Object[] getValues(Path path) throws IOException {
+    if (hasOrNode) {
+      throw new IOException(
+          "getValues() method should not be invoked when there is OR operator in where clause");
     }
+    if (leafValuesCache.get(path) == null) {
+      throw new IOException(
+          "getValues() method should not be invoked by non-existent path in where clause");
+    }
+    return leafValuesCache.remove(path).toArray();
+  }
 
-    return null;
+  /** ATTENTION: this method should only be used when there is no `OR` node */
+  public Object getValue(Path path) throws IOException {
+    if (hasOrNode) {
+      throw new IOException(
+          "getValue() method should not be invoked when there is OR operator in where clause");
+    }
+    if (leafValuesCache.get(path) == null) {
+      throw new IOException(
+          "getValue() method should not be invoked by non-existent path in where clause");
+    }
+    return leafValuesCache.get(path).remove(0);
   }
 
   public void constructNode(IExpression expression) throws IOException {
@@ -76,13 +104,9 @@ public abstract class TimeGenerator {
       IBatchReader seriesReader = generateNewBatchReader(singleSeriesExp);
       Path path = singleSeriesExp.getSeriesPath();
 
-      if (!leafCache.containsKey(path)) {
-        leafCache.put(path, new ArrayList<>());
-      }
-
       // put the current reader to valueCache
       LeafNode leafNode = new LeafNode(seriesReader);
-      leafCache.get(path).add(leafNode);
+      leafNodeCache.computeIfAbsent(path, p -> new ArrayList<>()).add(leafNode);
 
       return leafNode;
     } else {

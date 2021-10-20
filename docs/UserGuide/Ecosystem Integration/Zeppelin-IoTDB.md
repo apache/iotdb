@@ -19,23 +19,9 @@
 
 -->
 
-# Zeppelin-IoTDB Interpreter
+## Zeppelin-IoTDB
 
-## 1. Outline
-
-- What's Zeppelin
-
-- IoTDB Zeppelin-Interpreter 
-  - System Requirements
-  - Build Interpreter
-  - Install Interpreter
-  - Running Zeppelin and IoTDB
-- Use Zeppelin-IoTDB
-- Configuration
-
-
-
-## 2. What's Zeppelin
+### About Zeppelin
 
 Zeppelin is a web-based notebook that enables interactive data analytics. You can connect to data sources and perform interactive operations with SQL, Scala, etc. The operations can be saved as documents, just like Jupyter. Zeppelin has already supported many data sources, including Spark, ElasticSearch, Cassandra, and InfluxDB. Now, we have enabled Zeppelin to operate IoTDB via SQL. 
 
@@ -43,15 +29,15 @@ Zeppelin is a web-based notebook that enables interactive data analytics. You ca
 
 
 
-## 3. Zeppelin-IoTDB Interpreter
+### Zeppelin-IoTDB Interpreter
 
-### System Requirements
+#### System Requirements
 
 | IoTDB Version | Java Version  | Zeppelin Version |
 | :-----------: | :-----------: | :--------------: |
-|  >=`0.12.0-SNAPSHOT`   | >=`1.8.0_271` |    `>=0.9.0`     |
+|  >=`0.12.0`   | >=`1.8.0_271` |    `>=0.9.0`     |
 
-Install IoTDB: Reference to [IoTDB Quick Start](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html). Suppose IoTDB is placed at `$IoTDB_HOME`.
+Install IoTDB: Reference to [IoTDB Quick Start](../QuickStart/QuickStart.html). Suppose IoTDB is placed at `$IoTDB_HOME`.
 
 Install Zeppelin:
 > Method A. Download directly: You can download [Zeppelin](https://zeppelin.apache.org/download.html#) and unpack the binary package. [netinst](http://www.apache.org/dyn/closer.cgi/zeppelin/zeppelin-0.9.0/zeppelin-0.9.0-bin-netinst.tgz) binary package is recommended since it's relatively small by excluding irrelevant interpreters.
@@ -60,11 +46,11 @@ Install Zeppelin:
 
 Suppose Zeppelin is placed at `$Zeppelin_HOME`.
 
-### 3.2 Build Interpreter
+#### Build Interpreter
 
 ```
  cd $IoTDB_HOME
- mvn clean package -pl zeppelin-interpreter -am -DskipTests
+ mvn clean package -pl zeppelin-interpreter -am -DskipTests -P get-jar-with-dependencies
 ```
 
 The interpreter will be in the folder:
@@ -75,7 +61,7 @@ The interpreter will be in the folder:
 
 
 
-### 3.3 Install Interpreter
+#### Install Interpreter
 
 Once you have built your interpreter, create a new folder under the Zeppelin interpreter directory and put the built interpreter into it. 
 
@@ -87,7 +73,7 @@ Once you have built your interpreter, create a new folder under the Zeppelin int
 
 
 
-### 3.4 Running Zeppelin and IoTDB
+#### Running Zeppelin and IoTDB
 
 Go to `$Zeppelin_HOME` and start Zeppelin by running: 
 
@@ -101,7 +87,7 @@ or in Windows:
  .\bin\zeppelin.cmd
 ```
 
-Go to `$IoTDB_HOME` and [start IoTDB server](https://github.com/apache/iotdb#start-iotdb):
+Go to `$IoTDB_HOME` and start IoTDB server:
 
 ```
  # Unix/OS X
@@ -115,7 +101,7 @@ Go to `$IoTDB_HOME` and [start IoTDB server](https://github.com/apache/iotdb#sta
 
 
 
-## 4. Use Zeppelin-IoTDB
+### Use Zeppelin-IoTDB
 
 Wait for Zeppelin server to start, then visit http://127.0.0.1:8080/
 
@@ -163,13 +149,13 @@ The screenshot is as follows:
 
 ![iotdb-note-snapshot2](https://user-images.githubusercontent.com/5548915/102752948-52a2d500-43a5-11eb-9156-0c55667eb4cd.png)
 
-You can also design more fantasy documents referring to [[1]](https://zeppelin.apache.org/docs/0.9.0-SNAPSHOT/usage/display_system/basic.html) and others.
+You can also design more fantasy documents referring to [[1]](https://zeppelin.apache.org/docs/0.9.0/usage/display_system/basic.html) and others.
 
 The above demo notebook can be found at  `$IoTDB_HOME/zeppelin-interpreter/Zeppelin-IoTDB-Demo.zpln`.
 
 
 
-## 5. Configuration
+### Configuration
 
 You can configure the connection parameters in http://127.0.0.1:8080/#/interpreter :
 
@@ -187,3 +173,4 @@ The parameters you can configure are as follows:
 | iotdb.zoneId                 |           | Zone Id                         |
 | iotdb.enable.rpc.compression | FALSE     | Whether enable rpc compression  |
 | iotdb.time.display.type      | default   | The time format to display      |
+

@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,9 +36,10 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
   private final List<IReaderByTimestamp> seriesReaderByTimestampList;
   private final List<Boolean> cached;
 
-  private boolean hasCachedRow;
-  private RowRecord cachedRowRecord;
-  private Object[] cachedRowInObjects;
+  private List<RowRecord> cachedRowRecords = new ArrayList<>();
+
+  /** Used for UDF. */
+  private List<Object[]> cachedRowInObjects = new ArrayList<>();
 
   /**
    * constructor of EngineDataSetWithValueFilter.
@@ -64,61 +66,90 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
   @Override
   public boolean hasNextWithoutConstraint() throws IOException {
-    if (hasCachedRow) {
+    if (!cachedRowRecords.isEmpty()) {
       return true;
     }
-    return cacheRowRecord();
+    return cacheRowRecords();
   }
 
+  /** @return the first record of cached rows or null if there is no more data */
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
-    if (!hasCachedRow && !cacheRowRecord()) {
+    if (cachedRowRecords.isEmpty() && !cacheRowRecords()) {
       return null;
     }
-    hasCachedRow = false;
-    return cachedRowRecord;
+    return cachedRowRecords.remove(cachedRowRecords.size() - 1);
   }
 
   /**
-   * Cache row record
+   * Cache row records
    *
    * @return if there has next row record.
    */
-  private boolean cacheRowRecord() throws IOException {
-    while (timeGenerator.hasNext()) {
-      boolean hasField = false;
-      long timestamp = timeGenerator.next();
-      RowRecord rowRecord = new RowRecord(timestamp);
+  private boolean cacheRowRecords() throws IOException {
+    int cachedTimeCnt = 0;
+    long[] cachedTimeArray = new long[fetchSize];
+    // TODO: LIMIT constraint
+    // 1. fill time array from time Generator
+    while (timeGenerator.hasNext() && cachedTimeCnt < fetchSize) {
+      cachedTimeArray[cachedTimeCnt++] = timeGenerator.next();
+    }
+    if (cachedTimeCnt == 0) {
+      return false;
+    }
+    RowRecord[] rowRecords = new RowRecord[cachedTimeCnt];
+    for (int i = 0; i < cachedTimeCnt; i++) {
+      rowRecords[i] = new RowRecord(cachedTimeArray[i]);
+    }
 
-      for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
-        Object value;
-        // get value from readers in time generator
-        if (cached.get(i)) {
-          value = timeGenerator.getValue(paths.get(i), timestamp);
-        } else {
-          // get value from series reader without filter
-          IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
-          value = reader.getValueInTimestamp(timestamp);
-        }
-        if (value == null) {
-          rowRecord.addField(null);
-        } else {
-          hasField = true;
-          rowRecord.addField(value, dataTypes.get(i));
-        }
+    boolean[] hasField = new boolean[cachedTimeCnt];
+    // 2. fetch results of each time series using time array
+    for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
+      Object[] results;
+      // get value from readers in time generator
+      if (cached.get(i)) {
+        results = timeGenerator.getValues(paths.get(i));
+      } else {
+        results =
+            seriesReaderByTimestampList
+                .get(i)
+                .getValuesInTimestamps(cachedTimeArray, cachedTimeCnt);
       }
-      if (hasField) {
-        hasCachedRow = true;
-        cachedRowRecord = rowRecord;
-        break;
+
+      // 3. use values in results to fill row record
+      for (int j = 0; j < cachedTimeCnt; j++) {
+        if (results[j] == null) {
+          rowRecords[j].addField(null);
+        } else {
+          hasField[j] = true;
+          if (dataTypes.get(i) == TSDataType.VECTOR) {
+            TsPrimitiveType[] result = (TsPrimitiveType[]) results[j];
+            rowRecords[j].addField(result[0].getValue(), result[0].getDataType());
+          } else {
+            rowRecords[j].addField(results[j], dataTypes.get(i));
+          }
+        }
       }
     }
-    return hasCachedRow;
+    // 4. remove rowRecord if all values in one timestamp are null
+    // traverse in reversed order to get element efficiently
+    for (int i = cachedTimeCnt - 1; i >= 0; i--) {
+      if (hasField[i]) {
+        cachedRowRecords.add(rowRecords[i]);
+      }
+    }
+
+    // 5. check whether there is next row record
+    if (cachedRowRecords.isEmpty() && timeGenerator.hasNext()) {
+      // Note: This may leads to a deep stack if much rowRecords are empty
+      return cacheRowRecords();
+    }
+    return !cachedRowRecords.isEmpty();
   }
 
   @Override
   public boolean hasNextRowInObjects() throws IOException {
-    if (hasCachedRow) {
+    if (!cachedRowInObjects.isEmpty()) {
       return true;
     }
     return cacheRowInObjects();
@@ -126,40 +157,67 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
   @Override
   public Object[] nextRowInObjects() throws IOException {
-    if (!hasCachedRow && !cacheRowInObjects()) {
+    if (cachedRowInObjects.isEmpty() && !cacheRowInObjects()) {
       // values + timestamp
       return new Object[seriesReaderByTimestampList.size() + 1];
     }
-    hasCachedRow = false;
-    return cachedRowInObjects;
+
+    return cachedRowInObjects.remove(cachedRowInObjects.size() - 1);
   }
 
   private boolean cacheRowInObjects() throws IOException {
-    int seriesNumber = seriesReaderByTimestampList.size();
-    while (timeGenerator.hasNext()) {
-      boolean hasField = false;
+    int cachedTimeCnt = 0;
+    long[] cachedTimeArray = new long[fetchSize];
 
-      Object[] rowInObjects = new Object[seriesNumber + 1];
-      long timestamp = timeGenerator.next();
-      rowInObjects[seriesNumber] = timestamp;
+    // TODO: LIMIT constraint
+    // 1. fill time array from time Generator
+    while (timeGenerator.hasNext() && cachedTimeCnt < fetchSize) {
+      cachedTimeArray[cachedTimeCnt++] = timeGenerator.next();
+    }
+    if (cachedTimeCnt == 0) {
+      return false;
+    }
 
-      for (int i = 0; i < seriesNumber; i++) {
-        Object value =
-            cached.get(i)
-                ? timeGenerator.getValue(paths.get(i), timestamp)
-                : seriesReaderByTimestampList.get(i).getValueInTimestamp(timestamp);
-        if (value != null) {
-          hasField = true;
-          rowInObjects[i] = value;
+    Object[][] rowsInObject = new Object[cachedTimeCnt][seriesReaderByTimestampList.size() + 1];
+    for (int i = 0; i < cachedTimeCnt; i++) {
+      rowsInObject[i][seriesReaderByTimestampList.size()] = cachedTimeArray[i];
+    }
+
+    boolean[] hasField = new boolean[cachedTimeCnt];
+    // 2. fetch results of each time series using time array
+    for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
+      Object[] results;
+      // get value from readers in time generator
+      if (cached.get(i)) {
+        results = timeGenerator.getValues(paths.get(i));
+      } else {
+        results =
+            seriesReaderByTimestampList
+                .get(i)
+                .getValuesInTimestamps(cachedTimeArray, cachedTimeCnt);
+      }
+
+      // 3. use values in results to fill row record
+      for (int j = 0; j < cachedTimeCnt; j++) {
+        if (results[j] != null) {
+          hasField[j] = true;
+          rowsInObject[j][i] = results[j];
         }
       }
-
-      if (hasField) {
-        hasCachedRow = true;
-        cachedRowInObjects = rowInObjects;
-        break;
+    }
+    // 4. remove rowRecord if all values in one timestamp are null
+    // traverse in reversed order to get element efficiently
+    for (int i = cachedTimeCnt - 1; i >= 0; i--) {
+      if (hasField[i]) {
+        cachedRowInObjects.add(rowsInObject[i]);
       }
     }
-    return hasCachedRow;
+
+    // 5. check whether there is next row record
+    if (cachedRowInObjects.isEmpty() && timeGenerator.hasNext()) {
+      // Note: This may leads to a deep stack if much rowRecords are empty
+      return cacheRowInObjects();
+    }
+    return !cachedRowInObjects.isEmpty();
   }
 }

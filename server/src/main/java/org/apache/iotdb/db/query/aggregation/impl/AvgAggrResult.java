@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -78,34 +78,42 @@ public class AvgAggrResult extends AggregateResult {
     } else {
       sum = statistics.getSumDoubleValue();
     }
-    avg =
-        avg * ((double) preCnt / cnt)
-            + ((double) statistics.getCount() / cnt) * sum / statistics.getCount();
+    avg = (avg * preCnt + sum) / cnt;
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
+  public void updateResultFromPageData(IBatchDataIterator batchIterator) {
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    while (dataInThisPage.hasCurrent()) {
-      if (dataInThisPage.currentTime() >= maxBound || dataInThisPage.currentTime() < minBound) {
+  public void updateResultFromPageData(
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
+    while (batchIterator.hasNext()) {
+      if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
         break;
       }
-      updateAvg(seriesDataType, dataInThisPage.currentValue());
-      dataInThisPage.next();
+      updateAvg(seriesDataType, batchIterator.currentValue());
+      batchIterator.next();
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        updateAvg(seriesDataType, value);
+      if (values[i] != null) {
+        updateAvg(seriesDataType, values[i]);
+      }
+    }
+  }
+
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        updateAvg(seriesDataType, values[i]);
       }
     }
   }
@@ -131,7 +139,7 @@ public class AvgAggrResult extends AggregateResult {
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation AVG : %s", type));
     }
-    avg = avg * ((double) cnt / (cnt + 1)) + val * (1.0 / (cnt + 1));
+    avg = (avg * cnt + val) / (cnt + 1);
     cnt++;
   }
 
@@ -164,9 +172,7 @@ public class AvgAggrResult extends AggregateResult {
       // avoid two empty results producing an NaN
       return;
     }
-    avg =
-        avg * ((double) cnt / (cnt + anotherAvg.cnt))
-            + anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
+    avg = (avg * cnt + anotherAvg.avg * anotherAvg.cnt) / (cnt + anotherAvg.cnt);
     cnt += anotherAvg.cnt;
   }
 

@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
@@ -59,8 +60,7 @@ public class TsFileSequenceRead {
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the
-      // marker) ahead and
-      // judge accordingly.
+      // marker) ahead and judge accordingly.
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());
@@ -68,7 +68,11 @@ public class TsFileSequenceRead {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
+          case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
+          case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
+          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
+          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
             System.out.println("\t[Chunk]");
             System.out.println("\tchunk type: " + marker);
             System.out.println("\tposition: " + reader.position());

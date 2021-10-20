@@ -40,6 +40,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -56,6 +57,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 public class StatMonitor implements StatMonitorMBean, IService {
@@ -158,20 +160,25 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   private TimeValuePair getLastValue(PartialPath monitorSeries)
       throws StorageEngineException, QueryProcessException, IOException {
+    HashSet<String> measurementSet = new HashSet<>();
+    measurementSet.add(monitorSeries.getMeasurement());
     if (mManager.isPathExist(monitorSeries)) {
-      TimeValuePair timeValuePair =
-          LastQueryExecutor.calculateLastPairForSeriesLocally(
-                  Collections.singletonList(monitorSeries),
-                  Collections.singletonList(TSDataType.INT64),
-                  new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
-                  null,
-                  Collections.singletonMap(
-                      monitorSeries.getDevice(),
-                      Collections.singleton(monitorSeries.getMeasurement())))
-              .get(0)
-              .right;
-      if (timeValuePair.getValue() != null) {
-        return timeValuePair;
+      long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      try {
+        TimeValuePair timeValuePair =
+            LastQueryExecutor.calculateLastPairForSeriesLocally(
+                    Collections.singletonList(monitorSeries),
+                    Collections.singletonList(TSDataType.INT64),
+                    new QueryContext(queryId),
+                    null,
+                    Collections.singletonMap(monitorSeries.getDevice(), measurementSet))
+                .get(0)
+                .right;
+        if (timeValuePair.getValue() != null) {
+          return timeValuePair;
+        }
+      } finally {
+        QueryResourceManager.getInstance().endQuery(queryId);
       }
     }
     return null;
@@ -196,7 +203,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public void updateStatGlobalValue(int successPointsNum) {
     // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS
     globalSeriesValue.set(0, globalSeriesValue.get(0) + successPointsNum);
-    globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    if (successPointsNum != 0) {
+      globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    }
   }
 
   public void updateFailedStatValue() {
@@ -204,6 +213,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
     globalSeriesValue.set(2, globalSeriesValue.get(2) + 1);
   }
 
+  @TestOnly
   public void close() {
     config.setEnableStatMonitor(false);
     config.setEnableMonitorSeriesWrite(false);

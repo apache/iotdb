@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.thrift.transport.layered.TFramedTransport;
 
 import java.io.IOException;
 
@@ -30,10 +30,10 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   private AutoScalingBufferReadTransport readCompressBuffer;
 
   protected TCompressedElasticFramedTransport(
-      TTransport underlying, int initialBufferCapacity, int softMaxLength) {
-    super(underlying, initialBufferCapacity, softMaxLength);
-    writeCompressBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
-    readCompressBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
+      TTransport underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
+    writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+    readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
   }
 
   @Override
@@ -80,8 +80,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
 
     writeBuffer.reset();
-    if (softMaxLength < length) {
-      writeBuffer.resizeIfNecessary(softMaxLength);
+    if (thriftDefaultBufferSize < length) {
+      writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
     }
     underlying.flush();
   }

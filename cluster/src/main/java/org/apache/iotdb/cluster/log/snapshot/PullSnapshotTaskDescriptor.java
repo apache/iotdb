@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.log.snapshot;
 
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -75,9 +75,10 @@ public class PullSnapshotTaskDescriptor {
       dataOutputStream.writeInt(slot);
     }
 
+    dataOutputStream.writeInt(previousHolders.getId());
     dataOutputStream.writeInt(previousHolders.size());
     for (Node previousHolder : previousHolders) {
-      SerializeUtils.serialize(previousHolder, dataOutputStream);
+      NodeSerializeUtils.serialize(previousHolder, dataOutputStream);
     }
 
     dataOutputStream.writeBoolean(requireReadOnly);
@@ -90,11 +91,11 @@ public class PullSnapshotTaskDescriptor {
       slots.add(dataInputStream.readInt());
     }
 
+    previousHolders = new PartitionGroup(dataInputStream.readInt());
     int holderSize = dataInputStream.readInt();
-    previousHolders = new PartitionGroup();
     for (int i = 0; i < holderSize; i++) {
       Node node = new Node();
-      SerializeUtils.deserialize(node, dataInputStream);
+      NodeSerializeUtils.deserialize(node, dataInputStream);
       previousHolders.add(node);
     }
 

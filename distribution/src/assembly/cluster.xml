@@ -29,7 +29,7 @@
     <dependencySets>
         <dependencySet>
             <includes>
-                <include>*:cluster:zip:*</include>
+                <include>*:iotdb-cluster:zip:*</include>
                 <include>*:iotdb-cli:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>

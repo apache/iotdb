@@ -31,10 +31,10 @@ import java.util.Objects;
 public class GroupByFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = -1211805021419281440L;
-  private long interval;
-  private long slidingStep;
-  private long startTime;
-  private long endTime;
+  protected long interval;
+  protected long slidingStep;
+  protected long startTime;
+  protected long endTime;
 
   public GroupByFilter(long interval, long slidingStep, long startTime, long endTime) {
     this.interval = interval;
@@ -58,9 +58,8 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    if (endTime < this.startTime) return false;
+    if (endTime < this.startTime || startTime >= this.endTime) return false;
     else if (startTime <= this.startTime) return true;
-    else if (startTime >= this.endTime) return false;
     else {
       long minTime = startTime - this.startTime;
       long count = minTime / slidingStep;

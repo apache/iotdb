@@ -366,7 +366,7 @@ public class IoTDBMergeIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SHOW MERGE")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW MERGE INFO")) {
         cnt = 0;
         int colNum = resultSet.getMetaData().getColumnCount();
         while (resultSet.next()) {

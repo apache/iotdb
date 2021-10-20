@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.reader.universal;
 
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
@@ -31,19 +32,14 @@ public class DescPriorityMergeReader extends PriorityMergeReader {
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare =
-                  Long.compare(o2.timeValuePair.getTimestamp(), o1.timeValuePair.getTimestamp());
-              return timeCompare != 0 ? timeCompare : o2.priority.compareTo(o1.priority);
+                  Long.compare(o2.currPair().getTimestamp(), o1.currPair().getTimestamp());
+              return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
   }
 
-  /**
-   * @param reader
-   * @param priority
-   * @param endTime
-   * @throws IOException
-   */
   @Override
-  public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime)
+  public void addReader(
+      IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext context)
       throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
