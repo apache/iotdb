@@ -87,6 +87,11 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   }
 
   @TestOnly
+  public void resetFactory() {
+    dataMemberFactory = new DataGroupMember.Factory(protocolFactory, metaGroupMember);
+  }
+
+  @TestOnly
   public DataGroupEngine(
       DataGroupMember.Factory dataMemberFactory, MetaGroupMember metaGroupMember) {
     DataGroupEngine.metaGroupMember = metaGroupMember;
