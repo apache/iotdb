@@ -26,6 +26,7 @@ public interface HistogramSnapshot {
 
   /**
    * Get value by quantile
+   *
    * @param quantile
    * @return
    */
@@ -33,36 +34,42 @@ public interface HistogramSnapshot {
 
   /**
    * Get values in snapshot
+   *
    * @return
    */
   public abstract long[] getValues();
 
   /**
    * Get size of value in snapshot
+   *
    * @return
    */
   public abstract int size();
 
   /**
    * Get median of values
+   *
    * @return
    */
   public double getMedian();
 
   /**
    * Get min of values
+   *
    * @return
    */
   public abstract long getMin();
 
   /**
    * Get mean of values
+   *
    * @return
    */
   public abstract double getMean();
 
   /**
    * Get max of values
+   *
    * @return
    */
   public abstract long getMax();

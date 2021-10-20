@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.CompositeReporter;
+import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.Prometheus.PrometheusReporter;
@@ -59,14 +59,14 @@ public class DropwizardCompositeReporter implements CompositeReporter {
   public boolean start(String reporter) {
     switch (ReporterType.get(reporter)) {
       case JMX:
-        if(!startJmxReporter()) {
+        if (!startJmxReporter()) {
           logger.warn("Dropwizard already has reporter: " + reporter);
         }
         break;
       case IOTDB:
         break;
       case PROMETHEUS:
-        if(!startPrometheusReporter()){
+        if (!startPrometheusReporter()) {
           logger.warn("Dropwizard already has reporter: " + reporter);
         }
         break;
@@ -128,14 +128,14 @@ public class DropwizardCompositeReporter implements CompositeReporter {
   public boolean stop(String reporter) {
     switch (ReporterType.get(reporter)) {
       case JMX:
-        if(!stopJmxReporter()){
+        if (!stopJmxReporter()) {
           return false;
         }
         break;
       case IOTDB:
         break;
       case PROMETHEUS:
-        if(!stopPrometheusReporter()){
+        if (!stopPrometheusReporter()) {
           return false;
         }
         break;

@@ -22,24 +22,28 @@ package org.apache.iotdb.metrics.type;
 public interface Histogram extends IMetric {
   /**
    * update histogram by value
+   *
    * @param value
    */
   void update(int value);
 
   /**
    * update histogram by value
+   *
    * @param value
    */
   void update(long value);
 
   /**
    * get value of histogram
+   *
    * @return
    */
   long count();
 
   /**
    * tak snapshot of histogram
+   *
    * @return
    */
   HistogramSnapshot takeSnapshot();

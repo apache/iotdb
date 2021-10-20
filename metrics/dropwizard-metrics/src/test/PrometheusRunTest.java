@@ -28,7 +28,8 @@ public class PrometheusRunTest {
 
   public static void main(String[] args) throws InterruptedException {
     System.setProperty("line.separator", "\n");
-    System.setProperty("IOTDB_CONF", "E:\\iotdb\\metrics\\dropwizard-metrics\\src\\test\\resources");
+    // e.g. iotdb/metrics/dropwizard-metrics/src/test/resources
+    System.setProperty("IOTDB_CONF", "The directory of resources");
     PrometheusRunTest prometheusRunTest = new PrometheusRunTest();
     Counter counter = prometheusRunTest.metricManager.getOrCreateCounter("counter");
     while (true) {

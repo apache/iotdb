@@ -23,13 +23,14 @@ public interface CompositeReporter {
 
   /**
    * Start all reporter
+   *
    * @return
    */
   boolean start();
 
   /**
-   * Start reporter by name
-   * name values in jmx, prometheus, iotdb, internal
+   * Start reporter by name name values in jmx, prometheus, iotdb, internal
+   *
    * @param reporter
    * @return
    */
@@ -37,13 +38,14 @@ public interface CompositeReporter {
 
   /**
    * Stop all reporter
+   *
    * @return
    */
   boolean stop();
 
   /**
-   * Stop reporter by name
-   * name values in jmx, prometheus, iotdb, internal
+   * Stop reporter by name name values in jmx, prometheus, iotdb, internal
+   *
    * @param reporter
    * @return
    */
@@ -51,12 +53,14 @@ public interface CompositeReporter {
 
   /**
    * set manager to reporter
+   *
    * @param metricManager
    */
   void setMetricManager(MetricManager metricManager);
 
   /**
    * Get name of CompositeReporter
+   *
    * @return
    */
   String getName();

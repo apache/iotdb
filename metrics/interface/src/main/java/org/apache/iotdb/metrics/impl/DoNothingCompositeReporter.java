@@ -49,9 +49,7 @@ public class DoNothingCompositeReporter implements CompositeReporter {
    * @param metricManager
    */
   @Override
-  public void setMetricManager(MetricManager metricManager) {
-
-  }
+  public void setMetricManager(MetricManager metricManager) {}
 
   @Override
   public String getName() {

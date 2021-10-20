@@ -25,6 +25,7 @@ public interface Timer extends IMetric {
 
   /**
    * update time of timer
+   *
    * @param duration
    * @param unit
    */
@@ -32,6 +33,7 @@ public interface Timer extends IMetric {
 
   /**
    * update timer by millisecond
+   *
    * @param durationMillis
    */
   default void updateMillis(long durationMillis) {
@@ -40,6 +42,7 @@ public interface Timer extends IMetric {
 
   /**
    * update timer by microseconds
+   *
    * @param durationMicros
    */
   default void updateMicros(long durationMicros) {
@@ -48,6 +51,7 @@ public interface Timer extends IMetric {
 
   /**
    * update timer by nanoseconds
+   *
    * @param durationNanos
    */
   default void updateNanos(long durationNanos) {
@@ -56,6 +60,7 @@ public interface Timer extends IMetric {
 
   /**
    * take snapshot of timer
+   *
    * @return
    */
   HistogramSnapshot takeSnapshot();
