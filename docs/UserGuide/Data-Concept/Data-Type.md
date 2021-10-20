@@ -30,6 +30,7 @@ IoTDB supports the following data types:
 * DOUBLE (Double Precision Floating Point)
 * TEXT (String)
 
+There are six types of data.
 
 The time series of **FLOAT** and **DOUBLE** type can specify (MAX\_POINT\_NUMBER, see [this page](../Appendix/SQL-Reference.md) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](Encoding.md) or [TS\_2DIFF](Encoding.md). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](../Appendix/Config-Manual.md) in the configuration file `iotdb-engine.properties`.
 
