@@ -147,7 +147,7 @@
             <dependency>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>jackson-jaxrs</artifactId>
-                <version>1.9.13</version>
+                <version>1.9.14-MULE-002</version>
             </dependency>
             <dependency>
                 <groupId>javax.servlet</groupId>
