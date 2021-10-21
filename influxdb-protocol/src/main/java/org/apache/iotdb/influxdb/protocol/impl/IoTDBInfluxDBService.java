@@ -112,11 +112,11 @@ public class IoTDBInfluxDBService {
       this.databaseCache.updateDatabaseOrders(database, measurementTagOrders);
       this.databaseCache.setCurrentDatabase(database);
     } catch (StatementExecutionException e) {
-      // at first execution, tag_INFO table is not created, intercept the error
+      // at first execution, TAG_INFO table is not created, intercept the error
       if (e.getStatusCode() != 411) {
         throw new InfluxDBException(e.getMessage());
       } else {
-        // when tag_INFO table is not created,we also should set database.
+        // Retry: when TAG_INFO table is not created, we also should set the database.
         this.databaseCache.setCurrentDatabase(database);
       }
     } catch (IoTDBConnectionException e) {
