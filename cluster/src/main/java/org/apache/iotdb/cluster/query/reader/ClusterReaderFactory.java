@@ -53,7 +53,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -91,6 +90,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStrListForRequest;
 
 @SuppressWarnings("java:S107")
 public class ClusterReaderFactory {
@@ -705,23 +706,8 @@ public class ClusterReaderFactory {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
 
-    List<String> fullPaths = Lists.newArrayList();
-    paths.forEach(
-        path -> {
-          if (path instanceof VectorPartialPath) {
-            StringBuilder builder = new StringBuilder(path.getFullPath());
-            List<String> subSensorsList = ((VectorPartialPath) path).getSubSensorsList();
-            for (String subSensor : subSensorsList) {
-              builder.append(":");
-              builder.append(path.getFullPath());
-              builder.append(".");
-              builder.append(subSensor);
-            }
-            fullPaths.add(builder.toString());
-          } else {
-            fullPaths.add(path.getFullPath());
-          }
-        });
+    List<List<String>> fullPaths = Lists.newArrayList();
+    paths.forEach(path -> fullPaths.add(getPathStrListForRequest(path)));
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
     dataTypes.forEach(dataType -> dataTypeOrdinals.add(dataType.ordinal()));
@@ -753,7 +739,7 @@ public class ClusterReaderFactory {
     if (valueFilter != null) {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
-    request.setPath(path.getFullPath());
+    request.setPath(ClusterQueryUtils.getPathStrListForRequest(path));
     request.setHeader(partitionGroup.getHeader());
     request.setQueryId(context.getQueryId());
     request.setRequester(metaGroupMember.getThisNode());

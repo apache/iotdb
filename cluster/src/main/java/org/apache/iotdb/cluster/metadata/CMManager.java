@@ -115,7 +115,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.*;
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.THREAD_POOL_SIZE;
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPool;
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getAssembledPathFromRequest;
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStrListForRequest;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -228,18 +232,16 @@ public class CMManager extends MManager {
             MeasurementMNode.getMeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
-          for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
+          for (String subMeasurement : measurementSchema.getSubMeasurementsList()) {
             cacheMeta(
-                ((VectorPartialPath) fullPath).getPathWithSubSensor(i), measurementMNode, false);
+                new VectorPartialPath(fullPath.getDevice(), subMeasurement),
+                measurementMNode,
+                false);
           }
-          cacheMeta(
-              new PartialPath(fullPath.getDevice(), measurementSchema.getMeasurementId()),
-              measurementMNode,
-              true);
         } else {
           cacheMeta(fullPath, measurementMNode, true);
         }
-        return measurementMNode.getDataType(fullPath.getMeasurement());
+        return measurementMNode.getDataType(measurement);
       } else {
         throw e;
       }
@@ -973,7 +975,7 @@ public class CMManager extends MManager {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     // split the paths by the data group they belong to
-    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
+    Map<PartitionGroup, List<String>> remoteGroupPathMap = new HashMap<>();
     for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
       String storageGroupName = sgPathEntry.getKey();
       PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
@@ -999,14 +1001,15 @@ public class CMManager extends MManager {
         result.addAll(allTimeseriesName);
       } else {
         // batch the queries of the same group to reduce communication
-        groupPathMap
+        remoteGroupPathMap
             .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
             .add(pathUnderSG.getFullPath());
       }
     }
 
     // query each data group separately
-    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
+    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry :
+        remoteGroupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
       result.addAll(getMatchedPaths(partitionGroup, pathsToQuery, withAlias));
@@ -1088,14 +1091,10 @@ public class CMManager extends MManager {
       // need to query other nodes in the group
       List<PartialPath> partialPaths = new ArrayList<>();
       for (int i = 0; i < result.paths.size(); i++) {
-        try {
-          PartialPath partialPath = new PartialPath(result.paths.get(i));
-          if (withAlias) {
-            partialPath.setMeasurementAlias(result.aliasList.get(i));
-          }
-          partialPaths.add(partialPath);
-        } catch (IllegalPathException e) {
-          // ignore
+        PartialPath matchedPath = getAssembledPathFromRequest(result.paths.get(i));
+        partialPaths.add(matchedPath);
+        if (withAlias) {
+          matchedPath.setMeasurementAlias(result.aliasList.get(i));
         }
       }
       return partialPaths;
@@ -1298,21 +1297,6 @@ public class CMManager extends MManager {
       logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
     }
     return new Pair<>(new ArrayList<>(fullPaths), new ArrayList<>(nonExistPaths));
-  }
-
-  /**
-   * Get the local paths that match any path in "paths". The result is not deduplicated.
-   *
-   * @param paths paths potentially contain wildcards
-   */
-  public List<String> getAllPaths(List<String> paths) throws MetadataException {
-    List<String> ret = new ArrayList<>();
-    for (String path : paths) {
-      getFlatMeasurementPaths(new PartialPath(path)).stream()
-          .map(PartialPath::getFullPath)
-          .forEach(ret::add);
-    }
-    return ret;
   }
 
   /**
@@ -1719,23 +1703,18 @@ public class CMManager extends MManager {
 
   public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias)
       throws MetadataException {
-    List<String> retPaths = new ArrayList<>();
-    List<String> alias = null;
-    if (withAlias) {
-      alias = new ArrayList<>();
-    }
+    List<List<String>> retPaths = new ArrayList<>();
+    List<String> alias = withAlias ? new ArrayList<>() : null;
 
-    if (withAlias) {
-      for (String path : paths) {
-        List<PartialPath> allTimeseriesPathWithAlias =
-            super.getFlatMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
-        for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
-          retPaths.add(timeseriesPathWithAlias.getFullPath());
+    for (String path : paths) {
+      List<PartialPath> allTimeseriesPathWithAlias =
+          super.getFlatMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
+      for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
+        retPaths.add(getPathStrListForRequest(timeseriesPathWithAlias));
+        if (withAlias) {
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());
         }
       }
-    } else {
-      retPaths = getAllPaths(paths);
     }
 
     GetAllPathsResult getAllPathsResult = new GetAllPathsResult();
