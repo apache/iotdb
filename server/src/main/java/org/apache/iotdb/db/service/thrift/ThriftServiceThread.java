@@ -248,7 +248,7 @@ public class ThriftServiceThread extends Thread {
         }
       }
     }
-    throw lastExp;
+    throw lastExp == null ? new TTransportException() : lastExp;
   }
 
   private TServerTransport openNonblockingTransport(

@@ -247,7 +247,9 @@ public class ClusterPreviousFill extends PreviousFill {
 
     } catch (TException e) {
       // the connection may be broken, close it to avoid it being reused
-      syncDataClient.close();
+      if (syncDataClient != null) {
+        syncDataClient.close();
+      }
       logger.error(
           "{}: Cannot perform previous fill of {} to {}",
           metaGroupMember.getName(),

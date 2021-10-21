@@ -234,7 +234,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
             count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
+            if (syncDataClient != null) {
+              syncDataClient.close();
+            }
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -396,7 +398,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
             count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
+            if (syncDataClient != null) {
+              syncDataClient.close();
+            }
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -504,7 +508,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
+            if (syncDataClient != null) {
+              syncDataClient.close();
+            }
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -597,7 +603,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
+            if (syncDataClient != null) {
+              syncDataClient.close();
+            }
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -712,7 +720,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
+            if (syncDataClient != null) {
+              syncDataClient.close();
+            }
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
