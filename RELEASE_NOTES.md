@@ -61,6 +61,7 @@
 * [IOTDB-1850] Fix deserialize page merge rate limiter
 * [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
 * [IOTDB-1723] Fix concurrency issue in compaction selection
+* [IOTDB-1872] Close writer in SGP recover
 * fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
 * init dummyIndex after restart cluster
