@@ -225,11 +225,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public NodeAdditionResult addNode(Node node) {
-
-    if (nodeRing.contains(node)) {
-      return null;
-    }
-
     Lock writeLock = nodeRingLock.writeLock();
     writeLock.lock();
 
@@ -442,10 +437,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public NodeRemovalResult removeNode(Node target) {
-    if (!nodeRing.contains(target)) {
-      return null;
-    }
-
     Lock writeLock = nodeRingLock.writeLock();
     writeLock.lock();
     try {
