@@ -501,7 +501,7 @@ public class QueryOperator extends Operator {
   }
 
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+    return IoTDB.metaManager.getFlatMeasurementPaths(path);
   }
 
   public boolean isEnableTracing() {

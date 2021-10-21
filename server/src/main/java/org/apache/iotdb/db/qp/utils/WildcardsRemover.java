@@ -59,7 +59,7 @@ public class WildcardsRemover {
   public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {
     try {
       Pair<List<PartialPath>, Integer> pair =
-          IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, currentLimit, currentOffset);
+          IoTDB.metaManager.getFlatMeasurementPathsWithAlias(path, currentLimit, currentOffset);
 
       consumed += pair.right;
       if (currentOffset != 0) {
