@@ -191,6 +191,7 @@ public class IoTDBInfluxDB implements InfluxDB {
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     } catch (StatementExecutionException e) {
+      // e.getStatusCode() == 300 if the database is already existed.
       if (e.getStatusCode() != 300) {
         throw new InfluxDBException(e.getMessage());
       }
