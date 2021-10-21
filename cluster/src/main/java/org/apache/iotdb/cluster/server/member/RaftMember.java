@@ -1374,7 +1374,6 @@ public abstract class RaftMember implements RaftMemberMBean {
       logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (TException e) {
-      client.getInputProtocol().getTransport().close();
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;

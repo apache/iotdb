@@ -63,7 +63,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -773,19 +772,10 @@ public class Coordinator {
 
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws Exception {
-    SyncDataClient client = null;
-    try {
-      client =
-          ClusterIoTDB.getInstance()
-              .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
-
-      return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
-    } catch (TException e) {
-      client.close();
-      throw e;
-    } finally {
-      if (client != null) client.returnSelf();
-    }
+    SyncDataClient client =
+        ClusterIoTDB.getInstance()
+            .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
+    return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
   }
 
   public Node getThisNode() {
