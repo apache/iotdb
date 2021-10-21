@@ -50,7 +50,8 @@ public class IoTDBInfluxDBService {
   }
 
   public void setDatabase(String database) {
-    if (databaseCache.getDatabaseTagOrders().get(database) == null) {
+    //when current database is not null and through database is null, the current database is used.
+    if (database!=null && databaseCache.getDatabaseTagOrders().get(database) == null) {
       updateDatabase(database);
     }
   }
@@ -61,9 +62,7 @@ public class IoTDBInfluxDBService {
       String precision,
       String consistency,
       BatchPoints batchPoints) {
-    if (databaseCache.getDatabaseTagOrders().get(database) == null) {
-      updateDatabase(database);
-    }
+    setDatabase(database);
     List<String> deviceIds = new ArrayList<>();
     List<Long> times = new ArrayList<>();
     List<List<String>> measurementsList = new ArrayList<>();
@@ -178,26 +177,28 @@ public class IoTDBInfluxDBService {
     String database = this.databaseCache.getCurrentDatabase();
     Map<String, Map<String, Integer>> measurementTagOrders =
         this.databaseCache.getMeasurementOrders(database);
-    // tmp data to support rollback
-    Map<String, Integer> tagOrders =
+    Map<String, Integer> tagOrders=
         measurementTagOrders.computeIfAbsent(measurement, k -> new HashMap<>());
-    int measurementTagNum = tagOrders.size();
+    // tmp data to support rollback
+    Map<String, Integer> tmpTagOrders = new HashMap<>(tagOrders);
+    int measurementTagNum = tmpTagOrders.size();
     // The actual number of tags at the time of current insertion
     Map<Integer, String> realTagOrders = new HashMap<>();
     for (Map.Entry<String, String> tag : tags.entrySet()) {
-      if (tagOrders.containsKey(tag.getKey())) {
-        realTagOrders.put(tagOrders.get(tag.getKey()), tag.getKey());
+      if (tmpTagOrders.containsKey(tag.getKey())) {
+        realTagOrders.put(tmpTagOrders.get(tag.getKey()), tag.getKey());
       } else {
         measurementTagNum++;
-        realTagOrders.put(measurementTagNum, tag.getKey());
-        tagOrders.put(tag.getKey(), measurementTagNum);
         // first modify memory,then modify IoTDB database
-        this.databaseCache.updateDatabaseOrders(database, measurementTagOrders);
         try {
           updateNewTagIntoDB(measurement, tag.getKey(), measurementTagNum, database);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           throw new InfluxDBException(e.getMessage());
         }
+        tmpTagOrders.put(tag.getKey(), measurementTagNum);
+        measurementTagOrders.put(measurement,tmpTagOrders);
+        this.databaseCache.updateDatabaseOrders(database, measurementTagOrders);
+        realTagOrders.put(measurementTagNum, tag.getKey());
       }
     }
     StringBuilder path = new StringBuilder("root." + database + "." + measurement);
