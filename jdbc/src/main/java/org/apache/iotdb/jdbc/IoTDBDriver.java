@@ -64,8 +64,7 @@ public class IoTDBDriver implements Driver {
     } catch (TTransportException e) {
       throw new SQLException(
           "Connection Error, please check whether the network is available or the server"
-              + " has started: "
-              + url);
+              + " has started.");
     }
   }
 
