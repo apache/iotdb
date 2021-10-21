@@ -117,8 +117,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.THREAD_POOL_SIZE;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPool;
-import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathFromRequest;
-import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStringList;
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getAssembledPathFromRequest;
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStrListForRequest;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -1091,7 +1091,7 @@ public class CMManager extends MManager {
       // need to query other nodes in the group
       List<PartialPath> partialPaths = new ArrayList<>();
       for (int i = 0; i < result.paths.size(); i++) {
-        PartialPath matchedPath = getPathFromRequest(result.paths.get(i));
+        PartialPath matchedPath = getAssembledPathFromRequest(result.paths.get(i));
         partialPaths.add(matchedPath);
         if (withAlias) {
           matchedPath.setMeasurementAlias(result.aliasList.get(i));
@@ -1701,7 +1701,7 @@ public class CMManager extends MManager {
       List<PartialPath> allTimeseriesPathWithAlias =
           super.getAllTimeseriesPathWithAlias(new PartialPath(path), -1, -1).left;
       for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
-        retPaths.add(getPathStringList(timeseriesPathWithAlias));
+        retPaths.add(getPathStrListForRequest(timeseriesPathWithAlias));
         if (withAlias) {
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());
         }

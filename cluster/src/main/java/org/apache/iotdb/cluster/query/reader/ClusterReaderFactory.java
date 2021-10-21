@@ -90,7 +90,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStringList;
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStrListForRequest;
 
 @SuppressWarnings("java:S107")
 public class ClusterReaderFactory {
@@ -706,7 +706,7 @@ public class ClusterReaderFactory {
     }
 
     List<List<String>> fullPaths = Lists.newArrayList();
-    paths.forEach(path -> fullPaths.add(getPathStringList(path)));
+    paths.forEach(path -> fullPaths.add(getPathStrListForRequest(path)));
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
     dataTypes.forEach(dataType -> dataTypeOrdinals.add(dataType.ordinal()));
@@ -738,7 +738,7 @@ public class ClusterReaderFactory {
     if (valueFilter != null) {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
-    request.setPath(ClusterQueryUtils.getPathStringList(path));
+    request.setPath(ClusterQueryUtils.getPathStrListForRequest(path));
     request.setHeader(partitionGroup.getHeader());
     request.setQueryId(context.getQueryId());
     request.setRequester(metaGroupMember.getThisNode());

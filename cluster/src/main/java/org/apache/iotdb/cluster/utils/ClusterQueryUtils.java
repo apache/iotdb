@@ -73,7 +73,29 @@ public class ClusterQueryUtils {
     }
   }
 
-  public static PartialPath getPathFromRequest(List<String> pathString) {
+  /**
+   * Generate path string list for RPC request.
+   *
+   * <p>If vector path, return its vectorId with all subSensors. Else just return path string.
+   */
+  public static List<String> getPathStrListForRequest(Path path) {
+    if (path instanceof VectorPartialPath) {
+      List<String> pathWithSubSensors =
+          new ArrayList<>(((VectorPartialPath) path).getSubSensorsList().size() + 1);
+      pathWithSubSensors.add(path.getFullPath());
+      pathWithSubSensors.addAll(((VectorPartialPath) path).getSubSensorsList());
+      return pathWithSubSensors;
+    } else {
+      return Collections.singletonList(path.getFullPath());
+    }
+  }
+
+  /**
+   * Deserialize an assembled Path from path string list that's from RPC request.
+   *
+   * <p>This method is corresponding to getPathStringListForRequest().
+   */
+  public static PartialPath getAssembledPathFromRequest(List<String> pathString) {
     try {
       if (pathString.size() == 1) {
         return new PartialPath(pathString.get(0));
@@ -83,19 +105,6 @@ public class ClusterQueryUtils {
     } catch (IllegalPathException e) {
       logger.error("Failed to create partial path, fullPath is {}.", pathString, e);
       return null;
-    }
-  }
-
-  /** If vector path, return its vectorId with all subSensors. Else just return path string. */
-  public static List<String> getPathStringList(Path path) {
-    if (path instanceof VectorPartialPath) {
-      List<String> pathWithSubSensors =
-          new ArrayList<>(((VectorPartialPath) path).getSubSensorsList().size() + 1);
-      pathWithSubSensors.add(path.getFullPath());
-      pathWithSubSensors.addAll(((VectorPartialPath) path).getSubSensorsList());
-      return pathWithSubSensors;
-    } else {
-      return Collections.singletonList(path.getFullPath());
     }
   }
 }

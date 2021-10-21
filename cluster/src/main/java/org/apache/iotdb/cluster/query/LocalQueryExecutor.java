@@ -92,7 +92,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathFromRequest;
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getAssembledPathFromRequest;
 
 public class LocalQueryExecutor {
 
@@ -218,7 +218,7 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    PartialPath path = getPathFromRequest(request.getPath());
+    PartialPath path = getAssembledPathFromRequest(request.getPath());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -297,7 +297,7 @@ public class LocalQueryExecutor {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     List<PartialPath> paths = Lists.newArrayList();
-    request.getPath().forEach(path -> paths.add(getPathFromRequest(path)));
+    request.getPath().forEach(path -> paths.add(getAssembledPathFromRequest(path)));
 
     List<TSDataType> dataTypes = Lists.newArrayList();
     request.getDataTypeOrdinal().forEach(dataType -> dataTypes.add(TSDataType.values()[dataType]));
@@ -538,7 +538,7 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    PartialPath path = getPathFromRequest(request.getPath());
+    PartialPath path = getAssembledPathFromRequest(request.getPath());
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
