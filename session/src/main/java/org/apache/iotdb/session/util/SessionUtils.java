@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.session.util;
 
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;

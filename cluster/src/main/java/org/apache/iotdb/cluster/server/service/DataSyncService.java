@@ -410,6 +410,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
+  public int getDeviceCount(Node header, List<String> pathsToQuery) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
   public ByteBuffer peekNextNotNullValue(Node header, long executorId, long startTime, long endTime)
       throws TException {
     try {

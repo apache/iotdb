@@ -22,6 +22,12 @@
 
 # Apache IoTDB 0.12.3
 
+## Improvements
+* [IOTDB-842] Better Export/Import-CSV Tool
+* [IOTDB-1738] Cache paths list in batched insert plan
+* [IOTDB-1792] remove tomcat-embed dependency and make all transitive dependencies versions consistent
+* [ISSUE-4072] Parallel insert records in Session 
+
 ## Bug Fixes
 * [IOTDB-1275] Fix backgroup exec for cli -e function causes an infinite loop
 * [IOTDB-1287] Fix C++ class Session has 2 useless sort()
@@ -31,6 +37,7 @@
 * [IOTDB-1619] Fix an error msg when restart iotdb-cluster
 * [IOTDB-1629] fix the NPE when using value fill in cluster mode
 * [IOTDB-1632] Fix Value fill function fills even when the data exists
+* [IOTDB-1651] add reconnect to solve out of sequence in sync module
 * [IOTDB-1659] Fix Windows CLI cannot set maxPRC less than or equal to 0
 * [IOTDB-1670] Fix cli -e mode didn't fetch timestamp_precision from server
 * [IOTDB-1674] Fix command interpret error causing somaxconn warning failed
@@ -42,10 +49,20 @@
 * [IOTDB-1703] Fix MManager slow recover with tag
 * [IOTDB-1723] Fix concurrency issue in compaction selection
 * [IOTDB-1726] Wrong hashCode() and equals() method in ChunkMetadata
+* [IOTDB-1727] Fix Slow creation of timeseries with tag 
+* [IOTDB-1731] Fix sync error between different os 
+* [IOTDB-1733] Fix dropping built-in function
+* [IOTDB-1741] Avoid double close in level compaction execution
+* [IOTDB-1785] Fix Illegal String ending with . being parsed to PartialPath
+* [IOTDB-1836] Fix Query Exception Bug after deleting all sgs 
+* [IOTDB-1837] Fix tagIndex rebuild failure after upgrade mlog from mlog.txt to mlog.bin
+* [IOTDB-1838] The compacting status in SGP is always false
+* [IOTDB-1846]Fix the error when count the total number of devices in cluster mode
 * [IOTDB-1850] Fix deserialize page merge rate limiter
 * [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
 * fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
+* init dummyIndex after restart cluster
 
 
 # Apache IoTDB 0.12.2

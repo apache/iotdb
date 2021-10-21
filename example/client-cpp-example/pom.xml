@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>0.12.3-SNAPSHOT</version>
+        <version>0.12.4-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-example</artifactId>
@@ -69,7 +69,7 @@
             <properties>
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
-                <boost.include.dir/>
+                <boost.include.dir />
             </properties>
         </profile>
         <profile>
@@ -133,7 +133,7 @@
                     <plugin>
                         <groupId>com.googlecode.cmake-maven-project</groupId>
                         <artifactId>cmake-maven-plugin</artifactId>
-                        <version>3.19.2-b1</version>
+                        <version>3.7.2-b1</version>
                         <executions>
                             <execution>
                                 <id>cmake-generate</id>

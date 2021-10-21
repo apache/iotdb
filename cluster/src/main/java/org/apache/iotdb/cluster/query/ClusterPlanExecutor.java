@@ -125,6 +125,144 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
+  protected int getDevicesNum(PartialPath path) throws MetadataException {
+    // make sure this node knows all storage groups
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
+    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
+    if (sgPathMap.isEmpty()) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+    logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
+    int ret;
+    try {
+      ret = getDeviceCount(sgPathMap);
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
+    logger.debug("The number of devices satisfying {} is {}", path, ret);
+    return ret;
+  }
+
+  private int getDeviceCount(Map<String, String> sgPathMap)
+      throws CheckConsistencyException, MetadataException {
+    AtomicInteger result = new AtomicInteger();
+    // split the paths by the data group they belong to
+    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
+    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
+      String storageGroupName = sgPathEntry.getKey();
+      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
+      // find the data group that should hold the device schemas of the storage group
+      PartitionGroup partitionGroup =
+          metaGroupMember.getPartitionTable().route(storageGroupName, 0);
+      if (partitionGroup.contains(metaGroupMember.getThisNode())) {
+        // this node is a member of the group, perform a local query after synchronizing with the
+        // leader
+        metaGroupMember
+            .getLocalDataMember(partitionGroup.getHeader())
+            .syncLeaderWithConsistencyCheck(false);
+        int localResult = getLocalDeviceCount(pathUnderSG);
+        logger.debug(
+            "{}: get device count of {} locally, result {}",
+            metaGroupMember.getName(),
+            partitionGroup,
+            localResult);
+        result.addAndGet(localResult);
+      } else {
+        // batch the queries of the same group to reduce communication
+        groupPathMap
+            .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
+            .add(pathUnderSG.getFullPath());
+      }
+    }
+    if (groupPathMap.isEmpty()) {
+      return result.get();
+    }
+
+    ExecutorService remoteQueryThreadPool = Executors.newFixedThreadPool(groupPathMap.size());
+    List<Future<Void>> remoteFutures = new ArrayList<>();
+    // query each data group separately
+    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
+      List<String> pathsToQuery = partitionGroupPathEntry.getValue();
+      remoteFutures.add(
+          remoteQueryThreadPool.submit(
+              () -> {
+                try {
+                  result.addAndGet(getRemoteDeviceCount(partitionGroup, pathsToQuery));
+                } catch (MetadataException e) {
+                  logger.warn(
+                      "Cannot get remote device count of {} from {}",
+                      pathsToQuery,
+                      partitionGroup,
+                      e);
+                }
+                return null;
+              }));
+    }
+    waitForThreadPool(remoteFutures, remoteQueryThreadPool, "getDeviceCount()");
+
+    return result.get();
+  }
+
+  private int getLocalDeviceCount(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getDevicesNum(path);
+  }
+
+  private int getRemoteDeviceCount(PartitionGroup partitionGroup, List<String> pathsToCount)
+      throws MetadataException {
+    // choose the node with lowest latency or highest throughput
+    List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : coordinatedNodes) {
+      try {
+        Integer count;
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncDataClient client =
+              metaGroupMember
+                  .getClientProvider()
+                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          client.setTimeout(RaftServer.getReadOperationTimeoutMS());
+          count =
+              SyncClientAdaptor.getDeviceCount(client, partitionGroup.getHeader(), pathsToCount);
+        } else {
+          try (SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+            try {
+              syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
+              count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
+            } catch (TException e) {
+              // the connection may be broken, close it to avoid it being reused
+              syncDataClient.getInputProtocol().getTransport().close();
+              throw e;
+            }
+          }
+        }
+        logger.debug(
+            "{}: get device count of {} from {}, result {}",
+            metaGroupMember.getName(),
+            partitionGroup,
+            node,
+            count);
+        if (count != null) {
+          return count;
+        }
+      } catch (IOException | TException e) {
+        throw new MetadataException(e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new MetadataException(e);
+      }
+    }
+    logger.warn("Cannot get devices count of {} from {}", pathsToCount, partitionGroup);
+    return 0;
+  }
+
+  @Override
   protected int getPathsNum(PartialPath path) throws MetadataException {
     return getNodesNumInGivenLevel(path, -1);
   }
