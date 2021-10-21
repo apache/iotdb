@@ -270,7 +270,7 @@ public class ThriftServiceThread extends Thread {
         }
       }
     }
-    throw lastExp;
+    throw lastExp == null ? new TTransportException() : lastExp;
   }
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {

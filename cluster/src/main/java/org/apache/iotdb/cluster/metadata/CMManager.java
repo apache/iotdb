@@ -920,7 +920,7 @@ public class CMManager extends MManager {
                 syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
+            if (syncDataClient != null) syncDataClient.close();
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -1079,7 +1079,7 @@ public class CMManager extends MManager {
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        syncDataClient.close();
+        if (syncDataClient != null) syncDataClient.close();
         throw e;
       } finally {
         if (syncDataClient != null) syncDataClient.returnSelf();
@@ -1661,7 +1661,7 @@ public class CMManager extends MManager {
                   group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          syncDataClient.close();
+          if (syncDataClient != null) syncDataClient.close();
           throw e;
         }
       } finally {
