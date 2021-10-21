@@ -50,8 +50,8 @@ public class IoTDBInfluxDBService {
   }
 
   public void setDatabase(String database) {
-    //when current database is not null and through database is null, the current database is used.
-    if (database!=null && databaseCache.getDatabaseTagOrders().get(database) == null) {
+    // when current database is not null and through database is null, the current database is used.
+    if (database != null && databaseCache.getDatabaseTagOrders().get(database) == null) {
       updateDatabase(database);
     }
   }
@@ -177,7 +177,7 @@ public class IoTDBInfluxDBService {
     String database = this.databaseCache.getCurrentDatabase();
     Map<String, Map<String, Integer>> measurementTagOrders =
         this.databaseCache.getMeasurementOrders(database);
-    Map<String, Integer> tagOrders=
+    Map<String, Integer> tagOrders =
         measurementTagOrders.computeIfAbsent(measurement, k -> new HashMap<>());
     // tmp data to support rollback
     Map<String, Integer> tmpTagOrders = new HashMap<>(tagOrders);
@@ -196,7 +196,7 @@ public class IoTDBInfluxDBService {
           throw new InfluxDBException(e.getMessage());
         }
         tmpTagOrders.put(tag.getKey(), measurementTagNum);
-        measurementTagOrders.put(measurement,tmpTagOrders);
+        measurementTagOrders.put(measurement, tmpTagOrders);
         this.databaseCache.updateDatabaseOrders(database, measurementTagOrders);
         realTagOrders.put(measurementTagNum, tag.getKey());
       }
