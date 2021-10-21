@@ -1584,8 +1584,6 @@ public class CMManager extends MManager {
         }
       } catch (IOException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
-      } catch (TException e) {
-        logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
@@ -1617,8 +1615,6 @@ public class CMManager extends MManager {
         }
       } catch (IOException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
-      } catch (TException e) {
-        logger.error("Error occurs when getting devices schemas in node {}.", node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting devices schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
@@ -1661,7 +1657,7 @@ public class CMManager extends MManager {
                   group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          if (syncDataClient != null) syncDataClient.close();
+          syncDataClient.close();
           throw e;
         }
       } finally {
@@ -1692,7 +1688,7 @@ public class CMManager extends MManager {
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        syncDataClient.close();
+        if (syncDataClient != null) syncDataClient.close();
         throw e;
       } finally {
         if (syncDataClient != null) syncDataClient.returnSelf();
