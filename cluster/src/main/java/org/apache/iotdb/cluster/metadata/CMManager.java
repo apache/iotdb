@@ -1209,7 +1209,7 @@ public class CMManager extends MManager {
           paths = syncDataClient.getAllDevices(header, pathsToQuery);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          syncDataClient.close();
+          if (syncDataClient != null) syncDataClient.close();
           throw e;
         }
       } finally {
@@ -1692,7 +1692,7 @@ public class CMManager extends MManager {
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        syncDataClient.close();
+        if (syncDataClient != null) syncDataClient.close();
         throw e;
       } finally {
         if (syncDataClient != null) syncDataClient.returnSelf();
