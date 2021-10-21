@@ -366,7 +366,7 @@ public class IoTDBMergeIT {
       for (int j = 1; j <= 10; j++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES  (%d,%d," + "%d,%d)",
                 j, j + 10, j + 20, j + 30));
       }
       statement.execute("FLUSH");
