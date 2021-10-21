@@ -212,19 +212,6 @@ public class InternalMNode extends MNode {
     this.schemaTemplate = schemaTemplate;
   }
 
-  /** get the count of all MeasurementMNode whose ancestor is current node */
-  @Override
-  public int getMeasurementMNodeCount() {
-    if (children == null) {
-      return 0;
-    }
-    int measurementMNodeCount = 0;
-    for (IMNode child : children.values()) {
-      measurementMNodeCount += child.getMeasurementMNodeCount();
-    }
-    return measurementMNodeCount;
-  }
-
   @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);

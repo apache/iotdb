@@ -223,8 +223,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
           client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
           count =
-              SyncClientAdaptor.getAllDevices(client, partitionGroup.getHeader(), pathsToCount)
-                  .size();
+              SyncClientAdaptor.getDeviceCount(client, partitionGroup.getHeader(), pathsToCount);
         } else {
           SyncDataClient syncDataClient = null;
           try {
@@ -232,7 +231,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 ClusterIoTDB.getInstance()
                     .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
             syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-            count = syncDataClient.getAllDevices(partitionGroup.getHeader(), pathsToCount).size();
+            count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
             syncDataClient.close();

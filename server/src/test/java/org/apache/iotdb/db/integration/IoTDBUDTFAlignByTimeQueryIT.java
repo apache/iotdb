@@ -158,14 +158,14 @@ public class IoTDBUDTFAlignByTimeQueryIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute(
-          "create function multiplier as \"org.apache.iotdb.db.query.udf.example.Multiplier\"");
-      statement.execute("create function max as \"org.apache.iotdb.db.query.udf.example.Max\"");
+          "create function multiplier as 'org.apache.iotdb.db.query.udf.example.Multiplier'");
+      statement.execute("create function max as 'org.apache.iotdb.db.query.udf.example.Max'");
       statement.execute(
-          "create function terminate as \"org.apache.iotdb.db.query.udf.example.TerminateTester\"");
+          "create function terminate as 'org.apache.iotdb.db.query.udf.example.TerminateTester'");
       statement.execute(
-          "create function validate as \"org.apache.iotdb.db.query.udf.example.ValidateTester\"");
+          "create function validate as 'org.apache.iotdb.db.query.udf.example.ValidateTester'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -287,7 +287,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   @Test
   public void queryWithoutValueFilter4() {
     String sqlStr =
-        "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d1";
+        "select udf(*, *, 'addend'='" + ADDEND + "'), *, udf(*, *) from root.vehicle.d1";
 
     Set<Integer> s1AndS2WithAddend = new HashSet<>(Arrays.asList(0, 1, 2, 3));
     Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(6, 7, 8, 9));
@@ -325,7 +325,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @Test
   public void queryWithoutValueFilter5() {
-    String sqlStr = "select multiplier(s2, \"a\"=\"2\", \"b\"=\"5\") from root.vehicle.d1";
+    String sqlStr = "select multiplier(s2, 'a'='2', 'b'='5') from root.vehicle.d1";
 
     try (Connection connection =
             DriverManager.getConnection(
@@ -516,9 +516,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   @Test
   public void queryWithValueFilter2() {
     String sqlStr =
-        "select udf(*, *, \"addend\"=\""
+        "select udf(*, *, 'addend'='"
             + ADDEND
-            + "\"), *, udf(*, *) from root.vehicle.d2"
+            + "'), *, udf(*, *) from root.vehicle.d2"
             + String.format(
                 " where s1 >= %d and s2 < %d",
                 (int) (0.25 * ITERATION_TIMES), (int) (0.75 * ITERATION_TIMES));

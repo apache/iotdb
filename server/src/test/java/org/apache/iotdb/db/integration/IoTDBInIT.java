@@ -40,20 +40,20 @@ public class IoTDBInIT {
       new String[] {
         "set storage group to root.ln",
         "create timeseries root.sg.d1.s1.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465600000,\"qrcode001\")",
-        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465660000,\"qrcode002\")",
-        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465720000,\"qrcode003\")",
-        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465780000,\"qrcode004\")",
+        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465600000,'qrcode001')",
+        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465660000,'qrcode002')",
+        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465720000,'qrcode003')",
+        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465780000,'qrcode004')",
         "create timeseries root.sg.d1.s2.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465720000,\"qrcode002\")",
-        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465780000,\"qrcode003\")",
-        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465840000,\"qrcode004\")",
-        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465900000,\"qrcode005\")",
+        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465720000,'qrcode002')",
+        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465780000,'qrcode003')",
+        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465840000,'qrcode004')",
+        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465900000,'qrcode005')",
         "create timeseries root.sg.d2.s1.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465780000,\"qrcode002\")",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465840000,\"qrcode003\")",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465900000,\"qrcode004\")",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465960000,\"qrcode005\")"
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465780000,'qrcode002')",
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465840000,'qrcode003')",
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465900000,'qrcode004')",
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465960000,'qrcode005')"
       };
 
   @BeforeClass

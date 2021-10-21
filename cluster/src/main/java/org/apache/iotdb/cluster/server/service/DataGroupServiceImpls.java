@@ -440,6 +440,17 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
+  public void getDeviceCount(
+      RaftNode header, List<String> pathsToQuery, AsyncMethodCallback<Integer> resultHandler)
+      throws TException {
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "count device");
+    if (service != null) {
+      service.getDeviceCount(header, pathsToQuery, resultHandler);
+    }
+  }
+
+  @Override
   public void onSnapshotApplied(
       RaftNode header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
     DataAsyncService service =
@@ -621,6 +632,13 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
     return DataGroupEngine.getInstance()
         .getDataSyncService(header)
         .onSnapshotApplied(header, slots);
+  }
+
+  @Override
+  public int getDeviceCount(RaftNode header, List<String> pathsToQuery) throws TException {
+    return DataGroupEngine.getInstance()
+        .getDataSyncService(header)
+        .getDeviceCount(header, pathsToQuery);
   }
 
   @Override
