@@ -17,12 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.influxdb.protocol.imp;
+package org.apache.iotdb.influxdb.protocol.impl;
 
-import org.apache.iotdb.influxdb.IoTDBInfluxDBUtils;
 import org.apache.iotdb.influxdb.protocol.cache.DatabaseCache;
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
 import org.apache.iotdb.influxdb.protocol.dto.IoTDBRecord;
+import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
+import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -49,7 +50,7 @@ public class IoTDBInfluxDBService {
   }
 
   public void setDatabase(String database) {
-    if (!database.equals(this.databaseCache.getDatabase())) {
+    if (databaseCache.getDatabaseTagOrders().get(database) == null) {
       updateDatabase(database);
     }
   }
@@ -60,7 +61,7 @@ public class IoTDBInfluxDBService {
       String precision,
       String consistency,
       BatchPoints batchPoints) {
-    if (database != null && !database.equals(databaseCache.getDatabase())) {
+    if (databaseCache.getDatabaseTagOrders().get(database) == null) {
       updateDatabase(database);
     }
     List<String> deviceIds = new ArrayList<>();
@@ -69,12 +70,12 @@ public class IoTDBInfluxDBService {
     List<List<TSDataType>> typesList = new ArrayList<>();
     List<List<Object>> valuesList = new ArrayList<>();
     for (Point point : batchPoints.getPoints()) {
-      IoTDBRecord ioTDBRecord = generatePointRecord(point);
-      deviceIds.add(ioTDBRecord.getDeviceId());
-      times.add(ioTDBRecord.getTime());
-      measurementsList.add(ioTDBRecord.getMeasurements());
-      typesList.add(ioTDBRecord.getTypes());
-      valuesList.add(ioTDBRecord.getValues());
+      IoTDBRecord iotdbRecord = generatePointRecord(point);
+      deviceIds.add(iotdbRecord.getDeviceId());
+      times.add(iotdbRecord.getTime());
+      measurementsList.add(iotdbRecord.getMeasurements());
+      typesList.add(iotdbRecord.getTypes());
+      valuesList.add(iotdbRecord.getValues());
     }
     try {
       session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
@@ -90,30 +91,33 @@ public class IoTDBInfluxDBService {
    * @param database update database name
    */
   private void updateDatabase(String database) {
-    this.databaseCache.setDatabase(database);
     try {
       SessionDataSet result =
           session.executeQueryStatement(
-              "select * from root.TAG_INFO where database_name="
+              "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO where database_name="
                   + String.format("\"%s\"", database));
-      Map<String, Map<String, Integer>> measurementTagOrder = new HashMap<>();
+      Map<String, Map<String, Integer>> measurementTagOrders = new HashMap<>();
       while (result.hasNext()) {
         List<Field> fields = result.next().getFields();
         String measurementName = fields.get(1).getStringValue();
         Map<String, Integer> tagOrder;
-        if (measurementTagOrder.containsKey(measurementName)) {
-          tagOrder = measurementTagOrder.get(measurementName);
+        if (measurementTagOrders.containsKey(measurementName)) {
+          tagOrder = measurementTagOrders.get(measurementName);
         } else {
           tagOrder = new HashMap<>();
         }
         tagOrder.put(fields.get(2).getStringValue(), fields.get(3).getIntV());
-        measurementTagOrder.put(measurementName, tagOrder);
+        measurementTagOrders.put(measurementName, tagOrder);
       }
-      this.databaseCache.setMeasurementTagOrder(measurementTagOrder);
+      this.databaseCache.updateDatabaseOrders(database, measurementTagOrders);
+      this.databaseCache.setCurrentDatabase(database);
     } catch (StatementExecutionException e) {
       // at first execution, tag_INFO table is not created, intercept the error
       if (e.getStatusCode() != 411) {
         throw new InfluxDBException(e.getMessage());
+      } else {
+        // when tag_INFO table is not created,we also should set database.
+        this.databaseCache.setCurrentDatabase(database);
       }
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
@@ -154,7 +158,7 @@ public class IoTDBInfluxDBService {
         throw new IllegalArgumentException(e.getMessage());
       }
     }
-    IoTDBInfluxDBUtils.checkNonEmptyString(measurement, "measurement name");
+    ParameterUtils.checkNonEmptyString(measurement, "measurement name");
 
     String path = generatePath(measurement, tags);
 
@@ -164,46 +168,44 @@ public class IoTDBInfluxDBService {
     for (Map.Entry<String, Object> entry : fields.entrySet()) {
       measurements.add(entry.getKey());
       Object value = entry.getValue();
-      types.add(IoTDBInfluxDBUtils.normalTypeToTSDataType(value));
+      types.add(DataTypeUtils.normalTypeToTSDataType(value));
       values.add(value);
     }
     return new IoTDBRecord(path, time, measurements, types, values);
   }
 
   private String generatePath(String measurement, Map<String, String> tags) {
-    String database = this.databaseCache.getDatabase();
-    Map<String, Map<String, Integer>> measurementTagOrder =
-        this.databaseCache.getMeasurementTagOrder();
-    Map<String, Integer> tagOrders = measurementTagOrder.get(measurement);
-    if (tagOrders == null) {
-      tagOrders = new HashMap<>();
-    }
+    String database = this.databaseCache.getCurrentDatabase();
+    Map<String, Map<String, Integer>> measurementTagOrders =
+        this.databaseCache.getMeasurementOrders(database);
+    // tmp data to support rollback
+    Map<String, Integer> tagOrders =
+        measurementTagOrders.computeIfAbsent(measurement, k -> new HashMap<>());
     int measurementTagNum = tagOrders.size();
     // The actual number of tags at the time of current insertion
     Map<Integer, String> realTagOrders = new HashMap<>();
-    for (Map.Entry<String, String> entry : tags.entrySet()) {
-      if (tagOrders.containsKey(entry.getKey())) {
-        realTagOrders.put(tagOrders.get(entry.getKey()), entry.getKey());
+    for (Map.Entry<String, String> tag : tags.entrySet()) {
+      if (tagOrders.containsKey(tag.getKey())) {
+        realTagOrders.put(tagOrders.get(tag.getKey()), tag.getKey());
       } else {
         measurementTagNum++;
+        realTagOrders.put(measurementTagNum, tag.getKey());
+        tagOrders.put(tag.getKey(), measurementTagNum);
+        // first modify memory,then modify IoTDB database
+        this.databaseCache.updateDatabaseOrders(database, measurementTagOrders);
         try {
-          updateNewTagIntoDB(measurement, entry.getKey(), measurementTagNum, database);
+          updateNewTagIntoDB(measurement, tag.getKey(), measurementTagNum, database);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           throw new InfluxDBException(e.getMessage());
         }
-        realTagOrders.put(measurementTagNum, entry.getKey());
-        tagOrders.put(entry.getKey(), measurementTagNum);
       }
     }
-    // update tagOrder map in memory
-    measurementTagOrder.put(measurement, tagOrders);
-    this.databaseCache.setMeasurementTagOrder(measurementTagOrder);
     StringBuilder path = new StringBuilder("root." + database + "." + measurement);
     for (int i = 1; i <= measurementTagNum; i++) {
       if (realTagOrders.containsKey(i)) {
         path.append(".").append(tags.get(realTagOrders.get(i)));
       } else {
-        path.append("." + InfluxDBConstant.placeholder);
+        path.append("." + InfluxDBConstant.PLACE_HOLDER);
       }
     }
     return path.toString();

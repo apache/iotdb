@@ -23,5 +23,5 @@ public class InfluxDBConstant {
 
   public static final String METHOD_NOT_SUPPORTED = "Method not supported.";
 
-  public static final String placeholder = "PH";
+  public static final String PLACE_HOLDER = "PH";
 }

@@ -20,7 +20,8 @@
 package org.apache.iotdb.influxdb;
 
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
-import org.apache.iotdb.influxdb.protocol.imp.IoTDBInfluxDBService;
+import org.apache.iotdb.influxdb.protocol.impl.IoTDBInfluxDBService;
+import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -116,12 +117,7 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void writeWithRetry(final BatchPoints batchPoints) {
-    influxDBService.writePoints(
-        batchPoints.getDatabase(),
-        batchPoints.getRetentionPolicy(),
-        TimeUtil.toTimePrecision(batchPoints.getPrecision()),
-        batchPoints.getConsistency().value(),
-        batchPoints);
+    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -189,13 +185,13 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void createDatabase(final String name) {
-    IoTDBInfluxDBUtils.checkNonEmptyString(name, "database name");
+    ParameterUtils.checkNonEmptyString(name, "database name");
     try {
       session.setStorageGroup("root." + name);
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
-      if (!(e instanceof StatementExecutionException)
-          || ((StatementExecutionException) e).getStatusCode() != 300) {
-        // current database have been created
+    } catch (IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != 300) {
         throw new InfluxDBException(e.getMessage());
       }
     }
@@ -208,7 +204,7 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public InfluxDB setDatabase(final String database) {
-    IoTDBInfluxDBUtils.checkNonEmptyString(database, "database name");
+    ParameterUtils.checkNonEmptyString(database, "database name");
     influxDBService.setDatabase(database);
     return this;
   }

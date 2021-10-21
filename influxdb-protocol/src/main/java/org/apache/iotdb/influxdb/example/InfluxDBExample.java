@@ -55,7 +55,6 @@ public class InfluxDBExample {
     builder.fields(fields);
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     Point point = builder.build();
-    point.lineProtocol();
     influxDB.write(point);
 
     builder = Point.measurement("student");

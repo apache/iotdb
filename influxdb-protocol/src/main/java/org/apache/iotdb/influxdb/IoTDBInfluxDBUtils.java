@@ -19,44 +19,4 @@
 
 package org.apache.iotdb.influxdb;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import org.influxdb.InfluxDBException;
-
-public final class IoTDBInfluxDBUtils {
-
-  /**
-   * check whether the field is empty. If it is empty, an error will be thrown
-   *
-   * @param string string to check
-   * @param name prompt information in error throwing
-   */
-  public static void checkNonEmptyString(String string, String name)
-      throws IllegalArgumentException {
-    if (string == null || string.isEmpty()) {
-      throw new IllegalArgumentException("Expecting a non-empty string for " + name);
-    }
-  }
-
-  /**
-   * convert normal type to a type
-   *
-   * @param value need to convert value
-   * @return corresponding TSDataType
-   */
-  public static TSDataType normalTypeToTSDataType(Object value) {
-    if (value instanceof Boolean) {
-      return TSDataType.BOOLEAN;
-    } else if (value instanceof Integer) {
-      return TSDataType.INT32;
-    } else if (value instanceof Long) {
-      return TSDataType.INT64;
-    } else if (value instanceof Double) {
-      return TSDataType.DOUBLE;
-    } else if (value instanceof String) {
-      return TSDataType.TEXT;
-    } else {
-      throw new InfluxDBException("not valid type:" + value.toString());
-    }
-  }
-}
+public final class IoTDBInfluxDBUtils {}
