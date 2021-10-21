@@ -847,9 +847,9 @@ public class IoTDBSessionComplexIT {
     createTimeseries();
 
     session.executeNonQueryStatement(
-        "create trigger d1s1 after insert on root.sg1.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+        "create trigger d1s1 after insert on root.sg1.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
     session.executeNonQueryStatement(
-        "create trigger d1s2 before insert on root.sg1.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+        "create trigger d1s2 before insert on root.sg1.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
     assertEquals(
         Counter.BASE,

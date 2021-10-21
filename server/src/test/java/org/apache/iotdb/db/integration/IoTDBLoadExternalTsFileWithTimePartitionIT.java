@@ -174,7 +174,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
         Statement statement = connection.createStatement()) {
       prepareData();
 
-      statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
+      statement.execute(String.format("load '%s'", new File(tempDir).getAbsolutePath()));
 
       String dataDir = config.getDataDirs()[0];
       // sequence/logical_sg/virtual_sg/time_partitions
@@ -285,7 +285,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
         Statement statement = connection.createStatement()) {
       prepareDataWithDifferentDevice();
 
-      statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
+      statement.execute(String.format("load '%s'", new File(tempDir).getAbsolutePath()));
 
       String dataDir = config.getDataDirs()[0];
       // sequence/logical_sg/virtual_sg/time_partitions

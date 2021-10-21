@@ -423,6 +423,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
+  public int getDeviceCount(RaftNode header, List<String> pathsToQuery) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
   public boolean onSnapshotApplied(RaftNode header, List<Integer> slots) {
     return dataGroupMember.onSnapshotInstalled(slots);
   }

@@ -387,7 +387,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   protected List<PartialPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+    return IoTDB.metaManager.getFlatMeasurementPaths(path);
   }
 
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
@@ -807,7 +807,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
-      } else if (plan instanceof UDFPlan) {
+      } else if (plan instanceof UDFPlan
+          || (plan instanceof QueryPlan && ((QueryPlan) plan).isGroupByLevel())) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
 
@@ -892,7 +893,7 @@ public class TSServiceImpl implements TSIService.Iface {
   /** get ResultSet schema */
   private TSExecuteStatementResp getQueryColumnHeaders(
       PhysicalPlan physicalPlan, String username, boolean isJdbcQuery)
-      throws AuthException, TException, QueryProcessException, MetadataException {
+      throws AuthException, TException, MetadataException {
 
     List<String> respColumns = new ArrayList<>();
     List<String> columnsTypes = new ArrayList<>();
@@ -916,11 +917,11 @@ public class TSServiceImpl implements TSIService.Iface {
       // because the query dataset and query id is different although the header of last query is
       // same.
       return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
-      Map<String, AggregateResult> finalPaths = ((AggregationPlan) plan).getAggPathByLevel();
-      for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
-        respColumns.add(entry.getKey());
-        columnsTypes.add(entry.getValue().getResultDataType().toString());
+    } else if (plan.isGroupByLevel()) {
+      for (Map.Entry<String, AggregateResult> groupPathResult :
+          ((AggregationPlan) plan).getGroupPathsResultMap().entrySet()) {
+        respColumns.add(groupPathResult.getKey());
+        columnsTypes.add(groupPathResult.getValue().getResultDataType().toString());
       }
     } else {
       List<String> respSgColumns = new ArrayList<>();

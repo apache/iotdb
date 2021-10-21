@@ -39,23 +39,4 @@ public interface IEntityMNode extends IMNode {
   ILastCacheContainer getLastCacheContainer(String measurementId);
 
   Map<String, ILastCacheContainer> getTemplateLastCaches();
-
-  static IEntityMNode setToEntity(IMNode node) {
-    IEntityMNode entityMNode;
-    if (node.isEntity()) {
-      entityMNode = node.getAsEntityMNode();
-    } else {
-      if (node.isStorageGroup()) {
-        entityMNode =
-            new StorageGroupEntityMNode(
-                node.getParent(), node.getName(), ((StorageGroupMNode) node).getDataTTL());
-      } else {
-        entityMNode = new EntityMNode(node.getParent(), node.getName());
-      }
-      if (node.getParent() != null) {
-        node.getParent().replaceChild(node.getName(), entityMNode);
-      }
-    }
-    return entityMNode;
-  }
 }
