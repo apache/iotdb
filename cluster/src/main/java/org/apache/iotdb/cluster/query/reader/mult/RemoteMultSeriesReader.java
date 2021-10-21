@@ -188,7 +188,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
       return curSyncClient.fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
     } catch (TException e) {
-      curSyncClient.close();
+      if (curSyncClient != null) curSyncClient.close();
       logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
       return null;
     } catch (Exception e) {

@@ -272,7 +272,9 @@ public class ClusterAggregator {
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        syncDataClient.close();
+        if (syncDataClient != null) {
+          syncDataClient.close();
+        }
         throw e;
       } finally {
         if (syncDataClient != null) syncDataClient.returnSelf();
