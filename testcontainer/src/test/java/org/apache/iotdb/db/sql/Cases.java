@@ -54,6 +54,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public abstract class Cases {
@@ -181,10 +182,10 @@ public abstract class Cases {
         "create timeseries root.ln.wf01.wt02.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
     initDataArray =
         new String[] {
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, \"Nanjing\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, \"Nanjing\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, \"Singapore\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, \"Shanghai\")"
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, 'Nanjing')",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, 'Nanjing')",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, 'Singapore')",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, 'Shanghai')"
         };
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
@@ -286,6 +287,14 @@ public abstract class Cases {
       Assert.assertEquals(n, cnt);
       resultSet.close();
     }
+
+    // try to get devices on each node;
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet = readStatement.executeQuery("COUNT DEVICES");
+      while (resultSet.next()) {
+        assertEquals(n, resultSet.getInt(1));
+      }
+    }
   }
 
   @Test
@@ -359,7 +368,7 @@ public abstract class Cases {
     try {
       PhysicalPlan plan =
           processor.parseSQLToPhysicalPlan(
-              "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+              "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
         Assert.fail();
       }

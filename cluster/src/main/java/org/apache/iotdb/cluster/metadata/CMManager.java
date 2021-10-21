@@ -173,11 +173,11 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
+  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     cacheLock.writeLock().lock();
-    mRemoteMetaCache.removeItem(prefixPath);
+    mRemoteMetaCache.removeItem(pathPattern);
     cacheLock.writeLock().unlock();
-    return super.deleteTimeseries(prefixPath);
+    return super.deleteTimeseries(pathPattern);
   }
 
   @Override
@@ -751,7 +751,7 @@ public class CMManager extends MManager {
       throws IllegalPathException {
     List<String> measurements = new ArrayList<>();
     for (String series : seriesList) {
-      measurements.addAll(MetaUtils.getMeasurementsInPartialPath(new PartialPath(series)));
+      measurements.add((new PartialPath(series)).getMeasurement());
     }
 
     List<TSDataType> dataTypes = new ArrayList<>(measurements.size());
@@ -1020,9 +1020,9 @@ public class CMManager extends MManager {
   private List<PartialPath> getMatchedPathsLocally(PartialPath partialPath, boolean withAlias)
       throws MetadataException {
     if (!withAlias) {
-      return getAllTimeseriesPath(partialPath);
+      return getFlatMeasurementPaths(partialPath);
     } else {
-      return super.getAllTimeseriesPathWithAlias(partialPath, -1, -1).left;
+      return super.getFlatMeasurementPathsWithAlias(partialPath, -1, -1).left;
     }
   }
 
@@ -1219,7 +1219,7 @@ public class CMManager extends MManager {
 
   /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
   @Override
-  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
+  public Pair<List<PartialPath>, Integer> getFlatMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     Map<String, String> sgPathMap = groupPathByStorageGroup(pathPattern);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);

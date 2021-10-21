@@ -151,17 +151,17 @@ public class MManagerAdvancedTest {
           new PartialPath("root.vehicle.d0"),
           mmanager.getBelongedStorageGroup(new PartialPath("root.vehicle.d0.s1")));
       List<PartialPath> pathList =
-          mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d1.**"));
+          mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle.d1.**"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d0.**"));
+      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle.d0.**"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d*.**"));
+      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle.d*.**"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.ve*.**"));
+      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.ve*.**"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle*.d*.s1"));
+      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle*.d*.s1"));
       assertEquals(2, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d2.**"));
+      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle.d2.**"));
       assertEquals(0, pathList.size());
     } catch (MetadataException e) {
       e.printStackTrace();

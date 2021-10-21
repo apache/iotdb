@@ -121,11 +121,11 @@ public class IoTDBNestedQueryIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function adder as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute(
-          "create function time_window_counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+          "create function time_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
       statement.execute(
-          "create function size_window_counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+          "create function size_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
