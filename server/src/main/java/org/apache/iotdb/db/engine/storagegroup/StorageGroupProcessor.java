@@ -686,10 +686,12 @@ public class StorageGroupProcessor {
             tsFileResource.setClosed(true);
             tsFileManagement.add(tsFileResource, isSeq);
           }
+          writer.close();
           continue;
         } else {
           writer =
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
+          writer.close();
         }
       } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
