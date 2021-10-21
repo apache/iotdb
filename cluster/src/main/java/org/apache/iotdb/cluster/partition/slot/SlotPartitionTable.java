@@ -35,6 +35,9 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * SlotPartitionTable manages the slots (data partition) of each node using a look-up table. Slot:
@@ -50,6 +53,8 @@ public class SlotPartitionTable implements PartitionTable {
 
   // all nodes
   private List<Node> nodeRing = new ArrayList<>();
+  private ReadWriteLock nodeRingLock = new ReentrantReadWriteLock();
+
   // normally, it is equal to ClusterConstant.SLOT_NUM.
   private int totalSlotNumbers;
 
@@ -176,9 +181,13 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
-    synchronized (nodeRing) {
+    Lock readLock = nodeRingLock.readLock();
+    readLock.lock();
+    try {
       Node node = routeToHeaderByTime(storageGroupName, timestamp);
       return getHeaderGroup(node);
+    } finally {
+      readLock.unlock();
     }
   }
 
@@ -201,18 +210,30 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
-    synchronized (nodeRing) {
+    Lock readLock = nodeRingLock.readLock();
+    readLock.lock();
+    try {
       int slot =
           getSlotStrategy().calculateSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
       Node node = slotNodes[slot];
       logger.trace("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp, slot, node);
       return node;
+    } finally {
+      readLock.unlock();
     }
   }
 
   @Override
   public NodeAdditionResult addNode(Node node) {
-    synchronized (nodeRing) {
+
+    if (nodeRing.contains(node)) {
+      return null;
+    }
+
+    Lock writeLock = nodeRingLock.writeLock();
+    writeLock.lock();
+
+    try {
       if (nodeRing.contains(node)) {
         return null;
       }
@@ -245,6 +266,8 @@ public class SlotPartitionTable implements PartitionTable {
           }
         }
       }
+    } finally {
+      writeLock.unlock();
     }
 
     SlotNodeAdditionResult result = new SlotNodeAdditionResult();
@@ -419,7 +442,13 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public NodeRemovalResult removeNode(Node target) {
-    synchronized (nodeRing) {
+    if (!nodeRing.contains(target)) {
+      return null;
+    }
+
+    Lock writeLock = nodeRingLock.writeLock();
+    writeLock.lock();
+    try {
       if (!nodeRing.contains(target)) {
         return null;
       }
@@ -462,6 +491,8 @@ public class SlotPartitionTable implements PartitionTable {
       Map<Node, List<Integer>> nodeListMap = retrieveSlots(target);
       result.setNewSlotOwners(nodeListMap);
       return result;
+    } finally {
+      writeLock.unlock();
     }
   }
 
@@ -481,11 +512,15 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public List<PartitionGroup> getGlobalGroups() {
     // preventing a thread from getting incomplete globalGroups
-    synchronized (nodeRing) {
+    Lock readLock = nodeRingLock.readLock();
+    readLock.lock();
+    try {
       if (globalGroups == null) {
         calculateGlobalGroups();
       }
       return globalGroups;
+    } finally {
+      readLock.unlock();
     }
   }
 
