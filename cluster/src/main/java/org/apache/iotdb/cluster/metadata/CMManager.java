@@ -1699,7 +1699,7 @@ public class CMManager extends MManager {
 
     for (String path : paths) {
       List<PartialPath> allTimeseriesPathWithAlias =
-          super.getAllTimeseriesPathWithAlias(new PartialPath(path), -1, -1).left;
+          super.getFlatMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
       for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
         retPaths.add(getPathStrListForRequest(timeseriesPathWithAlias));
         if (withAlias) {
