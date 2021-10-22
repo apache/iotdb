@@ -1283,16 +1283,20 @@ public class MTree implements Serializable {
   public void checkTemplateOnPath(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
+    // 根是否相同
     if (!nodeNames[0].equals(root.getName())) {
       return;
     }
+    // 该路径是否有template
     if (cur.getSchemaTemplate() != null) {
       throw new MetadataException("Template already exists on " + cur.getFullPath());
     }
     for (int i = 1; i < nodeNames.length; i++) {
+      // isMeasurement什么意思
       if (cur.isMeasurement()) {
         return;
       }
+      // 如果节点没有给定路径上下一个node的name，说明路径不匹配，路径方面就不会重复，也不会有冲突
       if (!cur.hasChild(nodeNames[i])) {
         return;
       }

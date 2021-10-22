@@ -22,21 +22,7 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -1985,6 +1971,13 @@ public class Session {
     defaultSessionConnection.createSchemaTemplate(request);
   }
 
+  public void unsetSchemaTemplate(String prefixPath, String templateName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSUnsetSchemaTemplateReq request =
+        getTSUnsetSchemaTemplateReq(prefixPath, templateName);
+    defaultSessionConnection.unsetSchemaTemplate(request);
+  }
+
   private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
     TSSetSchemaTemplateReq request = new TSSetSchemaTemplateReq();
     request.setTemplateName(templateName);
@@ -2018,6 +2011,13 @@ public class Session {
     request.setEncodings(requestEncoding);
     request.setCompressors(
         compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+    return request;
+  }
+
+  private TSUnsetSchemaTemplateReq getTSUnsetSchemaTemplateReq(String prefixPath, String templateName) {
+    TSUnsetSchemaTemplateReq request = new TSUnsetSchemaTemplateReq();
+    request.setPrefixPath(prefixPath);
+    request.setTemplateName(templateName);
     return request;
   }
 
