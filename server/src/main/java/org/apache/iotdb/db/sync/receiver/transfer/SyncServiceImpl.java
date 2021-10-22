@@ -20,7 +20,6 @@ package org.apache.iotdb.db.sync.receiver.transfer;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -81,7 +80,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       return getErrorResult(
           String.format(
               "Version mismatch: the sender <%s>, the receiver <%s>",
-              info.version, IoTDBConstant.MAJOR_VERSION));
+              info.version, config.getIoTDBVersion()));
     }
     if (info.partitionInterval
         != IoTDBDescriptor.getInstance().getConfig().getPartitionInterval()) {
@@ -166,6 +165,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus syncDeletedFileName(String fileInfo) {
     String filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
     try {
+      syncLog.get().startSyncDeletedFilesName();
       syncLog.get().finishSyncDeletedFileName(new File(getSyncDataPath(), filePath));
       FileLoaderManager.getInstance()
           .getFileLoader(senderName.get())
@@ -193,7 +193,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     File file;
     String filePath = fileInfo;
     try {
-      if (currentSG.get() == null) { // schema mlog.txt file
+      if (fileInfo.equals(MetadataConstant.METADATA_LOG)) { // schema mlog.txt file
         file = new File(getSyncDataPath(), filePath);
       } else {
         filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
