@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -67,6 +68,14 @@ public class AggregationQueryOperator extends QueryOperator {
       Expression expression = resultColumn.getExpression();
       if (expression instanceof TimeSeriesOperand) {
         throw new LogicalOperatorException(ERROR_MESSAGE1);
+      }
+      // Currently, the aggregation function expression can only contain a timeseries operand.
+      if (expression instanceof FunctionExpression
+          && (((FunctionExpression) expression).getExpressions().size() != 1
+              || !(((FunctionExpression) expression).getExpressions().get(0)
+                  instanceof TimeSeriesOperand))) {
+        throw new LogicalOperatorException(
+            "The argument of the aggregation function must be a time series.");
       }
     }
 
