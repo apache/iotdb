@@ -327,7 +327,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private void preInitCluster() throws StartupException {
     stopRaftInfoReport();
-    preStartCustomize();
     JMXService.registerMBean(this, mbeanName);
     // register MetaGroupMember. MetaGroupMember has the same position with "StorageEngine" in the
     // cluster moduel.
@@ -507,7 +506,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     SlotPartitionTable.setSlotStrategy(
         new SlotStrategy() {
           SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
-          int k = 3;
+          int k = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls().size();
 
           @Override
           public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
