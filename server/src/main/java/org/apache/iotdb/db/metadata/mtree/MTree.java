@@ -21,14 +21,7 @@ package org.apache.iotdb.db.metadata.mtree;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -1322,6 +1315,21 @@ public class MTree implements Serializable {
         throw new MetadataException("Template already exists on " + child.getFullPath());
       }
       checkTemplateOnSubtree(child);
+    }
+  }
+
+  public void checkTemplateInUseOnLowerNode(IMNode node) throws TemplateIsInUseException {
+    if (node.isMeasurement()) {
+      return;
+    }
+    for (IMNode child : node.getChildren().values()) {
+      if (child.isMeasurement()) {
+        continue;
+      }
+      if (child.isUseTemplate()) {
+        throw new TemplateIsInUseException(child.getFullPath());
+      }
+      checkTemplateInUseOnLowerNode(child);
     }
   }
   // endregion

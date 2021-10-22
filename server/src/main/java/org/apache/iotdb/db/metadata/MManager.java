@@ -23,16 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -51,11 +42,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -429,6 +416,9 @@ public class MManager {
         AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
         autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         break;
+      case UNSET_SCHEMA_TEMPLATE:
+        UnsetSchemaTemplatePlan unsetSchemaTemplatePlan = (UnsetSchemaTemplatePlan) plan;
+        unsetSchemaTemplate(unsetSchemaTemplatePlan);
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
@@ -2127,6 +2117,29 @@ public class MManager {
       // write wal
       if (!isRecovering) {
         logWriter.setSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public synchronized void unsetSchemaTemplate(UnsetSchemaTemplatePlan plan) throws MetadataException {
+    // get mnode should be atomic
+    try {
+      PartialPath path = new PartialPath(plan.getPrefixPath());
+      IMNode node = mtree.getNodeByPath(path);
+      if (node.getSchemaTemplate() == null) {
+        throw new NoTemplateOnMNodeException(plan.getPrefixPath());
+      } else if (!node.getSchemaTemplate().getName().equals(plan.getTemplateName())){
+        throw new DifferentTemplateException(plan.getPrefixPath(), plan.getTemplateName());
+      } else if (node.isUseTemplate()) {
+        throw new TemplateIsInUseException(plan.getPrefixPath());
+      }
+      mtree.checkTemplateInUseOnLowerNode(node);
+      node.setSchemaTemplate(null);
+      // write wal
+      if (!isRecovering) {
+        logWriter.unsetSchemaTemplate(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
