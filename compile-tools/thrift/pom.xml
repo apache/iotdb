@@ -108,7 +108,7 @@
                     <plugin>
                         <groupId>com.googlecode.cmake-maven-project</groupId>
                         <artifactId>cmake-maven-plugin</artifactId>
-                        <version>3.7.2-b1</version>
+                        <version>3.19.2-b1</version>
                         <executions>
                             <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                             <execution>
