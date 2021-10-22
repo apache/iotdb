@@ -123,17 +123,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   private void deleteLevelFilesInDisk(Collection<TsFileResource> mergeTsFiles) {
-    logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
+    logger.info("{} [compaction] merge starts to delete real file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
-      logger.debug(
+      logger.info(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
   }
 
   private void deleteLevelFilesInList(
       long timePartitionId, Collection<TsFileResource> mergeTsFiles, int level, boolean sequence) {
-    logger.debug("{} [compaction] merge starts to delete file list", storageGroupName);
+    logger.info("{} [compaction] merge starts to delete file list", storageGroupName);
     if (sequence) {
       if (sequenceTsFileResources.containsKey(timePartitionId)) {
         if (sequenceTsFileResources.get(timePartitionId).size() > level) {
@@ -456,6 +456,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             getResourceFromDataDirs(true, dataDirs, isSeq, targetFileInfo);
         if (targetResource != null) {
           // target tsfile is not compeleted
+          logger.info(
+              "[Compaction][Recover] target file {} is not compeleted, remove it", targetResource);
           targetResource.remove();
           if (isSeq) {
             sequenceRecoverTsFileResources.clear();
@@ -466,12 +468,15 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 getResourceFromDataDirs(false, dataDirs, isSeq, targetFileInfo))
             != null) {
           // complete compaction, delete source files
+          logger.info(
+              "[Compaction][Recover] target file {} is compeleted, remove resource file",
+              targetResource);
           long timePartition = targetResource.getTimePartition();
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (CompactionLogAnalyzer.CompactionFileInfo sourceInfo : sourceFileInfo) {
             // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
             TsFileResource sourceTsFileResource =
-                getResourceFromDataDirs(true, dataDirs, isSeq, sourceInfo);
+                getResourceFromDataDirs(false, dataDirs, isSeq, sourceInfo);
             if (sourceTsFileResource == null) {
               // if sourceTsFileResource is null, it has been deleted
               continue;
