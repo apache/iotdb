@@ -30,7 +30,9 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.FULL_MERGE;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_INFO;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_INFO;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.UNSEQUENCE_NAME;
 
@@ -42,6 +44,8 @@ public class CompactionLogAnalyzer {
   private List<String> deviceList = new ArrayList<>();
   private List<Long> offsets = new ArrayList<>();
   private List<String> sourceFiles = new ArrayList<>();
+  private List<CompactionFileInfo> sourceFileInfo = new ArrayList<>();
+  private CompactionFileInfo targetFileInfo = null;
   private String targetFile = null;
   private boolean isSeq = false;
   private boolean fullMerge = false;
@@ -61,11 +65,19 @@ public class CompactionLogAnalyzer {
         switch (currLine) {
           case SOURCE_NAME:
             currLine = bufferedReader.readLine();
-            sourceFiles.add(currLine);
+            sourceFileInfo.add(CompactionFileInfo.parseCompactionFileInfoFromPath(currLine));
+            break;
+          case SOURCE_INFO:
+            currLine = bufferedReader.readLine();
+            sourceFileInfo.add(CompactionFileInfo.parseCompactionFileInfo(currLine));
             break;
           case TARGET_NAME:
             currLine = bufferedReader.readLine();
-            targetFile = currLine;
+            targetFileInfo = CompactionFileInfo.parseCompactionFileInfoFromPath(currLine);
+            break;
+          case TARGET_INFO:
+            currLine = bufferedReader.readLine();
+            targetFileInfo = CompactionFileInfo.parseCompactionFileInfo(currLine);
             break;
           case FULL_MERGE:
             fullMerge = true;
@@ -116,5 +128,82 @@ public class CompactionLogAnalyzer {
 
   public boolean isFullMerge() {
     return fullMerge;
+  }
+
+  public List<CompactionFileInfo> getSourceFileInfo() {
+    return sourceFileInfo;
+  }
+
+  public CompactionFileInfo getTargetFileInfo() {
+    return targetFileInfo;
+  }
+
+  public static class CompactionFileInfo {
+    String logicalStorageGroup;
+    String virtualStorageGroupId;
+    long timePartition;
+    String filename;
+    boolean sequence;
+
+    private CompactionFileInfo(
+        String logicalStorageGroup,
+        String virtualStorageGroupId,
+        long timePartition,
+        String filename,
+        boolean sequence) {
+      this.logicalStorageGroup = logicalStorageGroup;
+      this.virtualStorageGroupId = virtualStorageGroupId;
+      this.timePartition = timePartition;
+      this.filename = filename;
+      this.sequence = sequence;
+    }
+
+    public static CompactionFileInfo parseCompactionFileInfo(String infoString) throws IOException {
+      String[] info = infoString.split(" ");
+      try {
+        return new CompactionFileInfo(
+            info[0], info[1], Long.parseLong(info[2]), info[3], info[4].equals("sequence"));
+      } catch (Exception e) {
+        throw new IOException("invalid compaction log line: " + infoString);
+      }
+    }
+
+    public static CompactionFileInfo parseCompactionFileInfoFromPath(String filePath)
+        throws IOException {
+      String[] splitFilePath = filePath.split(File.separator);
+      int pathLength = splitFilePath.length;
+      if (pathLength < 4) {
+        throw new IOException("invalid compaction file path: " + filePath);
+      }
+      try {
+        return new CompactionFileInfo(
+            splitFilePath[pathLength - 4],
+            splitFilePath[pathLength - 3],
+            Long.parseLong(splitFilePath[pathLength - 2]),
+            splitFilePath[pathLength - 1],
+            splitFilePath[pathLength - 5].equals("sequence"));
+      } catch (Exception e) {
+        throw new IOException("invalid compaction log line: " + filePath);
+      }
+    }
+
+    public File getFile(String dataDir) {
+      return new File(
+          dataDir
+              + File.separator
+              + (sequence ? "sequence" : "unsequence")
+              + File.separator
+              + logicalStorageGroup
+              + File.separator
+              + virtualStorageGroupId
+              + File.separator
+              + timePartition
+              + File.separator
+              + filename);
+    }
+
+    public String getFilename() {
+      return filename;
+    }
   }
 }

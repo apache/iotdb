@@ -59,6 +59,7 @@ public abstract class TsFileManagement {
   private static final Logger logger = LoggerFactory.getLogger(TsFileManagement.class);
   protected String storageGroupName;
   protected String storageGroupDir;
+  protected String virtualStorageGroupId;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
@@ -81,9 +82,11 @@ public abstract class TsFileManagement {
 
   protected ReentrantLock compactionSelectionLock = new ReentrantLock();
 
-  public TsFileManagement(String storageGroupName, String storageGroupDir) {
+  public TsFileManagement(
+      String storageGroupName, String virtualStorageGroupId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
+    this.virtualStorageGroupId = virtualStorageGroupId;
   }
 
   public void setForceFullMerge(boolean forceFullMerge) {

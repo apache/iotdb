@@ -379,7 +379,10 @@ public class StorageGroupProcessor {
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCompactionStrategy()
-            .getTsFileManagement(logicalStorageGroupName, storageGroupSysDir.getAbsolutePath());
+            .getTsFileManagement(
+                logicalStorageGroupName,
+                virtualStorageGroupId,
+                storageGroupSysDir.getAbsolutePath());
 
     ScheduledExecutorService executorService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
