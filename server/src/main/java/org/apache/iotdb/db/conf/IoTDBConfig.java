@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1168,6 +1167,20 @@ public class IoTDBConfig {
 
   void setLanguageVersion(String languageVersion) {
     this.languageVersion = languageVersion;
+  }
+
+  public String getIoTDBVersion() {
+    return IoTDBConstant.VERSION;
+  }
+
+  public String getIoTDBMajorVersion() {
+    return IoTDBConstant.MAJOR_VERSION;
+  }
+
+  public String getIoTDBMajorVersion(String version) {
+    return version.equals("UNKNOWN")
+        ? "UNKNOWN"
+        : version.split("\\.")[0] + "." + version.split("\\.")[1];
   }
 
   public String getIpWhiteList() {
