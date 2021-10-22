@@ -218,7 +218,8 @@ public class InnerSpaceCompactionUtils {
       targetResource.updateEndTime(device, timeValuePair.getTimestamp());
     }
     // wait for limit write
-    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
+    MergeManager.mergeRateLimiterAcquire(
+        compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(writer);
   }
 

@@ -79,7 +79,7 @@ public interface IChunkWriter {
    * If there is no data points in the chunk, return 0 (i.e., in this case, the size of header is
    * not calculated, because nothing will be serialized latter)</>
    */
-  long getCurrentChunkSize();
+  long getSerializedChunkSize();
 
   /** seal the current page which may has not enough data points in force. */
   void sealCurrentPage();
