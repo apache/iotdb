@@ -36,7 +36,7 @@ public interface MetricManager {
   Counter getOrCreateCounter(String metric, String... tags);
 
   /**
-   * Get Guage If exists, then return or create one to return
+   * Get Gauge If exists, then return or create one to return
    *
    * @param metric
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
