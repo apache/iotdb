@@ -54,7 +54,7 @@ public class VectorChunkWriterImplTest {
     // value chunk 1: 19 + 2 + 4 + 3 + 80;
     // value chunk 2: 19 + 2 + 4 + 3 + 20;
     // value chunk 3: 20 + 4 + 7 + 20 * 8;
-    assertEquals(528, chunkWriter.getSerializeChunkSize());
+    assertEquals(528, chunkWriter.getSerializedChunkSize());
 
     try {
       TestTsFileOutput testTsFileOutput = new TestTsFileOutput();
@@ -128,7 +128,7 @@ public class VectorChunkWriterImplTest {
     // value chunk 1: 20 + (2 + 41 + 4 + 3 + 80) * 2
     // value chunk 2: 20 + (2 + 41 + 4 + 3 + 20) * 2
     // value chunk 3: 20 + (4 + 57 + 4 + 3 + 160) * 2
-    assertEquals(1295, chunkWriter.getSerializeChunkSize());
+    assertEquals(1295, chunkWriter.getSerializedChunkSize());
 
     try {
       TestTsFileOutput testTsFileOutput = new TestTsFileOutput();
