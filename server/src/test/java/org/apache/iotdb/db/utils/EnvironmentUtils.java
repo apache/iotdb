@@ -91,10 +91,8 @@ public class EnvironmentUtils {
       Boolean.parseBoolean(System.getProperty("test.port.closed", "false"));
 
   public static void cleanEnv() throws IOException, StorageEngineException {
-    logger.warn("waiting for compaction finish");
     // wait all compaction finished
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
-    logger.info("all compaction finish");
 
     // deregister all user defined classes
     try {

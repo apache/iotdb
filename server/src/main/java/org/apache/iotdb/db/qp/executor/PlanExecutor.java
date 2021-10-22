@@ -1039,7 +1039,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateLoadFiles(OperateFilePlan plan) throws QueryProcessException {
-    logger.info("enter operate load files");
     File file = plan.getFile();
     if (!file.exists()) {
       throw new QueryProcessException(
@@ -1085,7 +1084,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void loadFile(File file, OperateFilePlan plan) throws QueryProcessException {
-    logger.info("start loading files");
     if (!file.getName().endsWith(TSFILE_SUFFIX)) {
       return;
     }
