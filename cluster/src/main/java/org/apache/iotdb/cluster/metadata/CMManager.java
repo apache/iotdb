@@ -463,6 +463,22 @@ public class CMManager extends MManager {
     return super.getSeriesSchema(device, measurement);
   }
 
+  @Override
+  public List<IMeasurementSchema> getAllMeasurementByDevicePath(PartialPath devicePath)
+      throws MetadataException {
+    try {
+      return super.getAllMeasurementByDevicePath(devicePath);
+    } catch (PathNotExistException e) {
+      // try to get schema from remote
+      List<IMeasurementSchema> results =
+          metaPuller.pullMeasurementSchemas(Collections.singletonList(devicePath));
+      if (results.isEmpty()) {
+        throw e;
+      }
+      return results;
+    }
+  }
+
   /**
    * Check whether the path exists.
    *

@@ -1305,7 +1305,7 @@ public class MManager {
 
   // attention: this path must be a device node
   public List<IMeasurementSchema> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
+      throws MetadataException {
     Set<IMeasurementSchema> res = new HashSet<>();
     try {
       IMNode node = mNodeCache.get(devicePath);
@@ -1329,6 +1329,13 @@ public class MManager {
     return new ArrayList<>(res);
   }
 
+  /**
+   * Get all the schema in the subTree represented by the prefixPath
+   *
+   * @param prefixPath represents the start node in MTree
+   * @return schema and its path
+   * @throws MetadataException
+   */
   public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
       PartialPath prefixPath) throws MetadataException {
     return mtree.getAllMeasurementSchemaByPrefix(prefixPath);
