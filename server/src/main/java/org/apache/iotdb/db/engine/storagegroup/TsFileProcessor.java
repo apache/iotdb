@@ -386,7 +386,7 @@ public class TsFileProcessor {
     for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
       // for aligned timeseries
       if (insertTabletPlan.isAligned()) {
-        if (insertTabletPlan.getMeasurementMNodes()[i]==null){
+        if (insertTabletPlan.getMeasurementMNodes()[i] == null) {
           continue;
         }
         VectorMeasurementSchema vectorSchema =
