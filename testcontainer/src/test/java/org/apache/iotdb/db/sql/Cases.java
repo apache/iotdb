@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
@@ -987,6 +989,56 @@ public abstract class Cases {
           Assert.assertEquals(resultSet.getString(3), "2");
           Assert.assertEquals(resultSet.getString(4), "3.0");
         }
+      }
+    }
+  }
+
+  @Test
+  public void testInsertTabletWithNullValues()
+      throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
+
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList);
+    for (long time = 0; time < 10; time++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, time);
+
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
+      tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
+      tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
+      tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+      tablet.addValue(
+          schemaList.get(5).getMeasurementId(), rowIndex, new Binary(String.valueOf(time)));
+    }
+
+    BitMap[] bitMaps = new BitMap[schemaList.size()];
+    for (int i = 0; i < schemaList.size(); i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(10);
+      }
+      bitMaps[i].mark(i);
+    }
+    tablet.bitMaps = bitMaps;
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
+    ResultSet resultSet;
+    // try to read data on each node.
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("select count(*) from root.sg1.d1");
+      Assert.assertTrue(resultSet.next());
+      for (int i = 1; i <= schemaList.size(); ++i) {
+        Assert.assertEquals(9L, resultSet.getLong(i));
       }
     }
   }
