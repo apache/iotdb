@@ -52,13 +52,13 @@ public class IoTDBInfluxDBIT {
   private Session session;
 
   @Rule
-  public GenericContainer IotDB =
-      new GenericContainer("apache/iotdb:latest").withExposedPorts(6667);
+  public GenericContainer<?> iotdb =
+      new GenericContainer<>("apache/iotdb:latest").withExposedPorts(6667);
 
   @Before
   public void setUp() throws IoTDBConnectionException {
-    host = IotDB.getContainerIpAddress();
-    port = IotDB.getMappedPort(6667);
+    host = iotdb.getContainerIpAddress();
+    port = iotdb.getMappedPort(6667);
     username = "root";
     password = "root";
     influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);

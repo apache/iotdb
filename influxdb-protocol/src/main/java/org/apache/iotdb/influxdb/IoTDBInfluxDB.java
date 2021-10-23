@@ -26,8 +26,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
@@ -186,16 +184,7 @@ public class IoTDBInfluxDB implements InfluxDB {
   @Override
   public void createDatabase(final String name) {
     ParameterUtils.checkNonEmptyString(name, "database name");
-    try {
-      session.setStorageGroup("root." + name);
-    } catch (IoTDBConnectionException e) {
-      throw new InfluxDBException(e.getMessage());
-    } catch (StatementExecutionException e) {
-      // e.getStatusCode() == 300 if the database is already existed.
-      if (e.getStatusCode() != 300) {
-        throw new InfluxDBException(e.getMessage());
-      }
-    }
+    influxDBService.createDatabase(name);
   }
 
   @Override
@@ -410,9 +399,8 @@ public class IoTDBInfluxDB implements InfluxDB {
   @Override
   public Pong ping() {
     final long started = System.currentTimeMillis();
-    String version = version();
     Pong pong = new Pong();
-    pong.setVersion(version);
+    pong.setVersion(version());
     pong.setResponseTime(System.currentTimeMillis() - started);
     return pong;
   }
@@ -423,9 +411,7 @@ public class IoTDBInfluxDB implements InfluxDB {
       SessionDataSet sessionDataSet = session.executeQueryStatement("show version");
       String version = null;
       while (sessionDataSet.hasNext()) {
-        RowRecord record = sessionDataSet.next();
-        List<Field> fields = record.getFields();
-        version = fields.get(0).getStringValue();
+        version = sessionDataSet.next().getFields().get(0).getStringValue();
       }
       return version;
     } catch (StatementExecutionException | IoTDBConnectionException e) {

@@ -22,16 +22,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 
-public class IoTDBRecord {
-  private String deviceId;
-  private long time;
-  private List<String> measurements;
-  private List<TSDataType> types;
-  private List<Object> values;
+public class IoTDBPoint {
 
-  public IoTDBRecord() {}
+  private final String deviceId;
+  private final long time;
+  private final List<String> measurements;
+  private final List<TSDataType> types;
+  private final List<Object> values;
 
-  public IoTDBRecord(
+  public IoTDBPoint(
       String deviceId,
       long time,
       List<String> measurements,
@@ -48,39 +47,19 @@ public class IoTDBRecord {
     return deviceId;
   }
 
-  public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
-  }
-
   public long getTime() {
     return time;
-  }
-
-  public void setTime(long time) {
-    this.time = time;
   }
 
   public List<String> getMeasurements() {
     return measurements;
   }
 
-  public void setMeasurements(List<String> measurements) {
-    this.measurements = measurements;
-  }
-
   public List<TSDataType> getTypes() {
     return types;
   }
 
-  public void setTypes(List<TSDataType> types) {
-    this.types = types;
-  }
-
   public List<Object> getValues() {
     return values;
-  }
-
-  public void setValues(List<Object> values) {
-    this.values = values;
   }
 }

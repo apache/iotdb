@@ -43,7 +43,7 @@ public class DataTypeUtils {
     } else if (value instanceof String) {
       return TSDataType.TEXT;
     } else {
-      throw new InfluxDBException("not valid type:" + value.toString());
+      throw new InfluxDBException("Data type not valid: " + value.toString());
     }
   }
 }
