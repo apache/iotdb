@@ -47,13 +47,11 @@ public class MetaManager {
     // TODO: recover metadata from db
   }
 
-  public boolean isDatabaseExisted(String database) {
-    return database2Measurement2TagOrders.containsKey(database);
-  }
-
-  public void createDatabase(String database) {
-    if (isDatabaseExisted(database)) {
-      return;
+  public Map<String, Map<String, Integer>> createDatabase(String database) {
+    Map<String, Map<String, Integer>> measurement2TagOrders =
+        database2Measurement2TagOrders.get(database);
+    if (measurement2TagOrders != null) {
+      return measurement2TagOrders;
     }
 
     try {
@@ -62,14 +60,14 @@ public class MetaManager {
       throw new InfluxDBException(e.getMessage());
     }
 
-    database2Measurement2TagOrders.put(database, new HashMap<>());
+    measurement2TagOrders = new HashMap<>();
+    database2Measurement2TagOrders.put(database, measurement2TagOrders);
+    return measurement2TagOrders;
   }
 
   public Map<String, Integer> getTagOrdersWithAutoCreatingSchema(
       String database, String measurement) {
-    createDatabase(database);
-    database2Measurement2TagOrders.get(database).computeIfAbsent(measurement, k -> new HashMap<>());
-    return database2Measurement2TagOrders.get(database).get(measurement);
+    return createDatabase(database).computeIfAbsent(measurement, m -> new HashMap<>());
   }
 
   public String generatePath(String database, String measurement, Map<String, String> tags) {
@@ -84,16 +82,17 @@ public class MetaManager {
 
     TagInfoRecords newTagInfoRecords = null;
     for (Entry<String, String> tag : tags.entrySet()) {
-      if (!newTagKeyToLayerOrders.containsKey(tag.getKey())) {
+      final String tagKey = tag.getKey();
+      if (!newTagKeyToLayerOrders.containsKey(tagKey)) {
         if (newTagInfoRecords == null) {
           newTagInfoRecords = new TagInfoRecords();
         }
-
         ++tagNumber;
-        newTagInfoRecords.add(database, measurement, tag.getKey(), tagNumber);
-        newTagKeyToLayerOrders.put(tag.getKey(), tagNumber);
+        newTagInfoRecords.add(database, measurement, tagKey, tagNumber);
+        newTagKeyToLayerOrders.put(tagKey, tagNumber);
       }
-      layerOrderToTagKeysInPath.put(newTagKeyToLayerOrders.get(tag.getKey()), tag.getKey());
+
+      layerOrderToTagKeysInPath.put(newTagKeyToLayerOrders.get(tagKey), tagKey);
     }
 
     if (newTagInfoRecords != null) {
