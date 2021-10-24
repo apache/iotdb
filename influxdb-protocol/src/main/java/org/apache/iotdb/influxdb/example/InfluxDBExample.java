@@ -36,7 +36,6 @@ public class InfluxDBExample {
 
   public static void main(String[] args) throws Exception {
     influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:6667", "root", "root");
-    InfluxDB influxDB1 = IoTDBInfluxDBFactory.connect("http://127.0.0.1:6667", "root", "root");
     influxDB.createDatabase("database");
     influxDB.setDatabase("database");
     insertData();
