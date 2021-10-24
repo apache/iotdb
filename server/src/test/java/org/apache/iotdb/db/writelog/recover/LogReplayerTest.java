@@ -50,7 +50,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -167,7 +167,7 @@ public class LogReplayerTest {
             memTable.query(
                 "root.sg.device" + i,
                 "sensor" + i,
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     "sensor" + i,
                     TSDataType.INT64,
                     TSEncoding.RLE,
@@ -194,7 +194,7 @@ public class LogReplayerTest {
       assertEquals(200, ((Deletion) mods[0]).getEndTime());
 
       assertEquals(2, tsFileResource.getStartTime("root.sg.device0"));
-      assertEquals(100, tsFileResource.getEndTime("root.sg.device0"));
+      assertEquals(2, tsFileResource.getEndTime("root.sg.device0"));
       for (int i = 1; i < 5; i++) {
         assertEquals(i, tsFileResource.getStartTime("root.sg.device" + i));
         assertEquals(i, tsFileResource.getEndTime("root.sg.device" + i));
@@ -206,7 +206,7 @@ public class LogReplayerTest {
             memTable.query(
                 "root.sg.device5",
                 "sensor" + i,
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     "sensor" + i,
                     TSDataType.INT64,
                     TSEncoding.PLAIN,
@@ -262,8 +262,8 @@ public class LogReplayerTest {
     String deviceId = "root.sg.device5";
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    mNodes[0] = new MeasurementMNode(null, "sensor0", null, null);
-    mNodes[1] = new MeasurementMNode(null, "sensor1", null, null);
+    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", null, null);
+    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", null, null);
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(deviceId), measurements, dataTypes);

@@ -49,6 +49,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -502,7 +503,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertRecords(request), request.getDeviceIds());
+          client.insertRecords(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -522,7 +523,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertStringRecords(request), request.getDeviceIds());
+          client.insertStringRecords(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -580,7 +581,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertTablets(request), request.getDeviceIds());
+          client.insertTablets(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {

@@ -54,28 +54,9 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-cmake-executable</id>
-                                <phase>process-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <basedir>${cmake.root.dir}/bin</basedir>
-                                    <executable>${chmod.command}</executable>
-                                    <commandlineArgs>${chmod.command.para}</commandlineArgs>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <!-- Download the CMake binary distribution for this platform. -->
                             <execution>
@@ -101,6 +82,25 @@
                                     <url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
                                     <unpack>true</unpack>
                                     <outputDirectory>${project.build.directory}</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>make-cmake-executable</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <basedir>${cmake.root.dir}/bin</basedir>
+                                    <executable>${chmod.command}</executable>
+                                    <commandlineArgs>${chmod.command.para}</commandlineArgs>
                                 </configuration>
                             </execution>
                         </executions>

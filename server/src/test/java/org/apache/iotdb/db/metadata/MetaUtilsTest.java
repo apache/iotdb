@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -28,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
 
 public class MetaUtilsTest {
 
@@ -62,20 +64,30 @@ public class MetaUtilsTest {
 
     try {
       MetaUtils.splitPathToDetachedPath("root.sg.\"d.1\"\"s.1\"");
+      fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root.sg.\"d.1\"\"s.1\" is not a legal path", e.getMessage());
     }
 
     try {
       MetaUtils.splitPathToDetachedPath("root..a");
+      fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root..a is not a legal path", e.getMessage());
     }
 
     try {
       MetaUtils.splitPathToDetachedPath("root.sg.d1.'s1'");
+      fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root.sg.d1.'s1' is not a legal path", e.getMessage());
+    }
+
+    try {
+      MetaUtils.splitPathToDetachedPath("root.sg.d1.");
+      fail();
+    } catch (IllegalPathException e) {
+      Assert.assertEquals("root.sg.d1. is not a legal path", e.getMessage());
     }
   }
 

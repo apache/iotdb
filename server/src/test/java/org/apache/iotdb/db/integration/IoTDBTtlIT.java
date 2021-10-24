@@ -220,7 +220,7 @@ public class IoTDBTtlIT {
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.group1");
       statement.execute("SET STORAGE GROUP TO root.group2.sgroup1");
-      statement.execute("SET TTL TO root.group2 10000");
+      statement.execute("SET TTL TO root.group2.** 10000");
       String result = doQuery(statement, "SHOW ALL TTL");
       assertTrue(
           result.equals("root.group1,null\n" + "root.group2.sgroup1,10000\n")

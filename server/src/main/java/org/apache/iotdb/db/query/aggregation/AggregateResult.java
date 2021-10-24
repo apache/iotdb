@@ -25,7 +25,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -72,20 +72,20 @@ public abstract class AggregateResult {
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
-   * @param dataInThisPage the data in Page
+   * @param batchIterator the data in Page
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage)
+  public abstract void updateResultFromPageData(IBatchDataIterator batchIterator)
       throws IOException, QueryProcessException;
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
-   * @param dataInThisPage the data in Page
+   * @param batchIterator the data in Page
    * @param minBound calculate points whose time >= bound
    * @param maxBound calculate points whose time < bound
    */
   public abstract void updateResultFromPageData(
-      BatchData dataInThisPage, long minBound, long maxBound) throws IOException;
+      IBatchDataIterator batchIterator, long minBound, long maxBound) throws IOException;
 
   /**
    * This method calculates the aggregation using common timestamps of the cross series filter.

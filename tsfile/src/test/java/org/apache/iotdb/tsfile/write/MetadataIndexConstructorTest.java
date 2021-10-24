@@ -37,8 +37,8 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.After;
@@ -46,7 +46,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang.text.StrBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -384,7 +383,7 @@ public class MetadataIndexConstructorTest {
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
                 new Path(device, measurement),
-                new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
+                new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
           }
           // the number of record rows
           int rowNum = 10;
@@ -468,7 +467,7 @@ public class MetadataIndexConstructorTest {
    * @return curIndex's string
    */
   private String generateIndexString(int curIndex, int maxIndex) {
-    StrBuilder res = new StrBuilder(String.valueOf(curIndex));
+    StringBuilder res = new StringBuilder(String.valueOf(curIndex));
     String target = String.valueOf(maxIndex);
     while (res.length() < target.length()) {
       res.insert(0, "0");

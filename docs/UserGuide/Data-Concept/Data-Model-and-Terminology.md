@@ -70,7 +70,7 @@ path: LayerName (DOT LayerName)+
 LayerName: Identifier | STAR
 ```
 
-Among them, STAR is "*" and DOT is ".".
+Among them, STAR is `*` or `**` and DOT is `.`.
 
 We call the middle part of a path between two "." as a layer, and thus `root.A.B.C` is a path with four layers. 
 
@@ -92,26 +92,15 @@ The characters supported in LayerName without double quotes are as below:
 > Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
 
-* Prefix Path
+* Path Pattern
 
-The prefix path refers to the path where the prefix of a timeseries path is located. A prefix path contains all timeseries paths prefixed by the path. For example, suppose that we have three sensors: `root.vehicle.device1.sensor1`, `root.vehicle.device1.sensor2`, `root.vehicle.device2.sensor1`, the prefix path `root.vehicle.device1` contains two timeseries paths `root.vehicle.device1.sensor1` and `root.vehicle.device1.sensor2` while `root.vehicle.device2.sensor1` is excluded.
+In order to make it easier and faster to express multiple timeseries paths, IoTDB provides users with the path pattern. Users can construct a path pattern by using wildcard `*` and `**`. Wildcard can appear in any layer of the path. 
 
-* Path With Star
+`*` represents one layer. For example, `root.vehicle.*.sensor1` represents a 4-layer path which is prefixed with `root.vehicle` and suffixed with `sensor1`.
 
-In order to make it easier and faster to express multiple timeseries paths or prefix paths, IoTDB provides users with the path pith star. `*` can appear in any layer of the path. According to the position where `*` appears, the path with star can be divided into two types:
+`**` represents (`*`)+, which is one or more layers of `*`. For example, `root.vehicle.device1.*` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.**.sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 4 layers.
 
-`*` appears at the end of the path;
-
-`*` appears in the middle of the path;
-
-When `*` appears at the end of the path, it represents (`*`)+, which is one or more layers of `*`. For example, `root.vehicle.device1.*` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc.
-
-When `*` appears in the middle of the path, it represents `*` itself, i.e., a layer. For example, `root.vehicle.*.sensor1` represents a 4-layer path which is prefixed with `root.vehicle` and suffixed with `sensor1`.   
-
-> Note1: `*` cannot be placed at the beginning of the path.
-
-> Note2: A path with `*` at the end has the same meaning as a prefix path, e.g., `root.vehicle.*` and `root.vehicle` is the same.
-
+> Note1: Wildcard `*` and `**` cannot be placed at the beginning of the path.
 
 
 ### Timeseries
@@ -150,8 +139,6 @@ The timestamp is the time point at which data is produced. It includes absolute 
 
 * Measurement template (From v0.13)
 
-In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **measurement template** can be declared to define the collectable measurements set. Measurement template is hung on any node of the tree data pattern, which means that all entities under the node have the same measurements set.
+In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **measurement template** can be declared to define the collectable measurements set. Measurement template helps save memory by implementing schema sharing. For detailed description, please refer to Measurement Template doc.
 
-Currently you can only set one **measurement template** on a specific path. If there's one measurement template on one node, it will be forbidden to set any measurement template on the ancestors or descendants of this node.  An entity will use it's own measurement template or ancestor's measurement template.
-
-In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.
+In the following chapters of, data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.

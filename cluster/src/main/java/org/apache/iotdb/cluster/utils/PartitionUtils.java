@@ -42,9 +42,11 @@ import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Murmur128Hash;
 
 import java.util.List;
@@ -94,7 +96,8 @@ public class PartitionUtils {
         || plan instanceof CreateTemplatePlan
         || plan instanceof CreateFunctionPlan
         || plan instanceof DropFunctionPlan
-        || plan instanceof CreateSnapshotPlan;
+        || plan instanceof CreateSnapshotPlan
+        || plan instanceof SetSystemModePlan;
   }
 
   /**
@@ -126,12 +129,14 @@ public class PartitionUtils {
     return Math.abs(hash % slotNum);
   }
 
-  public static InsertTabletPlan copy(InsertTabletPlan plan, long[] times, Object[] values) {
+  public static InsertTabletPlan copy(
+      InsertTabletPlan plan, long[] times, Object[] values, BitMap[] bitMaps) {
     InsertTabletPlan newPlan = new InsertTabletPlan(plan.getPrefixPath(), plan.getMeasurements());
     newPlan.setDataTypes(plan.getDataTypes());
     // according to TSServiceImpl.insertBatch(), only the deviceId, measurements, dataTypes,
     // times, columns, and rowCount are need to be maintained.
     newPlan.setColumns(values);
+    newPlan.setBitMaps(bitMaps);
     newPlan.setTimes(times);
     newPlan.setRowCount(times.length);
     newPlan.setMeasurementMNodes(plan.getMeasurementMNodes());

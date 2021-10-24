@@ -24,6 +24,8 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -34,18 +36,20 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -69,12 +73,9 @@ public class TsFileRewriteTool implements AutoCloseable {
   protected TsFileSequenceReader reader;
   protected File oldTsFile;
   protected List<Modification> oldModification;
+  protected TsFileResource oldTsFileResource;
   protected Iterator<Modification> modsIterator;
 
-  /** new tsFile writer -> list of new modification */
-  protected Map<TsFileIOWriter, ModificationFile> fileModificationMap;
-
-  protected Deletion currentMod;
   protected Decoder defaultTimeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -97,6 +98,7 @@ public class TsFileRewriteTool implements AutoCloseable {
    * @throws IOException If some I/O error occurs
    */
   public TsFileRewriteTool(TsFileResource resourceToBeRewritten) throws IOException {
+    oldTsFileResource = resourceToBeRewritten;
     oldTsFile = resourceToBeRewritten.getTsFile();
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
@@ -104,12 +106,12 @@ public class TsFileRewriteTool implements AutoCloseable {
     if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
       oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
       modsIterator = oldModification.iterator();
-      fileModificationMap = new HashMap<>();
     }
   }
 
   public TsFileRewriteTool(TsFileResource resourceToBeRewritten, boolean needReaderForV2)
       throws IOException {
+    oldTsFileResource = resourceToBeRewritten;
     oldTsFile = resourceToBeRewritten.getTsFile();
     String file = oldTsFile.getAbsolutePath();
     if (needReaderForV2) {
@@ -121,7 +123,6 @@ public class TsFileRewriteTool implements AutoCloseable {
     if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
       oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
       modsIterator = oldModification.iterator();
-      fileModificationMap = new HashMap<>();
     }
   }
 
@@ -133,7 +134,7 @@ public class TsFileRewriteTool implements AutoCloseable {
    */
   public static void rewriteTsFile(
       TsFileResource resourceToBeRewritten, List<TsFileResource> rewrittenResources)
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     try (TsFileRewriteTool rewriteTool = new TsFileRewriteTool(resourceToBeRewritten)) {
       rewriteTool.parseAndRewriteFile(rewrittenResources);
     }
@@ -151,18 +152,22 @@ public class TsFileRewriteTool implements AutoCloseable {
    */
   @SuppressWarnings({"squid:S3776", "deprecation"}) // Suppress high Cognitive Complexity warning
   public void parseAndRewriteFile(List<TsFileResource> rewrittenResources)
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     // check if the TsFile has correct header
     if (!fileCheck()) {
       return;
     }
-    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
+    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length;
     reader.position(headerLength);
+    if (reader.readMarker() != 3) {
+      throw new WriteProcessException(
+          "The version of this tsfile is too low, please upgrade it to the version 3.");
+    }
     // start to scan chunks and chunkGroups
     byte marker;
-
     String deviceId = null;
     boolean firstChunkInChunkGroup = true;
+    long chunkHeaderOffset;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -174,9 +179,10 @@ public class TsFileRewriteTool implements AutoCloseable {
             break;
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
+            chunkHeaderOffset = reader.position() - 1;
             ChunkHeader header = reader.readChunkHeader(marker);
-            MeasurementSchema measurementSchema =
-                new MeasurementSchema(
+            UnaryMeasurementSchema measurementSchema =
+                new UnaryMeasurementSchema(
                     header.getMeasurementID(),
                     header.getDataType(),
                     header.getEncodingType(),
@@ -191,9 +197,13 @@ public class TsFileRewriteTool implements AutoCloseable {
               // a new Page
               PageHeader pageHeader =
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
+              boolean needToDecode =
+                  checkIfNeedToDecode(measurementSchema, deviceId, pageHeader, chunkHeaderOffset);
               needToDecodeInfo.add(needToDecode);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              ByteBuffer pageData =
+                  !needToDecode
+                      ? reader.readCompressedPage(pageHeader)
+                      : reader.readPage(pageHeader, header.getCompressionType());
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
               dataSize -= pageHeader.getSerializedPageSize();
@@ -204,7 +214,8 @@ public class TsFileRewriteTool implements AutoCloseable {
                 measurementSchema,
                 pageHeadersInChunk,
                 dataInChunk,
-                needToDecodeInfo);
+                needToDecodeInfo,
+                chunkHeaderOffset);
             firstChunkInChunkGroup = false;
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
@@ -235,25 +246,7 @@ public class TsFileRewriteTool implements AutoCloseable {
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
         rewrittenResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
-      // write the remain modification for new file
-      if (oldModification != null) {
-        while (currentMod != null || modsIterator.hasNext()) {
-          if (currentMod == null) {
-            currentMod = (Deletion) modsIterator.next();
-          }
-          for (Entry<TsFileIOWriter, ModificationFile> entry : fileModificationMap.entrySet()) {
-            TsFileIOWriter tsFileIOWriter = entry.getKey();
-            ModificationFile newMods = entry.getValue();
-            newMods.write(
-                new Deletion(
-                    currentMod.getPath(),
-                    tsFileIOWriter.getFile().length(),
-                    currentMod.getStartTime(),
-                    currentMod.getEndTime()));
-          }
-          currentMod = null;
-        }
-      }
+
     } catch (IOException e2) {
       throw new IOException(
           "TsFile rewrite process cannot proceed at position "
@@ -272,9 +265,27 @@ public class TsFileRewriteTool implements AutoCloseable {
    * false.
    */
   protected boolean checkIfNeedToDecode(
-      TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
+      UnaryMeasurementSchema schema, String deviceId, PageHeader pageHeader, long chunkHeaderOffset)
+      throws IllegalPathException {
     if (pageHeader.getStatistics() == null) {
       return true;
+    }
+    // Decode is required if the page has data to be deleted. Otherwise, decode is not required
+    if (oldModification != null) {
+      modsIterator = oldModification.iterator();
+      Deletion currentDeletion = null;
+      while (modsIterator.hasNext()) {
+        currentDeletion = (Deletion) modsIterator.next();
+        if (currentDeletion
+                .getPath()
+                .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
+            && currentDeletion.getFileOffset() > chunkHeaderOffset) {
+          if (pageHeader.getStartTime() <= currentDeletion.getEndTime()
+              && pageHeader.getEndTime() >= currentDeletion.getStartTime()) {
+            return true;
+          }
+        }
+      }
     }
     return StorageEngine.getTimePartition(pageHeader.getStartTime())
         != StorageEngine.getTimePartition(pageHeader.getEndTime());
@@ -288,16 +299,18 @@ public class TsFileRewriteTool implements AutoCloseable {
   protected void reWriteChunk(
       String deviceId,
       boolean firstChunkInChunkGroup,
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       List<PageHeader> pageHeadersInChunk,
       List<ByteBuffer> pageDataInChunk,
-      List<Boolean> needToDecodeInfoInChunk)
-      throws IOException, PageException {
+      List<Boolean> needToDecodeInfoInChunk,
+      long chunkHeaderOffset)
+      throws IOException, PageException, IllegalPathException {
     valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
     Map<Long, ChunkWriterImpl> partitionChunkWriterMap = new HashMap<>();
     for (int i = 0; i < pageDataInChunk.size(); i++) {
       if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(i))) {
-        decodeAndWritePage(schema, pageDataInChunk.get(i), partitionChunkWriterMap);
+        decodeAndWritePage(
+            deviceId, schema, pageDataInChunk.get(i), partitionChunkWriterMap, chunkHeaderOffset);
       } else {
         writePage(
             schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), partitionChunkWriterMap);
@@ -306,7 +319,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     for (Entry<Long, ChunkWriterImpl> entry : partitionChunkWriterMap.entrySet()) {
       long partitionId = entry.getKey();
       TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partitionId);
-      if (firstChunkInChunkGroup) {
+      if (firstChunkInChunkGroup || !tsFileIOWriter.isWritingChunkGroup()) {
         tsFileIOWriter.startChunkGroup(deviceId);
       }
       // write chunks to their own upgraded tsFiles
@@ -347,10 +360,6 @@ public class TsFileRewriteTool implements AutoCloseable {
               logger.error("Create new TsFile {} failed because it exists", newFile);
             }
             TsFileIOWriter writer = new TsFileIOWriter(newFile);
-            if (oldModification != null) {
-              fileModificationMap.put(
-                  writer, new ModificationFile(newFile + ModificationFile.FILE_SUFFIX));
-            }
             return writer;
           } catch (IOException e) {
             logger.error("Create new TsFile {} failed ", newFile, e);
@@ -360,7 +369,7 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   protected void writePage(
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
@@ -373,20 +382,49 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   protected void decodeAndWritePage(
-      MeasurementSchema schema,
+      String deviceId,
+      UnaryMeasurementSchema schema,
       ByteBuffer pageData,
-      Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
-      throws IOException {
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap,
+      long chunkHeaderOffset)
+      throws IOException, IllegalPathException {
     valueDecoder.reset();
     PageReader pageReader =
         new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder, null);
+    // read delete time range from old modification file
+    List<TimeRange> deleteIntervalList =
+        getOldSortedDeleteIntervals(deviceId, schema, chunkHeaderOffset);
+    pageReader.setDeleteIntervalList(deleteIntervalList);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
   }
 
+  private List<TimeRange> getOldSortedDeleteIntervals(
+      String deviceId, UnaryMeasurementSchema schema, long chunkHeaderOffset)
+      throws IllegalPathException {
+    if (oldModification != null) {
+      ChunkMetadata chunkMetadata = new ChunkMetadata();
+      modsIterator = oldModification.iterator();
+      Deletion currentDeletion = null;
+      while (modsIterator.hasNext()) {
+        currentDeletion = (Deletion) modsIterator.next();
+        // if deletion path match the chunkPath, then add the deletion to the list
+        if (currentDeletion
+                .getPath()
+                .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
+            && currentDeletion.getFileOffset() > chunkHeaderOffset) {
+          chunkMetadata.insertIntoSortedDeletions(
+              currentDeletion.getStartTime(), currentDeletion.getEndTime());
+        }
+      }
+      return chunkMetadata.getDeleteIntervalList();
+    }
+    return null;
+  }
+
   protected void rewritePageIntoFiles(
       BatchData batchData,
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap) {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
@@ -421,6 +459,12 @@ public class TsFileRewriteTool implements AutoCloseable {
       }
       batchData.next();
     }
+    partitionChunkWriterMap
+        .values()
+        .forEach(
+            writer -> {
+              writer.sealCurrentPage();
+            });
   }
 
   /** check if the file has correct magic strings and version number */

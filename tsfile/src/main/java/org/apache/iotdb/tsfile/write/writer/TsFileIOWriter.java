@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -166,6 +167,16 @@ public class TsFileIOWriter {
   }
 
   /**
+   * For TsFileReWriteTool / UpgradeTool. Use this method to determine if needs to start a
+   * ChunkGroup.
+   *
+   * @return isWritingChunkGroup
+   */
+  public boolean isWritingChunkGroup() {
+    return currentChunkGroupDeviceId != null;
+  }
+
+  /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
    * @param measurementId - measurementId of this time series
@@ -181,7 +192,7 @@ public class TsFileIOWriter {
       CompressionType compressionCodecName,
       TSDataType tsDataType,
       TSEncoding encodingType,
-      Statistics<?> statistics,
+      Statistics<? extends Serializable> statistics,
       int dataSize,
       int numOfPages,
       int mask)
@@ -386,11 +397,11 @@ public class TsFileIOWriter {
       // chunkMetadata is time column of a vector series
       if (chunkMetadata.isTimeColumn()) {
         Map<Path, List<IChunkMetadata>> vectorMap = vectorToPathsMap.get(path);
-
         for (Map.Entry<Path, List<IChunkMetadata>> entry : vectorMap.entrySet()) {
           flushOneChunkMetadata(entry.getKey(), entry.getValue(), vectorToPathsMap);
         }
       }
+      break;
     }
   }
 

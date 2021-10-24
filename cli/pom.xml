@@ -63,7 +63,7 @@
         <dependency>
             <groupId>me.tongfei</groupId>
             <artifactId>progressbar</artifactId>
-            <version>0.9.0</version>
+            <version>0.9.2</version>
         </dependency>
         <dependency>
             <groupId>jline</groupId>
@@ -74,6 +74,11 @@
             <artifactId>iotdb-server</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.9.0</version>
         </dependency>
     </dependencies>
     <build>

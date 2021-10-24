@@ -35,7 +35,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.*;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_ROW_BY_ROW;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_SIZE;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_TIME;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.DISPLAY_WINDOW_BEGIN_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.DISPLAY_WINDOW_END_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.SLIDING_STEP_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.WINDOW_SIZE_KEY;
 
 public class Counter implements UDTF {
 
@@ -52,11 +60,15 @@ public class Counter implements UDTF {
         break;
       case ACCESS_STRATEGY_SLIDING_TIME:
         configurations.setAccessStrategy(
-            new SlidingTimeWindowAccessStrategy(
-                parameters.getLong(TIME_INTERVAL_KEY),
-                parameters.getLong(SLIDING_STEP_KEY),
-                parameters.getLong(DISPLAY_WINDOW_BEGIN_KEY),
-                parameters.getLong(DISPLAY_WINDOW_END_KEY)));
+            parameters.hasAttribute(SLIDING_STEP_KEY)
+                    && parameters.hasAttribute(DISPLAY_WINDOW_BEGIN_KEY)
+                    && parameters.hasAttribute(DISPLAY_WINDOW_END_KEY)
+                ? new SlidingTimeWindowAccessStrategy(
+                    parameters.getLong(TIME_INTERVAL_KEY),
+                    parameters.getLong(SLIDING_STEP_KEY),
+                    parameters.getLong(DISPLAY_WINDOW_BEGIN_KEY),
+                    parameters.getLong(DISPLAY_WINDOW_END_KEY))
+                : new SlidingTimeWindowAccessStrategy(parameters.getLong(TIME_INTERVAL_KEY)));
         break;
       case ACCESS_STRATEGY_ROW_BY_ROW:
       default:

@@ -303,7 +303,7 @@ public class MetaGroupMemberTest extends BaseMember {
     try {
       for (String prefixPath : prefixPaths) {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
-          IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), schemas);
+          IoTDB.metaManager.collectMeasurementSchema(new PartialPath(prefixPath), schemas);
           dataOutputStream.writeInt(schemas.size());
           for (IMeasurementSchema schema : schemas) {
             schema.partialSerializeTo(dataOutputStream);
@@ -696,8 +696,8 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testJoinClusterFailed() throws QueryProcessException {
     System.out.println("Start testJoinClusterFailed()");
-    long prevInterval = RaftServer.getHeartBeatIntervalMs();
-    RaftServer.setHeartBeatIntervalMs(10);
+    long prevInterval = RaftServer.getHeartbeatIntervalMs();
+    RaftServer.setHeartbeatIntervalMs(10);
     ClusterDescriptor.getInstance().getConfig().setJoinClusterTimeOutMs(100);
     dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
@@ -708,7 +708,7 @@ public class MetaGroupMemberTest extends BaseMember {
       assertTrue(e instanceof StartUpCheckFailureException);
     } finally {
       newMember.closeLogManager();
-      RaftServer.setHeartBeatIntervalMs(prevInterval);
+      RaftServer.setHeartbeatIntervalMs(prevInterval);
     }
   }
 

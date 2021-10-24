@@ -123,7 +123,7 @@ public void run() {
 先介绍消费者任务的一些重要字段
 
 * ```
-  TreeSet<Long> timeHeap
+  TimeSelector timeHeap;
   ```
 
   时间戳的最小堆，用以实现时间戳对齐操作
@@ -152,13 +152,13 @@ public void run() {
 
 ```
 private void init() throws InterruptedException {
-	timeHeap = new TreeSet<>();
+	timeHeap = new TimeSelector(seriesReaderList.size() << 1, ascending);
 	// 为每个时间序列构建生产者任务
 	for (int i = 0; i < seriesReaderList.size(); i++) {
 	  ManagedSeriesReader reader = seriesReaderList.get(i);
 	  reader.setHasRemaining(true);
 	  reader.setManagedByQueryManager(true);
-	  pool.submit(new ReadTask(reader, blockingQueueArray[i]));
+	  pool.submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
 	}
 	// 初始化最小堆，填充每个时间序列对应的缓存
 	for (int i = 0; i < seriesReaderList.size(); i++) {
@@ -184,7 +184,15 @@ private void fillCache(int seriesIndex) throws InterruptedException {
 	// 如果是一个信号 BatchData，则将相应时间序列的 oMoreDataInQueue 置为 false
 	if (batchData instanceof SignalBatchData) {
 	  noMoreDataInQueueArray[seriesIndex] = true;
-	}
+	} else if (batchData instanceof ExceptionBatchData) {
+      // 当生产者线程发生异常时释放查询资源
+      ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
+      LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
+      if (exceptionBatchData.getException() instanceof IOException) {
+        throw (IOException) exceptionBatchData.getException();
+      } else if (exceptionBatchData.getException() instanceof RuntimeException) {
+        throw (RuntimeException) exceptionBatchData.getException();
+      }
 	else {
 	  // 将取出的 BatchData 放进 cachedBatchDataArray 缓存起来
 	  cachedBatchDataArray[seriesIndex] = batchData;
@@ -251,32 +259,32 @@ for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
 
 ## 包含值过滤条件 + 结果集按时间戳对齐
 
-### org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter
+### org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter
 
 `EngineDataSetWithValueFilter`实现了有值过滤条件的查询逻辑。
 
 它的查询逻辑是，首先根据查询条件生成满足过滤条件的时间戳，通过满足条件的时间戳查询投影列的值，然后返回结果集。它有四个字段
 
 * ```
-  private EngineTimeGenerator timeGenerator;
+  TimeGenerator timeGenerator;
   ```
 
   是用来生成满足过滤条件的时间戳的
 
 * ```
-  private List<IReaderByTimestamp> seriesReaderByTimestampList;
+  List<IReaderByTimestamp> seriesReaderByTimestampList;
   ```
 
   每个时间序列对应的 reader，用来根据时间戳获取数据
 
 * ```
-  private boolean hasCachedRowRecord;
+  List<Boolean> cached;
   ```
 
   当前是否缓存了数据行
 
 * ```
-  private RowRecord cachedRowRecord;
+  List<RowRecord> cachedRowRecords
   ```
 
   当前缓存的数据行

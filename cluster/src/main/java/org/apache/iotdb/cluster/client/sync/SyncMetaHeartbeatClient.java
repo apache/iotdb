@@ -37,7 +37,6 @@ public class SyncMetaHeartbeatClient extends SyncMetaClient {
 
   private SyncMetaHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
-    // the difference of the two clients lies in the port
     super(
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
@@ -45,7 +44,7 @@ public class SyncMetaHeartbeatClient extends SyncMetaClient {
                     TConfigurationConst.defaultTConfiguration,
                     node.getInternalIp(),
                     node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET,
-                    RaftServer.getConnectionTimeoutInMS()))));
+                    RaftServer.getHeartbeatClientConnTimeoutMs()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();

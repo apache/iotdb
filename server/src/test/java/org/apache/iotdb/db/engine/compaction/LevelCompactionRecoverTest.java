@@ -30,8 +30,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -66,9 +67,11 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
+    if (!tempSGDir.exists()) {
+      Assert.assertTrue(tempSGDir.mkdirs());
+    }
     super.setUp();
-    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();
   }
 
   @Override
@@ -85,7 +88,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -95,7 +98,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -120,15 +123,16 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
         targetTsFileResource,
@@ -141,7 +145,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.close();
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
+
     path =
         new PartialPath(
             deviceIds[0]
@@ -151,7 +155,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -176,7 +180,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -186,7 +190,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -211,15 +215,16 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
         targetTsFileResource,
@@ -256,7 +261,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
+
     path =
         new PartialPath(
             deviceIds[0]
@@ -266,7 +271,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -291,7 +296,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -301,7 +306,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -326,15 +331,16 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
         targetTsFileResource,
@@ -377,7 +383,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
+
     path =
         new PartialPath(
             deviceIds[0]
@@ -387,7 +393,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -412,7 +418,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(seqResources, false);
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -422,7 +428,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -447,15 +453,16 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
         targetTsFileResource,
@@ -468,7 +475,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.close();
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, false);
     levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
+
     path =
         new PartialPath(
             deviceIds[0]
@@ -478,7 +485,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(false),
             new ArrayList<>(),
             null,
@@ -510,7 +517,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -520,7 +527,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -553,7 +560,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logSequence(true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -563,7 +570,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -596,20 +603,21 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -619,7 +627,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,
@@ -653,15 +661,16 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
+                TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
+                    .concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
         targetTsFileResource,
@@ -674,7 +683,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
-    QueryContext context = new QueryContext();
+
     PartialPath path =
         new PartialPath(
             deviceIds[0]
@@ -684,7 +693,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
-            context,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             levelCompactionTsFileManagement.getTsFileList(true),
             new ArrayList<>(),
             null,

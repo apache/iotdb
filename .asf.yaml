@@ -28,3 +28,6 @@ github:
     - big-data
     - java
     - tsdb
+  features:
+    wiki: true
+    issues: true

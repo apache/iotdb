@@ -316,6 +316,32 @@ public class WriteLogNodeTest {
     }
     assertTrue(caught);
 
+    // if last insertplan failed by overflow,it can not take affect the next insertplan
+    InsertRowPlan bwInsertPlan2 =
+        new InsertRowPlan(
+            new PartialPath("root.logTestDevice.oversize"),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            // try to apply a insertplan whose size will fill the entire logBufferWorking
+            new String[] {
+              "1.0",
+              "15",
+              new String(
+                  new char
+                      [(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2) - 109]),
+              "false"
+            });
+    caught = false;
+    try {
+      logNode.write(bwInsertPlan2);
+    } catch (IOException e) {
+      caught = true;
+    }
+    assertFalse(caught);
+
     ByteBuffer[] array = logNode.delete();
     for (ByteBuffer byteBuffer : array) {
       MmapUtil.clean((MappedByteBuffer) byteBuffer);

@@ -185,7 +185,7 @@ public class PhysicalPlanTest {
   @Test
   public void testAuthor() throws QueryProcessException {
     String sql =
-        "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
+        "grant role xm privileges SET_STORAGE_GROUP,DELETE_TIMESERIES on root.vehicle.d1.s1";
     Planner processor = new Planner();
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
     assertEquals(
@@ -505,7 +505,7 @@ public class PhysicalPlanTest {
     try {
       PhysicalPlan plan =
           processor.parseSQLToPhysicalPlan(
-              "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+              "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
         fail();
       }
@@ -513,26 +513,6 @@ public class PhysicalPlanTest {
       assertEquals("udf", createFunctionPlan.getUdfName());
       assertEquals(
           "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      assertFalse(createFunctionPlan.isTemporary());
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testCreateFunctionPlan2() { // create temporary function
-    try {
-      PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
-        fail();
-      }
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      assertEquals("udf", createFunctionPlan.getUdfName());
-      assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       fail(e.toString());
     }
@@ -544,13 +524,9 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
           "select udf(d2.s1, d1.s1), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d1.s1, d2.s1), udf(d2.s1, d1.s1), d1.s1, d2.s1 from root.vehicle";
@@ -590,16 +566,12 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
-          "select udf(d2.s1, d1.s1, \"addend\"=\"100\"), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
+          "select udf(d2.s1, d1.s1, 'addend'='100'), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
       UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
@@ -639,15 +611,11 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
-      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle";
+      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle.**";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
       UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
@@ -995,7 +963,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testShowFlushInfo() throws QueryProcessException {
-    String metadata = "show flush task info";
+    String metadata = "SHOW FLUSH INFO";
     Planner processor = new Planner();
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("SHOW FLUSH_TASK_INFO", plan.toString());
@@ -1004,7 +972,7 @@ public class PhysicalPlanTest {
   @Test
   public void testLoadFiles() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
-    String metadata = String.format("load \"%s\"", filePath);
+    String metadata = String.format("load '%s'", filePath);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1014,7 +982,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true", filePath);
+    metadata = String.format("load '%s' autoregister=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1024,7 +992,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=false", filePath);
+    metadata = String.format("load '%s' autoregister=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1034,7 +1002,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1044,7 +1012,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=false", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3,verify=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1054,7 +1022,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=true", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3,verify=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1068,7 +1036,7 @@ public class PhysicalPlanTest {
   @Test
   public void testRemoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
-    String metadata = String.format("remove \"%s\"", filePath);
+    String metadata = String.format("remove '%s'", filePath);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1079,15 +1047,15 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testMoveFile() throws QueryProcessException {
+  public void testUnloadFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String targetDir = "user" + File.separator + "backup";
-    String metadata = String.format("move \"%s\" \"%s\"", filePath, targetDir);
+    String metadata = String.format("unload '%s' '%s'", filePath, targetDir);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=MOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=UNLOAD_FILE}",
             filePath, targetDir),
         plan.toString());
   }
@@ -1479,5 +1447,22 @@ public class PhysicalPlanTest {
     String sqlStr = "CREATE STORAGE GROUP root.sg";
     SetStorageGroupPlan plan = (SetStorageGroupPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals("SetStorageGroup{root.sg}", plan.toString());
+  }
+
+  @Test
+  public void testRegexpQuery() throws QueryProcessException, MetadataException {
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d5.s1"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+
+    String sqlStr = "SELECT * FROM root.vehicle.d5 WHERE s1 REGEXP 'string*'";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
+    IExpression expect =
+        new SingleSeriesExpression(new Path("root.vehicle.d5", "s1"), ValueFilter.like("string*"));
+    assertEquals(expect.toString(), queryFilter.toString());
   }
 }

@@ -27,16 +27,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 
 public class StatisticsV2 {
 
   private StatisticsV2() {}
 
-  @SuppressWarnings("rawtypes")
-  public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
-      throws IOException {
-    Statistics<?> statistics = Statistics.getStatsByType(dataType);
+  public static Statistics<? extends Serializable> deserialize(
+      InputStream inputStream, TSDataType dataType) throws IOException {
+    Statistics<? extends Serializable> statistics = Statistics.getStatsByType(dataType);
     statistics.setCount((int) ReadWriteIOUtils.readLong(inputStream));
     statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
@@ -68,9 +68,9 @@ public class StatisticsV2 {
     return statistics;
   }
 
-  @SuppressWarnings("rawtypes")
-  public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) {
-    Statistics<?> statistics = Statistics.getStatsByType(dataType);
+  public static Statistics<? extends Serializable> deserialize(
+      ByteBuffer buffer, TSDataType dataType) {
+    Statistics<? extends Serializable> statistics = Statistics.getStatsByType(dataType);
     statistics.setCount((int) ReadWriteIOUtils.readLong(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));

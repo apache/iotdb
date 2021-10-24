@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -59,7 +59,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
       // initialize depend on schema type
       if (schema instanceof VectorMeasurementSchema) {
         seriesWriter = new VectorChunkWriterImpl(schema);
-      } else if (schema instanceof MeasurementSchema) {
+      } else if (schema instanceof UnaryMeasurementSchema) {
         seriesWriter = new ChunkWriterImpl(schema);
       }
       this.chunkWriters.put(schema.getMeasurementId(), seriesWriter);
@@ -108,7 +108,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     int batchSize = tablet.rowSize;
     VectorMeasurementSchema vectorMeasurementSchema =
         (VectorMeasurementSchema) tablet.getSchemas().get(index);
-    List<TSDataType> valueDataTypes = vectorMeasurementSchema.getValueTSDataTypeList();
+    List<TSDataType> valueDataTypes = vectorMeasurementSchema.getSubMeasurementsTSDataTypeList();
     IChunkWriter vectorChunkWriter = chunkWriters.get(measurement);
     for (int row = 0; row < batchSize; row++) {
       long time = tablet.timestamps[row];

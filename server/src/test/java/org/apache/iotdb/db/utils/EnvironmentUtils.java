@@ -37,14 +37,16 @@ import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
@@ -76,7 +78,8 @@ public class EnvironmentUtils {
   public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  private static final long oldTsFileThreshold = config.getTsFileSizeThreshold();
+  private static final long oldSeqTsFileSize = config.getSeqTsFileSize();
+  private static final long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
 
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
@@ -143,10 +146,7 @@ public class EnvironmentUtils {
     // close metadata
     IoTDB.metaManager.clear();
 
-    // close tracing
-    if (config.isEnablePerformanceTracing()) {
-      TracingManager.getInstance().close();
-    }
+    QueryTimeManager.getInstance().clear();
 
     // close array manager
     PrimitiveArrayManager.close();
@@ -157,9 +157,13 @@ public class EnvironmentUtils {
     // clear memtable manager info
     MemTableManager.getInstance().close();
 
+    // clear tsFileResource manager info
+    TsFileResourceManager.getInstance().clear();
+
     // delete all directory
     cleanAllDir();
-    config.setTsFileSizeThreshold(oldTsFileThreshold);
+    config.setSeqTsFileSize(oldSeqTsFileSize);
+    config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
@@ -262,6 +266,7 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
+
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
@@ -297,6 +302,7 @@ public class EnvironmentUtils {
     shutdownDaemon();
     stopDaemon();
     IoTDB.metaManager.clear();
+    TsFileResourceManager.getInstance().clear();
     reactiveDaemon();
   }
 

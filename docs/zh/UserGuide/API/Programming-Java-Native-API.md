@@ -178,9 +178,11 @@ void insertRecord(String prefixPath, long time, List<String> measurements,
 * 插入多个 Record。提供数据类型后，服务器不需要做类型推断，可以提高性能
 
 ```java
-void insertRecords(List<String> deviceIds, List<Long> times,
-    List<List<String>> measurementsList,
-    List<List<Object>> valuesList)
+void insertRecords(List<String> deviceIds,
+        List<Long> times,
+        List<List<String>> measurementsList,
+        List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
 ```
 
 * 插入同属于一个 device 的多个 Record。
@@ -209,10 +211,10 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
-* 创建一个设备模板
+* 创建一个物理量模板
 
 ```
-* name: 设备模板名称
+* name: 物理量模板名称
 * measurements: 工况名称列表，如果该工况是非对齐的，直接将其名称放入一个 list 中再放入 measurements 中，
 *               如果该工况是对齐的，将所有对齐工况名称放入一个 list 再放入 measurements 中
 * dataTypes: 数据类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 dataTypes 中，
@@ -229,7 +231,7 @@ void createSchemaTemplate(
       List<CompressionType> compressors)
 ```
 
-* 将名为'templateName'的设备模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的设备模板
+* 将名为'templateName'的物理量模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的物理量模板
 
 ``` 
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -287,7 +289,7 @@ void testInsertTablet(Tablet tablet)
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-使用对齐时间序列和设备模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`。
+使用对齐时间序列和物理量模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`。
 
 ### 示例代码
 

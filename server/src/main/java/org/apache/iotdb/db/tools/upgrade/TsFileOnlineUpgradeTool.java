@@ -19,9 +19,8 @@
 package org.apache.iotdb.db.tools.upgrade;
 
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -36,7 +35,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -47,7 +46,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
 
@@ -97,10 +95,12 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
     boolean firstChunkInChunkGroup = true;
     String deviceId = null;
     boolean skipReadingChunk = true;
+    long chunkHeaderOffset;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
+            chunkHeaderOffset = reader.position() - 1;
             if (skipReadingChunk || deviceId == null) {
               ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
               int dataSize = header.getDataSize();
@@ -122,8 +122,8 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
               }
             } else {
               ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
-              MeasurementSchema measurementSchema =
-                  new MeasurementSchema(
+              UnaryMeasurementSchema measurementSchema =
+                  new UnaryMeasurementSchema(
                       header.getMeasurementID(),
                       header.getDataType(),
                       header.getEncodingType(),
@@ -138,11 +138,18 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
                 // a new Page
                 PageHeader pageHeader =
                     ((TsFileSequenceReaderForV2) reader).readPageHeader(dataType);
-                boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
+                boolean needToDecode =
+                    checkIfNeedToDecode(
+                        dataType,
+                        encoding,
+                        pageHeader,
+                        measurementSchema,
+                        deviceId,
+                        chunkHeaderOffset);
                 needToDecodeInfo.add(needToDecode);
                 ByteBuffer pageData =
                     !needToDecode
-                        ? ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader)
+                        ? reader.readCompressedPage(pageHeader)
                         : reader.readPage(pageHeader, header.getCompressionType());
                 pageHeadersInChunk.add(pageHeader);
                 dataInChunk.add(pageData);
@@ -163,7 +170,8 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
                   measurementSchema,
                   pageHeadersInChunk,
                   dataInChunk,
-                  needToDecodeInfo);
+                  needToDecodeInfo,
+                  chunkHeaderOffset);
               if (firstChunkInChunkGroup) {
                 firstChunkInChunkGroup = false;
               }
@@ -188,26 +196,6 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
             break;
           case MetaMarker.VERSION:
             long version = ((TsFileSequenceReaderForV2) reader).readVersion();
-            // convert old Modification to new
-            if (oldModification != null && modsIterator.hasNext()) {
-              if (currentMod == null) {
-                currentMod = (Deletion) modsIterator.next();
-              }
-              if (currentMod.getFileOffset() <= version) {
-                for (Entry<TsFileIOWriter, ModificationFile> entry :
-                    fileModificationMap.entrySet()) {
-                  TsFileIOWriter tsFileIOWriter = entry.getKey();
-                  ModificationFile newMods = entry.getValue();
-                  newMods.write(
-                      new Deletion(
-                          currentMod.getPath(),
-                          tsFileIOWriter.getFile().length(),
-                          currentMod.getStartTime(),
-                          currentMod.getEndTime()));
-                }
-                currentMod = null;
-              }
-            }
             // write plan indices for ending memtable
             for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
               tsFileIOWriter.writePlanIndices();
@@ -223,25 +211,9 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
         upgradedResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
-      // write the remain modification for new file
-      if (oldModification != null) {
-        while (currentMod != null || modsIterator.hasNext()) {
-          if (currentMod == null) {
-            currentMod = (Deletion) modsIterator.next();
-          }
-          for (Entry<TsFileIOWriter, ModificationFile> entry : fileModificationMap.entrySet()) {
-            TsFileIOWriter tsFileIOWriter = entry.getKey();
-            ModificationFile newMods = entry.getValue();
-            newMods.write(
-                new Deletion(
-                    currentMod.getPath(),
-                    tsFileIOWriter.getFile().length(),
-                    currentMod.getStartTime(),
-                    currentMod.getEndTime()));
-          }
-          currentMod = null;
-        }
-      }
+
+      oldTsFileResource.removeModFile();
+
     } catch (Exception e2) {
       throw new IOException(
           "TsFile upgrade process cannot proceed at position "
@@ -267,19 +239,24 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
    * PLAIN encoding, and also add a sum statistic for BOOLEAN data, these types of data need to
    * decode to points and rewrite in new TsFile.
    */
-  @Override
   protected boolean checkIfNeedToDecode(
-      TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
+      TSDataType dataType,
+      TSEncoding encoding,
+      PageHeader pageHeader,
+      UnaryMeasurementSchema schema,
+      String deviceId,
+      long chunkHeaderOffset)
+      throws IllegalPathException {
     return dataType == TSDataType.BOOLEAN
         || dataType == TSDataType.TEXT
         || (dataType == TSDataType.INT32 && encoding == TSEncoding.PLAIN)
         || StorageEngine.getTimePartition(pageHeader.getStartTime())
-            != StorageEngine.getTimePartition(pageHeader.getEndTime());
+            != StorageEngine.getTimePartition(pageHeader.getEndTime())
+        || super.checkIfNeedToDecode(schema, deviceId, pageHeader, chunkHeaderOffset);
   }
 
-  @Override
   protected void decodeAndWritePage(
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws IOException {

@@ -458,6 +458,18 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
+  public void getDeviceCount(
+      RaftNode header, List<String> pathsToQuery, AsyncMethodCallback<Integer> resultHandler)
+      throws TException {
+    try {
+      resultHandler.onComplete(
+          dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery));
+    } catch (CheckConsistencyException | MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
   public void onSnapshotApplied(
       RaftNode header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(dataGroupMember.onSnapshotInstalled(slots));

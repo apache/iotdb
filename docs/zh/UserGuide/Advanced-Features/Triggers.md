@@ -153,10 +153,10 @@ default int[] fire(long[] timestamps, int[] values) throws Exception {
    CREATE TRIGGER alert-listener-sg1d1s1
    AFTER INSERT
    ON root.sg1.d1.s1
-   AS "org.apache.iotdb.db.engine.trigger.example.AlertListener"
+   AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
    WITH (
-     "lo" = "0", 
-     "hi" = "100.0"
+     'lo' = '0', 
+     'hi' = '100.0'
    )
    ```
 
@@ -616,7 +616,7 @@ alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annota
 
 ## 完整的 Maven 示例项目
 
-如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目** trigger-example**。
+如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目 **trigger-example**。
 
 您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/trigger) 找到它。
 
@@ -766,10 +766,10 @@ public class TriggerExample implements Trigger {
   CREATE TRIGGER window-avg-alerter
   AFTER INSERT
   ON root.sg1.d1.s1
-  AS "org.apache.iotdb.trigger.TriggerExample"
+  AS 'org.apache.iotdb.trigger.TriggerExample'
   WITH (
-    "lo" = "0", 
-    "hi" = "10.0"
+    'lo' = '0', 
+    'hi' = '10.0'
   )
   ```
 

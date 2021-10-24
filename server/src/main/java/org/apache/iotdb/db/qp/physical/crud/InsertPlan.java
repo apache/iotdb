@@ -153,6 +153,9 @@ public abstract class InsertPlan extends PhysicalPlan {
    * @return the plan itself, with measurements replaced with the previously failed ones.
    */
   public InsertPlan getPlanFromFailed() {
+    if (isAligned && originalPrefixPath != null) {
+      prefixPath = originalPrefixPath;
+    }
     if (failedMeasurements == null) {
       return null;
     }
