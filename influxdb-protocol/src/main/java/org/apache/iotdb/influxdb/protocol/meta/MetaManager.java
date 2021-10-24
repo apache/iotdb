@@ -74,7 +74,7 @@ public class MetaManager {
         String databaseName = fields.get(0).getStringValue();
         String measurementName = fields.get(1).getStringValue();
         if (database2Measurement2TagOrders.containsKey(databaseName)) {
-          measurement2TagOrders = database2Measurement2TagOrders.get(measurementName);
+          measurement2TagOrders = database2Measurement2TagOrders.get(databaseName);
           if (measurement2TagOrders.containsKey(measurementName)) {
             tagOrders = measurement2TagOrders.get(measurementName);
           }
