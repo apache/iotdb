@@ -170,7 +170,11 @@ public class CompactionLogAnalyzer {
 
     public static CompactionFileInfo parseCompactionFileInfoFromPath(String filePath)
         throws IOException {
-      String[] splitFilePath = filePath.split(File.separator);
+      String separator = File.separator;
+      if (separator.equals("\\")) {
+        separator += "\\";
+      }
+      String[] splitFilePath = filePath.split(separator);
       int pathLength = splitFilePath.length;
       if (pathLength < 4) {
         throw new IOException("invalid compaction file path: " + filePath);
@@ -181,7 +185,7 @@ public class CompactionLogAnalyzer {
             splitFilePath[pathLength - 3],
             Long.parseLong(splitFilePath[pathLength - 2]),
             splitFilePath[pathLength - 1],
-            splitFilePath[pathLength - 5].equals("sequence"));
+            splitFilePath[pathLength - 5].equals("sequence") || splitFilePath[pathLength - 5].equals("target"));
       } catch (Exception e) {
         throw new IOException("invalid compaction log line: " + filePath);
       }

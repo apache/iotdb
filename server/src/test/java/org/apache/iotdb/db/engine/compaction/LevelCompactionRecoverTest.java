@@ -57,6 +57,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_INFO;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -271,7 +272,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
-                TestConstant.OUTPUT_DATA_DIR.concat(
+                TestConstant.SEQUENCE_DATA_DIR.concat(
                     0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0

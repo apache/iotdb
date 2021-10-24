@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -86,6 +87,28 @@ public class CompactionLogger {
     logStream.write(file.getName());
     logStream.write(" ");
     logStream.write(sequence ? "sequence" : "unsequence");
+    logStream.newLine();
+    logStream.flush();
+  }
+
+  @TestOnly
+  public void logFile(
+      String prefix,
+      String logicalStorageGroup,
+      String virtualStorageGroup,
+      long timePartition,
+      File file)
+      throws IOException {
+    logStream.write(prefix);
+    logStream.newLine();
+    logStream.write(logicalStorageGroup);
+    logStream.write(" ");
+    logStream.write(virtualStorageGroup);
+    logStream.write(" ");
+    logStream.write(String.valueOf(timePartition));
+    logStream.write(" ");
+    logStream.write(file.getName());
+    logStream.write(" test");
     logStream.newLine();
     logStream.flush();
   }
