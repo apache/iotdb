@@ -33,20 +33,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MetaManager {
 
-  private static volatile MetaManager metaManager;
+  private Session session = null;
 
-  private static Session session = null;
+  private final AtomicInteger referenceCnt = new AtomicInteger(0);
 
   // TODO avoid OOM
   private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
 
-  private MetaManager() {}
-
-  private MetaManager(SessionPoint sessionPoint) {
+  public MetaManager(SessionPoint sessionPoint) {
     session =
         new Session(
             sessionPoint.getHost(),
@@ -56,24 +55,13 @@ public class MetaManager {
     try {
       session.open();
     } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
+      throw new InfluxDBException(e.getMessage());
     }
     database2Measurement2TagOrders = new HashMap<>();
     recover();
   }
 
-  public static MetaManager getInstance(SessionPoint sessionPoint) {
-    if (metaManager == null) {
-      synchronized (MetaManager.class) {
-        if (metaManager == null) {
-          metaManager = new MetaManager(sessionPoint);
-        }
-      }
-    }
-    return metaManager;
-  }
-
-  private static void recover() {
+  private void recover() {
     try {
       SessionDataSet result =
           session.executeQueryStatement(
@@ -167,5 +155,17 @@ public class MetaManager {
 
   public void close() throws IoTDBConnectionException {
     session.close();
+  }
+
+  public void increaseReferenceCnt() {
+    referenceCnt.incrementAndGet();
+  }
+
+  public void decreaseReferenceCnt() {
+    referenceCnt.decrementAndGet();
+  }
+
+  public boolean hasNoReference() {
+    return referenceCnt.get() == 0;
   }
 }

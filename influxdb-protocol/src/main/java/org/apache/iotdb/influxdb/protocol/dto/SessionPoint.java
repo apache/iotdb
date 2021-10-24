@@ -54,21 +54,4 @@ public class SessionPoint {
   public static String generateIpAndPortString(String host, int rpcPort) {
     return host + '-' + rpcPort;
   }
-
-  @Override
-  public String toString() {
-    return "SessionPoint{"
-        + "host='"
-        + host
-        + '\''
-        + ", rpcPort="
-        + rpcPort
-        + ", username='"
-        + username
-        + '\''
-        + ", password='"
-        + password
-        + '\''
-        + '}';
-  }
 }

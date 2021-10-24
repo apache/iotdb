@@ -29,17 +29,25 @@ public class MetaManagerHolder {
   private static final Map<String, MetaManager> meteManagers = new HashMap<>();
 
   public static MetaManager getInstance(SessionPoint sessionPoint) {
+    MetaManager metaManager;
     if (meteManagers.containsKey(sessionPoint.ipAndPortToString())) {
-      return meteManagers.get(sessionPoint.ipAndPortToString());
+      metaManager = meteManagers.get(sessionPoint.ipAndPortToString());
     } else {
-      meteManagers.put(sessionPoint.ipAndPortToString(), MetaManager.getInstance(sessionPoint));
-      return MetaManager.getInstance(sessionPoint);
+      metaManager = new MetaManager(sessionPoint);
+      meteManagers.put(sessionPoint.ipAndPortToString(), metaManager);
     }
+    metaManager.increaseReferenceCnt();
+    return metaManager;
   }
 
   public static void close(String meteManagersKey) throws IoTDBConnectionException {
     if (meteManagers.containsKey(meteManagersKey)) {
-      meteManagers.get(meteManagersKey).close();
+      MetaManager metaManager = meteManagers.get(meteManagersKey);
+      metaManager.decreaseReferenceCnt();
+      if (metaManager.hasNoReference()) {
+        metaManager.close();
+        meteManagers.remove(meteManagersKey);
+      }
     }
   }
 }
