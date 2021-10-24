@@ -288,4 +288,122 @@ public class SessionTest {
       fail();
     }
   }
+
+  @Test
+  public void testUnsetSchemaTemplate() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s1"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Collections.singletonList("s3"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s1");
+    schemaNames.add("s2");
+    schemaNames.add("s3");
+
+    // template create test
+    session.createSchemaTemplate(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    System.out.println("template1 already created");
+
+    // path does not exist test
+    try {
+      session.unsetSchemaTemplate("root.sg.1", "template1");
+    } catch (Exception e) {
+      System.out.println("304: Path [root.sg.1] does not exist");
+      e.printStackTrace();
+    }
+
+    // set template test
+    session.setSchemaTemplate("template1", "root.sg.1");
+    System.out.println("template1 already set on root.sg.1");
+
+    // template already exists test
+    try {
+      session.setSchemaTemplate("template1", "root.sg.1");
+    } catch (Exception e) {
+      System.out.println("303: Template already exists on root.sg.1");
+      e.printStackTrace();
+    }
+
+    // template unset test
+    session.unsetSchemaTemplate("root.sg.1", "template1");
+    System.out.println("template1 already unset from root.sg.1");
+
+    session.setSchemaTemplate("template1", "root.sg.1");
+    System.out.println("template1 already set on root.sg.1");
+
+    // no template on path test
+    session.unsetSchemaTemplate("root.sg.1", "template1");
+    System.out.println("template1 already unset from root.sg.1");
+
+    try {
+      session.unsetSchemaTemplate("root.sg.1", "template1");
+    } catch (Exception e) {
+      System.out.println("324: NO template on root.sg.1");
+      e.printStackTrace();
+    }
+
+    // template is in use test
+    session.setSchemaTemplate("template1", "root.sg.1");
+    System.out.println("template1 already set on root.sg.1");
+
+    String deviceId = "root.sg.1.cd";
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
+    for (long time = 0; time < 5; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      session.insertRecord(deviceId, time, measurements, types, values);
+      System.out.println("insert record");
+    }
+
+    try {
+      session.unsetSchemaTemplate("root.sg.1", "template1");
+    } catch (Exception e) {
+      System.out.println("326: Template is in use on root.sg.1.cd");
+      e.printStackTrace();
+    }
+
+    // TODO lower node templated data has been deleted, unset template test no way to get node has already deleted all timeseries which use template
+    session.deleteTimeseries("root.sg.1.cd.s1");
+    session.deleteTimeseries("root.sg.1.cd.s2");
+    session.deleteTimeseries("root.sg.1.cd.s3");
+    try {
+      session.unsetSchemaTemplate("root.sg.1", "template1");
+    } catch (Exception e) {
+      System.out.println("template1 already unset from root.sg.1");
+      e.printStackTrace();
+    }
+
+    session.setSchemaTemplate("template1", "root.sg.1");
+    System.out.println("template1 already set on root.sg.1");
+
+  }
 }
