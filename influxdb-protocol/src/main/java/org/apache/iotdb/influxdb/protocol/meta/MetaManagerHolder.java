@@ -29,17 +29,17 @@ public class MetaManagerHolder {
   private static final Map<String, MetaManager> meteManagers = new HashMap<>();
 
   public static MetaManager getInstance(SessionPoint sessionPoint) {
-    if (meteManagers.containsKey(sessionPoint.toString())) {
-      return meteManagers.get(sessionPoint.toString());
+    if (meteManagers.containsKey(sessionPoint.ipAndPortToString())) {
+      return meteManagers.get(sessionPoint.ipAndPortToString());
     } else {
-      meteManagers.put(sessionPoint.toString(), MetaManager.getInstance(sessionPoint));
+      meteManagers.put(sessionPoint.ipAndPortToString(), MetaManager.getInstance(sessionPoint));
       return MetaManager.getInstance(sessionPoint);
     }
   }
 
-    public static void close(SessionPoint sessionPoint) throws IoTDBConnectionException {
-      if (meteManagers.containsKey(sessionPoint.toString())){
-          meteManagers.get(sessionPoint.toString()).close();
+    public static void close(String meteManagersKey) throws IoTDBConnectionException {
+      if (meteManagers.containsKey(meteManagersKey)){
+          meteManagers.get(meteManagersKey).close();
       }
     }
 }

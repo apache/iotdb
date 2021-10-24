@@ -59,29 +59,28 @@ public class IoTDBInfluxDB implements InfluxDB {
     session = new Session(uri.getHost(), uri.getPort(), userName, password);
     openSession();
     influxDBService =
-        new IoTDBInfluxDBService(
-            new SessionPoint(uri.getHost(), uri.getPort(), userName, password), session);
+        new IoTDBInfluxDBService(session);
   }
 
   public IoTDBInfluxDB(String host, int rpcPort, String userName, String password) {
     session = new Session(host, rpcPort, userName, password);
     openSession();
     influxDBService =
-        new IoTDBInfluxDBService(new SessionPoint(host, rpcPort, userName, password), session);
+        new IoTDBInfluxDBService(session);
   }
 
   public IoTDBInfluxDB(Session session) {
     this.session = session;
     openSession();
     influxDBService =
-        new IoTDBInfluxDBService(DataTypeUtils.sessionToSessionPoint(session), session);
+        new IoTDBInfluxDBService(session);
   }
 
   public IoTDBInfluxDB(Session.Builder builder) {
     session = builder.build();
     openSession();
     influxDBService =
-        new IoTDBInfluxDBService(DataTypeUtils.sessionToSessionPoint(session), session);
+        new IoTDBInfluxDBService(session);
   }
 
   private void openSession() {

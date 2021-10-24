@@ -46,9 +46,9 @@ public class IoTDBInfluxDBService {
   private final MetaManager metaManager;
   private String currentDatabase;
 
-  public IoTDBInfluxDBService(SessionPoint sessionPoint, Session session) {
+  public IoTDBInfluxDBService(Session session) {
     this.session = session;
-    metaManager = MetaManagerHolder.getInstance(sessionPoint);
+    metaManager = MetaManagerHolder.getInstance(DataTypeUtils.sessionToSessionPoint(session));
     currentDatabase = null;
   }
 
@@ -142,7 +142,7 @@ public class IoTDBInfluxDBService {
   public void close() {
     try {
       session.close();
-      MetaManagerHolder.close(DataTypeUtils.sessionToSessionPoint(session));
+      MetaManagerHolder.close(DataTypeUtils.sessionToSessionPoint(session).ipAndPortToString());
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }

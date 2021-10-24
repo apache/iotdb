@@ -47,17 +47,26 @@ public class SessionPoint {
     return password;
   }
 
-  public boolean equals(SessionPoint sessionPoint) {
-    if (host != null && host.equals(sessionPoint.getHost())) {
-      if (rpcPort == sessionPoint.getRpcPort()) {
-        if (username != null && username.equals(sessionPoint.getUsername())) {
-          if (password != null && password.equals(sessionPoint.getPassword())) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+  public String ipAndPortToString(){
+    return "SessionPoint{"
+            + "host='"
+            + host
+            + '\''
+            + ", rpcPort="
+            + rpcPort
+            + '\''
+            + '}';
+  }
+
+  public static String generateIpAndPortString(String host,int rpcPort){
+    return "SessionPoint{"
+            + "host='"
+            + host
+            + '\''
+            + ", rpcPort="
+            + rpcPort
+            + '\''
+            + '}';
   }
 
   @Override
