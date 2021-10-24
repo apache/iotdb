@@ -30,7 +30,11 @@ public class TestConstant {
   public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
   public static final String OUTPUT_DATA_DIR =
       BASE_OUTPUT_PATH + "data".concat(File.separator) + TSFILE_PREFIX_PATH;
-  public static final String SEQUENCE_DATA_DIR = BASE_OUTPUT_PATH + "data".concat(File.separator) + "sequence".concat(File.separator) + TSFILE_PREFIX_PATH;
+  public static final String SEQUENCE_DATA_DIR =
+      BASE_OUTPUT_PATH
+          + "data".concat(File.separator)
+          + "sequence".concat(File.separator)
+          + TSFILE_PREFIX_PATH;
 
   public static final String d0 = "root.vehicle.d0";
   public static final String s0 = "s0";

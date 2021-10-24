@@ -185,7 +185,8 @@ public class CompactionLogAnalyzer {
             splitFilePath[pathLength - 3],
             Long.parseLong(splitFilePath[pathLength - 2]),
             splitFilePath[pathLength - 1],
-            splitFilePath[pathLength - 5].equals("sequence") || splitFilePath[pathLength - 5].equals("target"));
+            splitFilePath[pathLength - 5].equals("sequence")
+                || splitFilePath[pathLength - 5].equals("target"));
       } catch (Exception e) {
         throw new IOException("invalid compaction log line: " + filePath);
       }
