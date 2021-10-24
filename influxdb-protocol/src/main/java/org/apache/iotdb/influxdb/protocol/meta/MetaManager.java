@@ -23,9 +23,9 @@ import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.read.common.Field;
+
 import org.influxdb.InfluxDBException;
 
 import java.util.HashMap;
@@ -35,44 +35,60 @@ import java.util.Map.Entry;
 
 public class MetaManager {
 
-  private final Session session;
+  private static volatile MetaManager metaManager;
+
+  private static Session session = null;
 
   // TODO avoid OOM
-  private final Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders;
+  private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
+      new HashMap<>();
 
+  private MetaManager() {}
 
-  public MetaManager(Session session) {
-    this.session = session;
+  private MetaManager(Session s) {
+    session = s;
     database2Measurement2TagOrders = new HashMap<>();
     recover();
   }
 
-  private void recover() {
+  public static MetaManager getInstance(Session s) {
+    if (metaManager == null) {
+      synchronized (MetaManager.class) {
+        if (metaManager == null) {
+          metaManager = new MetaManager(s);
+        }
+      }
+    }
+    return metaManager;
+  }
+
+  private static void recover() {
     try {
-      SessionDataSet result = session.executeQueryStatement(
+      SessionDataSet result =
+          session.executeQueryStatement(
               "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ");
-      Map<String, Map<String, Integer>> measurement2TagOrders=new HashMap<>();
-       Map<String, Integer> tagOrders=new HashMap<>();
+      Map<String, Map<String, Integer>> measurement2TagOrders = new HashMap<>();
+      Map<String, Integer> tagOrders = new HashMap<>();
       while (result.hasNext()) {
         List<Field> fields = result.next().getFields();
-        String databaseName=fields.get(0).getStringValue();
+        String databaseName = fields.get(0).getStringValue();
         String measurementName = fields.get(1).getStringValue();
         if (database2Measurement2TagOrders.containsKey(databaseName)) {
-          measurement2TagOrders= database2Measurement2TagOrders.get(measurementName);
-          if (measurement2TagOrders.containsKey(measurementName)){
-            tagOrders=measurement2TagOrders.get(measurementName);
+          measurement2TagOrders = database2Measurement2TagOrders.get(measurementName);
+          if (measurement2TagOrders.containsKey(measurementName)) {
+            tagOrders = measurement2TagOrders.get(measurementName);
           }
         }
         tagOrders.put(fields.get(2).getStringValue(), fields.get(3).getIntV());
         measurement2TagOrders.put(measurementName, tagOrders);
-        database2Measurement2TagOrders.put(databaseName,measurement2TagOrders);
+        database2Measurement2TagOrders.put(databaseName, measurement2TagOrders);
       }
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }
   }
 
-  public Map<String, Map<String, Integer>> createDatabase(String database) {
+  public synchronized Map<String, Map<String, Integer>> createDatabase(String database) {
     Map<String, Map<String, Integer>> measurement2TagOrders =
         database2Measurement2TagOrders.get(database);
     if (measurement2TagOrders != null) {
@@ -90,12 +106,13 @@ public class MetaManager {
     return measurement2TagOrders;
   }
 
-  public Map<String, Integer> getTagOrdersWithAutoCreatingSchema(
+  public synchronized Map<String, Integer> getTagOrdersWithAutoCreatingSchema(
       String database, String measurement) {
     return createDatabase(database).computeIfAbsent(measurement, m -> new HashMap<>());
   }
 
-  public String generatePath(String database, String measurement, Map<String, String> tags) {
+  public synchronized String generatePath(
+      String database, String measurement, Map<String, String> tags) {
     Map<String, Integer> tagKeyToLayerOrders =
         getTagOrdersWithAutoCreatingSchema(database, measurement);
     // to support rollback if fails to persisting new tag info
