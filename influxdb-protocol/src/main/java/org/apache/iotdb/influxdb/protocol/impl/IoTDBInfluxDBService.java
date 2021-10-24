@@ -20,7 +20,6 @@
 package org.apache.iotdb.influxdb.protocol.impl;
 
 import org.apache.iotdb.influxdb.protocol.dto.IoTDBPoint;
-import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
 import org.apache.iotdb.influxdb.protocol.meta.MetaManager;
 import org.apache.iotdb.influxdb.protocol.meta.MetaManagerHolder;
 import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;

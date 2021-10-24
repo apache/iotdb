@@ -37,9 +37,9 @@ public class MetaManagerHolder {
     }
   }
 
-    public static void close(String meteManagersKey) throws IoTDBConnectionException {
-      if (meteManagers.containsKey(meteManagersKey)){
-          meteManagers.get(meteManagersKey).close();
-      }
+  public static void close(String meteManagersKey) throws IoTDBConnectionException {
+    if (meteManagers.containsKey(meteManagersKey)) {
+      meteManagers.get(meteManagersKey).close();
     }
+  }
 }

@@ -20,9 +20,7 @@
 package org.apache.iotdb.influxdb;
 
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
-import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
 import org.apache.iotdb.influxdb.protocol.impl.IoTDBInfluxDBService;
-import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -58,29 +56,25 @@ public class IoTDBInfluxDB implements InfluxDB {
     }
     session = new Session(uri.getHost(), uri.getPort(), userName, password);
     openSession();
-    influxDBService =
-        new IoTDBInfluxDBService(session);
+    influxDBService = new IoTDBInfluxDBService(session);
   }
 
   public IoTDBInfluxDB(String host, int rpcPort, String userName, String password) {
     session = new Session(host, rpcPort, userName, password);
     openSession();
-    influxDBService =
-        new IoTDBInfluxDBService(session);
+    influxDBService = new IoTDBInfluxDBService(session);
   }
 
   public IoTDBInfluxDB(Session session) {
     this.session = session;
     openSession();
-    influxDBService =
-        new IoTDBInfluxDBService(session);
+    influxDBService = new IoTDBInfluxDBService(session);
   }
 
   public IoTDBInfluxDB(Session.Builder builder) {
     session = builder.build();
     openSession();
-    influxDBService =
-        new IoTDBInfluxDBService(session);
+    influxDBService = new IoTDBInfluxDBService(session);
   }
 
   private void openSession() {
