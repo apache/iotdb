@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MetaManagerHolder {
+
   private static final Map<String, MetaManager> meteManagers = new HashMap<>();
 
   public static MetaManager getInstance(SessionPoint sessionPoint) {
@@ -36,14 +37,14 @@ public class MetaManagerHolder {
       metaManager = new MetaManager(sessionPoint);
       meteManagers.put(sessionPoint.ipAndPortToString(), metaManager);
     }
-    metaManager.increaseReferenceCnt();
+    metaManager.increaseReference();
     return metaManager;
   }
 
   public static void close(String meteManagersKey) throws IoTDBConnectionException {
     if (meteManagers.containsKey(meteManagersKey)) {
       MetaManager metaManager = meteManagers.get(meteManagersKey);
-      metaManager.decreaseReferenceCnt();
+      metaManager.decreaseReference();
       if (metaManager.hasNoReference()) {
         metaManager.close();
         meteManagers.remove(meteManagersKey);

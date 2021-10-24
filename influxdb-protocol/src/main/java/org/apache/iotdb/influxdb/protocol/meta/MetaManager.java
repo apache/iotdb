@@ -39,7 +39,7 @@ public class MetaManager {
 
   private Session session = null;
 
-  private final AtomicInteger referenceCnt = new AtomicInteger(0);
+  private final AtomicInteger referenceCount = new AtomicInteger(0);
 
   // TODO avoid OOM
   private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
@@ -66,22 +66,32 @@ public class MetaManager {
       SessionDataSet result =
           session.executeQueryStatement(
               "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ");
-      Map<String, Map<String, Integer>> measurement2TagOrders = new HashMap<>();
-      Map<String, Integer> tagOrders = new HashMap<>();
+
       while (result.hasNext()) {
         List<Field> fields = result.next().getFields();
         String databaseName = fields.get(0).getStringValue();
         String measurementName = fields.get(1).getStringValue();
+
+        Map<String, Map<String, Integer>> measurement2TagOrders;
+        Map<String, Integer> tagOrders;
         if (database2Measurement2TagOrders.containsKey(databaseName)) {
           measurement2TagOrders = database2Measurement2TagOrders.get(databaseName);
           if (measurement2TagOrders.containsKey(measurementName)) {
             tagOrders = measurement2TagOrders.get(measurementName);
+          } else {
+            tagOrders = new HashMap<>();
           }
+        } else {
+          measurement2TagOrders = new HashMap<>();
+          tagOrders = new HashMap<>();
         }
+
         tagOrders.put(fields.get(2).getStringValue(), fields.get(3).getIntV());
         measurement2TagOrders.put(measurementName, tagOrders);
         database2Measurement2TagOrders.put(databaseName, measurement2TagOrders);
       }
+
+      result.closeOperationHandle();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }
@@ -157,15 +167,15 @@ public class MetaManager {
     session.close();
   }
 
-  public void increaseReferenceCnt() {
-    referenceCnt.incrementAndGet();
+  public void increaseReference() {
+    referenceCount.incrementAndGet();
   }
 
-  public void decreaseReferenceCnt() {
-    referenceCnt.decrementAndGet();
+  public void decreaseReference() {
+    referenceCount.decrementAndGet();
   }
 
   public boolean hasNoReference() {
-    return referenceCnt.get() == 0;
+    return referenceCount.get() == 0;
   }
 }

@@ -268,8 +268,8 @@ public class IoTDBInfluxDB implements InfluxDB {
   @Override
   public void close() {
     try {
-      session.close();
       influxDBService.close();
+      session.close();
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }

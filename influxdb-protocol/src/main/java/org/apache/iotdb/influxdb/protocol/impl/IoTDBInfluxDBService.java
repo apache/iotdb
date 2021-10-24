@@ -140,7 +140,6 @@ public class IoTDBInfluxDBService {
 
   public void close() {
     try {
-      session.close();
       MetaManagerHolder.close(DataTypeUtils.sessionToSessionPoint(session).ipAndPortToString());
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
