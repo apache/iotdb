@@ -47,7 +47,17 @@ public class MetaManager {
   private MetaManager() {}
 
   private MetaManager(SessionPoint sessionPoint) {
-    session = new Session(sessionPoint.getHost(),sessionPoint.getRpcPort(),sessionPoint.getUsername(),sessionPoint.getPassword());
+    session =
+        new Session(
+            sessionPoint.getHost(),
+            sessionPoint.getRpcPort(),
+            sessionPoint.getUsername(),
+            sessionPoint.getPassword());
+    try {
+      session.open();
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
     database2Measurement2TagOrders = new HashMap<>();
     recover();
   }

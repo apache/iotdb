@@ -25,15 +25,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MetaManagerHolder {
-    private static final Map<SessionPoint,MetaManager> meteManagers=new HashMap<>();
+  private static final Map<String, MetaManager> meteManagers = new HashMap<>();
 
-    public static MetaManager getInstance(SessionPoint sessionPoint) {
-        if (meteManagers.containsKey(sessionPoint)){
-            return meteManagers.get(sessionPoint);
-        }
-        else {
-            meteManagers.put(sessionPoint,MetaManager.getInstance(sessionPoint));
-            return MetaManager.getInstance(sessionPoint);
-        }
+  public static MetaManager getInstance(SessionPoint sessionPoint) {
+    if (meteManagers.containsKey(sessionPoint.toString())) {
+      return meteManagers.get(sessionPoint.toString());
+    } else {
+      meteManagers.put(sessionPoint.toString(), MetaManager.getInstance(sessionPoint));
+      return MetaManager.getInstance(sessionPoint);
     }
+  }
 }

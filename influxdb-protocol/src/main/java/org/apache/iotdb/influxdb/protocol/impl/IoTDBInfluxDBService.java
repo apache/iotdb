@@ -46,7 +46,7 @@ public class IoTDBInfluxDBService {
   private final MetaManager metaManager;
   private String currentDatabase;
 
-  public IoTDBInfluxDBService(SessionPoint sessionPoint,Session session) {
+  public IoTDBInfluxDBService(SessionPoint sessionPoint, Session session) {
     this.session = session;
     metaManager = MetaManagerHolder.getInstance(sessionPoint);
     currentDatabase = null;

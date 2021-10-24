@@ -19,45 +19,61 @@
 package org.apache.iotdb.influxdb.protocol.dto;
 
 public class SessionPoint {
-    private final String host;
-    private final int rpcPort;
-    private final String username;
-    private final String password;
+  private final String host;
+  private final int rpcPort;
+  private final String username;
+  private final String password;
 
-    public SessionPoint(String host, int rpcPort, String username, String password) {
-        this.host = host;
-        this.rpcPort = rpcPort;
-        this.username = username;
-        this.password = password;
-    }
+  public SessionPoint(String host, int rpcPort, String username, String password) {
+    this.host = host;
+    this.rpcPort = rpcPort;
+    this.username = username;
+    this.password = password;
+  }
 
-    public String getHost() {
-        return host;
-    }
+  public String getHost() {
+    return host;
+  }
 
-    public int getRpcPort() {
-        return rpcPort;
-    }
+  public int getRpcPort() {
+    return rpcPort;
+  }
 
-    public String getUsername() {
-        return username;
-    }
+  public String getUsername() {
+    return username;
+  }
 
-    public String getPassword() {
-        return password;
-    }
+  public String getPassword() {
+    return password;
+  }
 
-    public boolean equals(SessionPoint sessionPoint){
-        if (host != null &&host.equals(sessionPoint.getHost())){
-            if (rpcPort==sessionPoint.getRpcPort()){
-                if (username!=null&&username.equals(sessionPoint.getUsername())){
-                    if (password!=null&&password.equals(sessionPoint.getPassword()))
-                    {
-                        return true;
-                    }
-                }
-            }
+  public boolean equals(SessionPoint sessionPoint) {
+    if (host != null && host.equals(sessionPoint.getHost())) {
+      if (rpcPort == sessionPoint.getRpcPort()) {
+        if (username != null && username.equals(sessionPoint.getUsername())) {
+          if (password != null && password.equals(sessionPoint.getPassword())) {
+            return true;
+          }
         }
-        return false;
+      }
     }
+    return false;
+  }
+
+  @Override
+  public String toString() {
+    return "SessionPoint{"
+        + "host='"
+        + host
+        + '\''
+        + ", rpcPort="
+        + rpcPort
+        + ", username='"
+        + username
+        + '\''
+        + ", password='"
+        + password
+        + '\''
+        + '}';
+  }
 }
