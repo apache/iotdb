@@ -24,9 +24,12 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.influxdb.InfluxDBException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -37,6 +40,7 @@ public class MetaManager {
   // TODO avoid OOM
   private final Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders;
 
+
   public MetaManager(Session session) {
     this.session = session;
     database2Measurement2TagOrders = new HashMap<>();
@@ -44,7 +48,28 @@ public class MetaManager {
   }
 
   private void recover() {
-    // TODO: recover metadata from db
+    try {
+      SessionDataSet result = session.executeQueryStatement(
+              "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ");
+      Map<String, Map<String, Integer>> measurement2TagOrders=new HashMap<>();
+       Map<String, Integer> tagOrders=new HashMap<>();
+      while (result.hasNext()) {
+        List<Field> fields = result.next().getFields();
+        String databaseName=fields.get(0).getStringValue();
+        String measurementName = fields.get(1).getStringValue();
+        if (database2Measurement2TagOrders.containsKey(databaseName)) {
+          measurement2TagOrders= database2Measurement2TagOrders.get(measurementName);
+          if (measurement2TagOrders.containsKey(measurementName)){
+            tagOrders=measurement2TagOrders.get(measurementName);
+          }
+        }
+        tagOrders.put(fields.get(2).getStringValue(), fields.get(3).getIntV());
+        measurement2TagOrders.put(measurementName, tagOrders);
+        database2Measurement2TagOrders.put(databaseName,measurement2TagOrders);
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
   }
 
   public Map<String, Map<String, Integer>> createDatabase(String database) {
