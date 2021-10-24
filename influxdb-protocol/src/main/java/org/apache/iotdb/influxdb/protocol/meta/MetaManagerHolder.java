@@ -29,7 +29,7 @@ public class MetaManagerHolder {
 
   private static final Map<String, MetaManager> metaManagers = new HashMap<>();
 
-  public synchronized static MetaManager getInstance(SessionPoint sessionPoint) {
+  public static synchronized MetaManager getInstance(SessionPoint sessionPoint) {
     MetaManager metaManager;
     if (metaManagers.containsKey(sessionPoint.ipAndPortToString())) {
       metaManager = metaManagers.get(sessionPoint.ipAndPortToString());
@@ -41,7 +41,7 @@ public class MetaManagerHolder {
     return metaManager;
   }
 
-  public synchronized static void close(String meteManagersKey) throws IoTDBConnectionException {
+  public static synchronized void close(String meteManagersKey) throws IoTDBConnectionException {
     if (metaManagers.containsKey(meteManagersKey)) {
       MetaManager metaManager = metaManagers.get(meteManagersKey);
       metaManager.decreaseReference();
