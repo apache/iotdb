@@ -219,6 +219,7 @@ import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -1466,37 +1467,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     for (TypeClauseContext typeClause : list) {
-      // group by fill doesn't support linear fill
-      if (typeClause.linearClause() != null) {
-        throw new SQLParserException("group by fill doesn't support linear fill");
-      }
-      // all type use the same fill way
-      if (typeClause.ALL() != null) {
-        IFill fill;
-        if (typeClause.previousUntilLastClause() != null) {
-          long preRange;
-          if (typeClause.previousUntilLastClause().DURATION() != null) {
-            preRange = parseDuration(typeClause.previousUntilLastClause().DURATION().getText());
-          } else {
-            preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-          }
-          fill = new PreviousFill(preRange, true);
-        } else {
-          long preRange;
-          if (typeClause.previousClause().DURATION() != null) {
-            preRange = parseDuration(typeClause.previousClause().DURATION().getText());
-          } else {
-            preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-          }
-          fill = new PreviousFill(preRange);
-        }
-        for (TSDataType tsDataType : TSDataType.values()) {
-          fillTypes.put(tsDataType, fill.copy());
-        }
-        break;
-      } else {
-        parseTypeClause(typeClause, fillTypes);
-      }
+      parseTypeClause(typeClause, fillTypes);
     }
     queryOp.setFill(true);
     queryOp.setFillTypes(fillTypes);
@@ -1514,6 +1485,10 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
 
     if (ctx.linearClause() != null) { // linear
+      if (dataType == TSDataType.TEXT || dataType == TSDataType.BOOLEAN) {
+        throw new UnSupportedDataTypeException(
+                String.format("Unsupported data type in linearFill : %s", dataType));
+      }
       if (ctx.linearClause().DURATION(0) != null) {
         long beforeRange = parseDuration(ctx.linearClause().DURATION(0).getText());
         long afterRange = parseDuration(ctx.linearClause().DURATION(1).getText());

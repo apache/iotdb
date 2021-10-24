@@ -475,11 +475,6 @@ public class PhysicalGenerator {
       }
       if (queryOperator.isFill()) {
         ((GroupByTimeFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
-        for (String aggregation : queryPlan.getAggregations()) {
-          if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
-            throw new QueryProcessException("Group By Fill only support last_value function");
-          }
-        }
       } else if (queryOperator.isGroupByLevel()) {
         ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
         try {

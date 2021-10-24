@@ -23,22 +23,28 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -46,13 +52,23 @@ public class GroupByFillDataSet extends QueryDataSet {
 
   private GroupByEngineDataSet groupByEngineDataSet;
   private Map<TSDataType, IFill> fillTypes;
-  // the first value for each time series
+  // the previous value for each time series
   private Object[] previousValue;
   private long[] previousTime;
+  // the next value for each time series
+  private Object[] nextValue;
+  private long[] nextTime;
   // last timestamp for each time series
   private long[] lastTimeArray;
   private TimeValuePair[] firstNotNullTV;
   private boolean isPeekEnded = false;
+  // cached row records
+  private ArrayList<RowRecord> unFilledRowRecords = new ArrayList<>();
+  private LinkedList<RowRecord> cachedRowRecords = new LinkedList<>();
+  // aggregation type of each column
+  private List<String> aggregations;
+
+  private static int DEFAULT_FETCH_SIZE = 5000;
 
   public GroupByFillDataSet(
       List<PartialPath> paths,
@@ -65,13 +81,24 @@ public class GroupByFillDataSet extends QueryDataSet {
     super(new ArrayList<>(paths), dataTypes, groupByFillPlan.isAscending());
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
-    try {
-      initPreviousParis(context, groupByFillPlan);
-      initLastTimeArray(context, groupByFillPlan);
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
-    }
+    this.aggregations = groupByFillPlan.getAggregations();
+    this.lastTimeArray = new long[paths.size()];
+
+    previousValue = new Object[paths.size()];
+    previousTime = new long[paths.size()];
+    nextValue = new Object[paths.size()];
+    nextTime = new long[paths.size()];
+    Arrays.fill(previousValue, null);
+    Arrays.fill(previousTime, Long.MAX_VALUE);
+    Arrays.fill(nextValue, null);
+    Arrays.fill(nextTime, Long.MIN_VALUE);
+
+//    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
+//    try {
+//      initLastTimeArray(context, groupByFillPlan);
+//    } finally {
+//      StorageEngine.getInstance().mergeUnLock(list);
+//    }
   }
 
   private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
@@ -134,36 +161,201 @@ public class GroupByFillDataSet extends QueryDataSet {
     }
   }
 
+  private boolean isFieldNull(Field field) {
+    return field == null || field.getDataType() == null;
+  }
+
+  private boolean fieldLessOrNull(int curId, int nextId, int pathId) {
+    if (nextId == unFilledRowRecords.size()) {
+      return false;
+    }
+    if (curId >= nextId) {
+      return true;
+    }
+    RowRecord rowRecord = unFilledRowRecords.get(nextId);
+    Field field = rowRecord.getFields().get(pathId);
+    return isFieldNull(field);
+  }
+
   @Override
-  public boolean hasNextWithoutConstraint() {
-    return groupByEngineDataSet.hasNextWithoutConstraint();
+  public boolean hasNextWithoutConstraint() throws IOException {
+    if (cachedRowRecords.size() > 0) {
+      return true;
+    }
+
+    // TODO: test desc
+    if (groupByEngineDataSet.hasNextWithoutConstraint()) {
+      BitSet isFilled = new BitSet(paths.size());
+      isFilled.clear();
+      // TODO: test exceed limit
+      for (int recordCnt = 0; recordCnt < DEFAULT_FETCH_SIZE; recordCnt++) {
+        if (!groupByEngineDataSet.hasNextWithoutConstraint()) {
+          break;
+        }
+        RowRecord rowRecord = groupByEngineDataSet.nextWithoutConstraint();
+        for (int pathId = 0; pathId < paths.size(); pathId++) {
+          Field field = rowRecord.getFields().get(pathId);
+          TSDataType tsDataType = dataTypes.get(pathId);
+          boolean filledFlag;
+          if (isFieldNull(field)) {
+            IFill fill = fillTypes.get(tsDataType);
+            // LinearFill and PreviousUntilLastFill needs to be filled with data at the next non-empty time
+            if (fill instanceof PreviousFill) {
+              filledFlag = !((PreviousFill) fill).isUntilLast();
+            } else {
+              filledFlag = false;
+            }
+          } else {
+            filledFlag = true;
+            lastTimeArray[pathId] = rowRecord.getTimestamp();
+          }
+          isFilled.set(pathId, filledFlag);
+        }
+
+        unFilledRowRecords.add(rowRecord);
+        if (isFilled.cardinality() == paths.size()) {
+          break;
+        }
+      }
+
+      for (int pathId = 0; pathId < paths.size(); pathId++) {
+        TSDataType queryDataType = dataTypes.get(pathId);
+        TSDataType resultDataType = getResultDataType(pathId);
+        IFill fill = fillTypes.get(queryDataType);
+        if (fill instanceof PreviousFill) {
+          for (RowRecord rowRecord : unFilledRowRecords) {
+            Field field = rowRecord.getFields().get(pathId);
+            long curTime = rowRecord.getTimestamp();
+            if (isFieldNull(field)) {
+              // TODO: desc fill
+              if (previousValue[pathId] != null
+                  && previousTime[pathId] < curTime
+                  && (!((PreviousFill) fill).isUntilLast() || curTime < lastTimeArray[pathId])) {
+                rowRecord
+                    .getFields()
+                    .set(pathId, Field.getField(previousValue[pathId], resultDataType));
+              }
+            } else {
+              previousValue[pathId] = field.getObjectValue(resultDataType);
+              previousTime[pathId] = curTime;
+            }
+          }
+        } else if (fill instanceof LinearFill) {
+          int nextId = 0;
+          for (int curId = 0; curId < unFilledRowRecords.size(); curId++) {
+            RowRecord rowRecord = unFilledRowRecords.get(curId);
+            Field field = rowRecord.getFields().get(pathId);
+            long curTime = rowRecord.getTimestamp();
+            if (isFieldNull(field)) {
+              while (fieldLessOrNull(curId, nextId, pathId)) {
+                nextId++;
+              }
+              if (nextId == unFilledRowRecords.size()) {
+                // TODO: Query next then calculate
+              } else if (previousValue[pathId] != null && previousTime[pathId] < curTime) {
+                RowRecord nextRowRecord = unFilledRowRecords.get(nextId);
+                Field nextField = nextRowRecord.getFields().get(pathId);
+                LinearFill linearFill = new LinearFill();
+                TimeValuePair beforePair =
+                    new TimeValuePair(
+                        previousTime[pathId],
+                        TsPrimitiveType.getByType(resultDataType, previousValue[pathId]));
+                TimeValuePair afterPair =
+                    new TimeValuePair(
+                        nextRowRecord.getTimestamp(),
+                        TsPrimitiveType.getByType(
+                            resultDataType, nextField.getObjectValue(resultDataType)));
+                TimeValuePair filledPair = null;
+                try {
+                  filledPair =
+                      linearFill.averageWithTimeAndDataType(
+                          beforePair, afterPair, curTime, resultDataType);
+                } catch (UnSupportedFillTypeException e) {
+                  // ignored
+                }
+                rowRecord
+                    .getFields()
+                    .set(pathId, Field.getField(filledPair.getValue().getValue(), resultDataType));
+              } else {
+                // TODO: Query previous then calculate
+              }
+            } else {
+              previousValue[pathId] = field.getObjectValue(resultDataType);
+              previousTime[pathId] = curTime;
+            }
+          }
+        }
+      }
+
+      cachedRowRecords.addAll(unFilledRowRecords);
+      unFilledRowRecords.clear();
+      return true;
+    } else {
+      return false;
+    }
   }
 
   @Override
   @SuppressWarnings("squid:S3776")
   public RowRecord nextWithoutConstraint() throws IOException {
-    RowRecord rowRecord = groupByEngineDataSet.nextWithoutConstraint();
-
-    for (int i = 0; i < paths.size(); i++) {
-      Field field = rowRecord.getFields().get(i);
-      // current group by result is null
-      if (field == null || field.getDataType() == null) {
-        TSDataType tsDataType = dataTypes.get(i);
-        // for desc query peek previous time and value
-        if (!ascending && !isPeekEnded && !canUseCacheData(rowRecord, tsDataType, i)) {
-          fillCache(i);
-        }
-
-        if (canUseCacheData(rowRecord, tsDataType, i)) {
-          rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
-        }
-      } else {
-        // use now value update previous value
-        previousValue[i] = field.getObjectValue(field.getDataType());
-        previousTime[i] = rowRecord.getTimestamp();
-      }
+    if (cachedRowRecords.size() == 0) {
+      throw new IOException(
+          "need to call hasNext() before calling next() " + "in GroupByFillDataSet.");
     }
-    return rowRecord;
+
+    return cachedRowRecords.removeFirst();
+  }
+
+  //  @Override
+  //  public boolean hasNextWithoutConstraint() {
+  //    return groupByEngineDataSet.hasNextWithoutConstraint();
+  //  }
+  //
+  //  @Override
+  //  @SuppressWarnings("squid:S3776")
+  //  public RowRecord nextWithoutConstraint() throws IOException {
+  //    RowRecord rowRecord = groupByEngineDataSet.nextWithoutConstraint();
+  //
+  //    for (int i = 0; i < paths.size(); i++) {
+  //      Field field = rowRecord.getFields().get(i);
+  //      // current group by result is null
+  //      if (field == null || field.getDataType() == null) {
+  //        TSDataType tsDataType = dataTypes.get(i);
+  //        // for desc query peek previous time and value
+  //        if (!ascending && !isPeekEnded && !canUseCacheData(rowRecord, tsDataType, i)) {
+  //          fillCache(i);
+  //        }
+  //
+  //        if (canUseCacheData(rowRecord, tsDataType, i)) {
+  //          rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
+  //        }
+  //      } else {
+  //        // use now value update previous value
+  //        previousValue[i] = field.getObjectValue(field.getDataType());
+  //        previousTime[i] = rowRecord.getTimestamp();
+  //      }
+  //    }
+  //    return rowRecord;
+  //  }
+
+  private TSDataType getResultDataType(int pathId) {
+    switch (aggregations.get(pathId)) {
+      case "avg":
+      case "sum":
+        return TSDataType.DOUBLE;
+      case "count":
+      case "max_time":
+      case "min_time":
+        return TSDataType.INT64;
+      case "first_value":
+      case "last_value":
+      case "max_value":
+      case "min_value":
+        return dataTypes.get(pathId);
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in group by fill : %s", aggregations.get(pathId)));
+    }
   }
 
   private void fillCache(int i) throws IOException {

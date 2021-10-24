@@ -65,6 +65,8 @@ public class LinearFill extends IFill {
     this.afterRange = afterRange;
   }
 
+  public LinearFill() {}
+
   public long getBeforeRange() {
     return beforeRange;
   }
@@ -230,5 +232,13 @@ public class LinearFill extends IFill {
     }
     beforePair.setTimestamp(queryTime);
     return beforePair;
+  }
+
+  public TimeValuePair averageWithTimeAndDataType(
+      TimeValuePair beforePair, TimeValuePair afterPair, long queryTime, TSDataType tsDataType)
+      throws UnSupportedFillTypeException {
+    this.queryTime = queryTime;
+    this.dataType = tsDataType;
+    return average(beforePair, afterPair);
   }
 }
