@@ -909,6 +909,17 @@ public class LocalQueryExecutor {
     return count;
   }
 
+  public int getDeviceCount(List<String> pathsToQuery)
+      throws CheckConsistencyException, MetadataException {
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+
+    int count = 0;
+    for (String s : pathsToQuery) {
+      count += getCMManager().getDevicesNum(new PartialPath(s));
+    }
+    return count;
+  }
+
   @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException,
