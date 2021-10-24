@@ -20,7 +20,9 @@
 package org.apache.iotdb.influxdb.protocol.impl;
 
 import org.apache.iotdb.influxdb.protocol.dto.IoTDBPoint;
+import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
 import org.apache.iotdb.influxdb.protocol.meta.MetaManager;
+import org.apache.iotdb.influxdb.protocol.meta.MetaManagerHolder;
 import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -44,9 +46,9 @@ public class IoTDBInfluxDBService {
   private final MetaManager metaManager;
   private String currentDatabase;
 
-  public IoTDBInfluxDBService(Session session) {
+  public IoTDBInfluxDBService(SessionPoint sessionPoint,Session session) {
     this.session = session;
-    metaManager = MetaManager.getInstance(session);
+    metaManager = MetaManagerHolder.getInstance(sessionPoint);
     currentDatabase = null;
   }
 

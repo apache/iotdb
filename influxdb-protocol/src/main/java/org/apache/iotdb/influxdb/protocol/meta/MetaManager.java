@@ -20,6 +20,7 @@
 package org.apache.iotdb.influxdb.protocol.meta;
 
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
+import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -45,17 +46,17 @@ public class MetaManager {
 
   private MetaManager() {}
 
-  private MetaManager(Session s) {
-    session = s;
+  private MetaManager(SessionPoint sessionPoint) {
+    session = new Session(sessionPoint.getHost(),sessionPoint.getRpcPort(),sessionPoint.getUsername(),sessionPoint.getPassword());
     database2Measurement2TagOrders = new HashMap<>();
     recover();
   }
 
-  public static MetaManager getInstance(Session s) {
+  public static MetaManager getInstance(SessionPoint sessionPoint) {
     if (metaManager == null) {
       synchronized (MetaManager.class) {
         if (metaManager == null) {
-          metaManager = new MetaManager(s);
+          metaManager = new MetaManager(sessionPoint);
         }
       }
     }
