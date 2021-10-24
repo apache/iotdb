@@ -133,10 +133,10 @@ public class MergeTask implements Callable<Void> {
     }
     if (logger.isInfoEnabled()) {
       logger.info(
-          "{} starts to merge {} seqFiles, {} unseqFiles",
+          "{} starts to merge seqFiles: {}, unseqFiles: {}",
           taskName,
-          resource.getSeqFiles().size(),
-          resource.getUnseqFiles().size());
+          resource.getSeqFiles(),
+          resource.getUnseqFiles());
     }
     long startTime = System.currentTimeMillis();
     long totalFileSize =
