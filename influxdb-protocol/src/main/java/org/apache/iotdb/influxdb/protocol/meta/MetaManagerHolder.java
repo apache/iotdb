@@ -20,6 +20,7 @@
 package org.apache.iotdb.influxdb.protocol.meta;
 
 import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,4 +36,10 @@ public class MetaManagerHolder {
       return MetaManager.getInstance(sessionPoint);
     }
   }
+
+    public static void close(SessionPoint sessionPoint) throws IoTDBConnectionException {
+      if (meteManagers.containsKey(sessionPoint.toString())){
+          meteManagers.get(sessionPoint.toString()).close();
+      }
+    }
 }

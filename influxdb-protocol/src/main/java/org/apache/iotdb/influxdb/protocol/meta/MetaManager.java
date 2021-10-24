@@ -164,4 +164,8 @@ public class MetaManager {
     }
     return path.toString();
   }
+
+  public void close() throws IoTDBConnectionException {
+    session.close();
+  }
 }

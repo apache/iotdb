@@ -276,6 +276,7 @@ public class IoTDBInfluxDB implements InfluxDB {
   public void close() {
     try {
       session.close();
+      influxDBService.close();
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }

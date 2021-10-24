@@ -138,4 +138,13 @@ public class IoTDBInfluxDBService {
   public void createDatabase(String name) {
     metaManager.createDatabase(name);
   }
+
+  public void close() {
+    try {
+      session.close();
+      MetaManagerHolder.close(DataTypeUtils.sessionToSessionPoint(session));
+    } catch (IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
+  }
 }
