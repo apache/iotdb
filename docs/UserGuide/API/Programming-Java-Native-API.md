@@ -428,6 +428,16 @@ void createSchemaTemplate
 
 ```
 
+``` 
+
+void unsetSchemaTemplate(String prefixPath, String templateName)
+
+```
+
+Unset the measurement template named 'templateName' from path 'prefixPath'. You should ensure that there is a template named 'templateName' set at the path 'prefixPath'.
+
+Attention: Unsetting the template named 'templateName' from node at path 'prefixPath' or descendant nodes which have already inserted records using template is **not supported**.
+
 ### Cluster information related APIs (only works in the cluster mode)
 
 Cluster information related APIs allow users get the cluster info like where a storage group will be 
