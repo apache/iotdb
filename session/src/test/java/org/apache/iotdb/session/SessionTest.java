@@ -381,18 +381,5 @@ public class SessionTest {
     } catch (Exception e) {
       assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
     }
-
-    // TODO lower node templated data has been deleted, there is no way to get node has already
-    // deleted all timeseries which use template
-    // template still in use
-    session.deleteTimeseries("root.sg.1.cd.s1");
-    session.deleteTimeseries("root.sg.1.cd.s2");
-    session.deleteTimeseries("root.sg.1.cd.s3");
-    try {
-      session.unsetSchemaTemplate("root.sg.1", "template1");
-      fail("No exception thrown.");
-    } catch (Exception e) {
-      assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
-    }
   }
 }
