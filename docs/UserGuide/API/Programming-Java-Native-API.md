@@ -123,6 +123,7 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
 ```
 
 * Create aligned timeseries
+
 ```
 void createAlignedTimeseries(String prefixPath, List<String> measurements,
       List<TSDataType> dataTypes, List<TSEncoding> encodings,
@@ -145,13 +146,13 @@ void deleteData(String path, long time)
 void deleteData(List<String> paths, long time)
 ```
 
-* Insert a Record，which contains multiple measurement value of a device at a timestamp. Without type info the server has to do type inference, which may cost some time
+* Insert a Record，which contains multiple measurement value of a device at a timestamp. Without type info the server has to do type inference, which may cost some time.
 
 ```java
 void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
 ```
 
-* Insert a Tablet，which is multiple rows of a device, each row has the same measurements
+* Insert a Tablet，which is multiple rows of a device, each row has the same measurements.
 
 ```java
 void insertTablet(Tablet tablet)
@@ -163,29 +164,29 @@ void insertTablet(Tablet tablet)
 void insertTablets(Map<String, Tablet> tablet)
 ```
 
-* Insert multiple Records. Without type info the server has to do type inference, which may cost some time
+* Insert multiple Records. Without type info the server has to do type inference, which may cost some time.
 
 ```java
 void insertRecords(List<String> deviceIds, List<Long> times, 
                    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
-* Insert a Record, which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
+* Insert a Record, which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance.
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)
 ```
 
-* Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
+* Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance.
 
 ```java
 void insertRecords(List<String> deviceIds, List<Long> times,
     List<List<String>> measurementsList, List<List<TSDataType>> typesList,
     List<List<Object>> valuesList)
 ```
-* Insert multiple Records that belong to the same device. 
-  With type info the server has no need to do type inference, which leads a better performance
+
+* Insert multiple Records that belong to the same device. With type info the server has no need to do type inference, which leads a better performance.
 
 ```java
 void insertRecordsOfOneDevice(String deviceId, List<Long> times,
@@ -193,7 +194,7 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<Object>> valuesList)
 ```
 
-* Raw data query. Time interval include startTime and exclude endTime
+* Raw data query. Time interval include startTime and exclude endTime.
 
 ```java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
@@ -214,7 +215,6 @@ void executeNonQueryStatement(String sql)
 * Create a physical quantity template
 
 ```
-
 * name: template name
 * measurements: List of measurements, if it is a single measurement, just put it's name
 *     into a list and add to measurements if it is a vector measurement, put all measurements of
@@ -243,14 +243,16 @@ void setSchemaTemplate(String templateName, String prefixPath)
 
 
 
-### Test APIs Description
+### Native APIs for profiling network cost
 
 * To test testInsertRecords, do not actually write data, just transmit the data to the server and then return.
 
 ```java
 void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
+
   or
+  
 ```java
 void testInsertRecords(List<String> deviceIds, List<Long> times,
     List<List<String>> measurementsList, List<List<TSDataType>> typesList,
@@ -262,7 +264,9 @@ void testInsertRecords(List<String> deviceIds, List<Long> times,
 ```java
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
 ```
+
 or
+
 ```java
 void testInsertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types, List<Object> values)
@@ -282,10 +286,8 @@ We provide a connection pool (`SessionPool) for Native API.
 Using the interface, you need to define the pool size.
 
 If you can not get a session connection in 60 seconds, there is a warning log but the program will hang.
-
 If a session has finished an operation, it will be put back to the pool automatically.
-If a session connection is broken, the session will be removed automatically and the pool will try 
-to create a new session and redo the operation.
+If a session connection is broken, the session will be removed automatically and the pool will try to create a new session and redo the operation.
 
 For query operations:
 
@@ -306,9 +308,9 @@ For examples of aligned timeseries and measurement template, you can refer to `e
 
 ### Coding Examples
 
-To get more information of the following interfaces, please view session/src/main/java/org/apache/iotdb/session/Session.java
+To get more information of the following interfaces, please view `session/src/main/java/org/apache/iotdb/session/Session.java`.
 
-The sample code of using these interfaces is in example/session/src/main/java/org/apache/iotdb/SessionExample.java，which provides an example of how to open an IoTDB session, execute a batch insertion.
+The sample code of using these interfaces is in `example/session/src/main/java/org/apache/iotdb/SessionExample.java`, which provides an example of how to open an IoTDB session, execute a batch insertion.
 
 
 
@@ -365,7 +367,6 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 
 APIs in `ClusterInfoService.Client`:
 
-
 * Get the physical hash ring of the cluster:
 
 ```java
@@ -384,6 +385,7 @@ list<Node> getRing();
 ```
 
 * Get metadata partition information of input path:
+
 ```java  
     /**
      * @param path input path (should contains a Storage group name as its prefix)
@@ -393,6 +395,7 @@ list<Node> getRing();
 ```
 
 * Get the status (alive or not) of all nodes:
+
 ```java
     /**
      * @return key: node, value: live or not
@@ -400,8 +403,8 @@ list<Node> getRing();
     map<Node, bool> getAllNodeStatus();
 ```
 
-* get the raft group info (voteFor, term, etc..) of the connected node
-  (Notice that this API is rarely used by users):
+* get the raft group info (voteFor, term, etc..) of the connected node(Notice that this API is rarely used by users):
+
 ```java  
     /**
      * @return A multi-line string with each line representing the total time consumption, invocation
