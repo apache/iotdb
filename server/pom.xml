@@ -161,7 +161,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.10.7</version>
+            <version>0.11.2</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
