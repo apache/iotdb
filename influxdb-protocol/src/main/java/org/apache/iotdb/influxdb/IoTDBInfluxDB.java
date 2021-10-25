@@ -21,6 +21,7 @@ package org.apache.iotdb.influxdb;
 
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
 import org.apache.iotdb.influxdb.protocol.impl.IoTDBInfluxDBService;
+import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -30,7 +31,11 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBException;
-import org.influxdb.dto.*;
+import org.influxdb.dto.BatchPoints;
+import org.influxdb.dto.Point;
+import org.influxdb.dto.Pong;
+import org.influxdb.dto.Query;
+import org.influxdb.dto.QueryResult;
 import org.influxdb.impl.TimeUtil;
 
 import java.net.URI;
@@ -120,12 +125,12 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void write(final String records) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+    write(null, null, null, null, records);
   }
 
   @Override
   public void write(final List<String> records) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+    write(String.join("\n", records));
   }
 
   @Override
@@ -134,7 +139,7 @@ public class IoTDBInfluxDB implements InfluxDB {
       final String retentionPolicy,
       final ConsistencyLevel consistency,
       final String records) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+    write(database, retentionPolicy, consistency, null, records);
   }
 
   @Override
@@ -144,7 +149,14 @@ public class IoTDBInfluxDB implements InfluxDB {
       final ConsistencyLevel consistency,
       final TimeUnit precision,
       final String records) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+    BatchPoints batchPoints =
+        BatchPoints.database(database)
+            .retentionPolicy(retentionPolicy)
+            .consistency(consistency)
+            .precision(precision)
+            .points(DataTypeUtils.recordsToPoints(records, precision))
+            .build();
+    write(batchPoints);
   }
 
   @Override
@@ -153,7 +165,7 @@ public class IoTDBInfluxDB implements InfluxDB {
       final String retentionPolicy,
       final ConsistencyLevel consistency,
       final List<String> records) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+    write(database, retentionPolicy, consistency, null, String.join("\n", records));
   }
 
   @Override
@@ -163,17 +175,17 @@ public class IoTDBInfluxDB implements InfluxDB {
       final ConsistencyLevel consistency,
       final TimeUnit precision,
       final List<String> records) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+    write(database, retentionPolicy, consistency, precision, String.join("\n", records));
   }
 
   @Override
   public void write(final int udpPort, final String records) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+    write(records);
   }
 
   @Override
   public void write(final int udpPort, final List<String> records) {
-    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
+    write(String.join("\n", records));
   }
 
   @Override
@@ -414,6 +426,7 @@ public class IoTDBInfluxDB implements InfluxDB {
       while (sessionDataSet.hasNext()) {
         version = sessionDataSet.next().getFields().get(0).getStringValue();
       }
+      sessionDataSet.closeOperationHandle();
       return version;
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());

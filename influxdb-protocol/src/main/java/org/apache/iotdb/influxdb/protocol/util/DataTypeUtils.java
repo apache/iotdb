@@ -25,6 +25,13 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.influxdb.InfluxDBException;
+import org.influxdb.dto.Point;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class DataTypeUtils {
 
@@ -82,5 +89,60 @@ public class DataTypeUtils {
       throw new InfluxDBException("session's ip and port is null");
     }
     return new SessionPoint(endPoint.ip, endPoint.port, username, password);
+  }
+
+  public static Collection<Point> recordsToPoints(String records, TimeUnit precision) {
+    ArrayList<Point> points = new ArrayList<>();
+    String[] recordsSplit = records.split("\n");
+    for (String record : recordsSplit) {
+      points.add(recordToPoint(record, precision));
+    }
+    return points;
+  }
+
+  private static Point recordToPoint(String record, TimeUnit precision) {
+    Point.Builder builder;
+    Map<String, String> tags = new HashMap<>();
+    Map<String, Object> fields = new HashMap<>();
+    try {
+      int firstCommaIndex = record.indexOf(",");
+      String measurement = record.substring(0, firstCommaIndex);
+      String dataInfo = record.substring(firstCommaIndex + 1);
+      String[] datas = dataInfo.split(" ");
+      String tagString = datas[0];
+      String fieldString = datas[1];
+      String time = datas[2];
+      builder = Point.measurement(measurement);
+      // parser tags
+      String[] tagsString = tagString.split(",");
+      for (String tag : tagsString) {
+        String[] tagKeyAndValue = tag.split("=");
+        tags.put(tagKeyAndValue[0], tagKeyAndValue[1]);
+      }
+      // parser fields
+      String[] fieldsString = fieldString.split(",");
+      for (String field : fieldsString) {
+        String[] fieldKeyAndValue = field.split("=");
+        String fieldValue = fieldKeyAndValue[1];
+        Object value = null;
+        // string type
+        if (fieldValue.charAt(0) == '\"' && fieldValue.charAt(fieldValue.length() - 1) == '\"') {
+          value = fieldValue.substring(0, fieldValue.length() - 1);
+        }
+        // int type
+        else if (field.charAt(fieldValue.length() - 1) == 'i') {
+          value = Integer.valueOf(field.substring(0, field.length() - 1));
+        } else {
+          value = Double.valueOf(fieldValue);
+        }
+        fields.put(fieldKeyAndValue[0], value);
+      }
+      builder.time(Long.parseLong(time), precision);
+    } catch (Exception e) {
+      throw new InfluxDBException("record type is illegal,record is " + record);
+    }
+    builder.tag(tags);
+    builder.fields(fields);
+    return builder.build();
   }
 }
