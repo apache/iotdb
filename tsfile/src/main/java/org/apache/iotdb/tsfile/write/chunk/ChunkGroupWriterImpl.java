@@ -222,7 +222,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   public long getCurrentChunkGroupSize() {
     long size = 0;
     for (IChunkWriter writer : chunkWriters.values()) {
-      size += writer.getCurrentChunkSize();
+      size += writer.getSerializedChunkSize();
     }
     return size;
   }

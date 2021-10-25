@@ -660,7 +660,7 @@ suffixPath
     ;
 
 nodeName
-    : ID wildcard?
+    : wildcard? ID wildcard?
     | wildcard
     | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
     | literalCanBeNodeName

@@ -45,6 +45,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/** Each storage group that set by users corresponds to a StorageGroupManager */
 public class VirtualStorageGroupManager {
 
   /** logger of this class */
@@ -459,6 +460,14 @@ public class VirtualStorageGroupManager {
   /** only for test */
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
+  }
+
+  public void stopCompactionSchedulerPool() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.getTimedCompactionScheduleTask().shutdown();
+      }
+    }
   }
 
   public void setSettling(boolean settling) {

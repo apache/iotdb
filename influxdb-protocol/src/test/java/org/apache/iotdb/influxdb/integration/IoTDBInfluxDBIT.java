@@ -19,18 +19,28 @@
 package org.apache.iotdb.influxdb.integration;
 
 import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBException;
+import org.influxdb.dto.Point;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.*;
 
 public class IoTDBInfluxDBIT {
 
@@ -39,18 +49,68 @@ public class IoTDBInfluxDBIT {
   private String username;
   private String password;
   private InfluxDB influxDB;
+  private Session session;
 
   @Rule
-  public GenericContainer IotDB =
-      new GenericContainer("apache/iotdb:latest").withExposedPorts(6667);
+  public GenericContainer<?> iotdb =
+      new GenericContainer<>("apache/iotdb:latest").withExposedPorts(6667);
 
   @Before
-  public void setUp() {
-    host = IotDB.getContainerIpAddress();
-    port = IotDB.getMappedPort(6667);
+  public void setUp() throws IoTDBConnectionException {
+    host = iotdb.getContainerIpAddress();
+    port = iotdb.getMappedPort(6667);
     username = "root";
     password = "root";
     influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);
+    influxDB.createDatabase("monitor");
+    influxDB.setDatabase("monitor");
+
+    session = new Session(host, port, username, password);
+    session.open(false);
+
+    insertData();
+  }
+
+  private void insertData() {
+    Point.Builder builder = Point.measurement("student");
+    Map<String, String> tags = new HashMap<>();
+    Map<String, Object> fields = new HashMap<>();
+    tags.put("name", "A");
+    tags.put("phone", "B");
+    tags.put("sex", "C");
+    fields.put("score", 99);
+    fields.put("tel", "110");
+    fields.put("country", "china");
+    builder.tag(tags);
+    builder.fields(fields);
+    builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+    Point point = builder.build();
+    influxDB.write(point);
+
+    builder = Point.measurement("student");
+    tags = new HashMap<>();
+    fields = new HashMap<>();
+    tags.put("address", "D");
+    fields.put("score", 98);
+    builder.tag(tags);
+    builder.fields(fields);
+    builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+    point = builder.build();
+    influxDB.write(point);
+
+    builder = Point.measurement("student");
+    tags = new HashMap<>();
+    fields = new HashMap<>();
+    tags.put("address", "D");
+    tags.put("name", "A");
+    tags.put("phone", "B");
+    tags.put("sex", "C");
+    fields.put("score", 97);
+    builder.tag(tags);
+    builder.fields(fields);
+    builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+    point = builder.build();
+    influxDB.write(point);
   }
 
   @After
@@ -121,5 +181,64 @@ public class IoTDBInfluxDBIT {
   @Test
   public void testPing() {
     assertTrue(influxDB.ping().getResponseTime() > 0);
+  }
+
+  @Test
+  public void testInsert1() {
+    String[] expected = {"china, 99, null, 110, ", "null, null, 97, null, "};
+    int expectLength = 2;
+    try {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select * from root.monitor.student.A.B.C", 0);
+      while (sessionDataSet.hasNext()) {
+        for (int i = 0; i < expectLength; i++) {
+          RowRecord record = sessionDataSet.next();
+          List<Field> fields = record.getFields();
+          StringBuilder actual = new StringBuilder();
+          for (Field field : fields) {
+            actual.append(field.toString()).append(", ");
+          }
+          assertEquals(expected[i], actual.toString());
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsert2() {
+    String[] expected = {"98"};
+    try {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select * from root.monitor.student.PH.PH.PH.D", 0);
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<Field> fields = record.getFields();
+        for (int i = 0; i < fields.size(); ++i) {
+          assertEquals(expected[i], fields.get(i).toString());
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsert3() {
+    String[] expected = {"97"};
+    try {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select * from root.monitor.student.A.B.C.D", 0);
+      while (sessionDataSet.hasNext()) {
+        RowRecord record = sessionDataSet.next();
+        List<Field> fields = record.getFields();
+        for (int i = 0; i < fields.size(); ++i) {
+          assertEquals(expected[i], fields.get(i).toString());
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
   }
 }
