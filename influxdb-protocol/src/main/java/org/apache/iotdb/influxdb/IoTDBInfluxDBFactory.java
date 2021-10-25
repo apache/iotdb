@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.influxdb;
 
+import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.session.Session;
 
 import okhttp3.OkHttpClient;
@@ -30,21 +31,21 @@ public enum IoTDBInfluxDBFactory {
   private IoTDBInfluxDBFactory() {}
 
   public static InfluxDB connect(String url, String username, String password) {
-    IoTDBInfluxDBUtils.checkNonEmptyString(url, "url");
-    IoTDBInfluxDBUtils.checkNonEmptyString(username, "username");
+    ParameterUtils.checkNonEmptyString(url, "url");
+    ParameterUtils.checkNonEmptyString(username, "username");
     return new IoTDBInfluxDB(url, username, password);
   }
 
   public static InfluxDB connect(String host, int rpcPort, String userName, String password) {
-    IoTDBInfluxDBUtils.checkNonEmptyString(host, "host");
-    IoTDBInfluxDBUtils.checkNonEmptyString(userName, "username");
+    ParameterUtils.checkNonEmptyString(host, "host");
+    ParameterUtils.checkNonEmptyString(userName, "username");
     return new IoTDBInfluxDB(host, rpcPort, userName, password);
   }
 
   public static InfluxDB connect(
       String url, String username, String password, OkHttpClient.Builder client) {
-    IoTDBInfluxDBUtils.checkNonEmptyString(url, "url");
-    IoTDBInfluxDBUtils.checkNonEmptyString(username, "username");
+    ParameterUtils.checkNonEmptyString(url, "url");
+    ParameterUtils.checkNonEmptyString(username, "username");
     return connect(url, username, password);
   }
 
@@ -54,8 +55,8 @@ public enum IoTDBInfluxDBFactory {
       String password,
       OkHttpClient.Builder client,
       InfluxDB.ResponseFormat responseFormat) {
-    IoTDBInfluxDBUtils.checkNonEmptyString(url, "url");
-    IoTDBInfluxDBUtils.checkNonEmptyString(username, "username");
+    ParameterUtils.checkNonEmptyString(url, "url");
+    ParameterUtils.checkNonEmptyString(username, "username");
     return connect(url, username, password);
   }
 
