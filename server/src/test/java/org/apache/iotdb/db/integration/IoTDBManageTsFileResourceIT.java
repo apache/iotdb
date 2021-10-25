@@ -21,7 +21,6 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -45,14 +44,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBManageTsFileResourceIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private double prevTimeIndexMemoryProportion;
   private double prevTimeIndexMemoryThreshold;
-  private CompactionStrategy prevTsFileManagementStrategy;
+  private int prevCompactionThreadNum;
 
   private static String[] unSeqSQLs =
       new String[] {
@@ -87,7 +88,7 @@ public class IoTDBManageTsFileResourceIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
-    prevTsFileManagementStrategy = CONFIG.getCompactionStrategy();
+    prevCompactionThreadNum = CONFIG.getConcurrentCompactionThread();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
@@ -97,7 +98,7 @@ public class IoTDBManageTsFileResourceIT {
     prevTimeIndexMemoryThreshold =
         prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
-    CONFIG.setCompactionStrategy(prevTsFileManagementStrategy);
+    CONFIG.setConcurrentCompactionThread(prevCompactionThreadNum);
   }
 
   @Test
@@ -106,7 +107,7 @@ public class IoTDBManageTsFileResourceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+      CONFIG.setConcurrentCompactionThread(0);
       double curTimeIndexMemoryThreshold = 1288.5;
       tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       for (String sql : unSeqSQLs) {
@@ -199,7 +200,7 @@ public class IoTDBManageTsFileResourceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+      CONFIG.setConcurrentCompactionThread(0);
       double curTimeIndexMemoryThreshold = 1288.5;
       tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       for (int i = 0; i < unSeqSQLs.length - 1; i++) {
