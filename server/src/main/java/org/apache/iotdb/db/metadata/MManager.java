@@ -94,6 +94,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2139,7 +2140,8 @@ public class MManager {
     }
   }
 
-  public synchronized void unsetSchemaTemplate(UnsetSchemaTemplatePlan plan) throws MetadataException {
+  public synchronized void unsetSchemaTemplate(UnsetSchemaTemplatePlan plan)
+      throws MetadataException {
     // get mnode should be atomic
     try {
       PartialPath path = new PartialPath(plan.getPrefixPath());

@@ -1988,8 +1988,7 @@ public class Session {
 
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSUnsetSchemaTemplateReq request =
-        getTSUnsetSchemaTemplateReq(prefixPath, templateName);
+    TSUnsetSchemaTemplateReq request = getTSUnsetSchemaTemplateReq(prefixPath, templateName);
     defaultSessionConnection.unsetSchemaTemplate(request);
   }
 
@@ -2029,7 +2028,8 @@ public class Session {
     return request;
   }
 
-  private TSUnsetSchemaTemplateReq getTSUnsetSchemaTemplateReq(String prefixPath, String templateName) {
+  private TSUnsetSchemaTemplateReq getTSUnsetSchemaTemplateReq(
+      String prefixPath, String templateName) {
     TSUnsetSchemaTemplateReq request = new TSUnsetSchemaTemplateReq();
     request.setPrefixPath(prefixPath);
     request.setTemplateName(templateName);

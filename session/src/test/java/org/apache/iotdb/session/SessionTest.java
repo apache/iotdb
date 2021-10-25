@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -289,7 +290,8 @@ public class SessionTest {
   }
 
   @Test
-  public void testUnsetSchemaTemplate() throws IoTDBConnectionException, StatementExecutionException {
+  public void testUnsetSchemaTemplate()
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
 
@@ -380,7 +382,9 @@ public class SessionTest {
       assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
     }
 
-    // TODO lower node templated data has been deleted, there is no way to get node has already deleted all timeseries which use template
+    // TODO lower node templated data has been deleted, there is no way to get node has already
+    // deleted all timeseries which use template
+    // template still in use
     session.deleteTimeseries("root.sg.1.cd.s1");
     session.deleteTimeseries("root.sg.1.cd.s2");
     session.deleteTimeseries("root.sg.1.cd.s3");
@@ -388,7 +392,6 @@ public class SessionTest {
       session.unsetSchemaTemplate("root.sg.1", "template1");
       fail("No exception thrown.");
     } catch (Exception e) {
-      // TODO template still in use
       assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
     }
   }
