@@ -30,7 +30,7 @@ At the same time, in the JAVA programming environment, you can use the [Java JDB
 
 ### User
 
-The user is the legitimate user of the database. A user corresponds to a unique username and has a password as a means of authentication. Before using the database, a person must first provide a legal (that is, stored in the database) user name and password to make himself a user.
+The user is the legitimate user of the database. A user corresponds to a unique username and has a password as a means of authentication. Before using the database, a person must first provide a legal (that is, stored in the database) user name and password to make himself/herself a user.
 
 ### Privilege
 
@@ -116,7 +116,7 @@ At present, there is no conflicting privilege in IoTDB, so the real privileges o
 
 It should be noted that if users have a privilege (corresponding to operation A) themselves and their roles contain the same privilege, then revoking the privilege from the users themselves alone can not prohibit the users from performing operation A, since it is necessary to revoke the privilege from the role, or revoke the role from the user. Similarly, revoking the privilege from the users's roles alone can not prohibit the users from performing operation A.
 
-At the same time, the modification of the role will be immediately reflected on all users who have the role. For example, adding certain privileges to roles will immediately give all users who have the roles corresponding privileges, and deleting certain privileges will also deprive the corresponding users of the privileges (unless the user have the privileges).
+At the same time, the modification of the role will be immediately reflected on all users who have the role. For example, adding certain privileges to roles will immediately give all users who have the roles corresponding privileges, and deleting certain privileges will also deprive the corresponding users of the privileges (unless the users have the privileges).
 
 ### List of Privileges Included in the System
 
