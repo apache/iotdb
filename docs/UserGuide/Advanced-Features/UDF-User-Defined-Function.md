@@ -96,7 +96,7 @@ Please refer to the Javadoc for the usage of `UDFParameterValidator`.
 
 ### void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception
 
-This method is mainly used to customize UDTF. The methods of beforestart do three functions:
+This method is mainly used to customize UDTF. In this method, the user can do the following things:
 
 1. Helping users parse UDF parameters in SQL statements.
 2. Configure the necessary information when the UDF runs, that is, specify the strategy adopted when the UDF accesses the original data and the type of the output result sequence.
