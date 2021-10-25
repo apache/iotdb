@@ -63,7 +63,7 @@ public class MergeLogger {
   }
 
   public void logFilePosition(File file) throws IOException {
-    logStream.write(String.format("%s %d", file.getAbsolutePath(), file.length()));
+    logStream.write(String.format("%s %d", MergeFileInfo.getFileInfoFromFile(file), file.length()));
     logStream.newLine();
     logStream.flush();
   }
@@ -81,7 +81,7 @@ public class MergeLogger {
   }
 
   public void logFileMergeStart(File file, long position) throws IOException {
-    logStream.write(String.format("%s %d", file.getAbsolutePath(), position));
+    logStream.write(String.format("%s %d", MergeFileInfo.getFileInfoFromFile(file), position));
     logStream.newLine();
     logStream.flush();
   }
@@ -107,7 +107,7 @@ public class MergeLogger {
     logStream.write(STR_SEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
-      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
+      logStream.write(MergeFileInfo.getFileInfoFromFile(tsFileResource.getTsFile()).toString());
       logStream.newLine();
     }
     logStream.flush();
@@ -117,7 +117,7 @@ public class MergeLogger {
     logStream.write(STR_UNSEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : unseqFiles) {
-      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
+      logStream.write(MergeFileInfo.getFileInfoFromFile(tsFileResource.getTsFile()).toString());
       logStream.newLine();
     }
     logStream.flush();
