@@ -168,8 +168,7 @@ public class VectorChunkWriterImpl implements IChunkWriter {
     return estimateMaxSeriesMemSize;
   }
 
-  @Override
-  public long getCurrentChunkSize() {
+  public long getSerializedChunkSize() {
     long currentChunkSize = timeChunkWriter.getCurrentChunkSize();
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       currentChunkSize += valueChunkWriter.getCurrentChunkSize();
