@@ -69,7 +69,7 @@
 Legacy version are available here: [https://archive.apache.org/dist/iotdb/](https://archive.apache.org/dist/iotdb/)
 
 
-**<font color=red>Upgrade Notes</font>**:
+**<font color=red>Upgrade Guideline</font>**:
 
 - Recommended OS parameters
   * Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
