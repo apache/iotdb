@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -318,52 +317,43 @@ public class SessionTest {
     schemaNames.add("s2");
     schemaNames.add("s3");
 
-    // template create test
     session.createSchemaTemplate(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
-    System.out.println("template1 already created");
 
     // path does not exist test
     try {
       session.unsetSchemaTemplate("root.sg.1", "template1");
+      fail("No exception thrown.");
     } catch (Exception e) {
-      System.out.println("304: Path [root.sg.1] does not exist");
-      e.printStackTrace();
+      assertEquals("304: Path [root.sg.1] does not exist", e.getMessage());
     }
 
-    // set template test
     session.setSchemaTemplate("template1", "root.sg.1");
-    System.out.println("template1 already set on root.sg.1");
 
     // template already exists test
     try {
       session.setSchemaTemplate("template1", "root.sg.1");
+      fail("No exception thrown.");
     } catch (Exception e) {
-      System.out.println("303: Template already exists on root.sg.1");
-      e.printStackTrace();
+      assertEquals("303: Template already exists on root.sg.1", e.getMessage());
     }
 
     // template unset test
     session.unsetSchemaTemplate("root.sg.1", "template1");
-    System.out.println("template1 already unset from root.sg.1");
 
     session.setSchemaTemplate("template1", "root.sg.1");
-    System.out.println("template1 already set on root.sg.1");
 
     // no template on path test
     session.unsetSchemaTemplate("root.sg.1", "template1");
-    System.out.println("template1 already unset from root.sg.1");
-
     try {
       session.unsetSchemaTemplate("root.sg.1", "template1");
+      fail("No exception thrown.");
     } catch (Exception e) {
-      System.out.println("324: NO template on root.sg.1");
-      e.printStackTrace();
+      assertEquals("324: NO template on root.sg.1", e.getMessage());
     }
 
     // template is in use test
     session.setSchemaTemplate("template1", "root.sg.1");
-    System.out.println("template1 already set on root.sg.1");
 
     String deviceId = "root.sg.1.cd";
     List<String> measurements = new ArrayList<>();
@@ -381,29 +371,25 @@ public class SessionTest {
       values.add(2L);
       values.add(3L);
       session.insertRecord(deviceId, time, measurements, types, values);
-      System.out.println("insert record");
     }
 
     try {
       session.unsetSchemaTemplate("root.sg.1", "template1");
+      fail("No exception thrown.");
     } catch (Exception e) {
-      System.out.println("326: Template is in use on root.sg.1.cd");
-      e.printStackTrace();
+      assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
     }
 
-    // TODO lower node templated data has been deleted, unset template test no way to get node has already deleted all timeseries which use template
+    // TODO lower node templated data has been deleted, there is no way to get node has already deleted all timeseries which use template
     session.deleteTimeseries("root.sg.1.cd.s1");
     session.deleteTimeseries("root.sg.1.cd.s2");
     session.deleteTimeseries("root.sg.1.cd.s3");
     try {
       session.unsetSchemaTemplate("root.sg.1", "template1");
+      fail("No exception thrown.");
     } catch (Exception e) {
-      System.out.println("template1 already unset from root.sg.1");
-      e.printStackTrace();
+      // TODO template still in use
+      assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
     }
-
-    session.setSchemaTemplate("template1", "root.sg.1");
-    System.out.println("template1 already set on root.sg.1");
-
   }
 }

@@ -2146,7 +2146,7 @@ public class MManager {
       IMNode node = mtree.getNodeByPath(path);
       if (node.getSchemaTemplate() == null) {
         throw new NoTemplateOnMNodeException(plan.getPrefixPath());
-      } else if (!node.getSchemaTemplate().getName().equals(plan.getTemplateName())){
+      } else if (!node.getSchemaTemplate().getName().equals(plan.getTemplateName())) {
         throw new DifferentTemplateException(plan.getPrefixPath(), plan.getTemplateName());
       } else if (node.isUseTemplate()) {
         throw new TemplateIsInUseException(plan.getPrefixPath());
