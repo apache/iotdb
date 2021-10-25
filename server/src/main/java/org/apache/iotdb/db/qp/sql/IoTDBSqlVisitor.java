@@ -1487,7 +1487,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (ctx.linearClause() != null) { // linear
       if (dataType == TSDataType.TEXT || dataType == TSDataType.BOOLEAN) {
         throw new UnSupportedDataTypeException(
-                String.format("Unsupported data type in linearFill : %s", dataType));
+            String.format("Unsupported data type in linearFill : %s", dataType));
       }
       if (ctx.linearClause().DURATION(0) != null) {
         long beforeRange = parseDuration(ctx.linearClause().DURATION(0).getText());

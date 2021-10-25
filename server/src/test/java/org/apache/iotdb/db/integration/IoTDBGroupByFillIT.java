@@ -21,9 +21,8 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-
 import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,7 +46,7 @@ public class IoTDBGroupByFillIT {
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-              "CREATE TIMESERIES root.ln.wf01.wt01.text WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.ln.wf01.wt01.text WITH DATATYPE=TEXT, ENCODING=PLAIN",
         "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
             + "values(10, 21, false, 11.1)",
         "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
@@ -99,7 +98,6 @@ public class IoTDBGroupByFillIT {
               "select last_value(temperature) from "
                   + "root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 55), 5ms) FILL(int32[previous])");
-
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -115,26 +113,24 @@ public class IoTDBGroupByFillIT {
         assertEquals(retArray.length, cnt);
       }
 
-      //      hasResultSet =
-      //          statement.execute(
-      //              "select last_value(temperature) from "
-      //                  + "root.ln.wf01.wt01 "
-      //                  + "GROUP BY ([17, 48), 5ms) FILL(int32[previous]) order by time desc");
-      //
-      //      assertTrue(hasResultSet);
-      //      try (ResultSet resultSet = statement.getResultSet()) {
-      //        cnt = 0;
-      //        while (resultSet.next()) {
-      //          String ans =
-      //              resultSet.getString(TIMESTAMP_STR)
-      //                  + ","
-      //                  + resultSet.getString(last_value("root.ln.wf01.wt01.temperature"));
-      //          assertEquals(retArray[retArray.length - cnt - 1], ans);
-      //          cnt++;
-      //        }
-      //        assertEquals(retArray.length, cnt);
-      //      }
-
+      hasResultSet =
+          statement.execute(
+              "select last_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(last_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -171,6 +167,25 @@ public class IoTDBGroupByFillIT {
         }
         assertEquals(retArray.length, cnt);
       }
+
+      hasResultSet =
+          statement.execute(
+              "select first_value(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(first_value("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -179,7 +194,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousAvgTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {
           "17,null", "22,33.3", "27,33.3", "32,44.7", "37,44.7", "42,44.7", "47,55.2", "52,55.2"
         };
@@ -201,10 +216,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(avg("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select avg(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(avg("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -215,7 +249,7 @@ public class IoTDBGroupByFillIT {
   @Test
   public void previousCountTest() {
     // TODO: fix count error
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,0", "22,2", "27,2", "32,2", "37,2", "42,2", "47,2", "52,2"};
 
     try (Connection connection =
@@ -225,7 +259,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[previous])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -235,10 +269,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(count("root.ln.wf01.wt01.status"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select count(status) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.ln.wf01.wt01.status"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -248,7 +301,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousMaxTimeTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,25", "27,25", "32,36", "37,36", "42,36", "47,50", "52,50"};
 
     try (Connection connection =
@@ -268,10 +321,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(max_time("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select max_time(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(max_time("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -281,7 +353,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousMaxValueTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,28", "27,28", "32,29", "37,29", "42,29", "47,30", "52,30"};
 
     try (Connection connection =
@@ -301,10 +373,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(max_value("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select max_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(max_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -314,7 +405,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousMinTimeTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,33", "37,33", "42,33", "47,48", "52,48"};
 
     try (Connection connection =
@@ -334,10 +425,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(min_time("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select min_time(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(min_time("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -347,7 +457,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousMinValueTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,24", "37,24", "42,24", "47,28", "52,28"};
 
     try (Connection connection =
@@ -367,10 +477,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select min_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -381,7 +510,7 @@ public class IoTDBGroupByFillIT {
   @Test
   public void previousSumTest() {
     // TODO: fix sum error
-    String[] retArray1 =
+    String[] retArray =
         new String[] {
           "17,0.0", "22,66.6", "27,66.6", "32,89.4", "37,89.4", "42,89.4", "47,110.4", "52,110.4"
         };
@@ -403,10 +532,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(sum("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select sum(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -445,25 +593,24 @@ public class IoTDBGroupByFillIT {
         assertEquals(retArray.length, cnt);
       }
 
-      //      hasResultSet =
-      //          statement.execute(
-      //              "select last_value(temperature) from "
-      //                  + "root.ln.wf01.wt01 "
-      //                  + "GROUP BY ([17, 48), 5ms) FILL(int32[previous]) order by time desc");
-      //
-      //      assertTrue(hasResultSet);
-      //      try (ResultSet resultSet = statement.getResultSet()) {
-      //        cnt = 0;
-      //        while (resultSet.next()) {
-      //          String ans =
-      //              resultSet.getString(TIMESTAMP_STR)
-      //                  + ","
-      //                  + resultSet.getString(last_value("root.ln.wf01.wt01.temperature"));
-      //          assertEquals(retArray[retArray.length - cnt - 1], ans);
-      //          cnt++;
-      //        }
-      //        assertEquals(retArray.length, cnt);
-      //      }
+      hasResultSet =
+          statement.execute(
+              "select last_value(status) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(last_value("root.ln.wf01.wt01.status"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -501,6 +648,25 @@ public class IoTDBGroupByFillIT {
         }
         assertEquals(retArray.length, cnt);
       }
+
+      hasResultSet =
+          statement.execute(
+              "select first_value(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(first_value("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -509,7 +675,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousUntilLastAvgTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {
           "17,null", "22,33.3", "27,33.3", "32,44.7", "37,44.7", "42,44.7", "47,55.2", "52,null"
         };
@@ -531,10 +697,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(avg("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select avg(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(avg("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -545,7 +730,7 @@ public class IoTDBGroupByFillIT {
   @Test
   public void previousUntilLastCountTest() {
     // TODO: fix count error
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,0", "22,2", "27,2", "32,2", "37,2", "42,2", "47,2", "52,2"};
 
     try (Connection connection =
@@ -565,10 +750,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(count("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select count(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -578,7 +782,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousUntilLastMaxTimeTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,25", "27,25", "32,36", "37,36", "42,36", "47,50", "52,null"};
 
     try (Connection connection =
@@ -598,10 +802,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(max_time("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select max_time(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(max_time("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -611,7 +834,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousUntilLastMaxValueTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,28", "27,28", "32,29", "37,29", "42,29", "47,30", "52,null"};
 
     try (Connection connection =
@@ -631,10 +854,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(max_value("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select max_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(max_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -644,7 +886,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousUntilLastMinTimeTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,33", "37,33", "42,33", "47,48", "52,null"};
 
     try (Connection connection =
@@ -664,10 +906,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(min_time("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select min_time(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(min_time("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -677,7 +938,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void previousUntilLastMinValueTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,24", "37,24", "42,24", "47,28", "52,null"};
 
     try (Connection connection =
@@ -697,10 +958,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select min_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -711,7 +991,7 @@ public class IoTDBGroupByFillIT {
   @Test
   public void previousUntilLastSumTest() {
     // TODO: fix sum error
-    String[] retArray1 =
+    String[] retArray =
         new String[] {
           "17,0.0", "22,66.6", "27,66.6", "32,89.4", "37,89.4", "42,89.4", "47,110.4", "52,110.4"
         };
@@ -733,10 +1013,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(sum("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select sum(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -747,10 +1046,7 @@ public class IoTDBGroupByFillIT {
   @Test
   public void usingLimit() {
 
-    String[] retArray =
-        new String[] {
-          "27,26", "32,29", "37,40", "42,40", "47,40",
-        };
+    String[] retArray = new String[] {"27,23", "32,24", "37,24", "42,24", "47,30"};
 
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -759,7 +1055,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select last_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 48), 5ms) FILL(int32[previous]) "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previous]) "
                   + "limit 5 offset 2");
 
       assertTrue(hasResultSet);
@@ -875,26 +1171,24 @@ public class IoTDBGroupByFillIT {
         assertEquals(retArray.length, cnt);
       }
 
-      //      hasResultSet =
-      //          statement.execute(
-      //              "select last_value(temperature) from "
-      //                  + "root.ln.wf01.wt01 "
-      //                  + "GROUP BY ([17, 48), 5ms) FILL(int32[previous]) order by time desc");
-      //
-      //      assertTrue(hasResultSet);
-      //      try (ResultSet resultSet = statement.getResultSet()) {
-      //        cnt = 0;
-      //        while (resultSet.next()) {
-      //          String ans =
-      //              resultSet.getString(TIMESTAMP_STR)
-      //                  + ","
-      //                  + resultSet.getString(last_value("root.ln.wf01.wt01.temperature"));
-      //          assertEquals(retArray[retArray.length - cnt - 1], ans);
-      //          cnt++;
-      //        }
-      //        assertEquals(retArray.length, cnt);
-      //      }
-
+      hasResultSet =
+          statement.execute(
+              "select last_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(last_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -938,6 +1232,25 @@ public class IoTDBGroupByFillIT {
         }
         assertEquals(retArray.length, cnt);
       }
+
+      hasResultSet =
+          statement.execute(
+              "select first_value(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(first_value("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -946,7 +1259,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void linearAvgTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {
           "17,null", "22,33.3", "27,39.0", "32,44.7", "37,48.2", "42,51.7", "47,55.2", "52,null"
         };
@@ -968,10 +1281,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(avg("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select avg(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(avg("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -982,7 +1314,7 @@ public class IoTDBGroupByFillIT {
   @Test
   public void linearCountTest() {
     // TODO: fix count error
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,0", "22,2", "27,?", "32,2", "37,2", "42,?", "47,?", "52,2"};
 
     try (Connection connection =
@@ -992,7 +1324,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[linear])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1002,10 +1334,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(count("root.ln.wf01.wt01.status"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select count(status) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.ln.wf01.wt01.status"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1015,7 +1366,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void linearMaxTimeTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,25", "27,30", "32,36", "37,40", "42,45", "47,50", "52,null"};
 
     try (Connection connection =
@@ -1035,10 +1386,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(max_time("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select max_time(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(max_time("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1048,7 +1418,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void linearMaxValueTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,28", "27,28", "32,29", "37,29", "42,29", "47,30", "52,null"};
 
     try (Connection connection =
@@ -1068,10 +1438,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(max_value("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select max_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(max_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1081,7 +1470,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void linearMinTimeTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,23", "27,28", "32,33", "37,38", "42,43", "47,48", "52,null"};
 
     try (Connection connection =
@@ -1101,10 +1490,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(min_time("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select min_time(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(min_time("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1114,7 +1522,7 @@ public class IoTDBGroupByFillIT {
 
   @Test
   public void linearMinValueTest() {
-    String[] retArray1 =
+    String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,24", "37,25", "42,26", "47,28", "52,null"};
 
     try (Connection connection =
@@ -1134,10 +1542,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select min_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1148,7 +1575,7 @@ public class IoTDBGroupByFillIT {
   @Test
   public void linearSumTest() {
     // TODO: fix sum error
-    String[] retArray1 =
+    String[] retArray =
         new String[] {
           "17,0.0", "22,66.6", "27,?", "32,89.4", "37,?", "42,?", "47,110.4", "52,null"
         };
@@ -1170,10 +1597,29 @@ public class IoTDBGroupByFillIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(sum("root.ln.wf01.wt01.hardware"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        assertEquals(retArray1.length, cnt);
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select sum(hardware) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1184,24 +1630,24 @@ public class IoTDBGroupByFillIT {
   @Test(expected = IoTDBSQLException.class)
   public void linearFailTest1() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
-              "select last_value(status) from "
-                      + "root.ln.wf01.wt01 "
-                      + "GROUP BY ([17, 55), 5ms) FILL(boolean[linear])");
+          "select last_value(status) from "
+              + "root.ln.wf01.wt01 "
+              + "GROUP BY ([17, 55), 5ms) FILL(boolean[linear])");
     }
   }
 
   @Test(expected = IoTDBSQLException.class)
   public void linearFailTest2() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
-              "select first_value(text) from "
-                      + "root.ln.wf01.wt01 "
-                      + "GROUP BY ([17, 55), 5ms) FILL(text[linear])");
+          "select first_value(text) from "
+              + "root.ln.wf01.wt01 "
+              + "GROUP BY ([17, 55), 5ms) FILL(text[linear])");
     }
   }
 
