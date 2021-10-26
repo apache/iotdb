@@ -25,7 +25,7 @@ lexer grammar IoTDBSqlLexer;
 
 WS
     :
-    [ \t\r\n]+ -> skip
+    [ \u000B\t\r\n]+ -> skip
     ;
 
 
@@ -840,25 +840,9 @@ RS_BRACKET : ']';
 // String Literal
 
 STRING_LITERAL
-    : SQUOTE_STRING
+    : '\'' ((~'\'') | '\'\'')* '\''
     ;
 
-QUOTED_STRING_LITERAL
-    : DQUOTE_STRING
-    | BQUOTE_STRING
-    ;
-
-fragment DQUOTE_STRING
-    : '"' ('\\' . | ~'"' )*? '"'
-    ;
-
-fragment SQUOTE_STRING
-    : '\'' ('\\' . | ~'\'' )*? '\''
-    ;
-
-fragment BQUOTE_STRING
-    : '`' ('\\' . | ~'`' )*? '`'
-    ;
 
 // Date & Time Literal
 
@@ -913,43 +897,23 @@ NAN_LITERAL
  */
 
 ID
-    : FIRST_NAME_CHAR NAME_CHAR*
+    : NAME_CHAR+
+    | '"' (~('"' | '.') | '""')* '"'
+    | '`' (~('`' | '.') | '``')* '`'
     ;
 
 fragment NAME_CHAR
-    :   'A'..'Z'
-    |   'a'..'z'
-    |   '0'..'9'
-    |   '_'
-    |   '-'
-    |   ':'
-    |   '/'
-    |   '@'
-    |   '#'
-    |   '$'
-    |   '%'
-    |   '&'
-    |   '+'
-    |   '{'
-    |   '}'
-    |   CN_CHAR
-    ;
-
-fragment FIRST_NAME_CHAR
-    :   'A'..'Z'
-    |   'a'..'z'
-    |   '0'..'9'
-    |   '_'
-    |   '/'
-    |   '@'
-    |   '#'
-    |   '$'
-    |   '%'
-    |   '&'
-    |   '+'
-    |   '{'
-    |   '}'
-    |   CN_CHAR
+    : 'A'..'Z'
+    | 'a'..'z'
+    | '0'..'9'
+    | '_'
+    | ':'
+    | '@'
+    | '#'
+    | '$'
+    | '{'
+    | '}'
+    | CN_CHAR
     ;
 
 fragment CN_CHAR

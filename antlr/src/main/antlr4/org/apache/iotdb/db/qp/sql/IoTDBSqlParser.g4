@@ -404,7 +404,6 @@ insertMultiValue
 
 measurementName
     : nodeNameWithoutWildcard
-    | LR_BRACKET nodeNameWithoutWildcard (COMMA nodeNameWithoutWildcard)+ RR_BRACKET
     ;
 
 measurementValue
@@ -662,14 +661,12 @@ suffixPath
 nodeName
     : wildcard? ID wildcard?
     | wildcard
-    | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
     | literalCanBeNodeName
     | keywordsCanBeNodeName
     ;
 
 nodeNameWithoutWildcard
     : ID
-    | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
     | literalCanBeNodeName
     | keywordsCanBeNodeName
     ;
@@ -680,8 +677,7 @@ wildcard
     ;
 
 literalCanBeNodeName
-    : QUOTED_STRING_LITERAL
-    | datetimeLiteral
+    : datetimeLiteral
     | DURATION_LITERAL
     | (MINUS|PLUS)? INTEGER_LITERAL
     | (MINUS|PLUS)? EXPONENT_NUM_PART
