@@ -383,6 +383,11 @@ public class MTree implements Serializable {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
+      if (cur.isEntity() && cur.getAsEntityMNode().isAligned()) {
+        throw new AlignedTimeseriesException(
+            "Timeseries cannot be created under aligned entity", path.getFullPath());
+      }
+
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
 
       IMeasurementMNode measurementMNode =
@@ -941,8 +946,7 @@ public class MTree implements Serializable {
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     List<Pair<PartialPath, String[]>> allMatchedNodes =
-        collectMeasurementSchema(
-            plan.getPath(), plan.getLimit(), plan.getOffset(), queryContext, true);
+        collectMeasurementSchema(plan.getPath(), 0, 0, queryContext, true);
 
     Stream<Pair<PartialPath, String[]>> sortedStream =
         allMatchedNodes.stream()

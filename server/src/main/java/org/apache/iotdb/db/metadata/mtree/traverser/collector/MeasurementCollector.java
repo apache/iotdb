@@ -55,8 +55,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
         return true;
       }
     }
-    IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
-    collectMeasurement(measurementMNode);
+    collectMeasurement(node.getAsMeasurementMNode());
     if (hasLimit) {
       count += 1;
     }
