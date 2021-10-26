@@ -90,7 +90,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1071,7 +1070,7 @@ public class MManager {
    * @param fullPaths full path list without uniting the sub measurement under the same aligned time
    *     series.
    * @return Size of partial path list could NOT equal to the input list size. For example, the
-   *     VectorMeasurementSchema (s1,s2) would be returned once.
+   *     vector1 (s1,s2) would be returned once.
    */
   public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
     Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
@@ -1234,11 +1233,11 @@ public class MManager {
   }
 
   /**
-   * get MeasurementSchema or VectorMeasurementSchema which contains the measurement
+   * get MeasurementSchema
    *
    * @param device device path
    * @param measurement measurement name, could be vector name
-   * @return MeasurementSchema or VectorMeasurementSchema
+   * @return MeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
@@ -1253,40 +1252,19 @@ public class MManager {
   }
 
   /**
-   * Get schema of paritialPath
+   * Get schema of paritialPath todo VectorPartialPath cases means get schemas of aligned timeseries
    *
    * @param fullPath (may be ParitialPath or VectorPartialPath)
-   * @return MeasurementSchema or VectorMeasurementSchema
+   * @return MeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     IMeasurementMNode leaf = getMeasurementMNode(fullPath);
     return getSeriesSchema(fullPath, leaf);
   }
 
+  // todo get schema from an entity with aligned timeseries
   protected IMeasurementSchema getSeriesSchema(PartialPath fullPath, IMeasurementMNode leaf) {
-    IMeasurementSchema schema = leaf.getSchema();
-
-    if (!(fullPath instanceof VectorPartialPath)
-        || schema == null
-        || schema.getType() != TSDataType.VECTOR) {
-      return schema;
-    }
-    List<String> measurementsInLeaf = schema.getSubMeasurementsList();
-    List<String> subMeasurements = ((VectorPartialPath) fullPath).getSubSensorsList();
-    TSDataType[] types = new TSDataType[subMeasurements.size()];
-    TSEncoding[] encodings = new TSEncoding[subMeasurements.size()];
-
-    for (int i = 0; i < subMeasurements.size(); i++) {
-      int index = measurementsInLeaf.indexOf(subMeasurements.get(i));
-      types[i] = schema.getSubMeasurementsTSDataTypeList().get(index);
-      encodings[i] = schema.getSubMeasurementsTSEncodingList().get(index);
-    }
-    String[] array = new String[subMeasurements.size()];
-    for (int i = 0; i < array.length; i++) {
-      array[i] = subMeasurements.get(i);
-    }
-    return new VectorMeasurementSchema(
-        schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
+    return leaf.getSchema();
   }
 
   // attention: this path must be a device node
@@ -1800,36 +1778,31 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    PartialPath prefixPath = plan.getPrefixPath();
-    PartialPath deviceId = prefixPath;
-    String vectorId = null;
-    if (plan.isAligned()) {
-      deviceId = prefixPath.getDevicePath();
-      vectorId = prefixPath.getMeasurement();
-    }
+    PartialPath devicePath = plan.getPrefixPath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node
-    IMNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
+    IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
 
     // check insert non-aligned InsertPlan for aligned timeseries
-    if (deviceMNode.isMeasurement()
-        && deviceMNode.getAsMeasurementMNode().getSchema() instanceof VectorMeasurementSchema
-        && !plan.isAligned()) {
-      throw new MetadataException(
-          String.format(
-              "Path [%s] is an aligned timeseries, please set InsertPlan.isAligned() = true",
-              prefixPath));
-    }
-    // check insert aligned InsertPlan for non-aligned timeseries
-    else if (plan.isAligned()
-        && deviceMNode.getChild(vectorId) != null
-        && !(deviceMNode.getChild(vectorId).isMeasurement())) {
-      throw new MetadataException(
-          String.format(
-              "Path [%s] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
-              prefixPath));
+    if (deviceMNode.isEntity()) {
+      IEntityMNode entityMNode = deviceMNode.getAsEntityMNode();
+      if (plan.isAligned()) {
+        if (!entityMNode.isAligned()) {
+          throw new MetadataException(
+              String.format(
+                  "Path [%s] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
+                  devicePath));
+        }
+      } else {
+        if (entityMNode.isAligned()) {
+          throw new MetadataException(
+              String.format(
+                  "Path [%s] is an aligned timeseries, please set InsertPlan.isAligned() = true",
+                  devicePath));
+        }
+      }
     }
 
     // 2. get schema of each measurement
@@ -1838,29 +1811,25 @@ public class MManager {
     for (int i = 0; i < measurementList.length; i++) {
       try {
         String measurement = measurementList[i];
-        measurementMNode =
-            getMeasurementMNode(deviceMNode, plan.isAligned() ? vectorId : measurement);
+        measurementMNode = getMeasurementMNode(deviceMNode, measurement);
         if (measurementMNode == null) {
-          measurementMNode = findTemplate(deviceMNode, measurement, vectorId);
+          measurementMNode = findTemplate(deviceMNode, measurement);
         }
         if (measurementMNode == null) {
           if (!config.isAutoCreateSchemaEnabled()) {
-            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+            throw new PathNotExistException(devicePath + PATH_SEPARATOR + measurement);
           } else {
             if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
               if (!plan.isAligned()) {
                 internalCreateTimeseries(
-                    prefixPath.concatNode(measurement), plan.getDataTypes()[i]);
-                // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
-                deviceMNode = mtree.getNodeByPath(deviceId);
-                measurementMNode = deviceMNode.getChild(measurement).getAsMeasurementMNode();
+                    devicePath.concatNode(measurement), plan.getDataTypes()[i]);
               } else {
                 internalAlignedCreateTimeseries(
-                    prefixPath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
-                // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
-                deviceMNode = mtree.getNodeByPath(deviceId);
-                measurementMNode = deviceMNode.getChild(vectorId).getAsMeasurementMNode();
+                    devicePath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
               }
+              // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
+              deviceMNode = mtree.getNodeByPath(devicePath);
+              measurementMNode = deviceMNode.getChild(measurement).getAsMeasurementMNode();
             } else {
               throw new MetadataException(
                   String.format(
@@ -1873,25 +1842,29 @@ public class MManager {
         // check type is match
         TSDataType insertDataType;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          if (plan.isAligned()) {
-            TSDataType dataTypeInNode =
-                measurementMNode.getSchema().getSubMeasurementsTSDataTypeList().get(i);
-            insertDataType = plan.getDataTypes()[i];
-            if (insertDataType == null) {
-              insertDataType = dataTypeInNode;
+          if (plan instanceof InsertRowPlan) {
+            if (!((InsertRowPlan) plan).isNeedInferType()) {
+              // only when InsertRowPlan's values is object[], we should check type
+              insertDataType = getTypeInLoc(plan, i);
+            } else {
+              insertDataType = measurementMNode.getSchema().getType();
             }
-            if (dataTypeInNode != insertDataType) {
-              logger.warn(
-                  "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
-                  measurementMNode.getSchema().getSubMeasurementsList().get(i),
-                  measurementList[i],
-                  insertDataType,
-                  dataTypeInNode);
-              DataTypeMismatchException mismatchException =
-                  new DataTypeMismatchException(measurementList[i], insertDataType, dataTypeInNode);
-              if (!config.isEnablePartialInsert()) {
-                throw mismatchException;
-              } else {
+          } else {
+            insertDataType = getTypeInLoc(plan, i);
+          }
+          if (measurementMNode.getSchema().getType() != insertDataType) {
+            logger.warn(
+                "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+                measurementList[i],
+                insertDataType,
+                measurementMNode.getSchema().getType());
+            DataTypeMismatchException mismatchException =
+                new DataTypeMismatchException(
+                    measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+            if (!config.isEnablePartialInsert()) {
+              throw mismatchException;
+            } else {
+              if (plan.isAligned()) {
                 // mark failed measurement
                 plan.markFailedMeasurementAlignedInsertion(mismatchException);
                 for (int j = 0; j < i; j++) {
@@ -1899,53 +1872,28 @@ public class MManager {
                   measurementMNodes[j] = null;
                 }
                 break;
-              }
-            }
-            measurementMNodes[i] = measurementMNode;
-          } else {
-            if (plan instanceof InsertRowPlan) {
-              if (!((InsertRowPlan) plan).isNeedInferType()) {
-                // only when InsertRowPlan's values is object[], we should check type
-                insertDataType = getTypeInLoc(plan, i);
-              } else {
-                insertDataType = measurementMNode.getSchema().getType();
-              }
-            } else {
-              insertDataType = getTypeInLoc(plan, i);
-            }
-            if (measurementMNode.getSchema().getType() != insertDataType) {
-              logger.warn(
-                  "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-                  measurementList[i],
-                  insertDataType,
-                  measurementMNode.getSchema().getType());
-              DataTypeMismatchException mismatchException =
-                  new DataTypeMismatchException(
-                      measurementList[i], insertDataType, measurementMNode.getSchema().getType());
-              if (!config.isEnablePartialInsert()) {
-                throw mismatchException;
               } else {
                 // mark failed measurement
                 plan.markFailedMeasurementInsertion(i, mismatchException);
                 continue;
               }
             }
-            measurementMNodes[i] = measurementMNode;
-            // set measurementName instead of alias
-            measurementList[i] = measurementMNode.getName();
           }
+          measurementMNodes[i] = measurementMNode;
+          // set measurementName instead of alias
+          measurementList[i] = measurementMNode.getName();
         }
       } catch (MetadataException e) {
         if (IoTDB.isClusterMode()) {
           logger.debug(
               "meet error when check {}.{}, message: {}",
-              deviceId,
+              devicePath,
               measurementList[i],
               e.getMessage());
         } else {
           logger.warn(
               "meet error when check {}.{}, message: {}",
-              deviceId,
+              devicePath,
               measurementList[i],
               e.getMessage());
         }
@@ -1978,26 +1926,20 @@ public class MManager {
     return dataType;
   }
 
-  private IMeasurementMNode findTemplate(IMNode deviceMNode, String measurement, String vectorId)
+  private IMeasurementMNode findTemplate(IMNode deviceMNode, String measurement)
       throws MetadataException {
     Template curTemplate = deviceMNode.getUpperTemplate();
     if (curTemplate != null) {
       Map<String, IMeasurementSchema> curTemplateMap = curTemplate.getSchemaMap();
 
-      String schemaName = vectorId != null ? vectorId : measurement;
-      IMeasurementSchema schema = curTemplateMap.get(schemaName);
+      IMeasurementSchema schema = curTemplateMap.get(measurement);
       if (!deviceMNode.isUseTemplate()) {
         deviceMNode = setUsingSchemaTemplate(deviceMNode);
       }
 
       if (schema != null) {
-        if (schema instanceof UnaryMeasurementSchema) {
-          return MeasurementMNode.getMeasurementMNode(
-              deviceMNode.getAsEntityMNode(), measurement, schema, null);
-        } else if (schema instanceof VectorMeasurementSchema) {
-          return MeasurementMNode.getMeasurementMNode(
-              deviceMNode.getAsEntityMNode(), vectorId, schema, null);
-        }
+        return MeasurementMNode.getMeasurementMNode(
+            deviceMNode.getAsEntityMNode(), measurement, schema, null);
       }
       return null;
     }

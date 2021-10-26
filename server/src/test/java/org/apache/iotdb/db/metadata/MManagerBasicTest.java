@@ -287,23 +287,7 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
 
-    try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
-    } catch (MetadataException e) {
-      assertEquals(
-          e.getMessage(),
-          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.s2]");
-    }
-
-    try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
-    } catch (MetadataException e) {
-      assertEquals(
-          e.getMessage(),
-          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.*]");
-    }
-
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
+    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
     assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
@@ -1586,7 +1570,7 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
+      assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertNull(insertRowPlan.getMeasurementMNodes()[2]);

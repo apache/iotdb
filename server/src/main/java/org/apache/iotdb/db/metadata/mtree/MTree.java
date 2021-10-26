@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -63,7 +64,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -417,8 +417,8 @@ public class MTree implements Serializable {
       List<TSEncoding> encodings,
       CompressionType compressor)
       throws MetadataException {
-    String[] deviceNodeNames = devicePath.getNodes();
-    if (deviceNodeNames.length <= 1 || !deviceNodeNames[0].equals(root.getName())) {
+    String[] nodeNames = devicePath.getNodes();
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(devicePath.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(devicePath);
@@ -426,14 +426,8 @@ public class MTree implements Serializable {
     IMNode cur = root;
     boolean hasSetStorageGroup = false;
     // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
-    for (int i = 1; i < deviceNodeNames.length - 1; i++) {
-      if (cur.isMeasurement()) {
-        throw new PathAlreadyExistException(cur.getFullPath());
-      }
-      if (cur.isStorageGroup()) {
-        hasSetStorageGroup = true;
-      }
-      String nodeName = deviceNodeNames[i];
+    for (int i = 1; i < nodeNames.length; i++) {
+      String nodeName = nodeNames[i];
       if (!cur.hasChild(nodeName)) {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
@@ -441,38 +435,42 @@ public class MTree implements Serializable {
         cur.addChild(nodeName, new InternalMNode(cur, nodeName));
       }
       cur = cur.getChild(nodeName);
-    }
 
-    if (cur.isMeasurement()) {
-      throw new PathAlreadyExistException(cur.getFullPath());
+      if (cur.isMeasurement()) {
+        throw new PathAlreadyExistException(cur.getFullPath());
+      }
+      if (cur.isStorageGroup()) {
+        hasSetStorageGroup = true;
+      }
     }
-
-    String leafName = deviceNodeNames[deviceNodeNames.length - 1];
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      if (cur.hasChild(leafName)) {
-        throw new PathAlreadyExistException(devicePath.getFullPath() + "." + leafName);
+      for (String measurement : measurements) {
+        if (cur.hasChild(measurement)) {
+          throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
+        }
+      }
+
+      if (cur.isEntity()) {
+        throw new AlignedTimeseriesException(
+            "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
 
-      int measurementsSize = measurements.size();
-
-      // this measurementMNode could be a leaf or not.
-      IMeasurementMNode measurementMNode =
-          MeasurementMNode.getMeasurementMNode(
-              entityMNode,
-              leafName,
-              new VectorMeasurementSchema(
-                  leafName,
-                  measurements.toArray(new String[measurementsSize]),
-                  dataTypes.toArray(new TSDataType[measurementsSize]),
-                  encodings.toArray(new TSEncoding[measurementsSize]),
-                  compressor),
-              null);
-      entityMNode.addChild(leafName, measurementMNode);
+      for (int i = 0; i < measurements.size(); i++) {
+        IMeasurementMNode measurementMNode =
+            MeasurementMNode.getMeasurementMNode(
+                entityMNode,
+                measurements.get(i),
+                new UnaryMeasurementSchema(
+                    measurements.get(i), dataTypes.get(i), encodings.get(i), compressor),
+                null);
+        entityMNode.addChild(measurements.get(i), measurementMNode);
+      }
+      entityMNode.setAligned(true);
     }
   }
 
@@ -681,15 +679,7 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeNames[i]);
       if (cur.isMeasurement()) {
-        if (i == nodeNames.length - 1) {
-          return true;
-        }
-        IMeasurementSchema schema = cur.getAsMeasurementMNode().getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-          return i == nodeNames.length - 2 && schema.containsSubMeasurement(nodeNames[i + 1]);
-        } else {
-          return false;
-        }
+        return i == nodeNames.length - 1;
       }
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
@@ -1222,8 +1212,7 @@ public class MTree implements Serializable {
 
     for (int i = 1; i < nodes.length; i++) {
       if (cur.isMeasurement()) {
-        if (i == nodes.length - 1
-            || cur.getAsMeasurementMNode().getSchema() instanceof VectorMeasurementSchema) {
+        if (i == nodes.length - 1) {
           return cur;
         } else {
           throw new PathNotExistException(path.getFullPath(), true);
