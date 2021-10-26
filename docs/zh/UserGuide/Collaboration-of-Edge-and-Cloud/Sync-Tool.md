@@ -47,7 +47,7 @@
 ### 配置参数
 
 #### 同步工具接收端
-同步工具接收端的参数配置位于 IoTDB 的配置文件 iotdb-engine.properties 中，其安装目录为$IOTDB_HOME/conf/iotdb-engine.properties。在该配置文件中，有四个参数和同步接收端有关，配置说明如下：
+同步工具接收端的参数配置位于 IoTDB 的配置文件 iotdb-engine.properties 中，其安装目录为$IOTDB_HOME/conf/iotdb-engine.properties。在该配置文件中，有三个参数和同步接收端有关，配置说明如下：
 
 |参数名|is_sync_enable|
 |--- |--- |
