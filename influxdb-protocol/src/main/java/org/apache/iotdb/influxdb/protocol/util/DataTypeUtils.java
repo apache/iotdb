@@ -100,7 +100,7 @@ public class DataTypeUtils {
     return points;
   }
 
-  private static Point recordToPoint(String record, TimeUnit precision) {
+  public static Point recordToPoint(String record, TimeUnit precision) {
     Point.Builder builder;
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();
@@ -127,19 +127,22 @@ public class DataTypeUtils {
         Object value = null;
         // string type
         if (fieldValue.charAt(0) == '\"' && fieldValue.charAt(fieldValue.length() - 1) == '\"') {
-          value = fieldValue.substring(0, fieldValue.length() - 1);
+          value = fieldValue.substring(1, fieldValue.length() - 1);
         }
         // int type
-        else if (field.charAt(fieldValue.length() - 1) == 'i') {
-          value = Integer.valueOf(field.substring(0, field.length() - 1));
+        else if (fieldValue.charAt(fieldValue.length() - 1) == 'i') {
+          value = Integer.valueOf(fieldValue.substring(0, fieldValue.length() - 1));
         } else {
           value = Double.valueOf(fieldValue);
         }
         fields.put(fieldKeyAndValue[0], value);
       }
+      if (precision==null){
+        precision=TimeUnit.NANOSECONDS;
+      }
       builder.time(Long.parseLong(time), precision);
     } catch (Exception e) {
-      throw new InfluxDBException("record type is illegal,record is " + record);
+      throw new InfluxDBException("record format is illegal,record is " + record);
     }
     builder.tag(tags);
     builder.fields(fields);
