@@ -390,7 +390,7 @@ public class CMManager extends MManager {
       IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
       if (measurementMNode != null) {
         LastCacheManager.updateLastCache(
-            seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, measurementMNode);
+            measurementMNode, timeValuePair, highPriorityUpdate, latestFlushedTime);
       }
     } finally {
       cacheLock.writeLock().unlock();
@@ -403,7 +403,7 @@ public class CMManager extends MManager {
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
     if (measurementMNode != null) {
-      return LastCacheManager.getLastCache(seriesPath, measurementMNode);
+      return LastCacheManager.getLastCache(measurementMNode);
     }
 
     return super.getLastCache(seriesPath);

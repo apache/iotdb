@@ -43,8 +43,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -1689,8 +1687,7 @@ public class MManager {
    * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
    * during last Query
    *
-   * @param seriesPath the PartialPath of full path from root to UnaryMeasurement or the
-   *     VectorPartialPath contains target subMeasurement
+   * @param seriesPath the PartialPath of full path from root to Measurement
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
@@ -1708,55 +1705,26 @@ public class MManager {
       return;
     }
 
-    LastCacheManager.updateLastCache(
-        seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, node);
+    LastCacheManager.updateLastCache(node, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   /**
-   * Update the last cache value in given unary MeasurementMNode. Vector lastCache operation won't
-   * work.
-   *
-   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
-   * during last Query
-   *
-   * @param node the measurementMNode holding the lastCache, must be unary measurement
-   * @param timeValuePair the latest point value
-   * @param highPriorityUpdate the last value from insertPlan is high priority
-   * @param latestFlushedTime latest flushed time
-   */
-  public void updateLastCache(
-      UnaryMeasurementMNode node,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    LastCacheManager.updateLastCache(
-        node.getPartialPath(), timeValuePair, highPriorityUpdate, latestFlushedTime, node);
-  }
-
-  /**
-   * Update the last cache value of subMeasurement given Vector MeasurementMNode.
+   * Update the last cache value in given MeasurementMNode. work.
    *
    * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
    * during last Query
    *
    * @param node the measurementMNode holding the lastCache
-   * @param subMeasurement the subMeasurement of aligned timeseries
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
    */
   public void updateLastCache(
-      MultiMeasurementMNode node,
-      String subMeasurement,
+      IMeasurementMNode node,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    LastCacheManager.updateLastCache(
-        new VectorPartialPath(node.getPartialPath(), subMeasurement),
-        timeValuePair,
-        highPriorityUpdate,
-        latestFlushedTime,
-        node);
+    LastCacheManager.updateLastCache(node, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   /**
@@ -1765,8 +1733,7 @@ public class MManager {
    *
    * <p>Invoking scenario: last cache read during last Query
    *
-   * @param seriesPath the PartialPath of full path from root to UnaryMeasurement or the
-   *     VectorPartialPath contains target subMeasurement
+   * @param seriesPath the PartialPath of full path from root to Measurement
    * @return the last cache value
    */
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -1778,42 +1745,26 @@ public class MManager {
       return null;
     }
 
-    return LastCacheManager.getLastCache(seriesPath, node);
+    return LastCacheManager.getLastCache(node);
   }
 
   /**
-   * Get the last cache value in given unary MeasurementMNode. Vector case won't work.
-   *
-   * <p>Invoking scenario: last cache read during last Query
-   *
-   * @param node the measurementMNode holding the lastCache, must be unary measurement
-   * @return the last cache value
-   */
-  public TimeValuePair getLastCache(UnaryMeasurementMNode node) {
-    return LastCacheManager.getLastCache(node.getPartialPath(), node);
-  }
-
-  /**
-   * Get the last cache value of given subMeasurement of given MeasurementMNode. Must be Vector
-   * case.
+   * Get the last cache value in given MeasurementMNode.
    *
    * <p>Invoking scenario: last cache read during last Query
    *
    * @param node the measurementMNode holding the lastCache
-   * @param subMeasurement the subMeasurement of aligned timeseries
    * @return the last cache value
    */
-  public TimeValuePair getLastCache(MultiMeasurementMNode node, String subMeasurement) {
-    return LastCacheManager.getLastCache(
-        new VectorPartialPath(node.getPartialPath(), subMeasurement), node);
+  public TimeValuePair getLastCache(IMeasurementMNode node) {
+    return LastCacheManager.getLastCache(node);
   }
 
   /**
    * Reset the last cache value of time series of given seriesPath. MManager will use the seriesPath
    * to search the node.
    *
-   * @param seriesPath the PartialPath of full path from root to UnaryMeasurement or the
-   *     VectorPartialPath contains target subMeasurement
+   * @param seriesPath the PartialPath of full path from root to Measurement
    */
   public void resetLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
@@ -1824,7 +1775,7 @@ public class MManager {
       return;
     }
 
-    LastCacheManager.resetLastCache(seriesPath, node);
+    LastCacheManager.resetLastCache(node);
   }
 
   /**
