@@ -20,8 +20,8 @@ package org.apache.iotdb.db.mqtt;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import io.netty.buffer.ByteBuf;
 
@@ -50,28 +50,49 @@ public class JSONPayloadFormatter implements PayloadFormatter {
       return null;
     }
     String txt = payload.toString(StandardCharsets.UTF_8);
-
     JsonObject jsonObject = GSON.fromJson(txt, JsonObject.class);
-    Object timestamp = jsonObject.get(JSON_KEY_TIMESTAMP);
-    if (timestamp != null) {
-      return Lists.newArrayList(GSON.fromJson(txt, Message.class));
+
+    if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
+      return formatJson(jsonObject);
     }
+    if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
+      return formatBatchJson(jsonObject);
+    }
+    throw new JsonParseException("payload is invalidate");
+  }
 
+  private List<Message> formatJson(JsonObject jsonObject) {
+    Message message = new Message();
+    message.setDevice(jsonObject.get(JSON_KEY_DEVICE).getAsString());
+    message.setTimestamp(jsonObject.get(JSON_KEY_TIMESTAMP).getAsLong());
+    message.setMeasurements(
+        GSON.fromJson(
+            jsonObject.get(JSON_KEY_MEASUREMENTS), new TypeToken<List<String>>() {}.getType()));
+    message.setValues(
+        GSON.fromJson(jsonObject.get(JSON_KEY_VALUES), new TypeToken<List<String>>() {}.getType()));
+    return Lists.newArrayList(message);
+  }
+
+  private List<Message> formatBatchJson(JsonObject jsonObject) {
     String device = jsonObject.get(JSON_KEY_DEVICE).getAsString();
-    JsonArray timestamps = jsonObject.getAsJsonArray(JSON_KEY_TIMESTAMPS);
-    JsonArray measurements = jsonObject.getAsJsonArray(JSON_KEY_MEASUREMENTS);
-    JsonArray values = jsonObject.getAsJsonArray(JSON_KEY_VALUES);
+    List<String> measurements =
+        GSON.fromJson(
+            jsonObject.getAsJsonArray(JSON_KEY_MEASUREMENTS),
+            new TypeToken<List<String>>() {}.getType());
+    List<Long> timestamps =
+        GSON.fromJson(
+            jsonObject.get(JSON_KEY_TIMESTAMPS), new TypeToken<List<Long>>() {}.getType());
+    List<List<String>> values =
+        GSON.fromJson(
+            jsonObject.get(JSON_KEY_VALUES), new TypeToken<List<List<String>>>() {}.getType());
 
-    List<Message> ret = new ArrayList<>();
+    List<Message> ret = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
-      Long ts = timestamps.get(i).getAsLong();
-
       Message message = new Message();
       message.setDevice(device);
-      message.setTimestamp(ts);
-      message.setMeasurements(
-          GSON.fromJson(measurements, new TypeToken<List<String>>() {}.getType()));
-      message.setValues(GSON.fromJson(values.get(i), new TypeToken<List<String>>() {}.getType()));
+      message.setTimestamp(timestamps.get(i));
+      message.setMeasurements(measurements);
+      message.setValues(values.get(i));
       ret.add(message);
     }
     return ret;

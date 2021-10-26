@@ -23,11 +23,11 @@
 
 ## 系统文件目录 data/system
 
-* data/system/schema/mlog.txt (元数据日志)
+* data/system/schema/mlog.txt （元数据日志）
 
 	http://iotdb.apache.org/SystemDesign/SchemaManager/SchemaManager.html#log-management-of-metadata
 
-* data/system/schema/system.properties (系统不可变参数)
+* data/system/schema/system.properties （系统不可变参数）
 
 	```
 	partition_interval=9223372036854775807
@@ -39,16 +39,15 @@
 	iotdb_version=UNKNOWN
 	```
 
-* data/system/schema/tlog.txt (标签、属性文件）
+* data/system/schema/tlog.txt （标签、属性文件）
 
 	http://iotdb.apache.org/SystemDesign/SchemaManager/SchemaManager.html#tlog
 
-
 * data/system/storage_groups/{sg_name}/{partition}/Version-xxx （每个分区的版本控制文件，无内容）
 
-* data/system/storage_groups/upgrade/Version-xxx (升级过程的版本控制文件)
+* data/system/storage_groups/upgrade/Version-xxx （升级过程的版本控制文件）
 
-* data/system/upgrade/upgrade.txt (升级日志文件)
+* data/system/upgrade/upgrade.txt （升级日志文件）
 
 格式：
 
@@ -70,7 +69,7 @@ xxx/root.group_11/upgrade/1587634378188-101-0.tsfile,3
 ...
 ```
 
-* data/system/users/{user_name}.profile (用户信息)
+* data/system/users/{user_name}.profile （用户信息）
 
 ```
 1. username (UTF-8)
@@ -82,7 +81,7 @@ xxx/root.group_11/upgrade/1587634378188-101-0.tsfile,3
 7. UseWaterMarkFlag (Boolean)
 ```
 
-* data/system/roles/ (权限信息)
+* data/system/roles/ （权限信息）
 
 ```
 1. roleName (UTF-8)
@@ -100,42 +99,40 @@ Privilege 格式
 
 ## 数据文件目录 data/data
 
-* data/data/sequence/{storage_group}/{partition}/{timestamp}-{version}-{merge_times}.tsfile (数据文件)
+* data/data/sequence/{storage_group}/{partition}/{timestamp}-{version}-{merge_times}.tsfile （数据文件）
 
 http://iotdb.apache.org/SystemDesign/TsFile/Format.html#_1-2-tsfile-overview
 
-* data/data/sequence/{storage_group}/{partition}/{tsfile}.resource (对应TsFile的设备时间索引)
+* data/data/sequence/{storage_group}/{partition}/{tsfile}.resource （对应 TsFile 的设备时间索引）
 
 ```
 deviceId(String),start_time(long)
-deviceId(String),start_time(long)
-deviceId(String),end_time(long)
 deviceId(String),end_time(long)
 ```
 
-* data/data/sequence/{storage_group}/{partition}/{tsfile}.mods (数据修改操作标记)
+* data/data/sequence/{storage_group}/{partition}/{tsfile}.mods （数据修改操作标记）
 
 http://iotdb.apache.org/SystemDesign/DataQuery/QueryFundamentals.html#query-with-modifications
 
-* data/data/sequence/{storage_group}/{partition}/{tsfile}-{level}-{timestamp}.vm (未封口的 TsFile 文件)
+* data/data/sequence/{storage_group}/{partition}/{tsfile}-{level}-{timestamp}.vm （未封口的 TsFile 文件）
 
-* data/data/sequence/{storage_group}/{partition}/{tsfile}.flush (TsFile持久化memtable时的日志文件，无内容)
+* data/data/sequence/{storage_group}/{partition}/{tsfile}.flush (TsFile 持久化 memtable 时的日志文件，无内容）
 
-* data/data/sequence/{storage_group}/{partition}/{tsfile}.vm.log (合并 vm 的日志文件)
+* data/data/sequence/{storage_group}/{partition}/{tsfile}.vm.log （合并 vm 的日志文件）
 
 ```
 源文件
-文件path
+文件 path
 目标文件
-文件path
-device，offset （已经合并的设备和目标文件完整的ChunkGroup的offset）
+文件 path
+device，offset （已经合并的设备和目标文件完整的 ChunkGroup 的 offset）
 ```
 
 ## 写前日志目录 data/wal
 
-* data/wal/{storage_group}-{tsfile_name}/wal{x} (对应某个 TsFile 的写前日志文件)
+* data/wal/{storage_group}-{tsfile_name}/wal{x} （对应某个 TsFile 的写前日志文件）
 
-文件格式为写入执行计划的序列化内容: InsertRowPlan、InsertTabletPlan、DeletePlan
+文件格式为写入执行计划的序列化内容：InsertRowPlan、InsertTabletPlan、DeletePlan
 
 ## 性能追踪目录 data/tracing
 

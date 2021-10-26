@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.integration.aggregation;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -36,6 +35,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.extreme;
 import static org.apache.iotdb.db.constant.TestConstant.first_value;
 import static org.apache.iotdb.db.constant.TestConstant.last_value;
 import static org.apache.iotdb.db.constant.TestConstant.max_time;
@@ -116,9 +116,6 @@ public class IoTDBAggregationLargeDataIT {
   public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     EnvironmentUtils.envSetUp();
   }
 
@@ -126,9 +123,6 @@ public class IoTDBAggregationLargeDataIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   @Test
@@ -143,6 +137,7 @@ public class IoTDBAggregationLargeDataIT {
     minTimeAggreWithSingleFilterTest();
     minValueAggreWithSingleFilterTest();
     maxValueAggreWithSingleFilterTest();
+    extremeAggreWithSingleFilterTest();
 
     countAggreWithMultiFilterTest();
     maxTimeAggreWithMultiFilterTest();
@@ -633,6 +628,68 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(max_value(d0s3))
                     + ","
                     + resultSet.getString(max_value(d0s4));
+            Assert.assertEquals(ans, retArray[cnt]);
+            cnt++;
+          }
+          Assert.assertEquals(1, cnt);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void extremeAggreWithSingleFilterTest() {
+    String[] retArray = new String[] {"0,99,40000,122.0"};
+
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select extreme(s0),extreme(s1),extreme(s2)"
+                  + " from root.vehicle.d0 "
+                  + "where s1 < 50000 and s1 != 100");
+
+      if (hasResultSet) {
+        int cnt = 0;
+        try (ResultSet resultSet = statement.getResultSet()) {
+          while (resultSet.next()) {
+            String ans =
+                resultSet.getString(TIMESTAMP_STR)
+                    + ","
+                    + resultSet.getString(extreme(d0s0))
+                    + ","
+                    + resultSet.getString(extreme(d0s1))
+                    + ","
+                    + resultSet.getString(extreme(d0s2));
+            Assert.assertEquals(ans, retArray[cnt]);
+            cnt++;
+          }
+          Assert.assertEquals(1, cnt);
+        }
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select extreme(s0),extreme(s1),extreme(s2)"
+                  + " from root.vehicle.d0 "
+                  + "where s1 < 50000 and s1 != 100 order by time desc");
+
+      if (hasResultSet) {
+        int cnt = 0;
+        try (ResultSet resultSet = statement.getResultSet()) {
+          while (resultSet.next()) {
+            String ans =
+                resultSet.getString(TIMESTAMP_STR)
+                    + ","
+                    + resultSet.getString(extreme(d0s0))
+                    + ","
+                    + resultSet.getString(extreme(d0s1))
+                    + ","
+                    + resultSet.getString(extreme(d0s2));
             Assert.assertEquals(ans, retArray[cnt]);
             cnt++;
           }

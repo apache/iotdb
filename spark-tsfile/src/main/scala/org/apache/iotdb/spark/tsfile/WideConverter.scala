@@ -35,10 +35,11 @@ import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema}
+import org.apache.iotdb.tsfile.write.schema.{IMeasurementSchema, UnaryMeasurementSchema, Schema}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -421,7 +422,7 @@ object WideConverter extends Converter {
     * @param options encoding options
     * @return MeasurementSchema
     */
-  def getSeriesSchema(field: StructField, options: Map[String, String]): MeasurementSchema = {
+  def getSeriesSchema(field: StructField, options: Map[String, String]): IMeasurementSchema = {
     val dataType = getTsDataType(field.dataType)
     val encodingStr = dataType match {
       case TSDataType.BOOLEAN => options.getOrElse(QueryConstant.BOOLEAN, TSEncoding.PLAIN.toString)
@@ -435,7 +436,7 @@ object WideConverter extends Converter {
     val encoding = TSEncoding.valueOf(encodingStr)
     val fullPath = new Path(field.name, true)
     val measurement = fullPath.getMeasurement
-    new MeasurementSchema(measurement, dataType, encoding)
+    new UnaryMeasurementSchema(measurement, dataType, encoding)
   }
 
   /**

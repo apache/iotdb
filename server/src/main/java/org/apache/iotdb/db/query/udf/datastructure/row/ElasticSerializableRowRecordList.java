@@ -30,6 +30,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.query.udf.datastructure.SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
 
+/** An elastic list of records that implements memory control using LRU strategy. */
 public class ElasticSerializableRowRecordList {
 
   protected static final int MEMORY_CHECK_THRESHOLD = 1000;
@@ -38,7 +39,7 @@ public class ElasticSerializableRowRecordList {
   protected long queryId;
   protected float memoryLimitInMB;
   protected int internalRowRecordListCapacity;
-  protected int cacheSize;
+  protected int numCacheBlock;
 
   protected LRUCache cache;
   protected List<SerializableRowRecordList> rowRecordLists;
@@ -51,8 +52,16 @@ public class ElasticSerializableRowRecordList {
   protected long totalByteArrayLengthLimit;
   protected long totalByteArrayLength;
 
+  /**
+   * Construct a ElasticSerializableRowRecordList.
+   *
+   * @param dataTypes Data types of columns.
+   * @param queryId Query ID.
+   * @param memoryLimitInMB Memory limit.
+   * @param numCacheBlock Number of cache blocks.
+   */
   public ElasticSerializableRowRecordList(
-      TSDataType[] dataTypes, long queryId, float memoryLimitInMB, int cacheSize)
+      TSDataType[] dataTypes, long queryId, float memoryLimitInMB, int numCacheBlock)
       throws QueryProcessException {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
@@ -60,14 +69,14 @@ public class ElasticSerializableRowRecordList {
     int allocatableCapacity =
         SerializableRowRecordList.calculateCapacity(
             dataTypes, memoryLimitInMB, INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
-    internalRowRecordListCapacity = allocatableCapacity / cacheSize;
+    internalRowRecordListCapacity = allocatableCapacity / numCacheBlock;
     if (internalRowRecordListCapacity == 0) {
-      cacheSize = 1;
+      numCacheBlock = 1;
       internalRowRecordListCapacity = allocatableCapacity;
     }
-    this.cacheSize = cacheSize;
+    this.numCacheBlock = numCacheBlock;
 
-    cache = new ElasticSerializableRowRecordList.LRUCache(cacheSize);
+    cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
     rowRecordLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
@@ -97,14 +106,14 @@ public class ElasticSerializableRowRecordList {
       long queryId,
       float memoryLimitInMB,
       int internalRowRecordListCapacity,
-      int cacheSize) {
+      int numCacheBlock) {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
     this.memoryLimitInMB = memoryLimitInMB;
     this.internalRowRecordListCapacity = internalRowRecordListCapacity;
-    this.cacheSize = cacheSize;
+    this.numCacheBlock = numCacheBlock;
 
-    cache = new ElasticSerializableRowRecordList.LRUCache(cacheSize);
+    cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
     rowRecordLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
@@ -114,6 +123,10 @@ public class ElasticSerializableRowRecordList {
 
   public int size() {
     return size;
+  }
+
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
   }
 
   public long getTime(int index) throws IOException {
@@ -136,11 +149,17 @@ public class ElasticSerializableRowRecordList {
     if (!disableMemoryControl) {
       totalByteArrayLengthLimit +=
           (long) indexListOfTextFields.length * byteArrayLengthForMemoryControl;
-      for (int indexListOfTextField : indexListOfTextFields) {
-        Binary binary = (Binary) rowRecord[indexListOfTextField];
-        totalByteArrayLength += binary == null ? 0 : binary.getLength();
+
+      if (rowRecord == null) {
+        totalByteArrayLength +=
+            (long) indexListOfTextFields.length * byteArrayLengthForMemoryControl;
+      } else {
+        for (int indexListOfTextField : indexListOfTextFields) {
+          Binary binary = (Binary) rowRecord[indexListOfTextField];
+          totalByteArrayLength += binary == null ? 0 : binary.getLength();
+        }
+        checkMemoryUsage();
       }
-      checkMemoryUsage();
     }
   }
 
@@ -158,13 +177,13 @@ public class ElasticSerializableRowRecordList {
     }
 
     int newByteArrayLengthForMemoryControl = byteArrayLengthForMemoryControl;
-    while (newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
+    while ((long) newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
       newByteArrayLengthForMemoryControl *= 2;
     }
     int newInternalTVListCapacity =
         SerializableRowRecordList.calculateCapacity(
                 dataTypes, memoryLimitInMB, newByteArrayLengthForMemoryControl)
-            / cacheSize;
+            / numCacheBlock;
     if (0 < newInternalTVListCapacity) {
       applyNewMemoryControlParameters(
           newByteArrayLengthForMemoryControl, newInternalTVListCapacity);
@@ -183,7 +202,7 @@ public class ElasticSerializableRowRecordList {
     newInternalTVListCapacity =
         SerializableRowRecordList.calculateCapacity(
                 dataTypes, memoryLimitInMB, newByteArrayLengthForMemoryControl)
-            / cacheSize;
+            / numCacheBlock;
     if (0 < newInternalTVListCapacity) {
       applyNewMemoryControlParameters(
           newByteArrayLengthForMemoryControl, newInternalTVListCapacity);
@@ -198,7 +217,7 @@ public class ElasticSerializableRowRecordList {
       throws IOException, QueryProcessException {
     ElasticSerializableRowRecordList newElasticSerializableRowRecordList =
         new ElasticSerializableRowRecordList(
-            dataTypes, queryId, memoryLimitInMB, newInternalRowRecordListCapacity, cacheSize);
+            dataTypes, queryId, memoryLimitInMB, newInternalRowRecordListCapacity, numCacheBlock);
 
     newElasticSerializableRowRecordList.evictionUpperBound = evictionUpperBound;
     int internalListEvictionUpperBound = evictionUpperBound / newInternalRowRecordListCapacity;

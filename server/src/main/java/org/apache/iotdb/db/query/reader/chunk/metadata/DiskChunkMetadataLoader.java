@@ -24,8 +24,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -53,8 +53,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   @Override
-  public List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeseriesMetadata) {
-    List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+  public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata) {
+    List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
 
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
 
@@ -69,7 +69,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
                 || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
 
     // For chunkMetadata from old TsFile, do not set version
-    for (ChunkMetadata metadata : chunkMetadataList) {
+    for (IChunkMetadata metadata : chunkMetadataList) {
       if (!metadata.isFromOldTsFile()) {
         metadata.setVersion(resource.getVersion());
       }
@@ -83,8 +83,13 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     return chunkMetadataList;
   }
 
+  @Override
+  public boolean isMemChunkMetadataLoader() {
+    return false;
+  }
+
   public static void setDiskChunkLoader(
-      List<ChunkMetadata> chunkMetadataList,
+      List<IChunkMetadata> chunkMetadataList,
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context) {
@@ -112,10 +117,10 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     // very cheap.
     chunkMetadataList.forEach(
         chunkMetadata -> {
-          if (chunkMetadata.getChunkLoader() == null) {
+          if (chunkMetadata.needSetChunkLoader()) {
             chunkMetadata.setFilePath(resource.getTsFilePath());
             chunkMetadata.setClosed(resource.isClosed());
-            chunkMetadata.setChunkLoader(new DiskChunkLoader(context));
+            chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
           }
         });
   }

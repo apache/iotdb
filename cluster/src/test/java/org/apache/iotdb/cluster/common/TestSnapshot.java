@@ -61,12 +61,12 @@ public class TestSnapshot extends Snapshot {
   public SnapshotInstaller<? extends Snapshot> getDefaultInstaller(RaftMember member) {
     return new SnapshotInstaller<Snapshot>() {
       @Override
-      public void install(Snapshot snapshot, int slot) {
+      public void install(Snapshot snapshot, int slot, boolean isDataMigration) {
         // do nothing
       }
 
       @Override
-      public void install(Map<Integer, Snapshot> snapshotMap) {
+      public void install(Map<Integer, Snapshot> snapshotMap, boolean isDataMigration) {
         // do nothing
       }
     };

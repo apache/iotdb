@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -52,24 +51,22 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    ClusterDescriptor.getInstance().getConfig().setEnableQueryRedirect(true);
   }
 
   @Override
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    ClusterDescriptor.getInstance().getConfig().setEnableQueryRedirect(false);
   }
 
   @Test
-  public void testNoFilter() throws IOException, StorageEngineException, QueryProcessException {
+  public void testNoFilter() throws IOException, StorageEngineException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
-    plan.setDeduplicatedPaths(pathList);
+    plan.setDeduplicatedPathsAndUpdate(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     RemoteQueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
       checkSequentialDataset(dataSet, 0, 20);
@@ -85,12 +82,12 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
         new SingleSeriesExpression(
             new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0));
     RawDataQueryPlan plan = new RawDataQueryPlan();
-    plan.setDeduplicatedPaths(pathList);
+    plan.setDeduplicatedPathsAndUpdate(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setExpression(expression);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     RemoteQueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithValueFilter(context);
       checkSequentialDataset(dataSet, 5, 15);
@@ -100,14 +97,14 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   }
 
   @Test
-  public void testNoFilterWithRedirect() throws StorageEngineException, QueryProcessException {
+  public void testNoFilterWithRedirect() throws StorageEngineException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
-    plan.setDeduplicatedPaths(pathList);
+    plan.setDeduplicatedPathsAndUpdate(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setEnableRedirect(true);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     RemoteQueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
       assertNull(dataSet.getEndPoint());
@@ -123,13 +120,13 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
         new SingleSeriesExpression(
             new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0));
     RawDataQueryPlan plan = new RawDataQueryPlan();
-    plan.setDeduplicatedPaths(pathList);
+    plan.setDeduplicatedPathsAndUpdate(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setExpression(expression);
     plan.setEnableRedirect(true);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     RemoteQueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithValueFilter(context);
       assertNull(dataSet.getEndPoint());
@@ -140,17 +137,17 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
   @Test
   public void testFilterWithTimeFilterRedirect()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, QueryProcessException {
     IExpression expression =
         new GlobalTimeExpression(new AndFilter(TimeFilter.gtEq(5), TimeFilter.ltEq(10)));
     RawDataQueryPlan plan = new RawDataQueryPlan();
-    plan.setDeduplicatedPaths(pathList.subList(0, 1));
+    plan.setDeduplicatedPathsAndUpdate(pathList.subList(0, 1));
     plan.setDeduplicatedDataTypes(dataTypes.subList(0, 1));
     plan.setExpression(expression);
     plan.setEnableRedirect(true);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     RemoteQueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
       assertEquals("ip:port=0.0.0.0:6667", dataSet.getEndPoint().toString());

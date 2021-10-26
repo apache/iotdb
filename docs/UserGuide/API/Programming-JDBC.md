@@ -19,26 +19,32 @@
 
 -->
 
-# Application Program Interface (API)
-
 ## JDBC
+
+*NOTICE: CURRENTLY, JDBC IS USED FOR CONNECTING SOME THIRD-PART TOOLS. 
+IT CAN NOT PROVIDE HIGH THROUGHPUT FOR WRITE OPERATIONS. 
+PLEASE USE [JAVA NATIVE API](https://iotdb.apache.org/UserGuide/Master/API/Programming-Java-Native-API.html) INSTEAD*
 
 ### Dependencies
 
 * JDK >= 1.8
 * Maven >= 3.6
 
+
+
 ### Installation
 
 In root directory:
 
-```
+```shell
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
+
+
 ### Use IoTDB JDBC with Maven
 
-```
+```xml
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
@@ -47,6 +53,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
     </dependency>
 </dependencies>
 ```
+
 
 
 ### Coding Examples
@@ -156,6 +163,8 @@ public class JDBCExample {
     // JDBC driver name and database URL
     String driver = "org.apache.iotdb.jdbc.IoTDBDriver";
     String url = "jdbc:iotdb://127.0.0.1:6667/";
+    // set rpc compress mode
+    // String url = "jdbc:iotdb://127.0.0.1:6667?rpc_compress=true";
 
     // Database credentials
     String username = "root";
@@ -201,3 +210,4 @@ public class JDBCExample {
   }
 }
 ```
+

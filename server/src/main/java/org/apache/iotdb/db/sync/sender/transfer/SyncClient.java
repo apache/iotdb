@@ -37,16 +37,18 @@ import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TConfigurationConst;
+import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -133,6 +135,8 @@ public class SyncClient implements ISyncClient {
     init();
   }
 
+  private TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
+
   public static SyncClient getInstance() {
     return InstanceHolder.INSTANCE;
   }
@@ -167,16 +171,19 @@ public class SyncClient implements ISyncClient {
    * @param lockFile lock file
    */
   private boolean lockInstance(File lockFile) {
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw")) {
+    RandomAccessFile randomAccessFile = null;
+    try {
+      randomAccessFile = new RandomAccessFile(lockFile, "rw");
       final FileLock fileLock = randomAccessFile.getChannel().tryLock();
       if (fileLock != null) {
+        final RandomAccessFile randomAccessFile2 = randomAccessFile;
         Runtime.getRuntime()
             .addShutdownHook(
                 new Thread(
                     () -> {
                       try {
                         fileLock.release();
-                        randomAccessFile.close();
+                        randomAccessFile2.close();
                       } catch (Exception e) {
                         logger.error("Unable to remove lock file: {}", lockFile, e);
                       }
@@ -185,6 +192,14 @@ public class SyncClient implements ISyncClient {
       }
     } catch (Exception e) {
       logger.error("Unable to create and/or lock file: {}", lockFile, e);
+    } finally {
+      if (randomAccessFile != null) {
+        try {
+          randomAccessFile.close();
+        } catch (Exception e) {
+          logger.error("Unable to close randomAccessFile: {}", randomAccessFile, e);
+        }
+      }
     }
     return false;
   }
@@ -292,17 +307,18 @@ public class SyncClient implements ISyncClient {
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(ioTDBConfig.getThriftDefaultBufferSize());
     RpcTransportFactory.setThriftMaxFrameSize(ioTDBConfig.getThriftMaxFrameSize());
-    transport =
-        RpcTransportFactory.INSTANCE.getTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS));
-    TProtocol protocol;
-    if (ioTDBConfig.isRpcThriftCompressionEnable()) {
-      protocol = new TCompactProtocol(transport);
-    } else {
-      protocol = new TBinaryProtocol(transport);
-    }
-
-    serviceClient = new SyncService.Client(protocol);
     try {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              TSocketWrapper.wrap(tConfiguration, serverIp, serverPort, TIMEOUT_MS));
+      TProtocol protocol;
+      if (ioTDBConfig.isRpcThriftCompressionEnable()) {
+        protocol = new TCompactProtocol(transport);
+      } else {
+        protocol = new TBinaryProtocol(transport);
+      }
+      serviceClient = new SyncService.Client(protocol);
+
       if (!transport.isOpen()) {
         transport.open();
       }
@@ -320,7 +336,7 @@ public class SyncClient implements ISyncClient {
               socket.getLocalAddress().getHostAddress(),
               getOrCreateUUID(getUuidFile()),
               ioTDBConfig.getPartitionInterval(),
-              IoTDBConstant.VERSION);
+              IoTDBConstant.MAJOR_VERSION);
       SyncStatus status = serviceClient.check(info);
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
@@ -334,26 +350,36 @@ public class SyncClient implements ISyncClient {
 
   /** UUID marks the identity of sender for receiver. */
   private String getOrCreateUUID(File uuidFile) throws IOException {
-    String uuid;
     if (!uuidFile.getParentFile().exists()) {
       uuidFile.getParentFile().mkdirs();
     }
-    if (!uuidFile.exists()) {
-      try (FileOutputStream out = new FileOutputStream(uuidFile)) {
-        uuid = generateUUID();
-        out.write(uuid.getBytes());
-      } catch (IOException e) {
-        logger.error("Cannot insert UUID to file {}", uuidFile.getPath());
-        throw new IOException(e);
-      }
-    } else {
-      try (BufferedReader bf = new BufferedReader((new FileReader(uuidFile.getAbsolutePath())))) {
+
+    String uuid;
+    if (uuidFile.exists()) {
+      try (BufferedReader bf = new BufferedReader((new FileReader(uuidFile)))) {
         uuid = bf.readLine();
       } catch (IOException e) {
-        logger.error("Cannot read UUID from file{}", uuidFile.getPath());
+        logger.error("Cannot read UUID from file {}", uuidFile.getPath());
         throw new IOException(e);
       }
+
+      if ((uuid == null) || (uuid.length() == 0)) {
+        logger.warn("UUID in file {} is empty.", uuidFile.getPath());
+        uuidFile.delete();
+      } else {
+        return uuid;
+      }
     }
+
+    // uuidFile not exist or uuid in uuidFile is invalid
+    try (FileOutputStream out = new FileOutputStream(uuidFile)) {
+      uuid = generateUUID();
+      out.write(uuid.getBytes());
+    } catch (IOException e) {
+      logger.error("Cannot insert UUID to file {}", uuidFile.getPath());
+      throw new IOException(e);
+    }
+
     return uuid;
   }
 

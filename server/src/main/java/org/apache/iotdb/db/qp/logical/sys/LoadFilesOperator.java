@@ -18,22 +18,34 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.io.File;
 
-public class LoadFilesOperator extends RootOperator {
+/**
+ * operator for loading tsfile including four property: file, the loading file. autoCreateSchema,
+ * need auto create schema or not. sglevel, the level of sg. metadataCheck, need check for metadata
+ * or not.
+ */
+public class LoadFilesOperator extends Operator {
 
   private File file;
   private boolean autoCreateSchema;
   private int sgLevel;
+  private boolean verifyMetadata;
 
-  public LoadFilesOperator(File file, boolean autoCreateSchema, int sgLevel) {
+  public LoadFilesOperator(
+      File file, boolean autoCreateSchema, int sgLevel, boolean verifyMetadata) {
     super(SQLConstant.TOK_LOAD_FILES);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
+    this.verifyMetadata = verifyMetadata;
     this.operatorType = OperatorType.LOAD_FILES;
   }
 
@@ -47,5 +59,24 @@ public class LoadFilesOperator extends RootOperator {
 
   public int getSgLevel() {
     return sgLevel;
+  }
+
+  public void setAutoCreateSchema(boolean autoCreateSchema) {
+    this.autoCreateSchema = autoCreateSchema;
+  }
+
+  public void setSgLevel(int sgLevel) {
+    this.sgLevel = sgLevel;
+  }
+
+  public void setVerifyMetadata(boolean verifyMetadata) {
+    this.verifyMetadata = verifyMetadata;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new OperateFilePlan(
+        file, OperatorType.LOAD_FILES, autoCreateSchema, sgLevel, verifyMetadata);
   }
 }

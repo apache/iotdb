@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -46,7 +46,7 @@ public class TsFileTimeGenerator extends TimeGenerator {
   @Override
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {
-    List<ChunkMetadata> chunkMetadataList =
+    List<IChunkMetadata> chunkMetadataList =
         metadataQuerier.getChunkMetaDataList(expression.getSeriesPath());
     return new FileSeriesReader(chunkLoader, chunkMetadataList, expression.getFilter());
   }

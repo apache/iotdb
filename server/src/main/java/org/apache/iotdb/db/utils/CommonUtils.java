@@ -92,6 +92,9 @@ public class CommonUtils {
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
+      if ("null".equals(value) || "NULL".equals(value)) {
+        return null;
+      }
       switch (dataType) {
         case BOOLEAN:
           return parseBoolean(value);
@@ -200,8 +203,8 @@ public class CommonUtils {
   }
 
   private static void badUse(Exception e) {
-    System.out.println("memory-tool: " + e.getMessage());
-    System.out.println("See 'memory-tool help' or 'memory-tool help <command>'.");
+    System.out.println("node-tool: " + e.getMessage());
+    System.out.println("See 'node-tool help' or 'node-tool help <command>'.");
   }
 
   private static void err(Throwable e) {

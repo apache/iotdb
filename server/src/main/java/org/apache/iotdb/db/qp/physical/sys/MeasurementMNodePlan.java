@@ -21,7 +21,8 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,7 +32,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class MeasurementMNodePlan extends MNodePlan {
-  private MeasurementSchema schema;
+  private IMeasurementSchema schema;
   private String alias;
   private long offset;
 
@@ -40,7 +41,7 @@ public class MeasurementMNodePlan extends MNodePlan {
   }
 
   public MeasurementMNodePlan(
-      String name, String alias, long offset, int childSize, MeasurementSchema schema) {
+      String name, String alias, long offset, int childSize, IMeasurementSchema schema) {
     super(false, Operator.OperatorType.MEASUREMENT_MNODE);
     this.name = name;
     this.alias = alias;
@@ -86,16 +87,16 @@ public class MeasurementMNodePlan extends MNodePlan {
     alias = readString(buffer);
     offset = buffer.getLong();
     childSize = buffer.getInt();
-    schema = MeasurementSchema.deserializeFrom(buffer);
+    schema = UnaryMeasurementSchema.deserializeFrom(buffer);
 
     index = buffer.getLong();
   }
 
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
-  public void setSchema(MeasurementSchema schema) {
+  public void setSchema(IMeasurementSchema schema) {
     this.schema = schema;
   }
 

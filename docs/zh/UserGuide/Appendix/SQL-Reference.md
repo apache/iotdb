@@ -19,7 +19,7 @@
 
 -->
 
-# 附录2: SQL 参考文档
+# 附录 2: SQL 参考文档
 
 ## 显示版本号
 
@@ -31,29 +31,28 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.12.0-SNAPSHOT|
+|0.13.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
 ```
 
-## Schema语句
+## Schema 语句
 
 * 设置存储组
 
 ``` SQL
 SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: FullPath can not include `*`
+Note: FullPath can not include wildcard `*` or `**`
 ```
 * 删除存储组
 
 ```
-DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+DELETE STORAGE GROUP <PathPattern> [COMMA <PathPattern>]*
+Eg: IoTDB > DELETE STORAGE GROUP root.ln
 Eg: IoTDB > DELETE STORAGE GROUP root.*
+Eg: IoTDB > DELETE STORAGE GROUP root.**
 ```
 
 * 创建时间序列语句
@@ -94,10 +93,31 @@ Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is t
 Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
+* 创建设备模板语句
+```
+CREATE schema template <TemplateName> WITH <AttributeClauses>
+attributeClauses
+    : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*)
+    attributeClause
+    ;
+Eg: create schema template temp1(
+        (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
+        (s2 FLOAT with encoding=RLE, compression=SNAPPY)
+       )  
+```
+
+* 挂载设备模板语句
+```
+set schema template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set schema template temp1 to root.beijing
+```
+
 * 删除时间序列语句
 
 ```
-DELETE TIMESERIES <PrefixPath> [COMMA <PrefixPath>]*
+DELETE TIMESERIES <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
@@ -141,18 +161,18 @@ Note: This statement can only be used in IoTDB Client. If you need to show all t
 
 ```
 SHOW TIMESERIES <Path>
-Eg: IoTDB > SHOW TIMESERIES root
-Eg: IoTDB > SHOW TIMESERIES root.ln
+Eg: IoTDB > SHOW TIMESERIES root.**
+Eg: IoTDB > SHOW TIMESERIES root.ln.**
 Eg: IoTDB > SHOW TIMESERIES root.ln.*.*.status
 Eg: IoTDB > SHOW TIMESERIES root.ln.wf01.wt01.status
-Note: The path can be prefix path, star path or timeseries path
+Note: The path can be timeseries path or path pattern
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示满足条件的时间序列语句
 
 ```
-SHOW TIMESERIES prefixPath? showWhereClause?
+SHOW TIMESERIES pathPattern? showWhereClause?
 showWhereClause
     : WHERE (property | containsExpression)
     ;
@@ -160,14 +180,14 @@ containsExpression
     : name=ID OPERATOR_CONTAINS value=propertyValue
     ;
 
-Eg: show timeseries root.ln where unit='c'
-Eg: show timeseries root.ln where description contains 'test1'
+Eg: show timeseries root.ln.** where unit='c'
+Eg: show timeseries root.ln.** where description contains 'test1'
 ```
 
 * 分页显示满足条件的时间序列语句
 
 ```
-SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
+SHOW TIMESERIES pathPattern? showWhereClause? limitClause?
 
 showWhereClause
     : WHERE (property | containsExpression)
@@ -180,9 +200,9 @@ limitClause
     | offsetClause? LIMIT INT
     ;
     
-Eg: show timeseries root.ln where unit='c'
-Eg: show timeseries root.ln where description contains 'test1'
-Eg: show timeseries root.ln where unit='c' limit 10 offset 10
+Eg: show timeseries root.ln.** where unit='c'
+Eg: show timeseries root.ln.** where description contains 'test1'
+Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
 ```
 
 * 显示存储组语句
@@ -196,18 +216,18 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示特定存储组语句
 
 ```
-SHOW STORAGE GROUP <PrefixPath>
+SHOW STORAGE GROUP <PathPattern>
 Eg: IoTDB > SHOW STORAGE GROUP root.*
+Eg: IoTDB > SHOW STORAGE GROUP root.**
 Eg: IoTDB > SHOW STORAGE GROUP root.ln
-Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* 显示Merge状态语句
+* 显示 Merge 状态语句
 
 ```
-SHOW MERGE
-Eg: IoTDB > SHOW MERGE
+SHOW MERGE INFO
+Eg: IoTDB > SHOW MERGE INFO
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -215,20 +235,20 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT TIMESERIES <Path>
-Eg: IoTDB > COUNT TIMESERIES root
-Eg: IoTDB > COUNT TIMESERIES root.ln
+Eg: IoTDB > COUNT TIMESERIES root.**
+Eg: IoTDB > COUNT TIMESERIES root.ln.**
 Eg: IoTDB > COUNT TIMESERIES root.ln.*.*.status
 Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
-Note: The path can be prefix path, star path or timeseries path.
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 ```
 COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>
-Eg: IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
-Eg: IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-Eg: IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
-Note: The path can be prefix path or timeseries path.
+Eg: IoTDB > COUNT TIMESERIES root.** GROUP BY LEVEL=1
+Eg: IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=3
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -236,11 +256,11 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT NODES <Path> LEVEL=<INTEGER>
-Eg: IoTDB > COUNT NODES root LEVEL=2
-Eg: IoTDB > COUNT NODES root.ln LEVEL=2
-Eg: IoTDB > COUNT NODES root.ln.* LEVEL=3
-Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
-Note: The path can be prefix path or timeseries path.
+Eg: IoTDB > COUNT NODES root.** LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.** LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.*.* LEVEL=3
+Eg: IoTDB > COUNT NODES root.ln.wf01.* LEVEL=3
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -256,17 +276,17 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示特定设备语句
 
 ```
-SHOW DEVICES <PrefixPath> (WITH STORAGE GROUP)? limitClause?
-Eg: IoTDB > SHOW DEVICES root
-Eg: IoTDB > SHOW DEVICES root.ln
+SHOW DEVICES <PathPattern> (WITH STORAGE GROUP)? limitClause?
+Eg: IoTDB > SHOW DEVICES root.**
+Eg: IoTDB > SHOW DEVICES root.ln.*
 Eg: IoTDB > SHOW DEVICES root.*.wf01
-Eg: IoTDB > SHOW DEVICES root.ln WITH STORAGE GROUP
+Eg: IoTDB > SHOW DEVICES root.ln.* WITH STORAGE GROUP
 Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
-Note: The path can be prefix path or star path.
+Note: The path can be path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* 显示ROOT节点的子节点名称语句
+* 显示 ROOT 节点的子节点名称语句
 
 ```
 SHOW CHILD PATHS
@@ -277,12 +297,11 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示子节点名称语句
 
 ```
-SHOW CHILD PATHS <Path>
+SHOW CHILD PATHS <PathPattern>
 Eg: IoTDB > SHOW CHILD PATHS root
 Eg: IoTDB > SHOW CHILD PATHS root.ln
 Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
 Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
-Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -302,7 +321,8 @@ Sensor : Identifier
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
-Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (1509466680000, false, 20.060787);
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) VALUES (1509466680000,false,20.060787)
+Eg: IoTDB > INSERT INTO root.sg.d1(timestamp,(s1,s2),(s3,s4)) VALUES (1509466680000,(1.0,2),(NULL,4))
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 Note: The order of Sensor and PointValue need one-to-one correspondence
 ```
@@ -310,7 +330,7 @@ Note: The order of Sensor and PointValue need one-to-one correspondence
 * 删除记录语句
 
 ```
-DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* [WHERE <WhereClause>]?
+DELETE FROM <PathPattern> [COMMA <PathPattern>]* [WHERE <WhereClause>]?
 WhereClause : <Condition> [(AND) <Condition>]*
 Condition  : <TimeExpr> [(AND) <TimeExpr>]*
 TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
@@ -334,9 +354,10 @@ TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
 RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
-Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
-Eg. IoTDB > SELECT * FROM root
-Eg. IoTDB > SELECT * FROM root where time > now() - 5m
+Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-01 00:13:00
+Eg. IoTDB > SELECT ** FROM root
+Eg. IoTDB > SELECT * FROM root.**
+Eg. IoTDB > SELECT * FROM root.** where time > now() - 5m
 Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
@@ -415,9 +436,11 @@ Note: the statement needs to satisfy this constraint: <PrefixPath>(FromClause) +
 Note: Integer in <TimeUnit> needs to be greater than 0
 ```
 
-* Group By Fill语句
+* Group By Fill 语句
 
 ```
+# time 区间规则为：只能为左开右闭或左闭右开，例如：[20, 100)
+
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause> (FILL <GROUPBYFillClause>)?
 GroupByClause : LPAREN <TimeInterval> COMMA <TimeUnit> RPAREN
 GROUPBYFillClause : LPAREN <TypeClause> RPAREN
@@ -449,9 +472,9 @@ SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByCl
 orderByTimeClause: order by time (asc | desc)?
 
 Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS]) order by time desc
-Eg: SELECT * from root order by time desc
-Eg: SELECT * from root order by time desc align by device 
-Eg: SELECT * from root order by time desc disable align
+Eg: SELECT * from root.** order by time desc
+Eg: SELECT * from root.** order by time desc align by device 
+Eg: SELECT * from root.** order by time desc disable align
 Eg: SELECT last * from root order by time desc
 ```
 
@@ -477,55 +500,55 @@ SLIMITClause : SLIMIT <SN> [SOFFSETClause]?
 SN : Integer
 SOFFSETClause : SOFFSET <SOFFSETValue>
 SOFFSETValue : Integer
-Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
-Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000], 5m) LIMIT 3
+Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-01 00:13:00 LIMIT 3 OFFSET 2
+Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000), 5m) LIMIT 3
 Note: N, OFFSETValue, SN and SOFFSETValue must be greater than 0.
 Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
-* Align by device语句
+* Align by device 语句
 
 ```
 AlignbyDeviceClause : ALIGN BY DEVICE
 
-规则:  
-1. 大小写不敏感.  
-正例: select * from root.sg1 align by device
-正例: select * from root.sg1 ALIGN BY DEVICE
+规则：
+1. 大小写不敏感。
+正例：select * from root.sg1.** align by device
+正例：select * from root.sg1.** ALIGN BY DEVICE
 
-2. AlignbyDeviceClause 只能放在末尾.  
-正例: select * from root.sg1 where time > 10 align by device  
-错例: select * from root.sg1 align by device where time > 10  
+2. AlignbyDeviceClause 只能放在末尾。
+正例：select * from root.sg1.** where time > 10 align by device  
+错例：select * from root.sg1.** align by device where time > 10  
 
-3. Select子句中的path只能是单层，或者通配符，不允许有path分隔符"."。
-正例: select s0,s1 from root.sg1.* align by device  
-正例: select s0,s1 from root.sg1.d0, root.sg1.d1 align by device  
-正例: select * from root.sg1.* align by device  
-正例: select * from root align by device  
-正例: select s0,s1,* from root.*.* align by device  
-错例: select d0.s1, d0.s2, d1.s0 from root.sg1 align by device  
-错例: select *.s0, *.s1 from root.* align by device  
-错例: select *.*.* from root align by device
+3. Select 子句中的 path 只能是单层，或者通配符，不允许有 path 分隔符"."。
+正例：select s0,s1 from root.sg1.* align by device  
+正例：select s0,s1 from root.sg1.d0, root.sg1.d1 align by device  
+正例：select * from root.sg1.* align by device  
+正例：select * from root.** align by device  
+正例：select s0,s1,* from root.*.* align by device  
+错例：select d0.s1, d0.s2, d1.s0 from root.sg1 align by device  
+错例：select *.s0, *.s1 from root.* align by device  
+错例：select *.*.* from root align by device
 
-4.相同measurement的各设备的数据类型必须都相同，
+4. 相同 measurement 的各设备的数据类型必须都相同，
 
-正例: select s0 from root.sg1.d0,root.sg1.d1 align by device   
+正例：select s0 from root.sg1.d0,root.sg1.d1 align by device   
 root.sg1.d0.s0 and root.sg1.d1.s0 are both INT32.  
 
-正例: select count(s0) from root.sg1.d0,root.sg1.d1 align by device   
+正例：select count(s0) from root.sg1.d0,root.sg1.d1 align by device   
 count(root.sg1.d0.s0) and count(root.sg1.d1.s0) are both INT64.  
 
-错例: select s0 from root.sg1.d0, root.sg2.d3 align by device  
+错例：select s0 from root.sg1.d0, root.sg2.d3 align by device  
 root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT. 
 
-5. 结果集的展示规则：对于select中给出的列，不论是否有数据（是否被注册），均会被显示。此外，select子句中还支持常数列（例如，'a', '123'等等）。
-例如, "select s0,s1,s2,'abc',s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 align by device". 假设只有下述三列有数据：
+5. 结果集的展示规则：对于 select 中给出的列，不论是否有数据（是否被注册），均会被显示。此外，select 子句中还支持常数列（例如，'a', '123'等等）。
+例如，"select s0,s1,s2,'abc',s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 align by device". 假设只有下述三列有数据：
 - root.sg.d0.s0
 - root.sg.d0.s1
 - root.sg.d1.s0
 
-结果集形如:
+结果集形如：
 
 | Time | Device   | s0 | s1 |  s2  | 'abc' | s1 |  s2  |
 | ---  | ---      | ---| ---| null | 'abc' | ---| null |
@@ -536,55 +559,55 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
 |  2   |root.sg.d1| 19 |null| null | 'abc' |null| null |
 | ...  | ...      | ...| ...| null | 'abc' | ...| null |
 
-注意注意 设备'root.sg.d1'的's0'的值全为null
+注意注意 设备'root.sg.d1'的's0'的值全为 null
 
-6. 在From中重复写设备名字或者设备前缀是没有任何作用的。
-例如, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 align by device" 等于 "select s0,s1 from root.sg.d0,root.sg.d1 align by device".  
-例如. "select s0,s1 from root.sg.*,root.sg.d0 align by device" 等于 "select s0,s1 from root.sg.* align by device".  
+6. 在 From 中重复写设备名字或者设备前缀是没有任何作用的。
+例如，"select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 align by device" 等于 "select s0,s1 from root.sg.d0,root.sg.d1 align by device".  
+例如。"select s0,s1 from root.sg.*,root.sg.d0 align by device" 等于 "select s0,s1 from root.sg.* align by device".  
 
-7. 在Select子句中重复写列名是生效的。例如, "select s0,s0,s1 from root.sg.* align by device" 不等于 "select s0,s1 from root.sg.* align by device".
+7. 在 Select 子句中重复写列名是生效的。例如，"select s0,s0,s1 from root.sg.* align by device" 不等于 "select s0,s1 from root.sg.* align by device".
 
-8. 在Where子句中时间过滤条件和值过滤条件均可以使用，值过滤条件可以使用叶子节点 path，或以 root 开头的整个 path，不允许存在通配符。例如，
+8. 在 Where 子句中时间过滤条件和值过滤条件均可以使用，值过滤条件可以使用叶子节点 path，或以 root 开头的整个 path，不允许存在通配符。例如，
 - select * from root.sg.* where time = 1 align by device
 - select * from root.sg.* where s0 < 100 align by device
 - select * from root.sg.* where time < 20 AND s0 > 50 align by device
 - select * from root.sg.d0 where root.sg.d0.s0 = 15 align by device
 
-9. 更多正例:
-   - select * from root.vehicle align by device
+9. 更多正例：
+   - select * from root.vehicle.* align by device
    - select s0,s0,s1 from root.vehicle.* align by device
    - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
-   - select * from root.vehicle slimit 10 soffset 2 align by device
-   - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle.* slimit 10 soffset 2 align by device
+   - select * from root.vehicle.* where time > 10 align by device
    - select * from root.vehicle.* where time < 10 AND s0 > 25 align by device
-   - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
-   - select count(*) from root.vehicle align by device
-   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
-   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
+   - select * from root.vehicle.* where root.vehicle.d0.s0>0 align by device
+   - select count(*) from root.vehicle.* align by device
+   - select sum(*) from root.vehicle.* GROUP BY (20ms,0,[2,50]) align by device
+   - select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 
 * Disable align 语句
 
 ```
-规则:  
-1. 大小写均可.  
-正例: select * from root.sg1 disable align  
-正例: select * from root.sg1 DISABLE ALIGN  
+规则：
+1. 大小写均可。
+正例：select * from root.sg1.* disable align  
+正例：select * from root.sg1.* DISABLE ALIGN  
 
-2. Disable Align只能用于查询语句句尾.  
-正例: select * from root.sg1 where time > 10 disable align 
-错例: select * from root.sg1 disable align where time > 10 
+2. Disable Align 只能用于查询语句句尾。
+正例：select * from root.sg1.* where time > 10 disable align 
+错例：select * from root.sg1.* disable align where time > 10 
 
-3. Disable Align 不能用于聚合查询、Fill语句、Group by或Group by device语句，但可用于Limit语句。
-正例: select * from root.sg1 limit 3 offset 2 disable align
-正例: select * from root.sg1 slimit 3 soffset 2 disable align
-错例: select count(s0),count(s1) from root.sg1.d1 disable align
-错例: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
-错例: select * from root.vehicle align by device disable align
+3. Disable Align 不能用于聚合查询、Fill 语句、Group by 或 Group by device 语句，但可用于 Limit 语句。
+正例：select * from root.sg1.* limit 3 offset 2 disable align
+正例：select * from root.sg1.* slimit 3 soffset 2 disable align
+错例：select count(s0),count(s1) from root.sg1.d1 disable align
+错例：select * from root.vehicle.* where root.vehicle.d0.s0>0 disable align
+错例：select * from root.vehicle.* align by device disable align
 
-4. 结果显示若无数据显示为空白.
+4. 结果显示若无数据显示为空白。
 
-查询结果样式如下表:
+查询结果样式如下表：
 | Time | root.sg.d0.s1 | Time | root.sg.d0.s2 | Time | root.sg.d1.s1 |
 | ---  | ---           | ---  | ---           | ---  | ---           |
 |  1   | 100           | 20   | 300           | 400  | 600           |
@@ -592,16 +615,16 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
 |  4   | 500           |      |               | 800  | 1000          |
 |      |               |      |               | 900  | 8000          |
 
-5. 一些正确使用样例: 
-   - select * from root.vehicle disable align
+5. 一些正确使用样例：
+   - select * from root.vehicle.* disable align
    - select s0,s0,s1 from root.vehicle.* disable align
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
-   - select * from root.vehicle slimit 10 soffset 2 disable align
-   - select * from root.vehicle where time > 10 disable align
+   - select * from root.vehicle.* slimit 10 soffset 2 disable align
+   - select * from root.vehicle.* where time > 10 disable align
 
 ```
 
-* Last语句
+* Last 语句
 
 Last 语句返回所要查询时间序列的最近时间戳的一条数据
 
@@ -618,22 +641,22 @@ Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
 Eg. SELECT LAST s1 FROM root.sg.d1 where time > 100
 Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time >= 500
 
-规则:
-1. 需要满足PrefixPath.Path 为一条完整的时间序列，即 <PrefixPath> + <Path> = <Timeseries>
+规则：
+1. 需要满足 PrefixPath.Path 为一条完整的时间序列，即 <PrefixPath> + <Path> = <Timeseries>
 
-2. 当前SELECT LAST 语句只支持包含'>'或'>='的时间过滤条件
+2. 当前 SELECT LAST 语句只支持包含'>'或'>='的时间过滤条件
 
-3. 结果集以三列的表格的固定形式返回。
+3. 结果集以四列的表格的固定形式返回。
 例如 "select last s1, s2 from root.sg.d1, root.sg.d2", 结果集返回如下：
 
-| Time | Path         | Value |
-| ---  | ------------ | ----- |
-|  5   | root.sg.d1.s1| 100   |
-|  2   | root.sg.d1.s2| 400   |
-|  4   | root.sg.d2.s1| 250   |
-|  9   | root.sg.d2.s2| 600   |
+| Time |    timeseries | value | dataType |
+| ---  | ------------- | ----- | -------- |
+|  5   | root.sg.d1.s1 |   100 |    INT32 |
+|  2   | root.sg.d1.s2 |   400 |    INT32 |
+|  4   | root.sg.d2.s1 |   250 |    INT32 |
+|  9   | root.sg.d2.s2 |   600 |    INT32 |
 
-4. 注意LAST语句不支持与"disable align"关键词一起使用。
+4. 注意 LAST 语句不支持与"disable align"关键词一起使用。
 
 ```
 
@@ -683,6 +706,46 @@ E.g. select * as temperature from root.sg.d1
 这种情况如果 * 匹配多个传感器，则无法正常显示。
 
 ```
+* Regexp 语句
+
+Regexp语句仅支持数据类型为 TEXT的列进行过滤，传入的过滤条件为 Java 标准库风格的正则表达式
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) REGEXP regularExpression
+regularExpression: Java standard regularexpression, like '^[a-z][0-9]$', [details](https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html)
+
+Eg. select s1 from root.sg.d1 where s1 regexp '^[0-9]*$'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$' and s2 regexp '^\d{15}|\d{18}$'
+Eg. select * from root.sg.d1 where s1 regexp '^[a-zA-Z]\w{5,17}$'
+Eg. select * from root.sg.d1 where s1 regexp '^\d{4}-\d{1,2}-\d{1,2}' and time > 100
+```
+
+* Like 语句
+
+Like语句的用法和mysql相同, 但是仅支持对数据类型为 TEXT的列进行过滤
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE likeExpression
+likeExpression : string that may contains "%" or "_", while "%value" means a string that ends with the value,  "value%" means a string starts with the value, "%value%" means string that contains values, and "_" represents any character.
+
+Eg. select s1 from root.sg.d1 where s1 like 'abc'
+Eg. select s1, s2 from root.sg.d1 where s1 like 'abc%'
+Eg. select * from root.sg.d1 where s1 like 'abc_'
+Eg. select * from root.sg.d1 where s1 like 'abc\%'
+这种情况，'\%'表示'%'将会被转义
+结果集将显示为：
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  200 | root.sg.d1.s1| abc%  |
+```
 
 ## 数据库管理语句
 
@@ -692,7 +755,7 @@ E.g. select * as temperature from root.sg.d1
 CREATE USER <userName> <password>;  
 userName:=identifier  
 password:=string
-Eg: IoTDB > CREATE USER thulab 'pwd';
+Eg: IoTDB > CREATE USER thulab 'passwd';
 ```
 
 * 删除用户
@@ -726,7 +789,7 @@ GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 userName:=identifier  
 nodeName:=identifier (DOT identifier)*  
 privileges:= string (COMMA string)*
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * 赋予角色权限
@@ -736,7 +799,7 @@ GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 roleName:=identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
 ```
 
 * 赋予用户角色
@@ -755,7 +818,7 @@ REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 userName:=identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * 撤销角色权限
@@ -765,7 +828,7 @@ REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 roleName:= identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
 ```
 
 * 撤销用户角色
@@ -893,6 +956,14 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
+* EXTREME
+极值：具有最大绝对值的值（正值优先）
+```
+SELECT EXTREME (Path) (COMMA EXT (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT EXTREME(status), EXTREME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+```
+
 * AVG
 原有的 `MEAN` 方法在 `v0.9.0` 版本更名为 `AVG`。
 
@@ -938,18 +1009,18 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 ## TTL
 
-IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
-可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,
+IoTDB 支持对存储组级别设置数据存活时间（TTL），这使得 IoTDB 可以定期、自动地删除一定时间之前的数据。合理使用 TTL
+可以帮助您控制 IoTDB 占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降，
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
-IoTDB中的TTL操作可以由以下的语句进行实现：
+IoTDB 中的 TTL 操作可以由以下的语句进行实现：
 
 * 设置 TTL
 
 ```
 SET TTL TO StorageGroupName TTLTime
 Eg. SET TTL TO root.group1 3600000
-这个例子展示了如何使得root.group1这个存储组只保留近一个小时的数据，一个小时前的数据会被删除或者进入不可见状态。
-注意: TTLTime 应是毫秒时间戳。一旦TTL被设置，超过TTL时间范围的写入将被拒绝。
+这个例子展示了如何使得 root.group1 这个存储组只保留近一个小时的数据，一个小时前的数据会被删除或者进入不可见状态。
+注意：TTLTime 应是毫秒时间戳。一旦 TTL 被设置，超过 TTL 时间范围的写入将被拒绝。
 ```
 
 * 取消 TTL
@@ -957,7 +1028,7 @@ Eg. SET TTL TO root.group1 3600000
 ```
 UNSET TTL TO StorageGroupName
 Eg. UNSET TTL TO root.group1
-这个例子展示了如何取消存储组root.group1的TTL，这将使得该存储组接受任意时刻的数据。
+这个例子展示了如何取消存储组 root.group1 的 TTL，这将使得该存储组接受任意时刻的数据。
 ```
 
 * 显示 TTL
@@ -966,34 +1037,25 @@ Eg. UNSET TTL TO root.group1
 SHOW ALL TTL
 SHOW TTL ON StorageGroupNames
 Eg.1 SHOW ALL TTL
-这个例子会给出所有存储组的TTL。
+这个例子会给出所有存储组的 TTL。
 Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
-这个例子会显示指定的三个存储组的TTL。
-注意: 没有设置TTL的存储组的TTL将显示为null。
+这个例子会显示指定的三个存储组的 TTL。
+注意：没有设置 TTL 的存储组的 TTL 将显示为 null。
 ```
 
-注意：当您对某个存储组设置TTL的时候，超过TTL范围的数据将会立即不可见。但由于数据文件可能混合包含处在TTL范围内
-与范围外的数据，同时数据文件可能正在接受查询，数据文件的物理删除不会立即进行。如果你在此时取消或者调大TTL，
-一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。也就是说，TTL操作不会原子性地删除
-对应的数据。因此我们不推荐您频繁修改TTL，除非您能接受该操作带来的一定程度的不可预知性。
+注意：当您对某个存储组设置 TTL 的时候，超过 TTL 范围的数据将会立即不可见。但由于数据文件可能混合包含处在 TTL 范围内
+与范围外的数据，同时数据文件可能正在接受查询，数据文件的物理删除不会立即进行。如果你在此时取消或者调大 TTL，
+一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。也就是说，TTL 操作不会原子性地删除
+对应的数据。因此我们不推荐您频繁修改 TTL，除非您能接受该操作带来的一定程度的不可预知性。
 
-* 删除时间分区 (实验性功能)
+* 删除时间分区 （实验性功能）
 
 ```
 DELETE PARTITION StorageGroupName INT(COMMA INT)*
 Eg DELETE PARTITION root.sg1 0,1,2
-该例子将删除存储组root.sg1的前三个时间分区
+该例子将删除存储组 root.sg1 的前三个时间分区
 ```
 partitionId 可以通过查看数据文件夹获取，或者是计算 `timestamp / partitionInterval`得到。 
-
-## 性能追踪
-
-IoTDB 支持使用 `TRACING` 语句来追踪查询语句的执行，通过日志文件输出该查询访问的 Tsfile 文件数，chunk 数等信息，默认输出位置位于 `./data/tracing`. 性能追踪功能默认处于关闭状态，用户可以使用 TRACING ON/OFF 命令来打开/关闭该功能。
-
-```
-TRACING ON    //打开性能追踪
-TRACING OFF   //关闭性能追踪
-```
 
 ## 中止查询
 
@@ -1011,6 +1073,14 @@ E.g. KILL QUERY
 E.g. KILL QUERY 2
 ```
 
+
+## 设置系统为只读/可写入模式
+
+
+```
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
+```
 
 ## 标识符列表
 
@@ -1042,9 +1112,8 @@ Boolean := TRUE | FALSE | 0 | 1 (case insensitive)
 ```
 
 ```
-StringLiteral := ( '\'' ( ~('\'') )* '\'' | '\"' ( ~('\"') )* '\"');
+StringLiteral := ( '\'' ( ~('\'') )* '\'';
 eg. 'abc'
-eg. "abc"
 ```
 
 ```
@@ -1069,10 +1138,8 @@ eg. _abc123
 
 ## 常量列表
 
-
 ```
 PointValue : Integer | Float | StringLiteral | Boolean
-```
 ```
 TimeValue : Integer | DateTime | ISO8601 | NOW()
 Note: Integer means timestamp type.
@@ -1084,9 +1151,7 @@ eg. 2016-11-16T16:22:33.000+08:00
 eg. 2016-11-16 16:22:33.000+08:00
 Note: DateTime Type can support several types, see Chapter 3 Datetime section for details.
 ```
-```
 PrecedenceEqualOperator : EQUAL | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN
-```
 ```
 Timeseries : ROOT [DOT <LayerName>]* DOT <SensorName>
 LayerName : Identifier
@@ -1101,7 +1166,6 @@ PrefixPath : ROOT (DOT <LayerName>)*
 LayerName : Identifier | STAR
 eg. root.sgcc
 eg. root.*
-```
 ```
 Path: (ROOT | <LayerName>) (DOT <LayerName>)* 
 LayerName: Identifier | STAR

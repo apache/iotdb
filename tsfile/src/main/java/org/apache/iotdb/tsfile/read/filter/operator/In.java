@@ -42,11 +42,11 @@ public class In<T extends Comparable<T>> implements Filter {
 
   private static final long serialVersionUID = 8572705136773595399L;
 
-  private Set<T> values;
+  protected Set<T> values;
 
-  private boolean not;
+  protected boolean not;
 
-  private FilterType filterType;
+  protected FilterType filterType;
 
   public In() {}
 

@@ -41,7 +41,8 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -115,7 +116,7 @@ public class ClientMain {
 
   private static final TSDataType[] DATA_TYPES = new TSDataType[] {TSDataType.DOUBLE};
 
-  private static List<MeasurementSchema> schemas;
+  private static List<IMeasurementSchema> schemas;
 
   private static final String[] DATA_QUERIES =
       new String[] {
@@ -291,7 +292,7 @@ public class ClientMain {
       for (int i = 0; i < MEASUREMENTS.length; i++) {
         String measurement = MEASUREMENTS[i];
         schemas.add(
-            new MeasurementSchema(
+            new UnaryMeasurementSchema(
                 device + IoTDBConstant.PATH_SEPARATOR + measurement, DATA_TYPES[i]));
       }
     }
@@ -364,7 +365,7 @@ public class ClientMain {
   private static void registerTimeseries(long sessionId, Client client) throws TException {
     TSCreateTimeseriesReq req = new TSCreateTimeseriesReq();
     req.setSessionId(sessionId);
-    for (MeasurementSchema schema : schemas) {
+    for (IMeasurementSchema schema : schemas) {
       req.setDataType(schema.getType().ordinal());
       req.setEncoding(schema.getEncodingType().ordinal());
       req.setCompressor(schema.getCompressor().ordinal());
@@ -418,7 +419,7 @@ public class ClientMain {
       insertReq.setValues(values);
 
       for (String device : DEVICES) {
-        insertReq.setDeviceId(device);
+        insertReq.setPrefixPath(device);
         if (logger.isInfoEnabled()) {
           logger.info(insertReq.toString());
           logger.info(client.insertStringRecord(insertReq).toString());

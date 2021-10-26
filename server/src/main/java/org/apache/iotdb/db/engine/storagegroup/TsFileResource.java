@@ -22,23 +22,29 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.SettleTsFileCallBack;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -48,6 +54,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -60,12 +67,7 @@ import java.util.Random;
 import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_MERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_TIME_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_VERSION_INDEX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.getTsFileName;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -77,7 +79,7 @@ public class TsFileResource {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  // tsfile
+  /** this tsfile */
   private File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
@@ -86,12 +88,17 @@ public class TsFileResource {
   /** version number */
   public static final byte VERSION_NUMBER = 1;
 
-  public TsFileProcessor getProcessor() {
-    return processor;
-  }
+  /** Used in {@link TsFileResourceList TsFileResourceList} */
+  protected TsFileResource prev;
+
+  protected TsFileResource next;
 
   private TsFileProcessor processor;
 
+  public TsFileProcessor getProcessor() {
+    return processor;
+  }
+  /** time index */
   protected ITimeIndex timeIndex;
 
   /** time index type, fileTimeIndex = 0, deviceTimeIndex = 1 */
@@ -99,25 +106,29 @@ public class TsFileResource {
 
   private ModificationFile modFile;
 
-  private volatile boolean closed = false;
+  protected volatile boolean closed = false;
   private volatile boolean deleted = false;
-  private volatile boolean isMerging = false;
+  volatile boolean isMerging = false;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
   private Random random = new Random();
 
+  private boolean isSeq;
+
+  private Map<String, Integer> holderMap = new HashMap<>();
+
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
    */
-  private List<ChunkMetadata> chunkMetadataList;
+  private List<IChunkMetadata> chunkMetadataList;
 
   /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
   private List<ReadOnlyMemChunk> readOnlyMemChunk;
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private TimeseriesMetadata timeSeriesMetadata;
+  private ITimeSeriesMetadata timeSeriesMetadata;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -130,11 +141,7 @@ public class TsFileResource {
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
-  /**
-   * indicate if this tsfile resource belongs to a sequence tsfile or not used for upgrading
-   * v0.9.x/v1 -> 0.10/v2
-   */
-  private boolean isSeq;
+  private SettleTsFileCallBack settleTsFileCallBack;
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -150,6 +157,8 @@ public class TsFileResource {
   protected long minPlanIndex = Long.MAX_VALUE;
 
   private long version = 0;
+
+  private long ramSize;
 
   public TsFileResource() {}
 
@@ -180,19 +189,19 @@ public class TsFileResource {
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
   }
 
-  /** unsealed TsFile */
-  public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
+  /** unsealed TsFile, for writter */
+  public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
     this.processor = processor;
   }
 
-  /** unsealed TsFile */
+  /** unsealed TsFile, for query */
   public TsFileResource(
       List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetadata> chunkMetadataList,
+      List<IChunkMetadata> chunkMetadataList,
       TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
@@ -213,36 +222,110 @@ public class TsFileResource {
     this.timeIndexType = 1;
   }
 
+  /**
+   * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
+   * have chunkMetadata, but query will use these, so we need to generate it for them.
+   */
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private void generateTimeSeriesMetadata() throws IOException {
-    timeSeriesMetadata = new TimeseriesMetadata();
-    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
-    timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
+    TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
+    timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
+    timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
     if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
-      timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
+      timeTimeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
       TSDataType dataType = chunkMetadataList.get(0).getDataType();
-      timeSeriesMetadata.setTSDataType(dataType);
+      timeTimeSeriesMetadata.setTSDataType(dataType);
     } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
-      timeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
+      timeTimeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
       TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
-      timeSeriesMetadata.setTSDataType(dataType);
+      timeTimeSeriesMetadata.setTSDataType(dataType);
     }
-    if (timeSeriesMetadata.getTSDataType() != null) {
-      Statistics<?> seriesStatistics =
-          Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
-      // flush chunkMetadataList one by one
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
-      }
+    if (timeTimeSeriesMetadata.getTSDataType() != null) {
+      if (timeTimeSeriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+        Statistics<? extends Serializable> timeStatistics =
+            Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
 
-      for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
-        if (!memChunk.isEmpty()) {
-          seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+        List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
+
+        if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
+          VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetadataList.get(0);
+          for (IChunkMetadata valueChunkMetadata :
+              vectorChunkMetadata.getValueChunkMetadataList()) {
+            TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
+            valueMetadata.setOffsetOfChunkMetaDataList(-1);
+            valueMetadata.setDataSizeOfChunkMetaDataList(-1);
+            valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementUid());
+            valueMetadata.setTSDataType(valueChunkMetadata.getDataType());
+            valueTimeSeriesMetadataList.add(valueMetadata);
+            valueMetadata.setStatistics(
+                Statistics.getStatsByType(valueChunkMetadata.getDataType()));
+          }
+        } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
+          VectorChunkMetadata vectorChunkMetadata =
+              (VectorChunkMetadata) readOnlyMemChunk.get(0).getChunkMetaData();
+          for (IChunkMetadata valueChunkMetadata :
+              vectorChunkMetadata.getValueChunkMetadataList()) {
+            TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
+            valueMetadata.setOffsetOfChunkMetaDataList(-1);
+            valueMetadata.setDataSizeOfChunkMetaDataList(-1);
+            valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementUid());
+            valueMetadata.setTSDataType(valueChunkMetadata.getDataType());
+            valueTimeSeriesMetadataList.add(valueMetadata);
+            valueMetadata.setStatistics(
+                Statistics.getStatsByType(valueChunkMetadata.getDataType()));
+          }
         }
+
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetadata;
+          timeStatistics.mergeStatistics(
+              vectorChunkMetadata.getTimeChunkMetadata().getStatistics());
+          for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+            valueTimeSeriesMetadataList
+                .get(i)
+                .getStatistics()
+                .mergeStatistics(
+                    vectorChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+          }
+        }
+
+        for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+          if (!memChunk.isEmpty()) {
+            VectorChunkMetadata vectorChunkMetadata =
+                (VectorChunkMetadata) memChunk.getChunkMetaData();
+            timeStatistics.mergeStatistics(
+                vectorChunkMetadata.getTimeChunkMetadata().getStatistics());
+            for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+              valueTimeSeriesMetadataList
+                  .get(i)
+                  .getStatistics()
+                  .mergeStatistics(
+                      vectorChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+            }
+          }
+        }
+        timeTimeSeriesMetadata.setStatistics(timeStatistics);
+        timeSeriesMetadata =
+            new VectorTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
+      } else {
+        Statistics<? extends Serializable> seriesStatistics =
+            Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
+        // flush chunkMetadataList one by one
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+        }
+
+        for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+          if (!memChunk.isEmpty()) {
+            seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+          }
+        }
+        timeTimeSeriesMetadata.setStatistics(seriesStatistics);
+        this.timeSeriesMetadata = timeTimeSeriesMetadata;
       }
-      timeSeriesMetadata.setStatistics(seriesStatistics);
     } else {
-      timeSeriesMetadata = null;
+      this.timeSeriesMetadata = null;
     }
   }
 
@@ -267,6 +350,7 @@ public class TsFileResource {
     fsFactory.moveFile(src, dest);
   }
 
+  /** deserialize from disk */
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       readVersionNumber(inputStream);
@@ -284,6 +368,7 @@ public class TsFileResource {
     }
   }
 
+  /** deserialize tsfile resource from old file */
   public void deserializeFromOldFile() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // deserialize old TsfileResource
@@ -349,7 +434,7 @@ public class TsFileResource {
     return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
-  public List<ChunkMetadata> getChunkMetadataList() {
+  public List<IChunkMetadata> getChunkMetadataList() {
     return new ArrayList<>(chunkMetadataList);
   }
 
@@ -357,9 +442,24 @@ public class TsFileResource {
     return readOnlyMemChunk;
   }
 
-  public synchronized ModificationFile getModFile() {
+  public ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = new ModificationFile(file.getPath() + ModificationFile.FILE_SUFFIX);
+      synchronized (this) {
+        if (modFile == null) {
+          modFile = ModificationFile.getNormalMods(this);
+        }
+      }
+    }
+    return modFile;
+  }
+
+  public ModificationFile getCompactionModFile() {
+    if (modFile == null) {
+      synchronized (this) {
+        if (modFile == null) {
+          modFile = ModificationFile.getCompactionMods(this);
+        }
+      }
     }
     return modFile;
   }
@@ -390,7 +490,7 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return timeIndex.getDevices();
+    return timeIndex.getDevices(file.getPath());
   }
 
   public boolean endTimeEmpty() {
@@ -535,7 +635,7 @@ public class TsFileResource {
     this.deleted = deleted;
   }
 
-  boolean isMerging() {
+  public boolean isMerging() {
     return isMerging;
   }
 
@@ -548,10 +648,14 @@ public class TsFileResource {
     return timeIndex.stillLives(timeLowerBound);
   }
 
+  public boolean isDeviceIdExist(String deviceId) {
+    return timeIndex.checkDeviceIdExist(deviceId);
+  }
+
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
       String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
-    if (!getDevices().contains(deviceId)) {
+    if (!timeIndex.checkDeviceIdExist(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -589,7 +693,12 @@ public class TsFileResource {
     this.processor = processor;
   }
 
-  public TimeseriesMetadata getTimeSeriesMetadata() {
+  /**
+   * Get a timeseriesMetadata.
+   *
+   * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
+   */
+  public ITimeSeriesMetadata getTimeSeriesMetadata() {
     return timeSeriesMetadata;
   }
 
@@ -601,14 +710,6 @@ public class TsFileResource {
     return upgradedResources;
   }
 
-  public void setSeq(boolean isSeq) {
-    this.isSeq = isSeq;
-  }
-
-  public boolean isSeq() {
-    return isSeq;
-  }
-
   public void setUpgradeTsFileResourceCallBack(
       UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
     this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
@@ -616,6 +717,14 @@ public class TsFileResource {
 
   public UpgradeTsFileResourceCallBack getUpgradeTsFileResourceCallBack() {
     return upgradeTsFileResourceCallBack;
+  }
+
+  public SettleTsFileCallBack getSettleTsFileCallBack() {
+    return settleTsFileCallBack;
+  }
+
+  public void setSettleTsFileCallBack(SettleTsFileCallBack settleTsFileCallBack) {
+    this.settleTsFileCallBack = settleTsFileCallBack;
   }
 
   /** make sure Either the deviceToIndex is not empty Or the path contains a partition folder */
@@ -683,18 +792,10 @@ public class TsFileResource {
     this.modFile = modFile;
   }
 
-  /** @return initial resource map size */
+  /** @return resource map size */
   public long calculateRamSize() {
-    return timeIndex.calculateRamSize();
-  }
-
-  /**
-   * Calculate the resource ram increment when insert data in TsFileProcessor
-   *
-   * @return ramIncrement
-   */
-  public long estimateRamIncrement(String deviceToBeChecked) {
-    return timeIndex.estimateRamIncrement(deviceToBeChecked);
+    ramSize = timeIndex.calculateRamSize();
+    return ramSize;
   }
 
   public void delete() throws IOException {
@@ -734,6 +835,11 @@ public class TsFileResource {
     }
   }
 
+  public static int getInnerCompactionCount(String fileName) throws IOException {
+    TsFileName tsFileName = getTsFileName(fileName);
+    return tsFileName.getInnerCompactionCnt();
+  }
+
   /** For merge, the index range of the new file should be the union of all files' in this merge. */
   public void updatePlanIndexes(TsFileResource another) {
     maxPlanIndex = Math.max(maxPlanIndex, another.maxPlanIndex);
@@ -741,11 +847,11 @@ public class TsFileResource {
   }
 
   public boolean isPlanIndexOverlap(TsFileResource another) {
-    return another.maxPlanIndex >= this.minPlanIndex && another.minPlanIndex <= this.maxPlanIndex;
+    return another.maxPlanIndex > this.minPlanIndex && another.minPlanIndex < this.maxPlanIndex;
   }
 
   public boolean isPlanRangeCovers(TsFileResource another) {
-    return this.minPlanIndex <= another.minPlanIndex && another.maxPlanIndex <= this.maxPlanIndex;
+    return this.minPlanIndex < another.minPlanIndex && another.maxPlanIndex < this.maxPlanIndex;
   }
 
   public void setMaxPlanIndex(long maxPlanIndex) {
@@ -768,127 +874,61 @@ public class TsFileResource {
     this.timeIndex = timeIndex;
   }
 
-  // change tsFile name
-
-  public static String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
-    return time
-        + FILE_NAME_SEPARATOR
-        + version
-        + FILE_NAME_SEPARATOR
-        + mergeCnt
-        + FILE_NAME_SEPARATOR
-        + unSeqMergeCnt
-        + TSFILE_SUFFIX;
+  // ({systemTime}-{versionNum}-{innerMergeNum}-{crossMergeNum}.tsfile)
+  public static int compareFileName(File o1, File o2) {
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    long ver1 = Long.parseLong(items1[0]);
+    long ver2 = Long.parseLong(items2[0]);
+    int cmp = Long.compare(ver1, ver2);
+    if (cmp == 0) {
+      int cmpVersion = Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
+      if (cmpVersion == 0) {
+        int cmpInnerCompact = Long.compare(Long.parseLong(items1[2]), Long.parseLong(items2[2]));
+        if (cmpInnerCompact == 0) {
+          return Long.compare(Long.parseLong(items1[3]), Long.parseLong(items2[3]));
+        }
+        return cmpInnerCompact;
+      }
+      return cmpVersion;
+    } else {
+      return cmp;
+    }
   }
 
-  public static TsFileName getTsFileName(String FileName) {
-    String[] fileName =
-        FileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
-            FILE_NAME_SEPARATOR);
-    TsFileName tsFileName =
-        new TsFileName(
-            Long.parseLong(fileName[FILE_NAME_SUFFIX_TIME_INDEX]),
-            Long.parseLong(fileName[FILE_NAME_SUFFIX_VERSION_INDEX]),
-            Integer.parseInt(fileName[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
-            Integer.parseInt(fileName[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
-    return tsFileName;
+  public void setSeq(boolean seq) {
+    isSeq = seq;
   }
 
-  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource) {
-    File tsFile = tsFileResource.getTsFile();
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
-    tsFileResource.setFile(
-        new File(
-            path,
-            tsFileName.time
-                + FILE_NAME_SEPARATOR
-                + tsFileName.version
-                + FILE_NAME_SEPARATOR
-                + tsFileName.mergeCnt
-                + FILE_NAME_SEPARATOR
-                + tsFileName.unSeqMergeCnt
-                + TSFILE_SUFFIX));
-    return tsFileResource;
+  public boolean isSeq() {
+    return isSeq;
   }
 
-  public static File modifyTsFileNameUnseqMergCnt(File tsFile) {
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
-    return new File(
-        path,
-        tsFileName.time
-            + FILE_NAME_SEPARATOR
-            + tsFileName.version
-            + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
-            + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
-            + TSFILE_SUFFIX);
+  public int compareIndexDegradePriority(TsFileResource tsFileResource) {
+    int cmp = timeIndex.compareDegradePriority(tsFileResource.timeIndex);
+    return cmp == 0 ? file.getAbsolutePath().compareTo(tsFileResource.file.getAbsolutePath()) : cmp;
   }
 
-  public static File modifyTsFileNameMergeCnt(File tsFile) {
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setMergeCnt(tsFileName.getMergeCnt() + 1);
-    return new File(
-        path,
-        tsFileName.time
-            + FILE_NAME_SEPARATOR
-            + tsFileName.version
-            + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
-            + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
-            + TSFILE_SUFFIX);
+  public byte getTimeIndexType() {
+    return timeIndexType;
   }
 
-  public static class TsFileName {
+  public long getRamSize() {
+    return ramSize;
+  }
 
-    private long time;
-    private long version;
-    private int mergeCnt;
-    private int unSeqMergeCnt;
-
-    public TsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
-      this.time = time;
-      this.version = version;
-      this.mergeCnt = mergeCnt;
-      this.unSeqMergeCnt = unSeqMergeCnt;
-    }
-
-    public long getTime() {
-      return time;
-    }
-
-    public long getVersion() {
-      return version;
-    }
-
-    public int getMergeCnt() {
-      return mergeCnt;
-    }
-
-    public int getUnSeqMergeCnt() {
-      return unSeqMergeCnt;
-    }
-
-    public void setTime(long time) {
-      this.time = time;
-    }
-
-    public void setVersion(long version) {
-      this.version = version;
-    }
-
-    public void setMergeCnt(int mergeCnt) {
-      this.mergeCnt = mergeCnt;
-    }
-
-    public void setUnSeqMergeCnt(int unSeqMergeCnt) {
-      this.unSeqMergeCnt = unSeqMergeCnt;
-    }
+  /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
+  public long degradeTimeIndex() {
+    TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
+    // if current timeIndex is FileTimeIndex, no need to degrade
+    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
+    // get the minimum startTime
+    long startTime = timeIndex.getMinStartTime();
+    // get the maximum endTime
+    long endTime = timeIndex.getMaxEndTime();
+    // replace the DeviceTimeIndex with FileTimeIndex
+    timeIndex = new FileTimeIndex(startTime, endTime);
+    timeIndexType = 0;
+    return ramSize - timeIndex.calculateRamSize();
   }
 }

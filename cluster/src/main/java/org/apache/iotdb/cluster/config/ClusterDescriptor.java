@@ -142,14 +142,24 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "internal_data_port", Integer.toString(config.getInternalDataPort()))));
 
-    config.setClusterRpcPort(
+    // rpc port and rpc address are defined in iotdb-engine.properties.
+    // To avoid inconsistency, we do not read "rpc_port" in iotdb-cluster.properties
+    // even users claim the property.
+
+    config.setClusterInfoRpcPort(
         Integer.parseInt(
-            properties.getProperty("rpc_port", Integer.toString(config.getClusterRpcPort()))));
+            properties.getProperty(
+                "cluster_info_public_port", Integer.toString(config.getClusterInfoRpcPort()))));
 
     config.setMaxConcurrentClientNum(
         Integer.parseInt(
             properties.getProperty(
                 "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
+
+    config.setMultiRaftFactor(
+        Integer.parseInt(
+            properties.getProperty(
+                "multi_raft_factor", String.valueOf(config.getMultiRaftFactor()))));
 
     config.setReplicationNum(
         Integer.parseInt(
@@ -168,6 +178,16 @@ public class ClusterDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
+
+    config.setHeartbeatIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "heartbeat_interval_ms", String.valueOf(config.getHeartbeatIntervalMs()))));
+
+    config.setElectionTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "election_timeout_ms", String.valueOf(config.getElectionTimeoutMs()))));
 
     config.setReadOperationTimeoutMS(
         Integer.parseInt(
@@ -288,6 +308,10 @@ public class ClusterDescriptor {
         Long.parseLong(
             properties.getProperty("max_read_log_lag", String.valueOf(config.getMaxReadLogLag()))));
 
+    config.setMaxSyncLogLag(
+        Long.parseLong(
+            properties.getProperty("max_sync_log_lag", String.valueOf(config.getMaxSyncLogLag()))));
+
     config.setMaxClientPerNodePerMember(
         Integer.parseInt(
             properties.getProperty(
@@ -298,11 +322,6 @@ public class ClusterDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "wait_client_timeout_ms", String.valueOf(config.getWaitClientTimeoutMS()))));
-
-    config.setEnableQueryRedirect(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_query_redirect", String.valueOf(config.isEnableQueryRedirect()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -65,13 +66,13 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   }
 
   @Override
-  public List<ChunkMetadata> getChunkMetaDataList(Path path) throws IOException {
-    return chunkMetaDataCache.get(path);
+  public List<IChunkMetadata> getChunkMetaDataList(Path path) throws IOException {
+    return new ArrayList<>(chunkMetaDataCache.get(path));
   }
 
   @Override
-  public Map<Path, List<ChunkMetadata>> getChunkMetaDataMap(List<Path> paths) throws IOException {
-    Map<Path, List<ChunkMetadata>> chunkMetaDatas = new HashMap<>();
+  public Map<Path, List<IChunkMetadata>> getChunkMetaDataMap(List<Path> paths) throws IOException {
+    Map<Path, List<IChunkMetadata>> chunkMetaDatas = new HashMap<>();
     for (Path path : paths) {
       if (!chunkMetaDatas.containsKey(path)) {
         chunkMetaDatas.put(path, new ArrayList<>());
@@ -202,7 +203,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
           continue;
         }
 
-        for (ChunkMetadata chunkMetadata : seriesMetadata.getValue()) {
+        for (IChunkMetadata chunkMetadata : seriesMetadata.getValue()) {
           LocateStatus location =
               checkLocateStatus(chunkMetadata, spacePartitionStartPos, spacePartitionEndPos);
           if (location == LocateStatus.after) {
@@ -250,7 +251,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
    * @return LocateStatus
    */
   public static LocateStatus checkLocateStatus(
-      ChunkMetadata chunkMetaData, long spacePartitionStartPos, long spacePartitionEndPos) {
+      IChunkMetadata chunkMetaData, long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader();
     if (spacePartitionStartPos <= startOffsetOfChunk && startOffsetOfChunk < spacePartitionEndPos) {
       return LocateStatus.in;

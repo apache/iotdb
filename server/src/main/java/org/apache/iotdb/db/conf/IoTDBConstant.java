@@ -31,6 +31,10 @@ public class IoTDBConstant {
       IoTDBConstant.class.getPackage().getImplementationVersion() != null
           ? IoTDBConstant.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
+  public static final String MAJOR_VERSION =
+      VERSION.equals("UNKNOWN")
+          ? "UNKNOWN"
+          : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
 
@@ -50,8 +54,6 @@ public class IoTDBConstant {
 
   public static final String PATH_ROOT = "root";
   public static final char PATH_SEPARATOR = '.';
-  public static final String ADMIN_NAME = "root";
-  public static final String ADMIN_PW = "root";
   public static final String PROFILE_SUFFIX = ".profile";
   public static final String MAX_TIME = "max_time";
   public static final String MIN_TIME = "min_time";
@@ -82,6 +84,7 @@ public class IoTDBConstant {
   public static final String COLUMN_PRIVILEGE = "privilege";
 
   public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_LOCK_INFO = "lock holder";
   public static final String COLUMN_TTL = "ttl";
 
   public static final String COLUMN_TASK_NAME = "task name";
@@ -93,6 +96,12 @@ public class IoTDBConstant {
   public static final String COLUMN_FUNCTION_NAME = "function name";
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
+  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
+  public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
+  public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
@@ -107,7 +116,11 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_CLASS = "class name";
   public static final String COLUMN_TRIGGER_ATTRIBUTES = "attributes";
 
-  public static final String PATH_WILDCARD = "*";
+  public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
+  public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
+
+  public static final String ONE_LEVEL_PATH_WILDCARD = "*";
+  public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
 
   // sdt parameters
@@ -132,6 +145,7 @@ public class IoTDBConstant {
   public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
+  public static final String TRIGGER_FOLDER_NAME = "trigger";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";

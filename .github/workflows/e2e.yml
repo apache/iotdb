@@ -21,6 +21,9 @@ on:
   # allow manually run the action:
   workflow_dispatch:
 
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+
 jobs:
   E2E:
     runs-on: ubuntu-latest
@@ -39,11 +42,11 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Build Distribution Zip
-        run: ./mvnw.sh -B -DskipTests clean package
+        run: ./mvnw.sh -B -DskipTests clean install
 
       - name: Build Docker Image
         run: |
-          docker build . -f docker/src/main/Dockerfile -t "iotdb:$GITHUB_SHA"
+          docker build . -f docker/src/main/Dockerfile-single -t "iotdb:$GITHUB_SHA"
           docker images
 
       - name: Run Test Case ${{ matrix.case }}
@@ -52,3 +55,7 @@ jobs:
       - name: Clean Up
         if: ${{ always() }}
         run: bash test/e2e/cases/${{ matrix.case }}/cleanup.sh
+
+      - name: TestContainer
+        run: |
+          mvn -B -T 4 integration-test -pl testcontainer

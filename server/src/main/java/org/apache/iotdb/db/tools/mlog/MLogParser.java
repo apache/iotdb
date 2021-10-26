@@ -18,17 +18,24 @@
  */
 package org.apache.iotdb.db.tools.mlog;
 
-import org.apache.iotdb.db.metadata.MLogTxtWriter;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import org.apache.commons.cli.CommandLine;
@@ -161,6 +168,9 @@ public class MLogParser {
             mLogTxtWriter.createTimeseries(
                 (CreateTimeSeriesPlan) plan, ((CreateTimeSeriesPlan) plan).getTagOffset());
             break;
+          case CREATE_ALIGNED_TIMESERIES:
+            mLogTxtWriter.createAlignedTimeseries((CreateAlignedTimeSeriesPlan) plan);
+            break;
           case DELETE_TIMESERIES:
             for (PartialPath partialPath : plan.getPaths()) {
               mLogTxtWriter.deleteTimeseries(partialPath.getFullPath());
@@ -197,6 +207,25 @@ public class MLogParser {
             break;
           case MNODE:
             mLogTxtWriter.serializeMNode((MNodePlan) plan);
+            break;
+          case CREATE_CONTINUOUS_QUERY:
+            mLogTxtWriter.createContinuousQuery((CreateContinuousQueryPlan) plan);
+            break;
+          case DROP_CONTINUOUS_QUERY:
+            mLogTxtWriter.dropContinuousQuery((DropContinuousQueryPlan) plan);
+            break;
+          case CREATE_TEMPLATE:
+            mLogTxtWriter.createTemplate((CreateTemplatePlan) plan);
+            break;
+          case SET_SCHEMA_TEMPLATE:
+            mLogTxtWriter.setTemplate((SetSchemaTemplatePlan) plan);
+            break;
+          case SET_USING_SCHEMA_TEMPLATE:
+            mLogTxtWriter.setUsingTemplate((SetUsingSchemaTemplatePlan) plan);
+            break;
+          case AUTO_CREATE_DEVICE_MNODE:
+            mLogTxtWriter.autoCreateDeviceNode(
+                ((AutoCreateDeviceMNodePlan) plan).getPath().getFullPath());
             break;
           default:
             logger.warn("unknown plan {}", plan);

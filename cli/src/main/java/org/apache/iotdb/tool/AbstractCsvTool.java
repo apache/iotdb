@@ -23,13 +23,18 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
-import jline.console.ConsoleReader;
+import jline.internal.Nullable;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.QuoteMode;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.ZoneId;
+import java.util.List;
 
 public abstract class AbstractCsvTool {
 
@@ -53,36 +58,46 @@ public abstract class AbstractCsvTool {
   protected static final String TIME_ZONE_ARGS = "tz";
   protected static final String TIME_ZONE_NAME = "timeZone";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
-  protected static final String[] SUPPORT_TIME_FORMAT =
+  protected static final String[] TIME_FORMAT =
+      new String[] {"default", "long", "number", "timestamp"};
+  public static final String[] STRING_TIME_FORMAT =
       new String[] {
-        "default",
-        "long",
-        "number",
-        "timestamp",
+        "yyyy-MM-dd HH:mm:ss.SSSX",
+        "yyyy/MM/dd HH:mm:ss.SSSX",
+        "yyyy.MM.dd HH:mm:ss.SSSX",
+        "yyyy-MM-dd HH:mm:ssX",
+        "yyyy/MM/dd HH:mm:ssX",
+        "yyyy.MM.dd HH:mm:ssX",
+        "yyyy-MM-dd HH:mm:ss.SSSz",
+        "yyyy/MM/dd HH:mm:ss.SSSz",
+        "yyyy.MM.dd HH:mm:ss.SSSz",
+        "yyyy-MM-dd HH:mm:ssz",
+        "yyyy/MM/dd HH:mm:ssz",
+        "yyyy.MM.dd HH:mm:ssz",
+        "yyyy-MM-dd HH:mm:ss.SSS",
+        "yyyy/MM/dd HH:mm:ss.SSS",
+        "yyyy.MM.dd HH:mm:ss.SSS",
         "yyyy-MM-dd HH:mm:ss",
         "yyyy/MM/dd HH:mm:ss",
         "yyyy.MM.dd HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+        "yyyy/MM/dd'T'HH:mm:ss.SSSX",
+        "yyyy.MM.dd'T'HH:mm:ss.SSSX",
+        "yyyy-MM-dd'T'HH:mm:ssX",
+        "yyyy/MM/dd'T'HH:mm:ssX",
+        "yyyy.MM.dd'T'HH:mm:ssX",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSz",
+        "yyyy/MM/dd'T'HH:mm:ss.SSSz",
+        "yyyy.MM.dd'T'HH:mm:ss.SSSz",
+        "yyyy-MM-dd'T'HH:mm:ssz",
+        "yyyy/MM/dd'T'HH:mm:ssz",
+        "yyyy.MM.dd'T'HH:mm:ssz",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS",
+        "yyyy/MM/dd'T'HH:mm:ss.SSS",
+        "yyyy.MM.dd'T'HH:mm:ss.SSS",
         "yyyy-MM-dd'T'HH:mm:ss",
         "yyyy/MM/dd'T'HH:mm:ss",
-        "yyyy.MM.dd'T'HH:mm:ss",
-        "yyyy-MM-dd HH:mm:ssZZ",
-        "yyyy/MM/dd HH:mm:ssZZ",
-        "yyyy.MM.dd HH:mm:ssZZ",
-        "yyyy-MM-dd'T'HH:mm:ssZZ",
-        "yyyy/MM/dd'T'HH:mm:ssZZ",
-        "yyyy.MM.dd'T'HH:mm:ssZZ",
-        "yyyy/MM/dd HH:mm:ss.SSS",
-        "yyyy-MM-dd HH:mm:ss.SSS",
-        "yyyy.MM.dd HH:mm:ss.SSS",
-        "yyyy/MM/dd'T'HH:mm:ss.SSS",
-        "yyyy-MM-dd'T'HH:mm:ss.SSS",
-        "yyyy-MM-dd'T'HH:mm:ss.SSS",
-        "yyyy.MM.dd'T'HH:mm:ss.SSS",
-        "yyyy-MM-dd HH:mm:ss.SSSZZ",
-        "yyyy/MM/dd HH:mm:ss.SSSZZ",
-        "yyyy.MM.dd HH:mm:ss.SSSZZ",
-        "yyyy-MM-dd'T'HH:mm:ss.SSSZZ",
-        "yyyy/MM/dd'T'HH:mm:ss.SSSZZ",
+        "yyyy.MM.dd'T'HH:mm:ss"
       };
   protected static String host;
   protected static String port;
@@ -94,7 +109,7 @@ public abstract class AbstractCsvTool {
   protected static String timeFormat;
   protected static Session session;
 
-  AbstractCsvTool() {}
+  public AbstractCsvTool() {}
 
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
       throws ArgsErrorException {
@@ -115,20 +130,22 @@ public abstract class AbstractCsvTool {
     zoneId = ZoneId.of(session.getTimeZone());
   }
 
-  protected static void parseBasicParams(CommandLine commandLine, ConsoleReader reader)
+  protected static void parseBasicParams(CommandLine commandLine)
       throws ArgsErrorException, IOException {
     host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
     port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
     username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
 
     password = commandLine.getOptionValue(PASSWORD_ARGS);
-    if (password == null) {
-      password = reader.readLine("please input your password:", '\0');
-    }
   }
 
   protected static boolean checkTimeFormat() {
-    for (String format : SUPPORT_TIME_FORMAT) {
+    for (String format : TIME_FORMAT) {
+      if (timeFormat.equals(format)) {
+        return true;
+      }
+    }
+    for (String format : STRING_TIME_FORMAT) {
       if (timeFormat.equals(format)) {
         return true;
       }
@@ -179,9 +196,40 @@ public abstract class AbstractCsvTool {
             .optionalArg(true)
             .argName(PASSWORD_NAME)
             .hasArg()
-            .desc("Password (optional)")
+            .desc("Password (required)")
             .build();
     options.addOption(opPassword);
     return options;
+  }
+
+  /**
+   * write data to CSV file.
+   *
+   * @param headerNames the header names of CSV file
+   * @param records the records of CSV file
+   * @param filePath the directory to save the file
+   */
+  public static Boolean writeCsvFile(
+      @Nullable List<String> headerNames, List<List<Object>> records, String filePath) {
+    try {
+      CSVPrinter printer =
+          CSVFormat.DEFAULT
+              .withFirstRecordAsHeader()
+              .withEscape('\\')
+              .withQuoteMode(QuoteMode.NONE)
+              .print(new PrintWriter(filePath));
+      if (headerNames != null) {
+        printer.printRecord(headerNames);
+      }
+      for (List record : records) {
+        printer.printRecord(record);
+      }
+      printer.flush();
+      printer.close();
+      return true;
+    } catch (IOException e) {
+      e.printStackTrace();
+      return false;
+    }
   }
 }

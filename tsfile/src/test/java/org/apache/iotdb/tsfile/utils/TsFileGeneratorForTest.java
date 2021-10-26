@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -49,12 +49,12 @@ public class TsFileGeneratorForTest {
 
   public static final long START_TIMESTAMP = 1480562618000L;
   private static String inputDataFile;
-  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
+  public static String outputDataFile = getTestTsFilePath("root.sg1", 0, 0, 0);
   private static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
   private static int pageSize;
-  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
       throws IOException {
@@ -71,8 +71,20 @@ public class TsFileGeneratorForTest {
   }
 
   public static void prepare(int minrowCount, int maxRowCount) throws IOException {
-    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
-    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
+    File file = fsFactory.getFile(outputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    inputDataFile = getTestTsFilePath("root.sg1", 0, 0, 1);
+    file = fsFactory.getFile(inputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    errorOutputDataFile = getTestTsFilePath("root.sg1", 0, 0, 2);
+    file = fsFactory.getFile(errorOutputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
     generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
@@ -184,24 +196,25 @@ public class TsFileGeneratorForTest {
   private static Schema generateTestSchema() {
     Schema schema = new Schema();
     schema.registerTimeseries(
-        new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d1", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new Path("d1", "s3"),
+        new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.registerTimeseries(
         new Path("d1", "s4"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s4",
             TSDataType.TEXT,
             TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED,
             Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
     schema.registerTimeseries(
-        new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
+        new Path("d1", "s5"), new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
     schema.registerTimeseries(
         new Path("d1", "s6"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s6",
             TSDataType.FLOAT,
             TSEncoding.RLE,
@@ -209,17 +222,18 @@ public class TsFileGeneratorForTest {
             Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
     schema.registerTimeseries(
         new Path("d1", "s7"),
-        new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
+        new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
 
     schema.registerTimeseries(
-        new Path("d2", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+        new Path("d2", "s1"), new UnaryMeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d2", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("d2", "s2"), new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d2", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new Path("d2", "s3"),
+        new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.registerTimeseries(
         new Path("d2", "s4"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s4",
             TSDataType.TEXT,
             TSEncoding.PLAIN,
@@ -246,5 +260,24 @@ public class TsFileGeneratorForTest {
     buffer.get(data, 0, 3);
     writer.getIOWriter().getIOWriterOut().write(data);
     writer.getIOWriter().close();
+  }
+
+  public static String getTestTsFilePath(
+      String logicalStorageGroupName,
+      long VirtualStorageGroupId,
+      long TimePartitionId,
+      long tsFileVersion) {
+    String filePath =
+        String.format(
+            TestConstant.TEST_TSFILE_PATH,
+            logicalStorageGroupName,
+            VirtualStorageGroupId,
+            TimePartitionId);
+    String fileName =
+        System.currentTimeMillis()
+            + FilePathUtils.FILE_NAME_SEPARATOR
+            + tsFileVersion
+            + "-0-0.tsfile";
+    return filePath.concat(fileName);
   }
 }

@@ -25,8 +25,13 @@ import java.util.List;
 
 public class RowRecord {
 
-  private long timestamp;
-  private List<Field> fields;
+  private final long timestamp;
+  private final List<Field> fields;
+  /** if any column is null, this field should be set to true; otherwise false */
+  private boolean hasNullField = false;
+
+  /** if any column is not null, this field should be set to false; otherwise true */
+  private boolean allNull = true;
 
   public RowRecord(long timestamp) {
     this.timestamp = timestamp;
@@ -36,14 +41,31 @@ public class RowRecord {
   public RowRecord(long timestamp, List<Field> fields) {
     this.timestamp = timestamp;
     this.fields = fields;
+    for (Field field : fields) {
+      if (field == null || field.getDataType() == null) {
+        hasNullField = true;
+      } else {
+        allNull = false;
+      }
+    }
   }
 
   public void addField(Field f) {
     this.fields.add(f);
+    if (f == null || f.getDataType() == null) {
+      hasNullField = true;
+    } else {
+      allNull = false;
+    }
   }
 
   public void addField(Object value, TSDataType dataType) {
     this.fields.add(Field.getField(value, dataType));
+    if (value == null || dataType == null) {
+      hasNullField = true;
+    } else {
+      allNull = false;
+    }
   }
 
   @Override
@@ -61,19 +83,20 @@ public class RowRecord {
     return timestamp;
   }
 
-  public void setTimestamp(long timestamp) {
-    this.timestamp = timestamp;
-  }
-
   public List<Field> getFields() {
     return fields;
   }
 
-  public void setFields(List<Field> fields) {
-    this.fields = fields;
+  public boolean hasNullField() {
+    return hasNullField;
   }
 
-  public void setField(int index, Field field) {
-    this.fields.set(index, field);
+  public boolean isAllNull() {
+    return allNull;
+  }
+
+  public void resetNullFlag() {
+    hasNullField = false;
+    allNull = true;
   }
 }

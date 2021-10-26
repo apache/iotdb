@@ -21,6 +21,7 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -30,6 +31,7 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -73,6 +75,7 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
+  private TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
    * will use server configuration.
@@ -81,6 +84,13 @@ public class IoTDBConnection implements Connection {
 
   private ZoneId zoneId;
   private boolean autoCommit;
+  private String url;
+
+  public String getUserName() {
+    return userName;
+  }
+
+  private String userName;
 
   public IoTDBConnection() {
     // allowed to create an instance without parameter input.
@@ -91,7 +101,8 @@ public class IoTDBConnection implements Connection {
       throw new IoTDBURLException("Input url cannot be null");
     }
     params = Utils.parseUrl(url, info);
-
+    this.url = url;
+    this.userName = info.get("user").toString();
     openTransport();
     if (Config.rpcThriftCompressionEnable) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
@@ -103,6 +114,10 @@ public class IoTDBConnection implements Connection {
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
     setClient(RpcUtils.newSynchronizedClient(getClient()));
     autoCommit = false;
+  }
+
+  public String getUrl() {
+    return url;
   }
 
   @Override
@@ -219,7 +234,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getCatalog() {
-    return "no catalog";
+    return "Apache IoTDB";
   }
 
   @Override
@@ -312,8 +327,10 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void setReadOnly(boolean arg0) throws SQLException {
-    throw new SQLException("Does not support setReadOnly");
+  public void setReadOnly(boolean readonly) throws SQLException {
+    if (readonly) {
+      throw new SQLException("Does not support readOnly");
+    }
   }
 
   @Override
@@ -438,7 +455,11 @@ public class IoTDBConnection implements Connection {
     RpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(params.getHost(), params.getPort(), Config.DEFAULT_CONNECTION_TIMEOUT_MS));
+            new TSocket(
+                tConfiguration,
+                params.getHost(),
+                params.getPort(),
+                Config.DEFAULT_CONNECTION_TIMEOUT_MS));
     if (!transport.isOpen()) {
       transport.open();
     }

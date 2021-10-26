@@ -22,13 +22,13 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.metadata.logfile.MLogUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -87,6 +87,10 @@ public class IoTDBConfigCheck {
 
   private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
   private static String tagAttributeTotalSize = String.valueOf(config.getTagAttributeTotalSize());
+
+  private static final String TAG_ATTRIBUTE_FLUSH_INTERVAL = "tag_attribute_flush_interval";
+  private static String tagAttributeFlushInterval =
+      String.valueOf(config.getTagAttributeFlushInterval());
 
   private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
   private static String maxDegreeOfIndexNode =
@@ -151,6 +155,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
+    systemProperties.put(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
     systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
@@ -224,7 +229,7 @@ public class IoTDBConfigCheck {
       moveVersionFile();
       logger.info("checking files successful");
       logger.info("Start upgrading files...");
-      MLogWriter.upgradeMLog();
+      MLogUpgrader.upgradeMLog();
       logger.info("Mlog upgraded!");
       upgradePropertiesFile();
     }
@@ -241,12 +246,21 @@ public class IoTDBConfigCheck {
       System.exit(-1);
     }
 
+    // virtual storage group num can only set to 1 when upgrading from old version
+    if (!virtualStorageGroupNum.equals("1")) {
+      logger.error(
+          "virtual storage group num cannot set to {} when upgrading from old version, "
+              + "please set to 1 and restart",
+          virtualStorageGroupNum);
+      System.exit(-1);
+    }
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
       properties.setProperty(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
       properties.setProperty(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
+      properties.setProperty(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
       properties.setProperty(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
@@ -300,6 +314,10 @@ public class IoTDBConfigCheck {
       printErrorLogAndExit(TIMESTAMP_PRECISION_STRING);
     }
 
+    if (Boolean.parseBoolean(properties.getProperty(ENABLE_PARTITION_STRING)) != enablePartition) {
+      printErrorLogAndExit(ENABLE_PARTITION_STRING);
+    }
+
     if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
       printErrorLogAndExit(PARTITION_INTERVAL_STRING);
     }
@@ -310,6 +328,10 @@ public class IoTDBConfigCheck {
 
     if (!(properties.getProperty(TAG_ATTRIBUTE_SIZE_STRING).equals(tagAttributeTotalSize))) {
       printErrorLogAndExit(TAG_ATTRIBUTE_SIZE_STRING);
+    }
+
+    if (!(properties.getProperty(TAG_ATTRIBUTE_FLUSH_INTERVAL).equals(tagAttributeFlushInterval))) {
+      printErrorLogAndExit(TAG_ATTRIBUTE_FLUSH_INTERVAL);
     }
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
@@ -428,6 +450,16 @@ public class IoTDBConfigCheck {
         if (!storageGroup.isDirectory()) {
           continue;
         }
+        // create virtual storage group folder 0
+        File virtualStorageGroupDir = fsFactory.getFile(storageGroup, "0");
+        if (virtualStorageGroupDir.mkdirs()) {
+          logger.info(
+              "virtual storage directory {} doesn't exist, create it",
+              virtualStorageGroupDir.getPath());
+        } else if (!virtualStorageGroupDir.exists()) {
+          logger.error(
+              "Create virtual storage directory {} failed", virtualStorageGroupDir.getPath());
+        }
         for (File partitionDir : storageGroup.listFiles()) {
           if (!partitionDir.isDirectory()) {
             continue;
@@ -446,7 +478,8 @@ public class IoTDBConfigCheck {
           if (oldTsfileArray.length + oldResourceFileArray.length + oldModificationFileArray.length
               != 0) {
             // create upgrade directory if not exist
-            File upgradeFolder = fsFactory.getFile(partitionDir, IoTDBConstant.UPGRADE_FOLDER_NAME);
+            File upgradeFolder =
+                fsFactory.getFile(virtualStorageGroupDir, IoTDBConstant.UPGRADE_FOLDER_NAME);
             if (upgradeFolder.mkdirs()) {
               logger.info("Upgrade Directory {} doesn't exist, create it", upgradeFolder.getPath());
             } else if (!upgradeFolder.exists()) {
@@ -469,6 +502,13 @@ public class IoTDBConfigCheck {
               if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
                 logger.error("Failed to move mod file {} to upgrade folder", file);
               }
+            }
+          }
+          if (partitionDir.listFiles().length == 0) {
+            try {
+              Files.delete(partitionDir.toPath());
+            } catch (IOException e) {
+              logger.error("Delete {} failed", partitionDir);
             }
           }
         }

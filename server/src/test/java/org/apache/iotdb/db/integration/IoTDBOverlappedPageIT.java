@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -45,37 +44,47 @@ import static org.junit.Assert.fail;
 public class IoTDBOverlappedPageIT {
 
   private static int beforeMaxNumberOfPointsInPage;
-  private static long beforeMemtableSizeThreshold;
+
+  private static String[] dataSet1 =
+      new String[] {
+        "SET STORAGE GROUP TO root.sg1",
+        "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.sg1.d1(time,s1) values(1, 1)",
+        "INSERT INTO root.sg1.d1(time,s1) values(10, 10)",
+        "flush",
+        "INSERT INTO root.sg1.d1(time,s1) values(20, 20)",
+        "INSERT INTO root.sg1.d1(time,s1) values(30, 30)",
+        "flush",
+        "INSERT INTO root.sg1.d1(time,s1) values(110, 110)",
+        "flush",
+        "INSERT INTO root.sg1.d1(time,s1) values(5, 5)",
+        "INSERT INTO root.sg1.d1(time,s1) values(50, 50)",
+        "INSERT INTO root.sg1.d1(time,s1) values(100, 100)",
+        "flush",
+        "INSERT INTO root.sg1.d1(time,s1) values(15, 15)",
+        "INSERT INTO root.sg1.d1(time,s1) values(25, 25)",
+        "flush",
+      };
 
   @BeforeClass
   public static void setUp() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
     EnvironmentUtils.closeStatMonitor();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
-    beforeMemtableSizeThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
+
     // max_number_of_points_in_page = 10
     beforeMaxNumberOfPointsInPage =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
     EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     // recovery value
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setMaxNumberOfPointsInPage(beforeMaxNumberOfPointsInPage);
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(beforeMemtableSizeThreshold);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
+        .setMemtableSizeThreshold(beforeMaxNumberOfPointsInPage);
   }
 
   @Test
@@ -89,19 +98,55 @@ public class IoTDBOverlappedPageIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      insertData();
+
       String sql =
           "select s0 from root.vehicle.d0 where time >= 1 and time <= 110 AND root.vehicle.d0.s0 > 110";
-      ResultSet resultSet = statement.executeQuery(sql);
-      int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        int cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
           Assert.assertEquals(res[cnt], ans);
           cnt++;
         }
-      } finally {
-        resultSet.close();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Test to check if timeValuePair is updated when there are unSeqPageReaders are unpacked in
+   * method hasNextOverlappedPage() in SeriesReader.java
+   */
+  @Test
+  public void selectOverlappedPageTest2() {
+    String[] res = {"0,10"};
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      for (String insertSql : dataSet1) {
+        statement.execute(insertSql);
+      }
+
+      boolean hasResultSet = statement.execute("select count(s1) from root.sg1.d1");
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("count(root.sg1.d1.s1)");
+          Assert.assertEquals(res[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(res.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

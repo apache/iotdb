@@ -21,49 +21,60 @@ package org.apache.iotdb.cluster.config;
 import org.apache.iotdb.cluster.utils.ClusterConsistent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ClusterConfig {
-
+  private static Logger logger = LoggerFactory.getLogger(ClusterConfig.class);
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
-  private String internalIp = "127.0.0.1";
+  private String internalIp;
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
   private int clusterRpcPort = IoTDBDescriptor.getInstance().getConfig().getRpcPort();
+  private int clusterInfoRpcPort = 6567;
 
   /** each one is a {internalIp | domain name}:{meta port} string tuple. */
-  private List<String> seedNodeUrls =
-      Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
+  private List<String> seedNodeUrls;
 
   @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
   private int maxConcurrentClientNum = 10000;
 
-  @ClusterConsistent private int replicationNum = 3;
+  @ClusterConsistent private int replicationNum = 1;
+
+  @ClusterConsistent private int multiRaftFactor = 1;
 
   @ClusterConsistent private String clusterName = "default";
 
-  @ClusterConsistent private boolean useAsyncServer = true;
+  @ClusterConsistent private boolean useAsyncServer = false;
 
   private boolean useAsyncApplier = true;
 
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
+  private long heartbeatIntervalMs = TimeUnit.SECONDS.toMillis(1);
+
+  private long electionTimeoutMs = TimeUnit.SECONDS.toMillis(20);
+
   private int readOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
   private int writeOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
-  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(60);
+  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(300);
 
   private boolean useBatchInLogCatchUp = true;
 
   /** max number of committed logs to be saved */
-  private int minNumOfLogsInMem = 100;
+  private int minNumOfLogsInMem = 1000;
 
   /** max number of committed logs in memory */
-  private int maxNumOfLogsInMem = 1000;
+  private int maxNumOfLogsInMem = 2000;
 
   /** max memory size of committed logs in memory, default 512M */
   private long maxMemorySizeForRaftLog = 536870912;
@@ -142,7 +153,7 @@ public class ClusterConfig {
   /** The maximum number of logs saved on the disk */
   private int maxPersistRaftLogNumberOnDisk = 1_000_000;
 
-  private boolean enableUsePersistLogOnDiskToCatchUp = false;
+  private boolean enableUsePersistLogOnDiskToCatchUp = true;
 
   /**
    * The number of logs read on the disk at one time, which is mainly used to control the memory
@@ -162,9 +173,28 @@ public class ClusterConfig {
    */
   private long maxReadLogLag = 1000L;
 
+  /**
+   * When a follower tries to sync log with the leader, sync will fail if the log Lag exceeds
+   * maxSyncLogLag.
+   */
+  private long maxSyncLogLag = 100000L;
+
   private boolean openServerRpcPort = false;
 
-  private boolean enableQueryRedirect = false;
+  /**
+   * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
+   * there is something error for getting the ip of the hostname, then set the internalIp as
+   * localhost.
+   */
+  public ClusterConfig() {
+    try {
+      internalIp = InetAddress.getLocalHost().getHostAddress();
+    } catch (UnknownHostException e) {
+      logger.error(e.getMessage());
+      internalIp = "127.0.0.1";
+    }
+    seedNodeUrls = Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
+  }
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -224,6 +254,14 @@ public class ClusterConfig {
 
   public void setReplicationNum(int replicationNum) {
     this.replicationNum = replicationNum;
+  }
+
+  public int getMultiRaftFactor() {
+    return multiRaftFactor;
+  }
+
+  public void setMultiRaftFactor(int multiRaftFactor) {
+    this.multiRaftFactor = multiRaftFactor;
   }
 
   void setClusterName(String clusterName) {
@@ -446,6 +484,14 @@ public class ClusterConfig {
     this.maxReadLogLag = maxReadLogLag;
   }
 
+  public long getMaxSyncLogLag() {
+    return maxSyncLogLag;
+  }
+
+  public void setMaxSyncLogLag(long maxSyncLogLag) {
+    this.maxSyncLogLag = maxSyncLogLag;
+  }
+
   public String getInternalIp() {
     return internalIp;
   }
@@ -470,11 +516,27 @@ public class ClusterConfig {
     this.waitClientTimeoutMS = waitClientTimeoutMS;
   }
 
-  public boolean isEnableQueryRedirect() {
-    return enableQueryRedirect;
+  public long getHeartbeatIntervalMs() {
+    return heartbeatIntervalMs;
   }
 
-  public void setEnableQueryRedirect(boolean enableQueryRedirect) {
-    this.enableQueryRedirect = enableQueryRedirect;
+  public void setHeartbeatIntervalMs(long heartbeatIntervalMs) {
+    this.heartbeatIntervalMs = heartbeatIntervalMs;
+  }
+
+  public long getElectionTimeoutMs() {
+    return electionTimeoutMs;
+  }
+
+  public void setElectionTimeoutMs(long electionTimeoutMs) {
+    this.electionTimeoutMs = electionTimeoutMs;
+  }
+
+  public int getClusterInfoRpcPort() {
+    return clusterInfoRpcPort;
+  }
+
+  public void setClusterInfoRpcPort(int clusterInfoRpcPort) {
+    this.clusterInfoRpcPort = clusterInfoRpcPort;
   }
 }

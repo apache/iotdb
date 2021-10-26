@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -100,12 +100,12 @@ public abstract class IoTDBTest {
   protected void prepareData(int sgNum, int timeOffset, int size)
       throws QueryProcessException, IllegalPathException {
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(sgNum)));
+    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(sgNum)));
     String[] measurements = new String[10];
     for (int i = 0; i < measurements.length; i++) {
       measurements[i] = TestUtils.getTestMeasurement(i);
     }
-    MeasurementMNode[] schemas = new MeasurementMNode[10];
+    IMeasurementMNode[] schemas = new IMeasurementMNode[10];
     for (int i = 0; i < measurements.length; i++) {
       schemas[i] = TestUtils.getTestMeasurementMNode(i);
     }
@@ -133,7 +133,7 @@ public abstract class IoTDBTest {
 
   private void createTimeSeries(int sgNum, int seriesNum) {
     try {
-      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(seriesNum);
+      IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(seriesNum);
       planExecutor.processNonQuery(
           new CreateTimeSeriesPlan(
               new PartialPath(
@@ -158,15 +158,14 @@ public abstract class IoTDBTest {
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, InterruptedException {
-    QueryContext context =
-        new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setExpression(expression);
     List<PartialPath> paths = new ArrayList<>();
     for (String pathStr : pathStrs) {
       paths.add(new PartialPath(pathStr));
     }
-    queryPlan.setDeduplicatedPaths(paths);
+    queryPlan.setDeduplicatedPathsAndUpdate(paths);
     queryPlan.setPaths(paths);
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {

@@ -98,7 +98,7 @@ public class IoTDBFlushQueryMergeIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SELECT * FROM root");
+      boolean hasResultSet = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -203,7 +203,9 @@ public class IoTDBFlushQueryMergeIT {
             new StorageGroupNotSetException("root.notExistGroup1,root.notExistGroup2");
         SQLException sqlException =
             new SQLException(
-                TSStatusCode.METADATA_ERROR.getStatusCode() + ": " + tmpsgnse.getMessage());
+                TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()
+                    + ": "
+                    + tmpsgnse.getMessage());
         assertEquals(sqlException.getMessage(), sqe.getMessage());
       }
     } catch (Exception e) {

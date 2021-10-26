@@ -22,50 +22,95 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class InsertRowsOfOneDevicePlan extends InsertPlan {
+public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
+
+  /**
+   * This class has some duplicated codes with InsertRowsPlan, they should be refined in the future
+   */
+  boolean[] isExecuted;
 
   private InsertRowPlan[] rowPlans;
 
+  /**
+   * Suppose there is an InsertRowsOfOneDevicePlan, which contains 5 InsertRowPlans,
+   * rowPlans={InsertRowPlan_0, InsertRowPlan_1, InsertRowPlan_2, InsertRowPlan_3, InsertRowPlan_4},
+   * then the rowPlanIndexList={0, 1, 2, 3, 4} respectively. But when the InsertRowsOfOneDevicePlan
+   * is split into two InsertRowsOfOneDevicePlans according to the time partition in cluster
+   * version, suppose that the InsertRowsOfOneDevicePlan_1's rowPlanIndexList = {InsertRowPlan_0,
+   * InsertRowPlan_3, InsertRowPlan_4}, then InsertRowsOfOneDevicePlan_1's rowPlanIndexList = {0, 3,
+   * 4}; InsertRowsOfOneDevicePlan_2's rowPlanIndexList = {InsertRowPlan_1, InsertRowPlan_2} then
+   * InsertRowsOfOneDevicePlan_2's rowPlanIndexList = {1, 2} respectively;
+   */
+  private int[] rowPlanIndexList;
+
+  /** record the result of insert rows */
+  private Map<Integer, TSStatus> results = new HashMap<>();
+
+  private List<PartialPath> paths;
+
+  public InsertRowsOfOneDevicePlan() {
+    super(OperatorType.BATCH_INSERT_ONE_DEVICE);
+  }
+
   public InsertRowsOfOneDevicePlan(
-      PartialPath deviceId,
+      PartialPath prefixPath,
       Long[] insertTimes,
       List<List<String>> measurements,
-      ByteBuffer[] insertValues)
+      ByteBuffer[] insertValues,
+      boolean isAligned)
       throws QueryProcessException {
-    super(OperatorType.BATCH_INSERT_ONE_DEVICE);
-    this.deviceId = deviceId;
+    this();
+    this.prefixPath = prefixPath;
     rowPlans = new InsertRowPlan[insertTimes.length];
+    rowPlanIndexList = new int[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
-      for (ByteBuffer b : insertValues) {
-        b.toString();
-      }
       rowPlans[i] =
           new InsertRowPlan(
-              deviceId,
+              prefixPath,
               insertTimes[i],
               measurements.get(i).toArray(new String[0]),
-              insertValues[i]);
+              insertValues[i],
+              isAligned);
       if (rowPlans[i].getMeasurements().length == 0) {
         throw new QueryProcessException(
-            "The measurements are null, deviceId:" + deviceId + ", time:" + insertTimes[i]);
+            "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes[i]);
       }
       if (rowPlans[i].getValues().length == 0) {
         throw new QueryProcessException(
             "The size of values in InsertRowsOfOneDevicePlan is 0, deviceId:"
-                + deviceId
+                + prefixPath
                 + ", time:"
                 + insertTimes[i]);
       }
+      rowPlanIndexList[i] = i;
     }
+  }
+
+  /**
+   * This constructor is used for splitting parent InsertRowsOfOneDevicePlan into sub ones. So
+   * there's no need to validate rowPlans.
+   */
+  public InsertRowsOfOneDevicePlan(
+      PartialPath prefixPath, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
+    this();
+    this.prefixPath = prefixPath;
+    this.rowPlans = rowPlans;
+    this.rowPlanIndexList = rowPlanIndexList;
   }
 
   @Override
@@ -75,11 +120,15 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    Set<PartialPath> paths = new HashSet<>();
-    for (InsertRowPlan plan : rowPlans) {
-      paths.addAll(plan.getPaths());
+    if (paths != null) {
+      return paths;
     }
-    return new ArrayList<>(paths);
+    Set<PartialPath> pathSet = new HashSet<>();
+    for (InsertRowPlan plan : rowPlans) {
+      pathSet.addAll(plan.getPaths());
+    }
+    paths = new ArrayList<>(pathSet);
+    return paths;
   }
 
   @Override
@@ -97,12 +146,15 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     stream.writeByte((byte) type);
-    putString(stream, deviceId.getFullPath());
+    putString(stream, prefixPath.getFullPath());
 
     stream.writeInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
       stream.writeLong(plan.getTime());
       plan.serializeMeasurementsAndValues(stream);
+    }
+    for (Integer index : rowPlanIndexList) {
+      stream.writeInt(index);
     }
   }
 
@@ -111,29 +163,45 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     buffer.put((byte) type);
 
-    putString(buffer, deviceId.getFullPath());
+    putString(buffer, prefixPath.getFullPath());
     buffer.putInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
       buffer.putLong(plan.getTime());
       plan.serializeMeasurementsAndValues(buffer);
     }
+    for (Integer index : rowPlanIndexList) {
+      buffer.putInt(index);
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.deviceId = new PartialPath(readString(buffer));
+    this.prefixPath = new PartialPath(readString(buffer));
     this.rowPlans = new InsertRowPlan[buffer.getInt()];
     for (int i = 0; i < rowPlans.length; i++) {
       rowPlans[i] = new InsertRowPlan();
-      rowPlans[i].setDeviceId(deviceId);
+      rowPlans[i].setPrefixPath(prefixPath);
       rowPlans[i].setTime(buffer.getLong());
       rowPlans[i].deserializeMeasurementsAndValues(buffer);
+    }
+    this.rowPlanIndexList = new int[rowPlans.length];
+    for (int i = 0; i < rowPlans.length; i++) {
+      rowPlanIndexList[i] = buffer.getInt();
+    }
+  }
+
+  @Override
+  public void setIndex(long index) {
+    super.setIndex(index);
+    for (InsertRowPlan plan : rowPlans) {
+      // use the InsertRowsOfOneDevicePlan's index as the sub InsertRowPlan's index
+      plan.setIndex(index);
     }
   }
 
   @Override
   public String toString() {
-    return "deviceId: " + deviceId + ", times: " + rowPlans.length;
+    return "deviceId: " + prefixPath + ", times: " + rowPlans.length;
   }
 
   @Override
@@ -153,5 +221,69 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
 
   public InsertRowPlan[] getRowPlans() {
     return rowPlans;
+  }
+
+  @Override
+  public void setIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = true;
+  }
+
+  @Override
+  public boolean isExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    return isExecuted[i];
+  }
+
+  public Map<Integer, TSStatus> getResults() {
+    return results;
+  }
+
+  @Override
+  public List<PartialPath> getPrefixPaths() {
+    return Collections.singletonList(this.prefixPath);
+  }
+
+  @Override
+  public int getBatchSize() {
+    return rowPlans.length;
+  }
+
+  public int[] getRowPlanIndexList() {
+    return rowPlanIndexList;
+  }
+
+  @Override
+  public void unsetIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = false;
+    if (rowPlanIndexList != null && rowPlanIndexList.length > 0) {
+      results.remove(rowPlanIndexList[i]);
+    } else {
+      results.remove(i);
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof InsertRowsOfOneDevicePlan
+        && Arrays.equals(((InsertRowsOfOneDevicePlan) o).rowPlanIndexList, this.rowPlanIndexList)
+        && Arrays.equals(((InsertRowsOfOneDevicePlan) o).rowPlans, this.rowPlans)
+        && ((InsertRowsOfOneDevicePlan) o).results.equals(this.results)
+        && ((InsertRowsOfOneDevicePlan) o).getPrefixPath().equals(this.getPrefixPath());
+  }
+
+  @Override
+  public int hashCode() {
+    int result = rowPlans != null ? Arrays.hashCode(rowPlans) : 0;
+    result = 31 * result + (rowPlanIndexList != null ? Arrays.hashCode(rowPlanIndexList) : 0);
+    result = 31 * result + (results != null ? results.hashCode() : 0);
+    return result;
   }
 }

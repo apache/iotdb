@@ -20,32 +20,27 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
 import java.util.List;
 
+/**
+ * The QueryDataSource contains all the seq and unseq TsFileResources for one timeseries in one
+ * query
+ */
 public class QueryDataSource {
-  private PartialPath seriesPath;
+
   private List<TsFileResource> seqResources;
   private List<TsFileResource> unseqResources;
 
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
 
-  public QueryDataSource(
-      PartialPath seriesPath,
-      List<TsFileResource> seqResources,
-      List<TsFileResource> unseqResources) {
-    this.seriesPath = seriesPath;
+  public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
-  }
-
-  public PartialPath getSeriesPath() {
-    return seriesPath;
   }
 
   public List<TsFileResource> getSeqResources() {

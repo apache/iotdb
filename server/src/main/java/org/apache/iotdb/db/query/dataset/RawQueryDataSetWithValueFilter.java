@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -121,7 +122,12 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
           rowRecords[j].addField(null);
         } else {
           hasField[j] = true;
-          rowRecords[j].addField(results[j], dataTypes.get(i));
+          if (dataTypes.get(i) == TSDataType.VECTOR) {
+            TsPrimitiveType[] result = (TsPrimitiveType[]) results[j];
+            rowRecords[j].addField(result[0].getValue(), result[0].getDataType());
+          } else {
+            rowRecords[j].addField(results[j], dataTypes.get(i));
+          }
         }
       }
     }

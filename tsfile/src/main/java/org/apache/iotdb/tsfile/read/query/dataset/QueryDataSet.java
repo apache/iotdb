@@ -42,6 +42,12 @@ public abstract class QueryDataSet {
    */
   protected EndPoint endPoint = null;
 
+  /** if any column is null, we don't need that row */
+  protected boolean withoutAnyNull;
+
+  /** Only if all columns are null, we don't need that row */
+  protected boolean withoutAllNull;
+
   /** For redirect query. Need keep consistent with EndPoint in rpc.thrift. */
   public static class EndPoint {
     private String ip = null;
@@ -97,7 +103,12 @@ public abstract class QueryDataSet {
     // proceed to the OFFSET row by skipping rows
     while (rowOffset > 0) {
       if (hasNextWithoutConstraint()) {
-        nextWithoutConstraint(); // DO NOT use next()
+        RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
+        // filter rows whose columns are null according to the rule
+        if ((withoutAllNull && rowRecord.isAllNull())
+            || (withoutAnyNull && rowRecord.hasNullField())) {
+          continue;
+        }
         rowOffset--;
       } else {
         return false;
@@ -166,5 +177,25 @@ public abstract class QueryDataSet {
 
   public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
+  }
+
+  public boolean isWithoutAnyNull() {
+    return withoutAnyNull;
+  }
+
+  public void setWithoutAnyNull(boolean withoutAnyNull) {
+    this.withoutAnyNull = withoutAnyNull;
+  }
+
+  public boolean isWithoutAllNull() {
+    return withoutAllNull;
+  }
+
+  public void setWithoutAllNull(boolean withoutAllNull) {
+    this.withoutAllNull = withoutAllNull;
+  }
+
+  public void decreaseAlreadyReturnedRowNum() {
+    alreadyReturnedRowNum--;
   }
 }

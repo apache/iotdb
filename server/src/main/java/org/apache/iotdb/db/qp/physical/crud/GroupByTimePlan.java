@@ -38,7 +38,7 @@ public class GroupByTimePlan extends AggregationPlan {
 
   public GroupByTimePlan() {
     super();
-    setOperatorType(Operator.OperatorType.GROUPBYTIME);
+    setOperatorType(Operator.OperatorType.GROUP_BY_TIME);
   }
 
   public long getStartTime() {
