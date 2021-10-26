@@ -54,6 +54,11 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
+  public boolean isPureConstantExpression() {
+    return leftExpression.isPureConstantExpression() && rightExpression.isPureConstantExpression();
+  }
+
+  @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return true;
   }
@@ -167,7 +172,7 @@ public abstract class BinaryExpression extends Expression {
 
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1
+          memoryAssigner.getReference(this) == 1 || isPureConstantExpression()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(

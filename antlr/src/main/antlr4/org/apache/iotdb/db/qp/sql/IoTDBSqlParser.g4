@@ -716,7 +716,7 @@ expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPath
-    | literal=STRING_LITERAL
+    | constant
     ;
 
 functionName

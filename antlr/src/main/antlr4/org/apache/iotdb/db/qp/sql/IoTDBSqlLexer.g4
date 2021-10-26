@@ -896,7 +896,7 @@ NAN_LITERAL
  */
 
 ID
-    : NAME_CHAR+
+    : FIRST_NAME_CHAR NAME_CHAR+
     | '"' (~('"' | '.') | '""')+ '"'
     | '`' (~('`' | '.') | '``')+ '`'
     ;
@@ -913,6 +913,19 @@ fragment NAME_CHAR
     | '{'
     | '}'
     | CN_CHAR
+    ;
+
+fragment FIRST_NAME_CHAR
+    : 'A'..'Z'
+    | 'a'..'z'
+    | '_'
+    | ':'
+    | '@'
+    | '#'
+    | '$'
+    | '{'
+    | '}'
+    |   CN_CHAR
     ;
 
 fragment CN_CHAR

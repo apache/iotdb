@@ -55,6 +55,8 @@ import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
 
+  boolean isPureConstantExpression = true;
+
   /**
    * true: aggregation function<br>
    * false: time series generating function
@@ -92,11 +94,17 @@ public class FunctionExpression extends Expression {
     this.expressions = expressions;
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+    isPureConstantExpression = expressions.stream().anyMatch(Expression::isPureConstantExpression);
   }
 
   @Override
   public boolean isAggregationFunctionExpression() {
     return isAggregationFunctionExpression;
+  }
+
+  @Override
+  public boolean isPureConstantExpression() {
+    return isPureConstantExpression;
   }
 
   @Override
@@ -115,6 +123,7 @@ public class FunctionExpression extends Expression {
   }
 
   public void addExpression(Expression expression) {
+    isPureConstantExpression = isPureConstantExpression && expression.isPureConstantExpression();
     expressions.add(expression);
   }
 
@@ -218,7 +227,7 @@ public class FunctionExpression extends Expression {
 
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1
+          memoryAssigner.getReference(this) == 1 || isPureConstantExpression()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
@@ -247,15 +256,13 @@ public class FunctionExpression extends Expression {
               expressionDataTypeMap,
               memoryAssigner));
     }
-    return intermediateLayers.size() == 1
-        ? intermediateLayers.get(0)
-        : new MultiInputColumnIntermediateLayer(
-            this,
-            queryId,
-            memoryAssigner.assign(),
-            intermediateLayers.stream()
-                .map(IntermediateLayer::constructPointReader)
-                .collect(Collectors.toList()));
+    return new MultiInputColumnIntermediateLayer(
+        this,
+        queryId,
+        memoryAssigner.assign(),
+        intermediateLayers.stream()
+            .map(IntermediateLayer::constructPointReader)
+            .collect(Collectors.toList()));
   }
 
   private UDFQueryTransformer constructUdfTransformer(

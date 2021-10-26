@@ -56,6 +56,11 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
+  public boolean isPureConstantExpression() {
+    return false;
+  }
+
+  @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     for (PartialPath prefixPath : prefixPaths) {
       resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
@@ -104,7 +109,7 @@ public class TimeSeriesOperand extends Expression {
 
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1
+          memoryAssigner.getReference(this) == 1 || isPureConstantExpression()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, parentLayerPointReader)
               : new SingleInputColumnMultiReferenceIntermediateLayer(

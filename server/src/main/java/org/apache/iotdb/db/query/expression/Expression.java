@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.expression.unary.ConstantExpression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -43,6 +44,9 @@ public abstract class Expression {
   public boolean isAggregationFunctionExpression() {
     return false;
   }
+
+  /** If this expression and all of its sub-expressions are {@link ConstantExpression}. */
+  public abstract boolean isPureConstantExpression();
 
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
@@ -94,4 +98,14 @@ public abstract class Expression {
 
     return getExpressionString().equals(((Expression) o).getExpressionString());
   }
+
+  /**
+   * Enforce the subclasses to override {@link Object#toString()}.
+   *
+   * <p>Otherwise, there will be a call loop. The default implementation {@link Object#toString()}
+   * calls {@link #hashCode()}, while {@link #hashCode()} calls {@link #getExpressionString()}, and
+   * {@link #getExpressionString()} calls {@link Object#toString()}.
+   */
+  @Override
+  public abstract String toString();
 }
