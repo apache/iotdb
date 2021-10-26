@@ -142,7 +142,7 @@ public class SumAggrResult extends AggregateResult {
     if (another instanceof SumAggrResult) {
       notNull |= ((SumAggrResult) another).isNotNull();
       SumAggrResult anotherSum = (SumAggrResult) another;
-      setDoubleValue(getDoubleValue() + anotherSum.getDoubleValue());
+      sum += anotherSum.sum;
     }
   }
 
