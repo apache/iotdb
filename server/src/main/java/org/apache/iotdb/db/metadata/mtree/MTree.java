@@ -36,14 +36,10 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.*;
-import org.apache.iotdb.db.metadata.mtree.traverser.PathGrouperByStorageGroup;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.BelongedEntityPathCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupPathCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
@@ -98,6 +94,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -775,10 +772,7 @@ public class MTree implements Serializable {
    */
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, pathPattern);
-    collector.setCollectInternal(true);
-    collector.traverse();
-    return collector.getResult();
+    return collectStorageGroups(pathPattern, true);
   }
 
   /**
@@ -789,10 +783,22 @@ public class MTree implements Serializable {
    */
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
-    StorageGroupPathCollector collector = new StorageGroupPathCollector(root, pathPattern);
-    collector.setCollectInternal(false);
+    return collectStorageGroups(pathPattern, false);
+  }
+
+  private List<PartialPath> collectStorageGroups(PartialPath pathPattern, boolean collectInternal)
+      throws MetadataException {
+    List<PartialPath> result = new LinkedList<>();
+    StorageGroupCollector<List<PartialPath>> collector =
+        new StorageGroupCollector<List<PartialPath>>(root, pathPattern) {
+          @Override
+          protected void collectStorageGroup(IStorageGroupMNode node) {
+            result.add(node.getPartialPath());
+          }
+        };
+    collector.setCollectInternal(collectInternal);
     collector.traverse();
-    return collector.getResult();
+    return result;
   }
 
   /**
@@ -821,9 +827,18 @@ public class MTree implements Serializable {
    * storageGroupName-fullPath pair into paths.
    */
   public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
-    PathGrouperByStorageGroup resolver = new PathGrouperByStorageGroup(root, path);
-    resolver.traverse();
-    return resolver.getResult();
+    Map<String, String> result = new HashMap<>();
+    StorageGroupCollector<Map<String, String>> collector =
+        new StorageGroupCollector<Map<String, String>>(root, path) {
+          @Override
+          protected void collectStorageGroup(IStorageGroupMNode node) {
+            PartialPath sgPath = node.getPartialPath();
+            result.put(sgPath.getFullPath(), path.alterPrefixPath(sgPath).getFullPath());
+          }
+        };
+    collector.setCollectInternal(true);
+    collector.traverse();
+    return result;
   }
   // endregion
 
@@ -836,34 +851,51 @@ public class MTree implements Serializable {
    */
   public Set<PartialPath> getDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    EntityPathCollector collector = new EntityPathCollector(root, pathPattern);
+    Set<PartialPath> result = new TreeSet<>();
+    EntityCollector<Set<PartialPath>> collector =
+        new EntityCollector<Set<PartialPath>>(root, pathPattern) {
+          @Override
+          protected void collectEntity(IEntityMNode node) {
+            result.add(node.getPartialPath());
+          }
+        };
     collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
-    return collector.getResult();
+    return result;
   }
 
   public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
-    EntityPathCollector collector =
-        new EntityPathCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());
-    collector.traverse();
-    Set<PartialPath> devices = collector.getResult();
     List<ShowDevicesResult> res = new ArrayList<>();
-    for (PartialPath device : devices) {
-      if (plan.hasSgCol()) {
-        res.add(
-            new ShowDevicesResult(
-                device.getFullPath(), getBelongedStorageGroup(device).getFullPath()));
-      } else {
-        res.add(new ShowDevicesResult(device.getFullPath()));
-      }
-    }
+    EntityCollector<List<ShowDevicesResult>> collector =
+        new EntityCollector<List<ShowDevicesResult>>(
+            root, plan.getPath(), plan.getLimit(), plan.getOffset()) {
+          @Override
+          protected void collectEntity(IEntityMNode node) throws MetadataException {
+            PartialPath device = node.getPartialPath();
+            if (plan.hasSgCol()) {
+              res.add(
+                  new ShowDevicesResult(
+                      device.getFullPath(), getBelongedStorageGroup(device).getFullPath()));
+            } else {
+              res.add(new ShowDevicesResult(device.getFullPath()));
+            }
+          }
+        };
+    collector.traverse();
     return res;
   }
 
   public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
-    BelongedEntityPathCollector collector = new BelongedEntityPathCollector(root, timeseries);
+    Set<PartialPath> result = new HashSet<>();
+    MeasurementCollector<Set<PartialPath>> collector =
+        new MeasurementCollector<Set<PartialPath>>(root, timeseries) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            result.add(node.getParent().getPartialPath());
+          }
+        };
     collector.traverse();
-    return collector.getResult();
+    return result;
   }
   // endregion
 
@@ -893,12 +925,22 @@ public class MTree implements Serializable {
    */
   public Pair<List<PartialPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    MeasurementPathCollector collector =
-        new MeasurementPathCollector(root, pathPattern, limit, offset);
+    List<PartialPath> result = new LinkedList<>();
+    MeasurementCollector<List<PartialPath>> collector =
+        new MeasurementCollector<List<PartialPath>>(root, pathPattern, limit, offset) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            PartialPath path = node.getPartialPath();
+            if (nodes[nodes.length - 1].equals(node.getAlias())) {
+              // only when user query with alias, the alias in path will be set
+              path.setMeasurementAlias(node.getAlias());
+            }
+            result.add(path);
+          }
+        };
     collector.traverse();
     offset = collector.getCurOffset() + 1;
-    List<PartialPath> res = collector.getResult();
-    return new Pair<>(res, offset);
+    return new Pair<>(result, offset);
   }
 
   /**
@@ -908,11 +950,9 @@ public class MTree implements Serializable {
    */
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
-    MeasurementSchemaCollector collector = new MeasurementSchemaCollector(root, plan.getPath());
-    collector.setQueryContext(queryContext);
-    collector.setNeedLast(true);
-    collector.traverse();
-    List<Pair<PartialPath, String[]>> allMatchedNodes = collector.getResult();
+    List<Pair<PartialPath, String[]>> allMatchedNodes =
+        collectMeasurementSchema(
+            plan.getPath(), plan.getLimit(), plan.getOffset(), queryContext, true);
 
     Stream<Pair<PartialPath, String[]>> sortedStream =
         allMatchedNodes.stream()
@@ -937,10 +977,51 @@ public class MTree implements Serializable {
    */
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
-    MeasurementSchemaCollector collector =
-        new MeasurementSchemaCollector(root, plan.getPath(), plan.getLimit(), plan.getOffset());
+    return collectMeasurementSchema(plan.getPath(), plan.getLimit(), plan.getOffset(), null, false);
+  }
+
+  private List<Pair<PartialPath, String[]>> collectMeasurementSchema(
+      PartialPath pathPattern, int limit, int offset, QueryContext queryContext, boolean needLast)
+      throws MetadataException {
+    List<Pair<PartialPath, String[]>> result = new LinkedList<>();
+    MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
+        new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
+            root, pathPattern, limit, offset) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            IMeasurementSchema measurementSchema = node.getSchema();
+            String[] tsRow = new String[7];
+            tsRow[0] = node.getAlias();
+            tsRow[1] = getBelongedStorageGroupPath(node).getFullPath();
+            tsRow[2] = measurementSchema.getType().toString();
+            tsRow[3] = measurementSchema.getEncodingType().toString();
+            tsRow[4] = measurementSchema.getCompressor().toString();
+            tsRow[5] = String.valueOf(node.getOffset());
+            tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
+            Pair<PartialPath, String[]> temp = new Pair<>(node.getPartialPath(), tsRow);
+            result.add(temp);
+          }
+        };
     collector.traverse();
-    return collector.getResult();
+    return result;
+  }
+
+  private PartialPath getBelongedStorageGroupPath(IMeasurementMNode node)
+      throws StorageGroupNotSetException {
+    if (node == null) {
+      return null;
+    }
+    IMNode temp = node;
+    while (temp != null) {
+      if (temp.isStorageGroup()) {
+        break;
+      }
+      temp = temp.getParent();
+    }
+    if (temp == null) {
+      throw new StorageGroupNotSetException(node.getFullPath());
+    }
+    return temp.getPartialPath();
   }
 
   public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(

@@ -23,9 +23,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 
-// This class defines MeasurementMNode as target node
-// and defines the measurement process framework.
-// MultiMeasurement will be processed as one unit.
+// This class defines MeasurementMNode as target node and defines the measurement process framework.
 public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
   public MeasurementCollector(IMNode startNode, PartialPath path) throws MetadataException {

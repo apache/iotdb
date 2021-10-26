@@ -20,20 +20,19 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import java.util.Set;
-import java.util.TreeSet;
+// This class defines EntityMNode as target node and defines the Entity process framework.
+public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
-// This class implements measurement belonged entity paths collection for given timeseries path
-// pattern.
-// All the entities, that one of the timeseries matching the path pattern belongs to, will be
-// collected.
-public class BelongedEntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
-
-  public BelongedEntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public EntityCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    this.resultSet = new TreeSet<>();
+  }
+
+  public EntityCollector(IMNode startNode, PartialPath path, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, limit, offset);
   }
 
   @Override
@@ -42,11 +41,22 @@ public class BelongedEntityPathCollector extends CollectorTraverser<Set<PartialP
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (!node.isMeasurement()) {
-      return false;
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
+    if (node.isEntity()) {
+      if (hasLimit) {
+        curOffset += 1;
+        if (curOffset < offset) {
+          return true;
+        }
+      }
+      collectEntity(node.getAsEntityMNode());
+      if (hasLimit) {
+        count += 1;
+      }
     }
-    resultSet.add(node.getParent().getPartialPath());
-    return true;
+    return false;
   }
+
+  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
 }

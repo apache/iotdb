@@ -21,46 +21,40 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 
-import java.util.Set;
-import java.util.TreeSet;
+// This class implements storage group path collection function.
+public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
 
-// This class implements the EntityMNode path collection function.
-// Compared with BelongedEntityPathCollector, this class only process entities that full match the
-// path
-// pattern.
-public class EntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
+  protected boolean collectInternal = false;
 
-  public EntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public StorageGroupCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    this.resultSet = new TreeSet<>();
-  }
-
-  public EntityPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
-      throws MetadataException {
-    super(startNode, path, limit, offset);
-    this.resultSet = new TreeSet<>();
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isStorageGroup()) {
+      if (collectInternal) {
+        collectStorageGroup(node.getAsStorageGroupMNode());
+      }
+      return true;
+    }
     return false;
   }
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isEntity()) {
-      if (hasLimit) {
-        curOffset += 1;
-        if (curOffset < offset) {
-          return true;
-        }
-      }
-      resultSet.add(node.getPartialPath());
-      if (hasLimit) {
-        count += 1;
-      }
+    if (node.isStorageGroup()) {
+      collectStorageGroup(node.getAsStorageGroupMNode());
+      return true;
     }
     return false;
+  }
+
+  protected abstract void collectStorageGroup(IStorageGroupMNode node);
+
+  public void setCollectInternal(boolean collectInternal) {
+    this.collectInternal = collectInternal;
   }
 }
