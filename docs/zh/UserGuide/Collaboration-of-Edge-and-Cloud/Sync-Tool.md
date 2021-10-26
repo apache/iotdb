@@ -65,7 +65,7 @@
 
 |参数名|sync_server_port|
 |--- |--- |
-|描述|同步接收端服务器监听接口，请确认该端口不是系统保留端口并且未被占用。参数 is_sync_enable 设置为 true 时有效，参数 is_sync_enable 设置为 false 时无效|
+|描述|同步接收端服务器监听端口，请确认该端口不是系统保留端口并且未被占用。参数 is_sync_enable 设置为 true 时有效，参数 is_sync_enable 设置为 false 时无效|
 |类型|Short Int : [0,65535]|
 |默认值|5555|
 |改后生效方式|重启服务生效|
