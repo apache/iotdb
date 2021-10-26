@@ -137,8 +137,8 @@ public class DataTypeUtils {
         }
         fields.put(fieldKeyAndValue[0], value);
       }
-      if (precision==null){
-        precision=TimeUnit.NANOSECONDS;
+      if (precision == null) {
+        precision = TimeUnit.NANOSECONDS;
       }
       builder.time(Long.parseLong(time), precision);
     } catch (Exception e) {
