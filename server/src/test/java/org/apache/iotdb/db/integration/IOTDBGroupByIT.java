@@ -940,13 +940,13 @@ public class IOTDBGroupByIT {
     String ret = "1500,2,0.0,0.0";
 
     try (Connection connection =
-                 DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet =
-              statement.execute(
-                      "select count(temperature), sum(temperature), avg(temperature) from "
-                              + "root.ln.wf01.wt01 "
-                              + "GROUP BY ([1500, 1600), 100ms) ");
+          statement.execute(
+              "select count(temperature), sum(temperature), avg(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "GROUP BY ([1500, 1600), 100ms) ");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -954,13 +954,13 @@ public class IOTDBGroupByIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
-                  resultSet.getString(TIMESTAMP_STR)
-                          + ","
-                          + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
-                          + ","
-                          + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
-                          + ","
-                          + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
+                  + ","
+                  + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(ret, ans);
           cnt++;
         }
