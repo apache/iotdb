@@ -329,7 +329,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     stopRaftInfoReport();
     JMXService.registerMBean(this, mbeanName);
     // register MetaGroupMember. MetaGroupMember has the same position with "StorageEngine" in the
-    // cluster moduel.
+    // cluster module.
     // TODO fixme it is better to remove coordinator out of metaGroupEngine
 
     registerManager.register(metaGroupEngine);
