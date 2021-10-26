@@ -546,7 +546,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     try {
-      assertTrue(manager.getFlatMeasurementPaths(new PartialPath("root")).isEmpty());
+      assertTrue(manager.getMeasurementPaths(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(
@@ -1229,16 +1229,6 @@ public class MManagerBasicTest {
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
-      manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
-          Arrays.asList("s1", "s2", "s3"),
-          Arrays.asList(
-              TSDataType.valueOf("INT32"),
-              TSDataType.valueOf("FLOAT"),
-              TSDataType.valueOf("INT32")),
-          Arrays.asList(
-              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
 
       // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
@@ -1248,47 +1238,9 @@ public class MManagerBasicTest {
           manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
-
-      // show timeseries
-      //      showTimeSeriesPlan =
-      //          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
-      //      result = manager.showTimeseries(showTimeSeriesPlan,
-      // EnvironmentUtils.TEST_QUERY_CONTEXT);
-      //      assertEquals(4, result.size());
-
-      // show timeseries root.laptop.d1.vector
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector.*"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(3, result.size());
-      for (int i = 0; i < result.size(); i++) {
-        assertEquals("root.laptop.d1.vector.s" + (i + 1), result.get(i).getName());
-      }
-
-      // show timeseries root.laptop.d1.vector.s1
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(1, result.size());
-      assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-
-    // show timeseries root.laptop.d1.(s0,s1)
-    try {
-      ShowTimeSeriesPlan showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    } catch (MetadataException e) {
-      assertEquals(
-          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
-          e.getMessage());
     }
   }
 
@@ -1296,27 +1248,15 @@ public class MManagerBasicTest {
   public void testShowTimeseriesWithTemplate() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
-    List<String> measurements = new ArrayList<>();
-    for (int i = 1; i <= 3; i++) {
-      measurements.add("s" + i);
-    }
-    measurementList.add(measurements);
+    measurementList.add(Collections.singletonList("s1"));
 
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
     dataTypeList.add(Collections.singletonList(TSDataType.INT32));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32);
-    dataTypes.add(TSDataType.FLOAT);
-    dataTypes.add(TSDataType.INT32);
-    dataTypeList.add(dataTypes);
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (int i = 1; i <= 3; i++) {
-      encodings.add(TSEncoding.RLE);
-    }
-    encodingList.add(encodings);
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
     List<CompressionType> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
@@ -1325,7 +1265,7 @@ public class MManagerBasicTest {
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s0");
-    schemaNames.add("vector");
+    schemaNames.add("s1");
 
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
@@ -1354,27 +1294,17 @@ public class MManagerBasicTest {
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
-      // show timeseries root.laptop.d1.vector.s1
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(1, result.size());
-      assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
-
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(new PartialPath("root.**"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(4, result.size());
+      assertEquals(2, result.size());
       Set<String> set = new HashSet<>();
-      for (int i = 1; i < result.size(); i++) {
-        set.add("root.laptop.d1.vector.s" + i);
-      }
       set.add("root.laptop.d1.s0");
+      set.add("root.laptop.d1.s1");
 
-      for (int i = 0; i < result.size(); i++) {
-        set.remove(result.get(i).getName());
+      for (ShowTimeSeriesResult showTimeSeriesResult : result) {
+        set.remove(showTimeSeriesResult.getName());
       }
 
       assertTrue(set.isEmpty());
@@ -1657,7 +1587,6 @@ public class MManagerBasicTest {
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
-      assertEquals(3, manager.getAllTimeseriesFlatCount(node.getPartialPath().concatNode("**")));
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertNull(insertRowPlan.getMeasurementMNodes()[2]);

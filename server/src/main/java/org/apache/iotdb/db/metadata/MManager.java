@@ -623,11 +623,7 @@ public class MManager {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group The
-   * given pathPattern only match measurement but not flat measurement. For example, given MTree:
-   * root.sg.d.vector(s1, s2), root.sg.d.s2; give pathPattern root.**.s2 and then only root.sg.d.s2
-   * will be deleted; give pathPattern like root.sg.d.* or root.sg.d.vector and then the deletion
-   * will work on root.sg.d.vector(s1, s2)
+   * Delete all timeseries matching the given path pattern, may cross different storage group
    *
    * @param pathPattern path to be deleted
    * @return deletion failed Timeseries
@@ -684,13 +680,7 @@ public class MManager {
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
     // if one of the aligned timeseries is deleted, pair.right could be null
     IMeasurementMNode measurementMNode = pair.right;
-    int timeseriesNum = 0;
-    if (measurementMNode.isUnaryMeasurement()) {
-      removeFromTagInvertedIndex(measurementMNode);
-      timeseriesNum = 1;
-    } else if (measurementMNode.isMultiMeasurement()) {
-      timeseriesNum += measurementMNode.getSchema().getSubMeasurementsTSDataTypeList().size();
-    }
+    removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;
 
     // drop trigger with no exceptions
@@ -707,7 +697,7 @@ public class MManager {
       mNodeCache.removeObject(node.getPartialPath());
       node = node.getParent();
     }
-    totalSeriesNumber.addAndGet(-timeseriesNum);
+    totalSeriesNumber.addAndGet(-1);
     if (!allowToCreateNewSeries
         && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
       logger.info("Current series number {} come back to normal level", totalSeriesNumber);
@@ -881,14 +871,6 @@ public class MManager {
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
     return mtree.getAllTimeseriesCount(pathPattern);
-  }
-
-  /**
-   * To calculate the count of timeseries component matching given path. The path could be a pattern
-   * of a full path, may contain wildcard.
-   */
-  public int getAllTimeseriesFlatCount(PartialPath pathPattern) throws MetadataException {
-    return mtree.getAllTimeseriesFlatCount(pathPattern);
   }
 
   /** To calculate the count of devices for given path pattern. */
@@ -1111,24 +1093,23 @@ public class MManager {
   }
 
   /**
-   * Return all flat measurement paths for given path if the path is abstract. Or return the path
-   * itself. Regular expression in this method is formed by the amalgamation of seriesPath and the
-   * character '*'.
+   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
+   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
+   * '*'.
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
-  public List<PartialPath> getFlatMeasurementPaths(PartialPath pathPattern)
-      throws MetadataException {
-    return mtree.getFlatMeasurementPaths(pathPattern);
+  public List<PartialPath> getMeasurementPaths(PartialPath pathPattern) throws MetadataException {
+    return mtree.getMeasurementPaths(pathPattern);
   }
 
   /**
-   * Similar to method getAllTimeseriesPath(), but return Path with alias and filter the result by
+   * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
    * limit and offset.
    */
-  public Pair<List<PartialPath>, Integer> getFlatMeasurementPathsWithAlias(
+  public Pair<List<PartialPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    return mtree.getFlatMeasurementPathsWithAlias(pathPattern, limit, offset);
+    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset);
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
@@ -1196,9 +1177,9 @@ public class MManager {
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     List<Pair<PartialPath, String[]>> ans;
     if (plan.isOrderByHeat()) {
-      ans = mtree.getAllFlatMeasurementSchemaByHeatOrder(plan, context);
+      ans = mtree.getAllMeasurementSchemaByHeatOrder(plan, context);
     } else {
-      ans = mtree.getAllFlatMeasurementSchema(plan);
+      ans = mtree.getAllMeasurementSchema(plan);
     }
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     for (Pair<PartialPath, String[]> ansString : ans) {

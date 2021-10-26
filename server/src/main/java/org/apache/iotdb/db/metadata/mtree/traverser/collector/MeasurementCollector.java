@@ -33,6 +33,12 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     isMeasurementTraverser = true;
   }
 
+  public MeasurementCollector(IMNode startNode, PartialPath path, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, limit, offset);
+    isMeasurementTraverser = true;
+  }
+
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
       throws MetadataException {
@@ -45,7 +51,17 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     if (!node.isMeasurement()) {
       return false;
     }
-    collectMeasurement(node.getAsMeasurementMNode());
+    if (hasLimit) {
+      curOffset += 1;
+      if (curOffset < offset) {
+        return true;
+      }
+    }
+    IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
+    collectMeasurement(measurementMNode);
+    if (hasLimit) {
+      count += 1;
+    }
     return true;
   }
 
@@ -54,5 +70,5 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
    *
    * @param node MeasurementMNode holding the measurement schema
    */
-  protected abstract void collectMeasurement(IMeasurementMNode node);
+  protected abstract void collectMeasurement(IMeasurementMNode node) throws MetadataException;
 }

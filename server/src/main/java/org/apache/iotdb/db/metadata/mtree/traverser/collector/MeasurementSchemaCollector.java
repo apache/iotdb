@@ -21,11 +21,8 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -36,21 +33,20 @@ import java.util.List;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 // This class implements the measurement collection function.
-public class FlatMeasurementSchemaCollector
-    extends FlatMeasurementCollector<List<Pair<PartialPath, String[]>>> {
+public class MeasurementSchemaCollector
+    extends MeasurementCollector<List<Pair<PartialPath, String[]>>> {
 
   // whether show timeseries with last value
   protected boolean needLast = false;
   // queryContext helps get last value
   protected QueryContext queryContext;
 
-  public FlatMeasurementSchemaCollector(IMNode startNode, PartialPath path)
-      throws MetadataException {
+  public MeasurementSchemaCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
     this.resultSet = new LinkedList<>();
   }
 
-  public FlatMeasurementSchemaCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public MeasurementSchemaCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
     this.resultSet = new LinkedList<>();
@@ -65,7 +61,7 @@ public class FlatMeasurementSchemaCollector
   }
 
   @Override
-  protected void collectUnaryMeasurement(UnaryMeasurementMNode node) throws MetadataException {
+  protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
     IMeasurementSchema measurementSchema = node.getSchema();
     String[] tsRow = new String[7];
     tsRow[0] = node.getAlias();
@@ -76,24 +72,6 @@ public class FlatMeasurementSchemaCollector
     tsRow[5] = String.valueOf(node.getOffset());
     tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
     Pair<PartialPath, String[]> temp = new Pair<>(node.getPartialPath(), tsRow);
-    resultSet.add(temp);
-  }
-
-  @Override
-  protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index)
-      throws MetadataException {
-    IMeasurementSchema schema = node.getSchema();
-    List<String> measurements = schema.getSubMeasurementsList();
-    String[] tsRow = new String[7];
-    tsRow[0] = null;
-    tsRow[1] = getStorageGroupPath(node).getFullPath();
-    tsRow[2] = schema.getSubMeasurementsTSDataTypeList().get(index).toString();
-    tsRow[3] = schema.getSubMeasurementsTSEncodingList().get(index).toString();
-    tsRow[4] = schema.getCompressor().toString();
-    tsRow[5] = "-1";
-    tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
-    Pair<PartialPath, String[]> temp =
-        new Pair<>(new VectorPartialPath(node.getFullPath(), measurements.get(index)), tsRow);
     resultSet.add(temp);
   }
 

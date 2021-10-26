@@ -20,41 +20,32 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 
 import java.util.LinkedList;
 import java.util.List;
 
 // This class implements the measurement path collection function.
-public class FlatMeasurementPathCollector extends FlatMeasurementCollector<List<PartialPath>> {
+public class MeasurementPathCollector extends MeasurementCollector<List<PartialPath>> {
 
-  public FlatMeasurementPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public MeasurementPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
   }
 
-  public FlatMeasurementPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public MeasurementPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
     this.resultSet = new LinkedList<>();
   }
 
   @Override
-  protected void collectUnaryMeasurement(UnaryMeasurementMNode node) throws MetadataException {
+  protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
     PartialPath path = node.getPartialPath();
     if (nodes[nodes.length - 1].equals(node.getAlias())) {
       // only when user query with alias, the alias in path will be set
       path.setMeasurementAlias(node.getAlias());
     }
     resultSet.add(path);
-  }
-
-  @Override
-  protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index)
-      throws MetadataException {
-    resultSet.add(
-        new VectorPartialPath(node.getFullPath(), node.getSubMeasurementList().get(index)));
   }
 }

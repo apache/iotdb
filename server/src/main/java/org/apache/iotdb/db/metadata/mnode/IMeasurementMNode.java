@@ -33,8 +33,6 @@ public interface IMeasurementMNode extends IMNode {
 
   TSDataType getDataType(String measurementId);
 
-  int getMeasurementCount();
-
   String getAlias();
 
   void setAlias(String alias);
@@ -50,12 +48,4 @@ public interface IMeasurementMNode extends IMNode {
   ILastCacheContainer getLastCacheContainer();
 
   void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
-
-  boolean isUnaryMeasurement();
-
-  boolean isMultiMeasurement();
-
-  UnaryMeasurementMNode getAsUnaryMeasurementMNode();
-
-  MultiMeasurementMNode getAsMultiMeasurementMNode();
 }
