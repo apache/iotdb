@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -30,6 +29,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +44,7 @@ public class FileGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(FileGenerator.class);
   public static String outputDataFile =
-      TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
+      TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 0);
   public static Schema schema;
   private static int ROW_COUNT = 1000;
   private static TsFileWriter innerWriter;
@@ -89,15 +89,39 @@ public class FileGenerator {
   }
 
   public static void prepare() throws IOException {
-    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
-    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
+    File file = new File(outputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    inputDataFile = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
+    file = new File(inputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    errorOutputDataFile = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 2);
+    file = new File(errorOutputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
     generateTestSchema();
     generateSampleInputDataFile();
   }
 
   public static void prepare(int deviceNum, int measurementNum) throws IOException {
-    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
-    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
+    File file = new File(outputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    inputDataFile = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
+    file = new File(inputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    errorOutputDataFile = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 2);
+    file = new File(errorOutputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
     generateTestSchema(deviceNum, measurementNum);
     generateSampleInputDataFile(deviceNum, measurementNum);
   }

@@ -24,15 +24,17 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -56,6 +58,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -429,6 +432,9 @@ public class MManager {
         AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
         autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         break;
+      case UNSET_SCHEMA_TEMPLATE:
+        UnsetSchemaTemplatePlan unsetSchemaTemplatePlan = (UnsetSchemaTemplatePlan) plan;
+        unsetSchemaTemplate(unsetSchemaTemplatePlan);
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
@@ -619,36 +625,23 @@ public class MManager {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group
+   * Delete all timeseries matching the given path pattern, may cross different storage group The
+   * given pathPattern only match measurement but not flat measurement. For example, given MTree:
+   * root.sg.d.vector(s1, s2), root.sg.d.s2; give pathPattern root.**.s2 and then only root.sg.d.s2
+   * will be deleted; give pathPattern like root.sg.d.* or root.sg.d.vector and then the deletion
+   * will work on root.sg.d.vector(s1, s2)
    *
-   * @param prefixPath path to be deleted, could be root or a prefix path or a full path
+   * @param pathPattern path to be deleted
    * @return deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
-    if (isStorageGroup(prefixPath)) {
-      mNodeCache.clear();
-    }
+  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     try {
-      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
+      List<PartialPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
       if (allTimeseries.isEmpty()) {
-        throw new PathNotExistException(prefixPath.getFullPath());
-      }
-
-      // for not support deleting part of aligned timeseies
-      // should be removed after partial deletion is supported
-      IMNode lastNode = mtree.getNodeByPath(allTimeseries.get(0));
-      if (lastNode.isMeasurement()) {
-        IMeasurementMNode measurementMNode = lastNode.getAsMeasurementMNode();
-        if (measurementMNode.isMultiMeasurement()) {
-          if (measurementMNode.getAsMultiMeasurementMNode().getSubMeasurementList().size()
-              != allTimeseries.size()) {
-            throw new AlignedTimeseriesException(
-                "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
-          } else {
-            allTimeseries.clear();
-            allTimeseries.add(lastNode.getPartialPath());
-          }
-        }
+        throw new MetadataException(
+            String.format(
+                "No matched timeseries or aligned timeseries for Path [%s]",
+                pathPattern.getFullPath()));
       }
 
       // Monitor storage group seriesPath is not allowed to be deleted
@@ -705,8 +698,17 @@ public class MManager {
     // drop trigger with no exceptions
     TriggerEngine.drop(pair.right);
 
-    // TODO: delete the path node and all its ancestors
-    mNodeCache.clear();
+    IMNode node = measurementMNode.getParent();
+
+    if (node.isUseTemplate() && node.getSchemaTemplate().hasSchema(measurementMNode.getName())) {
+      // measurement represent by template doesn't affect the MTree structure and memory control
+      return storageGroupPath;
+    }
+
+    while (node.isEmptyInternal()) {
+      mNodeCache.removeObject(node.getPartialPath());
+      node = node.getParent();
+    }
     totalSeriesNumber.addAndGet(-timeseriesNum);
     if (!allowToCreateNewSeries
         && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -1094,7 +1096,7 @@ public class MManager {
   public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
     Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
     for (PartialPath path : fullPaths) {
-      IMeasurementMNode node = mtree.getMeasurementMNode(path);
+      IMeasurementMNode node = getMeasurementMNode(path);
       if (!nodeToPartialPath.containsKey(node)) {
         nodeToPartialPath.put(node, path.copy());
       } else {
@@ -1111,22 +1113,24 @@ public class MManager {
   }
 
   /**
-   * Return all paths for given path if the path is abstract. Or return the path itself. Regular
-   * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
+   * Return all flat measurement paths for given path if the path is abstract. Or return the path
+   * itself. Regular expression in this method is formed by the amalgamation of seriesPath and the
+   * character '*'.
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
-  public List<PartialPath> getAllTimeseriesPath(PartialPath pathPattern) throws MetadataException {
-    return mtree.getAllTimeseriesPath(pathPattern);
+  public List<PartialPath> getFlatMeasurementPaths(PartialPath pathPattern)
+      throws MetadataException {
+    return mtree.getFlatMeasurementPaths(pathPattern);
   }
 
   /**
    * Similar to method getAllTimeseriesPath(), but return Path with alias and filter the result by
    * limit and offset.
    */
-  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
+  public Pair<List<PartialPath>, Integer> getFlatMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    return mtree.getAllTimeseriesPathWithAlias(pathPattern, limit, offset);
+    return mtree.getFlatMeasurementPathsWithAlias(pathPattern, limit, offset);
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
@@ -1194,9 +1198,9 @@ public class MManager {
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     List<Pair<PartialPath, String[]>> ans;
     if (plan.isOrderByHeat()) {
-      ans = mtree.getAllMeasurementSchemaByHeatOrder(plan, context);
+      ans = mtree.getAllFlatMeasurementSchemaByHeatOrder(plan, context);
     } else {
-      ans = mtree.getAllMeasurementSchema(plan);
+      ans = mtree.getAllFlatMeasurementSchema(plan);
     }
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     for (Pair<PartialPath, String[]> ansString : ans) {
@@ -1276,7 +1280,7 @@ public class MManager {
    * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode leaf = mtree.getMeasurementMNode(fullPath);
+    IMeasurementMNode leaf = getMeasurementMNode(fullPath);
     return getSeriesSchema(fullPath, leaf);
   }
 
@@ -1375,7 +1379,7 @@ public class MManager {
     IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
       try {
-        mNodes[i] = mtree.getMeasurementMNode(deviceId.concatNode(measurements[i]));
+        mNodes[i] = getMeasurementMNode(deviceId.concatNode(measurements[i]));
       } catch (PathNotExistException | MNodeTypeMismatchException ignored) {
         logger.warn("MeasurementMNode {} does not exist in {}", measurements[i], deviceId);
       }
@@ -1698,7 +1702,7 @@ public class MManager {
       Long latestFlushedTime) {
     IMeasurementMNode node;
     try {
-      node = mtree.getMeasurementMNode(seriesPath);
+      node = getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
       return;
@@ -1768,7 +1772,7 @@ public class MManager {
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {
-      node = mtree.getMeasurementMNode(seriesPath);
+      node = getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
       return null;
@@ -1814,7 +1818,7 @@ public class MManager {
   public void resetLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {
-      node = mtree.getMeasurementMNode(seriesPath);
+      node = getMeasurementMNode(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
       return;
@@ -2127,6 +2131,30 @@ public class MManager {
       // write wal
       if (!isRecovering) {
         logWriter.setSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public synchronized void unsetSchemaTemplate(UnsetSchemaTemplatePlan plan)
+      throws MetadataException {
+    // get mnode should be atomic
+    try {
+      PartialPath path = new PartialPath(plan.getPrefixPath());
+      IMNode node = mtree.getNodeByPath(path);
+      if (node.getSchemaTemplate() == null) {
+        throw new NoTemplateOnMNodeException(plan.getPrefixPath());
+      } else if (!node.getSchemaTemplate().getName().equals(plan.getTemplateName())) {
+        throw new DifferentTemplateException(plan.getPrefixPath(), plan.getTemplateName());
+      } else if (node.isUseTemplate()) {
+        throw new TemplateIsInUseException(plan.getPrefixPath());
+      }
+      mtree.checkTemplateInUseOnLowerNode(node);
+      node.setSchemaTemplate(null);
+      // write wal
+      if (!isRecovering) {
+        logWriter.unsetSchemaTemplate(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);

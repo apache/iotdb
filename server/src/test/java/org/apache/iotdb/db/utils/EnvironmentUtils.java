@@ -28,7 +28,7 @@ import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -37,14 +37,16 @@ import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
@@ -90,7 +92,7 @@ public class EnvironmentUtils {
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     // wait all compaction finished
-    CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
+    CompactionTaskManager.getInstance().waitAllCompactionFinish();
 
     // deregister all user defined classes
     try {
@@ -144,10 +146,7 @@ public class EnvironmentUtils {
     // close metadata
     IoTDB.metaManager.clear();
 
-    // close tracing
-    if (config.isEnablePerformanceTracing()) {
-      TracingManager.getInstance().close();
-    }
+    QueryTimeManager.getInstance().clear();
 
     // close array manager
     PrimitiveArrayManager.close();
@@ -157,6 +156,9 @@ public class EnvironmentUtils {
 
     // clear memtable manager info
     MemTableManager.getInstance().close();
+
+    // clear tsFileResource manager info
+    TsFileResourceManager.getInstance().clear();
 
     // delete all directory
     cleanAllDir();
@@ -264,6 +266,7 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
+
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
@@ -299,6 +302,7 @@ public class EnvironmentUtils {
     shutdownDaemon();
     stopDaemon();
     IoTDB.metaManager.clear();
+    TsFileResourceManager.getInstance().clear();
     reactiveDaemon();
   }
 

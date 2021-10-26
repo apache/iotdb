@@ -30,9 +30,9 @@ import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -248,7 +248,7 @@ public class MManagerBasicTest {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
-  public void testCreateAlignedTimeseries() throws IllegalPathException {
+  public void testCreateAlignedTimeseries() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
@@ -291,17 +291,19 @@ public class MManagerBasicTest {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
     } catch (MetadataException e) {
       assertEquals(
-          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.vector.s2)",
-          e.getMessage());
+          e.getMessage(),
+          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.s2]");
     }
 
     try {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
     } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      assertEquals(
+          e.getMessage(),
+          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.*]");
     }
 
+    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
     assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
@@ -544,7 +546,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     try {
-      assertTrue(manager.getAllTimeseriesPath(new PartialPath("root")).isEmpty());
+      assertTrue(manager.getFlatMeasurementPaths(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(
@@ -941,6 +943,72 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testUnsetSchemaTemplate() throws MetadataException {
+
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s1"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Collections.singletonList("s3"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s1");
+    schemaNames.add("s2");
+    schemaNames.add("s3");
+
+    CreateTemplatePlan createTemplatePlan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
+    SetSchemaTemplatePlan setSchemaTemplatePlan =
+        new SetSchemaTemplatePlan("template1", "root.sg.1");
+    UnsetSchemaTemplatePlan unsetSchemaTemplatePlan =
+        new UnsetSchemaTemplatePlan("root.sg.1", "template1");
+    MManager manager = IoTDB.metaManager;
+    manager.createSchemaTemplate(createTemplatePlan);
+
+    // path does not exist test
+    try {
+      manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      assertEquals("Path [root.sg.1] does not exist", e.getMessage());
+    }
+
+    manager.setSchemaTemplate(setSchemaTemplatePlan);
+
+    // template unset test
+    manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+    manager.setSchemaTemplate(setSchemaTemplatePlan);
+
+    // no template on path test
+    manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+    try {
+      manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      assertEquals("NO template on root.sg.1", e.getMessage());
+    }
+  }
+
+  @Test
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
     MManager manager = IoTDB.metaManager;
@@ -1177,21 +1245,22 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
       // show timeseries
       //      showTimeSeriesPlan =
       //          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
-      //      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      //      result = manager.showTimeseries(showTimeSeriesPlan,
+      // EnvironmentUtils.TEST_QUERY_CONTEXT);
       //      assertEquals(4, result.size());
 
       // show timeseries root.laptop.d1.vector
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.*"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(3, result.size());
       for (int i = 0; i < result.size(); i++) {
         assertEquals("root.laptop.d1.vector.s" + (i + 1), result.get(i).getName());
@@ -1201,7 +1270,7 @@ public class MManagerBasicTest {
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
     } catch (MetadataException e) {
@@ -1215,7 +1284,7 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     } catch (MetadataException e) {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
@@ -1281,7 +1350,7 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
@@ -1289,14 +1358,14 @@ public class MManagerBasicTest {
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
 
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(new PartialPath("root.**"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(4, result.size());
       Set<String> set = new HashSet<>();
       for (int i = 1; i < result.size(); i++) {
@@ -1319,8 +1388,7 @@ public class MManagerBasicTest {
       ShowTimeSeriesPlan showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     } catch (MetadataException e) {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
@@ -1447,6 +1515,29 @@ public class MManagerBasicTest {
       Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.*")));
       Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
 
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.a.s3"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.a.s3"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      Assert.assertEquals(4, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      Assert.assertEquals(3, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.a.s3"));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.a.s3"));
+      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1567,7 +1658,6 @@ public class MManagerBasicTest {
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertEquals(3, manager.getAllTimeseriesFlatCount(node.getPartialPath().concatNode("**")));
-      assertEquals(1, node.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertNull(insertRowPlan.getMeasurementMNodes()[2]);
@@ -1653,7 +1743,7 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(1, node.getMeasurementMNodeCount());
+      assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 

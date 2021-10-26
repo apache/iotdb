@@ -254,8 +254,10 @@ public class ClientServer extends TSServiceImpl {
    * @return a RemoteQueryContext using queryId
    */
   @Override
-  protected QueryContext genQueryContext(long queryId, boolean debug) {
-    RemoteQueryContext context = new RemoteQueryContext(queryId, debug);
+  protected QueryContext genQueryContext(
+      long queryId, boolean debug, long startTime, String statement, long timeout) {
+    RemoteQueryContext context =
+        new RemoteQueryContext(queryId, debug, startTime, statement, timeout);
     queryContextMap.put(queryId, context);
     return context;
   }

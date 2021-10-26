@@ -84,8 +84,8 @@ public class IoTDBRemovePartitionIT {
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test1")) {
         int count = 0;
         while (resultSet.next()) {
-          assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
-          assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(2));
+          assertEquals(count / 2 * 100L + count % 2 * 50, resultSet.getLong(1));
+          assertEquals(count / 2 * 100L + count % 2 * 50, resultSet.getLong(2));
           count++;
         }
         assertEquals(20, count);

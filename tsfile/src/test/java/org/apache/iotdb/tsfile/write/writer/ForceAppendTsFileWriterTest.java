@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -29,11 +28,13 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
@@ -46,7 +47,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ForceAppendTsFileWriterTest {
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test1.tsfile");
+  private static final String FILE_NAME =
+      TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test
@@ -57,7 +59,7 @@ public class ForceAppendTsFileWriterTest {
     }
     System.out.println(file.getAbsolutePath());
     if (!file.getParentFile().exists()) {
-      fail("folder does not exist...." + file.getParentFile().getAbsolutePath());
+      Assert.assertTrue(file.getParentFile().mkdirs());
     }
     if (!file.getParentFile().isDirectory()) {
       fail("folder is not a directory...." + file.getParentFile().getAbsolutePath());

@@ -1040,24 +1040,6 @@
 |默认值| 20 |
 |改后生效方式|重启服务生效|
 
-* enable\_performance\_tracing
-
-|名字| enable\_performance\_tracing |
-|:---:|:---|
-|描述| 是否启用性能跟踪 |
-|类型| Boolean |
-|默认值| false |
-|改后生效方式|重启服务生效|
-
-* tracing\_dir
-
-|名字| tracing\_dir |
-|:---:|:---|
-|描述| 查询性能分析的日志目录 |
-|类型| String |
-|默认值| data/tracing（Windows：data\\tracing） |
-|改后生效方式|重启服务生效|
-
 ### 水印模块配置
 
 * watermark\_module\_opened

@@ -47,13 +47,13 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
@@ -91,6 +91,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getAssembledPathFromRequest;
 
 public class LocalQueryExecutor {
 
@@ -216,12 +218,7 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    PartialPath path = null;
-    try {
-      path = new PartialPath(request.getPath());
-    } catch (IllegalPathException e) {
-      // ignore
-    }
+    PartialPath path = getAssembledPathFromRequest(request.getPath());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -300,25 +297,7 @@ public class LocalQueryExecutor {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     List<PartialPath> paths = Lists.newArrayList();
-    request
-        .getPath()
-        .forEach(
-            fullPath -> {
-              try {
-                if (fullPath.contains("$#$")) {
-                  String[] array = fullPath.split(":");
-                  List<String> subSensorsList = new ArrayList<>();
-                  for (int i = 1; i < array.length; i++) {
-                    subSensorsList.add(array[i]);
-                  }
-                  paths.add(new VectorPartialPath(array[0], subSensorsList));
-                } else {
-                  paths.add(new PartialPath(fullPath));
-                }
-              } catch (IllegalPathException e) {
-                logger.warn("Failed to create partial path, fullPath is {}.", fullPath, e);
-              }
-            });
+    request.getPath().forEach(path -> paths.add(getAssembledPathFromRequest(path)));
 
     List<TSDataType> dataTypes = Lists.newArrayList();
     request.getDataTypeOrdinal().forEach(dataType -> dataTypes.add(TSDataType.values()[dataType]));
@@ -548,8 +527,6 @@ public class LocalQueryExecutor {
    * Create an IReaderByTime of a path, register it in the query manager to get a reader id for it
    * and send the id back to the requester. If the reader does not have any data, an id of -1 will
    * be returned.
-   *
-   * @param request
    */
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, StorageEngineException {
@@ -561,12 +538,7 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    PartialPath path = null;
-    try {
-      path = new PartialPath(request.getPath());
-    } catch (IllegalPathException e) {
-      // ignore
-    }
+    PartialPath path = getAssembledPathFromRequest(request.getPath());
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
@@ -615,7 +587,10 @@ public class LocalQueryExecutor {
 
     ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
     List<ShowTimeSeriesResult> allTimeseriesSchema;
-    allTimeseriesSchema = getCMManager().showLocalTimeseries(plan, new QueryContext());
+    allTimeseriesSchema =
+        getCMManager()
+            .showLocalTimeseries(
+                plan, new QueryContext(SessionManager.getInstance().requestQueryId(false)));
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
@@ -774,7 +749,8 @@ public class LocalQueryExecutor {
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
-        List<PartialPath> path = getCMManager().getAllTimeseriesPath(new PartialPath(seriesPath));
+        List<PartialPath> path =
+            getCMManager().getFlatMeasurementPaths(new PartialPath(seriesPath));
         if (path.size() != 1) {
           throw new MetadataException(
               String.format("Timeseries number of the name [%s] is not 1.", seriesPath));
@@ -1006,6 +982,17 @@ public class LocalQueryExecutor {
       } else {
         count += getCMManager().getNodesCountInGivenLevel(new PartialPath(s), level);
       }
+    }
+    return count;
+  }
+
+  public int getDeviceCount(List<String> pathsToQuery)
+      throws CheckConsistencyException, MetadataException {
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+
+    int count = 0;
+    for (String s : pathsToQuery) {
+      count += getCMManager().getDevicesNum(new PartialPath(s));
     }
     return count;
   }

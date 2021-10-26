@@ -26,7 +26,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -80,16 +79,6 @@ public class MetaUtils {
     String[] storageGroupNodes = new String[level + 1];
     System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
     return new PartialPath(storageGroupNodes);
-  }
-
-  /**
-   * get aligned measurements in partial path FIXME maybe called by prefix path
-   *
-   * @param fullPath partial. For example: root.sg1.d1.(s1, s2, s3)
-   * @return measurement names. For example: [s1, s2, s3]
-   */
-  public static List<String> getMeasurementsInPartialPath(PartialPath fullPath) {
-    return Arrays.asList(fullPath.getMeasurement());
   }
 
   @TestOnly

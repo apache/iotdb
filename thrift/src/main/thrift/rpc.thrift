@@ -48,6 +48,20 @@ struct TSQueryNonAlignDataSet{
   2: required list<binary> valueList
 }
 
+struct TSTracingInfo{
+  1: required list<string> activityList
+  2: required list<i64> elapsedTimeList
+  3: optional i32 seriesPathNum
+  4: optional i32 seqFileNum
+  5: optional i32 unSeqFileNum
+  6: optional i32 sequenceChunkNum
+  7: optional i64 sequenceChunkPointNum
+  8: optional i32 unsequenceChunkNum
+  9: optional i64 unsequenceChunkPointNum
+  10: optional i32 totalPageNum
+  11: optional i32 overlappedPageNum
+}
+
 struct TSExecuteStatementResp {
   1: required TSStatus status
   2: optional i64 queryId
@@ -63,6 +77,7 @@ struct TSExecuteStatementResp {
   9: optional map<string, i32> columnNameIndexMap
   10: optional list<string> sgColumns
   11: optional list<byte> aliasColumns
+  12: optional TSTracingInfo tracingInfo
 }
 
 enum TSProtocolVersion {
@@ -354,6 +369,12 @@ struct TSCreateSchemaTemplateReq {
   7: required list<i32> compressors
 }
 
+struct TSUnsetSchemaTemplateReq {
+  1: required i64 sessionId
+  2: required string prefixPath
+  3: required string templateName
+}
+
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -432,4 +453,6 @@ service TSIService {
   TSStatus createSchemaTemplate(1:TSCreateSchemaTemplateReq req);
 
   TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
+
+  TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 }

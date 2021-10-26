@@ -36,7 +36,7 @@ In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` 
 The sample code for single column data insertion is as follows:
 ```
 IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
 ```
 
 The above example code inserts the long integer timestamp and the value "true" into the timeseries `root.ln.wf02.wt02.status` and inserts the long integer timestamp and the value "v1" into the timeseries `root.ln.wf02.wt02.hardware`. When the execution is successful, cost time is shown to indicate that the data insertion has been completed.
@@ -341,7 +341,7 @@ Currently, IoTDB supports the following string processing functions:
 Example：
 
 ```   sql
-select s1, string_contains(s1, "s"="warn"), string_matches(s1, "regex"="[^\\s]+37229") from root.sg1.d4;
+select s1, string_contains(s1, 's'='warn'), string_matches(s1, 'regex'='[^\\s]+37229') from root.sg1.d4;
 ```
 
 Result：
@@ -370,7 +370,7 @@ Currently, IoTDB supports the following selector functions:
 Example：
 
 ```   sql
-select s1, top_k(s1, "k"="2"), bottom_k(s1, "k"="2") from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
+select s1, top_k(s1, 'k'='2'), bottom_k(s1, 'k'='2') from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
 ```
 
 Result：
@@ -995,7 +995,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 
 Detailed descriptions of all parameters are given in Table 3-4.
 
-<center>**Table 3-4 Previous fill paramter list**
+<center>
+
+**Table 3-4 Previous fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1048,7 +1050,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 ```
 Detailed descriptions of all parameters are given in Table 3-5.
 
-<center>**Table 3-5 Linear fill paramter list**
+<center>
+
+**Table 3-5 Linear fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1091,7 +1095,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
 ```
 Detailed descriptions of all parameters are given in Table 3-6.
 
-<center>**Table 3-6 Specific value fill paramter list**
+<center>
+
+**Table 3-6 Specific value fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -1128,7 +1134,9 @@ It costs 0.007s
 
 Data types and the supported fill methods are shown in Table 3-6.
 
-<center>**Table 3-6 Data types and the supported fill methods**
+<center>
+
+**Table 3-6 Data types and the supported fill methods**
 
 |Data Type|Supported Fill Methods|
 |:---|:---|
@@ -1142,7 +1150,9 @@ Data types and the supported fill methods are shown in Table 3-6.
 
 When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 3-7.
 
-<center>**Table 3-7 Default fill methods and parameters for various data types**
+<center>
+
+**Table 3-7 Default fill methods and parameters for various data types**
 
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
@@ -1177,6 +1187,8 @@ The result will be returned in a four column table format.
 ```
 | Time | timeseries | value | dataType |
 ```
+
+**Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore the colum `dataType` is returned also which contains the _real_ type how the value should be interpreted.
 
 Example 1: get the last point of root.ln.wf01.wt01.status:
 
@@ -1437,7 +1449,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, SLIMIT, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, ';'}
 ```
 
 #### Column Control over Query Results
@@ -1629,7 +1641,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, SLIMIT, OFFSET, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, ';'}
 ```
 
 If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
@@ -1797,7 +1809,7 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 It should be noted that when the deleted path does not exist, IoTDB will not prompt that the path does not exist, but that the execution is successful, because SQL is a declarative programming method. Unless it is a syntax error, insufficient permissions and so on, it is not considered an error, as shown below:
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: The statement is executed successfully.
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
 ### Delete Time Partition (experimental)

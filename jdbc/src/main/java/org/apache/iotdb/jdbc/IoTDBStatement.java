@@ -58,10 +58,10 @@ public class IoTDBStatement implements Statement {
   private int maxRows = 0;
 
   /**
-   * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
-   * will use server configuration.
+   * Timeout of query can be set by users. Unit: s. A negative number means using the default
+   * configuration of server. And value 0 will disable the function of query timeout.
    */
-  private int queryTimeout;
+  private int queryTimeout = -1;
 
   protected TSIService.Iface client;
   private List<String> batchSQLList;
@@ -281,6 +281,7 @@ public class IoTDBStatement implements Statement {
                 queryId,
                 sessionId,
                 execResp.nonAlignQueryDataSet,
+                execResp.tracingInfo,
                 execReq.timeout,
                 execResp.operationType,
                 execResp.getSgColumns(),
@@ -298,6 +299,7 @@ public class IoTDBStatement implements Statement {
                 queryId,
                 sessionId,
                 execResp.queryDataSet,
+                execResp.tracingInfo,
                 execReq.timeout,
                 true);
       }
@@ -372,9 +374,6 @@ public class IoTDBStatement implements Statement {
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
-    if (timeoutInMS < 0) {
-      throw new SQLException("Timeout must be >= 0, please check and try again.");
-    }
     isClosed = false;
     try {
       return executeQuerySQL(sql, timeoutInMS);
@@ -434,6 +433,7 @@ public class IoTDBStatement implements Statement {
               queryId,
               sessionId,
               execResp.nonAlignQueryDataSet,
+              execResp.tracingInfo,
               execReq.timeout,
               execResp.operationType,
               execResp.sgColumns,
@@ -451,6 +451,7 @@ public class IoTDBStatement implements Statement {
               queryId,
               sessionId,
               execResp.queryDataSet,
+              execResp.tracingInfo,
               execReq.timeout,
               execResp.operationType,
               execResp.columns,
@@ -647,9 +648,6 @@ public class IoTDBStatement implements Statement {
   @Override
   public void setQueryTimeout(int seconds) throws SQLException {
     checkConnection("setQueryTimeout");
-    if (seconds < 0) {
-      throw new SQLException(String.format("queryTimeout %d must be >= 0!", seconds));
-    }
     this.queryTimeout = seconds;
   }
 

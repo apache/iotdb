@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -121,11 +122,11 @@ public class IoTDBNestedQueryIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function adder as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute(
-          "create function time_window_counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+          "create function time_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
       statement.execute(
-          "create function size_window_counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+          "create function size_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -383,6 +384,27 @@ public class IoTDBNestedQueryIT {
       } catch (SQLException throwable) {
         fail(throwable.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void testInvalidNestedBuiltInAggregation() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String query = "SELECT first_value(abs(s1)) FROM root.vehicle.d1";
+      try {
+        statement.executeQuery(query);
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains("The argument of the aggregation function must be a time series."));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
     }
   }
 }

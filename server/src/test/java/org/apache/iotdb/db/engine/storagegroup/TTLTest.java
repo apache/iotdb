@@ -42,7 +42,6 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -84,12 +83,9 @@ public class TTLTest {
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
-  private int prevUnseqLevelNum;
 
   @Before
   public void setUp() throws MetadataException, StorageGroupProcessorException {
-    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
@@ -101,12 +97,6 @@ public class TTLTest {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
-  }
-
-  private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
-      throws WriteProcessException, TriggerExecutionException {
-    storageGroupProcessor.insert(insertPlan);
   }
 
   private void createSchemas() throws MetadataException, StorageGroupProcessorException {
@@ -284,8 +274,6 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());
     assertEquals(0, unseqResource.size());
-
-    QueryResourceManager.getInstance().endQuery(EnvironmentUtils.TEST_QUERY_JOB_ID);
   }
 
   @Test

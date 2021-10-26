@@ -23,6 +23,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -46,6 +47,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       long queryId,
       long sessionId,
       TSQueryDataSet dataset,
+      TSTracingInfo tracingInfo,
       long timeout,
       String operationType,
       List<String> columns,
@@ -66,6 +68,10 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         sgColumns,
         aliasColumnMap);
     ioTDBRpcDataSet.setTsQueryDataSet(dataset);
+    if (tracingInfo != null) {
+      ioTDBRpcTracingInfo = new IoTDBTracingInfo();
+      ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
+    }
     this.operationType = operationType;
     this.columns = columns;
     this.sgColumns = sgColumns;
@@ -82,6 +88,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       long queryId,
       long sessionId,
       TSQueryDataSet dataset,
+      TSTracingInfo tracingInfo,
       long timeout,
       boolean isRpcFetchResult)
       throws SQLException {
@@ -98,6 +105,10 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         timeout,
         isRpcFetchResult);
     ioTDBRpcDataSet.setTsQueryDataSet(dataset);
+    if (tracingInfo != null) {
+      ioTDBRpcTracingInfo = new IoTDBTracingInfo();
+      ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
+    }
   }
 
   @Override

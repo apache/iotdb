@@ -119,7 +119,7 @@ public class UDTFAlignByTimeDataSetTest {
     queryExecutor.processNonQuery(
         processor.parseSQLToPhysicalPlan(
             String.format(
-                "create function udf as \"%s\"", "org.apache.iotdb.db.query.udf.example.Adder")));
+                "create function udf as '%s'", "org.apache.iotdb.db.query.udf.example.Adder")));
   }
 
   private static void generateData() throws Exception {
@@ -326,7 +326,7 @@ public class UDTFAlignByTimeDataSetTest {
   public void testHasNextAndNextWithoutValueFilter4() {
     try {
       String sqlStr =
-          "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d1";
+          "select udf(*, *, 'addend'='" + ADDEND + "'), *, udf(*, *) from root.vehicle.d1";
       UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
       QueryDataSet dataSet =
           queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -450,9 +450,9 @@ public class UDTFAlignByTimeDataSetTest {
   public void testHasNextAndNextWithValueFilter2() {
     try {
       String sqlStr =
-          "select udf(*, *, \"addend\"=\""
+          "select udf(*, *, 'addend'='"
               + ADDEND
-              + "\"), *, udf(*, *) from root.vehicle.d2"
+              + "'), *, udf(*, *) from root.vehicle.d2"
               + String.format(
                   " where s1 >= %d and s2 < %d",
                   (int) (0.25 * ITERATION_TIMES), (int) (0.75 * ITERATION_TIMES));

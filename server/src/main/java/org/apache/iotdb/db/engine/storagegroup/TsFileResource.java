@@ -22,14 +22,16 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.SettleTsFileCallBack;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -42,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -64,12 +67,7 @@ import java.util.Random;
 import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_MERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_TIME_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_VERSION_INDEX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.getTsFileName;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -90,6 +88,11 @@ public class TsFileResource {
   /** version number */
   public static final byte VERSION_NUMBER = 1;
 
+  /** Used in {@link TsFileResourceList TsFileResourceList} */
+  protected TsFileResource prev;
+
+  protected TsFileResource next;
+
   private TsFileProcessor processor;
 
   public TsFileProcessor getProcessor() {
@@ -103,13 +106,17 @@ public class TsFileResource {
 
   private ModificationFile modFile;
 
-  private volatile boolean closed = false;
+  protected volatile boolean closed = false;
   private volatile boolean deleted = false;
-  private volatile boolean isMerging = false;
+  volatile boolean isMerging = false;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
   private Random random = new Random();
+
+  private boolean isSeq;
+
+  private Map<String, Integer> holderMap = new HashMap<>();
 
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
@@ -134,11 +141,7 @@ public class TsFileResource {
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
-  /**
-   * indicate if this tsfile resource belongs to a sequence tsfile or not used for upgrading
-   * v0.9.x/v1 -> 0.10/v2
-   */
-  private boolean isSeq;
+  private SettleTsFileCallBack settleTsFileCallBack;
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -154,6 +157,8 @@ public class TsFileResource {
   protected long minPlanIndex = Long.MAX_VALUE;
 
   private long version = 0;
+
+  private long ramSize;
 
   public TsFileResource() {}
 
@@ -437,9 +442,24 @@ public class TsFileResource {
     return readOnlyMemChunk;
   }
 
-  public synchronized ModificationFile getModFile() {
+  public ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = new ModificationFile(file.getPath() + ModificationFile.FILE_SUFFIX);
+      synchronized (this) {
+        if (modFile == null) {
+          modFile = ModificationFile.getNormalMods(this);
+        }
+      }
+    }
+    return modFile;
+  }
+
+  public ModificationFile getCompactionModFile() {
+    if (modFile == null) {
+      synchronized (this) {
+        if (modFile == null) {
+          modFile = ModificationFile.getCompactionMods(this);
+        }
+      }
     }
     return modFile;
   }
@@ -615,7 +635,7 @@ public class TsFileResource {
     this.deleted = deleted;
   }
 
-  boolean isMerging() {
+  public boolean isMerging() {
     return isMerging;
   }
 
@@ -690,14 +710,6 @@ public class TsFileResource {
     return upgradedResources;
   }
 
-  public void setSeq(boolean isSeq) {
-    this.isSeq = isSeq;
-  }
-
-  public boolean isSeq() {
-    return isSeq;
-  }
-
   public void setUpgradeTsFileResourceCallBack(
       UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
     this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
@@ -705,6 +717,14 @@ public class TsFileResource {
 
   public UpgradeTsFileResourceCallBack getUpgradeTsFileResourceCallBack() {
     return upgradeTsFileResourceCallBack;
+  }
+
+  public SettleTsFileCallBack getSettleTsFileCallBack() {
+    return settleTsFileCallBack;
+  }
+
+  public void setSettleTsFileCallBack(SettleTsFileCallBack settleTsFileCallBack) {
+    this.settleTsFileCallBack = settleTsFileCallBack;
   }
 
   /** make sure Either the deviceToIndex is not empty Or the path contains a partition folder */
@@ -774,7 +794,8 @@ public class TsFileResource {
 
   /** @return resource map size */
   public long calculateRamSize() {
-    return timeIndex.calculateRamSize();
+    ramSize = timeIndex.calculateRamSize();
+    return ramSize;
   }
 
   public void delete() throws IOException {
@@ -814,6 +835,11 @@ public class TsFileResource {
     }
   }
 
+  public static int getInnerCompactionCount(String fileName) throws IOException {
+    TsFileName tsFileName = getTsFileName(fileName);
+    return tsFileName.getInnerCompactionCnt();
+  }
+
   /** For merge, the index range of the new file should be the union of all files' in this merge. */
   public void updatePlanIndexes(TsFileResource another) {
     maxPlanIndex = Math.max(maxPlanIndex, another.maxPlanIndex);
@@ -848,135 +874,61 @@ public class TsFileResource {
     this.timeIndex = timeIndex;
   }
 
-  // change tsFile name
-
-  public static String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
-    return time
-        + FILE_NAME_SEPARATOR
-        + version
-        + FILE_NAME_SEPARATOR
-        + mergeCnt
-        + FILE_NAME_SEPARATOR
-        + unSeqMergeCnt
-        + TSFILE_SUFFIX;
-  }
-
-  public static TsFileName getTsFileName(String fileName) throws IOException {
-    String[] fileNameParts =
-        fileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
-            FILE_NAME_SEPARATOR);
-    if (fileNameParts.length != 4) {
-      throw new IOException("tsfile file name format is incorrect:" + fileName);
-    }
-    try {
-      TsFileName tsFileName =
-          new TsFileName(
-              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_TIME_INDEX]),
-              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_VERSION_INDEX]),
-              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
-              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
-      return tsFileName;
-    } catch (NumberFormatException e) {
-      throw new IOException("tsfile file name format is incorrect:" + fileName);
+  // ({systemTime}-{versionNum}-{innerMergeNum}-{crossMergeNum}.tsfile)
+  public static int compareFileName(File o1, File o2) {
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    long ver1 = Long.parseLong(items1[0]);
+    long ver2 = Long.parseLong(items2[0]);
+    int cmp = Long.compare(ver1, ver2);
+    if (cmp == 0) {
+      int cmpVersion = Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
+      if (cmpVersion == 0) {
+        int cmpInnerCompact = Long.compare(Long.parseLong(items1[2]), Long.parseLong(items2[2]));
+        if (cmpInnerCompact == 0) {
+          return Long.compare(Long.parseLong(items1[3]), Long.parseLong(items2[3]));
+        }
+        return cmpInnerCompact;
+      }
+      return cmpVersion;
+    } else {
+      return cmp;
     }
   }
 
-  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource)
-      throws IOException {
-    File tsFile = tsFileResource.getTsFile();
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
-    tsFileResource.setFile(
-        new File(
-            path,
-            tsFileName.time
-                + FILE_NAME_SEPARATOR
-                + tsFileName.version
-                + FILE_NAME_SEPARATOR
-                + tsFileName.mergeCnt
-                + FILE_NAME_SEPARATOR
-                + tsFileName.unSeqMergeCnt
-                + TSFILE_SUFFIX));
-    return tsFileResource;
+  public void setSeq(boolean seq) {
+    isSeq = seq;
   }
 
-  public static File modifyTsFileNameUnseqMergCnt(File tsFile) throws IOException {
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
-    return new File(
-        path,
-        tsFileName.time
-            + FILE_NAME_SEPARATOR
-            + tsFileName.version
-            + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
-            + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
-            + TSFILE_SUFFIX);
+  public boolean isSeq() {
+    return isSeq;
   }
 
-  public static File modifyTsFileNameMergeCnt(File tsFile) throws IOException {
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setMergeCnt(tsFileName.getMergeCnt() + 1);
-    return new File(
-        path,
-        tsFileName.time
-            + FILE_NAME_SEPARATOR
-            + tsFileName.version
-            + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
-            + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
-            + TSFILE_SUFFIX);
+  public int compareIndexDegradePriority(TsFileResource tsFileResource) {
+    int cmp = timeIndex.compareDegradePriority(tsFileResource.timeIndex);
+    return cmp == 0 ? file.getAbsolutePath().compareTo(tsFileResource.file.getAbsolutePath()) : cmp;
   }
 
-  public static class TsFileName {
+  public byte getTimeIndexType() {
+    return timeIndexType;
+  }
 
-    private long time;
-    private long version;
-    private int mergeCnt;
-    private int unSeqMergeCnt;
+  public long getRamSize() {
+    return ramSize;
+  }
 
-    public TsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
-      this.time = time;
-      this.version = version;
-      this.mergeCnt = mergeCnt;
-      this.unSeqMergeCnt = unSeqMergeCnt;
-    }
-
-    public long getTime() {
-      return time;
-    }
-
-    public long getVersion() {
-      return version;
-    }
-
-    public int getMergeCnt() {
-      return mergeCnt;
-    }
-
-    public int getUnSeqMergeCnt() {
-      return unSeqMergeCnt;
-    }
-
-    public void setTime(long time) {
-      this.time = time;
-    }
-
-    public void setVersion(long version) {
-      this.version = version;
-    }
-
-    public void setMergeCnt(int mergeCnt) {
-      this.mergeCnt = mergeCnt;
-    }
-
-    public void setUnSeqMergeCnt(int unSeqMergeCnt) {
-      this.unSeqMergeCnt = unSeqMergeCnt;
-    }
+  /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
+  public long degradeTimeIndex() {
+    TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
+    // if current timeIndex is FileTimeIndex, no need to degrade
+    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
+    // get the minimum startTime
+    long startTime = timeIndex.getMinStartTime();
+    // get the maximum endTime
+    long endTime = timeIndex.getMaxEndTime();
+    // replace the DeviceTimeIndex with FileTimeIndex
+    timeIndex = new FileTimeIndex(startTime, endTime);
+    timeIndexType = 0;
+    return ramSize - timeIndex.calculateRamSize();
   }
 }

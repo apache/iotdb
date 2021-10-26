@@ -23,10 +23,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.ShutdownException;
@@ -78,11 +77,10 @@ public class StorageGroupProcessorTest {
 
   @Before
   public void setUp() throws Exception {
-    config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     processor = new DummySGP(systemDir, storageGroup);
-    MergeManager.getINSTANCE().start();
+    CompactionTaskManager.getInstance().start();
   }
 
   @After
@@ -90,9 +88,8 @@ public class StorageGroupProcessorTest {
     processor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
-    MergeManager.getINSTANCE().stop();
+    CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
-    config.setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)
@@ -138,7 +135,7 @@ public class StorageGroupProcessorTest {
               TSEncoding.RLE,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap()),
-          new QueryContext(),
+          EnvironmentUtils.TEST_QUERY_CONTEXT,
           tsfileResourcesForQuery);
     }
 
@@ -595,6 +592,15 @@ public class StorageGroupProcessorTest {
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
+    int originCandidateFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(10);
+    boolean originEnableSeqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+    boolean originEnableUnseqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -611,20 +617,43 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    processor.merge(config.isForceFullMerge());
-    while (processor.getTsFileManagement().isUnseqMerging) {
+    processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+    long totalWaitingTime = 0;
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      totalWaitingTime += 100;
+      if (totalWaitingTime % 1000 == 0) {
+        logger.warn("has waited for {} seconds", totalWaitingTime / 1000);
+      }
+      if (totalWaitingTime > 120_000) {
+        Assert.fail();
+        break;
+      }
     }
 
     QueryDataSource queryDataSource =
         processor.query(new PartialPath(deviceId, measurementId), context, null, null);
-    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCompactionCandidateFileNum(originCandidateFileNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
   }
 
   @Test

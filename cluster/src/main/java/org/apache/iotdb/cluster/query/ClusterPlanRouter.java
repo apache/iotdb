@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -40,17 +39,16 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,8 +124,6 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((InsertTabletPlan) plan);
     } else if (plan instanceof InsertMultiTabletPlan) {
       return splitAndRoutePlan((InsertMultiTabletPlan) plan);
-    } else if (plan instanceof CountPlan) {
-      return splitAndRoutePlan((CountPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof CreateAlignedTimeSeriesPlan) {
@@ -352,16 +348,21 @@ public class ClusterPlanRouter {
       long[] subTimes = new long[count];
       int destLoc = 0;
       Object[] values = initTabletValues(plan.getDataTypes().length, count, plan.getDataTypes());
+      BitMap[] bitMaps =
+          plan.getBitMaps() == null ? null : initBitmaps(plan.getDataTypes().length, count);
       for (int i = 0; i < locs.size(); i += 2) {
         int start = locs.get(i);
         int end = locs.get(i + 1);
         System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
         for (int k = 0; k < values.length; k++) {
           System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
+          if (bitMaps != null && plan.getBitMaps()[k] != null) {
+            BitMap.copyOfRange(plan.getBitMaps()[k], start, bitMaps[k], destLoc, end - start);
+          }
         }
         destLoc += end - start;
       }
-      InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
+      InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values, bitMaps);
       newBatch.setRange(locs);
       newBatch.setAligned(plan.isAligned());
       result.put(newBatch, entry.getKey());
@@ -396,49 +397,12 @@ public class ClusterPlanRouter {
     return values;
   }
 
-  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
-      throws MetadataException {
-    // CountPlan is quite special because it has the behavior of wildcard at the tail of the path
-    // even though there is no wildcard
-    Map<String, String> sgPathMap = getMManager().groupPathByStorageGroup(plan.getPath());
-    if (sgPathMap.isEmpty()) {
-      throw new StorageGroupNotSetException(plan.getPath().getFullPath());
+  private BitMap[] initBitmaps(int columnSize, int rowSize) {
+    BitMap[] bitMaps = new BitMap[columnSize];
+    for (int i = 0; i < columnSize; i++) {
+      bitMaps[i] = new BitMap(rowSize);
     }
-    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
-    if (plan.getShowContentType().equals(ShowContentType.COUNT_TIMESERIES)) {
-      // support wildcard
-      for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
-        CountPlan plan1 =
-            new CountPlan(
-                ShowContentType.COUNT_TIMESERIES,
-                new PartialPath(entry.getValue()),
-                plan.getLevel());
-        result.put(plan1, partitionTable.route(entry.getKey(), 0));
-      }
-    } else {
-      // do not support wildcard
-      if (sgPathMap.size() == 1) {
-        // the path of the original plan has only one SG, or there is only one SG in the system.
-        for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
-          // actually, there is only one entry
-          result.put(plan, partitionTable.route(entry.getKey(), 0));
-        }
-      } else {
-        // the path of the original plan contains more than one SG, and we added a wildcard at the
-        // tail.
-        // we have to remove it.
-        for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
-          CountPlan plan1 =
-              new CountPlan(
-                  ShowContentType.COUNT_TIMESERIES,
-                  new PartialPath(
-                      entry.getValue().substring(0, entry.getValue().lastIndexOf(".*"))),
-                  plan.getLevel());
-          result.put(plan1, partitionTable.route(entry.getKey(), 0));
-        }
-      }
-    }
-    return result;
+    return bitMaps;
   }
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateMultiTimeSeriesPlan plan)

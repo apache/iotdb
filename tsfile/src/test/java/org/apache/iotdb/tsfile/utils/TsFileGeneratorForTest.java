@@ -49,12 +49,12 @@ public class TsFileGeneratorForTest {
 
   public static final long START_TIMESTAMP = 1480562618000L;
   private static String inputDataFile;
-  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
+  public static String outputDataFile = getTestTsFilePath("root.sg1", 0, 0, 0);
   private static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
   private static int pageSize;
-  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
       throws IOException {
@@ -71,8 +71,20 @@ public class TsFileGeneratorForTest {
   }
 
   public static void prepare(int minrowCount, int maxRowCount) throws IOException {
-    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
-    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
+    File file = fsFactory.getFile(outputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    inputDataFile = getTestTsFilePath("root.sg1", 0, 0, 1);
+    file = fsFactory.getFile(inputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    errorOutputDataFile = getTestTsFilePath("root.sg1", 0, 0, 2);
+    file = fsFactory.getFile(errorOutputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
     generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
@@ -248,5 +260,24 @@ public class TsFileGeneratorForTest {
     buffer.get(data, 0, 3);
     writer.getIOWriter().getIOWriterOut().write(data);
     writer.getIOWriter().close();
+  }
+
+  public static String getTestTsFilePath(
+      String logicalStorageGroupName,
+      long VirtualStorageGroupId,
+      long TimePartitionId,
+      long tsFileVersion) {
+    String filePath =
+        String.format(
+            TestConstant.TEST_TSFILE_PATH,
+            logicalStorageGroupName,
+            VirtualStorageGroupId,
+            TimePartitionId);
+    String fileName =
+        System.currentTimeMillis()
+            + FilePathUtils.FILE_NAME_SEPARATOR
+            + tsFileVersion
+            + "-0-0.tsfile";
+    return filePath.concat(fileName);
   }
 }
