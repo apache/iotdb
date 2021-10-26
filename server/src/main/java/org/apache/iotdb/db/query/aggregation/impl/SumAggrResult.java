@@ -37,28 +37,35 @@ import java.nio.ByteBuffer;
 public class SumAggrResult extends AggregateResult {
 
   private TSDataType seriesDataType;
+  private double sum;
+  private boolean notNull;
 
   public SumAggrResult(TSDataType seriesDataType) {
     super(TSDataType.DOUBLE, AggregationType.SUM);
     this.seriesDataType = seriesDataType;
     reset();
-    setDoubleValue(0.0);
+    sum = 0.0;
+    notNull = false;
   }
 
   @Override
   public Double getResult() {
-    return getDoubleValue();
+    if (notNull) {
+      setDoubleValue(sum);
+    }
+    return hasCandidateResult() ? getDoubleValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    double preValue = getDoubleValue();
-    if (statistics instanceof IntegerStatistics || statistics instanceof BooleanStatistics) {
-      preValue += statistics.getSumLongValue();
-    } else {
-      preValue += statistics.getSumDoubleValue();
+    if (statistics.getCount() > 0) {
+      notNull = true;
     }
-    setDoubleValue(preValue);
+    if (statistics instanceof IntegerStatistics || statistics instanceof BooleanStatistics) {
+      sum += statistics.getSumLongValue();
+    } else {
+      sum += statistics.getSumDoubleValue();
+    }
   }
 
   @Override
@@ -98,19 +105,19 @@ public class SumAggrResult extends AggregateResult {
   }
 
   private void updateSum(Object sumVal) throws UnSupportedDataTypeException {
-    double preValue = getDoubleValue();
+    notNull = true;
     switch (seriesDataType) {
       case INT32:
-        preValue += (int) sumVal;
+        sum += (int) sumVal;
         break;
       case INT64:
-        preValue += (long) sumVal;
+        sum += (long) sumVal;
         break;
       case FLOAT:
-        preValue += (float) sumVal;
+        sum += (float) sumVal;
         break;
       case DOUBLE:
-        preValue += (double) sumVal;
+        sum += (double) sumVal;
         break;
       case TEXT:
       case BOOLEAN:
@@ -118,7 +125,10 @@ public class SumAggrResult extends AggregateResult {
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation SUM : %s", seriesDataType));
     }
-    setDoubleValue(preValue);
+  }
+
+  public boolean isNotNull() {
+    return notNull;
   }
 
   @Override
@@ -128,8 +138,11 @@ public class SumAggrResult extends AggregateResult {
 
   @Override
   public void merge(AggregateResult another) {
-    SumAggrResult anotherSum = (SumAggrResult) another;
-    setDoubleValue(getDoubleValue() + anotherSum.getDoubleValue());
+    if (another instanceof SumAggrResult) {
+      notNull |= ((SumAggrResult) another).isNotNull();
+      SumAggrResult anotherSum = (SumAggrResult) another;
+      setDoubleValue(getDoubleValue() + anotherSum.getDoubleValue());
+    }
   }
 
   @Override
@@ -140,5 +153,12 @@ public class SumAggrResult extends AggregateResult {
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(seriesDataType, outputStream);
+  }
+
+  @Override
+  public void reset() {
+    super.reset();
+    sum = 0.0;
+    notNull = false;
   }
 }
