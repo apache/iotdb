@@ -571,9 +571,9 @@ public class SyncClient implements ISyncClient {
     logger.info("Start to sync names of deleted files in storage group {}", sgName);
     for (File file : deletedFilesName) {
       try {
-        if (serviceClient.syncDeletedFileName(getFileInfoWithVgAndTimePartition(file)).code == SUCCESS_CODE) {
-          logger.info(
-              "Receiver has received deleted file name {} successfully.", file.getPath());
+        if (serviceClient.syncDeletedFileName(getFileInfoWithVgAndTimePartition(file)).code
+            == SUCCESS_CODE) {
+          logger.info("Receiver has received deleted file name {} successfully.", file.getPath());
           lastLocalFilesMap.get(sgName).get(vgId).get(timeRangeId).remove(file);
           syncLog.finishSyncDeletedFileName(file);
         }
