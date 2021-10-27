@@ -53,7 +53,6 @@ public abstract class BaseSingleNodeTest {
 
   @After
   public void tearDown() throws Exception {
-    // TODO fixme
     daemon.stop();
     recoverConfigs();
     EnvironmentUtils.cleanEnv();
