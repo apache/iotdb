@@ -26,19 +26,19 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This is a integration test for StatMonitor. */
 public class IoTDBStatMonitorTest {
@@ -121,13 +121,13 @@ public class IoTDBStatMonitorTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResult = statement.execute("select TOTAL_POINTS from root.stats.\"root.sg\"");
+      boolean hasResult = statement.execute("select TOTAL_POINTS from root.stats.\"\"root#sg\"\"");
       Assert.assertTrue(hasResult);
 
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          long ans = resultSet.getLong("root.stats.\"root.sg\".TOTAL_POINTS");
+          long ans = resultSet.getLong("root.stats.\"root#sg\".TOTAL_POINTS");
           Assert.assertEquals(5, ans);
           cnt++;
         }

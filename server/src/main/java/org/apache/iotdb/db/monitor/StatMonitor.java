@@ -48,10 +48,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,6 +55,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StatMonitor implements StatMonitorMBean, IService {
 
@@ -186,7 +186,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   private PartialPath getStorageGroupMonitorSeries(String storageGroupName) {
     String[] monitorSeries = Arrays.copyOf(MonitorConstants.STAT_STORAGE_GROUP_ARRAY, 4);
-    monitorSeries[2] = "\"" + storageGroupName + "\"";
+    monitorSeries[2] = "\"" + storageGroupName.replace('.', '#') + "\"";
     monitorSeries[3] = StatMeasurementConstants.TOTAL_POINTS.getMeasurement();
     return new PartialPath(monitorSeries);
   }
