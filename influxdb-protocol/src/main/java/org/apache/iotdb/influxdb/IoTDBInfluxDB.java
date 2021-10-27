@@ -21,7 +21,7 @@ package org.apache.iotdb.influxdb;
 
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
 import org.apache.iotdb.influxdb.protocol.impl.IoTDBInfluxDBService;
-import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
+import org.apache.iotdb.influxdb.protocol.input.InfluxLineParser;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -154,7 +154,7 @@ public class IoTDBInfluxDB implements InfluxDB {
             .retentionPolicy(retentionPolicy)
             .consistency(consistency)
             .precision(precision)
-            .points(DataTypeUtils.recordsToPoints(records, precision))
+            .points(InfluxLineParser.parserRecordsToPoints(records, precision))
             .build();
     write(batchPoints);
   }
