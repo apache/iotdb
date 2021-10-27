@@ -31,8 +31,15 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -41,8 +48,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -83,6 +89,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       Map<PartialPath, Long> storageGroupTTLMap = new HashMap<>();
       Map<String, User> userMap = new HashMap<>();
       Map<String, Role> roleMap = new HashMap<>();
+      Map<String, Template> templateMap = new HashMap<>();
       PartitionTable partitionTable = TestUtils.getPartitionTable(10);
       long lastLogIndex = 10;
       long lastLogTerm = 5;
@@ -104,8 +111,17 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
         roleMap.put(roleName, role);
       }
 
+      CreateTemplatePlan createTemplatePlan = getDefaultCreateTemplatePlan();
+
+      for (int i = 0; i < 10; i++) {
+        String templateName = "template_" + i;
+        Template template = new Template(createTemplatePlan);
+        templateMap.put(templateName, template);
+      }
+
       MetaSimpleSnapshot metaSimpleSnapshot =
-          new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap, partitionTable.serialize());
+          new MetaSimpleSnapshot(
+              storageGroupTTLMap, userMap, roleMap, templateMap, partitionTable.serialize());
 
       metaSimpleSnapshot.setLastLogIndex(lastLogIndex);
       metaSimpleSnapshot.setLastLogTerm(lastLogTerm);
@@ -118,6 +134,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       assertEquals(storageGroupTTLMap, newSnapshot.getStorageGroupTTLMap());
       assertEquals(userMap, newSnapshot.getUserMap());
       assertEquals(roleMap, newSnapshot.getRoleMap());
+      assertEquals(templateMap, newSnapshot.getTemplateMap());
 
       assertEquals(partitionTable.serialize(), newSnapshot.getPartitionTableBuffer());
       assertEquals(lastLogIndex, newSnapshot.getLastLogIndex());
@@ -136,6 +153,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     Map<PartialPath, Long> storageGroupTTLMap = new HashMap<>();
     Map<String, User> userMap = new HashMap<>();
     Map<String, Role> roleMap = new HashMap<>();
+    Map<String, Template> templateMap = new HashMap<>();
     PartitionTable partitionTable = TestUtils.getPartitionTable(10);
     long lastLogIndex = 10;
     long lastLogTerm = 5;
@@ -157,8 +175,18 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       roleMap.put(roleName, role);
     }
 
+    CreateTemplatePlan createTemplatePlan = getDefaultCreateTemplatePlan();
+
+    for (int i = 0; i < 10; i++) {
+      String templateName = "template_" + i;
+      createTemplatePlan.setName(templateName);
+      Template template = new Template(createTemplatePlan);
+      templateMap.put(templateName, template);
+    }
+
     MetaSimpleSnapshot metaSimpleSnapshot =
-        new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap, partitionTable.serialize());
+        new MetaSimpleSnapshot(
+            storageGroupTTLMap, userMap, roleMap, templateMap, partitionTable.serialize());
     metaSimpleSnapshot.setLastLogIndex(lastLogIndex);
     metaSimpleSnapshot.setLastLogTerm(lastLogTerm);
 
@@ -183,9 +211,58 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       assertEquals(roleMap.get(roleName), role);
     }
 
+    for (int i = 0; i < 10; i++) {
+      String templateName = "template_" + i;
+      try {
+        Template template = TemplateManager.getInstance().getTemplate(templateName);
+        assertEquals(templateMap.get(templateName), template);
+      } catch (UndefinedTemplateException e) {
+        assertTrue(false);
+      }
+    }
+
     assertEquals(partitionTable, metaGroupMember.getPartitionTable());
     assertEquals(lastLogIndex, metaGroupMember.getLogManager().getLastLogIndex());
     assertEquals(lastLogTerm, metaGroupMember.getLogManager().getLastLogTerm());
     assertTrue(subServerInitialized);
+  }
+
+  private CreateTemplatePlan getDefaultCreateTemplatePlan() {
+    // create createTemplatePlan for template
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("template_sensor"));
+    List<String> measurements = new ArrayList<>();
+    for (int j = 0; j < 10; j++) {
+      measurements.add("s" + j);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int j = 0; j < 10; j++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int j = 0; j < 10; j++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int j = 0; j < 11; j++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("template_sensor");
+    schemaNames.add("vector");
+
+    return new CreateTemplatePlan(
+        "template", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }

@@ -89,8 +89,11 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -102,7 +105,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -767,14 +772,61 @@ public class MetaGroupMemberTest extends BaseMember {
       Assert.fail(e.getMessage());
     }
 
-    // 4. prepare the partition table
+    // 4. prepare the template info
+    Map<String, Template> templateMap = new HashMap<>();
+    // create createTemplatePlan for template
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("template_sensor"));
+    List<String> measurements = new ArrayList<>();
+    for (int j = 0; j < 10; j++) {
+      measurements.add("s" + j);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int j = 0; j < 10; j++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int j = 0; j < 10; j++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int j = 0; j < 11; j++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("template_sensor");
+    schemaNames.add("vector");
+
+    CreateTemplatePlan createTemplatePlan =
+        new CreateTemplatePlan(
+            "template", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    for (int i = 0; i < 10; i++) {
+      String templateName = "template_" + i;
+      createTemplatePlan.setName(templateName);
+      Template template = new Template(createTemplatePlan);
+      templateMap.put(templateName, template);
+    }
+
+    // 5. prepare the partition table
     SlotPartitionTable partitionTable = (SlotPartitionTable) TestUtils.getPartitionTable(3);
     partitionTable.setLastMetaLogIndex(0);
 
     ByteBuffer beforePartitionTableBuffer = partitionTable.serialize();
-    // 5. serialize
+    // 6. serialize
     MetaSimpleSnapshot snapshot =
-        new MetaSimpleSnapshot(storageGroupTTL, userMap, roleMap, beforePartitionTableBuffer);
+        new MetaSimpleSnapshot(
+            storageGroupTTL, userMap, roleMap, templateMap, beforePartitionTableBuffer);
     request.setSnapshotBytes(snapshot.serialize());
     AtomicReference<Void> reference = new AtomicReference<>();
     new MetaAsyncService(testMetaMember)
@@ -797,6 +849,9 @@ public class MetaGroupMemberTest extends BaseMember {
 
       Map<String, Role> localRoleMap = authorizer.getAllRoles();
       assertEquals(roleMap, localRoleMap);
+
+      Map<String, Template> localTemplateMap = TemplateManager.getInstance().getTemplateMap();
+      assertEquals(templateMap, localTemplateMap);
 
       PartitionTable localPartitionTable = this.testMetaMember.getPartitionTable();
       assertEquals(localPartitionTable, partitionTable);
