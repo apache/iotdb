@@ -15,8 +15,6 @@ on:
       - master
       - "rel/*"
       - cluster_new
-      #remove me when cluster- branch is merged
-      - cluster-
     paths-ignore:
       - "docs/**"
   pull_request_target:
