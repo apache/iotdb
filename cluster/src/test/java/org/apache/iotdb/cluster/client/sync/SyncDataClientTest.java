@@ -60,7 +60,7 @@ public class SyncDataClientTest extends BaseClientTest {
 
       assertCheck(dataClient);
     } catch (Exception e) {
-      e.printStackTrace();
+      Assert.fail(e.getMessage());
     } finally {
       stopDataServer();
     }
@@ -90,7 +90,7 @@ public class SyncDataClientTest extends BaseClientTest {
               + "dataPort:40010, clientPort:0, clientIp:localhost),port=40011}",
           dataHeartbeatClient.toString());
     } catch (Exception e) {
-      e.printStackTrace();
+      Assert.fail(e.getMessage());
     } finally {
       stopDataHeartbeatServer();
     }

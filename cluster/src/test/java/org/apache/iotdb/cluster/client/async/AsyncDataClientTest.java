@@ -50,7 +50,7 @@ public class AsyncDataClientTest extends BaseClientTest {
   }
 
   @Test
-  public void testMetaHeartbeatClient() throws Exception {
+  public void testDataHeartbeatClient() throws Exception {
 
     AsyncDataClient.AsyncDataClientFactory factory =
         new AsyncDataClient.AsyncDataClientFactory(protocolFactory, ClientCategory.DATA_HEARTBEAT);

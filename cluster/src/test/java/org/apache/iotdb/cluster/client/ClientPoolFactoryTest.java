@@ -64,7 +64,7 @@ public class ClientPoolFactoryTest {
           @Override
           public void returnAsyncClient(
               RaftService.AsyncClient client, Node node, ClientCategory category) {
-            assert (client == asyncClient);
+            Assert.assertTrue(client == asyncClient);
           }
 
           @Override
@@ -95,7 +95,8 @@ public class ClientPoolFactoryTest {
 
     long timeStart = System.currentTimeMillis();
     try {
-      pool.borrowObject(node);
+      RaftService.AsyncClient client = pool.borrowObject(node);
+      Assert.assertNull(client);
     } catch (Exception e) {
       Assert.assertTrue(e instanceof NoSuchElementException);
     } finally {
@@ -140,7 +141,6 @@ public class ClientPoolFactoryTest {
     Node node = constructDefaultNode();
 
     asyncClient = pool.borrowObject(node);
-    mockClientManager.setAsyncClient(asyncClient);
     Assert.assertNotNull(asyncClient);
     Assert.assertTrue(asyncClient instanceof AsyncDataClient);
   }

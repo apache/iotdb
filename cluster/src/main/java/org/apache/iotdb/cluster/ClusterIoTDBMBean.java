@@ -20,7 +20,11 @@ package org.apache.iotdb.cluster;
 
 // we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
 public interface ClusterIoTDBMBean {
-  /** @return true only if the log degree is DEBUG and the report is enabled */
+  /**
+   * try to enable the raft info report
+   *
+   * @return true only if the log level is lower than debug and the report is enabled
+   */
   boolean startRaftInfoReport();
 
   void stopRaftInfoReport();
