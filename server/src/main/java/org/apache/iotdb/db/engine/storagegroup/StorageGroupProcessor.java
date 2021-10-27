@@ -118,6 +118,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -533,6 +534,7 @@ public class StorageGroupProcessor {
   }
 
   private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
+    // search compaction log for SizeTieredCompaction
     List<String> dirs;
     if (isSequence) {
       dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
@@ -574,6 +576,26 @@ public class StorageGroupProcessor {
               .call();
         }
       }
+    }
+
+    // search compaction log for old LevelCompaction
+    File logFile =
+        FSFactoryProducer.getFSFactory()
+            .getFile(
+                storageGroupSysDir.getAbsolutePath(),
+                logicalStorageGroupName + COMPACTION_LOG_NAME);
+    if (logFile.exists()) {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getInnerCompactionStrategy()
+          .getCompactionRecoverTask(
+              tsFileManager.getStorageGroupName(),
+              tsFileManager.getVirtualStorageGroup(),
+              InnerSpaceCompactionUtils.getTimePartitionFromLog(logFile),
+              logFile,
+              logFile.getParent(),
+              isSequence)
+          .call();
     }
   }
 

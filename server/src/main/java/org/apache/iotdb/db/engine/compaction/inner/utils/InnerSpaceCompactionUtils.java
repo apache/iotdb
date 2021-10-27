@@ -54,7 +54,9 @@ import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Collection;
@@ -69,6 +71,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
@@ -594,6 +597,25 @@ public class InnerSpaceCompactionUtils {
           (dir, name) -> name.endsWith(SizeTieredCompactionLogger.COMPACTION_LOG_NAME));
     } else {
       return new File[0];
+    }
+  }
+
+  public static long getTimePartitionFromLog(File logFile) {
+    if (!logFile.exists()) {
+      return -1;
+    }
+    try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
+      while (!reader.readLine().equals(SOURCE_NAME)) {}
+      String sourceFileName = reader.readLine();
+      String splitSeparator = File.separator;
+      if (splitSeparator.equals("\\")) {
+        splitSeparator = "\\\\";
+      }
+      String[] splits = sourceFileName.split(splitSeparator);
+      int length = splits.length;
+      return Long.parseLong(splits[length - 2]);
+    } catch (IOException e) {
+      return -1;
     }
   }
 }
