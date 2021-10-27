@@ -403,7 +403,7 @@ insertValuesSpec
     ;
 
 insertMultiValue
-    : LR_BRACKET DATETIME_LITERAL (COMMA measurementValue)+ RR_BRACKET
+    : LR_BRACKET datetimeLiteral (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET INTEGER_LITERAL (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;

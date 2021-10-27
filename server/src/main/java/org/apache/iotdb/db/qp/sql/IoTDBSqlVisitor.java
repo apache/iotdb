@@ -1281,8 +1281,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     long[] timeArray = new long[insertMultiValues.size()];
     for (int i = 0; i < insertMultiValues.size(); i++) {
       long timestamp;
-      if (insertMultiValues.get(i).DATETIME_LITERAL() != null) {
-        timestamp = parseDateFormat(insertMultiValues.get(i).DATETIME_LITERAL().getText());
+      if (insertMultiValues.get(i).datetimeLiteral() != null) {
+        timestamp = parseDateFormat(insertMultiValues.get(i).datetimeLiteral().getText());
       } else if (insertMultiValues.get(i).INTEGER_LITERAL() != null) {
         timestamp = Long.parseLong(insertMultiValues.get(i).INTEGER_LITERAL().getText());
       } else if (insertMultiValues.size() != 1) {
