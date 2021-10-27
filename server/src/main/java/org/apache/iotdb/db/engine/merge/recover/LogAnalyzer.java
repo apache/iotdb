@@ -79,7 +79,7 @@ public class LogAnalyzer {
   private Status status;
 
   public LogAnalyzer(
-          MergeResource resource, String taskName, File logFile, String storageGroupName) {
+      MergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;
@@ -103,7 +103,7 @@ public class LogAnalyzer {
         analyzeUnseqFiles(bufferedReader);
 
         List<PartialPath> storageGroupPaths =
-                IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(storageGroupName + ".*"));
+            IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(storageGroupName + ".*"));
         unmergedPaths = new ArrayList<>();
         unmergedPaths.addAll(storageGroupPaths);
 
@@ -129,7 +129,7 @@ public class LogAnalyzer {
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
         if (MergeFileInfo.getFileInfoFromFile(seqFile.getTsFile())
-                .equals(MergeFileInfo.getFileInfoFromString(currLine))) {
+            .equals(MergeFileInfo.getFileInfoFromString(currLine))) {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -139,10 +139,10 @@ public class LogAnalyzer {
     }
     if (logger.isDebugEnabled()) {
       logger.debug(
-              "{} found {} seq files after {}ms",
-              taskName,
-              mergeSeqFiles.size(),
-              (System.currentTimeMillis() - startTime));
+          "{} found {} seq files after {}ms",
+          taskName,
+          mergeSeqFiles.size(),
+          (System.currentTimeMillis() - startTime));
     }
     resource.setSeqFiles(mergeSeqFiles);
   }
@@ -161,7 +161,7 @@ public class LogAnalyzer {
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
         if (MergeFileInfo.getFileInfoFromFile(unseqFile.getTsFile())
-                .equals(MergeFileInfo.getFileInfoFromString(currLine))) {
+            .equals(MergeFileInfo.getFileInfoFromString(currLine))) {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -171,17 +171,17 @@ public class LogAnalyzer {
     }
     if (logger.isDebugEnabled()) {
       logger.debug(
-              "{} found {} unseq files after {}ms",
-              taskName,
-              mergeUnseqFiles.size(),
-              (System.currentTimeMillis() - startTime));
+          "{} found {} unseq files after {}ms",
+          taskName,
+          mergeUnseqFiles.size(),
+          (System.currentTimeMillis() - startTime));
     }
     resource.setUnseqFiles(mergeUnseqFiles);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void analyzeMergedSeries(BufferedReader bufferedReader, List<PartialPath> unmergedPaths)
-          throws IOException {
+      throws IOException {
     if (!STR_MERGE_START.equals(currLine)) {
       return;
     }
@@ -189,7 +189,7 @@ public class LogAnalyzer {
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       File mergeFile =
-              SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
+          SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -215,7 +215,7 @@ public class LogAnalyzer {
         String[] splits = currLine.split(" ");
         Long position = Long.parseLong(splits[1]);
         MergeFileInfo fileInfo =
-                MergeFileInfo.getFileInfoFromString(currLine.substring(0, currLine.lastIndexOf(' ')));
+            MergeFileInfo.getFileInfoFromString(currLine.substring(0, currLine.lastIndexOf(' ')));
         File file = fileInfo.getFileFromDataDirs();
         tempFileLastPositions.put(file, position);
       } else {
@@ -230,10 +230,10 @@ public class LogAnalyzer {
     tempFileLastPositions = null;
     if (logger.isDebugEnabled()) {
       logger.debug(
-              "{} found {} series have already been merged after {}ms",
-              taskName,
-              mergedPaths.size(),
-              (System.currentTimeMillis() - startTime));
+          "{} found {} series have already been merged after {}ms",
+          taskName,
+          mergedPaths.size(),
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -258,7 +258,7 @@ public class LogAnalyzer {
         String[] splits = currLine.split(" ");
         Long lastPost = Long.parseLong(splits[1]);
         MergeFileInfo fileInfo =
-                MergeFileInfo.getFileInfoFromString(currLine.substring(0, currLine.lastIndexOf(' ')));
+            MergeFileInfo.getFileInfoFromString(currLine.substring(0, currLine.lastIndexOf(' ')));
         currFile = fileInfo.getFileFromDataDirs();
         fileLastPositions.put(currFile, lastPost);
       } else {
@@ -280,10 +280,10 @@ public class LogAnalyzer {
     }
     if (logger.isDebugEnabled()) {
       logger.debug(
-              "{} found {} files have already been merged after {}ms",
-              taskName,
-              mergedCnt,
-              (System.currentTimeMillis() - startTime));
+          "{} found {} files have already been merged after {}ms",
+          taskName,
+          mergedCnt,
+          (System.currentTimeMillis() - startTime));
     }
   }
 

@@ -62,9 +62,15 @@ public class MergeFileInfo {
   }
 
   public static MergeFileInfo getFileInfoFromString(String infoString) {
-    String[] splits = infoString.split(" ");
-    return new MergeFileInfo(
-        splits[0], splits[1], Long.valueOf(splits[2]), splits[3], splits[4].equals("sequence"));
+    if (!infoString.contains(File.separator)) {
+      // the info string records info of merge files
+      String[] splits = infoString.split(" ");
+      return new MergeFileInfo(
+          splits[0], splits[1], Long.valueOf(splits[2]), splits[3], splits[4].equals("sequence"));
+    } else {
+      // the info string records path of merge files
+      return getFileInfoFromFile(new File(infoString));
+    }
   }
 
   public File getFileFromDataDirs() throws IOException {
