@@ -23,9 +23,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -99,8 +99,8 @@ public class IoTDBAlignByDeviceIT {
         "insert into root.other.d1(timestamp,s0) values(2, 3.14)",
       };
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     IoTDBDescriptor.getInstance()
@@ -109,8 +109,8 @@ public class IoTDBAlignByDeviceIT {
     insertData();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -1322,6 +1322,58 @@ public class IoTDBAlignByDeviceIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectNestedDevice() throws ClassNotFoundException {
+    String[] retArray =
+        new String[] {
+          "1,root.vehicle.d1,null,999,",
+          "1000,root.vehicle.d1,null,888,",
+          "1,root.vehicle.d1.nestedD1,1.0,null,",
+        };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.vehicle.d1.nestedD1(time, nestedS0) values(1, 1)");
+      statement.execute("flush");
+
+      boolean hasResultSet = statement.execute("select * from root.vehicle.d1 align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,nestedS0,s0",
+                new int[] {
+                  Types.TIMESTAMP, Types.VARCHAR, Types.FLOAT, Types.INTEGER,
+                });
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(3, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
