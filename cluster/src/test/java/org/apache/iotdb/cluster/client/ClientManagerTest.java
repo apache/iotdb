@@ -146,7 +146,8 @@ public class ClientManagerTest extends BaseClientTest {
     clusterManager.returnAsyncClient(clusterClient, defaultNode, ClientCategory.DATA);
     Assert.assertFalse(((AsyncDataClient) clusterClient).isValid());
 
-    Assert.assertFalse(clusterClient == clusterManager.borrowAsyncClient(defaultNode, ClientCategory.DATA));
+    Assert.assertFalse(
+        clusterClient == clusterManager.borrowAsyncClient(defaultNode, ClientCategory.DATA));
 
     // cluster test
     Assert.assertNull(clusterManager.borrowAsyncClient(defaultNode, ClientCategory.DATA_HEARTBEAT));
