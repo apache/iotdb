@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -46,10 +47,12 @@ import static org.junit.Assert.assertFalse;
 
 public class DatasourceInfoTest {
   private MetaGroupMember metaGroupMember;
+  private IClientManager clientManager;
 
   @Before
   public void setUp() {
     metaGroupMember = new TestMetaGroupMember();
+    clientManager = ClusterIoTDB.getInstance().getClientManager();
     ClusterIoTDB.getInstance()
         .setClientManager(
             new IClientManager() {
@@ -79,6 +82,11 @@ public class DatasourceInfoTest {
               public void returnSyncClient(
                   RaftService.Client client, Node node, ClientCategory category) {}
             });
+  }
+
+  @After
+  public void tearDown() {
+    ClusterIoTDB.getInstance().setClientManager(clientManager);
   }
 
   @Test

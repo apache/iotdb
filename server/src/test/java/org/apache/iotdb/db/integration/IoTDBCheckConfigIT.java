@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
 import org.junit.Before;
@@ -43,7 +42,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 public class IoTDBCheckConfigIT {
@@ -52,8 +51,6 @@ public class IoTDBCheckConfigIT {
           IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
               + File.separator
               + "system.properties");
-
-  private TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
 
   private Map<String, String> systemProperties = new HashMap<>();
 
@@ -67,15 +64,6 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
-    //    final SecurityManager securityManager =
-    //        new SecurityManager() {
-    //          public void checkPermission(Permission permission) {
-    //            if (permission.getName().startsWith("exitVM")) {
-    //              throw new AccessControlException("Wrong system config");
-    //            }
-    //          }
-    //        };
-    //    System.setSecurityManager(securityManager);
     bytes = new ByteArrayOutputStream();
     console = System.out;
     System.setOut(new PrintStream(bytes));
@@ -108,7 +96,7 @@ public class IoTDBCheckConfigIT {
       properties.load(inputStreamReader);
     }
     String timeEncoder = (String) properties.get("time_encoder");
-    assertTrue(!timeEncoder.isEmpty());
+    assertFalse(timeEncoder.isEmpty());
   }
 
   @Test
@@ -126,7 +114,7 @@ public class IoTDBCheckConfigIT {
       assertEquals(t.getCorrectValue(), "REGULAR");
       return;
     }
-    fail("should detect configration errors");
+    fail("should detect configuration errors");
   }
 
   @Test
@@ -140,7 +128,7 @@ public class IoTDBCheckConfigIT {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
     } catch (Throwable t) {
-      fail("should have no configration errors");
+      fail(t.getMessage());
     }
   }
 

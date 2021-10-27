@@ -105,6 +105,7 @@ public class DataLogApplierTest extends IoTDBTest {
   private static final Logger logger = LoggerFactory.getLogger(DataLogApplierTest.class);
   private boolean partialWriteEnabled;
   private boolean isPartitionEnabled;
+  private IClientManager clientManager;
 
   private TestMetaGroupMember testMetaGroupMember =
       new TestMetaGroupMember() {
@@ -180,7 +181,7 @@ public class DataLogApplierTest extends IoTDBTest {
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
     isPartitionEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartition(true);
-    // TODO fixme: restore normal provider
+    clientManager = ClusterIoTDB.getInstance().getClientManager();
     ClusterIoTDB.getInstance()
         .setClientManager(
             new IClientManager() {
@@ -288,6 +289,7 @@ public class DataLogApplierTest extends IoTDBTest {
     testMetaGroupMember.stop();
     testMetaGroupMember.closeLogManager();
     super.tearDown();
+    ClusterIoTDB.getInstance().setClientManager(clientManager);
     NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(partialWriteEnabled);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartition(isPartitionEnabled);

@@ -23,7 +23,12 @@ import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.client.IClientManager;
-import org.apache.iotdb.cluster.common.*;
+import org.apache.iotdb.cluster.common.TestAsyncClient;
+import org.apache.iotdb.cluster.common.TestAsyncDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
+import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
+import org.apache.iotdb.cluster.common.TestSnapshot;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
@@ -47,8 +52,22 @@ import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
-import org.apache.iotdb.cluster.rpc.thrift.*;
+import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
+import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
+import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -348,15 +367,6 @@ public class MetaGroupMemberTest extends BaseMember {
                 ? MetaGroupMemberTest.this.dataGroupEngine
                 : ClusterIoTDB.getInstance().getDataGroupEngine();
           }
-
-          // TODO we remove a do-nothing DataHeartbeat here.
-          //          @Override
-          //          public DataHeartbeatServer getDataHeartbeatServer() {
-          //            return new DataHeartbeatServer(thisNode, dataGroupServiceImpls) {
-          //              @Override
-          //              public void start() {}
-          //            };
-          //          }
 
           @Override
           public DataGroupMember getLocalDataMember(RaftNode header, Object request) {

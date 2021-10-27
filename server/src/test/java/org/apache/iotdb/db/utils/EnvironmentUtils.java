@@ -48,16 +48,15 @@ import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
 
 import java.io.File;
 import java.io.IOException;
@@ -241,9 +240,7 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    synchronized (EnvironmentUtils.class) {
-      FileUtils.deleteDirectory(new File(dir));
-    }
+    FileUtils.deleteDirectory(new File(dir));
   }
 
   /** disable the system monitor</br> this function should be called before all code in the setup */

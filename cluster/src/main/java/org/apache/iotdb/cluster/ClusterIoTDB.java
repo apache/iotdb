@@ -589,6 +589,11 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   @TestOnly
+  public IClientManager getClientManager() {
+    return this.clientManager;
+  }
+
+  @TestOnly
   public void setDataGroupEngine(DataGroupEngine dataGroupEngine) {
     this.dataGroupEngine = dataGroupEngine;
   }
