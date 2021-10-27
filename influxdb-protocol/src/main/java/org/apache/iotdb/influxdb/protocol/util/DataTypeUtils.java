@@ -25,13 +25,6 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.influxdb.InfluxDBException;
-import org.influxdb.dto.Point;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class DataTypeUtils {
 
@@ -90,5 +83,4 @@ public class DataTypeUtils {
     }
     return new SessionPoint(endPoint.ip, endPoint.port, username, password);
   }
-
 }
