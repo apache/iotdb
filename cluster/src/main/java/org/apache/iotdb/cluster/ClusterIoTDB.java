@@ -185,14 +185,12 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   private void initTasks() {
-    if (logger.isDebugEnabled()) {
-      reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
-      reportThread.scheduleAtFixedRate(
-          this::generateNodeReport,
-          ClusterConstant.REPORT_INTERVAL_SEC,
-          ClusterConstant.REPORT_INTERVAL_SEC,
-          TimeUnit.SECONDS);
-    }
+    reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
+    reportThread.scheduleAtFixedRate(
+        this::generateNodeReport,
+        ClusterConstant.REPORT_INTERVAL_SEC,
+        ClusterConstant.REPORT_INTERVAL_SEC,
+        TimeUnit.SECONDS);
     hardLinkCleanerThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("HardLinkCleaner");
     hardLinkCleanerThread.scheduleAtFixedRate(
