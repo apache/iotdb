@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
@@ -45,7 +44,7 @@ public class Template {
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema =
           new UnaryMeasurementSchema(
-              plan.getMeasurements().get(i).get(0),
+              plan.getSchemaNames().get(i),
               plan.getDataTypes().get(i).get(0),
               plan.getEncodings().get(i).get(0),
               plan.getCompressors().get(i));
@@ -76,19 +75,12 @@ public class Template {
     this.schemaMap = schemaMap;
   }
 
-  /**
-   * check whether a timeseries path is compatible with this template
-   *
-   * @param path timeseries path
-   * @return whether we can create this new timeseries (whether it's compatible with this template)
-   */
-  public boolean isCompatible(PartialPath path) {
-    return !(schemaMap.containsKey(path.getMeasurement())
-        || schemaMap.containsKey(path.getDevicePath().getMeasurement()));
-  }
-
   public boolean hasSchema(String measurementId) {
     return schemaMap.containsKey(measurementId);
+  }
+
+  public IMeasurementSchema getSchema(String measurementId) {
+    return schemaMap.get(measurementId);
   }
 
   @Override

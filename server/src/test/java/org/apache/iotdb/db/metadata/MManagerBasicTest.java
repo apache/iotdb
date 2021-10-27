@@ -914,7 +914,7 @@ public class MManagerBasicTest {
     encodingList.add(encodings);
 
     List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 11; i++) {
+    for (int i = 0; i < 2; i++) {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
@@ -1019,7 +1019,7 @@ public class MManagerBasicTest {
 
     CreateTimeSeriesPlan createTimeSeriesPlan2 =
         new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.vector.s1"),
+            new PartialPath("root.sg1.d1.vector"),
             TSDataType.INT32,
             TSEncoding.PLAIN,
             CompressionType.GZIP,
@@ -1033,7 +1033,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.sg1.d1.vector.s1 ( which is incompatible with template )] already exist",
+          "Path [root.sg1.d1.vector ( which is incompatible with template )] already exist",
           e.getMessage());
     }
   }
@@ -1624,7 +1624,7 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.assertEquals(
-          "Path [root.laptop.d1.vector] is an aligned timeseries, please set InsertPlan.isAligned() = true",
+          "Timeseries under path [root.laptop.d1.vector] is aligned , please set InsertPlan.isAligned() = true",
           e.getMessage());
     }
   }
@@ -1708,7 +1708,7 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.assertEquals(
-          "Path [root.laptop.d1.vector] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
+          "Timeseries under path [root.laptop.d1.vector] is not aligned , please set InsertPlan.isAligned() = false",
           e.getMessage());
     }
   }

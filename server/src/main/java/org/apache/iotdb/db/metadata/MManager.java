@@ -1786,81 +1786,23 @@ public class MManager {
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
 
     // check insert non-aligned InsertPlan for aligned timeseries
-    if (deviceMNode.isEntity()) {
-      IEntityMNode entityMNode = deviceMNode.getAsEntityMNode();
-      if (plan.isAligned()) {
-        if (!entityMNode.isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Path [%s] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
-                  devicePath));
-        }
-      } else {
-        if (entityMNode.isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Path [%s] is an aligned timeseries, please set InsertPlan.isAligned() = true",
-                  devicePath));
-        }
-      }
-    }
+    checkIsMatchAlignedPlan(plan, deviceMNode);
 
     // 2. get schema of each measurement
-    // if do not have measurement
     IMeasurementMNode measurementMNode;
     for (int i = 0; i < measurementList.length; i++) {
       try {
-        String measurement = measurementList[i];
-        measurementMNode = getMeasurementMNode(deviceMNode, measurement);
-        if (measurementMNode == null) {
-          measurementMNode = findTemplate(deviceMNode, measurement);
-        }
-        if (measurementMNode == null) {
-          if (!config.isAutoCreateSchemaEnabled()) {
-            throw new PathNotExistException(devicePath + PATH_SEPARATOR + measurement);
-          } else {
-            if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-              if (!plan.isAligned()) {
-                internalCreateTimeseries(
-                    devicePath.concatNode(measurement), plan.getDataTypes()[i]);
-              } else {
-                internalAlignedCreateTimeseries(
-                    devicePath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
-              }
-              // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
-              deviceMNode = mtree.getNodeByPath(devicePath);
-              measurementMNode = deviceMNode.getChild(measurement).getAsMeasurementMNode();
-            } else {
-              throw new MetadataException(
-                  String.format(
-                      "Only support insertRow and insertTablet, plan is [%s]",
-                      plan.getOperatorType()));
-            }
-          }
-        }
+        // get MeasurementMNode, auto create if absent
+        Pair<IMNode, IMeasurementMNode> pair =
+            getMeasurementMNodeForInsertPlan(plan, i, deviceMNode);
+        deviceMNode = pair.left;
+        measurementMNode = pair.right;
 
         // check type is match
-        TSDataType insertDataType;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          if (plan instanceof InsertRowPlan) {
-            if (!((InsertRowPlan) plan).isNeedInferType()) {
-              // only when InsertRowPlan's values is object[], we should check type
-              insertDataType = getTypeInLoc(plan, i);
-            } else {
-              insertDataType = measurementMNode.getSchema().getType();
-            }
-          } else {
-            insertDataType = getTypeInLoc(plan, i);
-          }
-          if (measurementMNode.getSchema().getType() != insertDataType) {
-            logger.warn(
-                "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-                measurementList[i],
-                insertDataType,
-                measurementMNode.getSchema().getType());
-            DataTypeMismatchException mismatchException =
-                new DataTypeMismatchException(
-                    measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+          try {
+            checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
+          } catch (DataTypeMismatchException mismatchException) {
             if (!config.isEnablePartialInsert()) {
               throw mismatchException;
             } else {
@@ -1909,6 +1851,99 @@ public class MManager {
     return deviceMNode;
   }
 
+  private void checkIsMatchAlignedPlan(InsertPlan plan, IMNode deviceMNode)
+      throws MetadataException {
+    if (!deviceMNode.isEntity()) {
+      return;
+    }
+    IEntityMNode entityMNode = deviceMNode.getAsEntityMNode();
+    if (plan.isAligned()) {
+      if (!entityMNode.isAligned()) {
+        throw new MetadataException(
+            String.format(
+                "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
+                plan.getPrefixPath()));
+      } else {
+        String[] measurementList = plan.getMeasurements();
+        if (measurementList.length != entityMNode.getChildren().size()) {
+          throw new MetadataException("Aligned timeseries doesn't support partial insert");
+        }
+        for (String measurement : measurementList) {
+          if (!entityMNode.hasChild(measurement)) {
+            throw new MetadataException(
+                String.format(
+                    "%s is not aligned with timeseries under %s",
+                    measurement, plan.getPrefixPath().getFullPath()));
+          }
+        }
+      }
+    } else {
+      if (entityMNode.isAligned()) {
+        throw new MetadataException(
+            String.format(
+                "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
+                plan.getPrefixPath()));
+      }
+    }
+  }
+
+  private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
+      InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
+    PartialPath devicePath = plan.getPrefixPath();
+    String[] measurementList = plan.getMeasurements();
+    String measurement = measurementList[loc];
+    IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);
+    if (measurementMNode == null) {
+      measurementMNode = findTemplate(deviceMNode, measurement);
+    }
+    if (measurementMNode == null) {
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw new PathNotExistException(devicePath + PATH_SEPARATOR + measurement);
+      } else {
+        if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
+          if (!plan.isAligned()) {
+            internalCreateTimeseries(devicePath.concatNode(measurement), plan.getDataTypes()[loc]);
+          } else {
+            internalAlignedCreateTimeseries(
+                devicePath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
+          }
+          // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
+          deviceMNode = mtree.getNodeByPath(devicePath);
+          measurementMNode = deviceMNode.getChild(measurement).getAsMeasurementMNode();
+        } else {
+          throw new MetadataException(
+              String.format(
+                  "Only support insertRow and insertTablet, plan is [%s]", plan.getOperatorType()));
+        }
+      }
+    }
+    return new Pair<>(deviceMNode, measurementMNode);
+  }
+
+  private void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
+      throws MetadataException {
+    TSDataType insertDataType;
+    if (plan instanceof InsertRowPlan) {
+      if (!((InsertRowPlan) plan).isNeedInferType()) {
+        // only when InsertRowPlan's values is object[], we should check type
+        insertDataType = getTypeInLoc(plan, loc);
+      } else {
+        insertDataType = dataType;
+      }
+    } else {
+      insertDataType = getTypeInLoc(plan, loc);
+    }
+    if (dataType != insertDataType) {
+      String measurement = plan.getMeasurements()[loc];
+      logger.warn(
+          "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+          measurement,
+          insertDataType,
+          dataType);
+      throw new DataTypeMismatchException(measurement, insertDataType, dataType);
+    }
+  }
+
   /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
   private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
     TSDataType dataType;
@@ -1930,9 +1965,7 @@ public class MManager {
       throws MetadataException {
     Template curTemplate = deviceMNode.getUpperTemplate();
     if (curTemplate != null) {
-      Map<String, IMeasurementSchema> curTemplateMap = curTemplate.getSchemaMap();
-
-      IMeasurementSchema schema = curTemplateMap.get(measurement);
+      IMeasurementSchema schema = curTemplate.getSchema(measurement);
       if (!deviceMNode.isUseTemplate()) {
         deviceMNode = setUsingSchemaTemplate(deviceMNode);
       }

@@ -325,52 +325,14 @@ public class MTree implements Serializable {
       Map<String, String> props,
       String alias)
       throws MetadataException {
-    String[] nodeNames = path.getNodes();
-    if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
-      throw new IllegalPathException(path.getFullPath());
-    }
-    MetaFormatUtils.checkTimeseries(path);
-    IMNode cur = root;
-    boolean hasSetStorageGroup = false;
-    Template upperTemplate = cur.getSchemaTemplate();
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = 1; i < nodeNames.length - 1; i++) {
-      if (cur.isMeasurement()) {
-        throw new PathAlreadyExistException(cur.getFullPath());
-      }
-      if (cur.isStorageGroup()) {
-        hasSetStorageGroup = true;
-      }
-      String childName = nodeNames[i];
-      if (!cur.hasChild(childName)) {
-        if (!hasSetStorageGroup) {
-          throw new StorageGroupNotSetException("Storage group should be created first");
-        }
-        if (cur.isUseTemplate() && upperTemplate.hasSchema(childName)) {
-          throw new PathAlreadyExistException(
-              cur.getPartialPath().concatNode(childName).getFullPath());
-        }
-        cur.addChild(childName, new InternalMNode(cur, childName));
-      }
-      cur = cur.getChild(childName);
-
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
-      }
-    }
-
-    if (cur.isMeasurement()) {
-      throw new PathAlreadyExistException(cur.getFullPath());
-    }
-
-    if (upperTemplate != null && !upperTemplate.isCompatible(path)) {
-      throw new PathAlreadyExistException(
-          path.getFullPath() + " ( which is incompatible with template )");
-    }
+    MetaFormatUtils.checkNodeName(path.getMeasurement());
+    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(path.getDevicePath());
+    IMNode cur = pair.left;
+    Template upperTemplate = pair.right;
 
     MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
-    String leafName = nodeNames[nodeNames.length - 1];
+    String leafName = path.getMeasurement();
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
@@ -381,6 +343,12 @@ public class MTree implements Serializable {
 
       if (alias != null && cur.hasChild(alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
+      }
+
+      if (upperTemplate != null
+          && (upperTemplate.hasSchema(leafName) || upperTemplate.hasSchema(alias))) {
+        throw new PathAlreadyExistException(
+            path.getFullPath() + " ( which is incompatible with template )");
       }
 
       if (cur.isEntity() && cur.getAsEntityMNode().isAligned()) {
@@ -422,32 +390,10 @@ public class MTree implements Serializable {
       List<TSEncoding> encodings,
       CompressionType compressor)
       throws MetadataException {
-    String[] nodeNames = devicePath.getNodes();
-    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
-      throw new IllegalPathException(devicePath.getFullPath());
-    }
-    MetaFormatUtils.checkTimeseries(devicePath);
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
-    IMNode cur = root;
-    boolean hasSetStorageGroup = false;
-    // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
-    for (int i = 1; i < nodeNames.length; i++) {
-      String nodeName = nodeNames[i];
-      if (!cur.hasChild(nodeName)) {
-        if (!hasSetStorageGroup) {
-          throw new StorageGroupNotSetException("Storage group should be created first");
-        }
-        cur.addChild(nodeName, new InternalMNode(cur, nodeName));
-      }
-      cur = cur.getChild(nodeName);
-
-      if (cur.isMeasurement()) {
-        throw new PathAlreadyExistException(cur.getFullPath());
-      }
-      if (cur.isStorageGroup()) {
-        hasSetStorageGroup = true;
-      }
-    }
+    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
+    IMNode cur = pair.left;
+    Template upperTemplate = pair.right;
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
@@ -455,6 +401,16 @@ public class MTree implements Serializable {
       for (String measurement : measurements) {
         if (cur.hasChild(measurement)) {
           throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
+        }
+      }
+
+      if (upperTemplate != null) {
+        for (String measurement : measurements) {
+          if (upperTemplate.hasSchema(measurement)) {
+            throw new PathAlreadyExistException(
+                devicePath.concatNode(measurement).getFullPath()
+                    + " ( which is incompatible with template )");
+          }
         }
       }
 
@@ -477,6 +433,46 @@ public class MTree implements Serializable {
       }
       entityMNode.setAligned(true);
     }
+  }
+
+  private Pair<IMNode, Template> checkAndAutoCreateInternalPath(PartialPath devicePath)
+      throws MetadataException {
+    String[] nodeNames = devicePath.getNodes();
+    if (nodeNames.length < 2 || !nodeNames[0].equals(root.getName())) {
+      throw new IllegalPathException(devicePath.getFullPath());
+    }
+    MetaFormatUtils.checkTimeseries(devicePath);
+    IMNode cur = root;
+    boolean hasSetStorageGroup = false;
+    Template upperTemplate = cur.getSchemaTemplate();
+    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
+    for (int i = 1; i < nodeNames.length; i++) {
+      String childName = nodeNames[i];
+      if (!cur.hasChild(childName)) {
+        if (!hasSetStorageGroup) {
+          throw new StorageGroupNotSetException("Storage group should be created first");
+        }
+        if (upperTemplate != null && upperTemplate.hasSchema(childName)) {
+          throw new PathAlreadyExistException(
+              cur.getPartialPath().concatNode(childName).getFullPath()
+                  + " ( which is incompatible with template )");
+        }
+        cur.addChild(childName, new InternalMNode(cur, childName));
+      }
+      cur = cur.getChild(childName);
+
+      if (cur.isMeasurement()) {
+        throw new PathAlreadyExistException(cur.getFullPath());
+      }
+      if (cur.isStorageGroup()) {
+        hasSetStorageGroup = true;
+      }
+
+      if (cur.getSchemaTemplate() != null) {
+        upperTemplate = cur.getSchemaTemplate();
+      }
+    }
+    return new Pair<>(cur, upperTemplate);
   }
 
   /**
