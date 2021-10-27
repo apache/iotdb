@@ -327,29 +327,24 @@ public class ImportCsv extends AbstractCsvTool {
                                 headerTypeMap.put(header, type);
                               } else {
                                 System.out.println(
-                                        "Line "
-                                                + (records.indexOf(record) + 1)
-                                                + ": `"
-                                                + value
-                                                + "` unknown type");
+                                    String.format(
+                                        "Line '%s', column '%s': '%s' unknown type",
+                                        (records.indexOf(record) + 1), header, value));
                                 isFail.set(true);
                               }
                             }
-                            if (!isFail.get()) {
-                              type = headerTypeMap.get(headerNameMap.get(header));
+                            type = headerTypeMap.get(headerNameMap.get(header));
+                            if (type != null) {
                               Object valueTransed = typeTrans(value, type);
                               if (valueTransed == null) {
                                 isFail.set(true);
                                 System.out.println(
-                                        "Line "
-                                                + (records.indexOf(record) + 1)
-                                                + ": "
-                                                + value
-                                                + " can't convert to "
-                                                + type);
+                                    String.format(
+                                        "Line '%s', column '%s': '%s' can't convert to '%s'",
+                                        (records.indexOf(record) + 1), header, value, type));
                               } else {
                                 measurements.add(
-                                        headerNameMap.get(header).replace(deviceId + '.', ""));
+                                    headerNameMap.get(header).replace(deviceId + '.', ""));
                                 types.add(type);
                                 values.add(valueTransed);
                               }
@@ -450,11 +445,9 @@ public class ImportCsv extends AbstractCsvTool {
                                         headerTypeMap.put(measurement, type);
                                       } else {
                                         System.out.println(
-                                                "Line "
-                                                        + (records.indexOf(record) + 1)
-                                                        + ": `"
-                                                        + value
-                                                        + "` unknown type");
+                                            String.format(
+                                                "Line '%s', column '%s': '%s' unknown type",
+                                                (records.indexOf(record) + 1), measurement, value));
                                         isFail.set(true);
                                       }
                                     }
@@ -464,12 +457,12 @@ public class ImportCsv extends AbstractCsvTool {
                                       if (valueTransed == null) {
                                         isFail.set(true);
                                         System.out.println(
-                                                "Line "
-                                                        + (records.indexOf(record) + 1)
-                                                        + ": "
-                                                        + value
-                                                        + " can't convert to "
-                                                        + type);
+                                            String.format(
+                                                "Line '%s', column '%s': '%s' can't convert to '%s'",
+                                                (records.indexOf(record) + 1),
+                                                measurement,
+                                                value,
+                                                type));
                                       } else {
                                         values.add(valueTransed);
                                         measurements.add(headerNameMap.get(measurement));
