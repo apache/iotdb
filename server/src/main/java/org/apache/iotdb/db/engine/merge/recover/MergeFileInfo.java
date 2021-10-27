@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.merge.recover;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.io.File;
-import java.io.IOException;
 
 public class MergeFileInfo {
   String logicalStorageGroup;
@@ -66,14 +65,18 @@ public class MergeFileInfo {
       // the info string records info of merge files
       String[] splits = infoString.split(" ");
       return new MergeFileInfo(
-          splits[0], splits[1], Long.valueOf(splits[2]), splits[3], splits[4].equals("sequence"));
+          splits[0],
+          splits[1],
+          Long.parseLong(splits[2]),
+          splits[3],
+          Boolean.parseBoolean(splits[4]));
     } else {
       // the info string records path of merge files
       return getFileInfoFromFile(new File(infoString));
     }
   }
 
-  public File getFileFromDataDirs() throws IOException {
+  public File getFileFromDataDirs() {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     for (String dataDir : dataDirs) {
       File file =
@@ -88,7 +91,7 @@ public class MergeFileInfo {
         return file;
       }
     }
-    throw new IOException(String.format("MergeFile(%s) does not exist!", this));
+    return null;
   }
 
   @Override

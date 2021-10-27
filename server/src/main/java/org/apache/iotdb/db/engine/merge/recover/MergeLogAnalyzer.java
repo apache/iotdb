@@ -48,7 +48,6 @@ import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
 
 /**
@@ -59,9 +58,9 @@ import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FIL
  * server/0seq.tsfile.merge 338 end start root.mergeTest.device0.sensor1 server/0seq.tsfile.merge
  * 664 end all ts end server/0seq.tsfile 145462 end merge end
  */
-public class LogAnalyzer {
+public class MergeLogAnalyzer {
 
-  private static final Logger logger = LoggerFactory.getLogger(LogAnalyzer.class);
+  private static final Logger logger = LoggerFactory.getLogger(MergeLogAnalyzer.class);
 
   private MergeResource resource;
   private String taskName;
@@ -78,7 +77,7 @@ public class LogAnalyzer {
 
   private Status status;
 
-  public LogAnalyzer(
+  public MergeLogAnalyzer(
       MergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
@@ -126,10 +125,10 @@ public class LogAnalyzer {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
+      MergeFileInfo toMatchedInfo = MergeFileInfo.getFileInfoFromString(currLine);
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
-        if (MergeFileInfo.getFileInfoFromFile(seqFile.getTsFile())
-            .equals(MergeFileInfo.getFileInfoFromString(currLine))) {
+        if (MergeFileInfo.getFileInfoFromFile(seqFile.getTsFile()).equals(toMatchedInfo)) {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -154,14 +153,14 @@ public class LogAnalyzer {
     long startTime = System.currentTimeMillis();
     List<TsFileResource> mergeUnseqFiles = new ArrayList<>();
     while ((currLine = bufferedReader.readLine()) != null) {
-      if (currLine.equals(STR_TIMESERIES)) {
+      if (currLine.equals(STR_MERGE_START)) {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
+      MergeFileInfo toMatchInfo = MergeFileInfo.getFileInfoFromString(currLine);
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
-        if (MergeFileInfo.getFileInfoFromFile(unseqFile.getTsFile())
-            .equals(MergeFileInfo.getFileInfoFromString(currLine))) {
+        if (MergeFileInfo.getFileInfoFromFile(unseqFile.getTsFile()).equals(toMatchInfo)) {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();

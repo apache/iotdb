@@ -29,6 +29,8 @@ import org.apache.iotdb.db.engine.merge.selector.IMergePathSelector;
 import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
@@ -125,7 +127,7 @@ public class MergeMultiChunkTask {
     this.storageGroupName = storageGroupName;
   }
 
-  void mergeSeries() throws IOException {
+  void mergeSeries() throws IOException, MetadataException {
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
     }
@@ -174,7 +176,7 @@ public class MergeMultiChunkTask {
     return String.format("Processed %d/%d series", mergedSeriesCnt, unmergedSeries.size());
   }
 
-  private void mergePaths() throws IOException {
+  private void mergePaths() throws IOException, MetadataException {
     mergeLogger.logTSStart(currMergingPaths);
     IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
@@ -205,7 +207,8 @@ public class MergeMultiChunkTask {
     return maxSensor;
   }
 
-  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders) throws IOException {
+  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders)
+      throws IOException, MetadataException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     // all paths in one call are from the same device
     String deviceId = currMergingPaths.get(0).getDevice();
@@ -308,7 +311,7 @@ public class MergeMultiChunkTask {
 
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
     for (PartialPath path : currMergingPaths) {
-      MeasurementSchema schema = resource.getSchema(path);
+      MeasurementSchema schema = MManager.getInstance().getSeriesSchema(path);
       mergeFileWriter.addSchema(path, schema);
     }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
@@ -622,11 +625,11 @@ public class MergeMultiChunkTask {
     }
 
     @SuppressWarnings("java:S2445") // avoid reading the same reader concurrently
-    private void mergeChunkHeap() throws IOException {
+    private void mergeChunkHeap() throws IOException, MetadataException {
       while (!chunkIdxHeap.isEmpty()) {
         int pathIdx = chunkIdxHeap.poll();
         PartialPath path = currMergingPaths.get(pathIdx);
-        MeasurementSchema measurementSchema = resource.getSchema(path);
+        MeasurementSchema measurementSchema = MManager.getInstance().getSeriesSchema(path);
         IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
         if (Thread.interrupted()) {
           Thread.currentThread().interrupt();

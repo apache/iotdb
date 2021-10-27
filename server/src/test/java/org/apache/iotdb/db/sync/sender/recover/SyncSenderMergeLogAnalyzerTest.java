@@ -51,9 +51,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class SyncSenderLogAnalyzerTest {
+public class SyncSenderMergeLogAnalyzerTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderLogAnalyzerTest.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderMergeLogAnalyzerTest.class);
   private ISyncSenderLogger senderLogger;
   private ISyncSenderLogAnalyzer senderLogAnalyzer;
   private ISyncFileManager manager = SyncFileManager.getInstance();

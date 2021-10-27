@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.merge.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.recover.LogAnalyzer;
-import org.apache.iotdb.db.engine.merge.recover.LogAnalyzer.Status;
+import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer;
+import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer.Status;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -51,7 +51,7 @@ public class RecoverMergeTask extends MergeTask {
 
   private static final Logger logger = LoggerFactory.getLogger(RecoverMergeTask.class);
 
-  private LogAnalyzer analyzer;
+  private MergeLogAnalyzer analyzer;
 
   public RecoverMergeTask(
       List<TsFileResource> seqFiles,
@@ -73,7 +73,7 @@ public class RecoverMergeTask extends MergeTask {
     }
     long startTime = System.currentTimeMillis();
 
-    analyzer = new LogAnalyzer(resource, taskName, logFile, storageGroupName);
+    analyzer = new MergeLogAnalyzer(resource, taskName, logFile, storageGroupName);
     Status status = analyzer.analyze();
     if (logger.isInfoEnabled()) {
       logger.info(
@@ -104,7 +104,7 @@ public class RecoverMergeTask extends MergeTask {
     }
   }
 
-  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException {
+  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException, MetadataException {
     if (continueMerge) {
       resumeMergeProgress();
       calculateConcurrentSeriesNum();
@@ -287,7 +287,7 @@ public class RecoverMergeTask extends MergeTask {
     for (Entry<File, Long> entry : analyzer.getFileLastPositions().entrySet()) {
       File file = entry.getKey();
       Long lastPosition = entry.getValue();
-      if (file.exists() && file.length() != lastPosition) {
+      if (file != null && file.exists() && file.length() != lastPosition) {
         try (FileInputStream fileInputStream = new FileInputStream(file)) {
           FileChannel channel = fileInputStream.getChannel();
           channel.truncate(lastPosition);
