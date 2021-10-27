@@ -451,8 +451,8 @@ public class ImportCsv extends AbstractCsvTool {
                                         isFail.set(true);
                                       }
                                     }
-                                    if (!isFail.get()) {
-                                      type = headerTypeMap.get(headerNameMap.get(measurement));
+                                    type = headerTypeMap.get(headerNameMap.get(measurement));
+                                    if (type != null) {
                                       Object valueTransed = typeTrans(value, type);
                                       if (valueTransed == null) {
                                         isFail.set(true);
