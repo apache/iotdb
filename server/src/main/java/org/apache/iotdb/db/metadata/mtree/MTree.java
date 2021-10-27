@@ -351,11 +351,6 @@ public class MTree implements Serializable {
             path.getFullPath() + " ( which is incompatible with template )");
       }
 
-      if (cur.isEntity() && cur.getAsEntityMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "Timeseries cannot be created under aligned entity", path.getFullPath());
-      }
-
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
 
       IMeasurementMNode measurementMNode =
@@ -414,7 +409,7 @@ public class MTree implements Serializable {
         }
       }
 
-      if (cur.isEntity()) {
+      if (cur.isEntity() && !cur.getAsEntityMNode().isAligned()) {
         throw new AlignedTimeseriesException(
             "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
       }

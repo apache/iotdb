@@ -1786,7 +1786,12 @@ public class MManager {
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
 
     // check insert non-aligned InsertPlan for aligned timeseries
-    checkIsMatchAlignedPlan(plan, deviceMNode);
+    if (plan.isAligned() && deviceMNode.isEntity() && !deviceMNode.getAsEntityMNode().isAligned()) {
+      throw new MetadataException(
+          String.format(
+              "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
+              plan.getPrefixPath()));
+    }
 
     // 2. get schema of each measurement
     IMeasurementMNode measurementMNode;
@@ -1849,42 +1854,6 @@ public class MManager {
     }
 
     return deviceMNode;
-  }
-
-  private void checkIsMatchAlignedPlan(InsertPlan plan, IMNode deviceMNode)
-      throws MetadataException {
-    if (!deviceMNode.isEntity()) {
-      return;
-    }
-    IEntityMNode entityMNode = deviceMNode.getAsEntityMNode();
-    if (plan.isAligned()) {
-      if (!entityMNode.isAligned()) {
-        throw new MetadataException(
-            String.format(
-                "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-                plan.getPrefixPath()));
-      } else {
-        String[] measurementList = plan.getMeasurements();
-        if (measurementList.length != entityMNode.getChildren().size()) {
-          throw new MetadataException("Aligned timeseries doesn't support partial insert");
-        }
-        for (String measurement : measurementList) {
-          if (!entityMNode.hasChild(measurement)) {
-            throw new MetadataException(
-                String.format(
-                    "%s is not aligned with timeseries under %s",
-                    measurement, plan.getPrefixPath().getFullPath()));
-          }
-        }
-      }
-    } else {
-      if (entityMNode.isAligned()) {
-        throw new MetadataException(
-            String.format(
-                "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
-                plan.getPrefixPath()));
-      }
-    }
   }
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
