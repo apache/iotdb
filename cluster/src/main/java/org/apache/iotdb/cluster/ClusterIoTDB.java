@@ -84,7 +84,7 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.UNKNOWN_CLIENT_IP;
 
-// we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
+/** we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB. */
 public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterIoTDB.class);
@@ -92,8 +92,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       String.format(
           "%s:%s=%s", "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "ClusterIoTDB");
 
-  // TODO fix me: better to throw exception if the client can not be get. Then we can remove this
-  // field.
+  /**
+   * TODO: fix me: better to throw exception if the client can not be get. Then we can remove this
+   * field.
+   */
   public static boolean printClientConnectionErrorStack = false;
 
   // establish the cluster as a seed
@@ -106,7 +108,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private MetaGroupMember metaGroupEngine;
 
-  // split DataGroupServiceImpls into engine and impls
   private DataGroupEngine dataGroupEngine;
 
   private Node thisNode;
@@ -128,15 +129,17 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread;
 
-  // currently, clientManager is only used for those instances who do not belong to any
-  // DataGroup..
+  /**
+   * The clientManager is only used by those instances who do not belong to any DataGroup or
+   * MetaGroup
+   */
   private IClientManager clientManager;
 
   private ClusterIoTDB() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
   }
 
-  public void initLocalEngines() {
+  public boolean initLocalEngines() {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     thisNode = new Node();
     // set internal rpc ip and ports
@@ -172,11 +175,13 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     try {
       // we need to check config after initLocalEngines.
       startServerCheck();
+      JMXService.registerMBean(metaGroupEngine, metaGroupEngine.getMBeanName());
     } catch (StartupException e) {
       logger.error("Failed to check cluster config.", e);
       stop();
+      return false;
     }
-    JMXService.registerMBean(metaGroupEngine, metaGroupEngine.getMBeanName());
+    return true;
   }
 
   private void initTasks() {
@@ -238,7 +243,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     logger.info("Running mode {}", mode);
 
     // initialize the current node and its services
-    cluster.initLocalEngines();
+    if (!cluster.initLocalEngines()) {
+      logger.error("initLocalEngines error, stop process!");
+      return;
+    }
 
     // we start IoTDB kernel first. then we start the cluster module.
     if (MODE_START.equals(mode)) {
