@@ -19,13 +19,13 @@
 
 -->
 
-# 语法约定
+# Syntax Conventions
 
-## 双引号（\"）、反引号（\`）
+## Double-quotes (\") & Backquotes (\`)
 
-双引号和反引号内引用的字符串被解释为标识符（ID），被引用的字符串一般包含特殊字符。需要注意的是，被引用的字符串不可带有 `.` 字符。
+Strings quoted in double-quotes and backquotes are interpreted as identifiers (ID), and the quoted strings generally contain special characters. It should be noted that the quoted strings cannot contain `.` characters.
 
-标识符（ID）的定义为：
+The definition of identifier (ID) is:
 
 ```sql
 ID
@@ -53,30 +53,31 @@ fragment CN_CHAR
     ;
 ```
 
-标志符的使用场景：
-* `TRIGGER`，`FUNCTION`(UDF)，`CONTINUOUS QUERY`，`USER`，`ROLE` 等的名字。
-* 时间序列路径的表达：除了时间序列的开头的层级（`root`）和存储组层级外，层级还支持使用被  \`  或者 ` " ` 符号引用的特殊字符串作为其名称。
+Usages of identifiers:
 
-例子：
+* The names of `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS QUERY`, `USER`, `ROLE`, etc.
+* In time series paths: In addition to the beginning level of the time series (`root`) and the storage group level, other levels also support strings quoted by  \` or `" ` as their names.
+
+Examples:
 
 ```sql
 CREATE FUNCTION "udfname:""actual-name""" AS 'org.apache.iotdb.db.query.udf.example.Counter'
-# "udfname:""actual-name""" 会被解析成 udfname:"actual-name"
+# "udfname:""actual-name""" will be parsed as udfname:"actual-name"
 
 CREATE FUNCTION `udfname:actual-name` AS 'org.apache.iotdb.db.query.udf.example.Counter'
-# `udfname:actual-name` 会被解析成 udfname:actual-name
+# `udfname:actual-name` will be parsed as udfname:actual-name
 
 CREATE TIMESERIES root.a.b.`s1+s2/s3`.c WITH DATATYPE=INT32,ENCODING=RLE
-# root.a.b.`s1+s2/s3`.c 会被解析成 root.a.b.s1+s2/s3.c
+# root.a.b.`s1+s2/s3`.c will be parsed as root.a.b.s1+s2/s3.c
 ```
 
 
 
-## 单引号（\'）
+## Single-quotes (\')
 
-字符串字面值只能由单引号（`'`）字符包围的字符串表示。
+The literal value of a string can only be represented by a string quoted by `'` characters.
 
-字符串字面值（`STRING_LITERAL`）的定义为：
+The definition of string literal (`STRING_LITERAL`) is:
 
 ```sql
 STRING_LITERAL
@@ -84,16 +85,15 @@ STRING_LITERAL
     ;
 ```
 
-字符串字面值的使用场景：
+Usages of string literals:
 
-* `INSERT` 或者 `SELECT` 中用于表达 `TEXT` 类型数据的场景
-* SQL 中 UDF 和 Trigger 的 Java 类全类名
-* `CREATE TRIGGER` 语句中描述触发器属性的键值对
-* UDF 函数输入参数中的属性
-* `LOAD` / `REMOVE` / `SETTLE` 指令中的文件路径
-* 用户密码
+* Values of  `TEXT` type data in `INSERT` or `SELECT` statements
+* Full Java class names in UDF and trigger management statements
+* Attribute fields (including attribute keys and attribute values) in UDF / trigger execution or management statements
+* File paths in `LOAD` / `REMOVE` / `SETTLE` statements
+* Password fields in user management statements
 
-例子：
+Examples:
 
 ```sql
 SELECT `my-udf`(s1, s2, 'key'='value') FROM root.sg.d;
@@ -101,16 +101,15 @@ SELECT `my-udf`(s1, s2, 'key'='value') FROM root.sg.d;
 CREATE TRIGGER trigger_name BEFORE INSERT ON root.a.b.`s1+s2/s3`.c AS 'org.apache.iotdb.db.engine.trigger.example.Counter'
 
 CREATE USER `my-%+-*/user&name` 'my-pass''word'''
-# 密码是 my-pass'word'
+# The password is my-pass'word'
 ```
 
 
 
-## 了解更多
+## Learn More
 
-请阅读代码仓库中的词法和语法描述文件：
+Please read the lexical and grammar description files in our code repository:
 
-词法文件：`antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.g4`
+Lexical file: `antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.g4`
 
-语法文件：`antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlParser.g4`
-
+Grammer file: `antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlParser.g4`

@@ -692,6 +692,7 @@ var config = {
 						title: 'IoTDB-SQL Language',
 						sidebarDepth: 2,
 						children: [
+							['IoTDB-SQL-Language/Syntax-Conventions','Syntax Conventions'],
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','DDL (Data Definition Language)'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','DML (Data Manipulation Language)'],
 							['IoTDB-SQL-Language/Maintenance-Command','Maintenance Command']
@@ -1489,6 +1490,7 @@ var config = {
 						title: 'IoTDB-SQL 语言',
 						sidebarDepth: 2,
 						children: [
+							['IoTDB-SQL-Language/Syntax-Conventions','语法约定'],
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
 							['IoTDB-SQL-Language/Maintenance-Command','运维命令']
