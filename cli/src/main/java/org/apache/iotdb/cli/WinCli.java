@@ -41,7 +41,6 @@ import static org.apache.iotdb.cli.utils.IoTPrinter.println;
 
 /** args[]: -h 127.0.0.1 -p 6667 -u root -pw root */
 public class WinCli extends AbstractCli {
-
   private static CommandLine commandLine;
 
   /**

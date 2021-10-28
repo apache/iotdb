@@ -79,7 +79,7 @@ public class SessionExample {
     insertTablets();
     insertRecords();
     selectInto();
-    createAndDropContinuousQueries();
+    /*createAndDropContinuousQueries();
     nonQuery();
     query();
     queryWithTimeout();
@@ -88,7 +88,7 @@ public class SessionExample {
     queryByIterator();
     deleteData();
     deleteTimeseries();
-    setTimeout();
+    setTimeout();*/
 
     sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
     sessionEnableRedirect.setEnableQueryRedirection(true);
