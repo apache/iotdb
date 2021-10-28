@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -58,7 +68,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -66,20 +75,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
@@ -1260,32 +1257,7 @@ public class TsFileProcessor {
               modificationFile,
               new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
 
-      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
-      if (schema instanceof VectorMeasurementSchema) {
-        List<ChunkMetadata> timeChunkMetadataList =
-            writer.getVisibleMetadataList(deviceId, measurementId, schema.getType());
-        List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-        List<String> valueMeasurementIdList = schema.getSubMeasurementsList();
-        List<TSDataType> valueDataTypeList = schema.getSubMeasurementsTSDataTypeList();
-        for (int i = 0; i < valueMeasurementIdList.size(); i++) {
-          valueChunkMetadataList.add(
-              writer.getVisibleMetadataList(
-                  deviceId, valueMeasurementIdList.get(i), valueDataTypeList.get(i)));
-        }
-
-        for (int i = 0; i < timeChunkMetadataList.size(); i++) {
-          List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
-          for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-            valueChunkMetadata.add(chunkMetadata.get(i));
-          }
-          chunkMetadataList.add(
-              new VectorChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
-        }
-      } else {
-        chunkMetadataList =
-            new ArrayList<>(
-                writer.getVisibleMetadataList(deviceId, measurementId, schema.getType()));
-      }
+      List<IChunkMetadata> chunkMetadataList = schema.getVisibleMetadataListFromWriter(writer, deviceId);
 
       QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
       chunkMetadataList.removeIf(context::chunkNotSatisfy);

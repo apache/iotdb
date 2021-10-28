@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.tsfile.write.schema;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.StringContainer;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -39,6 +30,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 public class VectorMeasurementSchema
     implements IMeasurementSchema, Comparable<VectorMeasurementSchema>, Serializable {
@@ -50,7 +53,8 @@ public class VectorMeasurementSchema
   private TSEncodingBuilder[] encodingConverters;
   private byte compressor;
 
-  public VectorMeasurementSchema() {}
+  public VectorMeasurementSchema() {
+  }
 
   public VectorMeasurementSchema(
       String vectorMeasurementId,
@@ -262,6 +266,32 @@ public class VectorMeasurementSchema
   }
 
   @Override
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(RestorableTsFileIOWriter writer,
+      String deviceId) {
+    List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+    List<ChunkMetadata> timeChunkMetadataList =
+        writer.getVisibleMetadataList(deviceId, "", getType());
+    List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
+    List<String> valueMeasurementIdList = getSubMeasurementsList();
+    List<TSDataType> valueDataTypeList = getSubMeasurementsTSDataTypeList();
+    for (int i = 0; i < valueMeasurementIdList.size(); i++) {
+      valueChunkMetadataList.add(
+          writer.getVisibleMetadataList(
+              deviceId, valueMeasurementIdList.get(i), valueDataTypeList.get(i)));
+    }
+
+    for (int i = 0; i < timeChunkMetadataList.size(); i++) {
+      List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
+      for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+        valueChunkMetadata.add(chunkMetadata.get(i));
+      }
+      chunkMetadataList.add(
+          new VectorChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+    }
+    return chunkMetadataList;
+  }
+
+  @Override
   public int partialSerializeTo(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write((byte) 1, outputStream);
     return 1 + serializeTo(outputStream);
@@ -353,7 +383,9 @@ public class VectorMeasurementSchema
     return Objects.hash(vectorMeasurementId, types, encodings, compressor);
   }
 
-  /** compare by vector name */
+  /**
+   * compare by vector name
+   */
   @Override
   public int compareTo(VectorMeasurementSchema o) {
     if (equals(o)) {
