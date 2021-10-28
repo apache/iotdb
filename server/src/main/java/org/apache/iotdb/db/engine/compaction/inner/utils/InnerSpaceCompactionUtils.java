@@ -637,11 +637,4 @@ public class InnerSpaceCompactionUtils {
       return -1;
     }
   }
-
-  public static void main(String[] args) throws Exception {
-    LineNumberReader lnr =
-        new LineNumberReader(new FileReader(new File("C:\\Users\\MARKLAU\\Desktop\\tt.txt")));
-    lnr.skip(Long.MAX_VALUE);
-    System.out.println(lnr.getLineNumber());
-  }
 }
