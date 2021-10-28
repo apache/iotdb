@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
-
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -30,6 +26,11 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class VectorTVList extends TVList {
 
@@ -136,7 +137,8 @@ public class VectorTVList extends TVList {
         validIndexesForTimeDuplicatedRows);
   }
 
-  private TsPrimitiveType getVectorByValueIndex(int valueIndex, int[] validIndexesForTimeDuplicatedRows) {
+  private TsPrimitiveType getVectorByValueIndex(
+      int valueIndex, int[] validIndexesForTimeDuplicatedRows) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }

@@ -1,9 +1,5 @@
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.datastructure.VectorTVList;
@@ -14,11 +10,17 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class VectorWritableMemChunk implements IWritableMemChunk {
-  
+
   private IMeasurementSchema schema;
   private VectorTVList list;
   private Map<String, Integer> VectorIdIndexMap;
@@ -110,13 +112,18 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start,
-      int end) {
+  public void write(
+      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
   @Override
-  public void writeVector(long[] times, String[] measurementIds, Object[] valueList, BitMap[] bitMaps, int start,
+  public void writeVector(
+      long[] times,
+      String[] measurementIds,
+      Object[] valueList,
+      BitMap[] bitMaps,
+      int start,
       int end) {
     checkColumnOrder(measurementIds);
     putVectors(times, valueList, bitMaps, start, end);
@@ -193,8 +200,7 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
       long time = list.getTime(sortedRowIndex);
 
       // skip duplicated data
-      if ((sortedRowIndex + 1 < list.size()
-          && (time == list.getTime(sortedRowIndex + 1)))) {
+      if ((sortedRowIndex + 1 < list.size() && (time == list.getTime(sortedRowIndex + 1)))) {
         // record the time duplicated row index list for vector type
         if (timeDuplicatedVectorRowIndexList == null) {
           timeDuplicatedVectorRowIndexList = new ArrayList<>();
@@ -217,39 +223,24 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
         switch (dataTypes.get(columnIndex)) {
           case BOOLEAN:
             chunkWriter.write(
-                time,
-                list.getBooleanByValueIndex(originRowIndex, columnIndex),
-                isNull);
+                time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case INT32:
-            chunkWriter.write(
-                time,
-                list.getIntByValueIndex(originRowIndex, columnIndex),
-                isNull);
+            chunkWriter.write(time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case INT64:
-            chunkWriter.write(
-                time,
-                list.getLongByValueIndex(originRowIndex, columnIndex),
-                isNull);
+            chunkWriter.write(time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case FLOAT:
-            chunkWriter.write(
-                time,
-                list.getFloatByValueIndex(originRowIndex, columnIndex),
-                isNull);
+            chunkWriter.write(time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case DOUBLE:
             chunkWriter.write(
-                time,
-                list.getDoubleByValueIndex(originRowIndex, columnIndex),
-                isNull);
+                time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case TEXT:
             chunkWriter.write(
-                time,
-                list.getBinaryByValueIndex(originRowIndex, columnIndex),
-                isNull);
+                time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           default:
             LOGGER.error(
@@ -261,7 +252,5 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
       chunkWriter.write(time);
       timeDuplicatedVectorRowIndexList = null;
     }
-  
   }
-
 }

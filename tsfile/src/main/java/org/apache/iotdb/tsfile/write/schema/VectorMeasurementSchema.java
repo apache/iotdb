@@ -19,17 +19,6 @@
 
 package org.apache.iotdb.tsfile.write.schema;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
@@ -43,6 +32,18 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 public class VectorMeasurementSchema
     implements IMeasurementSchema, Comparable<VectorMeasurementSchema>, Serializable {
 
@@ -53,8 +54,7 @@ public class VectorMeasurementSchema
   private TSEncodingBuilder[] encodingConverters;
   private byte compressor;
 
-  public VectorMeasurementSchema() {
-  }
+  public VectorMeasurementSchema() {}
 
   public VectorMeasurementSchema(
       String vectorMeasurementId,
@@ -266,8 +266,8 @@ public class VectorMeasurementSchema
   }
 
   @Override
-  public List<IChunkMetadata> getVisibleMetadataListFromWriter(RestorableTsFileIOWriter writer,
-      String deviceId) {
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, String deviceId) {
     List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
         writer.getVisibleMetadataList(deviceId, "", getType());
@@ -383,9 +383,7 @@ public class VectorMeasurementSchema
     return Objects.hash(vectorMeasurementId, types, encodings, compressor);
   }
 
-  /**
-   * compare by vector name
-   */
+  /** compare by vector name */
   @Override
   public int compareTo(VectorMeasurementSchema o) {
     if (equals(o)) {

@@ -113,8 +113,8 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
-  public List<IChunkMetadata> getVisibleMetadataListFromWriter(RestorableTsFileIOWriter writer,
-      String deviceId) {
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, String deviceId) {
     return null;
   }
 

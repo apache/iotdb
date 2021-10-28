@@ -27,8 +27,10 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.util.List;
 
 public class WritableMemChunk implements IWritableMemChunk {
@@ -102,10 +104,14 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
   }
 
-
   @Override
-  public void writeVector(long[] times, String[] measurements, Object[] valueList, BitMap[] bitMaps,
-      int start, int end) {
+  public void writeVector(
+      long[] times,
+      String[] measurements,
+      Object[] valueList,
+      BitMap[] bitMaps,
+      int start,
+      int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
@@ -257,11 +263,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void encode(IChunkWriter chunkWriter) {
-
-  }
-
-  @Override
   public String toString() {
     int size = list.size();
     int firstIndex = 0;
@@ -300,8 +301,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       long time = list.getTime(sortedRowIndex);
 
       // skip duplicated data
-      if ((sortedRowIndex + 1 < list.size()
-          && (time == list.getTime(sortedRowIndex + 1)))) {
+      if ((sortedRowIndex + 1 < list.size() && (time == list.getTime(sortedRowIndex + 1)))) {
         continue;
       }
 
@@ -330,8 +330,7 @@ public class WritableMemChunk implements IWritableMemChunk {
           chunkWriter.write(time, list.getBinary(sortedRowIndex), false);
           break;
         default:
-          LOGGER.error(
-              "WritableMemChunk does not support data type: {}", schema.getType());
+          LOGGER.error("WritableMemChunk does not support data type: {}", schema.getType());
           break;
       }
     }
