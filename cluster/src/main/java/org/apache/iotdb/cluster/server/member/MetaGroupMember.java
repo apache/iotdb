@@ -182,13 +182,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   /** router calculates the partition groups that a partitioned plan should be sent to */
   private ClusterPlanRouter router;
 
-  //  /**
-  //   * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the
-  // status
-  //   * of all raft members in this node
-  //   */
-  //  private ScheduledExecutorService reportThread;
-
   /**
    * containing configurations that should be kept the same cluster-wide, and must be checked before
    * establishing a cluster or joining a cluster.
@@ -309,16 +302,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   @Override
   public ServiceType getID() {
     return ServiceType.CLUSTER_META_ENGINE;
-  }
-
-  /**
-   * Start DataClusterServer and ClusterTSServiceImpl so this node will be able to respond to other
-   * nodes and clients.
-   */
-  protected void initSubServers() throws TTransportException, StartupException {
-    //    getDataClusterServer().start();
-    //    getDataHeartbeatServer().start();
-    // TODO FIXME
   }
 
   /**
@@ -780,9 +763,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     synchronized (partitionTable) {
       try {
         getDataGroupEngine().buildDataGroupMembers(partitionTable);
-        initSubServers();
         sendHandshake();
-      } catch (TTransportException | StartupException e) {
+      } catch (Exception e) {
         logger.error("Build partition table failed: ", e);
         stop();
         return;
