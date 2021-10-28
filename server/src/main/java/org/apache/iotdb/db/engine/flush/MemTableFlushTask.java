@@ -162,118 +162,6 @@ public class MemTableFlushTask {
   /** encoding task (second task of pipeline) */
   private Runnable encodingTask =
       new Runnable() {
-        private void writeOneSeries(
-            TVList tvPairs, IChunkWriter seriesWriterImpl, TSDataType dataType) {
-          List<Integer> timeDuplicatedVectorRowIndexList = null;
-          for (int sortedRowIndex = 0; sortedRowIndex < tvPairs.size(); sortedRowIndex++) {
-            long time = tvPairs.getTime(sortedRowIndex);
-
-            // skip duplicated data
-            if ((sortedRowIndex + 1 < tvPairs.size()
-                && (time == tvPairs.getTime(sortedRowIndex + 1)))) {
-              // record the time duplicated row index list for vector type
-              if (dataType == TSDataType.VECTOR) {
-                if (timeDuplicatedVectorRowIndexList == null) {
-                  timeDuplicatedVectorRowIndexList = new ArrayList<>();
-                  timeDuplicatedVectorRowIndexList.add(tvPairs.getValueIndex(sortedRowIndex));
-                }
-                timeDuplicatedVectorRowIndexList.add(tvPairs.getValueIndex(sortedRowIndex + 1));
-              }
-              continue;
-            }
-
-            // store last point for SDT
-            if (dataType != TSDataType.VECTOR && sortedRowIndex + 1 == tvPairs.size()) {
-              ((ChunkWriterImpl) seriesWriterImpl).setLastPoint(true);
-            }
-
-            switch (dataType) {
-              case BOOLEAN:
-                seriesWriterImpl.write(time, tvPairs.getBoolean(sortedRowIndex), false);
-                break;
-              case INT32:
-                seriesWriterImpl.write(time, tvPairs.getInt(sortedRowIndex), false);
-                break;
-              case INT64:
-                seriesWriterImpl.write(time, tvPairs.getLong(sortedRowIndex), false);
-                break;
-              case FLOAT:
-                seriesWriterImpl.write(time, tvPairs.getFloat(sortedRowIndex), false);
-                break;
-              case DOUBLE:
-                seriesWriterImpl.write(time, tvPairs.getDouble(sortedRowIndex), false);
-                break;
-              case TEXT:
-                seriesWriterImpl.write(time, tvPairs.getBinary(sortedRowIndex), false);
-                break;
-              case VECTOR:
-                VectorTVList vectorTvPairs = (VectorTVList) tvPairs;
-                List<TSDataType> dataTypes = vectorTvPairs.getTsDataTypes();
-                int originRowIndex = vectorTvPairs.getValueIndex(sortedRowIndex);
-                for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-                  // write the time duplicated rows
-                  if (timeDuplicatedVectorRowIndexList != null
-                      && !timeDuplicatedVectorRowIndexList.isEmpty()) {
-                    originRowIndex =
-                        vectorTvPairs.getValidRowIndexForTimeDuplicatedRows(
-                            timeDuplicatedVectorRowIndexList, columnIndex);
-                  }
-                  boolean isNull = vectorTvPairs.isValueMarked(originRowIndex, columnIndex);
-                  switch (dataTypes.get(columnIndex)) {
-                    case BOOLEAN:
-                      seriesWriterImpl.write(
-                          time,
-                          vectorTvPairs.getBooleanByValueIndex(originRowIndex, columnIndex),
-                          isNull);
-                      break;
-                    case INT32:
-                      seriesWriterImpl.write(
-                          time,
-                          vectorTvPairs.getIntByValueIndex(originRowIndex, columnIndex),
-                          isNull);
-                      break;
-                    case INT64:
-                      seriesWriterImpl.write(
-                          time,
-                          vectorTvPairs.getLongByValueIndex(originRowIndex, columnIndex),
-                          isNull);
-                      break;
-                    case FLOAT:
-                      seriesWriterImpl.write(
-                          time,
-                          vectorTvPairs.getFloatByValueIndex(originRowIndex, columnIndex),
-                          isNull);
-                      break;
-                    case DOUBLE:
-                      seriesWriterImpl.write(
-                          time,
-                          vectorTvPairs.getDoubleByValueIndex(originRowIndex, columnIndex),
-                          isNull);
-                      break;
-                    case TEXT:
-                      seriesWriterImpl.write(
-                          time,
-                          vectorTvPairs.getBinaryByValueIndex(originRowIndex, columnIndex),
-                          isNull);
-                      break;
-                    default:
-                      LOGGER.error(
-                          "Storage group {} does not support data type: {}",
-                          storageGroup,
-                          dataTypes.get(columnIndex));
-                      break;
-                  }
-                }
-                seriesWriterImpl.write(time);
-                timeDuplicatedVectorRowIndexList = null;
-                break;
-              default:
-                LOGGER.error(
-                    "Storage group {} does not support data type: {}", storageGroup, dataType);
-                break;
-            }
-          }
-        }
 
         @SuppressWarnings("squid:S135")
         @Override
@@ -311,7 +199,7 @@ public class MemTableFlushTask {
             } else {
               long starTime = System.currentTimeMillis();
               IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
-              IChunkWriter seriesWriter = writableMemChunk.createIChunkWrite();
+              IChunkWriter seriesWriter = writableMemChunk.createIChunkWriter();
               writableMemChunk.encode(seriesWriter);
               seriesWriter.sealCurrentPage();
               seriesWriter.clearPageWriter();

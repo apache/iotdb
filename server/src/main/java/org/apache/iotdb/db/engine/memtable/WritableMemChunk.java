@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
 
 public class WritableMemChunk implements IWritableMemChunk {
@@ -33,10 +36,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   private IMeasurementSchema schema;
   private TVList list;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
+  private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
-  public WritableMemChunk(IMeasurementSchema schema, TVList list) {
+  public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
-    this.list = list;
+    this.list = TVListAllocator.getInstance().allocate(schema.getType());
   }
 
   @Override
@@ -59,9 +63,6 @@ public class WritableMemChunk implements IWritableMemChunk {
         break;
       case TEXT:
         putBinary(insertTime, (Binary) objectValue);
-        break;
-      case VECTOR:
-        putVector(insertTime, (Object[]) objectValue);
         break;
       default:
         throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
@@ -137,7 +138,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void putVector(long t, Object[] v) {
-    list.putVector(t, v);
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
   @Override
@@ -172,7 +173,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
-    list.putVectors(t, v, bitMaps, start, end);
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
   @Override
@@ -254,8 +255,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public IChunkWriter createIChunkWrite() {
-    return null;
+  public IChunkWriter createIChunkWriter() {
+    return new ChunkWriterImpl(schema);
   }
 
   @Override
@@ -288,5 +289,51 @@ public class WritableMemChunk implements IWritableMemChunk {
           .append(System.lineSeparator());
     }
     return out.toString();
+  }
+
+  @Override
+  public void encode(IChunkWriter chunkWriter) {
+
+    for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
+      long time = list.getTime(sortedRowIndex);
+
+      // skip duplicated data
+      if ((sortedRowIndex + 1 < list.size()
+          && (time == list.getTime(sortedRowIndex + 1)))) {
+        continue;
+      }
+
+      // store last point for SDT
+      if (sortedRowIndex + 1 == list.size()) {
+        ((ChunkWriterImpl) chunkWriter).setLastPoint(true);
+      }
+
+      switch (schema.getType()) {
+        case BOOLEAN:
+          chunkWriter.write(time, list.getBoolean(sortedRowIndex), false);
+          break;
+        case INT32:
+          chunkWriter.write(time, list.getInt(sortedRowIndex), false);
+          break;
+        case INT64:
+          chunkWriter.write(time, list.getLong(sortedRowIndex), false);
+          break;
+        case FLOAT:
+          chunkWriter.write(time, list.getFloat(sortedRowIndex), false);
+          break;
+        case DOUBLE:
+          chunkWriter.write(time, list.getDouble(sortedRowIndex), false);
+          break;
+        case TEXT:
+          chunkWriter.write(time, list.getBinary(sortedRowIndex), false);
+          break;
+        default:
+          LOGGER.error(
+              "WritableMemChunk does not support data type: {}", schema.getType());
+          break;
+      }
+    }
+  
+    
   }
 }

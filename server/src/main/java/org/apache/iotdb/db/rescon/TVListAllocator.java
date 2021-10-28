@@ -25,6 +25,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayDeque;
@@ -56,7 +57,7 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     return list != null ? list : TVList.newList(dataType);
   }
 
-  public synchronized TVList allocate(List<TSDataType> dataTypes) {
+  public synchronized VectorTVList allocate(List<TSDataType> dataTypes) {
     return TVList.newVectorList(dataTypes);
   }
 
