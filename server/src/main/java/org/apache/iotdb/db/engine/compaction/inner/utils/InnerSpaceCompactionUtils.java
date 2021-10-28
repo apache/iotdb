@@ -58,6 +58,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Collections;
@@ -604,18 +605,43 @@ public class InnerSpaceCompactionUtils {
     if (!logFile.exists()) {
       return -1;
     }
+    // get the line number of log file
+    try (LineNumberReader lineNumberReader = new LineNumberReader(new FileReader(logFile))) {
+      lineNumberReader.skip(Long.MAX_VALUE);
+      if (lineNumberReader.getLineNumber() < 1) {
+        // the log doesn't record any file name
+        return -1;
+      }
+    } catch (IOException e) {
+      return -1;
+    }
     try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
-      while (!reader.readLine().equals(SOURCE_NAME)) {}
+      String currentLine;
+      while ((currentLine = reader.readLine()) != null && !currentLine.equals(SOURCE_NAME)) {}
+      if (currentLine == null) {
+        return -1;
+      }
       String sourceFileName = reader.readLine();
       String splitSeparator = File.separator;
       if (splitSeparator.equals("\\")) {
         splitSeparator = "\\\\";
       }
       String[] splits = sourceFileName.split(splitSeparator);
+      // not a full source file name
+      if (splits.length < 4) {
+        return -1;
+      }
       int length = splits.length;
       return Long.parseLong(splits[length - 2]);
     } catch (IOException e) {
       return -1;
     }
+  }
+
+  public static void main(String[] args) throws Exception {
+    LineNumberReader lnr =
+        new LineNumberReader(new FileReader(new File("C:\\Users\\MARKLAU\\Desktop\\tt.txt")));
+    lnr.skip(Long.MAX_VALUE);
+    System.out.println(lnr.getLineNumber());
   }
 }
