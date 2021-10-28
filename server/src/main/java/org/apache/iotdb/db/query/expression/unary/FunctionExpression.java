@@ -256,13 +256,15 @@ public class FunctionExpression extends Expression {
               expressionDataTypeMap,
               memoryAssigner));
     }
-    return new MultiInputColumnIntermediateLayer(
-        this,
-        queryId,
-        memoryAssigner.assign(),
-        intermediateLayers.stream()
-            .map(IntermediateLayer::constructPointReader)
-            .collect(Collectors.toList()));
+    return intermediateLayers.size() == 1
+        ? intermediateLayers.get(0)
+        : new MultiInputColumnIntermediateLayer(
+            this,
+            queryId,
+            memoryAssigner.assign(),
+            intermediateLayers.stream()
+                .map(IntermediateLayer::constructPointReader)
+                .collect(Collectors.toList()));
   }
 
   private UDFQueryTransformer constructUdfTransformer(
