@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -41,11 +40,9 @@ public class PrimitiveMemTable extends AbstractMemTable {
   @Override
   protected IWritableMemChunk genMemSeries(IMeasurementSchema schema) {
     if (schema.getType() == TSDataType.VECTOR) {
-      return new WritableMemChunk(
-          schema,
-          TVListAllocator.getInstance().allocate(schema.getSubMeasurementsTSDataTypeList()));
+      return new VectorWritableMemChunk(schema);
     }
-    return new WritableMemChunk(schema, TVListAllocator.getInstance().allocate(schema.getType()));
+    return new WritableMemChunk(schema);
   }
 
   @Override

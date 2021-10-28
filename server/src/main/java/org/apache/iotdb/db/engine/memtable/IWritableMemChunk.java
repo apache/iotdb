@@ -118,7 +118,7 @@ public interface IWritableMemChunk {
   // For delete one column in the vector
   int delete(long lowerBound, long upperBound, int columnIndex);
 
-  IChunkWriter createIChunkWrite();
+  IChunkWriter createIChunkWriter();
 
   void encode(IChunkWriter chunkWriter);
 }

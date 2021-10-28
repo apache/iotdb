@@ -82,7 +82,7 @@ public abstract class TVList {
     return null;
   }
 
-  public static TVList newVectorList(List<TSDataType> datatypes) {
+  public static VectorTVList newVectorList(List<TSDataType> datatypes) {
     return new VectorTVList(datatypes);
   }
 
