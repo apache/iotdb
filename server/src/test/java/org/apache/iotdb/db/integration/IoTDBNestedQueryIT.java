@@ -407,4 +407,59 @@ public class IoTDBNestedQueryIT {
       Assert.fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testRawDataQueryWithConstants() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String query = "SELECT 1 + s1 FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i + 1.0D, rs.getDouble(2), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      query = "SELECT (1 + 4) * 2 / 10 + s1 FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i + 1.0D, rs.getDouble(2), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDuplicatedRawDataQueryWithConstants() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String query = "SELECT 1 + s1, 1 + s1 FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i + 1.0D, rs.getDouble(2), 0.01);
+          Assert.assertEquals(i + 1.0D, rs.getDouble(3), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
 }
