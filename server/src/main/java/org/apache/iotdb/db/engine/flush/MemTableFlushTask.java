@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
@@ -28,23 +35,11 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * flush task to flush one memtable using a pipeline model to flush, which is sort memtable ->
@@ -118,13 +113,12 @@ public class MemTableFlushTask {
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
-        IMeasurementSchema desc = series.getSchema();
         /*
          * sort task (first task of flush pipeline)
          */
-        TVList tvList = series.getSortedTvListForFlush();
+        series.sortTvListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
-        encodingTaskQueue.put(new Pair<>(tvList, desc));
+        encodingTaskQueue.put(series);
       }
 
       encodingTaskQueue.put(new EndChunkGroupIoTask());
@@ -290,7 +284,7 @@ public class MemTableFlushTask {
               writer.getFile().getName());
           while (true) {
 
-            Object task = null;
+            Object task;
             try {
               task = encodingTaskQueue.take();
             } catch (InterruptedException e1) {
@@ -316,15 +310,9 @@ public class MemTableFlushTask {
               break;
             } else {
               long starTime = System.currentTimeMillis();
-              Pair<TVList, IMeasurementSchema> encodingMessage =
-                  (Pair<TVList, IMeasurementSchema>) task;
-              IChunkWriter seriesWriter;
-              if (encodingMessage.left.getDataType() == TSDataType.VECTOR) {
-                seriesWriter = new VectorChunkWriterImpl(encodingMessage.right);
-              } else {
-                seriesWriter = new ChunkWriterImpl(encodingMessage.right);
-              }
-              writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
+              IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
+              IChunkWriter seriesWriter = writableMemChunk.createIChunkWrite();
+              writableMemChunk.encode(seriesWriter);
               seriesWriter.sealCurrentPage();
               seriesWriter.clearPageWriter();
               try {
@@ -374,16 +362,12 @@ public class MemTableFlushTask {
               this.writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
             } else if (ioMessage instanceof TaskEnd) {
               break;
-            } else if (ioMessage instanceof ChunkWriterImpl) {
-              ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
-              chunkWriter.writeToFileWriter(this.writer);
-            } else if (ioMessage instanceof VectorChunkWriterImpl) {
-              VectorChunkWriterImpl chunkWriter = (VectorChunkWriterImpl) ioMessage;
-              chunkWriter.writeToFileWriter(this.writer);
-            } else {
+            } else if (ioMessage instanceof EndChunkGroupIoTask) {
               this.writer.setMinPlanIndex(memTable.getMinPlanIndex());
               this.writer.setMaxPlanIndex(memTable.getMaxPlanIndex());
               this.writer.endChunkGroup();
+            } else {
+              ((IChunkWriter) ioMessage).writeToFileWriter(this.writer);
             }
           } catch (IOException e) {
             LOGGER.error(

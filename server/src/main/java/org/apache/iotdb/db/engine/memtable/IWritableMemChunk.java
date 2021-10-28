@@ -22,6 +22,7 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
@@ -101,7 +102,7 @@ public interface IWritableMemChunk {
    *
    * @return sorted tv list
    */
-  TVList getSortedTvListForFlush();
+  void sortTvListForFlush();
 
   default TVList getTVList() {
     return null;
@@ -116,4 +117,8 @@ public interface IWritableMemChunk {
 
   // For delete one column in the vector
   int delete(long lowerBound, long upperBound, int columnIndex);
+
+  IChunkWriter createIChunkWrite();
+
+  void encode(IChunkWriter chunkWriter);
 }

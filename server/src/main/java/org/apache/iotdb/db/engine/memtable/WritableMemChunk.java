@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
@@ -205,9 +206,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForFlush() {
+  public synchronized void sortTvListForFlush() {
     sortTVList();
-    return list;
   }
 
   @Override
@@ -251,6 +251,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public int delete(long lowerBound, long upperBound, int columnIndex) {
     return list.delete(lowerBound, upperBound, columnIndex);
+  }
+
+  @Override
+  public IChunkWriter createIChunkWrite() {
+    return null;
   }
 
   @Override
