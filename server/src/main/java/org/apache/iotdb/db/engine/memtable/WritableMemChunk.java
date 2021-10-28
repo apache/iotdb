@@ -71,39 +71,42 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void write(
-      long[] times, Object valueList, Object bitMap, TSDataType dataType, int start, int end) {
+      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
     switch (dataType) {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) valueList;
-        putBooleans(times, boolValues, (BitMap) bitMap, start, end);
+        putBooleans(times, boolValues, bitMap, start, end);
         break;
       case INT32:
         int[] intValues = (int[]) valueList;
-        putInts(times, intValues, (BitMap) bitMap, start, end);
+        putInts(times, intValues, bitMap, start, end);
         break;
       case INT64:
         long[] longValues = (long[]) valueList;
-        putLongs(times, longValues, (BitMap) bitMap, start, end);
+        putLongs(times, longValues, bitMap, start, end);
         break;
       case FLOAT:
         float[] floatValues = (float[]) valueList;
-        putFloats(times, floatValues, (BitMap) bitMap, start, end);
+        putFloats(times, floatValues, bitMap, start, end);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) valueList;
-        putDoubles(times, doubleValues, (BitMap) bitMap, start, end);
+        putDoubles(times, doubleValues, bitMap, start, end);
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) valueList;
-        putBinaries(times, binaryValues, (BitMap) bitMap, start, end);
-        break;
-      case VECTOR:
-        Object[] vectorValues = (Object[]) valueList;
-        putVectors(times, vectorValues, (BitMap[]) bitMap, start, end);
+        putBinaries(times, binaryValues, bitMap, start, end);
         break;
       default:
         throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
     }
+  }
+
+
+  @Override
+  public void writeVector(long[] times, String[] measurements, Object[] valueList, BitMap[] bitMaps,
+      int start, int end) {
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
   @Override
@@ -186,13 +189,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized TVList getSortedTvListForQuery(List<Integer> columnIndexList) {
-    if (list.getDataType() != TSDataType.VECTOR) {
-      throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
-    }
-    sortTVList();
-    // increase reference count
-    list.increaseReferenceCount();
-    return list.getTvListByColumnIndex(columnIndexList);
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
   private void sortTVList() {
@@ -333,7 +330,5 @@ public class WritableMemChunk implements IWritableMemChunk {
           break;
       }
     }
-  
-    
   }
 }

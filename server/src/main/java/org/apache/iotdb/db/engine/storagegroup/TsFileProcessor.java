@@ -232,7 +232,11 @@ public class TsFileProcessor {
       }
     }
 
-    workMemTable.insert(insertRowPlan);
+    if (insertRowPlan.isAligned()) {
+      workMemTable.insertAlignedRow(insertRowPlan);
+    } else {
+      workMemTable.insert(insertRowPlan);
+    }
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
@@ -298,7 +302,11 @@ public class TsFileProcessor {
     }
 
     try {
-      workMemTable.insertTablet(insertTabletPlan, start, end);
+      if (insertTabletPlan.isAligned()) {
+        workMemTable.insertAlignedTablet(insertTabletPlan, start, end);
+      } else {
+        workMemTable.insertTablet(insertTabletPlan, start, end);
+      }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

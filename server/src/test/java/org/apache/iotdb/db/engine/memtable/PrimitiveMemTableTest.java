@@ -66,7 +66,7 @@ public class PrimitiveMemTableTest {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
         new WritableMemChunk(
-            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -85,7 +85,7 @@ public class PrimitiveMemTableTest {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
         new WritableMemChunk(
-            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 100;
     for (int i = 0; i < count; i++) {
       series.write(i, i);

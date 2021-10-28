@@ -64,7 +64,9 @@ public interface IWritableMemChunk {
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    */
   void write(
-      long[] times, Object valueList, Object bitMaps, TSDataType dataType, int start, int end);
+      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
+
+  void writeVector(long[] times, String[] measurements, Object[] valueList, BitMap[] bitMaps, int start, int end);
 
   long count();
 
@@ -100,7 +102,6 @@ public interface IWritableMemChunk {
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
    * reference count
    *
-   * @return sorted tv list
    */
   void sortTvListForFlush();
 
