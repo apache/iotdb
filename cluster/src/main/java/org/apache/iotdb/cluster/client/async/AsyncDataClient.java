@@ -104,7 +104,9 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
    */
   private void returnSelf() {
     logger.debug("return client: ", toString());
-    if (clientManager != null) clientManager.returnAsyncClient(this, node, category);
+    if (clientManager != null) {
+      clientManager.returnAsyncClient(this, node, category);
+    }
   }
 
   @Override
