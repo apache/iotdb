@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.HashMap;
@@ -39,10 +38,12 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
   @Override
   protected IWritableMemChunk genMemSeries(IMeasurementSchema schema) {
-    if (schema.getType() == TSDataType.VECTOR) {
-      return new VectorWritableMemChunk(schema);
-    }
     return new WritableMemChunk(schema);
+  }
+
+  @Override
+  protected IWritableMemChunk genVectorMemSeries(IMeasurementSchema schema) {
+    return new VectorWritableMemChunk(schema);
   }
 
   @Override

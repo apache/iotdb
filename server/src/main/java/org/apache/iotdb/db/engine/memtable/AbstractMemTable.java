@@ -113,13 +113,28 @@ public abstract class AbstractMemTable implements IMemTable {
         schema.getMeasurementId(),
         k -> {
           seriesNumber++;
-          totalPointsNumThreshold +=
-              ((long) avgSeriesPointNumThreshold * schema.getSubMeasurementsCount());
+          totalPointsNumThreshold += avgSeriesPointNumThreshold;
           return genMemSeries(schema);
         });
   }
 
+  private IWritableMemChunk createVectorMemChunkIfNotExistAndGet(
+      String deviceId, IMeasurementSchema schema) {
+    Map<String, IWritableMemChunk> memSeries =
+        memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
+
+    return memSeries.computeIfAbsent(
+        schema.getMeasurementId(),
+        k -> {
+          seriesNumber++;
+          totalPointsNumThreshold += avgSeriesPointNumThreshold + schema.getSubMeasurementsCount();
+          return genVectorMemSeries(schema);
+        });
+  }
+
   protected abstract IWritableMemChunk genMemSeries(IMeasurementSchema schema);
+
+  protected abstract IWritableMemChunk genVectorMemSeries(IMeasurementSchema schema);
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
@@ -220,7 +235,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void writeAlignedRow(
       String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
-    IWritableMemChunk memSeries = createMemChunkIfNotExistAndGet(deviceId, schema);
+    IWritableMemChunk memSeries = createVectorMemChunkIfNotExistAndGet(deviceId, schema);
     memSeries.write(insertTime, objectValue);
   }
 
@@ -270,7 +285,7 @@ public abstract class AbstractMemTable implements IMemTable {
             encodings.toArray(new TSEncoding[measurements.size()]),
             compressionType);
     IWritableMemChunk memSeries =
-        createMemChunkIfNotExistAndGet(
+        createVectorMemChunkIfNotExistAndGet(
             insertTabletPlan.getPrefixPath().getFullPath(), vectorSchema);
     memSeries.writeVector(
         insertTabletPlan.getTimes(),
