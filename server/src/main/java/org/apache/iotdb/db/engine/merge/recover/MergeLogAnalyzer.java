@@ -69,6 +69,7 @@ public class MergeLogAnalyzer {
 
   private Map<File, Long> fileLastPositions = new HashMap<>();
   private Map<File, Long> tempFileLastPositions = new HashMap<>();
+  private Map<File, Long> prevTempFileLastPositions = null;
 
   private List<PartialPath> mergedPaths = new ArrayList<>();
   private List<PartialPath> unmergedPaths;
@@ -193,6 +194,7 @@ public class MergeLogAnalyzer {
     }
 
     List<PartialPath> currTSList = new ArrayList<>();
+    List<PartialPath> prevTSList = null;
     long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (STR_ALL_TS_END.equals(currLine)) {
@@ -212,18 +214,33 @@ public class MergeLogAnalyzer {
       } else if (!currLine.contains(STR_END)) {
         // file position
         String[] splits = currLine.split(" ");
-        Long position = Long.parseLong(splits[1]);
+        Long position = Long.parseLong(splits[splits.length - 1]);
         MergeFileInfo fileInfo =
             MergeFileInfo.getFileInfoFromString(currLine.substring(0, currLine.lastIndexOf(' ')));
         File file = fileInfo.getFileFromDataDirs();
         tempFileLastPositions.put(file, position);
       } else {
         // a TS ends merging
-        unmergedPaths.removeAll(currTSList);
-        for (Entry<File, Long> entry : tempFileLastPositions.entrySet()) {
-          fileLastPositions.put(entry.getKey(), entry.getValue());
+        if (prevTempFileLastPositions == null) {
+          prevTempFileLastPositions = tempFileLastPositions;
+          tempFileLastPositions = new HashMap<>();
+          prevTSList = currTSList;
+          currTSList = new ArrayList<>();
+        } else {
+          unmergedPaths.removeAll(prevTSList);
+          for (Entry<File, Long> entry : prevTempFileLastPositions.entrySet()) {
+            for (File file : fileLastPositions.keySet()) {
+              if (file.getName().equals(entry.getKey().getName())) {
+                fileLastPositions.put(file, entry.getValue());
+              }
+            }
+          }
+          prevTempFileLastPositions = tempFileLastPositions;
+          tempFileLastPositions = new HashMap<>();
+          prevTSList = currTSList;
+          currTSList = new ArrayList<>();
+          mergedPaths.addAll(prevTSList);
         }
-        mergedPaths.addAll(currTSList);
       }
     }
     tempFileLastPositions = null;

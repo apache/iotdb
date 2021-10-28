@@ -309,7 +309,7 @@ public class MergeMultiChunkTask {
       return;
     }
 
-    RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
+    RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile, false);
     for (PartialPath path : currMergingPaths) {
       MeasurementSchema schema = MManager.getInstance().getSeriesSchema(path);
       mergeFileWriter.addSchema(path, schema);

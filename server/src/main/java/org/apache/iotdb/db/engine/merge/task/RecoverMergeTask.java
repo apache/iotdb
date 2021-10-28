@@ -31,11 +31,12 @@ import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.h2.store.fs.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -214,7 +215,7 @@ public class RecoverMergeTask extends MergeTask {
           tsFileResource.getTsFile().getName(),
           fileCnt,
           resource.getSeqFiles().size());
-      RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
+      RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource, true);
       mergeFileWriter.makeMetadataVisible();
       mergeContext.getUnmergedChunkStartTimes().put(tsFileResource, new HashMap<>());
       List<PartialPath> pathsToRecover = analyzer.getMergedPaths();
@@ -287,12 +288,15 @@ public class RecoverMergeTask extends MergeTask {
     for (Entry<File, Long> entry : analyzer.getFileLastPositions().entrySet()) {
       File file = entry.getKey();
       Long lastPosition = entry.getValue();
-      if (file != null && file.exists() && file.length() != lastPosition) {
-        try (FileInputStream fileInputStream = new FileInputStream(file)) {
+      if (file != null && file.exists() && file.length() != lastPosition && lastPosition != 0) {
+        try (FileOutputStream fileInputStream = new FileOutputStream(file, true)) {
           FileChannel channel = fileInputStream.getChannel();
           channel.truncate(lastPosition);
           channel.close();
         }
+      } else if (file != null && lastPosition == 0) {
+        FileUtils.delete(file.getPath());
+        resource.closeAndRemoveWriter(file);
       }
     }
     analyzer.setFileLastPositions(null);

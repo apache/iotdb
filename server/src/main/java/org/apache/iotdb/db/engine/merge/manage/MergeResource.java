@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -112,15 +113,27 @@ public class MergeResource {
    *
    * @return A RestorableTsFileIOWriter of a merge temp file for a SeqFile.
    */
-  public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
+  public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource, boolean recover)
+      throws IOException {
     RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
     if (writer == null) {
       writer =
           new RestorableTsFileIOWriter(
-              FSFactoryProducer.getFSFactory().getFile(resource.getTsFilePath() + MERGE_SUFFIX));
+              FSFactoryProducer.getFSFactory().getFile(resource.getTsFilePath() + MERGE_SUFFIX),
+              !recover,
+              recover);
       fileWriterCache.put(resource, writer);
     }
     return writer;
+  }
+
+  public void closeAndRemoveWriter(File file) throws IOException {
+    for (TsFileResource resource : fileWriterCache.keySet()) {
+      if (resource.getTsFile().getAbsolutePath().equals(file.getAbsolutePath())) {
+        RestorableTsFileIOWriter writer = fileWriterCache.remove(resource);
+        writer.close();
+      }
+    }
   }
 
   /**

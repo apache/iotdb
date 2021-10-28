@@ -955,7 +955,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   public long selfCheck(
       Map<Path, MeasurementSchema> newSchema,
       List<ChunkGroupMetadata> chunkGroupMetadataList,
-      boolean fastFinish)
+      boolean fastFinish,
+      boolean loadLastChunkMetadata)
       throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
@@ -1141,6 +1142,9 @@ public class TsFileSequenceReader implements AutoCloseable {
           file,
           this.position(),
           e.getMessage());
+    }
+    if (loadLastChunkMetadata) {
+      chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
     }
     // Despite the completeness of the data section, we will discard current FileMetadata
     // so that we can continue to write data into this tsfile.

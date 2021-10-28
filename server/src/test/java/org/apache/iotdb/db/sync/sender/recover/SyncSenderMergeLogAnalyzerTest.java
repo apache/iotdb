@@ -53,7 +53,8 @@ import static org.junit.Assert.assertTrue;
 
 public class SyncSenderMergeLogAnalyzerTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderMergeLogAnalyzerTest.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SyncSenderMergeLogAnalyzerTest.class);
   private ISyncSenderLogger senderLogger;
   private ISyncSenderLogAnalyzer senderLogAnalyzer;
   private ISyncFileManager manager = SyncFileManager.getInstance();
