@@ -617,17 +617,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to
             // seq file
-            compactionSelectionLock.lock();
-            try {
-              if (!checkAndSetFilesMergingIfNotSet(
-                  getTsFileListByTimePartition(true, timePartition), mergeResources.get(i))) {
-                // if any of the source file is being merged
-                // end the selection
-                return false;
-              }
-            } finally {
-              compactionSelectionLock.unlock();
-            }
             isSeqMerging = false;
             isMergeExecutedInCurrentTask =
                 merge(
