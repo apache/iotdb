@@ -490,8 +490,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       logger.info("Node {} admitted this node into the cluster", node);
       ByteBuffer partitionTableBuffer = resp.partitionTableBytes;
       acceptVerifiedPartitionTable(partitionTableBuffer, true);
-      // this should be called in ClusterIoTDB TODO
-      // getDataGroupEngine().pullSnapshots();
       return true;
     } else if (resp.getRespNum() == Response.RESPONSE_IDENTIFIER_CONFLICT) {
       logger.info(
@@ -1426,34 +1424,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     return result;
   }
 
-  //  /**
-  //   * Forward a non-query plan to the data port of "receiver"
-  //   *
-  //   * @param plan a non-query plan
-  //   * @param header to determine which DataGroupMember of "receiver" will process the request.
-  //   * @return a TSStatus indicating if the forwarding is successful.
-  //   */
-  //  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
-  //      throws IOException {
-  //    RaftService.AsyncClient client =
-  //        getClientProvider()
-  //            .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
-  //    return forwardPlanAsync(plan, receiver, header, client);
-  //  }
-  //
-  //  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
-  //      throws IOException {
-  //    Client client;
-  //    try {
-  //      client =
-  //          getClientProvider()
-  //              .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
-  //    } catch (TException e) {
-  //      throw new IOException(e);
-  //    }
-  //    return forwardPlanSync(plan, receiver, header, client);
-  //  }
-
   /**
    * Get the data groups that should be queried when querying "path" with "filter". First, the time
    * interval qualified by the filter will be extracted. If any side of the interval is open, query
@@ -1807,10 +1777,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
                     // ignore
                   }
                   super.stop();
-                  // TODO FIXME
-                  //                  if (clusterTSServiceImpl != null) {
-                  //                    clusterTSServiceImpl.stop();
-                  //                  }
+                  getDataGroupEngine().stop();
                   logger.info("{} has been removed from the cluster", name);
                 })
             .start();
