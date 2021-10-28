@@ -1143,7 +1143,7 @@ public class PhysicalPlanTest {
   @Test
   public void testSpecialCharacters() throws QueryProcessException {
     String sqlStr1 =
-        "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE.81+12.+2.s/io.in[jack].hel[jjj.s[1].desc with "
+        "create timeseries root.`3e-3`.`-1+1/2`.`SNAPPY`.`RLE`.`81+12+2s/io`.`in[jack]`.`hel[jjj[]s[1]`.`desc` with "
             + "datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)"
             + " attributes(attr1=v1, attr2=v2)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
@@ -1204,7 +1204,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testStartTrigger() throws QueryProcessException {
-    String sql = "START TRIGGER my-trigger";
+    String sql = "START TRIGGER `my-trigger`";
 
     StartTriggerPlan plan = (StartTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
@@ -1213,7 +1213,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testStopTrigger() throws QueryProcessException {
-    String sql = "STOP TRIGGER my-trigger";
+    String sql = "STOP TRIGGER `my-trigger`";
 
     StopTriggerPlan plan = (StopTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
