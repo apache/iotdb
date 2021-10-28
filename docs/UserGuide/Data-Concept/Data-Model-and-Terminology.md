@@ -65,13 +65,23 @@ The Layer Name of storage group can only consist of characters, numbers, undersc
 
 A `path` is an expression that conforms to the following constraints:
 
+```sql
+path       
+    : layer_name ('.' layer_name)*
+    ;
+layer_name
+    : wildcard? id wildcard?
+    | wildcard
+    | literal_can_be_layer_name
+    | keyword_can_be_layer_name
+    ;
+wildcard 
+    : '*' 
+    | '**'
+    ;
 ```
-path       : layer_name ('.' layer_name)*
-           ;
-layer_name : identifier 
-           | ('*' | '**')
-           ;
-```
+
+You can refer to the definition of `id` in [Syntax-Conventions](../IoTDB-SQL-Language/Syntax-Conventions.md).
 
 We call the part of a path divided by `'.'` as a layer (`layer_name`). For example: `root.a.b.c` is a path with 4 layers.
 
@@ -82,13 +92,13 @@ The following are the constraints on the layer (`layer_name`):
 * Except for the beginning layer (`root`) of the time series, the characters supported in other layers are as follows:
 
   * Chinese characters:  `"\u2E80"` to `"\u9FFF"`
-  * `"_"，"@"，"#"，"$"，"{"，"}"`
+  * `"_"，"@"，"#"，"$"`
   * `"A"` to `"Z"`, `"a"` to `"z"`, `"0"` to `"9"`
 
 * In addition to the beginning layer (`root`) of the time series and the storage group layer, other layers also support the use of special strings referenced by \` or `" ` as its name. It should be noted that the quoted string cannot contain `.` characters. Here are some legal examples:
 
-  * root.sg.select."+-\`from\`".""""."\$", which contains 6 layers: root, sg, select, +-\`from\`, "", \$
-  * root.sg.\`\`\`\`.select.\`+="from"\`.\`\$\`, which contains 6 layers: root, sg, \`\`, select, +="from", \$
+  * root.sg."select"."+-from="."where""where"""."\$", which contains 6 layers: root, sg, select, +-from, where"where", \$
+  * root.sg.\`\`\`\`.\`select\`.\`+="from"\`.\`\$\`, which contains 6 layers: root, sg, \`, select, +-"from", \$
 
 * In particular, if the system is deployed on a Windows machine, the storage group layer name will be case-insensitive. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
 
