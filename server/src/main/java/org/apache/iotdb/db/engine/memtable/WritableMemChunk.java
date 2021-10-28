@@ -259,6 +259,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public void encode(IChunkWriter chunkWriter) {
+
+  }
+
+  @Override
   public String toString() {
     int size = list.size();
     int firstIndex = 0;
