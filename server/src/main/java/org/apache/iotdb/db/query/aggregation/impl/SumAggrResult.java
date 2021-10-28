@@ -49,6 +49,11 @@ public class SumAggrResult extends AggregateResult {
   }
 
   @Override
+  protected boolean hasCandidateResult() {
+    return notNull;
+  }
+
+  @Override
   public Double getResult() {
     if (notNull) {
       setDoubleValue(sum);
@@ -149,11 +154,15 @@ public class SumAggrResult extends AggregateResult {
   @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {
     seriesDataType = TSDataType.deserialize(buffer.get());
+    this.sum = buffer.getDouble();
+    this.notNull = buffer.get() > 0;
   }
 
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(seriesDataType, outputStream);
+    ReadWriteIOUtils.write(sum, outputStream);
+    ReadWriteIOUtils.write(notNull ? (byte) 1 : (byte) 0, outputStream);
   }
 
   @Override
