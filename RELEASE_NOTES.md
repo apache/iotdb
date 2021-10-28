@@ -59,7 +59,7 @@
 * [IOTDB-1838] The compacting status in SGP is always false
 * [IOTDB-1846]Fix the error when count the total number of devices in cluster mode
 * [IOTDB-1850] Fix deserialize page merge rate limiter
-* [IOTDB-1879] Fix compaction wrong lock
+* [IOTDB-1879] Fix some Unsequence files never be merged to higher level or Sequence folder
 * [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
 * fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
