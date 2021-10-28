@@ -72,6 +72,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public void writeVector(long insertTime, String[] measurementIds, Object[] objectValue) {
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
+  }
+
+  @Override
   public void write(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
     switch (dataType) {
@@ -146,7 +151,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVector(long t, Object[] v) {
+  public void putVector(long t, Object[] v, int[] columnOrder) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
@@ -181,7 +186,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
+  public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 

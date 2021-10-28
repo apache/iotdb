@@ -67,8 +67,8 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVector(long t, Object[] v) {
-    list.putVector(t, v);
+  public void putVector(long t, Object[] v, int[] columnOrder) {
+    list.putVector(t, v, columnOrder);
   }
 
   @Override
@@ -102,13 +102,19 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
-    list.putVectors(t, v, bitMaps, start, end);
+  public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
+    list.putVectors(t, v, bitMaps, columnOrder, start, end);
   }
 
   @Override
   public void write(long insertTime, Object objectValue) {
-    putVector(insertTime, (Object[]) objectValue);
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
+  }
+
+  @Override
+  public void writeVector(long insertTime, String[] measurementIds, Object[] objectValue) {
+    int[] columnOrder = checkColumnOrder(measurementIds);
+    putVector(insertTime, objectValue, columnOrder);
   }
 
   @Override
@@ -125,12 +131,14 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
       BitMap[] bitMaps,
       int start,
       int end) {
-    checkColumnOrder(measurementIds);
-    putVectors(times, valueList, bitMaps, start, end);
+    int[] columnOrder = checkColumnOrder(measurementIds);
+    putVectors(times, valueList, bitMaps, columnOrder, start, end);
   }
 
-  private void checkColumnOrder(String[] measurementIds) {
-    // TODO HTHou
+  private int[] checkColumnOrder(String[] measurementIds) {
+    int[] columnOrder = new int[measurementIds.length];
+    
+    return columnOrder;
   }
 
   @Override
