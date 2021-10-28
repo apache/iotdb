@@ -316,7 +316,7 @@ public class BaseMember {
             new ClientManager(true, Type.RequestForwardClient) {
               @Override
               public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
-                  throws Exception {
+                  throws IOException {
                 return new TestAsyncDataClient(node, dataGroupMemberMap);
               }
             });

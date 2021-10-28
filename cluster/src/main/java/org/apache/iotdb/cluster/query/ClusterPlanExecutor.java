@@ -234,9 +234,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
             count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
+            if (syncDataClient != null) syncDataClient.close();
+
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -251,10 +250,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
         if (count != null) {
           return count;
         }
+      } catch (IOException | TException e) {
+        throw new MetadataException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new MetadataException(e);
-      } catch (Exception e) {
         throw new MetadataException(e);
       }
     }
@@ -398,9 +397,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
             count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
+            if (syncDataClient != null) syncDataClient.close();
+
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -415,10 +413,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
         if (count != null) {
           return count;
         }
+      } catch (IOException | TException e) {
+        throw new MetadataException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new MetadataException(e);
-      } catch (Exception e) {
         throw new MetadataException(e);
       }
     }
@@ -508,9 +506,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
+            if (syncDataClient != null) syncDataClient.close();
+
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -519,11 +516,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
         if (paths != null) {
           break;
         }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting node lists in node {}.", node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting node lists in node {}.", node, e);
         Thread.currentThread().interrupt();
-      } catch (Exception e) {
-        logger.error("Error occurs when getting node lists in node {}.", node, e);
       }
     }
     return PartialPath.fromStringList(paths);
@@ -603,9 +602,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
+            if (syncDataClient != null) syncDataClient.close();
+
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -614,11 +612,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
         if (nextChildrenNodes != null) {
           break;
         }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting node lists in node {}.", node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting node lists in node {}.", node, e);
         Thread.currentThread().interrupt();
-      } catch (Exception e) {
-        logger.error("Error occurs when getting node lists in node {}.", node, e);
       }
     }
     return nextChildrenNodes;
@@ -720,9 +720,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
+            if (syncDataClient != null) syncDataClient.close();
+
             throw e;
           } finally {
             if (syncDataClient != null) syncDataClient.returnSelf();
@@ -731,11 +730,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
         if (nextChildren != null) {
           break;
         }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting node lists in node {}.", node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting node lists in node {}.", node, e);
         Thread.currentThread().interrupt();
-      } catch (Exception e) {
-        logger.error("Error occurs when getting node lists in node {}.", node, e);
       }
     }
     return nextChildren;

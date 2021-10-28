@@ -1424,7 +1424,7 @@ public abstract class RaftMember implements RaftMemberMBean {
   public Client getSyncClient(Node node) {
     try {
       return clientManager.borrowSyncClient(node, getClientCategory());
-    } catch (Exception e) {
+    } catch (IOException e) {
       logger.error("borrow sync client fail", e);
       return null;
     }
@@ -1473,7 +1473,7 @@ public abstract class RaftMember implements RaftMemberMBean {
             : ClientCategory.DATA_HEARTBEAT;
     try {
       return clientManager.borrowSyncClient(node, category);
-    } catch (Exception e) {
+    } catch (IOException e) {
       logger.error("borrow sync heartbeat client fail", e);
       return null;
     }

@@ -137,8 +137,6 @@ public class RemoteSimpleSeriesReader implements IPointReader {
         Thread.currentThread().interrupt();
         logger.warn("Query {} interrupted", sourceInfo);
         return null;
-      } catch (Exception e) {
-        throw new IOException(e);
       }
     }
     return fetchResult.get();
@@ -158,8 +156,6 @@ public class RemoteSimpleSeriesReader implements IPointReader {
         return null;
       }
       return fetchResultSync();
-    } catch (Exception e) {
-      throw new IOException(e);
     } finally {
       if (curSyncClient != null) curSyncClient.returnSelf();
     }

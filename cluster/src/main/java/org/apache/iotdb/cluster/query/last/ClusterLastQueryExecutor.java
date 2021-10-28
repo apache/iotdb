@@ -225,19 +225,20 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
             results.add(new Pair<>(true, pair));
           }
           return results;
+        } catch (IOException | TException e) {
+          logger.warn("Query last of {} from {} errored", group, seriesPaths, e);
+          return Collections.emptyList();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Query last of {} from {} interrupted", group, seriesPaths, e);
-          return Collections.emptyList();
-        } catch (Exception e) {
-          logger.warn("Query last of {} from {} errored", group, seriesPaths, e);
           return Collections.emptyList();
         }
       }
       return Collections.emptyList();
     }
 
-    private ByteBuffer lastAsync(Node node, QueryContext context) throws Exception {
+    private ByteBuffer lastAsync(Node node, QueryContext context)
+        throws IOException, TException, InterruptedException {
       ByteBuffer buffer;
       AsyncDataClient asyncDataClient =
           ClusterIoTDB.getInstance()
@@ -257,28 +258,26 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       return buffer;
     }
 
-    private ByteBuffer lastSync(Node node, QueryContext context) throws Exception {
+    private ByteBuffer lastSync(Node node, QueryContext context) throws IOException, TException {
       ByteBuffer res;
       SyncDataClient syncDataClient = null;
       try {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        try {
-          res =
-              syncDataClient.last(
-                  new LastQueryRequest(
-                      PartialPath.toStringList(seriesPaths),
-                      dataTypeOrdinals,
-                      context.getQueryId(),
-                      queryPlan.getDeviceToMeasurements(),
-                      group.getHeader(),
-                      syncDataClient.getNode()));
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.close();
-          throw e;
-        }
+        res =
+            syncDataClient.last(
+                new LastQueryRequest(
+                    PartialPath.toStringList(seriesPaths),
+                    dataTypeOrdinals,
+                    context.getQueryId(),
+                    queryPlan.getDeviceToMeasurements(),
+                    group.getHeader(),
+                    syncDataClient.getNode()));
+      } catch (IOException | TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        if (syncDataClient != null) syncDataClient.close();
+        throw e;
       } finally {
         if (syncDataClient != null) syncDataClient.returnSelf();
       }

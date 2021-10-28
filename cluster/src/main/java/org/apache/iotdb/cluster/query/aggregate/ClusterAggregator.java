@@ -243,12 +243,12 @@ public class ClusterAggregator {
               results);
           return results;
         }
+      } catch (TException | IOException e) {
+        logger.error(
+            "{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("{}: query {} interrupted from {}", metaGroupMember.getName(), path, node, e);
-      } catch (Exception e) {
-        logger.error(
-            "{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node, e);
       }
     }
     throw new StorageEngineException(
@@ -256,7 +256,7 @@ public class ClusterAggregator {
   }
 
   private List<ByteBuffer> getRemoteAggregateResult(Node node, GetAggrResultRequest request)
-      throws Exception {
+      throws IOException, TException, InterruptedException {
     List<ByteBuffer> resultBuffers = null;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -273,9 +273,8 @@ public class ClusterAggregator {
         resultBuffers = syncDataClient.getAggrResult(request);
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) {
-          syncDataClient.close();
-        }
+        if (syncDataClient != null) syncDataClient.close();
+
         throw e;
       } finally {
         if (syncDataClient != null) syncDataClient.returnSelf();

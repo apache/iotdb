@@ -95,7 +95,6 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
   public void onComplete() {
     super.onComplete();
     returnSelf();
-    // TODO: active node status
   }
 
   @Override
@@ -156,8 +155,7 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
     }
 
     @Override
-    public void destroyObject(Node node, PooledObject<AsyncMetaClient> pooledObject)
-        throws Exception {
+    public void destroyObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {
       pooledObject.getObject().close();
     }
 

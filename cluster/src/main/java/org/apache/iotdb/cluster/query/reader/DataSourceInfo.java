@@ -131,7 +131,8 @@ public class DataSourceInfo {
     return false;
   }
 
-  private Long getReaderId(Node node, boolean byTimestamp, long timestamp) throws Exception {
+  private Long getReaderId(Node node, boolean byTimestamp, long timestamp)
+      throws InterruptedException, TException, IOException {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return applyForReaderIdAsync(node, byTimestamp, timestamp);
     }
@@ -139,7 +140,7 @@ public class DataSourceInfo {
   }
 
   private Long applyForReaderIdAsync(Node node, boolean byTimestamp, long timestamp)
-      throws Exception {
+      throws IOException, TException, InterruptedException {
     Long newReaderId;
     AsyncDataClient client =
         ClusterIoTDB.getInstance()
@@ -153,7 +154,7 @@ public class DataSourceInfo {
   }
 
   private Long applyForReaderIdSync(Node node, boolean byTimestamp, long timestamp)
-      throws Exception {
+      throws IOException, TException {
 
     Long newReaderId;
     SyncDataClient client = null;
@@ -176,7 +177,7 @@ public class DataSourceInfo {
         newReaderId = client.querySingleSeries(request);
       }
       return newReaderId;
-    } catch (TException e) {
+    } catch (IOException | TException e) {
       // the connection may be broken, close it to avoid it being reused
       if (client != null) client.close();
       throw e;
@@ -201,13 +202,13 @@ public class DataSourceInfo {
     return this.curSource;
   }
 
-  AsyncDataClient getCurAsyncClient(int timeout) throws Exception {
+  AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
         : ClusterIoTDB.getInstance().getAsyncDataClient(this.curSource, timeout);
   }
 
-  SyncDataClient getCurSyncClient(int timeout) throws Exception {
+  SyncDataClient getCurSyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
         : ClusterIoTDB.getInstance().getSyncDataClient(this.curSource, timeout);

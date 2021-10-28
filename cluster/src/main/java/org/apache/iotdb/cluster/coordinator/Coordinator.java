@@ -66,6 +66,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -739,7 +740,7 @@ public class Coordinator {
         } else {
           status = forwardDataPlanSync(plan, node, group.getHeader());
         }
-      } catch (Exception e) {
+      } catch (IOException e) {
         status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
@@ -763,7 +764,7 @@ public class Coordinator {
    * @return a TSStatus indicating if the forwarding is successful.
    */
   private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
-      throws Exception {
+      throws IOException {
     AsyncDataClient client =
         ClusterIoTDB.getInstance()
             .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
@@ -771,7 +772,7 @@ public class Coordinator {
   }
 
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
-      throws Exception {
+      throws IOException {
     SyncDataClient client =
         ClusterIoTDB.getInstance()
             .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());

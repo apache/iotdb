@@ -199,7 +199,7 @@ public class MetaGroupMemberTest extends BaseMember {
             new IClientManager() {
               @Override
               public AsyncClient borrowAsyncClient(Node node, ClientCategory category)
-                  throws Exception {
+                  throws IOException {
                 return new TestAsyncDataClient(node, dataGroupMemberMap);
               }
 
@@ -892,7 +892,7 @@ public class MetaGroupMemberTest extends BaseMember {
               new IClientManager() {
                 @Override
                 public AsyncClient borrowAsyncClient(Node node, ClientCategory category)
-                    throws Exception {
+                    throws IOException {
                   return new TestAsyncDataClient(node, dataGroupMemberMap);
                 }
 

@@ -113,7 +113,6 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
   public void onComplete() {
     super.onComplete();
     returnSelf();
-    // TODO: active node status
   }
 
   @Override
@@ -159,8 +158,7 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
     }
 
     @Override
-    public void destroyObject(Node node, PooledObject<AsyncDataClient> pooledObject)
-        throws Exception {
+    public void destroyObject(Node node, PooledObject<AsyncDataClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
@@ -200,8 +198,7 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
         throws Exception {}
 
     @Override
-    public void destroyObject(Node node, PooledObject<AsyncDataClient> pooledObject)
-        throws Exception {
+    public void destroyObject(Node node, PooledObject<AsyncDataClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
