@@ -224,6 +224,8 @@ public class ClusterPreviousFill extends PreviousFill {
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
+    } catch (IOException e) {
+      logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
     } catch (Exception e) {
       logger.error(
           "{}: Cannot perform previous fill of {} to {}",
@@ -247,9 +249,8 @@ public class ClusterPreviousFill extends PreviousFill {
 
     } catch (TException e) {
       // the connection may be broken, close it to avoid it being reused
-      if (syncDataClient != null) {
-        syncDataClient.close();
-      }
+      if (syncDataClient != null) syncDataClient.close();
+
       logger.error(
           "{}: Cannot perform previous fill of {} to {}",
           metaGroupMember.getName(),

@@ -24,9 +24,11 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
 import com.google.common.collect.Maps;
 import org.apache.commons.pool2.KeyedObjectPool;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -145,17 +147,27 @@ public class ClientManager implements IClientManager {
    */
   @Override
   public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
-      throws Exception {
+      throws IOException {
     KeyedObjectPool<Node, RaftService.AsyncClient> pool;
+    RaftService.AsyncClient client = null;
     if (asyncClientPoolMap != null && (pool = asyncClientPoolMap.get(category)) != null) {
-      return pool.borrowObject(node);
+      try {
+        client = pool.borrowObject(node);
+      } catch (IOException e) {
+        // external needs the IOException to check connection
+        throw e;
+      } catch (Exception e) {
+        // external doesn't care of other exceptions
+        logger.error("BorrowAsyncClient fail.", e);
+      }
+    } else {
+      logger.warn(
+          "BorrowSyncClient invoke on unsupported mode or category: Node:{}, ClientCategory:{}, isSyncMode:{}",
+          node,
+          clientPoolFactory,
+          syncClientPoolMap != null);
     }
-    logger.error(
-        "Unexpected BorrowAsyncClient invoking: Node:{}, ClientCategory:{}, isSyncMode:{}",
-        node,
-        clientPoolFactory,
-        syncClientPoolMap != null);
-    return null;
+    return client;
   }
 
   /**
@@ -167,17 +179,31 @@ public class ClientManager implements IClientManager {
    * @return RaftService.Client
    */
   @Override
-  public RaftService.Client borrowSyncClient(Node node, ClientCategory category) throws Exception {
+  public RaftService.Client borrowSyncClient(Node node, ClientCategory category)
+      throws IOException {
     KeyedObjectPool<Node, RaftService.Client> pool;
+    RaftService.Client client = null;
     if (syncClientPoolMap != null && (pool = syncClientPoolMap.get(category)) != null) {
-      return pool.borrowObject(node);
+      try {
+        client = pool.borrowObject(node);
+      } catch (TTransportException e) {
+        // external needs to check transport related exception
+        throw new IOException(e);
+      } catch (IOException e) {
+        // external needs the IOException to check connection
+        throw e;
+      } catch (Exception e) {
+        // external doesn't care of other exceptions
+        logger.error("BorrowSyncClient fail.", e);
+      }
+    } else {
+      logger.warn(
+          "BorrowSyncClient invoke on unsupported mode or category: Node:{}, ClientCategory:{}, isSyncMode:{}",
+          node,
+          clientPoolFactory,
+          syncClientPoolMap != null);
     }
-    logger.error(
-        "Unexpected BorrowSyncClient invoking: Node:{}, ClientCategory:{}, isSyncMode:{}",
-        node,
-        clientPoolFactory,
-        syncClientPoolMap != null);
-    return null;
+    return client;
   }
 
   @Override

@@ -1050,10 +1050,10 @@ public class CMManager extends MManager {
           // a non-null result contains correct result even if it is empty, so query next group
           return paths;
         }
+      } catch (IOException | TException e) {
+        throw new MetadataException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new MetadataException(e);
-      } catch (Exception e) {
         throw new MetadataException(e);
       }
     }
@@ -1063,7 +1063,8 @@ public class CMManager extends MManager {
 
   @SuppressWarnings("java:S1168") // null and empty list are different
   private List<PartialPath> getMatchedPaths(
-      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias) throws Exception {
+      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
+      throws IOException, TException, InterruptedException {
     GetAllPathsResult result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -1180,10 +1181,10 @@ public class CMManager extends MManager {
           }
           return partialPaths;
         }
+      } catch (IOException | TException e) {
+        throw new MetadataException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new MetadataException(e);
-      } catch (Exception e) {
         throw new MetadataException(e);
       }
     }
@@ -1192,7 +1193,7 @@ public class CMManager extends MManager {
   }
 
   private Set<String> getMatchedDevices(Node node, RaftNode header, List<String> pathsToQuery)
-      throws Exception {
+      throws IOException, TException, InterruptedException {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -1209,7 +1210,7 @@ public class CMManager extends MManager {
           paths = syncDataClient.getAllDevices(header, pathsToQuery);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          syncDataClient.close();
+          if (syncDataClient != null) syncDataClient.close();
           throw e;
         }
       } finally {
@@ -1582,13 +1583,11 @@ public class CMManager extends MManager {
         if (resultBinary != null) {
           break;
         }
-      } catch (IOException e) {
+      } catch (IOException | TException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
-      } catch (Exception e) {
-        logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
       }
     }
 
@@ -1613,13 +1612,11 @@ public class CMManager extends MManager {
         if (resultBinary != null) {
           break;
         }
-      } catch (IOException e) {
+      } catch (IOException | TException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting devices schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
-      } catch (Exception e) {
-        logger.error("Error occurs when getting devices schemas in node {}.", node, e);
       }
     }
 
@@ -1635,7 +1632,7 @@ public class CMManager extends MManager {
   }
 
   private ByteBuffer showRemoteTimeseries(Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
-      throws Exception {
+      throws IOException, TException, InterruptedException {
     ByteBuffer resultBinary;
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1657,7 +1654,7 @@ public class CMManager extends MManager {
                   group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          syncDataClient.close();
+          if (syncDataClient != null) syncDataClient.close();
           throw e;
         }
       } finally {
@@ -1668,7 +1665,7 @@ public class CMManager extends MManager {
   }
 
   private ByteBuffer getRemoteDevices(Node node, PartitionGroup group, ShowDevicesPlan plan)
-      throws Exception {
+      throws IOException, TException, InterruptedException {
     ByteBuffer resultBinary;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =

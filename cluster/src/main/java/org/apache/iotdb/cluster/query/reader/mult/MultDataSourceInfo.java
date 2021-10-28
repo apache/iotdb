@@ -211,13 +211,13 @@ public class MultDataSourceInfo {
     return partitionGroup.getHeader();
   }
 
-  AsyncDataClient getCurAsyncClient(int timeout) throws Exception {
+  AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
         : ClusterIoTDB.getInstance().getAsyncDataClient(this.curSource, timeout);
   }
 
-  SyncDataClient getCurSyncClient(int timeout) throws Exception {
+  SyncDataClient getCurSyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
         : ClusterIoTDB.getInstance().getSyncDataClient(this.curSource, timeout);

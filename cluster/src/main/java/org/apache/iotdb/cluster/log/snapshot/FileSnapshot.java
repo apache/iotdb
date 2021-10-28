@@ -350,7 +350,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         try {
           client.removeHardLink(resource.getTsFile().getAbsolutePath());
         } catch (TException te) {
-          client.close();
+          if (client != null) client.close();
           logger.error(
               "Cannot remove hardlink {} from {}",
               resource.getTsFile().getAbsolutePath(),

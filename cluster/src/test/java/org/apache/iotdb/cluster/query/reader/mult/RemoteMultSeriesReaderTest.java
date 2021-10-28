@@ -279,46 +279,52 @@ public class RemoteMultSeriesReaderTest {
 
               @Override
               public RaftService.Client borrowSyncClient(Node node, ClientCategory category)
-                  throws TTransportException {
-                return new SyncDataClient(
-                    protocolFactory.getProtocol(
-                        RpcTransportFactory.INSTANCE.getTransport(
-                            new TSocket(
-                                TConfigurationConst.defaultTConfiguration,
-                                node.getInternalIp(),
-                                ClientUtils.getPort(node, category),
-                                ClusterConstant.getConnectionTimeoutInMS())))) {
-                  @Override
-                  public Map<String, ByteBuffer> fetchMultSeries(
-                      RaftNode header, long readerId, List<String> paths) throws TException {
-                    if (failedNodes.contains(node)) {
-                      throw new TException("Node down.");
-                    }
-
-                    Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
-                    if (batchUsed) {
-                      paths.forEach(
-                          path -> {
-                            stringByteBufferMap.put(path, ByteBuffer.allocate(0));
-                          });
-                    } else {
-                      batchUsed = true;
-                      for (int i = 0; i < batchData.size(); i++) {
-                        stringByteBufferMap.put(paths.get(i), generateByteBuffer(batchData.get(i)));
+                  throws IOException {
+                try {
+                  TSocket socket =
+                      new TSocket(
+                          TConfigurationConst.defaultTConfiguration,
+                          node.getInternalIp(),
+                          ClientUtils.getPort(node, category),
+                          ClusterConstant.getConnectionTimeoutInMS());
+                  return new SyncDataClient(
+                      protocolFactory.getProtocol(
+                          RpcTransportFactory.INSTANCE.getTransport(socket))) {
+                    @Override
+                    public Map<String, ByteBuffer> fetchMultSeries(
+                        RaftNode header, long readerId, List<String> paths) throws TException {
+                      if (failedNodes.contains(node)) {
+                        throw new TException("Node down.");
                       }
-                    }
-                    return stringByteBufferMap;
-                  }
 
-                  @Override
-                  public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
-                    if (failedNodes.contains(node)) {
-                      throw new TException("Node down.");
+                      Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
+                      if (batchUsed) {
+                        paths.forEach(
+                            path -> {
+                              stringByteBufferMap.put(path, ByteBuffer.allocate(0));
+                            });
+                      } else {
+                        batchUsed = true;
+                        for (int i = 0; i < batchData.size(); i++) {
+                          stringByteBufferMap.put(
+                              paths.get(i), generateByteBuffer(batchData.get(i)));
+                        }
+                      }
+                      return stringByteBufferMap;
                     }
 
-                    return 1L;
-                  }
-                };
+                    @Override
+                    public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
+                      if (failedNodes.contains(node)) {
+                        throw new TException("Node down.");
+                      }
+
+                      return 1L;
+                    }
+                  };
+                } catch (TTransportException e) {
+                  throw new IOException(e);
+                }
               }
 
               @Override

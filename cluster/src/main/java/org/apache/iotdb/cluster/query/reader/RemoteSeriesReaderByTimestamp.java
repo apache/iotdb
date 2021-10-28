@@ -90,8 +90,6 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
         Thread.currentThread().interrupt();
         logger.warn("Query {} interrupted", sourceInfo);
         return null;
-      } catch (Exception e) {
-        throw new IOException(e);
       }
     }
     return fetchResult.get();
@@ -117,8 +115,6 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
         return null;
       }
       return fetchResultSync(timestamps, length);
-    } catch (Exception e) {
-      throw new IOException(e);
     } finally {
       if (curSyncClient != null) curSyncClient.returnSelf();
     }

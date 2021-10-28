@@ -47,6 +47,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -158,14 +159,12 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
                         .getSyncDataClient(
                             queriedNode, ClusterConstant.getReadOperationTimeoutMS());
                 syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
-              } catch (TException e) {
+              } catch (IOException | TException e) {
                 // the connection may be broken, close it to avoid it being reused
                 if (syncDataClient != null) syncDataClient.close();
                 throw e;
               } finally {
-                if (syncDataClient != null) {
-                  syncDataClient.returnSelf();
-                }
+                if (syncDataClient != null) syncDataClient.returnSelf();
               }
             }
           } catch (Exception e) {

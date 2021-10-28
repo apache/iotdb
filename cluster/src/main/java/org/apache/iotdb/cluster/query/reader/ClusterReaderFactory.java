@@ -916,10 +916,10 @@ public class ClusterReaderFactory {
           logger.debug("{}: no data for {} from {}", metaGroupMember.getName(), path, node);
           return new EmptyReader();
         }
+      } catch (TException | IOException e) {
+        logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
-      } catch (Exception e) {
         logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
       }
     }
@@ -927,7 +927,8 @@ public class ClusterReaderFactory {
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
-  private Long getRemoteGroupByExecutorId(Node node, GroupByRequest request) throws Exception {
+  private Long getRemoteGroupByExecutorId(Node node, GroupByRequest request)
+      throws IOException, TException, InterruptedException {
     Long executorId;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
@@ -943,9 +944,8 @@ public class ClusterReaderFactory {
         executorId = syncDataClient.getGroupByExecutor(request);
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) {
-          syncDataClient.close();
-        }
+        if (syncDataClient != null) syncDataClient.close();
+
         throw e;
       } finally {
         if (syncDataClient != null) syncDataClient.returnSelf();

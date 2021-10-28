@@ -656,7 +656,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     printClientConnectionErrorStack = false;
   }
 
-  public SyncDataClient getSyncDataClient(Node node, int readOperationTimeoutMS) throws Exception {
+  public SyncDataClient getSyncDataClient(Node node, int readOperationTimeoutMS)
+      throws IOException {
     SyncDataClient dataClient =
         (SyncDataClient) clientManager.borrowSyncClient(node, ClientCategory.DATA);
     if (dataClient != null) {
@@ -666,7 +667,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   public AsyncDataClient getAsyncDataClient(Node node, int readOperationTimeoutMS)
-      throws Exception {
+      throws IOException {
     AsyncDataClient dataClient =
         (AsyncDataClient) clientManager.borrowAsyncClient(node, ClientCategory.DATA);
     if (dataClient != null) {
