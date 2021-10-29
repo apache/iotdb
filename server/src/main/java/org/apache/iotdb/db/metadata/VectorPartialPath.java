@@ -65,7 +65,7 @@ public class VectorPartialPath extends PartialPath {
   }
 
   public VectorPartialPath(MeasurementPath path) {
-    super(path.getDevicePath().concatNode(VECTOR_PLACEHOLDER).getNodes());
+    super(path.getDevicePath().getNodes());
     subSensorsList = new ArrayList<>();
     subSensorsList.add(path.getMeasurement());
     schemaList = new ArrayList<>();
@@ -149,6 +149,15 @@ public class VectorPartialPath extends PartialPath {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), subSensorsList);
+  }
+
+  @Override
+  public PartialPath getExactPath() {
+    PartialPath path = super.getExactPath();
+    if (subSensorsList.size() == 1) {
+      return path.concatNode(subSensorsList.get(0));
+    }
+    return path;
   }
 
   @Override

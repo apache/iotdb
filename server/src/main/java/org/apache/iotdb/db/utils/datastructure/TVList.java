@@ -191,7 +191,8 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putVectors(long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
+  public void putVectors(
+      long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
