@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
-import java.io.IOException;
 
 /** IChunkWriter provides a list of writing methods for different value types. */
 public interface IChunkWriter {
@@ -90,4 +89,6 @@ public interface IChunkWriter {
   int getNumOfPages();
 
   TSDataType getDataType();
+
+  void addValueChunkWriter(ValueChunkWriter valueChunkWriter);
 }

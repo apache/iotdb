@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +68,7 @@ public class RecordUtils {
       // get measurementId and value
       measurementId = items[i].trim();
       IMeasurementSchema measurementSchema =
-          schema.getSeriesSchema(new Path(deviceId, measurementId));
+          schema.getSeriesSchema(new Path(deviceId)).getMeasurementSchemaMap().get(measurementId);
       if (measurementSchema == null) {
         LOG.warn("measurementId:{},type not found, pass", measurementId);
         continue;

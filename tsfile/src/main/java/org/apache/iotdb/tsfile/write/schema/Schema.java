@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.write.schema;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 
 /**
  * The schema of timeseries that exist in this file. The schemaTemplates is a simplified manner to
@@ -33,77 +34,110 @@ import java.util.Map;
 public class Schema implements Serializable {
 
   /**
-   * Path (device + measurement) -> measurementSchema By default, use the LinkedHashMap to store the
-   * order of insertion
+   * Path (devicePath + DeviceInfo) -> measurementSchema By default, use the LinkedHashMap to store
+   * the order of insertion
    */
-  private Map<Path, IMeasurementSchema> registeredTimeseries;
+  private Map<Path, MeasurementGroup> registeredTimeseries;
 
   /** template name -> (measurement -> MeasurementSchema) */
-  private Map<String, Map<String, IMeasurementSchema>> schemaTemplates;
+  private Map<String, MeasurementGroup> schemaTemplates;
 
   public Schema() {
     this.registeredTimeseries = new LinkedHashMap<>();
   }
 
-  public Schema(Map<Path, IMeasurementSchema> knownSchema) {
+  public Schema(Map<Path, MeasurementGroup> knownSchema) {
     this.registeredTimeseries = knownSchema;
   }
 
-  public void registerTimeseries(Path path, IMeasurementSchema descriptor) {
-    this.registeredTimeseries.put(path, descriptor);
+  // public void registerAlignedTimeseries(Path )
+
+  public void registerTimeseries(Path path, IMeasurementSchema measurementSchema) // Todo:
+      {
+    //    if (measurementSchema instanceof VectorMeasurementSchema) {
+    //      throw new WriteProcessException(
+    //          "registerTimeseries method can only register nonAligned timeseries.");
+    //    }
   }
 
-  public void registerSchemaTemplate(
-      String templateName, Map<String, IMeasurementSchema> template) {
+  public void registerTimeseries(Path devicePath, MeasurementGroup measurementGroup)
+      throws WriteProcessException {
+    if (this.registeredTimeseries.containsKey(devicePath)) {
+      if (measurementGroup.isAligned()) {
+        throw new WriteProcessException(
+            "given aligned device has existed and should not be expanded! " + devicePath);
+      } else {
+        for (String measurementId : measurementGroup.getMeasurementSchemaMap().keySet()) {
+          if (this.registeredTimeseries
+              .get(devicePath)
+              .getMeasurementSchemaMap()
+              .containsKey(measurementId)) {
+            throw new WriteProcessException(
+                "given nonAligned timeseries has existed! " + (devicePath + measurementId));
+          }
+        }
+      }
+    }
+    this.registeredTimeseries.put(devicePath, measurementGroup);
+  }
+
+  public void registerSchemaTemplate(String templateName, MeasurementGroup measurementGroup) {
     if (schemaTemplates == null) {
       schemaTemplates = new HashMap<>();
     }
-    this.schemaTemplates.put(templateName, template);
+    this.schemaTemplates.put(templateName, measurementGroup);
   }
 
-  public void extendTemplate(String templateName, IMeasurementSchema descriptor) {
+  public void extendTemplate(
+      String templateName, IMeasurementSchema descriptor) { // 若template不存在，则默认创建的是非对齐序列
     if (schemaTemplates == null) {
       schemaTemplates = new HashMap<>();
     }
-    Map<String, IMeasurementSchema> template =
-        this.schemaTemplates.getOrDefault(templateName, new HashMap<>());
-    template.put(descriptor.getMeasurementId(), descriptor);
-    this.schemaTemplates.put(templateName, template);
+    MeasurementGroup measurementGroup =
+        this.schemaTemplates.getOrDefault(
+            templateName, new MeasurementGroup(false, new HashMap<String, IMeasurementSchema>()));
+    measurementGroup.getMeasurementSchemaMap().put(descriptor.getMeasurementId(), descriptor);
+    this.schemaTemplates.put(templateName, measurementGroup);
   }
 
   public void registerDevice(String deviceId, String templateName) {
-    if (!schemaTemplates.containsKey(templateName)) {
-      return;
-    }
-    Map<String, IMeasurementSchema> template = schemaTemplates.get(templateName);
-    for (Map.Entry<String, IMeasurementSchema> entry : template.entrySet()) {
-      Path path = new Path(deviceId, entry.getKey());
-      registerTimeseries(path, entry.getValue());
+    Map<String, IMeasurementSchema> template =
+        schemaTemplates.get(templateName).getMeasurementSchemaMap();
+    boolean isAligned = schemaTemplates.get(templateName).isAligned();
+    try {
+      registerTimeseries(new Path(deviceId), new MeasurementGroup(isAligned, template));
+    } catch (WriteProcessException e) {
+      e.printStackTrace();
     }
   }
 
-  public IMeasurementSchema getSeriesSchema(Path path) {
-    return registeredTimeseries.get(path);
+  public MeasurementGroup getSeriesSchema(Path devicePath) {
+    return registeredTimeseries.get(devicePath);
   }
 
   public TSDataType getTimeseriesDataType(Path path) {
-    if (!registeredTimeseries.containsKey(path)) {
+    Path devicePath = new Path(path.getDevice());
+    if (!registeredTimeseries.containsKey(devicePath)) {
       return null;
     }
-    return registeredTimeseries.get(path).getType();
+    return registeredTimeseries
+        .get(devicePath)
+        .getMeasurementSchemaMap()
+        .get(path.getMeasurement())
+        .getType();
   }
 
-  public Map<String, Map<String, IMeasurementSchema>> getSchemaTemplates() {
+  public Map<String, MeasurementGroup> getSchemaTemplates() {
     return schemaTemplates;
   }
 
   /** check if this schema contains a measurement named measurementId. */
-  public boolean containsTimeseries(Path path) {
-    return registeredTimeseries.containsKey(path);
+  public boolean containsTimeseries(Path devicePath) {
+    return registeredTimeseries.containsKey(devicePath);
   }
 
   // for test
-  public Map<Path, IMeasurementSchema> getRegisteredTimeseriesMap() {
+  public Map<Path, MeasurementGroup> getRegisteredTimeseriesMap() {
     return registeredTimeseries;
   }
 }

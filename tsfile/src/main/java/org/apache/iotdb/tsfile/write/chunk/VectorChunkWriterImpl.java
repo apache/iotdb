@@ -18,52 +18,80 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 public class VectorChunkWriterImpl implements IChunkWriter {
 
   private final TimeChunkWriter timeChunkWriter;
-  private final List<ValueChunkWriter> valueChunkWriterList;
+
+  // measurementId -> ValueChunkWriter
+  private List<ValueChunkWriter> valueChunkWriterList;
   private int valueIndex;
 
-  /** @param schema schema of this measurement */
-  public VectorChunkWriterImpl(IMeasurementSchema schema) {
-    timeChunkWriter =
-        new TimeChunkWriter(
-            schema.getMeasurementId(),
-            schema.getCompressor(),
-            schema.getTimeTSEncoding(),
-            schema.getTimeEncoder());
+  /** @param measurementSchemas schema of these measurements */
+  public VectorChunkWriterImpl(List<IMeasurementSchema> measurementSchemas) {
+    String measurementId = "";
+    CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    TSEncoding tsEncoding =
+        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
+    Encoder encoder = TSEncodingBuilder.getEncodingBuilder(tsEncoding).getEncoder(timeType);
+    timeChunkWriter = new TimeChunkWriter(measurementId, compressionType, tsEncoding, encoder);
 
-    List<String> valueMeasurementIdList = schema.getSubMeasurementsList();
-    List<TSDataType> valueTSDataTypeList = schema.getSubMeasurementsTSDataTypeList();
-    List<TSEncoding> valueTSEncodingList = schema.getSubMeasurementsTSEncodingList();
-    List<Encoder> valueEncoderList = schema.getSubMeasurementsEncoderList();
-
-    valueChunkWriterList = new ArrayList<>(valueMeasurementIdList.size());
-    for (int i = 0; i < valueMeasurementIdList.size(); i++) {
+    valueChunkWriterList = new ArrayList<>(measurementSchemas.size());
+    for (int i = 0; i < measurementSchemas.size(); i++) {
+      IMeasurementSchema measurementSchema = measurementSchemas.get(i);
       valueChunkWriterList.add(
           new ValueChunkWriter(
-              schema.getMeasurementId()
-                  + TsFileConstant.PATH_SEPARATOR
-                  + valueMeasurementIdList.get(i),
-              schema.getCompressor(),
-              valueTSDataTypeList.get(i),
-              valueTSEncodingList.get(i),
-              valueEncoderList.get(i)));
+              measurementSchema.getMeasurementId(),
+              measurementSchema.getCompressor(),
+              measurementSchema.getType(),
+              measurementSchema.getEncodingType(),
+              measurementSchema.getValueEncoder()));
     }
 
     this.valueIndex = 0;
+  }
+
+  public VectorChunkWriterImpl() {
+    String measurementId = "";
+    CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    TSEncoding tsEncoding =
+        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
+    Encoder encoder = TSEncodingBuilder.getEncodingBuilder(tsEncoding).getEncoder(timeType);
+    timeChunkWriter = new TimeChunkWriter(measurementId, compressionType, tsEncoding, encoder);
+    valueChunkWriterList = new ArrayList<>();
+    this.valueIndex = 0;
+  }
+
+  @Override
+  public void addValueChunkWriter(ValueChunkWriter valueChunkWriter) {
+    valueChunkWriterList.add(valueChunkWriter);
+    addEmptyData(valueChunkWriter);
+  }
+
+  public void addEmptyData(ValueChunkWriter valueChunkWriter) {
+    // initial empty page
+    for (int i = 0; i < timeChunkWriter.getNumOfPages(); i++) {
+      valueChunkWriter.writeEmptyPageToPageBuffer();
+    }
+
+    // initial emptyData of currentPage
+    for (long i = 0; i < timeChunkWriter.getPageWriter().getStatistics().getCount(); i++) {
+      valueChunkWriter.write(0, 0, true);
+    }
   }
 
   @Override
@@ -141,7 +169,15 @@ public class VectorChunkWriterImpl implements IChunkWriter {
    * to pageBuffer
    */
   private boolean checkPageSizeAndMayOpenANewPage() {
-    return timeChunkWriter.checkPageSizeAndMayOpenANewPage();
+    if (timeChunkWriter.checkPageSizeAndMayOpenANewPage()) {
+      return true;
+    }
+    for (ValueChunkWriter writer : valueChunkWriterList) {
+      if (writer.checkPageSizeAndMayOpenANewPage()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void writePageToPageBuffer() {

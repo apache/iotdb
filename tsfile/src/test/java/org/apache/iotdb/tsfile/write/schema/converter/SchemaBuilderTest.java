@@ -18,22 +18,22 @@
  */
 package org.apache.iotdb.tsfile.write.schema.converter;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.Test;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
 
 public class SchemaBuilderTest {
 
@@ -52,7 +52,14 @@ public class SchemaBuilderTest {
         new UnaryMeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 
-    Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
+    List<IMeasurementSchema> timeseries = new ArrayList<>();
+    schema
+        .getRegisteredTimeseriesMap()
+        .values()
+        .forEach(
+            mg -> {
+              timeseries.addAll(mg.getMeasurementSchemaMap().values());
+            });
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
@@ -77,10 +84,18 @@ public class SchemaBuilderTest {
         "s5",
         new UnaryMeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
-    schema.registerSchemaTemplate("template1", template);
+    MeasurementGroup measurementGroup = new MeasurementGroup(false, template);
+    schema.registerSchemaTemplate("template1", measurementGroup);
     schema.registerDevice("d1", "template1");
 
-    Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
+    List<IMeasurementSchema> timeseries = new ArrayList<>();
+    schema
+        .getRegisteredTimeseriesMap()
+        .values()
+        .forEach(
+            mg -> {
+              timeseries.addAll(mg.getMeasurementSchemaMap().values());
+            });
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
@@ -105,7 +120,8 @@ public class SchemaBuilderTest {
         "s5",
         new UnaryMeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
-    schema.registerSchemaTemplate("template1", template);
+    MeasurementGroup measurementGroup = new MeasurementGroup(false, template);
+    schema.registerSchemaTemplate("template1", measurementGroup);
 
     schema.extendTemplate(
         "template1",
@@ -114,7 +130,14 @@ public class SchemaBuilderTest {
 
     schema.registerDevice("d1", "template1");
 
-    Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
+    List<IMeasurementSchema> timeseries = new ArrayList<>();
+    schema
+        .getRegisteredTimeseriesMap()
+        .values()
+        .forEach(
+            mg -> {
+              timeseries.addAll(mg.getMeasurementSchemaMap().values());
+            });
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]",
       "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]",

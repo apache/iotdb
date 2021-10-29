@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import java.io.IOException;
+import java.util.List;
+import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
-import java.io.IOException;
-import java.util.List;
 
 /**
  * A chunk group in TsFile contains several series. A ChunkGroupWriter should implement write method
@@ -43,6 +43,8 @@ public interface IChunkGroupWriter {
    * @throws IOException exception in IO
    */
   void write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
+
+  void writeAligned(long time, List<DataPoint> data) throws NoMeasurementException, IOException;
 
   /**
    * receive a tablet, write it to chunk writers
@@ -78,6 +80,8 @@ public interface IChunkGroupWriter {
    * @param pageSize the specified page size
    */
   void tryToAddSeriesWriter(IMeasurementSchema measurementSchema, int pageSize);
+
+  void tryToAddAlignedSeriesWriter(List<IMeasurementSchema> measurementSchemas, int pageSize);
 
   /**
    * get the serialized size of current chunkGroup header + all chunks. Notice, the value does not

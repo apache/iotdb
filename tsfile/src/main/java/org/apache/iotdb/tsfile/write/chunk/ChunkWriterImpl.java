@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
@@ -32,15 +37,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 
 public class ChunkWriterImpl implements IChunkWriter {
 
@@ -373,6 +371,11 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public TSDataType getDataType() {
     return measurementSchema.getType();
+  }
+
+  @Override
+  public void addValueChunkWriter(ValueChunkWriter valueChunkWriter) {
+    throw new UnsupportedOperationException("unsupported method for ChunkWriterImpl");
   }
 
   /**

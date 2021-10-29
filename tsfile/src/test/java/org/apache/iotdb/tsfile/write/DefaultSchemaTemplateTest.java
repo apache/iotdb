@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -30,17 +37,8 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class DefaultSchemaTemplateTest {
 
@@ -64,7 +62,7 @@ public class DefaultSchemaTemplateTest {
       schema.put("s1", s1);
       schema.put("s2", s2);
 
-      writer.registerSchemaTemplate("defaultTemplate", schema);
+      writer.registerSchemaTemplate("defaultTemplate", schema, false);
 
       Tablet tablet = new Tablet("d1", schemaList);
       long[] timestamps = tablet.timestamps;

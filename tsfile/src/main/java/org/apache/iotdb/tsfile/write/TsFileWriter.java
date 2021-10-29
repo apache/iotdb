@@ -18,11 +18,18 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -33,14 +40,8 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * TsFileWriter is the entrance for writing processing. It receives a record and send it to
@@ -134,7 +135,8 @@ public class TsFileWriter implements AutoCloseable {
     this.fileWriter = fileWriter;
 
     if (fileWriter instanceof RestorableTsFileIOWriter) {
-      this.schema = new Schema(((RestorableTsFileIOWriter) fileWriter).getKnownSchema());
+      this.schema = null;
+      // this.schema = new Schema(((RestorableTsFileIOWriter) fileWriter).getKnownSchema()); #Todo
     } else {
       this.schema = schema;
     }
@@ -151,20 +153,135 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   public void registerSchemaTemplate(
-      String templateName, Map<String, IMeasurementSchema> template) {
-    schema.registerSchemaTemplate(templateName, template);
+      String templateName, Map<String, IMeasurementSchema> template, boolean isAligned) {
+    schema.registerSchemaTemplate(templateName, new MeasurementGroup(isAligned, template));
   }
 
-  public void registerDevice(String deviceId, String templateName) {
+  public void registerDevice(String deviceId, String templateName) throws WriteProcessException {
+    if (!schema.getSchemaTemplates().containsKey(templateName)) {
+      throw new WriteProcessException("given template is not existed! " + templateName);
+    }
     schema.registerDevice(deviceId, templateName);
   }
 
-  public void registerTimeseries(Path path, IMeasurementSchema measurementSchema)
+  public void registerTimeseries(Path devicePath, IMeasurementSchema measurementSchema)
       throws WriteProcessException {
-    if (schema.containsTimeseries(path)) {
-      throw new WriteProcessException("given timeseries has exists! " + path);
+    MeasurementGroup measurementGroup;
+    if (schema.containsTimeseries(devicePath)) {
+      measurementGroup = schema.getSeriesSchema(devicePath);
+      if (measurementGroup.isAligned()) {
+        throw new WriteProcessException(
+            "given aligned device has existed and should not be expanded! " + devicePath);
+      } else if (measurementGroup
+          .getMeasurementSchemaMap()
+          .containsKey(measurementSchema.getMeasurementId())) {
+        throw new WriteProcessException(
+            "given nonAligned timeseries has existed! "
+                + (devicePath + measurementSchema.getMeasurementId()));
+      }
+    } else {
+      measurementGroup = new MeasurementGroup(false);
     }
-    schema.registerTimeseries(path, measurementSchema);
+    measurementGroup
+        .getMeasurementSchemaMap()
+        .put(measurementSchema.getMeasurementId(), measurementSchema);
+    schema.registerTimeseries(devicePath, measurementGroup);
+  }
+
+  public void registerAlignedTimeseries(
+      Path devicePath, List<IMeasurementSchema> measurementSchemas) throws WriteProcessException {
+    if (schema.containsTimeseries(devicePath)) {
+      throw new WriteProcessException(
+          "given aligned device has existed and should not be expanded! " + devicePath);
+    }
+    MeasurementGroup deviceInfo = new MeasurementGroup(true);
+    measurementSchemas.forEach(
+        measurementSchema -> {
+          deviceInfo
+              .getMeasurementSchemaMap()
+              .put(measurementSchema.getMeasurementId(), measurementSchema);
+        });
+    schema.registerTimeseries(devicePath, deviceInfo);
+  }
+
+  private boolean checkIsAlignedTimeseriesExist(TSRecord record) throws NoMeasurementException {
+    // initial ChunkGroupWriter of this device in the TSRecord
+    IChunkGroupWriter groupWriter;
+    if (!groupWriters.containsKey(record.deviceId)) {
+      groupWriter = new ChunkGroupWriterImpl(record.deviceId);
+      groupWriters.put(record.deviceId, groupWriter);
+    } else {
+      groupWriter = groupWriters.get(record.deviceId);
+    }
+
+    // add all SeriesWriters of measurements in this TSRecord
+    Path devicePath = new Path(record.deviceId);
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    if (schema.containsTimeseries(devicePath) && schema.getSeriesSchema(devicePath).isAligned()) {
+      for (DataPoint dataPoint : record.dataPointList) {
+        if (!schema
+            .getSeriesSchema(devicePath)
+            .getMeasurementSchemaMap()
+            .containsKey(dataPoint.getMeasurementId())) {
+          throw new NoMeasurementException(
+              "input aligned measurement "
+                  + dataPoint.getMeasurementId()
+                  + " in device "
+                  + devicePath
+                  + " is not found");
+        }
+        measurementSchemas.add(
+            schema
+                .getSeriesSchema(devicePath)
+                .getMeasurementSchemaMap()
+                .get(dataPoint.getMeasurementId()));
+      }
+      groupWriter.tryToAddAlignedSeriesWriter(measurementSchemas, pageSize);
+
+      // add new ValueChunkWriter to VectorChunkWriter，此处是可以动态增加ValueChunkWriter
+      /*for (DataPoint dataPoint : record.dataPointList) {
+        groupWriter.tryToAddAlignedSeriesWriter(
+            schema
+                .getSeriesSchema(devicePath)
+                .getMeasurementSchemaMap()
+                .get(dataPoint.getMeasurementId()),
+            pageSize);
+      }*/
+    } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
+      // use the default template without needing to register device
+      MeasurementGroup measurementGroup =
+          schema.getSchemaTemplates().entrySet().iterator().next().getValue();
+      if (measurementGroup.isAligned()) {
+        for (DataPoint dataPoint :
+            record.dataPointList) { // 必须先判断该Record是否所有的对齐传感器都在template里，若是才可以写入
+          if (!measurementGroup
+              .getMeasurementSchemaMap()
+              .containsKey(dataPoint.getMeasurementId())) {
+            throw new NoMeasurementException(
+                "input aligned measurement "
+                    + dataPoint.getMeasurementId()
+                    + " in device "
+                    + devicePath
+                    + " is not found in the default template");
+          }
+          measurementSchemas.add(
+              measurementGroup.getMeasurementSchemaMap().get(dataPoint.getMeasurementId()));
+        }
+        groupWriter.tryToAddAlignedSeriesWriter(measurementSchemas, pageSize);
+
+        /*for (DataPoint dataPoint : record.dataPointList) {
+          groupWriter.tryToAddAlignedSeriesWriter(
+              schema
+                  .getSeriesSchema(devicePath)
+                  .getMeasurementSchemaMap()
+                  .get(dataPoint.getMeasurementId()),
+              pageSize);
+        }*/
+      }
+    } else {
+      throw new NoMeasurementException("input devicePath is invalid: " + devicePath);
+    }
+    return true;
   }
 
   /**
@@ -186,21 +303,68 @@ public class TsFileWriter implements AutoCloseable {
     // add all SeriesWriter of measurements in this TSRecord to this ChunkGroupWriter
     for (DataPoint dp : record.dataPointList) {
       String measurementId = dp.getMeasurementId();
-      Path path = new Path(record.deviceId, measurementId);
-      if (schema.containsTimeseries(path)) {
-        groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
+      Path devicePath = new Path(record.deviceId);
+      if (schema.containsTimeseries(devicePath)
+          && !schema.getSeriesSchema(devicePath).isAligned()
+          && schema
+              .getSeriesSchema(devicePath)
+              .getMeasurementSchemaMap()
+              .containsKey(measurementId)) {
+        groupWriter.tryToAddSeriesWriter(
+            schema.getSeriesSchema(devicePath).getMeasurementSchemaMap().get(measurementId),
+            pageSize);
       } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
         // use the default template without needing to register device
         Map<String, IMeasurementSchema> template =
-            schema.getSchemaTemplates().entrySet().iterator().next().getValue();
-        if (template.containsKey(path.getMeasurement())) {
-          groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
+            schema
+                .getSchemaTemplates()
+                .entrySet()
+                .iterator()
+                .next()
+                .getValue()
+                .getMeasurementSchemaMap();
+        if (template.containsKey(measurementId)) {
+          groupWriter.tryToAddSeriesWriter(template.get(measurementId), pageSize);
         }
       } else {
-        throw new NoMeasurementException("input path is invalid: " + path);
+        throw new NoMeasurementException("input devicePath is invalid: " + devicePath);
       }
     }
     return true;
+  }
+
+  private void checkIsAlignedTimeseriesExist(Tablet tablet) throws NoMeasurementException {
+    IChunkGroupWriter groupWriter;
+    String deviceId = tablet.prefixPath;
+    if (!groupWriters.containsKey(deviceId)) {
+      groupWriter = new ChunkGroupWriterImpl(deviceId);
+      groupWriters.put(deviceId, groupWriter);
+    } else {
+      groupWriter = groupWriters.get(deviceId);
+    }
+
+    Path devicePath = new Path(deviceId);
+    if (schema.containsTimeseries(devicePath)
+        && schema.getRegisteredTimeseriesMap().get(devicePath).isAligned()) {
+      groupWriter.tryToAddAlignedSeriesWriter(
+          new ArrayList<>(schema.getSeriesSchema(devicePath).getMeasurementSchemaMap().values()),
+          pageSize);
+    } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
+      // use the default template without needing to register device
+      MeasurementGroup measurementGroup =
+          schema.getSchemaTemplates().entrySet().iterator().next().getValue();
+      if (measurementGroup.isAligned()) {
+        for (IMeasurementSchema schema : tablet.getSchemas()) {
+          if (!measurementGroup.getMeasurementSchemaMap().containsKey(schema.getMeasurementId())) {
+            return;
+          }
+        }
+        groupWriter.tryToAddAlignedSeriesWriter(
+            new ArrayList<>(measurementGroup.getMeasurementSchemaMap().values()), pageSize);
+      }
+    } else {
+      throw new NoMeasurementException("input devicePath is invalid: " + devicePath);
+    }
   }
 
   /**
@@ -223,14 +387,21 @@ public class TsFileWriter implements AutoCloseable {
     // add all SeriesWriter of measurements in this Tablet to this ChunkGroupWriter
     for (IMeasurementSchema timeseries : tablet.getSchemas()) {
       String measurementId = timeseries.getMeasurementId();
-      Path path = new Path(deviceId, measurementId);
+      Path path = new Path(deviceId);
       if (schema.containsTimeseries(path)) {
-        groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
+        groupWriter.tryToAddSeriesWriter(
+            schema.getSeriesSchema(path).getMeasurementSchemaMap().get(measurementId), pageSize);
       } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
         // use the default template without needing to register device
         Map<String, IMeasurementSchema> template =
-            schema.getSchemaTemplates().entrySet().iterator().next().getValue();
-        if (template.containsKey(path.getMeasurement())) {
+            schema
+                .getSchemaTemplates()
+                .entrySet()
+                .iterator()
+                .next()
+                .getValue()
+                .getMeasurementSchemaMap();
+        if (template.containsKey(measurementId)) {
           groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
         }
       } else {
@@ -252,6 +423,15 @@ public class TsFileWriter implements AutoCloseable {
     checkIsTimeSeriesExist(record);
     // get corresponding ChunkGroupWriter and write this TSRecord
     groupWriters.get(record.deviceId).write(record.time, record.dataPointList);
+    ++recordCount;
+    return checkMemorySizeAndMayFlushChunks();
+  }
+
+  public boolean writeAligned(TSRecord record) throws IOException, WriteProcessException {
+    // make sure the ChunkGroupWriter for this TSRecord exist
+    checkIsAlignedTimeseriesExist(record);
+    // get corresponding ChunkGroupWriter and write this TSRecord
+    groupWriters.get(record.deviceId).writeAligned(record.time, record.dataPointList);
     ++recordCount;
     return checkMemorySizeAndMayFlushChunks();
   }
