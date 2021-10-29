@@ -18,24 +18,30 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.read.common.Path;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.SeriesReader;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
@@ -49,7 +55,9 @@ public class PartialPath extends Path implements Comparable<Path> {
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   protected String measurementAlias = "";
 
-  public PartialPath() {}
+  public PartialPath() {
+  }
+
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
    * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
@@ -67,15 +75,17 @@ public class PartialPath extends Path implements Comparable<Path> {
     this.nodes = MetaUtils.splitPathToDetachedPath(fullPath);
   }
 
-  /** @param partialNodes nodes of a time series path */
+  /**
+   * @param partialNodes nodes of a time series path
+   */
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
   }
 
   /**
-   * @param path path
+   * @param path      path
    * @param needSplit needSplit is basically false, whether need to be split to device and
-   *     measurement, doesn't support escape character yet.
+   *                  measurement, doesn't support escape character yet.
    */
   public PartialPath(String path, boolean needSplit) {
     super(path, needSplit);
@@ -357,5 +367,38 @@ public class PartialPath extends Path implements Comparable<Path> {
    */
   public String getExactFullPath() {
     return getFullPath();
+  }
+
+  public SeriesReader createSeriesReader(Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    return new SeriesReader(
+        this,
+        allSensors,
+        dataType,
+        context,
+        dataSource,
+        timeFilter,
+        valueFilter,
+        fileFilter,
+        ascending);
+  }
+
+  @TestOnly
+  public SeriesReader createSeriesReader(Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
+    return new SeriesReader(this, allSensors, dataType, context, seqFileResource, unseqFileResource,
+        timeFilter, valueFilter, ascending);
   }
 }

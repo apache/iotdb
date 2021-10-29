@@ -99,11 +99,6 @@ public class FileLoaderUtils {
       Filter filter,
       Set<String> allSensors)
       throws IOException {
-    // deal with vector
-    if (seriesPath instanceof VectorPartialPath) {
-      return loadVectorTimeSeriesMetadata(
-          resource, (VectorPartialPath) seriesPath, context, filter, allSensors);
-    }
 
     // common path
     ITimeSeriesMetadata timeSeriesMetadata;
@@ -159,7 +154,7 @@ public class FileLoaderUtils {
    *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
    * @param allSensors all sensors belonging to this device that appear in query
    */
-  private static VectorTimeSeriesMetadata loadVectorTimeSeriesMetadata(
+  public static VectorTimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       VectorPartialPath vectorPath,
       QueryContext context,

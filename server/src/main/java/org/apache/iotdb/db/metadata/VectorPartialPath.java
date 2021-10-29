@@ -19,12 +19,20 @@
 
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.VectorSeriesReader;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
  * VectorPartialPath represents a vector's fullPath. It not only contains the full path of vector's
@@ -36,7 +44,8 @@ public class VectorPartialPath extends PartialPath {
 
   private List<String> subSensorsList;
 
-  public VectorPartialPath() {}
+  public VectorPartialPath() {
+  }
 
   public VectorPartialPath(String vectorPath, List<String> subSensorsList)
       throws IllegalPathException {
@@ -118,5 +127,40 @@ public class VectorPartialPath extends PartialPath {
       return fullPath + TsFileConstant.PATH_SEPARATOR + subSensorsList.get(0);
     }
     return fullPath;
+  }
+
+  @Override
+  public VectorSeriesReader createSeriesReader(Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    return new VectorSeriesReader(
+        this,
+        allSensors,
+        dataType,
+        context,
+        dataSource,
+        timeFilter,
+        valueFilter,
+        fileFilter,
+        ascending);
+  }
+
+  @Override
+  @TestOnly
+  public VectorSeriesReader createSeriesReader(Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
+    return new VectorSeriesReader(this, allSensors, dataType, context, seqFileResource,
+        unseqFileResource, timeFilter, valueFilter, ascending);
   }
 }
