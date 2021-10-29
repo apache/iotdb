@@ -48,4 +48,9 @@ public enum ReporterType {
   public static ReporterType get(String name) {
     return lookup.get(name);
   }
+
+  @Override
+  public String toString() {
+    return name;
+  }
 }

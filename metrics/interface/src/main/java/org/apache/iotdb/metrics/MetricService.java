@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingCompositeReporter;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,8 +100,8 @@ public class MetricService {
     // do some init work
     metricManager.init();
     compositeReporter.setMetricManager(metricManager);
-    List<String> reporters = metricConfig.getMetricReporterList();
-    for (String report : reporters) {
+    List<ReporterType> reporters = metricConfig.getMetricReporterList();
+    for (ReporterType report : reporters) {
       if (!compositeReporter.start(report)) {
         logger.warn("fail to start {}", report);
       }

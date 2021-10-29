@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.ReporterType;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -35,7 +37,7 @@ public class MetricConfig {
   private String metricReporterType = "MicrometerMetricReporter";
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
-  private List<String> metricReporterList = Arrays.asList("jmx");
+  private List<ReporterType> metricReporterList = Arrays.asList(ReporterType.JMX);
 
   private PrometheusReporterConfig prometheusReporterConfig;
 
@@ -71,11 +73,11 @@ public class MetricConfig {
     this.metricReporterType = metricReporterType;
   }
 
-  public List<String> getMetricReporterList() {
+  public List<ReporterType> getMetricReporterList() {
     return metricReporterList;
   }
 
-  public void setMetricReporterList(List<String> metricReporterList) {
+  public void setMetricReporterList(List<ReporterType> metricReporterList) {
     this.metricReporterList = metricReporterList;
   }
 

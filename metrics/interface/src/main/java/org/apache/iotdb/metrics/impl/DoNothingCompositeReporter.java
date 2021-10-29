@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.CompositeReporter;
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 public class DoNothingCompositeReporter implements CompositeReporter {
   @Override
@@ -29,7 +30,7 @@ public class DoNothingCompositeReporter implements CompositeReporter {
   }
 
   @Override
-  public boolean start(String reporter) {
+  public boolean start(ReporterType reporter) {
     return false;
   }
 
@@ -39,7 +40,7 @@ public class DoNothingCompositeReporter implements CompositeReporter {
   }
 
   @Override
-  public boolean stop(String reporter) {
+  public boolean stop(ReporterType reporter) {
     return false;
   }
 

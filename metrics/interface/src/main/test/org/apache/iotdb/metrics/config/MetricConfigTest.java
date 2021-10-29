@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.ReporterType;
 import org.junit.Assert;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -48,10 +49,9 @@ public class MetricConfigTest {
       }
     }
 
-    List<String> lists = metricConfig.getMetricReporterList();
+    List<ReporterType> lists = metricConfig.getMetricReporterList();
 
     Assert.assertEquals(lists.size(), 2);
     Assert.assertEquals(metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort(), "9091");
-    Assert.assertEquals(metricConfig.getIotdbReporterConfig().getIotdbIp(), "0.0.0.0");
   }
 }

@@ -76,8 +76,8 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public boolean init() {
     logger.info("micrometer init registry");
-    List<String> reporters = metricConfig.getMetricReporterList();
-    for (String report : reporters) {
+    List<ReporterType> reporters = metricConfig.getMetricReporterList();
+    for (ReporterType report : reporters) {
       if (!startMeterRegistry(report)) {
         return false;
       }
@@ -457,15 +457,13 @@ public class MicrometerMetricManager implements MetricManager {
     return compositeReporter.stop();
   }
 
-  private boolean startMeterRegistry(String reporter) {
-    switch (ReporterType.get(reporter)) {
+  private boolean startMeterRegistry(ReporterType reporter) {
+    switch (reporter) {
       case JMX:
         Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
         break;
       case PROMETHEUS:
         Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
-        break;
-      case IOTDB:
         break;
       default:
         logger.warn("Unsupported report type {}, please check the config.", reporter);
@@ -495,8 +493,6 @@ public class MicrometerMetricManager implements MetricManager {
             Metrics.globalRegistry.getRegistries().stream()
                 .filter(m -> m instanceof PrometheusMeterRegistry)
                 .collect(Collectors.toSet());
-        break;
-      case IOTDB:
         break;
       default:
         logger.warn("Unsupported report type {}, please check the config.", reporterName);

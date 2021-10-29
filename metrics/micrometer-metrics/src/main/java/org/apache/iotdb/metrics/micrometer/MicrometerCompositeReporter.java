@@ -47,9 +47,8 @@ public class MicrometerCompositeReporter implements CompositeReporter {
 
   @Override
   public boolean start() {
-
-    List<String> reporters = metricConfig.getMetricReporterList();
-    for (String reporter : reporters) {
+    List<ReporterType> reporters = metricConfig.getMetricReporterList();
+    for (ReporterType reporter : reporters) {
       if (!start(reporter)) {
         return false;
       }
@@ -58,8 +57,8 @@ public class MicrometerCompositeReporter implements CompositeReporter {
   }
 
   @Override
-  public boolean start(String reporter) {
-    switch (ReporterType.get(reporter)) {
+  public boolean start(ReporterType reporter) {
+    switch (reporter) {
       case JMX:
         startJmxReporter();
         break;
@@ -112,8 +111,8 @@ public class MicrometerCompositeReporter implements CompositeReporter {
 
   @Override
   public boolean stop() {
-    List<String> reporters = metricConfig.getMetricReporterList();
-    for (String reporter : reporters) {
+    List<ReporterType> reporters = metricConfig.getMetricReporterList();
+    for (ReporterType reporter : reporters) {
       if (!stop(reporter)) {
         return false;
       }
@@ -122,8 +121,8 @@ public class MicrometerCompositeReporter implements CompositeReporter {
   }
 
   @Override
-  public boolean stop(String reporter) {
-    switch (ReporterType.get(reporter)) {
+  public boolean stop(ReporterType reporter) {
+    switch (reporter) {
       case JMX:
         stopJmxReporter();
         break;

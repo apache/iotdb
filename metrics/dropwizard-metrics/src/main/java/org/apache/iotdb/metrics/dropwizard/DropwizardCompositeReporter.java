@@ -46,8 +46,8 @@ public class DropwizardCompositeReporter implements CompositeReporter {
 
   @Override
   public boolean start() {
-    List<String> reporters = metricConfig.getMetricReporterList();
-    for (String reporter : reporters) {
+    List<ReporterType> reporters = metricConfig.getMetricReporterList();
+    for (ReporterType reporter : reporters) {
       if (!start(reporter)) {
         logger.error("Dropwizard start reporter{" + reporter + "} failed.");
       }
@@ -56,8 +56,8 @@ public class DropwizardCompositeReporter implements CompositeReporter {
   }
 
   @Override
-  public boolean start(String reporter) {
-    switch (ReporterType.get(reporter)) {
+  public boolean start(ReporterType reporter) {
+    switch (reporter) {
       case JMX:
         if (!startJmxReporter()) {
           logger.warn("Dropwizard already has reporter: " + reporter);
@@ -115,16 +115,16 @@ public class DropwizardCompositeReporter implements CompositeReporter {
 
   @Override
   public boolean stop() {
-    List<String> reporters = metricConfig.getMetricReporterList();
-    for (String reporter : reporters) {
+    List<ReporterType> reporters = metricConfig.getMetricReporterList();
+    for (ReporterType reporter : reporters) {
       stop(reporter);
     }
     return true;
   }
 
   @Override
-  public boolean stop(String reporter) {
-    switch (ReporterType.get(reporter)) {
+  public boolean stop(ReporterType reporter) {
+    switch (reporter) {
       case JMX:
         if (!stopJmxReporter()) {
           return false;

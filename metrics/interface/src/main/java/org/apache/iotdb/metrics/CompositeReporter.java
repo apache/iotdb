@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics;
 
+import org.apache.iotdb.metrics.utils.ReporterType;
+
 public interface CompositeReporter {
 
   /**
@@ -34,7 +36,7 @@ public interface CompositeReporter {
    * @param reporter
    * @return
    */
-  boolean start(String reporter);
+  boolean start(ReporterType reporter);
 
   /**
    * Stop all reporter
@@ -49,7 +51,7 @@ public interface CompositeReporter {
    * @param reporter
    * @return
    */
-  boolean stop(String reporter);
+  boolean stop(ReporterType reporter);
 
   /**
    * set manager to reporter
