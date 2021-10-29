@@ -346,7 +346,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>copy-package-json</id>
@@ -506,7 +506,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.12-doc</id>
@@ -600,7 +600,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.11-doc</id>
@@ -694,7 +694,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.10-doc</id>
@@ -788,7 +788,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.9-doc</id>
@@ -882,7 +882,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.8-doc</id>
