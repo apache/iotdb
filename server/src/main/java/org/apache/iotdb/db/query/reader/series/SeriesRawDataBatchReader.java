@@ -26,7 +26,6 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -173,7 +172,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   private boolean readChunkData() throws IOException {
     while (seriesReader.hasNextChunk()) {
       if (seriesReader.valueFilter != null && !seriesReader.isChunkOverlapped()) {
-        if(!seriesReader.valueFilter.satisfy(seriesReader.currentChunkStatistics())) {
+        if (!seriesReader.valueFilter.satisfy(seriesReader.currentChunkStatistics())) {
           seriesReader.skipCurrentChunk();
           continue;
         }
