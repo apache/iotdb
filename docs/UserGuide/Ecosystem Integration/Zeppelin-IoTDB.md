@@ -23,7 +23,7 @@
 
 ### About Zeppelin
 
-Zeppelin is a web-based notebook that enables interactive data analytics. You can connect to data sources and perform interactive operations with SQL, Scala, etc. The operations can be saved as documents, just like Jupyter. Zeppelin has already supported many data sources, including Spark, ElasticSearch, Cassandra, and InfluxDB. Now, we have enabled Zeppelin to operate IoTDB via SQL. 
+Apache Zeppelin is a web-based system that enables interactive data analytics. You can connect to data sources and perform interactive operations with SQL, Scala, etc. The operations can be saved as documents, just like Jupyter. Zeppelin has already supported many data sources, including Spark, ElasticSearch, Cassandra, and InfluxDB and so on. Now, we have enabled Zeppelin to operate IoTDB via SQL. 
 
 ![iotdb-note-snapshot](https://user-images.githubusercontent.com/5548915/102752947-520a3e80-43a5-11eb-8fb1-8fac471c8c7e.png)
 
@@ -101,7 +101,7 @@ Go to `$IoTDB_HOME` and start IoTDB server:
 
 
 
-### Use Zeppelin-IoTDB
+### Use the Zeppelin-IoTDB interpreter
 
 Wait for Zeppelin server to start, then visit http://127.0.0.1:8080/
 
@@ -155,7 +155,7 @@ The above demo notebook can be found at  `$IoTDB_HOME/zeppelin-interpreter/Zeppe
 
 
 
-### Configuration
+### Interpreter Configuration
 
 You can configure the connection parameters in http://127.0.0.1:8080/#/interpreter :
 
