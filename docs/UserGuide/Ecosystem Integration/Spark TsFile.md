@@ -27,8 +27,8 @@ Spark-TsFile-Connector implements the support of Spark for external data sources
 
 With this connector, you can
 
-* load a single TsFile, from either the local file system or hdfs, into Spark
-* load all files in a specific directory, from either the local file system or hdfs, into Spark
+* load a single TsFile from the local file system or hdfs to Spark
+* load all files in a specific directory in the local file system or hdfs into Spark
 * write data from Spark into TsFile
 
 ### System Requirements
@@ -38,9 +38,12 @@ With this connector, you can
 | `2.4.3`        | `2.11.8`        | `1.8`        | `0.13.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
-> Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it
+
+> Note: Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it.
 
 ### Quick Start
+
+
 #### Local Mode
 
 Start Spark with TsFile-Spark-Connector in local mode: 
@@ -53,8 +56,8 @@ Note:
 
 * \<spark-shell-path\> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
-
+* See [https://github.com/apache/iotdb/tree/master/tsfile](https://github.com/apache/iotdb/tree/master/tsfile) for the details that how to get the TsFiles information.
+* To get the dependency package: `mvn clean package -DskipTests -P get-jar-with-dependencies`
 
 #### Distributed Mode
 
@@ -68,33 +71,40 @@ Note:
 
 * \<spark-shell-path\> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
+* See [https://github.com/apache/iotdb/tree/master/tsfile](https://github.com/apache/iotdb/tree/master/tsfile) for the details that how to get the TsFiles information.
 
 ### Data Type Correspondence
 
-| TsFile data type | SparkSQL data type|
-| --------------| -------------- |
-| BOOLEAN       		   | BooleanType    |
-| INT32       		   | IntegerType    |
-| INT64       		   | LongType       |
-| FLOAT       		   | FloatType      |
-| DOUBLE      		   | DoubleType     |
-| TEXT      				| StringType     |
+| TsFile data type | SparkSQL data type |
+| --------------   | -----------------  |
+| BOOLEAN          | BooleanType        |
+| INT32       	   | IntegerType        |
+| INT64       	   | LongType           |
+| FLOAT       	   | FloatType          |
+| DOUBLE      	   | DoubleType         |
+| TEXT      	   | StringType         |
 
 ### Schema Inference
 
 The way to display TsFile is dependent on the schema. Take the following TsFile structure as an example: There are three measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is listed:
 
-
-|Name|Type|Encode|
-|---|---|---|
+| Name | Type | Encode |
+|------|------|--------|
 |status|Boolean|PLAIN|
 |temperature|Float|RLE|
 |hardware|Text|PLAIN|
 
 The existing data in the TsFile are:
 
-<img width="519" alt="ST 1" src="https://user-images.githubusercontent.com/69114052/98197920-be9abc80-1f62-11eb-9efb-027f0590031c.png">
+* d1:root.ln.wf01.wt01
+
+* d2:root.ln.wf02.wt02
+
+| time | d1.status | time | d1.temperature | time | d2.hardware	| time | d2.status |
+| ---- | --------- | ---- | -------------- | ---- | ----------  | ---- | --------- |  
+|  1   |   True	   |  1   |       2.2      |   2  |   "aaa"     |  1   |   True    |
+|  3   |   True	   |  2   |       2.2      |   4  |   "bbb"     |  2   |   False   |
+|  5   |   False   |  3	  |       2.1      |   6  |   "ccc"     |  4   |   True    |
 
 The corresponding SparkSQL table is:
 
@@ -110,16 +120,15 @@ The corresponding SparkSQL table is:
 You can also use narrow table form which as follows: (You can see part 6 about how to use narrow form)
 
 | time | device_name                   | status                   | hardware                   | temperature |
-|------|-------------------------------|--------------------------|----------------------------|-------------------------------|
-|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2                           |
-|    1 | root.ln.wf02.wt02             | true                     | null                       | null                          |
-|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2                          |
-|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null                           |
-|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1                           |
-|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null                          |
-|    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
-|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
-
+|------|-------------------------------|--------------------------|----------------------------|-------------|
+|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2         |
+|    1 | root.ln.wf02.wt02             | true                     | null                       | null        |
+|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2         |
+|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null        |
+|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1         |
+|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null        |
+|    5 | root.ln.wf02.wt01             | false                    | null                       | null        |
+|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null        |
 
 
 ### Scala API
@@ -229,19 +238,24 @@ Appendix A: Old Design of Schema Inference
 
 The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is:
 
-
-|Name|Type|Encode|
-|---|---|---|
+| Name | Type | Encode |
+| ---- | ---- | ------ |
 |status|Boolean|PLAIN|
 |temperature|Float|RLE|
 |hardware|Text|PLAIN|
 
-
 The existing data in the file are:
 
-<img width="817" alt="ST 2" src="https://user-images.githubusercontent.com/69114052/98197948-cf4b3280-1f62-11eb-9c8c-c97d1adf032c.png">
+* delta_object1: root.ln.wf01.wt01
+* delta_object2: root.ln.wf02.wt02
+* delta_object3: :root.sgcc.wf03.wt01
 
-A set of time-series data
+| time | delta_object1.status | time | delta_object1.temperature | time | delta_object2.hardware | time | delta_object2.status  | time | delta_object3.status | time | delta_object3.temperature |
+| ---- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- | ----  | ---- | ---- | 
+| 1 | True | 1 | 2.2 | 2 | "aaa" | 1 | True | 2 | True | 3 | 3.3 |
+| 3 | True | 2 | 2.2 | 4 | "bbb" | 2 | False| 3 | True | 6 | 6.6 |
+| 5 | False| 3 | 2.1 | 6 | "ccc" | 4 | True | 4 | True | 8 | 8.8 |
+| 7 | True | 4 | 2.0 | 8 | "ddd" | 5 | False| 6 | True | 9 | 9.9 |
 
 There are two ways to show a set of time-series data:
 
@@ -275,7 +289,6 @@ Next, a column is created for each Measurement to store the specific data. The S
 |8| root.ln.wf02.wt02 |null|null|"ddd"|
 |8| root.sgcc.wf03.wt01 |null|8.8|null|
 |9| root.sgcc.wf03.wt01 |null|9.9|null|
-
 
 
 * unfold delta_object column
