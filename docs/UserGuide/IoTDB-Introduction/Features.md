@@ -21,6 +21,7 @@
 
 ## Features
 
+IoTDB has the following features:
 
 * Flexible deployment. 
 
