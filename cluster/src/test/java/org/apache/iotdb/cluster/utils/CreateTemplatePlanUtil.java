@@ -46,8 +46,7 @@ public class CreateTemplatePlanUtil {
     schemaNames.add("template_sensor");
     schemaNames.add("vector");
 
-    CreateTemplatePlan createTemplatePlan =
-        new CreateTemplatePlan(
-            "template", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    return new CreateTemplatePlan(
+        "template", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }
