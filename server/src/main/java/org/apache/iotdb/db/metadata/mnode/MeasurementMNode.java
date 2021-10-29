@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.metadata.MeasurementPath;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -72,6 +73,19 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
       return null;
     }
     return parent.getAsEntityMNode();
+  }
+
+  /**
+   * get MeasurementPath of this node
+   *
+   * @return MeasurementPath
+   */
+  @Override
+  public MeasurementPath getPartialPath() {
+    MeasurementPath result = new MeasurementPath(super.getPartialPath());
+    //    result.setMeasurementAlias(alias);
+    result.setMeasurementSchema(schema);
+    return result;
   }
 
   @Override

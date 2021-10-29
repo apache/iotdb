@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +47,6 @@ public class PartialPath extends Path implements Comparable<Path> {
   private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
 
   protected String[] nodes;
-  // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
-  protected String measurementAlias = "";
 
   public PartialPath() {}
   /**
@@ -216,7 +215,6 @@ public class PartialPath extends Path implements Comparable<Path> {
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
-    result.measurementAlias = measurementAlias;
     return result;
   }
 
@@ -275,21 +273,26 @@ public class PartialPath extends Path implements Comparable<Path> {
     }
   }
 
+  // todo remove measurement related interface after invoker using MeasurementPath explicitly
   public String getMeasurementAlias() {
-    return measurementAlias;
+    throw new RuntimeException("Only MeasurementPath support alias");
   }
 
   public void setMeasurementAlias(String measurementAlias) {
-    this.measurementAlias = measurementAlias;
+    throw new RuntimeException("Only MeasurementPath support alias");
   }
 
   public boolean isMeasurementAliasExists() {
-    return measurementAlias != null && !measurementAlias.isEmpty();
+    throw new RuntimeException("Only MeasurementPath support alias");
   }
 
   @Override
   public String getFullPathWithAlias() {
-    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
+    throw new RuntimeException("Only MeasurementPath support alias");
+  }
+
+  public IMeasurementSchema getMeasurementSchema() throws MetadataException {
+    throw new MetadataException("This path doesn't represent a measurement");
   }
 
   @Override

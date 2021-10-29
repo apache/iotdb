@@ -21,6 +21,10 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +39,7 @@ import java.util.Objects;
 public class VectorPartialPath extends PartialPath {
 
   private List<String> subSensorsList;
+  private List<IMeasurementSchema> schemaList;
 
   public VectorPartialPath() {}
 
@@ -54,6 +59,14 @@ public class VectorPartialPath extends PartialPath {
     super(vectorPath.getNodes());
     subSensorsList = new ArrayList<>();
     subSensorsList.add(subSensor);
+  }
+
+  public VectorPartialPath(MeasurementPath path) {
+    super(path.getDevicePath().getNodes());
+    subSensorsList = new ArrayList<>();
+    subSensorsList.add(path.getMeasurement());
+    schemaList = new ArrayList<>();
+    schemaList.add(path.getMeasurementSchema());
   }
 
   public List<String> getSubSensorsList() {
@@ -80,13 +93,28 @@ public class VectorPartialPath extends PartialPath {
     this.subSensorsList.addAll(subSensors);
   }
 
+  public VectorMeasurementSchema getMeasurementSchema() {
+    TSDataType[] types = new TSDataType[subSensorsList.size()];
+    TSEncoding[] encodings = new TSEncoding[subSensorsList.size()];
+
+    for (int i = 0; i < subSensorsList.size(); i++) {
+      types[i] = schemaList.get(i).getType();
+      encodings[i] = schemaList.get(i).getEncodingType();
+    }
+    String[] array = new String[subSensorsList.size()];
+    for (int i = 0; i < array.length; i++) {
+      array[i] = subSensorsList.get(i);
+    }
+    return new VectorMeasurementSchema(
+        " ", array, types, encodings, schemaList.get(0).getCompressor());
+  }
+
   @Override
   public PartialPath copy() {
     VectorPartialPath result = new VectorPartialPath();
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
-    result.measurementAlias = measurementAlias;
     result.subSensorsList = new ArrayList<>(subSensorsList);
     return result;
   }
