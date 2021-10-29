@@ -72,8 +72,6 @@ path
 layer_name
     : wildcard? id wildcard?
     | wildcard
-    | literal_can_be_layer_name
-    | keyword_can_be_layer_name
     ;
 wildcard 
     : '*' 

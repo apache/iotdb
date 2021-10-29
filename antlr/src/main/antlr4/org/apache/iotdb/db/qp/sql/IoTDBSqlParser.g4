@@ -661,36 +661,15 @@ suffixPath
 nodeName
     : wildcard? ID wildcard?
     | wildcard
-    | literalCanBeNodeName
-    | keywordsCanBeNodeName
     ;
 
 nodeNameWithoutWildcard
     : ID
-    | literalCanBeNodeName
-    | keywordsCanBeNodeName
     ;
 
 wildcard
     : STAR
     | DOUBLE_STAR
-    ;
-
-literalCanBeNodeName
-    : datetimeLiteral
-    | DURATION_LITERAL
-    | (MINUS|PLUS)? INTEGER_LITERAL
-    | (MINUS|PLUS)? EXPONENT_NUM_PART
-    | BOOLEAN_LITERAL
-    ;
-
-keywordsCanBeNodeName
-    : DATATYPE_VALUE
-    | ENCODING_VALUE
-    | COMPRESSOR_VALUE
-    | ASC
-    | DESC
-    | DEVICE
     ;
 
 
