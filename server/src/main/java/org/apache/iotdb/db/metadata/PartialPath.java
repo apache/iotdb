@@ -283,7 +283,7 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   public boolean isMeasurementAliasExists() {
-    throw new RuntimeException("Only MeasurementPath support alias");
+    return false;
   }
 
   @Override

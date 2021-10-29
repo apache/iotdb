@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -98,11 +99,14 @@ public class VectorPartialPath extends PartialPath {
 
   public void addMeasurement(List<String> measurementList, List<IMeasurementSchema> schemaList) {
     this.subSensorsList.addAll(measurementList);
+    if (schemaList == null) {
+      schemaList = new ArrayList<>();
+    }
     this.schemaList.addAll(schemaList);
   }
 
   public List<IMeasurementSchema> getSchemaList() {
-    return this.schemaList;
+    return this.schemaList == null ? Collections.emptyList() : this.schemaList;
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {

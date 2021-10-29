@@ -1220,7 +1220,7 @@ public class MManager {
       return TSDataType.INT64;
     }
 
-    IMeasurementSchema schema = mtree.getSchema(fullPath);
+    IMeasurementSchema schema = getSeriesSchema(fullPath);
     if (schema instanceof UnaryMeasurementSchema) {
       return schema.getType();
     } else {

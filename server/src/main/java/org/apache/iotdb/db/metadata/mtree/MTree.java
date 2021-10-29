@@ -889,13 +889,6 @@ public class MTree implements Serializable {
 
   // region Interfaces for timeseries, measurement and schema info Query
   /**
-   * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
-   */
-  public IMeasurementSchema getSchema(PartialPath fullPath) throws MetadataException {
-    return getMeasurementMNode(fullPath).getSchema();
-  }
-
-  /**
    * Get all measurement paths matching the given path pattern
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
