@@ -63,8 +63,6 @@ public class DropwizardCompositeReporter implements CompositeReporter {
           logger.warn("Dropwizard already has reporter: " + reporter);
         }
         break;
-      case IOTDB:
-        break;
       case PROMETHEUS:
         if (!startPrometheusReporter()) {
           logger.warn("Dropwizard already has reporter: " + reporter);
@@ -131,8 +129,6 @@ public class DropwizardCompositeReporter implements CompositeReporter {
         if (!stopJmxReporter()) {
           return false;
         }
-        break;
-      case IOTDB:
         break;
       case PROMETHEUS:
         if (!stopPrometheusReporter()) {

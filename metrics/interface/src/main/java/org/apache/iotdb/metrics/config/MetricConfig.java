@@ -38,7 +38,6 @@ public class MetricConfig {
   private List<String> metricReporterList = Arrays.asList("jmx");
 
   private PrometheusReporterConfig prometheusReporterConfig;
-  private IotdbReporterConfig iotdbReporterConfig;
 
   public Boolean getEnableMetric() {
     return enableMetric;
@@ -88,14 +87,6 @@ public class MetricConfig {
     this.prometheusReporterConfig = prometheusReporterConfig;
   }
 
-  public IotdbReporterConfig getIotdbReporterConfig() {
-    return iotdbReporterConfig;
-  }
-
-  public void setIotdbReporterConfig(IotdbReporterConfig iotdbReporterConfig) {
-    this.iotdbReporterConfig = iotdbReporterConfig;
-  }
-
   /** the following is prometheus related config. */
   public static class PrometheusReporterConfig {
     private String prometheusExporterUrl = "http://localhost";
@@ -116,55 +107,6 @@ public class MetricConfig {
 
     public void setPrometheusExporterPort(String prometheusExporterPort) {
       this.prometheusExporterPort = prometheusExporterPort;
-    }
-  }
-
-  /** the following is iotdb related config. */
-  public static class IotdbReporterConfig {
-    private String iotdbSg = "_sysmetric";
-    private String iotdbUser = "root";
-    private String iotdbPw = "root";
-    private String iotdbIp = "127.0.0.1";
-    private String iotdbPort = "6667";
-
-    public String getIotdbSg() {
-      return iotdbSg;
-    }
-
-    public void setIotdbSg(String iotdbSg) {
-      this.iotdbSg = iotdbSg;
-    }
-
-    public String getIotdbUser() {
-      return iotdbUser;
-    }
-
-    public void setIotdbUser(String iotdbUser) {
-      this.iotdbUser = iotdbUser;
-    }
-
-    public String getIotdbPw() {
-      return iotdbPw;
-    }
-
-    public void setIotdbPw(String iotdbPw) {
-      this.iotdbPw = iotdbPw;
-    }
-
-    public String getIotdbIp() {
-      return iotdbIp;
-    }
-
-    public void setIotdbIp(String iotdbIp) {
-      this.iotdbIp = iotdbIp;
-    }
-
-    public String getIotdbPort() {
-      return iotdbPort;
-    }
-
-    public void setIotdbPort(String iotdbPort) {
-      this.iotdbPort = iotdbPort;
     }
   }
 }

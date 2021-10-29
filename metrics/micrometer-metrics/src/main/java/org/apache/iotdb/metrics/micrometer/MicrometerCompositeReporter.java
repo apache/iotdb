@@ -63,8 +63,6 @@ public class MicrometerCompositeReporter implements CompositeReporter {
       case JMX:
         startJmxReporter();
         break;
-      case IOTDB:
-        break;
       case PROMETHEUS:
         startPrometheusReporter();
         break;
@@ -128,8 +126,6 @@ public class MicrometerCompositeReporter implements CompositeReporter {
     switch (ReporterType.get(reporter)) {
       case JMX:
         stopJmxReporter();
-        break;
-      case IOTDB:
         break;
       case PROMETHEUS:
         stopPrometheusReporter();

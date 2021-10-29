@@ -25,7 +25,6 @@ import java.util.Map;
 public enum ReporterType {
   JMX("jmx"),
   PROMETHEUS("prometheus"),
-  IOTDB("iotdb"),
   INTERNAL("internal");
 
   private String name;
