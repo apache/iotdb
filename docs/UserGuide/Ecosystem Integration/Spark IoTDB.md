@@ -60,7 +60,7 @@ df.printSchema()
 df.show()
 ```
 
-To partition rdd:
+If you want to partition rdd, you can do the following:
 
 ```
 spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
@@ -88,18 +88,25 @@ Take the following TsFile structure as an example: There are three Measurements 
 
 The existing data in the TsFile is as follows:
 
-<img width="517" alt="SI " src="https://user-images.githubusercontent.com/69114052/98197835-99a64980-1f62-11eb-84af-8301b8a6aad5.png">
+* d1:root.ln.wf01.wt01
+* d2:root.ln.wf02.wt02
+
+| time | d1.status | time | d1.temperature | time | d2.hardware | time | d2.status |
+|------| --------- | ---- | -------------- | ---- | ----------- | ---- | --------- | 
+| 1 | True | 1 | 2.2 | 2 | "aaa" | 1 | True |
+| 3 | True | 2 | 2.2 | 4 | "bbb" | 2 | False |
+| 5 | False | 3 | 2.1 | 6 | "ccc" | 4 | True |
 
 The wide(default) table form is as follows:
 
 | time | root.ln.wf02.wt02.temperature | root.ln.wf02.wt02.status | root.ln.wf02.wt02.hardware | root.ln.wf01.wt01.temperature | root.ln.wf01.wt01.status | root.ln.wf01.wt01.hardware |
-|------|-------------------------------|--------------------------|----------------------------|-------------------------------|--------------------------|----------------------------|
-|    1 | null                          | true                     | null                       | 2.2                           | true                     | null                       |
-|    2 | null                          | false                    | aaa                        | 2.2                           | null                     | null                       |
-|    3 | null                          | null                     | null                       | 2.1                           | true                     | null                       |
-|    4 | null                          | true                     | bbb                        | null                          | null                     | null                       |
-|    5 | null                          | null                     | null                       | null                          | false                    | null                       |
-|    6 | null                          | null                     | ccc                        | null                          | null                     | null                       |
+| ---- | ----------------------------- | ------------------------ | -------------------------- | ----------------------------- | ------------------------ | -------------------------- |
+| 1    | null                          | true                     | null                       | 2.2                           | true                     | null                       |
+| 2    | null                          | false                    | aaa                        | 2.2                           | null                     | null                       |
+| 3    | null                          | null                     | null                       | 2.1                           | true                     | null                       |
+| 4    | null                          | true                     | bbb                        | null                          | null                     | null                       |
+| 5    | null                          | null                     | null                       | null                          | false                    | null                       |
+| 6    | null                          | null                     | ccc                        | null                          | null                     | null                       |
 
 You can also use narrow table form which as follows: (You can see part 4 about how to use narrow form)
 
