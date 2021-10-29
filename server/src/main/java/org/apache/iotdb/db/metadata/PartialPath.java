@@ -354,11 +354,6 @@ public class PartialPath extends Path implements Comparable<Path> {
     return ret;
   }
 
-  // todo eliminate such "exact" related logic in future work
-  public PartialPath getExactPath() {
-    return this;
-  }
-
   /**
    * If the partialPath is VectorPartialPath and it has only one sub sensor, return the sub sensor's
    * full path. Otherwise, return the partialPath's fullPath

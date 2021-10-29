@@ -152,15 +152,6 @@ public class VectorPartialPath extends PartialPath {
   }
 
   @Override
-  public PartialPath getExactPath() {
-    PartialPath path = super.getExactPath();
-    if (subSensorsList.size() == 1) {
-      return path.concatNode(subSensorsList.get(0));
-    }
-    return path;
-  }
-
-  @Override
   public String getExactFullPath() {
     fullPath = getFullPath();
     if (subSensorsList.size() == 1) {

@@ -901,7 +901,21 @@ public class MTree implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
   public List<PartialPath> getMeasurementPaths(PartialPath pathPattern) throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0).left;
+    List<PartialPath> result = new LinkedList<>();
+    MeasurementCollector<List<PartialPath>> collector =
+        new MeasurementCollector<List<PartialPath>>(root, pathPattern) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            MeasurementPath path = node.getPartialPath();
+            if (nodes[nodes.length - 1].equals(node.getAlias())) {
+              // only when user query with alias, the alias in path will be set
+              path.setMeasurementAlias(node.getAlias());
+            }
+            result.add(path);
+          }
+        };
+    collector.traverse();
+    return result;
   }
 
   /**
