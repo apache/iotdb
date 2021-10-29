@@ -666,7 +666,7 @@ public class StorageGroupProcessor {
               isSeq,
               i == tsFiles.size() - 1);
 
-      RestorableTsFileIOWriter writer;
+      RestorableTsFileIOWriter writer = null;
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName()) > 0) {
@@ -678,17 +678,19 @@ public class StorageGroupProcessor {
             tsFileResource.setClosed(true);
             tsFileManagement.add(tsFileResource, isSeq);
           }
-          writer.close();
           continue;
         } else {
           writer =
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
-          writer.close();
         }
       } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;
+      } finally {
+        if (writer == null) {
+          writer.close();
+        }
       }
 
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {

@@ -35,6 +35,11 @@ public class TestConstant {
           + "data".concat(File.separator)
           + "sequence".concat(File.separator)
           + TSFILE_PREFIX_PATH;
+  public static final String UNSEQUENCE_DATA_DIR =
+      BASE_OUTPUT_PATH
+          + "data".concat(File.separator)
+          + "unsequence".concat(File.separator)
+          + TSFILE_PREFIX_PATH;
 
   public static final String d0 = "root.vehicle.d0";
   public static final String s0 = "s0";
