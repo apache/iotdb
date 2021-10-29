@@ -22,7 +22,7 @@
 
 ## Grafana-IoTDB
 
-Grafana is an open source volume metrics monitoring and visualization tool, which can be used to display time series data and application runtime analysis. Grafana supports Graphite, InfluxDB and other major time series databases as data sources. IoTDB-Grafana is a connector which we developed to show time series data in IoTDB by reading data from IoTDB and sends to Grafana(https://grafana.com/). Before using this tool, make sure Grafana and IoTDB are correctly installed and started.
+Grafana is an open source volume metrics monitoring and visualization tool, which can be used to display time series data and application runtime analysis. Grafana supports Graphite, InfluxDB and other major time series databases as data sources. In the IoTDB project, we developed the Grafana connector IoTDB-Grafana, which displays the time series data in the IoTDB, and provides you with a visualization method for using Grafana to display the time series data in the IoTDB database .
 
 ### Grafana installation and deployment
 
@@ -31,10 +31,23 @@ Grafana is an open source volume metrics monitoring and visualization tool, whic
 * Download url: https://grafana.com/grafana/download
 * version >= 4.4.1
 
-#### Install data source plugin
+#### (simple-json-datasource) Install data source plugin
 
 * plugin name: simple-json-datasource
 * Download url: https://github.com/grafana/simple-json-datasource
+
+The specific download method is: Go to the plugin directory of Grafana: `{Grafana file directory}\data\plugins\` (Windows system) or `/var/lib/grafana/plugins` (Linux system) or `/usr/local/var/lib/grafana/plugins` (MacOS system)
+
+For Windows, the data/plugins directory will be automatically created when users start Grafana.
+
+For Linux, the plugins directory needs to be created manually.
+
+For MacOS, see the location prompt on the command line after installing Grafana by using brew install.
+
+Execute the following command:
+```
+Shell > git clone https://github.com/grafana/simple-json-datasource.git
+```
 
 After downloading this plugin, use the grafana-cli tool to install SimpleJson from the commandline:
 
@@ -47,6 +60,15 @@ Alternatively, manually download the .zip file and unpack it into grafana plugin
 * `{grafana-install-directory}\data\plugins\` (Windows)
 * `/var/lib/grafana/plugins` (Linux)
 * `/usr/local/var/lib/grafana/plugins`(Mac)
+
+##### Linux system
+
+```
+sudo grafana-cli plugins install grafana-simple-json-datasource
+sudo service grafana-server restart
+```
+
+##### Continue operation
 
 Then you need to restart grafana server, then you can use browser to visit grafana.
 
@@ -66,17 +88,32 @@ allow_loading_unsigned_plugins = "grafana-simple-json-datasource"
 ```
 
 #### Start Grafana
-If Unix is used, Grafana will start automatically after installing, or you can run `sudo service grafana-server start` command. See more information [here](http://docs.grafana.org/installation/debian/).
 
-If Mac and `homebrew` are used to install Grafana, you can use `homebrew` to start Grafana.
-First make sure homebrew/services is installed by running `brew tap homebrew/services`, then start Grafana using: `brew services start grafana`.
-See more information [here](http://docs.grafana.org/installation/mac/).
+Go to the installation directory of Grafana and start Grafana with the following commands:
 
-If Windows is used, start Grafana by executing grafana-server.exe, located in the bin directory, preferably from the command line. See more information [here](http://docs.grafana.org/installation/windows/).
+* Windows：
+
+```
+Shell > bin\grafana-server.exe
+```
+
+* Linux：
+
+```
+Shell > sudo service grafana-server start
+```
+
+* MacOS：
+
+```
+Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /usr/local/share/grafana cfg:default.paths.logs=/usr/local/var/log/grafana cfg:default.paths.data=/usr/local/var/lib/grafana cfg:default.paths.plugins=/usr/local/var/lib/grafana/plugins
+```
+
+See more information [here](http://docs.grafana.org/installation/windows/).
 
 ### IoTDB installation
 
-See https://github.com/apache/iotdb
+See [https://github.com/apache/iotdb](https://github.com/apache/iotdb)
 
 ### IoTDB-Grafana installation
 
@@ -86,11 +123,11 @@ git clone https://github.com/apache/iotdb.git
 
 ### Start IoTDB-Grafana
 
-* Option one
+* Option one(suitable for developers)
 
-Import the entire project, after the maven dependency is installed, directly run`iotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`directory` TsfileWebDemoApplication.java`, this grafana connector is developed by springboot
+Import the entire project, after the maven dependency is installed, directly run`iotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`directory` TsfileWebDemoApplication.java`, this grafana connector is developed by springboot.
 
-* Option two
+* Option two(suitable for users)
 
 In `/grafana/target/`directory 
 
@@ -120,21 +157,24 @@ To configure properties, move the `grafana/src/main/resources/application.proper
 
 ### Explore in Grafana
 
+Grafana displays data for you in the form of a web dashboard. When using it, please open your browser and visit http://<ip>:<port>.
+    
 The default port of Grafana is 3000, see http://localhost:3000/
 
-Username and password are both "admin" by default.
+Note: IP is the IP of the server where your Grafana is located, and Port is the running port of Grafana (3000 by default). The default login user name and password are both "admin".
 
-#### Add data source
+#### Add IoTDB data source
 
-Select `Data Sources` and  then `Add data source`, select `SimpleJson` in `Type` and `URL` is http://localhost:8888. 
-After that, make sure IoTDB has been started, click "Save & Test", and "Data Source is working" will be shown to indicate successful configuration.
+Click on the "Grafana" icon in the top left corner, select `Data Sources` and  then `Add data source`.
+    
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664777-2766ae00-1ff5-11e9-9d2f-7489f8ccbfc2.png">
+    
+While editing the data source, select `SimpleJson` in `Type` and `URL` is http://localhost:8888. After that, make sure IoTDB has been started, click "Save & Test", and "Data Source is working" will be shown to indicate successful configuration.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664842-554bf280-1ff5-11e9-97d2-54eebe0b2ca1.png">
 
 #### Design in dashboard
-
-Add diagrams in dashboard and customize your query. See http://docs.grafana.org/guides/getting_started/
+When entering the Grafana visualization page, you can choose to add a time series, as following figure shows. You can also follow the Grafana offical documentation. For details, please refer to the Grafana official documentation. See [https://grafana.com/docs/grafana/v7.5/getting-started/](https://grafana.com/docs/grafana/v7.5/getting-started/getting-started/).
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
 
@@ -163,7 +203,7 @@ continuous_data_function=AVG
 discrete_data_function=LAST_VALUE
 ```
 
-The specific configuration information of interval is as follows
+The specific configuration information of interval is as follows:
 
 <1h: no sampling
 
