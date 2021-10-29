@@ -920,10 +920,14 @@ public class CMManager extends MManager {
                 syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) syncDataClient.close();
+            if (syncDataClient != null) {
+              syncDataClient.close();
+            }
             throw e;
           } finally {
-            if (syncDataClient != null) syncDataClient.returnSelf();
+            if (syncDataClient != null) {
+              syncDataClient.returnSelf();
+            }
           }
         }
       } catch (InterruptedException e) {
@@ -1080,10 +1084,14 @@ public class CMManager extends MManager {
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) syncDataClient.close();
+        if (syncDataClient != null) {
+          syncDataClient.close();
+        }
         throw e;
       } finally {
-        if (syncDataClient != null) syncDataClient.returnSelf();
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
       }
     }
 
@@ -1210,11 +1218,15 @@ public class CMManager extends MManager {
           paths = syncDataClient.getAllDevices(header, pathsToQuery);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          if (syncDataClient != null) syncDataClient.close();
+          if (syncDataClient != null) {
+            syncDataClient.close();
+          }
           throw e;
         }
       } finally {
-        if (syncDataClient != null) syncDataClient.returnSelf();
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
       }
     }
     return paths;
@@ -1654,11 +1666,15 @@ public class CMManager extends MManager {
                   group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          if (syncDataClient != null) syncDataClient.close();
+          if (syncDataClient != null) {
+            syncDataClient.close();
+          }
           throw e;
         }
       } finally {
-        if (syncDataClient != null) syncDataClient.returnSelf();
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
       }
     }
     return resultBinary;
@@ -1685,10 +1701,14 @@ public class CMManager extends MManager {
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) syncDataClient.close();
+        if (syncDataClient != null) {
+          syncDataClient.close();
+        }
         throw e;
       } finally {
-        if (syncDataClient != null) syncDataClient.returnSelf();
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
       }
     }
     return resultBinary;

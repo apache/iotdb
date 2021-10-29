@@ -150,10 +150,14 @@ public class PullSnapshotHintService {
       }
       return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.slots);
     } catch (TException e) {
-      if (syncDataClient != null) syncDataClient.close();
+      if (syncDataClient != null) {
+        syncDataClient.close();
+      }
       throw e;
     } finally {
-      if (syncDataClient != null) syncDataClient.returnSelf();
+      if (syncDataClient != null) {
+        syncDataClient.returnSelf();
+      }
     }
   }
 

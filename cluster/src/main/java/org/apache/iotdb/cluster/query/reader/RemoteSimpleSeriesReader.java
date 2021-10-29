@@ -149,7 +149,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
       return curSyncClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId());
     } catch (TException e) {
       if (curSyncClient != null) {
-        curSyncClient.getInputProtocol().getTransport().close();
+        curSyncClient.close();
       }
       // try other node
       if (!sourceInfo.switchNode(false, lastTimestamp)) {
@@ -157,7 +157,9 @@ public class RemoteSimpleSeriesReader implements IPointReader {
       }
       return fetchResultSync();
     } finally {
-      if (curSyncClient != null) curSyncClient.returnSelf();
+      if (curSyncClient != null) {
+        curSyncClient.returnSelf();
+      }
     }
   }
 

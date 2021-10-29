@@ -108,7 +108,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
           sourceInfo.getHeader(), sourceInfo.getReaderId(), timestampList);
     } catch (TException e) {
       if (curSyncClient != null) {
-        curSyncClient.getInputProtocol().getTransport().close();
+        curSyncClient.close();
       }
       // try other node
       if (!sourceInfo.switchNode(true, timestamps[0])) {
@@ -116,7 +116,9 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       }
       return fetchResultSync(timestamps, length);
     } finally {
-      if (curSyncClient != null) curSyncClient.returnSelf();
+      if (curSyncClient != null) {
+        curSyncClient.returnSelf();
+      }
     }
   }
 }

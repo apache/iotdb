@@ -273,11 +273,15 @@ public class ClusterAggregator {
         resultBuffers = syncDataClient.getAggrResult(request);
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) syncDataClient.close();
+        if (syncDataClient != null) {
+          syncDataClient.close();
+        }
 
         throw e;
       } finally {
-        if (syncDataClient != null) syncDataClient.returnSelf();
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
       }
     }
     return resultBuffers;

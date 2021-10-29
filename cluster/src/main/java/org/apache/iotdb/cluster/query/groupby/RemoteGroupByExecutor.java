@@ -94,11 +94,15 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
               syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          if (syncDataClient != null) syncDataClient.close();
+          if (syncDataClient != null) {
+            syncDataClient.close();
+          }
 
           throw e;
         } finally {
-          if (syncDataClient != null) syncDataClient.returnSelf();
+          if (syncDataClient != null) {
+            syncDataClient.returnSelf();
+          }
         }
       }
     } catch (InterruptedException e) {
