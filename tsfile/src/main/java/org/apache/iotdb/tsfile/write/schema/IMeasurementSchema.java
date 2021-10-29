@@ -19,9 +19,11 @@
 package org.apache.iotdb.tsfile.write.schema;
 
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -67,6 +69,9 @@ public interface IMeasurementSchema {
   int serializeTo(ByteBuffer buffer);
 
   int serializeTo(OutputStream outputStream) throws IOException;
+
+  List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, String deviceId);
 
   /*
    1. used in cluster module to avoid useless field transfer(such as props in MeasurementSchema)

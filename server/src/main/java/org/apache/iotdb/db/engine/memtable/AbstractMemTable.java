@@ -29,9 +29,10 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
@@ -97,13 +98,14 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   /**
-   * create this memtable if it's not exist
+   * create this MemChunk if it's not exist
    *
    * @param deviceId device id
    * @param schema measurement schema
-   * @return this memtable
+   * @return this MemChunk
    */
-  private IWritableMemChunk createIfNotExistAndGet(String deviceId, IMeasurementSchema schema) {
+  private IWritableMemChunk createMemChunkIfNotExistAndGet(
+      String deviceId, IMeasurementSchema schema) {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
@@ -111,13 +113,28 @@ public abstract class AbstractMemTable implements IMemTable {
         schema.getMeasurementId(),
         k -> {
           seriesNumber++;
-          totalPointsNumThreshold +=
-              ((long) avgSeriesPointNumThreshold * schema.getSubMeasurementsCount());
+          totalPointsNumThreshold += avgSeriesPointNumThreshold;
           return genMemSeries(schema);
         });
   }
 
+  private IWritableMemChunk createVectorMemChunkIfNotExistAndGet(
+      String deviceId, IMeasurementSchema schema) {
+    Map<String, IWritableMemChunk> memSeries =
+        memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
+
+    return memSeries.computeIfAbsent(
+        schema.getMeasurementId(),
+        k -> {
+          seriesNumber++;
+          totalPointsNumThreshold += avgSeriesPointNumThreshold + schema.getSubMeasurementsCount();
+          return genVectorMemSeries(schema);
+        });
+  }
+
   protected abstract IWritableMemChunk genMemSeries(IMeasurementSchema schema);
+
+  protected abstract IWritableMemChunk genVectorMemSeries(IMeasurementSchema schema);
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
@@ -125,47 +142,55 @@ public abstract class AbstractMemTable implements IMemTable {
     Object[] values = insertRowPlan.getValues();
 
     IMeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
-    int columnIndex = 0;
-    if (insertRowPlan.isAligned()) {
-      IMeasurementMNode measurementMNode = measurementMNodes[0];
-      if (measurementMNode != null) {
-        // write vector
-        Object[] vectorValue =
-            new Object[measurementMNode.getSchema().getSubMeasurementsTSDataTypeList().size()];
-        for (int j = 0; j < vectorValue.length; j++) {
-          vectorValue[j] = values[columnIndex];
-          columnIndex++;
-        }
-        memSize +=
-            MemUtils.getVectorRecordSize(
-                measurementMNode.getSchema().getSubMeasurementsTSDataTypeList(),
-                vectorValue,
-                disableMemControl);
-        write(
-            insertRowPlan.getPrefixPath().getFullPath(),
-            measurementMNode.getSchema(),
-            insertRowPlan.getTime(),
-            vectorValue);
+    for (int i = 0; i < measurementMNodes.length; i++) {
+      if (values[i] == null) {
+        continue;
       }
-    } else {
-      for (IMeasurementMNode measurementMNode : measurementMNodes) {
-        if (values[columnIndex] == null) {
-          columnIndex++;
-          continue;
-        }
-        memSize +=
-            MemUtils.getRecordSize(
-                measurementMNode.getSchema().getType(), values[columnIndex], disableMemControl);
+      memSize +=
+          MemUtils.getRecordSize(
+              measurementMNodes[i].getSchema().getType(), values[i], disableMemControl);
 
-        write(
-            insertRowPlan.getPrefixPath().getFullPath(),
-            measurementMNode.getSchema(),
-            insertRowPlan.getTime(),
-            values[columnIndex]);
-        columnIndex++;
-      }
+      write(
+          insertRowPlan.getPrefixPath().getFullPath(),
+          measurementMNodes[i].getSchema(),
+          insertRowPlan.getTime(),
+          values[i]);
     }
+    totalPointsNum +=
+        insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
+  }
 
+  @Override
+  public void insertAlignedRow(InsertRowPlan insertRowPlan) {
+    updatePlanIndexes(insertRowPlan.getIndex());
+    // write vector
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    CompressionType compressionType = null;
+    for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
+      if (insertRowPlan.getMeasurements()[i] == null) {
+        continue;
+      }
+      IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
+      measurements.add(schema.getMeasurementId());
+      types.add(schema.getType());
+      encodings.add(schema.getEncodingType());
+      compressionType = schema.getCompressor();
+    }
+    VectorMeasurementSchema vectorSchema =
+        new VectorMeasurementSchema(
+            null,
+            measurements.toArray(new String[measurements.size()]),
+            types.toArray(new TSDataType[measurements.size()]),
+            encodings.toArray(new TSEncoding[measurements.size()]),
+            compressionType);
+    memSize += MemUtils.getVectorRecordSize(types, insertRowPlan.getValues(), disableMemControl);
+    writeAlignedRow(
+        insertRowPlan.getPrefixPath().getFullPath(),
+        vectorSchema,
+        insertRowPlan.getTime(),
+        insertRowPlan.getValues());
     totalPointsNum +=
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
   }
@@ -186,54 +211,89 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void insertAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+      throws WriteProcessException {
+    updatePlanIndexes(insertTabletPlan.getIndex());
+    try {
+      writeAlignedTablet(insertTabletPlan, start, end);
+      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
+      totalPointsNum +=
+          (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
+              * (end - start);
+    } catch (RuntimeException e) {
+      throw new WriteProcessException(e);
+    }
+  }
+
+  @Override
   public void write(
       String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, schema);
+    IWritableMemChunk memSeries = createMemChunkIfNotExistAndGet(deviceId, schema);
+    memSeries.write(insertTime, objectValue);
+  }
+
+  @Override
+  public void writeAlignedRow(
+      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
+    IWritableMemChunk memSeries = createVectorMemChunkIfNotExistAndGet(deviceId, schema);
     memSeries.write(insertTime, objectValue);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
-    int columnIndex = 0;
     updatePlanIndexes(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
-      if (insertTabletPlan.getColumns()[columnIndex] == null) {
-        columnIndex++;
+      if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
       IWritableMemChunk memSeries =
-          createIfNotExistAndGet(
+          createMemChunkIfNotExistAndGet(
               insertTabletPlan.getPrefixPath().getFullPath(),
               insertTabletPlan.getMeasurementMNodes()[i].getSchema());
-      if (insertTabletPlan.isAligned()) {
-        VectorMeasurementSchema vectorSchema =
-            (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-        Object[] columns = new Object[vectorSchema.getSubMeasurementsList().size()];
-        BitMap[] bitMaps = new BitMap[vectorSchema.getSubMeasurementsList().size()];
-        for (int j = 0; j < vectorSchema.getSubMeasurementsList().size(); j++) {
-          columns[j] = insertTabletPlan.getColumns()[columnIndex];
-          if (insertTabletPlan.getBitMaps() != null) {
-            bitMaps[j] = insertTabletPlan.getBitMaps()[columnIndex];
-          }
-          columnIndex++;
-        }
-        memSeries.write(
-            insertTabletPlan.getTimes(), columns, bitMaps, TSDataType.VECTOR, start, end);
-        break;
-      } else {
-        memSeries.write(
-            insertTabletPlan.getTimes(),
-            insertTabletPlan.getColumns()[columnIndex],
-            insertTabletPlan.getBitMaps() != null
-                ? insertTabletPlan.getBitMaps()[columnIndex]
-                : null,
-            insertTabletPlan.getDataTypes()[columnIndex],
-            start,
-            end);
-        columnIndex++;
-      }
+      memSeries.write(
+          insertTabletPlan.getTimes(),
+          insertTabletPlan.getColumns()[i],
+          insertTabletPlan.getBitMaps() != null ? insertTabletPlan.getBitMaps()[i] : null,
+          insertTabletPlan.getDataTypes()[i],
+          start,
+          end);
     }
+  }
+
+  public void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end) {
+    updatePlanIndexes(insertTabletPlan.getIndex());
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    CompressionType compressionType = null;
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getColumns()[i] == null) {
+        continue;
+      }
+      IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+      measurements.add(schema.getMeasurementId());
+      types.add(schema.getType());
+      encodings.add(schema.getEncodingType());
+      compressionType = schema.getCompressor();
+    }
+    VectorMeasurementSchema vectorSchema =
+        new VectorMeasurementSchema(
+            null,
+            measurements.toArray(new String[measurements.size()]),
+            types.toArray(new TSDataType[measurements.size()]),
+            encodings.toArray(new TSEncoding[measurements.size()]),
+            compressionType);
+    IWritableMemChunk memSeries =
+        createVectorMemChunkIfNotExistAndGet(
+            insertTabletPlan.getPrefixPath().getFullPath(), vectorSchema);
+    memSeries.writeVector(
+        insertTabletPlan.getTimes(),
+        insertTabletPlan.getMeasurements(),
+        insertTabletPlan.getColumns(),
+        insertTabletPlan.getBitMaps(),
+        start,
+        end);
   }
 
   @Override

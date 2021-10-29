@@ -58,7 +58,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -232,7 +231,11 @@ public class TsFileProcessor {
       }
     }
 
-    workMemTable.insert(insertRowPlan);
+    if (insertRowPlan.isAligned()) {
+      workMemTable.insertAlignedRow(insertRowPlan);
+    } else {
+      workMemTable.insert(insertRowPlan);
+    }
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
@@ -298,7 +301,11 @@ public class TsFileProcessor {
     }
 
     try {
-      workMemTable.insertTablet(insertTabletPlan, start, end);
+      if (insertTabletPlan.isAligned()) {
+        workMemTable.insertAlignedTablet(insertTabletPlan, start, end);
+      } else {
+        workMemTable.insertTablet(insertTabletPlan, start, end);
+      }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -1252,32 +1259,8 @@ public class TsFileProcessor {
               modificationFile,
               new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
 
-      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
-      if (schema instanceof VectorMeasurementSchema) {
-        List<ChunkMetadata> timeChunkMetadataList =
-            writer.getVisibleMetadataList(deviceId, measurementId, schema.getType());
-        List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-        List<String> valueMeasurementIdList = schema.getSubMeasurementsList();
-        List<TSDataType> valueDataTypeList = schema.getSubMeasurementsTSDataTypeList();
-        for (int i = 0; i < valueMeasurementIdList.size(); i++) {
-          valueChunkMetadataList.add(
-              writer.getVisibleMetadataList(
-                  deviceId, valueMeasurementIdList.get(i), valueDataTypeList.get(i)));
-        }
-
-        for (int i = 0; i < timeChunkMetadataList.size(); i++) {
-          List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
-          for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-            valueChunkMetadata.add(chunkMetadata.get(i));
-          }
-          chunkMetadataList.add(
-              new VectorChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
-        }
-      } else {
-        chunkMetadataList =
-            new ArrayList<>(
-                writer.getVisibleMetadataList(deviceId, measurementId, schema.getType()));
-      }
+      List<IChunkMetadata> chunkMetadataList =
+          schema.getVisibleMetadataListFromWriter(writer, deviceId);
 
       QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
       chunkMetadataList.removeIf(context::chunkNotSatisfy);

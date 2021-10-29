@@ -67,14 +67,14 @@ public class VectorTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putVector(long timestamp, Object[] value) {
+  public void putVector(long timestamp, Object[] value, int[] columnOrder) {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
     minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     for (int i = 0; i < values.size(); i++) {
-      Object columnValue = value[i];
+      Object columnValue = value[columnOrder[i]];
       List<Object> columnValues = values.get(i);
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
@@ -126,7 +126,7 @@ public class VectorTVList extends TVList {
     return getVectorByValueIndex(valueIndex, null);
   }
 
-  public Object getVector(List<Integer> timeDuplicatedIndexList) {
+  public TsPrimitiveType getVector(List<Integer> timeDuplicatedIndexList) {
     int[] validIndexesForTimeDuplicatedRows = new int[values.size()];
     for (int i = 0; i < values.size(); i++) {
       validIndexesForTimeDuplicatedRows[i] =
@@ -137,7 +137,8 @@ public class VectorTVList extends TVList {
         validIndexesForTimeDuplicatedRows);
   }
 
-  private Object getVectorByValueIndex(int valueIndex, int[] validIndexesForTimeDuplicatedRows) {
+  private TsPrimitiveType getVectorByValueIndex(
+      int valueIndex, int[] validIndexesForTimeDuplicatedRows) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -585,9 +586,9 @@ public class VectorTVList extends TVList {
   public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
       List<Integer> indexList, long time, Integer floatPrecision, TSEncoding encoding) {
     if (this.dataTypes.size() == 1) {
-      return new TimeValuePair(time, ((TsPrimitiveType) getVector(indexList)).getVector()[0]);
+      return new TimeValuePair(time, getVector(indexList).getVector()[0]);
     } else {
-      return new TimeValuePair(time, (TsPrimitiveType) getVector(indexList));
+      return new TimeValuePair(time, getVector(indexList));
     }
   }
 
@@ -601,7 +602,7 @@ public class VectorTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putVectors(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
+  public void putVectors(long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     checkExpansion();
     int idx = start;
 
@@ -615,12 +616,12 @@ public class VectorTVList extends TVList {
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-        arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
+        arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining, columnOrder);
         for (int i = 0; i < inputRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
           if (bitMaps != null) {
             for (int j = 0; j < bitMaps.length; j++) {
-              if (bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
+              if (bitMaps[columnOrder[j]] != null && bitMaps[columnOrder[j]].isMarked(idx + i)) {
                 markNullValue(j, arrayIdx, elementIdx + i);
               }
             }
@@ -632,12 +633,12 @@ public class VectorTVList extends TVList {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-        arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
+        arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining, columnOrder);
         for (int i = 0; i < internalRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
           if (bitMaps != null) {
             for (int j = 0; j < bitMaps.length; j++) {
-              if (bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
+              if (bitMaps[columnOrder[j]] != null && bitMaps[columnOrder[j]].isMarked(idx + i)) {
                 markNullValue(j, arrayIdx, elementIdx + i);
               }
             }
@@ -650,33 +651,33 @@ public class VectorTVList extends TVList {
     }
   }
 
-  private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {
+  private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining, int[] columnOrder) {
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
       switch (dataTypes.get(i)) {
         case TEXT:
           Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
+          System.arraycopy(value[columnOrder[i]], idx, arrayT, elementIndex, remaining);
           break;
         case FLOAT:
           float[] arrayF = ((float[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
+          System.arraycopy(value[columnOrder[i]], idx, arrayF, elementIndex, remaining);
           break;
         case INT32:
           int[] arrayI = ((int[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
+          System.arraycopy(value[columnOrder[i]], idx, arrayI, elementIndex, remaining);
           break;
         case INT64:
           long[] arrayL = ((long[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
+          System.arraycopy(value[columnOrder[i]], idx, arrayL, elementIndex, remaining);
           break;
         case DOUBLE:
           double[] arrayD = ((double[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayD, elementIndex, remaining);
+          System.arraycopy(value[columnOrder[i]], idx, arrayD, elementIndex, remaining);
           break;
         case BOOLEAN:
           boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayB, elementIndex, remaining);
+          System.arraycopy(value[columnOrder[i]], idx, arrayB, elementIndex, remaining);
           break;
         default:
           break;

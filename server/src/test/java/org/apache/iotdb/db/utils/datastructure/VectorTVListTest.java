@@ -40,10 +40,12 @@ public class VectorTVListTest {
     VectorTVList tvList = new VectorTVList(dataTypes);
     for (long i = 0; i < 1000; i++) {
       Object[] value = new Object[5];
+      int[] columnOrder = new int[5];
       for (int j = 0; j < 5; j++) {
         value[j] = i;
+        columnOrder[j] = j;
       }
-      tvList.putVector(i, value);
+      tvList.putVector(i, value, columnOrder);
     }
     for (int i = 0; i < tvList.size; i++) {
       StringBuilder builder = new StringBuilder("[");
@@ -75,7 +77,11 @@ public class VectorTVListTest {
       value[3] = 0.1f;
       value[4] = 0.2d;
       value[5] = new Binary("Test");
-      tvList.putVector(i, value);
+      int[] columnOrder = new int[6];
+      for (int j = 0; j < 6; j++) {
+        columnOrder[j] = j;
+      }
+      tvList.putVector(i, value, columnOrder);
     }
     tvList.sort();
     for (int i = 0; i < tvList.size; i++) {
@@ -96,15 +102,17 @@ public class VectorTVListTest {
     VectorTVList tvList = new VectorTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
     List<Long> timeList = new ArrayList<>();
+    int[] columnOrder = new int[5];
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
       for (int j = 0; j < 5; j++) {
         vectorArray[j][i] = (long) i;
+        columnOrder[j] = j;
       }
     }
 
     tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, null, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, null, columnOrder, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
@@ -120,6 +128,7 @@ public class VectorTVListTest {
     }
     VectorTVList tvList = new VectorTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
+    int[] columnOrder = new int[5];
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
@@ -128,11 +137,12 @@ public class VectorTVListTest {
         if (i % 100 == 0) {
           bitMaps[j].mark(i);
         }
+        columnOrder[j] = j;
       }
     }
 
     tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, columnOrder, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
       if (i % 100 == 0) {
@@ -151,6 +161,7 @@ public class VectorTVListTest {
     }
     VectorTVList tvList = new VectorTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
+    int[] columnOrder = new int[5];
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
@@ -159,11 +170,12 @@ public class VectorTVListTest {
         if (i % 100 == 0) {
           bitMaps[j].mark(i);
         }
+        columnOrder[j] = j;
       }
     }
 
     tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, columnOrder, 0, 1000);
 
     VectorTVList clonedTvList = tvList.clone();
     for (long i = 0; i < tvList.size; i++) {

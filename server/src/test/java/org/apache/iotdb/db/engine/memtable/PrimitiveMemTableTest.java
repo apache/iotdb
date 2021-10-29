@@ -27,7 +27,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -65,8 +64,7 @@ public class PrimitiveMemTableTest {
   public void memSeriesSortIteratorTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
-        new WritableMemChunk(
-            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+        new WritableMemChunk(new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -84,8 +82,7 @@ public class PrimitiveMemTableTest {
   public void memSeriesToStringTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
-        new WritableMemChunk(
-            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+        new WritableMemChunk(new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 100;
     for (int i = 0; i < count; i++) {
       series.write(i, i);

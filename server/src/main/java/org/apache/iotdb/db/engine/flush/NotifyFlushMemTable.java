@@ -35,6 +35,11 @@ public class NotifyFlushMemTable extends AbstractMemTable {
   }
 
   @Override
+  protected IWritableMemChunk genVectorMemSeries(IMeasurementSchema schema) {
+    return null;
+  }
+
+  @Override
   public IMemTable copy() {
     return null;
   }
