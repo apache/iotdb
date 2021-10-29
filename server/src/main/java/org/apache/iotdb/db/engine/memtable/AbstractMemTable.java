@@ -185,7 +185,7 @@ public abstract class AbstractMemTable implements IMemTable {
             types.toArray(new TSDataType[measurements.size()]),
             encodings.toArray(new TSEncoding[measurements.size()]),
             compressionType);
-    memSize += MemUtils.getVectorRecordSize(types, insertRowPlan.getValues(), disableMemControl);
+    memSize += MemUtils.getAlignedRecordSize(types, insertRowPlan.getValues(), disableMemControl);
     writeAlignedRow(
         insertRowPlan.getPrefixPath().getFullPath(),
         vectorSchema,
@@ -216,7 +216,7 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       writeAlignedTablet(insertTabletPlan, start, end);
-      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
+      memSize += MemUtils.getAlignedRecordSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum +=
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
@@ -302,7 +302,6 @@ public abstract class AbstractMemTable implements IMemTable {
     if (null == memSeries) {
       return true;
     }
-
     return !memSeries.containsKey(measurement);
   }
 
@@ -310,7 +309,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public int getCurrentChunkPointNum(String deviceId, String measurement) {
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     IWritableMemChunk memChunk = memSeries.get(measurement);
-    return memChunk.getTVList().size();
+    return (int) memChunk.count();
   }
 
   @Override

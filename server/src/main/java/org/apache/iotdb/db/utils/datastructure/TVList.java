@@ -101,7 +101,7 @@ public abstract class TVList {
    * @param types the types in the vector
    * @return VectorTvListArrayMemSize
    */
-  public static long vectorTvListArrayMemSize(List<TSDataType> types) {
+  public static long vectorTvListArrayMemSize(TSDataType[] types) {
     long size = 0;
     // time size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;

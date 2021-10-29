@@ -23,15 +23,15 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
 
   private IMeasurementSchema schema;
   private VectorTVList list;
-  private Map<String, Integer> VectorIdIndexMap;
+  private Map<String, Integer> vectorIdIndexMap;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(VectorWritableMemChunk.class);
 
   public VectorWritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
-    VectorIdIndexMap = new HashMap<>();
+    vectorIdIndexMap = new HashMap<>();
     for (int i = 0; i < schema.getSubMeasurementsCount(); i++) {
-      VectorIdIndexMap.put(schema.getSubMeasurementsList().get(i), i);
+      vectorIdIndexMap.put(schema.getSubMeasurementsList().get(i), i);
     }
     this.list = TVListAllocator.getInstance().allocate(schema.getSubMeasurementsTSDataTypeList());
   }
@@ -138,14 +138,15 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
 
   private int[] checkColumnOrder(String[] measurementIds) {
     int[] columnOrder = new int[measurementIds.length];
-
+    for (int i = 0; i < measurementIds.length; i++) {
+      columnOrder[i] = vectorIdIndexMap.get(measurementIds[i]);
+    }
     return columnOrder;
   }
 
   @Override
   public long count() {
-    // TODO Auto-generated method stub
-    return 0;
+    return list.size() * vectorIdIndexMap.size();
   }
 
   @Override
