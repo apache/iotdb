@@ -635,6 +635,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       int currMaxLevel,
       int currMaxFileNumInEachLevel) {
     // wait until unseq merge has finished
+    List<TsFileResource> mergingFiles = new ArrayList<>();
     while (isUnseqMerging) {
       try {
         Thread.sleep(200);
@@ -686,6 +687,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               if (!checkAndSetFilesMergingIfNotSet(toMergeTsFiles, null)) {
                 return false;
               }
+              mergingFiles.addAll(toMergeTsFiles);
             } finally {
               compactionSelectionLock.unlock();
             }
@@ -775,6 +777,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         } catch (IOException ioException) {
           logger.error("{} Compaction log close fail", storageGroupName + COMPACTION_LOG_NAME);
         }
+      }
+      for (TsFileResource resource : mergingFiles) {
+        resource.setMerging(false);
       }
       isMergeExecutedInCurrentTask = false;
       restoreCompaction();

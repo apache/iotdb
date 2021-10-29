@@ -114,6 +114,12 @@ public class MergeTask implements Callable<Void> {
   private void abort() throws IOException {
     states = States.ABORTED;
     cleanUp(false);
+    for (TsFileResource resource : resource.getSeqFiles()) {
+      resource.setMerging(false);
+    }
+    for (TsFileResource resource : resource.getUnseqFiles()) {
+      resource.setMerging(false);
+    }
     // call the callback to make sure the StorageGroup exit merging status, but passing 2
     // empty file lists to avoid files being deleted.
     callback.call(

@@ -483,7 +483,7 @@ public abstract class TsFileManagement {
     if (seqFiles != null) {
       for (TsFileResource seqFile : seqFiles) {
         if (seqFile.isMerging()) {
-          logger.warn("return because {} is merging", seqFile.getTsFile());
+          logger.debug("return because {} is merging", seqFile.getTsFile());
           return false;
         }
       }
@@ -491,7 +491,7 @@ public abstract class TsFileManagement {
     if (unseqFiles != null) {
       for (TsFileResource unseqFile : unseqFiles) {
         if (unseqFile.isMerging()) {
-          logger.warn("return because {} is merging", unseqFile.getTsFile());
+          logger.debug("return because {} is merging", unseqFile.getTsFile());
           return false;
         }
       }
