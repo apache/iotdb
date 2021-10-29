@@ -20,41 +20,43 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
 
-import java.util.LinkedList;
-import java.util.List;
+// This class defines EntityMNode as target node and defines the Entity process framework.
+public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
-// This class implements the measurement path collection function.
-public class FlatMeasurementPathCollector extends FlatMeasurementCollector<List<PartialPath>> {
-
-  public FlatMeasurementPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public EntityCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
   }
 
-  public FlatMeasurementPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public EntityCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
-    this.resultSet = new LinkedList<>();
   }
 
   @Override
-  protected void collectUnaryMeasurement(UnaryMeasurementMNode node) throws MetadataException {
-    PartialPath path = node.getPartialPath();
-    if (nodes[nodes.length - 1].equals(node.getAlias())) {
-      // only when user query with alias, the alias in path will be set
-      path.setMeasurementAlias(node.getAlias());
-    }
-    resultSet.add(path);
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
   }
 
   @Override
-  protected void collectMultiMeasurementComponent(MultiMeasurementMNode node, int index)
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
       throws MetadataException {
-    resultSet.add(
-        new VectorPartialPath(node.getFullPath(), node.getSubMeasurementList().get(index)));
+    if (node.isEntity()) {
+      if (hasLimit) {
+        curOffset += 1;
+        if (curOffset < offset) {
+          return true;
+        }
+      }
+      collectEntity(node.getAsEntityMNode());
+      if (hasLimit) {
+        count += 1;
+      }
+    }
+    return false;
   }
+
+  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
 }

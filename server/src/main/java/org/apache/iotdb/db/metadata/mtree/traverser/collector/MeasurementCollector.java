@@ -23,13 +23,17 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 
-// This class defines MeasurementMNode as target node
-// and defines the measurement process framework.
-// MultiMeasurement will be processed as one unit.
+// This class defines MeasurementMNode as target node and defines the measurement process framework.
 public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
   public MeasurementCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
+    isMeasurementTraverser = true;
+  }
+
+  public MeasurementCollector(IMNode startNode, PartialPath path, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, limit, offset);
     isMeasurementTraverser = true;
   }
 
@@ -45,7 +49,16 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     if (!node.isMeasurement()) {
       return false;
     }
+    if (hasLimit) {
+      curOffset += 1;
+      if (curOffset < offset) {
+        return true;
+      }
+    }
     collectMeasurement(node.getAsMeasurementMNode());
+    if (hasLimit) {
+      count += 1;
+    }
     return true;
   }
 
@@ -54,5 +67,5 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
    *
    * @param node MeasurementMNode holding the measurement schema
    */
-  protected abstract void collectMeasurement(IMeasurementMNode node);
+  protected abstract void collectMeasurement(IMeasurementMNode node) throws MetadataException;
 }

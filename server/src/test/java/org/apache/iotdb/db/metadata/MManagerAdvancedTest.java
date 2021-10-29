@@ -151,17 +151,17 @@ public class MManagerAdvancedTest {
           new PartialPath("root.vehicle.d0"),
           mmanager.getBelongedStorageGroup(new PartialPath("root.vehicle.d0.s1")));
       List<PartialPath> pathList =
-          mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle.d1.**"));
+          mmanager.getMeasurementPaths(new PartialPath("root.vehicle.d1.**"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle.d0.**"));
+      pathList = mmanager.getMeasurementPaths(new PartialPath("root.vehicle.d0.**"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle.d*.**"));
+      pathList = mmanager.getMeasurementPaths(new PartialPath("root.vehicle.d*.**"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.ve*.**"));
+      pathList = mmanager.getMeasurementPaths(new PartialPath("root.ve*.**"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle*.d*.s1"));
+      pathList = mmanager.getMeasurementPaths(new PartialPath("root.vehicle*.d*.s1"));
       assertEquals(2, pathList.size());
-      pathList = mmanager.getFlatMeasurementPaths(new PartialPath("root.vehicle.d2.**"));
+      pathList = mmanager.getMeasurementPaths(new PartialPath("root.vehicle.d2.**"));
       assertEquals(0, pathList.size());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -217,14 +217,10 @@ public class MManagerAdvancedTest {
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
     PartialPath path = new PartialPath("root.vehicle.d2.s0");
     IMeasurementMNode node = mmanager.getMeasurementMNode(path);
-    LastCacheManager.updateLastCache(path, tv1, true, Long.MIN_VALUE, node);
-    LastCacheManager.updateLastCache(path, tv2, true, Long.MIN_VALUE, node);
-    Assert.assertEquals(
-        tv2.getTimestamp(),
-        mmanager.getLastCache(node.getAsUnaryMeasurementMNode()).getTimestamp());
-    LastCacheManager.updateLastCache(path, tv3, true, Long.MIN_VALUE, node);
-    Assert.assertEquals(
-        tv2.getTimestamp(),
-        mmanager.getLastCache(node.getAsUnaryMeasurementMNode()).getTimestamp());
+    LastCacheManager.updateLastCache(node, tv1, true, Long.MIN_VALUE);
+    LastCacheManager.updateLastCache(node, tv2, true, Long.MIN_VALUE);
+    Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());
+    LastCacheManager.updateLastCache(node, tv3, true, Long.MIN_VALUE);
+    Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());
   }
 }
