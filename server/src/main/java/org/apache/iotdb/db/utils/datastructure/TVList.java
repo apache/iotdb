@@ -101,7 +101,7 @@ public abstract class TVList {
    * @param types the types in the vector
    * @return VectorTvListArrayMemSize
    */
-  public static long vectorTvListArrayMemSize(List<TSDataType> types) {
+  public static long vectorTvListArrayMemSize(TSDataType[] types) {
     long size = 0;
     // time size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
@@ -191,7 +191,8 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putVectors(long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
+  public void putVectors(
+      long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

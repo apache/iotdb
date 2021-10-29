@@ -102,7 +102,8 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
+  public void putVectors(
+      long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     list.putVectors(t, v, bitMaps, columnOrder, start, end);
   }
 
@@ -137,14 +138,13 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
 
   private int[] checkColumnOrder(String[] measurementIds) {
     int[] columnOrder = new int[measurementIds.length];
-    
+
     return columnOrder;
   }
 
   @Override
   public long count() {
-    // TODO Auto-generated method stub
-    return 0;
+    return list.size() * VectorIdIndexMap.size();
   }
 
   @Override

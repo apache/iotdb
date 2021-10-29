@@ -112,7 +112,12 @@ public class VectorTVListTest {
     }
 
     tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, null, columnOrder, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        vectorArray,
+        null,
+        columnOrder,
+        0,
+        1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
@@ -142,7 +147,12 @@ public class VectorTVListTest {
     }
 
     tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, columnOrder, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        vectorArray,
+        bitMaps,
+        columnOrder,
+        0,
+        1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
       if (i % 100 == 0) {
@@ -175,7 +185,12 @@ public class VectorTVListTest {
     }
 
     tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, columnOrder, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        vectorArray,
+        bitMaps,
+        columnOrder,
+        0,
+        1000);
 
     VectorTVList clonedTvList = tvList.clone();
     for (long i = 0; i < tvList.size; i++) {
