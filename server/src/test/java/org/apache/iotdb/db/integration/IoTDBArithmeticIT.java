@@ -137,9 +137,10 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testArithmeticBinary() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       String[] operands = new String[] {"s1", "s2", "s3", "s4"};
       for (String operator : new String[] {" + ", " - ", " * ", " / ", " % "}) {
