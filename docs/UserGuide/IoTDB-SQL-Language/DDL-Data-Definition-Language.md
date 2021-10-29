@@ -80,7 +80,7 @@ IoTDB > DELETE STORAGE GROUP root.**
 ## Timeseries Management
 ### Create Timeseries
 
-According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
+According to the established data model, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
 
 ```
 IoTDB > create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN
@@ -129,7 +129,7 @@ error: Not support deleting part of aligned timeseies!
 
 * SHOW LATEST? TIMESERIES pathPattern? showWhereClause? limitClause?
 
-  There are four optional clauses added in SHOW TIMESERIES, return information of time series 
+  There are four optional clauses added in SHOW TIMESERIES, return information of time series. 
   
 Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
  
@@ -314,7 +314,7 @@ The only difference between tag and attribute is that we will maintain an invert
 
 > Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
 
-We can update the tag information after creating it as following:
+After creating the timeseries, we can also update its original tag point attributes, there are mainly in following six ways:
 
 * Rename the tag/attribute key
 ```
