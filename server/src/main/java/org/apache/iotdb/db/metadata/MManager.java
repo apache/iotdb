@@ -642,7 +642,7 @@ public class MManager {
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, failedNames);
+        deleteSingleTimeseriesInternal(p.getExactPath(), failedNames);
       }
       return failedNames.isEmpty() ? null : String.join(",", failedNames);
     } catch (IOException e) {
