@@ -119,7 +119,7 @@ public class SumAggrResult extends AggregateResult {
         case BOOLEAN:
         default:
           throw new UnSupportedDataTypeException(
-                  String.format("Unsupported data type in aggregation SUM : %s", seriesDataType));
+              String.format("Unsupported data type in aggregation SUM : %s", seriesDataType));
       }
       setDoubleValue(preValue);
     }
