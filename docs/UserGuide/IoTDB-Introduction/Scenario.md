@@ -65,7 +65,7 @@ At this point, IoTDB, IoTDB-Client tools, TsFileSync tools, and Hadoop/Spark int
 
 * Scenario 4
 
-A car company installed sensors on its cars to collect monitoring information such as the driving status of the vehicle. These automotive devices have limited hardware configurations and are difficult to carry complex applications. Cars with sensors can be connected to each other or send data via narrow-band IoT.
+A car company installed sensors on its subordinate cars to collect monitoring information such as the driving status of the vehicles. These automotive devices have limited hardware configurations and are difficult to carry complex applications. Cars with sensors can be connected to each other or send data via narrow-band IoT.
 
 In order to receive the IoT data collected by the car sensor in real time, the company needs to send the sensor data to the data center in real time through the narrowband IoT while the vehicle is running. Thus, they can perform complex calculations and analysis on the server in the data center.
 
