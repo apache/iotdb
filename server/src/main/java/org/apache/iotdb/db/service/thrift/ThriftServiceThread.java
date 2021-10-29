@@ -33,6 +33,7 @@ import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
+import org.apache.thrift.transport.TServerSocket.ServerSocketTransportArgs;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -113,7 +114,10 @@ public class ThriftServiceThread extends Thread {
     TTransportException lastExp = null;
     for (int i = 0; i < maxRetry; i++) {
       try {
-        return new TServerSocket(new InetSocketAddress(bindAddress, port));
+        ServerSocketTransportArgs serverSocketTransportArgs = new ServerSocketTransportArgs();
+        serverSocketTransportArgs.bindAddr(new InetSocketAddress(bindAddress, port));
+        serverSocketTransportArgs.backlog(2048);
+        return new TServerSocket(serverSocketTransportArgs);
       } catch (TTransportException e) {
         lastExp = e;
         try {
