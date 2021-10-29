@@ -179,10 +179,14 @@ public class DataSourceInfo {
       return newReaderId;
     } catch (IOException | TException e) {
       // the connection may be broken, close it to avoid it being reused
-      if (client != null) client.close();
+      if (client != null) {
+        client.close();
+      }
       throw e;
     } finally {
-      if (client != null) client.returnSelf();
+      if (client != null) {
+        client.returnSelf();
+      }
     }
   }
 

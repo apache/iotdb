@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+// TODO: add case: invalidate client and verify it can not be return by pool
 public class ClientPoolFactoryTest {
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
 

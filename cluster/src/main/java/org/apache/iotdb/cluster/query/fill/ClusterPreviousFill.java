@@ -249,7 +249,9 @@ public class ClusterPreviousFill extends PreviousFill {
 
     } catch (TException e) {
       // the connection may be broken, close it to avoid it being reused
-      if (syncDataClient != null) syncDataClient.close();
+      if (syncDataClient != null) {
+        syncDataClient.close();
+      }
 
       logger.error(
           "{}: Cannot perform previous fill of {} to {}",
@@ -265,7 +267,9 @@ public class ClusterPreviousFill extends PreviousFill {
           node,
           e);
     } finally {
-      if (syncDataClient != null) syncDataClient.returnSelf();
+      if (syncDataClient != null) {
+        syncDataClient.returnSelf();
+      }
     }
     return byteBuffer;
   }
