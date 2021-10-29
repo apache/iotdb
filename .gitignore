@@ -108,3 +108,8 @@ node3/
 
 # Exclude copied license
 /client-py/LICENSE
+
+# ANTLR
+antlr/gen/
+antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
+antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens

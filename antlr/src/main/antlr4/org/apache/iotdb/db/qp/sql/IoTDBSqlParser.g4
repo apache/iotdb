@@ -410,7 +410,6 @@ insertMultiValue
 
 measurementName
     : nodeNameWithoutWildcard
-    | LR_BRACKET nodeNameWithoutWildcard (COMMA nodeNameWithoutWildcard)+ RR_BRACKET
     ;
 
 measurementValue
@@ -668,39 +667,15 @@ suffixPath
 nodeName
     : wildcard? ID wildcard?
     | wildcard
-    | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
-    | literalCanBeNodeName
-    | keywordsCanBeNodeName
     ;
 
 nodeNameWithoutWildcard
     : ID
-    | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
-    | literalCanBeNodeName
-    | keywordsCanBeNodeName
     ;
 
 wildcard
     : STAR
     | DOUBLE_STAR
-    ;
-
-literalCanBeNodeName
-    : QUOTED_STRING_LITERAL
-    | dateExpression
-    | DURATION_LITERAL
-    | (MINUS|PLUS)? INTEGER_LITERAL
-    | (MINUS|PLUS)? EXPONENT_NUM_PART
-    | BOOLEAN_LITERAL
-    ;
-
-keywordsCanBeNodeName
-    : DATATYPE_VALUE
-    | ENCODING_VALUE
-    | COMPRESSOR_VALUE
-    | ASC
-    | DESC
-    | DEVICE
     ;
 
 
