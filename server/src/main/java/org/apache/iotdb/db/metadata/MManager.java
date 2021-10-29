@@ -1073,18 +1073,20 @@ public class MManager {
    *     vector1 (s1,s2) would be returned once.
    */
   public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
-    Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    Map<String, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
     for (PartialPath path : fullPaths) {
-      IMeasurementMNode node = getMeasurementMNode(path);
-      if (!nodeToPartialPath.containsKey(node)) {
-        nodeToPartialPath.put(node, path.copy());
+      String fullPath = path.getFullPath();
+      if (!nodeToPartialPath.containsKey(fullPath)) {
+        nodeToPartialPath.put(fullPath, path.copy());
       } else {
         // if nodeToPartialPath contains node
-        PartialPath existPath = nodeToPartialPath.get(node);
+        PartialPath existPath = nodeToPartialPath.get(fullPath);
         if (!existPath.equals(path)) {
           // could be VectorPartialPath
+          VectorPartialPath vectorPartialPath = (VectorPartialPath) path;
           ((VectorPartialPath) existPath)
-              .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
+              .addMeasurement(
+                  vectorPartialPath.getSubSensorsList(), vectorPartialPath.getSchemaList());
         }
       }
     }
@@ -1258,13 +1260,17 @@ public class MManager {
    * @return MeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode leaf = getMeasurementMNode(fullPath);
-    return getSeriesSchema(fullPath, leaf);
-  }
+    try {
+      IMeasurementSchema schema = fullPath.getMeasurementSchema();
+      if (schema != null) {
+        return schema;
+      }
+    } catch (MetadataException ignored) {
 
-  // todo get schema from an entity with aligned timeseries
-  protected IMeasurementSchema getSeriesSchema(PartialPath fullPath, IMeasurementMNode leaf) {
-    return leaf.getSchema();
+    }
+
+    // Path get from remote doesn't contain schema
+    return getMeasurementMNode(fullPath).getSchema();
   }
 
   // attention: this path must be a device node

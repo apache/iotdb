@@ -249,11 +249,6 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    return super.getSeriesSchema(fullPath, getMeasurementMNode(fullPath));
-  }
-
-  @Override
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     IMeasurementMNode node = null;
     // try remote cache first

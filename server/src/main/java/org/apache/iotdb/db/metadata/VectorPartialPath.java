@@ -38,6 +38,9 @@ import java.util.Objects;
  */
 public class VectorPartialPath extends PartialPath {
 
+  // todo improve vector implementation by remove this placeholder
+  private static final String VECTOR_PLACEHOLDER = "";
+
   private List<String> subSensorsList;
   private List<IMeasurementSchema> schemaList;
 
@@ -62,7 +65,7 @@ public class VectorPartialPath extends PartialPath {
   }
 
   public VectorPartialPath(MeasurementPath path) {
-    super(path.getDevicePath().getNodes());
+    super(path.getDevicePath().concatNode(VECTOR_PLACEHOLDER).getNodes());
     subSensorsList = new ArrayList<>();
     subSensorsList.add(path.getMeasurement());
     schemaList = new ArrayList<>();
@@ -93,6 +96,15 @@ public class VectorPartialPath extends PartialPath {
     this.subSensorsList.addAll(subSensors);
   }
 
+  public void addMeasurement(List<String> measurementList, List<IMeasurementSchema> schemaList) {
+    this.subSensorsList.addAll(measurementList);
+    this.schemaList.addAll(schemaList);
+  }
+
+  public List<IMeasurementSchema> getSchemaList() {
+    return this.schemaList;
+  }
+
   public VectorMeasurementSchema getMeasurementSchema() {
     TSDataType[] types = new TSDataType[subSensorsList.size()];
     TSEncoding[] encodings = new TSEncoding[subSensorsList.size()];
@@ -106,7 +118,7 @@ public class VectorPartialPath extends PartialPath {
       array[i] = subSensorsList.get(i);
     }
     return new VectorMeasurementSchema(
-        " ", array, types, encodings, schemaList.get(0).getCompressor());
+        VECTOR_PLACEHOLDER, array, types, encodings, schemaList.get(0).getCompressor());
   }
 
   @Override
