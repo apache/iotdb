@@ -138,7 +138,7 @@
         <jetty.version>9.4.35.v20201120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
-        <felix.version>5.1.1</felix.version>
+        <felix.version>5.1.2</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
         <netty.version>4.1.68.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
