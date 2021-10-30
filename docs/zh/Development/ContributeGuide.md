@@ -90,6 +90,8 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 注意事项：
 
 * Markdown 中的图片可上传至 https://github.com/apache/iotdb-bin-resources 获得 url
+* 不要使用特殊的Unicode字符，例如U+FF1A
+* 不要使用美元字符(因为我们将使用Latex生成pdf文件)
 
 ## 代码格式化
 
@@ -101,7 +103,18 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google
 3. 开启插件，并保持默认的 GOOGLE 格式 (2-space indents)
 4. 在 Spotless 没有升级到 18+之前，不要升级 google-java-format 插件
 5. 安装 [Save Actions 插件](https://plugins.jetbrains.com/plugin/7642-save-actions) , 并开启插件，打开 "Optimize imports" and "Reformat file" 选项。
-6. 在“Save Actions”设置页面中，将 "File Path Inclusion" 设置为 .*\.java”, 避免在编辑的其他文件时候发生意外的重新格式化
+6. 在“Save Actions”设置页面中，将 "File Path Inclusion" 设置为 ".* \.java"，避免在编辑的其他文件时候发生意外的重新格式化。
+7. 修复重新排序导入包的问题:在IDEA:选择:Preferences | Editor | Code Style | Java | imports.在面板的尾部，有“Import Layout”，将其更改为:
+
+```shell
+   import org.apache.iotdb.*
+   <blank line>
+   import all other imports
+   <blank line>
+   import java.*
+   <blank line>
+   import static all other imports
+```
 
 ## 贡献代码
 
