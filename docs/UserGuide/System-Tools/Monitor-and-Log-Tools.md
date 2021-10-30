@@ -23,7 +23,7 @@
 
 ### System Monitor
 
-Currently, IoTDB provides users Java's JConsole tool to monitor system status or use IoTDB's open API to check data status.
+Currently, IoTDB provides users Java's JConsole tool to monitor system status or use IoTDB's open API to view data statistics.
 
 #### System Status Monitoring
 
@@ -66,12 +66,12 @@ There are several attributes under monitor, including data file directory, the s
 
 This module is for providing some statistics info about the writing operations:
 
-- the data size (in bytes) in IoTDB, the number of data points in IoTDB;
+- the data size (in bytes) in IoTDB, the number of data write points in IoTDB;
 - how many operations are successful or failed executed.
 
 #### Enable/disable the module
 
-Users can choose to enable or disable the feature of data statistics monitoring (set the `enable_stat_monitor` item in the configuration file).
+Users can choose to enable or disable the feature of data statistics monitoring (set the `enable_stat_monitor` item in the configuration file, for more information, please refer to [Config-Manual](http://iotdb.apache.org/zh/UserGuide/Master/Appendix/Config-Manual.html)).
 
 #### Statistics Data Storing
 
@@ -85,7 +85,8 @@ The data can also be written as some time series on disk. To enable it, set `ena
 
 #### Writing Data Monitor
 
-At present, the monitor system can be divided into two modules: global writing statistics and storage group writing statistics. The global statistics records the number of total points and requests, and the storage group statistics counts the write data of each storage group.
+At present, the monitor system can be divided into two modules: global writing statistics and storage group writing statistics. The global statistics record the number of total points and requests, and the storage group statistics count the written
+data of each storage group.
 
 The system sets the collection granularity of the monitoring module to **update the statistical information once one data file is flushed into the disk**, so the data accuracy may be different from the actual situation. To obtain accurate information, **Please call the `flush` method before querying**. 
 
@@ -119,6 +120,8 @@ The above attributes also support visualization in JConsole. For the statistical
 #### Example
 
 Here we give some examples of using writing data statistics.
+
+You can query the statistical items of written data they need through the SELECT statement. (The query method is the same as the ordinary time series query method.)
 
 To know the total number of global writing points, use `select` clause to query it's value. The query statement is:
 
@@ -172,16 +175,19 @@ Connect to jconsole with port 31999，and choose `MBean`in menu bar. Expand the 
 
 1. EnableStat：Whether the statistics are enabled or not, if it is true, the module records the time-consuming of each operation and prints the results; It is non-editable but can be changed by the function below.
 
-2. DisplayIntervalInMs：The interval between print results. The changes will not take effect instantly. To make the changes effective, you should call startContinuousStatistics() or startOneTimeStatistics().
-3. OperationSwitch：It's a map to indicate whether the statistics of one kind of operation should be computed, the key is operation name and the value is true means the statistics of the operation are enabled, otherwise disabled. This parameter cannot be changed directly, it's changed by operation 'changeOperationSwitch()'. 
+2. DisplayIntervalInMs：The interval between print results. The changes will not take effect instantly. To make the changes effective, you should call stopStatistic() and then startContinuousStatistics() or startOneTimeStatistics().
+
+3. OperationSwitch：It's a map to indicate whether the statistics of one kind of operation should be computed, the key of the map is the name of the operation and the value is true means the statistics of the operation are enabled, otherwise disabled. This parameter cannot be changed directly, it's changed by operation 'changeOperationSwitch()'. 
 
 **Operation**
 
-1. startContinuousStatistics： Start the statistics and output at interval of ‘DisplayIntervalInMs’.
-2. startOneTimeStatistics：Start the statistics and output in delay of ‘DisplayIntervalInMs’.
-3. stopStatistic：Stop the statistics.
-4. clearStatisticalState(): clear current stat result, reset statistical result.
-5. changeOperationSwitch(String operationName, Boolean operationState):set whether to monitor a kind of operation. The param 'operationName' is the name of operation, defined in attribute operationSwitch. The param operationState is whether to enable the statistics or not. If the state is switched successfully, the function will return true, else return false.
+1. startStatistics: Start the performance monitoring.
+2. startContinuousStatistics: Start the statistics and output at interval of ‘DisplayIntervalInMs’.
+3. startPrintStatisticsOnce: Start the statistics and output in delay of ‘DisplayIntervalInMs’.
+4. stopPrintStatistic: Stop the statistical results of printing performance monitoring.
+5. stopStatistic: Stop the performance monitoring
+6. clearStatisticalState(): clear current stat result, reset statistical result.
+7. changeOperationSwitch(String operationName, Boolean operationState): set whether to monitor a kind of operation. The param 'operationName' is the name of operation, defined in attribute operationSwitch. The param operationState is whether to enable the statistics or not. If the state is switched successfully, the function will return true, else return false.
 
 ### Adding Custom Monitoring Items for contributors of IOTDB
 
@@ -223,6 +229,8 @@ At the same time, in order to facilitate the debugging of the system by the deve
 
 Here we use JConsole to connect with JMX. 
 
+This section takes Jconsole as an example to introduce how to connect to JMX and enter the dynamic system log configuration module.
+
 Start the JConsole, establish a new JMX connection with the IoTDB Server (you can select the local process or input the IP and PORT for remote connection, the default operation port of the IoTDB JMX service is 31999). Fig 4.1 shows the connection GUI of JConsole.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577195-f94d7500-1ef3-11e9-999a-b4f67055d80e.png">
@@ -252,3 +260,7 @@ This method is to obtain the current log level of the specified Logger. This met
 
 This method is to obtain the log level of the specified Logger. This method accepts a String type parameter named p1, which is the name of the specified Logger. This method returns the log level of the specified Logger.
 It should be noted that the difference between this method and the `getLoggerEffectiveLevel` method is that the method returns the log level that the specified Logger is set in the configuration file. If the user does not set the log level for the Logger, then return empty. According to Logger's log-level inheritance mechanism, a Logger's level is not explicitly set, it will inherit the log level settings from its nearest ancestor. At this point, calling the `getLoggerEffectiveLevel` method will return the log level in which the Logger is in effect; calling `getLoggerLevel` will return null.
+
+* setLoggerLevel
+
+This method is to set the log level of the specified Logger. This method accepts a parameter of type String named p1 and a parameter of type String named p2, which respectively specify the name of the Logger and the log level of the target.
