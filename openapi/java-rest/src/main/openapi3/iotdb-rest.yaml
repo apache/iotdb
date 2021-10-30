@@ -1,0 +1,261 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+openapi: 3.0.0
+info:
+  title: iotdb-rest
+  description: IoTDB Rest API for Grafana, Prometheus, etc..
+  license:
+    name: Apache 2.0
+  version: 1.0.0
+servers:
+- url: http://127.0.0.1:18080/
+  description: api
+security:
+- basic: []
+paths:
+  /ping:
+    get:
+      summary: Your GET endpoint
+      tags: []
+      security:
+        - basic: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+              examples:
+                example-1:
+                  value: OK
+      operationId: tryPing
+      description: Just for checking whether the server works
+  /rest/v1/insertTablet:
+    post:
+      summary: Serve for writing data by OpenApi
+      description:
+      operationId: post-rest-data-tablet
+      parameters: [ ]
+      requestBody:
+        description: Insert Plan
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsertRow'
+            examples: { }
+      responses:
+        "200":
+          description: Return data status
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "reason: \nnot login\nno permission"
+              examples:
+                example-1:
+                  value: success;
+        "401":
+          description: Example response
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "reason: \nnot login\nno permission"
+              examples:
+                example-1:
+                  value: passowrd is incorrect;
+  /rest/v1/nonQuery:
+    post:
+      summary: Serve for non query by OpenApi
+      description:
+      operationId: post-rest-non-query
+      parameters: [ ]
+      requestBody:
+        description: non query Plan
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryData'
+            examples: { }
+      responses:
+        "200":
+          description: return executed status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/response_result'
+              examples:
+                example-1:
+                  value:
+                    code: string
+                    message: string
+        "401":
+          description: Example response
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "reason: \nnot login\nno permission"
+              examples:
+                example-1:
+                  value: passowrd is incorrect;
+  /rest/v1/query:
+    post:
+      summary: Serve for query data by OpenApi
+      description:
+      operationId: post-rest-data-query
+      parameters: []
+      requestBody:
+        description: query Plan
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryData'
+            examples: {}
+      responses:
+        "200":
+          description: return data in wide table format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataJson'
+              examples: {}
+        "401":
+          description: Example response
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "reason: \nnot login\nno permission"
+              examples:
+                example-1:
+                  value: passowrd is incorrect;
+components:
+  schemas:
+    QueryData:
+      title: sql str
+      type: object
+      properties:
+        sql:
+          type: string
+      description: query data in IoTDB
+      x-examples:
+        example-1:
+          sql: string
+    InsertRow:
+      title: InsertRow
+      type: object
+      properties:
+        timestamps:
+          type: array
+          items:
+            type: long
+        measurements:
+          type: array
+          items:
+            type: string
+        dataType:
+          type: array
+          items:
+            type: string
+        values:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        isAligned:
+          type: boolean
+        rowSize:
+          type: integer
+        deviceId:
+          type: string
+    DataJson:
+      minItems: 1
+      uniqueItems: true
+      type: array
+      items:
+        $ref: '#/components/schemas/DataJson_inner'
+      x-examples:
+        example-1:
+        - name: test
+          fields:
+          - name: Time
+            type: INT64
+            values:
+            - 1610111000
+            - 1610111100
+            - 1610112000
+          - name: root.sg.d1.s1
+            type: INT32
+            values:
+            - 1
+            - 2
+            - 3
+          - name: root.sg.d1.s2
+            type: INT32
+            values:
+            - 1
+            - null
+            - 3
+          - name: root.sg.d1.s3
+            type: FieldType.boolean
+            values:
+            - 0
+            - 0
+            - 1
+    response_result:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+    DataJson_inner:
+      type: object
+      properties:
+        measurements:
+          type: string
+          description: time series name
+        dataValues:
+          type: array
+          description: value(null if no value), timestamp
+          items:
+            type: object
+  responses:
+    Unauthorized401:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            type: string
+            description: "reason: \nnot login\nno permission"
+          examples:
+            example-1:
+              value: passowrd is incorrect;
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+    APIKey:
+      type: apiKey
+      name: API Key
+      in: header
