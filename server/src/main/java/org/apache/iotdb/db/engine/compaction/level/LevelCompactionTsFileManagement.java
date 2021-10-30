@@ -697,22 +697,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             for (TsFileResource mergeResource : toMergeTsFiles) {
               compactionLogger.logFile(
                   SOURCE_INFO,
-                  storageGroupName,
-                  virtualStorageGroupId,
-                  timePartition,
-                  mergeResource.getTsFile(),
-                  sequence);
+                  CompactionFileInfo.parseCompactionFileInfo(mergeResource.getTsFile().getAbsolutePath()));
             }
             File newLevelFile =
                 TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());
             compactionLogger.logSequence(sequence);
             compactionLogger.logFile(
                 TARGET_INFO,
-                storageGroupName,
-                virtualStorageGroupId,
-                timePartition,
-                newLevelFile,
-                sequence);
+                CompactionFileInfo.parseCompactionFileInfoFromPath(newLevelFile.getAbsolutePath()));
             logger.info(
                 "{} [Compaction] merge level-{}'s {} TsFiles to next level",
                 storageGroupName,
