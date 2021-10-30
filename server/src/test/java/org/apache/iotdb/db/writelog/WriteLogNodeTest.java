@@ -317,8 +317,8 @@ public class WriteLogNodeTest {
     } catch (IOException e) {
       caught = true;
       Pattern r = Pattern.compile("\\d+");
-      Matcher m =  r.matcher(e.getMessage());
-      if(m.find()){
+      Matcher m = r.matcher(e.getMessage());
+      if (m.find()) {
         neededSize = Integer.valueOf(m.group());
       }
     }
@@ -355,16 +355,15 @@ public class WriteLogNodeTest {
       MmapUtil.clean((MappedByteBuffer) byteBuffer);
     }
 
-
     // try to set wal_buffer_size according to error message
     IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(neededSize);
     WriteLogNode logNode2 = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
     logNode2.initBuffer(byteBuffers);
     ByteBuffer[] byteBuffers2 = new ByteBuffer[2];
     byteBuffers2[0] =
-            ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     byteBuffers2[1] =
-            ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     logNode2.initBuffer(byteBuffers2);
     caught = false;
     try {
@@ -378,16 +377,15 @@ public class WriteLogNodeTest {
       MmapUtil.clean((MappedByteBuffer) byteBuffer);
     }
 
-
     // try to set wal_buffer_size less than error message
-    IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(neededSize-1);
+    IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(neededSize - 1);
     WriteLogNode logNode3 = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
     logNode3.initBuffer(byteBuffers);
     ByteBuffer[] byteBuffers3 = new ByteBuffer[2];
     byteBuffers3[0] =
-            ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     byteBuffers3[1] =
-            ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     logNode3.initBuffer(byteBuffers3);
     caught = false;
     try {
@@ -400,7 +398,5 @@ public class WriteLogNodeTest {
     for (ByteBuffer byteBuffer : array) {
       MmapUtil.clean((MappedByteBuffer) byteBuffer);
     }
-
-
   }
 }

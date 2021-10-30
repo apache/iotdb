@@ -118,7 +118,10 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       int neededSize = dos.size();
       dos.close();
       logBufferWorking.clear();
-      throw new IOException("Log cannot fit into the buffer, please increase wal_buffer_size to more than "+neededSize*2, e);
+      throw new IOException(
+          "Log cannot fit into the buffer, please increase wal_buffer_size to more than "
+              + neededSize * 2,
+          e);
     } finally {
       lock.unlock();
     }
