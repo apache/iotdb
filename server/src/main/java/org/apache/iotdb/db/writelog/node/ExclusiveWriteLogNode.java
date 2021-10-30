@@ -33,9 +33,7 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
@@ -115,8 +113,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (BufferOverflowException e) {
       // if the size of a single plan bigger than logBufferWorking
       // we need to clear the buffer to drop something wrong that has written.
+      DataOutputStream dos = new DataOutputStream(new ByteArrayOutputStream());
+      plan.serialize(dos);
+      int neededSize = dos.size();
+      dos.close();
       logBufferWorking.clear();
-      throw new IOException("Log cannot fit into the buffer, please increase wal_buffer_size", e);
+      throw new IOException("Log cannot fit into the buffer, please increase wal_buffer_size to more than "+neededSize*2, e);
     } finally {
       lock.unlock();
     }
