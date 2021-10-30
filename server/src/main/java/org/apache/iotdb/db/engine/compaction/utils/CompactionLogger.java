@@ -67,10 +67,25 @@ public class CompactionLogger {
     logStream.flush();
   }
 
-  public void logFile(String prefix, CompactionFileInfo info) throws IOException {
+  public void logFile(
+      String prefix,
+      String logicalStorageGroup,
+      String virtualStorageGroup,
+      long timePartition,
+      File file,
+      boolean sequence)
+      throws IOException {
     logStream.write(prefix);
     logStream.newLine();
-    logStream.write(info.toString());
+    logStream.write(logicalStorageGroup);
+    logStream.write(" ");
+    logStream.write(virtualStorageGroup);
+    logStream.write(" ");
+    logStream.write(String.valueOf(timePartition));
+    logStream.write(" ");
+    logStream.write(file.getName());
+    logStream.write(" ");
+    logStream.write(sequence ? "sequence" : "unsequence");
     logStream.newLine();
     logStream.flush();
   }
