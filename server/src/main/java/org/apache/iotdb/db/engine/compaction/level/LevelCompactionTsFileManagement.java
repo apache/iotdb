@@ -430,8 +430,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
         logAnalyzer.analyze();
         Set<String> deviceSet = logAnalyzer.getDeviceSet();
-        List<CompactionFileInfo> sourceFileInfo =
-            logAnalyzer.getSourceFileInfo();
+        List<CompactionFileInfo> sourceFileInfo = logAnalyzer.getSourceFileInfo();
         CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
         String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
         File targetFile = null;
@@ -448,9 +447,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                   "[Compaction][Recover] Target file {} found, device set is null, delete it",
                   targetFile);
               FileUtils.delete(targetFile.getPath());
+              return;
             }
           }
-          return;
         }
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
         TsFileResource targetResource =
@@ -524,10 +523,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   private TsFileResource getResourceFromDataDirs(
-      boolean recover,
-      String[] dataDirs,
-      boolean isSeq,
-      CompactionFileInfo info)
+      boolean recover, String[] dataDirs, boolean isSeq, CompactionFileInfo info)
       throws IOException {
     TsFileResource foundResource = null;
     if (recover) {
@@ -697,7 +693,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             for (TsFileResource mergeResource : toMergeTsFiles) {
               compactionLogger.logFile(
                   SOURCE_INFO,
-                  CompactionFileInfo.parseCompactionFileInfo(mergeResource.getTsFile().getAbsolutePath()));
+                  CompactionFileInfo.parseCompactionFileInfo(
+                      mergeResource.getTsFile().getAbsolutePath()));
             }
             File newLevelFile =
                 TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -68,10 +67,7 @@ public class CompactionLogger {
     logStream.flush();
   }
 
-  public void logFile(
-      String prefix,
-      CompactionFileInfo info)
-      throws IOException {
+  public void logFile(String prefix, CompactionFileInfo info) throws IOException {
     logStream.write(prefix);
     logStream.newLine();
     logStream.write(info.toString());
