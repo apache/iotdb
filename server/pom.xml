@@ -209,7 +209,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>java-rest</artifactId>
-            <version>0.13.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

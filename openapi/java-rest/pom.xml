@@ -167,7 +167,7 @@
                                 </goals>
                                 <configuration>
                                     <sources>
-                                        <source>${project.basedir}/../target/generated-sources/java/src/gen/java</source>
+                                        <source>${project.basedir}/target/generated-sources/java/src/gen/java</source>
                                     </sources>
                                 </configuration>
                             </execution>
@@ -341,7 +341,7 @@
                                 </goals>
                                 <configuration>
                                     <sources>
-                                        <source>${project.basedir}/../target/generated-sources/java/src/gen/java</source>
+                                        <source>${project.basedir}/target/generated-sources/java/src/gen/java</source>
                                     </sources>
                                 </configuration>
                             </execution>
@@ -515,7 +515,7 @@
                                 </goals>
                                 <configuration>
                                     <sources>
-                                        <source>${project.basedir}/../target/generated-sources/java/src/gen/java</source>
+                                        <source>${project.basedir}/target/generated-sources/java/src/gen/java</source>
                                     </sources>
                                 </configuration>
                             </execution>
@@ -608,7 +608,7 @@
                                     <groupId>org.apache.iotdb</groupId>
                                     <artifactId>iotdb-rest-service</artifactId>
                                     <artifactVersion>${project.version}</artifactVersion>
-                                    <addCompileSourceRoot>false</addCompileSourceRoot>
+                                    <addCompileSourceRoot>true</addCompileSourceRoot>
                                     <configOptions>
                                         <licenseName>Apache License 2.0</licenseName>
                                         <groupId>org.apache.iotdb</groupId>
