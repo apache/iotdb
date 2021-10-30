@@ -688,7 +688,7 @@ public class StorageGroupProcessor {
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;
       } finally {
-        if (writer == null) {
+        if (writer != null) {
           writer.close();
         }
       }

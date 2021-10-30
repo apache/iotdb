@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionFileInfo;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
@@ -429,9 +430,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
         logAnalyzer.analyze();
         Set<String> deviceSet = logAnalyzer.getDeviceSet();
-        List<CompactionLogAnalyzer.CompactionFileInfo> sourceFileInfo =
+        List<CompactionFileInfo> sourceFileInfo =
             logAnalyzer.getSourceFileInfo();
-        CompactionLogAnalyzer.CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
+        CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
         String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
         File targetFile = null;
         boolean isSeq = logAnalyzer.isSeq();
@@ -473,7 +474,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               targetResource);
           long timePartition = targetResource.getTimePartition();
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          for (CompactionLogAnalyzer.CompactionFileInfo sourceInfo : sourceFileInfo) {
+          for (CompactionFileInfo sourceInfo : sourceFileInfo) {
             // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
             TsFileResource sourceTsFileResource =
                 getResourceFromDataDirs(false, dataDirs, isSeq, sourceInfo);
@@ -526,7 +527,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       boolean recover,
       String[] dataDirs,
       boolean isSeq,
-      CompactionLogAnalyzer.CompactionFileInfo info)
+      CompactionFileInfo info)
       throws IOException {
     TsFileResource foundResource = null;
     if (recover) {
