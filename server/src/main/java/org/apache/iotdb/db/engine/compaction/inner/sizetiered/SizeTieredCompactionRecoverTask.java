@@ -100,12 +100,24 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           writer.close();
           if (!targetFile.delete()) {
             LOGGER.warn("Fail to delete uncompleted file {}", targetFile);
+          } else {
+            LOGGER.info(
+                "{} [Compaction][Recover] target file {} is not compeleted, remove it",
+                fullStorageGroupName,
+                targetFile);
           }
           if (!resourceFile.delete()) {
             LOGGER.warn("Fail to delete tsfile resource {}", resourceFile);
+          } else {
+            LOGGER.info(
+                "{} [Compaction][Recover] delete resource of {}", fullStorageGroupName, targetFile);
           }
         } else {
           // the target tsfile is completed
+          LOGGER.info(
+              "{} [Compaction][Recover] compaction target file {} is completed, delete source files",
+              fullStorageGroupName,
+              targetFile);
           TsFileResource targetResource = new TsFileResource(targetFile);
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (String sourceFileName : sourceFileList) {

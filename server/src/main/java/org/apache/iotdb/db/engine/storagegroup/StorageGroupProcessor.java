@@ -766,7 +766,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
+  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) throws IOException {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -781,7 +781,7 @@ public class StorageGroupProcessor {
               isSeq,
               i == tsFiles.size() - 1);
 
-      RestorableTsFileIOWriter writer;
+      RestorableTsFileIOWriter writer = null;
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (TsFileResource.getInnerCompactionCount(tsFileResource.getTsFile().getName()) > 0) {
@@ -863,6 +863,10 @@ public class StorageGroupProcessor {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;
+      } finally {
+        if (writer != null) {
+          writer.close();
+        }
       }
     }
   }
