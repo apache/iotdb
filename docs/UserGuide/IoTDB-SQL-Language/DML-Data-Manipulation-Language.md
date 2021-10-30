@@ -27,6 +27,7 @@
 IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Appendix/SQL-Reference.md) in [Client/Shell tools](../CLI/Command-Line-Interface.md), or using [Java JDBC](../API/Programming-JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Appendix/SQL-Reference.md).
 
 This section mainly introduces the use of [INSERT SQL statement](../Appendix/SQL-Reference.md) for real-time data import in the scenario.
+For the detailed syntax of the [INSERT SQL statement](../Appendix/SQL-Reference.md), please refer to the INSERT Statement section of this article.
 
 #### Use of INSERT Statements
 The [INSERT SQL statement](../Appendix/SQL-Reference.md) statement is used to insert data into one or more specified timeseries created. For each point of data inserted, it consists of a [timestamp](../Data-Concept/Data-Model-and-Terminology.md) and a sensor acquisition value (see [Data Type](../Data-Concept/Data-Type.md)).
@@ -43,7 +44,7 @@ The above example code inserts the long integer timestamp and the value "true" i
 
 > Note: In IoTDB, TEXT type data can be represented by single and double quotation marks. The insertion statement above uses double quotation marks for TEXT type data. The following example will use single quotation marks for TEXT type data.
 
-The INSERT statement can also support the insertion of multi-column data at the same time point.  The sample code of  inserting the values of the two timeseries at the same time point '2' is as follows:
+The INSERT statement can also support the insertion of multi-columns data at the same time point.  The sample code of  inserting the values of the two timeseries at the same time point '2' is as follows:
 
 ```sql
 IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (2, false, 'v2')
@@ -91,7 +92,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is the temperature sensor (temperature). The SQL statement requires that all temperature sensor values before the time point of "2017-11-01T00:08:00.000" be selected.
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is the temperature sensor (temperature). The SQL statement requires that all temperature sensor values before the time point of "2017-11-01T00:08:00.000" be selected.(Various time formats can used here, please check the details in the section [Data-Model](https://iotdb.apache.org/UserGuide/Master/Data-Concept/Data-Model-and-Terminology.html))
 
 The execution result of this SQL statement is as follows:
 
@@ -203,7 +204,8 @@ It costs 0.014s
 ```
 
 #### Order By Time Query
-IoTDB supports the 'order by time' statement since 0.11, it's used to display results in descending order by time.
+
+IoTDB has supported the 'order by time' statement since version 0.11, it's used to display results in descending order by time.
 For example, the SQL statement is:
 
 ```sql
@@ -554,7 +556,7 @@ It costs 0.016s
 
 **Aggregation by level statement** is used for aggregating upon specific hierarchical level of timeseries path.
 For all timeseries paths, by convention, "level=0" represents *root* level. 
-That is, to tally the points of any measurements under "root.ln", the level should be set to 1.
+That is, totally the points of any measurements under "root.ln", the level should be set to 1.
 
 For example, there are multiple series under "root.ln.wf01", such as "root.ln.wf01.wt01.status","root.ln.wf01.wt02.status","root.ln.wf01.wt03.status".
 To count the number of "status" points of all these series, use query:
@@ -612,6 +614,7 @@ Total line number = 1
 It costs 0.013s
 ```
 
+Aggregate by level queries can also be used for other aggregate functions.
 All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme.
 When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type.
 Otherwise, it will generate a syntax error.
@@ -807,6 +810,7 @@ The SQL execution result is:
 
 ##### Left Open And Right Close Range
 
+The result timestamp for each interval is the right end of the interval.
 The SQL statement is:
 
 ```sql
