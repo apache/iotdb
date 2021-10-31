@@ -44,6 +44,8 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -642,7 +644,7 @@ public class MManager {
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, failedNames);
+        deleteSingleTimeseriesInternal(p.getExactPath(), failedNames);
       }
       return failedNames.isEmpty() ? null : String.join(",", failedNames);
     } catch (IOException e) {
@@ -1063,28 +1065,29 @@ public class MManager {
   // region Interfaces for timeseries, measurement and schema info Query
 
   /**
-   * PartialPath of aligned time series will be organized to one VectorPartialPath. BEFORE this
-   * method, all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1]
-   * and root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
+   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
+   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
    *
    * @param fullPaths full path list without uniting the sub measurement under the same aligned time
    *     series.
    * @return Size of partial path list could NOT equal to the input list size. For example, the
    *     vector1 (s1,s2) would be returned once.
    */
-  public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
-    Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+  public List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) throws MetadataException {
+    Map<String, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
     for (PartialPath path : fullPaths) {
-      IMeasurementMNode node = getMeasurementMNode(path);
-      if (!nodeToPartialPath.containsKey(node)) {
-        nodeToPartialPath.put(node, path.copy());
+      String fullPath = path.getFullPath();
+      if (!nodeToPartialPath.containsKey(fullPath)) {
+        nodeToPartialPath.put(fullPath, path.copy());
       } else {
         // if nodeToPartialPath contains node
-        PartialPath existPath = nodeToPartialPath.get(node);
+        PartialPath existPath = nodeToPartialPath.get(fullPath);
         if (!existPath.equals(path)) {
-          // could be VectorPartialPath
-          ((VectorPartialPath) existPath)
-              .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
+          // could be AlignedPath
+          AlignedPath alignedPath = (AlignedPath) path;
+          ((AlignedPath) existPath)
+              .addMeasurement(alignedPath.getMeasurementList(), alignedPath.getSchemaList());
         }
       }
     }
@@ -1218,14 +1221,14 @@ public class MManager {
       return TSDataType.INT64;
     }
 
-    IMeasurementSchema schema = mtree.getSchema(fullPath);
+    IMeasurementSchema schema = getSeriesSchema(fullPath);
     if (schema instanceof UnaryMeasurementSchema) {
       return schema.getType();
     } else {
-      if (((VectorPartialPath) fullPath).getSubSensorsList().size() != 1) {
+      if (((AlignedPath) fullPath).getMeasurementList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        String subSensor = ((VectorPartialPath) fullPath).getSubSensor(0);
+        String subSensor = ((AlignedPath) fullPath).getMeasurement(0);
         List<String> measurements = schema.getSubMeasurementsList();
         return schema.getSubMeasurementsTSDataTypeList().get(measurements.indexOf(subSensor));
       }
@@ -1236,7 +1239,7 @@ public class MManager {
    * get MeasurementSchema
    *
    * @param device device path
-   * @param measurement measurement name, could be vector name
+   * @param measurement measurement name
    * @return MeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
@@ -1252,19 +1255,23 @@ public class MManager {
   }
 
   /**
-   * Get schema of paritialPath todo VectorPartialPath cases means get schemas of aligned timeseries
+   * Get schema of paritialPath
    *
-   * @param fullPath (may be ParitialPath or VectorPartialPath)
+   * @param fullPath (may be ParitialPath or AlignedPath)
    * @return MeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode leaf = getMeasurementMNode(fullPath);
-    return getSeriesSchema(fullPath, leaf);
-  }
+    try {
+      IMeasurementSchema schema = fullPath.getMeasurementSchema();
+      if (schema != null) {
+        return schema;
+      }
+    } catch (MetadataException ignored) {
 
-  // todo get schema from an entity with aligned timeseries
-  protected IMeasurementSchema getSeriesSchema(PartialPath fullPath, IMeasurementMNode leaf) {
-    return leaf.getSchema();
+    }
+
+    // Path get from remote doesn't contain schema
+    return getMeasurementMNode(fullPath).getSchema();
   }
 
   // attention: this path must be a device node

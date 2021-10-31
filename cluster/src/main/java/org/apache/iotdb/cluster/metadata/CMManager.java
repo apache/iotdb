@@ -42,13 +42,13 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
@@ -198,11 +198,11 @@ public class CMManager extends MManager {
     }
 
     String measurement = fullPath.getMeasurement();
-    if (fullPath instanceof VectorPartialPath) {
-      if (((VectorPartialPath) fullPath).getSubSensorsList().size() != 1) {
+    if (fullPath instanceof AlignedPath) {
+      if (((AlignedPath) fullPath).getMeasurementList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        measurement = ((VectorPartialPath) fullPath).getSubSensor(0);
+        measurement = ((AlignedPath) fullPath).getMeasurement(0);
       }
     }
 
@@ -233,9 +233,7 @@ public class CMManager extends MManager {
         if (measurementSchema instanceof VectorMeasurementSchema) {
           for (String subMeasurement : measurementSchema.getSubMeasurementsList()) {
             cacheMeta(
-                new VectorPartialPath(fullPath.getDevice(), subMeasurement),
-                measurementMNode,
-                false);
+                new AlignedPath(fullPath.getDevice(), subMeasurement), measurementMNode, false);
           }
         } else {
           cacheMeta(fullPath, measurementMNode, true);
@@ -246,11 +244,6 @@ public class CMManager extends MManager {
       }
     }
     return seriesType;
-  }
-
-  @Override
-  public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    return super.getSeriesSchema(fullPath, getMeasurementMNode(fullPath));
   }
 
   @Override

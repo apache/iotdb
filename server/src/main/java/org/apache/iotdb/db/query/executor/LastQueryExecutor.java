@@ -26,9 +26,9 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -264,8 +264,8 @@ public class LastQueryExecutor {
     private IMeasurementMNode node;
 
     LastCacheAccessor(PartialPath seriesPath) {
-      if (seriesPath instanceof VectorPartialPath) {
-        this.path = seriesPath.concatNode(((VectorPartialPath) seriesPath).getSubSensor(0));
+      if (seriesPath instanceof AlignedPath) {
+        this.path = seriesPath.concatNode(((AlignedPath) seriesPath).getMeasurement(0));
       } else {
         this.path = seriesPath;
       }

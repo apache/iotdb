@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -265,7 +266,7 @@ public class MManagerBasicTest {
           compressionType,
           Collections.emptyMap());
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
+          new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -282,18 +283,18 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
 
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
+    manager.deleteTimeseries(new PartialPath("root.laptop.d1.aligned_device.*"));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
 
     try {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
@@ -306,7 +307,7 @@ public class MManagerBasicTest {
 
     try {
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
+          new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s0", "s2", "s4"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -321,10 +322,10 @@ public class MManagerBasicTest {
     }
 
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s4")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
   }
 
   @Test
@@ -920,7 +921,7 @@ public class MManagerBasicTest {
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");
-    schemaNames.add("vector");
+    schemaNames.add("aligned_device");
 
     return new CreateTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
@@ -1019,7 +1020,7 @@ public class MManagerBasicTest {
 
     CreateTimeSeriesPlan createTimeSeriesPlan2 =
         new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.vector"),
+            new PartialPath("root.sg1.d1.aligned_device"),
             TSDataType.INT32,
             TSEncoding.PLAIN,
             CompressionType.GZIP,
@@ -1033,7 +1034,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.sg1.d1.vector ( which is incompatible with template )] already exist",
+          "Path [root.sg1.d1.aligned_device ( which is incompatible with template )] already exist",
           e.getMessage());
     }
   }
@@ -1074,7 +1075,7 @@ public class MManagerBasicTest {
 
     CreateTimeSeriesPlan createTimeSeriesPlan2 =
         new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.vector.s1"),
+            new PartialPath("root.sg1.d1.aligned_device.s1"),
             TSDataType.INT32,
             TSEncoding.PLAIN,
             CompressionType.GZIP,
@@ -1089,7 +1090,7 @@ public class MManagerBasicTest {
       fail();
     } catch (MetadataException e) {
       assertEquals(
-          "Schema name vector in template has conflict with node's child root.sg1.d1.vector",
+          "Schema name aligned_device in template has conflict with node's child root.sg1.d1.aligned_device",
           e.getMessage());
     }
   }
@@ -1127,7 +1128,7 @@ public class MManagerBasicTest {
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");
-    schemaNames.add("test_vector");
+    schemaNames.add("test_aligned_device");
 
     CreateTemplatePlan plan1 =
         new CreateTemplatePlan(
@@ -1537,7 +1538,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
+          new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("FLOAT"),
@@ -1559,7 +1560,7 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1.vector"),
+              new PartialPath("root.laptop.d1.aligned_device"),
               time,
               new String[] {"s1", "s2", "s3"},
               dataTypes,
@@ -1588,7 +1589,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
+          new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("FLOAT"),
@@ -1610,7 +1611,7 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1.vector"),
+              new PartialPath("root.laptop.d1.aligned_device"),
               time,
               new String[] {"s1", "s2", "s3"},
               dataTypes,
@@ -1624,7 +1625,7 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.assertEquals(
-          "Timeseries under path [root.laptop.d1.vector] is aligned , please set InsertPlan.isAligned() = true",
+          "Timeseries under path [root.laptop.d1.aligned_device] is aligned , please set InsertPlan.isAligned() = true",
           e.getMessage());
     }
   }
@@ -1672,13 +1673,13 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1.vector.s1"),
+          new PartialPath("root.laptop.d1.aligned_device.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1.vector.s2"),
+          new PartialPath("root.laptop.d1.aligned_device.s2"),
           TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"),
           compressionType,
@@ -1694,7 +1695,7 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1.vector"),
+              new PartialPath("root.laptop.d1.aligned_device"),
               time,
               new String[] {"s1", "s2"},
               dataTypes,
@@ -1708,7 +1709,7 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.assertEquals(
-          "Timeseries under path [root.laptop.d1.vector] is not aligned , please set InsertPlan.isAligned() = false",
+          "Timeseries under path [root.laptop.d1.aligned_device] is not aligned , please set InsertPlan.isAligned() = false",
           e.getMessage());
     }
   }
