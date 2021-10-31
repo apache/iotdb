@@ -81,7 +81,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
    * @return MeasurementPath
    */
   @Override
-  public MeasurementPath getPartialPath() {
+  public MeasurementPath getMeasurementPath() {
     MeasurementPath result = new MeasurementPath(super.getPartialPath());
     result.setMeasurementSchema(schema);
     return result;

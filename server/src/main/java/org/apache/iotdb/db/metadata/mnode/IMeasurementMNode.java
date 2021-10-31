@@ -30,8 +30,7 @@ public interface IMeasurementMNode extends IMNode {
   @Override
   IEntityMNode getParent();
 
-  @Override
-  MeasurementPath getPartialPath();
+  MeasurementPath getMeasurementPath();
 
   IMeasurementSchema getSchema();
 
