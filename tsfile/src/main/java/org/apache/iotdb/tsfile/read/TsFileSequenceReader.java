@@ -1145,7 +1145,11 @@ public class TsFileSequenceReader implements AutoCloseable {
           this.position(),
           e.getMessage());
     }
-    if (loadLastChunkMetadata) {
+    if (loadLastChunkMetadata
+        && !chunkGroupMetadataList
+            .get(chunkGroupMetadataList.size() - 1)
+            .getDevice()
+            .equals(lastDeviceId)) {
       chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
     }
     // Despite the completeness of the data section, we will discard current FileMetadata
