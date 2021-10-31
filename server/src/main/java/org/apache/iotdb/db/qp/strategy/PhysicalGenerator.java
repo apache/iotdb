@@ -59,6 +59,6 @@ public class PhysicalGenerator {
   }
 
   public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
-    return IoTDB.metaManager.groupVectorPaths(paths);
+    return IoTDB.metaManager.groupAlignedPaths(paths);
   }
 }

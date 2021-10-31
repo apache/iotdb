@@ -66,7 +66,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   @Override
   public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
-    return getCMManager().groupVectorPaths(paths);
+    return getCMManager().groupAlignedPaths(paths);
   }
 
   @Override

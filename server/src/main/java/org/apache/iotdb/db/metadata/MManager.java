@@ -1065,16 +1065,16 @@ public class MManager {
   // region Interfaces for timeseries, measurement and schema info Query
 
   /**
-   * PartialPath of aligned time series will be organized to one VectorPartialPath. BEFORE this
-   * method, all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1]
-   * and root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
+   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
+   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
    *
    * @param fullPaths full path list without uniting the sub measurement under the same aligned time
    *     series.
    * @return Size of partial path list could NOT equal to the input list size. For example, the
    *     vector1 (s1,s2) would be returned once.
    */
-  public List<PartialPath> groupVectorPaths(List<PartialPath> fullPaths) throws MetadataException {
+  public List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) throws MetadataException {
     Map<String, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
     for (PartialPath path : fullPaths) {
       String fullPath = path.getFullPath();
@@ -1084,7 +1084,7 @@ public class MManager {
         // if nodeToPartialPath contains node
         PartialPath existPath = nodeToPartialPath.get(fullPath);
         if (!existPath.equals(path)) {
-          // could be VectorPartialPath
+          // could be AlignedPath
           AlignedPath alignedPath = (AlignedPath) path;
           ((AlignedPath) existPath)
               .addMeasurement(alignedPath.getMeasurementList(), alignedPath.getSchemaList());
@@ -1239,7 +1239,7 @@ public class MManager {
    * get MeasurementSchema
    *
    * @param device device path
-   * @param measurement measurement name, could be vector name
+   * @param measurement measurement name
    * @return MeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
@@ -1255,9 +1255,9 @@ public class MManager {
   }
 
   /**
-   * Get schema of paritialPath todo VectorPartialPath cases means get schemas of aligned timeseries
+   * Get schema of paritialPath
    *
-   * @param fullPath (may be ParitialPath or VectorPartialPath)
+   * @param fullPath (may be ParitialPath or AlignedPath)
    * @return MeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
