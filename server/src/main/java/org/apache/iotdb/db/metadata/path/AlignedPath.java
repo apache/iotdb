@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -37,68 +37,67 @@ import java.util.Objects;
  * e.g. VectorPartialPath1(root.sg1.d1.vector1, [root.sg1.d1.vector1.s1, root.sg1.d1.vector1.s2])
  * VectorPartialPath2(root.sg1.d1.vector2, [root.sg1.d1.vector2.s1, root.sg1.d1.vector2.s2])
  */
-public class VectorPartialPath extends PartialPath {
+public class AlignedPath extends PartialPath {
 
   // todo improve vector implementation by remove this placeholder
   private static final String VECTOR_PLACEHOLDER = "";
 
-  private List<String> subSensorsList;
+  private List<String> measurementList;
   private List<IMeasurementSchema> schemaList;
 
-  public VectorPartialPath() {}
+  public AlignedPath() {}
 
-  public VectorPartialPath(String vectorPath, List<String> subSensorsList)
-      throws IllegalPathException {
+  public AlignedPath(String vectorPath, List<String> subSensorsList) throws IllegalPathException {
     super(vectorPath);
-    this.subSensorsList = subSensorsList;
+    this.measurementList = subSensorsList;
   }
 
-  public VectorPartialPath(String vectorPath, String subSensor) throws IllegalPathException {
+  public AlignedPath(String vectorPath, String subSensor) throws IllegalPathException {
     super(vectorPath);
-    subSensorsList = new ArrayList<>();
-    subSensorsList.add(subSensor);
+    measurementList = new ArrayList<>();
+    measurementList.add(subSensor);
   }
 
-  public VectorPartialPath(PartialPath vectorPath, String subSensor) {
+  public AlignedPath(PartialPath vectorPath, String subSensor) {
     super(vectorPath.getNodes());
-    subSensorsList = new ArrayList<>();
-    subSensorsList.add(subSensor);
+    measurementList = new ArrayList<>();
+    measurementList.add(subSensor);
   }
 
-  public VectorPartialPath(MeasurementPath path) {
+  public AlignedPath(MeasurementPath path) {
     super(path.getDevicePath().getNodes());
-    subSensorsList = new ArrayList<>();
-    subSensorsList.add(path.getMeasurement());
+    measurementList = new ArrayList<>();
+    measurementList.add(path.getMeasurement());
     schemaList = new ArrayList<>();
     schemaList.add(path.getMeasurementSchema());
   }
 
-  public List<String> getSubSensorsList() {
-    return subSensorsList;
+  public List<String> getMeasurementList() {
+    return measurementList;
   }
 
-  public String getSubSensor(int index) {
-    return subSensorsList.get(index);
+  public String getMeasurement(int index) {
+    return measurementList.get(index);
   }
 
-  public PartialPath getPathWithSubSensor(int index) {
-    return new PartialPath(nodes).concatNode(subSensorsList.get(index));
+  public PartialPath getPathWithMeasurement(int index) {
+    return new PartialPath(nodes).concatNode(measurementList.get(index));
   }
 
-  public void setSubSensorsList(List<String> subSensorsList) {
-    this.subSensorsList = subSensorsList;
+  public void setMeasurementList(List<String> measurementList) {
+    this.measurementList = measurementList;
   }
 
-  public void addSubSensor(String subSensor) {
-    this.subSensorsList.add(subSensor);
+  public void addMeasurement(String subSensor) {
+    this.measurementList.add(subSensor);
   }
 
-  public void addSubSensor(List<String> subSensors) {
-    this.subSensorsList.addAll(subSensors);
+  public void addMeasurement(List<String> subSensors) {
+    this.measurementList.addAll(subSensors);
   }
 
   public void addMeasurement(List<String> measurementList, List<IMeasurementSchema> schemaList) {
-    this.subSensorsList.addAll(measurementList);
+    this.measurementList.addAll(measurementList);
     if (schemaList == null) {
       schemaList = new ArrayList<>();
     }
@@ -110,16 +109,16 @@ public class VectorPartialPath extends PartialPath {
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
-    TSDataType[] types = new TSDataType[subSensorsList.size()];
-    TSEncoding[] encodings = new TSEncoding[subSensorsList.size()];
+    TSDataType[] types = new TSDataType[measurementList.size()];
+    TSEncoding[] encodings = new TSEncoding[measurementList.size()];
 
-    for (int i = 0; i < subSensorsList.size(); i++) {
+    for (int i = 0; i < measurementList.size(); i++) {
       types[i] = schemaList.get(i).getType();
       encodings[i] = schemaList.get(i).getEncodingType();
     }
-    String[] array = new String[subSensorsList.size()];
+    String[] array = new String[measurementList.size()];
     for (int i = 0; i < array.length; i++) {
-      array[i] = subSensorsList.get(i);
+      array[i] = measurementList.get(i);
     }
     return new VectorMeasurementSchema(
         VECTOR_PLACEHOLDER, array, types, encodings, schemaList.get(0).getCompressor());
@@ -127,11 +126,11 @@ public class VectorPartialPath extends PartialPath {
 
   @Override
   public PartialPath copy() {
-    VectorPartialPath result = new VectorPartialPath();
+    AlignedPath result = new AlignedPath();
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
-    result.subSensorsList = new ArrayList<>(subSensorsList);
+    result.measurementList = new ArrayList<>(measurementList);
     return result;
   }
 
@@ -146,20 +145,20 @@ public class VectorPartialPath extends PartialPath {
     if (!super.equals(o)) {
       return false;
     }
-    VectorPartialPath that = (VectorPartialPath) o;
-    return Objects.equals(subSensorsList, that.subSensorsList);
+    AlignedPath that = (AlignedPath) o;
+    return Objects.equals(measurementList, that.measurementList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), subSensorsList);
+    return Objects.hash(super.hashCode(), measurementList);
   }
 
   @Override
   public PartialPath getExactPath() {
     PartialPath path = super.getExactPath();
-    if (subSensorsList.size() == 1) {
-      return path.concatNode(subSensorsList.get(0));
+    if (measurementList.size() == 1) {
+      return path.concatNode(measurementList.get(0));
     }
     return path;
   }
@@ -167,8 +166,8 @@ public class VectorPartialPath extends PartialPath {
   @Override
   public String getExactFullPath() {
     fullPath = getFullPath();
-    if (subSensorsList.size() == 1) {
-      return fullPath + TsFileConstant.PATH_SEPARATOR + subSensorsList.get(0);
+    if (measurementList.size() == 1) {
+      return fullPath + TsFileConstant.PATH_SEPARATOR + measurementList.get(0);
     }
     return fullPath;
   }

@@ -44,6 +44,8 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -1083,10 +1085,9 @@ public class MManager {
         PartialPath existPath = nodeToPartialPath.get(fullPath);
         if (!existPath.equals(path)) {
           // could be VectorPartialPath
-          VectorPartialPath vectorPartialPath = (VectorPartialPath) path;
-          ((VectorPartialPath) existPath)
-              .addMeasurement(
-                  vectorPartialPath.getSubSensorsList(), vectorPartialPath.getSchemaList());
+          AlignedPath alignedPath = (AlignedPath) path;
+          ((AlignedPath) existPath)
+              .addMeasurement(alignedPath.getMeasurementList(), alignedPath.getSchemaList());
         }
       }
     }
@@ -1224,10 +1225,10 @@ public class MManager {
     if (schema instanceof UnaryMeasurementSchema) {
       return schema.getType();
     } else {
-      if (((VectorPartialPath) fullPath).getSubSensorsList().size() != 1) {
+      if (((AlignedPath) fullPath).getMeasurementList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        String subSensor = ((VectorPartialPath) fullPath).getSubSensor(0);
+        String subSensor = ((AlignedPath) fullPath).getMeasurement(0);
         List<String> measurements = schema.getSubMeasurementsList();
         return schema.getSubMeasurementsTSDataTypeList().get(measurements.indexOf(subSensor));
       }
