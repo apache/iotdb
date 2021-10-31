@@ -289,8 +289,8 @@ public class RecoverMergeTask extends MergeTask {
       File file = entry.getKey();
       Long lastPosition = entry.getValue();
       if (file != null && file.exists() && file.length() != lastPosition && lastPosition != 0) {
-        try (FileOutputStream fileInputStream = new FileOutputStream(file, true)) {
-          FileChannel channel = fileInputStream.getChannel();
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
+          FileChannel channel = fileOutputStream.getChannel();
           channel.truncate(lastPosition);
           channel.close();
         }
