@@ -379,8 +379,14 @@ previousUntilLastClause
     ;
 
 timeInterval
-    : LS_BRACKET startTime=datetimeLiteral COMMA endTime=datetimeLiteral RR_BRACKET
-    | LR_BRACKET startTime=datetimeLiteral COMMA endTime=datetimeLiteral RS_BRACKET
+    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
+    | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
+    ;
+
+timeValue
+    : datetimeLiteral
+    | dateExpression
+    | INTEGER_LITERAL
     ;
 
 // Insert Statement
@@ -397,7 +403,7 @@ insertValuesSpec
     ;
 
 insertMultiValue
-    : LR_BRACKET DATETIME_LITERAL (COMMA measurementValue)+ RR_BRACKET
+    : LR_BRACKET datetimeLiteral (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET INTEGER_LITERAL (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;
@@ -676,13 +682,18 @@ wildcard
 // Constant & Literal
 
 constant
-    : STRING_LITERAL
-    | dateExpression
-    | (MINUS|PLUS)? INTEGER_LITERAL
+    : dateExpression
     | (MINUS|PLUS)? realLiteral
+    | (MINUS|PLUS)? INTEGER_LITERAL
+    | STRING_LITERAL
     | BOOLEAN_LITERAL
     | NULL_LITERAL
     | NAN_LITERAL
+    ;
+
+datetimeLiteral
+    : DATETIME_LITERAL
+    | NOW LR_BRACKET RR_BRACKET
     ;
 
 realLiteral
@@ -691,17 +702,11 @@ realLiteral
     | EXPONENT_NUM_PART
     ;
 
-datetimeLiteral
-    : DATETIME_LITERAL
-    | dateExpression
-    | INTEGER_LITERAL
-    ;
-
 
 // Expression & Predicate
 
 dateExpression
-    : DATETIME_LITERAL ((PLUS | MINUS) DURATION_LITERAL)*
+    : datetimeLiteral ((PLUS | MINUS) DURATION_LITERAL)*
     ;
 
 expression

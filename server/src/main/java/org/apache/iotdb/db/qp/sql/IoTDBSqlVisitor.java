@@ -1168,24 +1168,20 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     long startTime;
     long endTime;
     long currentTime = DatetimeUtils.currentTime();
-    if (timeInterval.datetimeLiteral(0).INTEGER_LITERAL() != null) {
-      startTime = Long.parseLong(timeInterval.datetimeLiteral(0).INTEGER_LITERAL().getText());
-    } else if (timeInterval.datetimeLiteral(0).dateExpression() != null) {
-      startTime =
-          parseDateExpression(timeInterval.datetimeLiteral(0).dateExpression(), currentTime);
+    if (timeInterval.timeValue(0).INTEGER_LITERAL() != null) {
+      startTime = Long.parseLong(timeInterval.timeValue(0).INTEGER_LITERAL().getText());
+    } else if (timeInterval.timeValue(0).dateExpression() != null) {
+      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression(), currentTime);
     } else {
       startTime =
-          parseDateFormat(
-              timeInterval.datetimeLiteral(0).DATETIME_LITERAL().getText(), currentTime);
+          parseDateFormat(timeInterval.timeValue(0).datetimeLiteral().getText(), currentTime);
     }
-    if (timeInterval.datetimeLiteral(1).INTEGER_LITERAL() != null) {
-      endTime = Long.parseLong(timeInterval.datetimeLiteral(1).INTEGER_LITERAL().getText());
-    } else if (timeInterval.datetimeLiteral(1).dateExpression() != null) {
-      endTime = parseDateExpression(timeInterval.datetimeLiteral(1).dateExpression(), currentTime);
+    if (timeInterval.timeValue(1).INTEGER_LITERAL() != null) {
+      endTime = Long.parseLong(timeInterval.timeValue(1).INTEGER_LITERAL().getText());
+    } else if (timeInterval.timeValue(1).dateExpression() != null) {
+      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression(), currentTime);
     } else {
-      endTime =
-          parseDateFormat(
-              timeInterval.datetimeLiteral(1).DATETIME_LITERAL().getText(), currentTime);
+      endTime = parseDateFormat(timeInterval.timeValue(1).datetimeLiteral().getText(), currentTime);
     }
 
     groupByClauseComponent.setStartTime(startTime);
@@ -1332,8 +1328,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     long[] timeArray = new long[insertMultiValues.size()];
     for (int i = 0; i < insertMultiValues.size(); i++) {
       long timestamp;
-      if (insertMultiValues.get(i).DATETIME_LITERAL() != null) {
-        timestamp = parseDateFormat(insertMultiValues.get(i).DATETIME_LITERAL().getText());
+      if (insertMultiValues.get(i).datetimeLiteral() != null) {
+        timestamp = parseDateFormat(insertMultiValues.get(i).datetimeLiteral().getText());
       } else if (insertMultiValues.get(i).INTEGER_LITERAL() != null) {
         timestamp = Long.parseLong(insertMultiValues.get(i).INTEGER_LITERAL().getText());
       } else if (insertMultiValues.size() != 1) {
