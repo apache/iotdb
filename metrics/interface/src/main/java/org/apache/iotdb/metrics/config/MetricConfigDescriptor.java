@@ -75,6 +75,7 @@ public class MetricConfigDescriptor {
     if (url != null) {
       try (InputStream inputStream = new FileInputStream(new File(url))) {
         logger.info("Start to read config file {}", url);
+        // TODO how to load
         metricConfig = (MetricConfig) yaml.load(inputStream);
       } catch (IOException e) {
         logger.warn("Fail to find config file {}", url, e);

@@ -20,8 +20,8 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.PredefinedMetric;
 import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.Collections;
 import java.util.List;

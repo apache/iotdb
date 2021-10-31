@@ -20,13 +20,13 @@
 package org.apache.iotdb.metrics.dropwizard;
 
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.PredefinedMetric;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.type.*;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.jvm.*;

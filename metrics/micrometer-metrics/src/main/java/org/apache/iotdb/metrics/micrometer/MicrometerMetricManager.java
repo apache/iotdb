@@ -21,7 +21,6 @@ package org.apache.iotdb.metrics.micrometer;
 
 import org.apache.iotdb.metrics.CompositeReporter;
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.PredefinedMetric;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
@@ -30,6 +29,7 @@ import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.micrometer.core.instrument.*;

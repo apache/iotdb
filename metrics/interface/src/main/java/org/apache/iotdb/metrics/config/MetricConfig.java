@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
@@ -33,8 +34,7 @@ public class MetricConfig {
   /** The period of data pushed by the reporter to the remote monitoring system. */
   private Integer pushPeriodInSecond = 5;
 
-  private String metricManagerType = "MicrometerMetricManager";
-  private String metricReporterType = "MicrometerMetricReporter";
+  private MonitorType monitorType = MonitorType.DROPWIZARD;
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
   private List<ReporterType> metricReporterList = Arrays.asList(ReporterType.JMX);
@@ -57,20 +57,12 @@ public class MetricConfig {
     this.pushPeriodInSecond = pushPeriodInSecond;
   }
 
-  public String getMetricManagerType() {
-    return metricManagerType;
+  public void setMonitorType(MonitorType monitorType) {
+    this.monitorType = monitorType;
   }
 
-  public void setMetricManagerType(String metricManagerType) {
-    this.metricManagerType = metricManagerType;
-  }
-
-  public String getMetricReporterType() {
-    return metricReporterType;
-  }
-
-  public void setMetricReporterType(String metricReporterType) {
-    this.metricReporterType = metricReporterType;
+  public MonitorType getMonitorType() {
+    return monitorType;
   }
 
   public List<ReporterType> getMetricReporterList() {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.List;
 import java.util.Map;

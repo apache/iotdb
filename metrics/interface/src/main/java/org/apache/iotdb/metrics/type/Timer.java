@@ -23,46 +23,25 @@ import java.util.concurrent.TimeUnit;
 
 public interface Timer extends IMetric {
 
-  /**
-   * update time of timer
-   *
-   * @param duration
-   * @param unit
-   */
+  /** update time of timer */
   void update(long duration, TimeUnit unit);
 
-  /**
-   * update timer by millisecond
-   *
-   * @param durationMillis
-   */
+  /** update timer by millisecond */
   default void updateMillis(long durationMillis) {
     update(durationMillis, TimeUnit.MILLISECONDS);
   }
 
-  /**
-   * update timer by microseconds
-   *
-   * @param durationMicros
-   */
+  /** update timer by microseconds */
   default void updateMicros(long durationMicros) {
     update(durationMicros, TimeUnit.MICROSECONDS);
   }
 
-  /**
-   * update timer by nanoseconds
-   *
-   * @param durationNanos
-   */
+  /** update timer by nanoseconds */
   default void updateNanos(long durationNanos) {
     update(durationNanos, TimeUnit.NANOSECONDS);
   }
 
-  /**
-   * take snapshot of timer
-   *
-   * @return
-   */
+  /** take snapshot of timer */
   HistogramSnapshot takeSnapshot();
 
   /**

@@ -23,17 +23,9 @@ public interface Counter extends IMetric {
   /** Counter add 1 */
   void inc();
 
-  /**
-   * Counter add n
-   *
-   * @param n
-   */
+  /** Counter add n */
   void inc(long n);
 
-  /**
-   * Get value of counter
-   *
-   * @return
-   */
+  /** Get value of counter */
   long count();
 }

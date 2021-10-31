@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingCompositeReporter;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
@@ -65,7 +66,9 @@ public class MetricService {
 
     for (MetricManager mf : metricManagers) {
       size++;
-      if (metricConfig.getMetricManagerType().equals(mf.getName())) {
+      if (mf.getName()
+          .toLowerCase()
+          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
         metricManager = mf;
         break;
       }
@@ -83,7 +86,9 @@ public class MetricService {
     size = 0;
     for (CompositeReporter r : reporter) {
       size++;
-      if (metricConfig.getMetricReporterType().equals(r.getName())) {
+      if (r.getName()
+          .toLowerCase()
+          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
         compositeReporter = r;
         logger.info("detect MetricReporter {}", r.getClass().getName());
       }
@@ -113,7 +118,7 @@ public class MetricService {
    *
    * @param reporter
    */
-  public static void start(String reporter) {
+  public static void start(ReporterType reporter) {
     compositeReporter.start(reporter);
   }
 
@@ -122,7 +127,7 @@ public class MetricService {
    *
    * @param reporter
    */
-  public static void stop(String reporter) {
+  public static void stop(ReporterType reporter) {
     compositeReporter.stop(reporter);
   }
 

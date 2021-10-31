@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.dropwizard;
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
-import org.apache.iotdb.metrics.PredefinedMetric;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.type.*;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;

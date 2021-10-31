@@ -20,17 +20,9 @@
 package org.apache.iotdb.metrics.type;
 
 public interface Gauge extends IMetric {
-  /**
-   * Set value to gauge
-   *
-   * @return
-   */
+  /** Set value to gauge */
   void set(long value);
 
-  /**
-   * Get value stored in gauge
-   *
-   * @return
-   */
+  /** Get value stored in gauge */
   long value();
 }
