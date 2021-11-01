@@ -18,48 +18,78 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class VectorSeriesReader extends SeriesReader {
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
 
-  public VectorSeriesReader(PartialPath seriesPath,
+public class AlignedSeriesReader extends SeriesReader {
+
+  public AlignedSeriesReader(
+      PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
       QueryDataSource dataSource,
       Filter timeFilter,
       Filter valueFilter,
-      TsFileFilter fileFilter, boolean ascending) {
-    super(seriesPath, allSensors, dataType, context, dataSource, timeFilter, valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    super(
+        seriesPath,
+        allSensors,
+        dataType,
+        context,
+        dataSource,
+        timeFilter,
+        valueFilter,
         fileFilter,
         ascending);
   }
 
-  public VectorSeriesReader(PartialPath seriesPath, Set<String> allSensors,
-      TSDataType dataType, QueryContext context,
+  @TestOnly
+  public AlignedSeriesReader(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
       List<TsFileResource> seqFileResource,
       List<TsFileResource> unseqFileResource,
-      Filter timeFilter, Filter valueFilter, boolean ascending) {
-    super(seriesPath, allSensors, dataType, context, seqFileResource, unseqFileResource, timeFilter,
-        valueFilter, ascending);
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
+    super(
+        seriesPath,
+        allSensors,
+        dataType,
+        context,
+        seqFileResource,
+        unseqFileResource,
+        timeFilter,
+        valueFilter,
+        ascending);
   }
 
   @Override
-  protected ITimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource,
-      PartialPath seriesPath, QueryContext context, Filter filter, Set<String> allSensors)
+  protected ITimeSeriesMetadata loadTimeSeriesMetadata(
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter filter,
+      Set<String> allSensors)
       throws IOException {
-    return FileLoaderUtils.loadTimeSeriesMetadata(resource, (VectorPartialPath) seriesPath, context, filter, allSensors);
+    return FileLoaderUtils.loadTimeSeriesMetadata(
+        resource, (AlignedPath) seriesPath, context, filter, allSensors);
   }
 }

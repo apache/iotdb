@@ -602,7 +602,8 @@ public class VectorTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putVectors(long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
+  public void putVectors(
+      long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     checkExpansion();
     int idx = start;
 
@@ -651,7 +652,8 @@ public class VectorTVList extends TVList {
     }
   }
 
-  private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining, int[] columnOrder) {
+  private void arrayCopy(
+      Object[] value, int idx, int arrayIndex, int elementIndex, int remaining, int[] columnOrder) {
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
       switch (dataTypes.get(i)) {

@@ -186,7 +186,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
+  public void putVectors(
+      long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 

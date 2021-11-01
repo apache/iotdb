@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,7 +43,7 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
   private final int subSensorSize;
 
   public VectorSeriesAggregateReader(
-      VectorPartialPath seriesPath,
+      AlignedPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
@@ -53,7 +53,7 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
       TsFileFilter fileFilter,
       boolean ascending) {
     this.seriesReader =
-        new VectorSeriesReader(
+        new AlignedSeriesReader(
             seriesPath,
             allSensors,
             dataType,
@@ -63,7 +63,7 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
             valueFilter,
             fileFilter,
             ascending);
-    this.subSensorSize = seriesPath.getSubSensorsList().size();
+    this.subSensorSize = seriesPath.getMeasurementList().size();
   }
 
   @Override

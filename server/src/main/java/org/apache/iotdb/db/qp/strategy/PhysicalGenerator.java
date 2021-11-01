@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -59,6 +59,6 @@ public class PhysicalGenerator {
   }
 
   public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
-    return IoTDB.metaManager.groupVectorPaths(paths);
+    return IoTDB.metaManager.groupAlignedPaths(paths);
   }
 }
