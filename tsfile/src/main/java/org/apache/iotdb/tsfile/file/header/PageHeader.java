@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.tsfile.file.header;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class PageHeader {
 
@@ -51,9 +50,12 @@ public class PageHeader {
     return 2 * (Integer.BYTES + 1);
   }
 
-  public static PageHeader deserializeFrom(
+  public static PageHeader deserializeFrom( // Todo:添加若是空page
       InputStream inputStream, TSDataType dataType, boolean hasStatistic) throws IOException {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    if (uncompressedSize == 0) {
+      return new PageHeader(0, 0, null);
+    }
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     Statistics<? extends Serializable> statistics = null;
     if (hasStatistic) {
@@ -64,6 +66,9 @@ public class PageHeader {
 
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    if (uncompressedSize == 0) {
+      return new PageHeader(0, 0, null);
+    }
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     Statistics<? extends Serializable> statistics = Statistics.deserialize(buffer, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
@@ -72,6 +77,9 @@ public class PageHeader {
   public static PageHeader deserializeFrom(
       ByteBuffer buffer, Statistics<? extends Serializable> chunkStatistic) {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    if (uncompressedSize == 0) {
+      return new PageHeader(0, 0, null);
+    }
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     return new PageHeader(uncompressedSize, compressedSize, chunkStatistic);
   }

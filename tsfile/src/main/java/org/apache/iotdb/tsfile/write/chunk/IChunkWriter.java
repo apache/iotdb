@@ -91,4 +91,6 @@ public interface IChunkWriter {
   TSDataType getDataType();
 
   void addValueChunkWriter(ValueChunkWriter valueChunkWriter);
+
+  void setValueIndex(int valueIndex);
 }

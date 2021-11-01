@@ -82,13 +82,29 @@ public class VectorChunkWriterImpl implements IChunkWriter {
     addEmptyData(valueChunkWriter);
   }
 
+  public void addValueChunkWriter(IMeasurementSchema schema) {
+    ValueChunkWriter valueChunkWriter =
+        new ValueChunkWriter(
+            schema.getMeasurementId(),
+            schema.getCompressor(),
+            schema.getType(),
+            schema.getEncodingType(),
+            schema.getValueEncoder());
+    valueChunkWriterList.add(valueChunkWriter);
+    addEmptyData(valueChunkWriter);
+  }
+
   public void addEmptyData(ValueChunkWriter valueChunkWriter) {
+    System.out.println("----------Vector page num is " + timeChunkWriter.getNumOfPages());
     // initial empty page
     for (int i = 0; i < timeChunkWriter.getNumOfPages(); i++) {
       valueChunkWriter.writeEmptyPageToPageBuffer();
     }
 
     // initial emptyData of currentPage
+    System.out.println(
+        "----------Vector current page point num is "
+            + timeChunkWriter.getPageWriter().getStatistics().getCount());
     for (long i = 0; i < timeChunkWriter.getPageWriter().getStatistics().getCount(); i++) {
       valueChunkWriter.write(0, 0, true);
     }
@@ -189,9 +205,12 @@ public class VectorChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
+    System.out.println("--pos is : " + tsfileWriter.getPos());
     timeChunkWriter.writeToFileWriter(tsfileWriter);
+    System.out.println("---pos is : " + tsfileWriter.getPos());
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.writeToFileWriter(tsfileWriter);
+      System.out.println("----pos is : " + tsfileWriter.getPos());
     }
   }
 
@@ -236,5 +255,9 @@ public class VectorChunkWriterImpl implements IChunkWriter {
   @Override
   public TSDataType getDataType() {
     return TSDataType.VECTOR;
+  }
+
+  public void setValueIndex(int valueIndex) {
+    this.valueIndex = valueIndex;
   }
 }

@@ -483,4 +483,8 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void setLastPoint(boolean isLastPoint) {
     this.isLastPoint = isLastPoint;
   }
+
+  public void setValueIndex(int valueIndex) {
+    throw new IllegalStateException("write time method is not implemented in common chunk writer");
+  }
 }

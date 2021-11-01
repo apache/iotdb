@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.tsfile;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -28,23 +32,17 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 /** An example of writing vector type timeseries with tablet */
-public class TsFileWriteVectorWithTablet {
+public class TsFileWriteVectorWithTabletOld {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteVectorWithTablet.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteVectorWithTabletOld.class);
 
   public static void main(String[] args) throws IOException {
     try {
-      String path = "test.tsfile";
+      String path = "TabletVector.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists() && !f.delete()) {
         throw new RuntimeException("can not delete " + f.getAbsolutePath());

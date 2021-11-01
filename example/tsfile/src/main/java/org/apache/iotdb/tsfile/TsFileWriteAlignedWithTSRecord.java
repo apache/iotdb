@@ -16,10 +16,10 @@ import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
-public class TsFileWriterVectorWithTSRecord {
+public class TsFileWriteAlignedWithTSRecord {
 
   public static void main(String[] args) throws IOException {
-    File f = FSFactoryProducer.getFSFactory().getFile("test.tsfile");
+    File f = FSFactoryProducer.getFSFactory().getFile("vectorRecord.tsfile");
     if (f.exists() && !f.delete()) {
       throw new RuntimeException("can not delete " + f.getAbsolutePath());
     }

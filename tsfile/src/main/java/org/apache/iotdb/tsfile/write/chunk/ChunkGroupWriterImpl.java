@@ -20,8 +20,10 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,9 +43,10 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   private final String deviceId;
 
-  // measurementID -> indexOfValueChunkWriter
-  //  Map<String, Integer> measurementChunkWriterMap = new HashMap<>();
+  // measurementID -> ValueChunkWriter
   Map<String, ValueChunkWriter> measurementChunkWriterMap = new HashMap<>();
+
+  Set<String> writenMeasurementSet = new HashSet<>();
 
   /** Map(measurementID, ChunkWriterImpl). */
   private Map<String, IChunkWriter> chunkWriters = new HashMap<>();
@@ -76,7 +79,8 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
                 schema.getType(),
                 schema.getEncodingType(),
                 schema.getValueEncoder());
-        measurementChunkWriterMap.put(schema.getMeasurementId(), valueChunkWriter);
+        measurementChunkWriterMap.put(schema.getMeasurementId(), measurementChunkWriterMap.size());
+        // measurementChunkWriterMap.put(schema.getMeasurementId(), valueChunkWriter);
         vectorChunkWriter.addValueChunkWriter(
             valueChunkWriter); // Todo:是否需要这步？或者直接在ChunkGroupWriter里调用ValueChunkWriter进行写入
         this.chunkWriters.put("", vectorChunkWriter);
@@ -98,17 +102,10 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public void writeAligned(long time, List<DataPoint> data) throws IOException {
-    //    for (DataPoint d : data) {
-    //      if (!chunkWriters.containsKey("")
-    //          || !chunkWriters.get("").getValueChunkWriterMap().containsKey(d.getMeasurementId()))
-    // {
-    //        throw new NoMeasurementException(
-    //            "aligned measurements not found in device " + deviceId + " !");
-    //      }
-    //    }
     IChunkWriter vectorChunkWriter = chunkWriters.get("");
     for (DataPoint point : data) {
       // point.writeTo(time, vectorChunkWriter); // only write value to valuePage
+      writenMeasurementSet.add(point.getMeasurementId());
       ValueChunkWriter valueChunkWriter =
           measurementChunkWriterMap.get(
               point.getMeasurementId()); // Todo:应该要用VectorChunkWriter进行写入比较好
@@ -137,7 +134,20 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
               String.format("Data type %s is not supported.", point.getType()));
       }
     }
+    addEmptyData(time);
     vectorChunkWriter.write(time);
+  }
+
+  private void writeAlignedByTimestamp(
+      TSDataType tsDataType, long time, Object value, boolean isNull) {}
+
+  private void addEmptyData(long time) {
+    for (Map.Entry<String, ValueChunkWriter> entry : measurementChunkWriterMap.entrySet()) {
+      if (!writenMeasurementSet.contains(entry.getKey())) {
+        entry.getValue().write(time, 0, true);
+      }
+    }
+    writenMeasurementSet.clear();
   }
 
   /*@Override
@@ -157,6 +167,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     }
   }*/
 
+  @Override
   public void write(Tablet tablet) throws NoMeasurementException {
     List<IMeasurementSchema> timeseries = tablet.getSchemas();
     for (int i = 0; i < timeseries.size(); i++) {
@@ -169,7 +180,8 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     }
   }
 
-  public void writeAligned(Tablet tablet) { // 写操作时，一个Tablet要么全是该设备的非对齐序列，要么全是对齐序列。两者不能混合放入一个Tablet里
+  @Override
+  public void writeAligned(Tablet tablet) {
     int batchSize = tablet.rowSize;
     List<IMeasurementSchema> measurementSchemas = tablet.getSchemas();
     IChunkWriter vectorChunkWriter = chunkWriters.get("");
@@ -183,24 +195,29 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
             && tablet.bitMaps[columnIndex].isMarked(row)) {
           isNull = true;
         }
+        ValueChunkWriter valueChunkWriter =
+            measurementChunkWriterMap.get(
+                measurementSchemas
+                    .get(columnIndex)
+                    .getMeasurementId()); // Todo:bug,若有对齐序列s1,s2,s3,此次是对s3进行写操作，则需要把s1,s2插入对应条数的空数据
         switch (measurementSchemas.get(columnIndex).getType()) {
           case BOOLEAN:
             vectorChunkWriter.write(time, ((boolean[]) tablet.values[columnIndex])[row], isNull);
             break;
           case INT32:
-            vectorChunkWriter.write(time, ((int[]) tablet.values[columnIndex])[row], isNull);
+            valueChunkWriter.write(time, ((int[]) tablet.values[columnIndex])[row], isNull);
             break;
           case INT64:
-            vectorChunkWriter.write(time, ((long[]) tablet.values[columnIndex])[row], isNull);
+            valueChunkWriter.write(time, ((long[]) tablet.values[columnIndex])[row], isNull);
             break;
           case FLOAT:
-            vectorChunkWriter.write(time, ((float[]) tablet.values[columnIndex])[row], isNull);
+            valueChunkWriter.write(time, ((float[]) tablet.values[columnIndex])[row], isNull);
             break;
           case DOUBLE:
-            vectorChunkWriter.write(time, ((double[]) tablet.values[columnIndex])[row], isNull);
+            valueChunkWriter.write(time, ((double[]) tablet.values[columnIndex])[row], isNull);
             break;
           case TEXT:
-            vectorChunkWriter.write(time, ((Binary[]) tablet.values[columnIndex])[row], isNull);
+            valueChunkWriter.write(time, ((Binary[]) tablet.values[columnIndex])[row], isNull);
             break;
           default:
             throw new UnSupportedDataTypeException(
