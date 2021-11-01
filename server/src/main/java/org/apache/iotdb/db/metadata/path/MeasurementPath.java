@@ -153,8 +153,8 @@ public class MeasurementPath extends PartialPath {
       Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
     // check If Memtable Contains this path
-    if (memTableMap.containsKey(getDevice())
-        && memTableMap.get(getDevice()).containsKey(getMeasurement())) {
+    if (!memTableMap.containsKey(getDevice())
+        || !memTableMap.get(getDevice()).containsKey(getMeasurement())) {
       return null;
     }
     IWritableMemChunk memChunk = memTableMap.get(getDevice()).get(getMeasurement());
