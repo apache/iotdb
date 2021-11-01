@@ -1644,12 +1644,12 @@ public class IoTDBGroupByFillIT {
   @Test(expected = IoTDBSQLException.class)
   public void linearFailTest2() throws SQLException {
     try (Connection connection =
-                 DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
-              "select first_value(text) from "
-                      + "root.ln.wf01.wt01 "
-                      + "GROUP BY ([17, 55), 5ms) FILL(text[linear])");
+          "select first_value(text) from "
+              + "root.ln.wf01.wt01 "
+              + "GROUP BY ([17, 55), 5ms) FILL(text[linear])");
     }
   }
 

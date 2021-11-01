@@ -113,7 +113,6 @@ import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -1223,7 +1222,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parsePrimitiveTypeClause(
       IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     TSDataType dataType = parseType(ctx.dataType.getText());
-    if (ctx.linearClause() != null && (dataType == TSDataType.TEXT || dataType == TSDataType.BOOLEAN)) {
+    if (ctx.linearClause() != null
+        && (dataType == TSDataType.TEXT || dataType == TSDataType.BOOLEAN)) {
       throw new SQLParserException(
           String.format(
               "type %s cannot use %s fill function",
