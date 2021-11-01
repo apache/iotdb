@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
 import java.util.List;
 
 public interface IWritableMemChunk {
@@ -59,7 +58,7 @@ public interface IWritableMemChunk {
 
   void write(long insertTime, Object objectValue);
 
-  void writeVector(long insertTime, String[] measurements, Object[] objectValue);
+  void writeVector(long insertTime, Object[] objectValue, IMeasurementSchema schema);
 
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the
@@ -70,9 +69,9 @@ public interface IWritableMemChunk {
 
   void writeVector(
       long[] times,
-      String[] measurements,
       Object[] valueList,
       BitMap[] bitMaps,
+      IMeasurementSchema schema,
       int start,
       int end);
 

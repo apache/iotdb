@@ -191,10 +191,6 @@ public class LogReplayer {
     }
     // set measurementMNodes, WAL already serializes the real data type, so no need to infer type
     plan.setMeasurementMNodes(mNodes);
-
-    if (plan.isAligned()) {
-      plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
-    }
     // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
@@ -214,20 +210,11 @@ public class LogReplayer {
                 tPlan.getPrefixPath().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
-      } else if (!tPlan.isAligned() && mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
+      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
         tPlan.markFailedMeasurementInsertion(
             i,
             new DataTypeMismatchException(
                 mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
-      } else if (tPlan.isAligned()
-          && mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)
-              != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(
-            i,
-            new DataTypeMismatchException(
-                mNodes[i].getName() + "." + mNodes[i].getSchema().getSubMeasurementsList().get(i),
-                tPlan.getDataTypes()[i],
-                mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)));
       }
     }
   }

@@ -234,9 +234,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void writeAlignedRow(
-      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
+      String deviceId, IMeasurementSchema schema, long insertTime, Object[] objectValue) {
     IWritableMemChunk memSeries = createVectorMemChunkIfNotExistAndGet(deviceId, schema);
-    memSeries.write(insertTime, objectValue);
+    memSeries.writeVector(insertTime, objectValue, schema);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -289,9 +289,9 @@ public abstract class AbstractMemTable implements IMemTable {
             insertTabletPlan.getPrefixPath().getFullPath(), vectorSchema);
     memSeries.writeVector(
         insertTabletPlan.getTimes(),
-        insertTabletPlan.getMeasurements(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
+        vectorSchema,
         start,
         end);
   }

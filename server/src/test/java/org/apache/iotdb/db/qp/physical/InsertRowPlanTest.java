@@ -120,7 +120,7 @@ public class InsertRowPlanTest {
     executor.insert(vectorRowPlan);
 
     Assert.assertEquals(
-        "[vector, vector, vector]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
+        "[s1, s2, s3]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");

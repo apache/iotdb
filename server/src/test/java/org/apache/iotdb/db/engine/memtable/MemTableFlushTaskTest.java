@@ -112,7 +112,7 @@ public class MemTableFlushTaskTest {
     assertTrue(
         writer
             .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0, "vectorName.sensor0", TSDataType.BOOLEAN)
+                MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .isEmpty());
     memTableFlushTask.syncFlushMemTable();
     writer.makeMetadataVisible();
@@ -120,14 +120,14 @@ public class MemTableFlushTaskTest {
         1,
         writer
             .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0, "vectorName.sensor0", TSDataType.BOOLEAN)
+                MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .size());
     ChunkMetadata chunkMetaData =
         writer
             .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0, "vectorName.sensor0", TSDataType.BOOLEAN)
+                MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .get(0);
-    assertEquals("vectorName.sensor0", chunkMetaData.getMeasurementUid());
+    assertEquals("sensor0", chunkMetaData.getMeasurementUid());
     assertEquals(startTime, chunkMetaData.getStartTime());
     assertEquals(endTime, chunkMetaData.getEndTime());
     assertEquals(TSDataType.BOOLEAN, chunkMetaData.getDataType());
@@ -142,7 +142,7 @@ public class MemTableFlushTaskTest {
     assertTrue(
         writer
             .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0, "vectorName.sensor0", TSDataType.BOOLEAN)
+                MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .isEmpty());
     memTableFlushTask.syncFlushMemTable();
     writer.makeMetadataVisible();
@@ -150,14 +150,14 @@ public class MemTableFlushTaskTest {
         1,
         writer
             .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0, "vectorName.sensor0", TSDataType.BOOLEAN)
+                MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .size());
     ChunkMetadata chunkMetaData =
         writer
             .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0, "vectorName.sensor0", TSDataType.BOOLEAN)
+                MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .get(0);
-    assertEquals("vectorName.sensor0", chunkMetaData.getMeasurementUid());
+    assertEquals("sensor0", chunkMetaData.getMeasurementUid());
     assertEquals(startTime, chunkMetaData.getStartTime());
     assertEquals(endTime, chunkMetaData.getEndTime());
     assertEquals(TSDataType.BOOLEAN, chunkMetaData.getDataType());

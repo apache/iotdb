@@ -47,7 +47,7 @@ public interface IMemTable {
   void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
 
   void writeAlignedRow(
-      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
+      String deviceId, IMeasurementSchema schema, long insertTime, Object[] objectValue);
   /**
    * write data in the range [start, end). Null value in each column values will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}

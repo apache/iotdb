@@ -343,17 +343,19 @@ public class PrimitiveMemTableTest {
     encodings[0] = TSEncoding.PLAIN;
     encodings[1] = TSEncoding.GORILLA;
 
-    String deviceId = "root.sg.device5";
+    String deviceId = "root.sg.vectorDevice5";
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    IMeasurementSchema schema =
-        new VectorMeasurementSchema("$#$0", measurements, dataTypes, encodings);
-    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema, null);
-    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema, null);
+    IMeasurementSchema schema0 =
+        new UnaryMeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
+    IMeasurementSchema schema1 =
+        new UnaryMeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
+    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema0, null);
+    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(
-            new PartialPath(deviceId), new String[] {"(sensor0,sensor1)"}, dataTypesList);
+            new PartialPath(deviceId), measurements, dataTypesList);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
