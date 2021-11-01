@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -163,11 +163,11 @@ public class ReadOnlyMemChunk {
 
     this.chunkPointReader =
         tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-    initVectorChunkMeta(schema);
+    initVectorChunkMeta((VectorMeasurementSchema) schema);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private void initVectorChunkMeta(IMeasurementSchema schema)
+  private void initVectorChunkMeta(VectorMeasurementSchema schema)
       throws IOException, QueryProcessException {
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =

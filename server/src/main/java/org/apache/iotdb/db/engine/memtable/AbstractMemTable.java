@@ -115,12 +115,13 @@ public abstract class AbstractMemTable implements IMemTable {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
+    VectorMeasurementSchema vectorSchema = (VectorMeasurementSchema) schema;
     return memSeries.computeIfAbsent(
-        schema.getMeasurementId(),
+        vectorSchema.getMeasurementId(),
         k -> {
           seriesNumber++;
-          totalPointsNumThreshold += avgSeriesPointNumThreshold + schema.getSubMeasurementsCount();
-          return genVectorMemSeries(schema);
+          totalPointsNumThreshold += avgSeriesPointNumThreshold + vectorSchema.getSubMeasurementsCount();
+          return genVectorMemSeries(vectorSchema);
         });
   }
 

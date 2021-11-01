@@ -28,7 +28,7 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(VectorWritableMemChunk.class);
 
-  public VectorWritableMemChunk(IMeasurementSchema schema) {
+  public VectorWritableMemChunk(VectorMeasurementSchema schema) {
     this.schema = schema;
     vectorIdIndexMap = new HashMap<>();
     for (int i = 0; i < schema.getSubMeasurementsCount(); i++) {
@@ -149,6 +149,11 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
       columnOrder[i] = vectorIdIndexMap.get(measurementIdList.get(i));
     }
     return columnOrder;
+  }
+
+  @Override
+  public TVList getTVList() {
+    return list;
   }
 
   @Override
