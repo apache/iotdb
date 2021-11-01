@@ -94,7 +94,7 @@ public class ThriftServiceThread extends Thread {
         e);
   }
 
-  /** for asynced ThriftService */
+  /** for asynced ThriftService. */
   @SuppressWarnings("squid:S107")
   public ThriftServiceThread(
       TBaseAsyncProcessor processor,
@@ -324,7 +324,7 @@ public class ThriftServiceThread extends Thread {
     return false;
   }
 
-  public static enum ServerType {
+  public enum ServerType {
     SELECTOR,
     HSHA
   }

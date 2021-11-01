@@ -37,8 +37,7 @@ public class UpgradeSevice implements IService {
   private static final Logger logger = LoggerFactory.getLogger(UpgradeSevice.class);
 
   private ExecutorService upgradeThreadPool;
-  private AtomicInteger threadCnt = new AtomicInteger();
-  private static AtomicInteger cntUpgradeFileNum = new AtomicInteger();
+  private static final AtomicInteger cntUpgradeFileNum = new AtomicInteger();
 
   private UpgradeSevice() {}
 

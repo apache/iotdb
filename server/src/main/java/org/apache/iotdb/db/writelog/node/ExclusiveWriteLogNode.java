@@ -68,10 +68,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private final Object switchBufferCondition = new Object();
 
-  // TODO: FLUSH_BUFFER_THREAD_POOL =
-  //        IoTDBThreadPoolFactory.newSingleThreadExecutor(
-  //            "Flush-WAL-Thread-" + SystemFileFactory.INSTANCE.getFile(logDirectory).getName());
-
   private final ReentrantLock lock = new ReentrantLock();
   private final ExecutorService FLUSH_BUFFER_THREAD_POOL;
 

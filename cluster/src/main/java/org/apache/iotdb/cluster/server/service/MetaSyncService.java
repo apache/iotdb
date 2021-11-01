@@ -169,7 +169,6 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
 
   @Override
   public ByteBuffer collectMigrationStatus() {
-    // TODO not sure whether it can happen before the meta engine is ready
     return ClusterUtils.serializeMigrationStatus(metaGroupMember.collectMigrationStatus());
   }
 

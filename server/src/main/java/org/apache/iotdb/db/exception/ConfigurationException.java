@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class ConfigurationException extends IoTDBException {
-  String parameter;
-  String correctValue;
+  final String parameter;
+  final String correctValue;
 
   public ConfigurationException(String parameter, String badValue, String correctValue) {
     super(

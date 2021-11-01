@@ -141,9 +141,9 @@ public class BaseClientTest {
     if (dataHeartbeatServer != null) {
       dataHeartbeatServer.close();
     }
-    if (dataServerListeningThread != null) {
-      dataServerListeningThread.interrupt();
-      dataServerListeningThread.join();
+    if (dataHeartbeatServerListeningThread != null) {
+      dataHeartbeatServerListeningThread.interrupt();
+      dataHeartbeatServerListeningThread.join();
     }
   }
 

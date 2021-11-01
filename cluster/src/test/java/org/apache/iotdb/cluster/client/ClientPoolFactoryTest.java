@@ -65,13 +65,13 @@ public class ClientPoolFactoryTest {
           @Override
           public void returnAsyncClient(
               RaftService.AsyncClient client, Node node, ClientCategory category) {
-            Assert.assertTrue(client == asyncClient);
+            Assert.assertSame(client, asyncClient);
           }
 
           @Override
           public void returnSyncClient(
               RaftService.Client client, Node node, ClientCategory category) {
-            Assert.assertTrue(client == syncClient);
+            Assert.assertSame(client, syncClient);
           }
         };
     clientPoolFactory.setClientManager(mockClientManager);

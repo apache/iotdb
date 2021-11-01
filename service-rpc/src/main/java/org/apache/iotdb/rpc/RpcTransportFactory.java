@@ -38,7 +38,7 @@ public class RpcTransportFactory extends TTransportFactory {
     reInit();
   }
 
-  private TTransportFactory inner;
+  private final TTransportFactory inner;
 
   private RpcTransportFactory(TTransportFactory inner) {
     this.inner = inner;

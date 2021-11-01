@@ -110,8 +110,8 @@ public class IoTDBCheckConfigIT {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
     } catch (ConfigurationException t) {
-      assertEquals(t.getParameter(), "time_encoder");
-      assertEquals(t.getCorrectValue(), "REGULAR");
+      assertEquals("time_encoder", t.getParameter());
+      assertEquals("REGULAR", t.getCorrectValue());
       return;
     }
     fail("should detect configuration errors");
