@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.path;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
@@ -45,6 +46,12 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(PartialPath measurementPath) {
     super(measurementPath.getNodes());
+  }
+
+  public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)
+      throws IllegalPathException {
+    super(device, measurement);
+    this.measurementSchema = measurementSchema;
   }
 
   public IMeasurementSchema getMeasurementSchema() {

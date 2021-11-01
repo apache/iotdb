@@ -106,12 +106,7 @@ public interface IMemTable {
   void insertAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException;
 
-  ReadOnlyMemChunk query(
-      String deviceId,
-      String measurement,
-      IMeasurementSchema schema,
-      long ttlLowerBound,
-      List<TimeRange> deletionList)
+  ReadOnlyMemChunk query(PartialPath fullPath, long ttlLowerBound, List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
 
   /** putBack all the memory resources. */

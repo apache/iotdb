@@ -59,6 +59,14 @@ public class AlignedPath extends PartialPath {
     this.measurementList = subSensorsList;
   }
 
+  public AlignedPath(
+      String vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
+      throws IllegalPathException {
+    super(vectorPath);
+    this.measurementList = measurementList;
+    this.schemaList = schemaList;
+  }
+
   public AlignedPath(String vectorPath, String subSensor) throws IllegalPathException {
     super(vectorPath);
     measurementList = new ArrayList<>();
