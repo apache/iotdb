@@ -264,7 +264,6 @@ public class FileLoaderUtils {
         Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
         chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
         chunkReader = new ChunkReader(chunk, timeFilter);
-        chunkReader.hasNextSatisfiedPage();
       } else {
         VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetaData;
         Chunk timeChunk = vectorChunkMetadata.getTimeChunk();
