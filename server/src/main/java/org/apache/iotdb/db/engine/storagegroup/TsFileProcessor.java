@@ -50,6 +50,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -385,13 +386,13 @@ public class TsFileProcessor {
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(
               insertRowPlan.getMeasurements()[0], insertRowPlan.getDataTypes()[0]);
-      memTableIncrement += TVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes());
+      memTableIncrement += VectorTVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes());
     } else {
       // here currentChunkPointNum >= 1
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, null);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-              ? TVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes())
+              ? VectorTVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes())
               : 0;
     }
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
@@ -510,19 +511,19 @@ public class TsFileProcessor {
           dataTypes.length * ChunkMetadata.calculateRamSize(measurementId, dataTypes[0]);
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-              * TVList.vectorTvListArrayMemSize(dataTypes);
+              * VectorTVList.vectorTvListArrayMemSize(dataTypes);
     } else {
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, null);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * TVList.vectorTvListArrayMemSize(dataTypes);
+                * VectorTVList.vectorTvListArrayMemSize(dataTypes);
       } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         memIncrements[0] +=
-            acquireArray == 0 ? 0 : acquireArray * TVList.vectorTvListArrayMemSize(dataTypes);
+            acquireArray == 0 ? 0 : acquireArray * VectorTVList.vectorTvListArrayMemSize(dataTypes);
       }
     }
     // TEXT data size

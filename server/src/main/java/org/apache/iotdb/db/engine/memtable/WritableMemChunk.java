@@ -257,10 +257,9 @@ public class WritableMemChunk implements IWritableMemChunk {
     return list.delete(lowerBound, upperBound);
   }
 
-  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
   @Override
-  public int delete(long lowerBound, long upperBound, int columnIndex) {
-    return list.delete(lowerBound, upperBound, columnIndex);
+  public int delete(long lowerBound, long upperBound, String measurementId) {
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
   @Override

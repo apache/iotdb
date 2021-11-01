@@ -191,12 +191,12 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public int delete(long lowerBound, long upperBound) {
-    // TODO Auto-generated method stub
-    return 0;
+    return list.delete(lowerBound, upperBound);
   }
 
   @Override
-  public int delete(long lowerBound, long upperBound, int columnIndex) {
+  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
+  public int delete(long lowerBound, long upperBound, String measurementId) {
     // TODO Auto-generated method stub
     return 0;
   }

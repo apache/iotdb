@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -63,6 +66,10 @@ public class VectorTVList extends TVList {
     for (int i = 0; i < types.size(); i++) {
       values.add(new ArrayList<>());
     }
+  }
+
+  public static VectorTVList newVectorList(List<TSDataType> datatypes) {
+    return new VectorTVList(datatypes);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -340,6 +347,36 @@ public class VectorTVList extends TVList {
     return dataTypes;
   }
 
+  @Override
+  public int delete(long lowerBound, long upperBound) {
+    int newSize = 0;
+    minTime = Long.MAX_VALUE;
+    for (int i = 0; i < size; i++) {
+      long time = getTime(i);
+      if (time < lowerBound || time > upperBound) {
+        set(i, newSize++);
+        minTime = Math.min(time, minTime);
+      }
+    }
+    int deletedNumber = size - newSize;
+    size = newSize;
+    // release primitive arrays that are empty
+    int newArrayNum = newSize / ARRAY_SIZE;
+    if (newSize % ARRAY_SIZE != 0) {
+      newArrayNum++;
+    }
+    for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
+      releaseLastTimeArray();
+      releaseLastValueArray();
+    }
+    return deletedNumber * getTsDataTypes().size();
+  }
+
+  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
+  public int delete(long lowerBound, long upperBound, int columnIndex) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
   protected void set(int index, long timestamp, int value) {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
@@ -565,31 +602,19 @@ public class VectorTVList extends TVList {
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    if (this.dataTypes.size() == 1) {
-      return new TimeValuePair(getTime(index), ((TsPrimitiveType) getVector(index)).getVector()[0]);
-    } else {
-      return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
-    }
+    return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
   }
 
   @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
-    if (this.dataTypes.size() == 1) {
-      return new TimeValuePair(time, ((TsPrimitiveType) getVector(index)).getVector()[0]);
-    } else {
-      return new TimeValuePair(time, (TsPrimitiveType) getVector(index));
-    }
+    return new TimeValuePair(time, (TsPrimitiveType) getVector(index));
   }
 
   @Override
   public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
       List<Integer> indexList, long time, Integer floatPrecision, TSEncoding encoding) {
-    if (this.dataTypes.size() == 1) {
-      return new TimeValuePair(time, getVector(indexList).getVector()[0]);
-    } else {
-      return new TimeValuePair(time, getVector(indexList));
-    }
+    return new TimeValuePair(time, getVector(indexList));
   }
 
   @Override
@@ -717,5 +742,86 @@ public class VectorTVList extends TVList {
   @Override
   public TSDataType getDataType() {
     return TSDataType.VECTOR;
+  }
+
+  /**
+   * Get the single vectorTVList array size by give types.
+   *
+   * @param types the types in the vector
+   * @return VectorTvListArrayMemSize
+   */
+  public static long vectorTvListArrayMemSize(TSDataType[] types) {
+    long size = 0;
+    // time size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    // index size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
+    // value size
+    for (TSDataType type : types) {
+      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    }
+    return size;
+  }
+
+  @Override
+  @TestOnly
+  public IPointReader getIterator() {
+    return new VectorIte();
+  }
+
+  @Override
+  public IPointReader getIterator(
+      int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
+    return new VectorIte(floatPrecision, encoding, size, deletionList);
+  }
+
+  private class VectorIte extends Ite {
+
+    public VectorIte() {
+      super();
+    }
+
+    public VectorIte(
+        int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
+      super(floatPrecision, encoding, size, deletionList);
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      if (hasCachedPair) {
+        return true;
+      }
+
+      List<Integer> timeDuplicatedVectorRowIndexList = null;
+      while (cur < iteSize) {
+        long time = getTime(cur);
+        if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+          if (timeDuplicatedVectorRowIndexList == null) {
+            timeDuplicatedVectorRowIndexList = new ArrayList<>();
+            timeDuplicatedVectorRowIndexList.add(getValueIndex(cur));
+          }
+          timeDuplicatedVectorRowIndexList.add(getValueIndex(cur + 1));
+          cur++;
+          continue;
+        }
+        TimeValuePair tvPair;
+        if (timeDuplicatedVectorRowIndexList != null) {
+          tvPair =
+              getTimeValuePairForTimeDuplicatedRows(
+                  timeDuplicatedVectorRowIndexList, time, floatPrecision, encoding);
+          timeDuplicatedVectorRowIndexList = null;
+        } else {
+          tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
+        }
+        cur++;
+        if (tvPair.getValue() != null) {
+          cachedTimeValuePair = tvPair;
+          hasCachedPair = true;
+          return true;
+        }
+      }
+
+      return false;
+    }
   }
 }
