@@ -14,11 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.rest.handler;
+package org.apache.iotdb.db.rest;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.openApi.IoTDBopenApiDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.rest.handler.filter.ApiOriginFilter;
+import org.apache.iotdb.db.rest.filter.ApiOriginFilter;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 
@@ -47,8 +47,16 @@ public class OpenApiServer implements IService {
     return OpenApiServerHolder.INSTANCE;
   }
 
+  Server server;
+
   private void start(int port) {
-    Server server = new Server(port);
+    server = new Server(port);
+    ServletContextHandler context = getServletContextHandler();
+    server.setHandler(context);
+    serverStart();
+  }
+
+  private ServletContextHandler getServletContextHandler() {
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
     context.addFilter(
         ApiOriginFilter.class, "/*", EnumSet.of(DispatcherType.INCLUDE, DispatcherType.REQUEST));
@@ -56,22 +64,13 @@ public class OpenApiServer implements IService {
     holder.setInitOrder(1);
     holder.setInitParameter(
         "jersey.config.server.provider.packages",
-        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.db.rest.handler");
+        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.db.rest");
     holder.setInitParameter(
         "jersey.config.server.provider.classnames",
         "org.glassfish.jersey.media.multipart.MultiPartFeature");
     holder.setInitParameter("jersey.config.server.wadl.disableWadl", "true");
-
     context.setContextPath("/");
-    server.setHandler(context);
-    try {
-      server.start();
-      server.join();
-    } catch (Exception e) {
-      LOGGER.error("OpenApiServer start failed: {}", e.getMessage());
-    } finally {
-      server.destroy();
-    }
+    return context;
   }
 
   private void startSSL(
@@ -81,7 +80,7 @@ public class OpenApiServer implements IService {
       String keyStorePwd,
       String trustStorePwd,
       int idleTime) {
-    Server server = new Server();
+    server = new Server();
     HttpConfiguration https_config = new HttpConfiguration();
     https_config.setSecurePort(port);
     https_config.addCustomizer(new SecureRequestCustomizer());
@@ -98,55 +97,49 @@ public class OpenApiServer implements IService {
     httpsConnector.setPort(port);
     httpsConnector.setIdleTimeout(idleTime);
     server.addConnector(httpsConnector);
-    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
-    ServletHolder holder = context.addServlet(ServletContainer.class, "/*");
-    holder.setInitOrder(1);
-    holder.setInitParameter(
-        "jersey.config.server.provider.packages",
-        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.openapi.gen.handler");
-    holder.setInitParameter(
-        "jersey.config.server.provider.classnames",
-        "org.glassfish.jersey.media.multipart.MultiPartFeature");
-    holder.setInitParameter("jersey.config.server.wadl.disableWadl", "true");
-    context.setContextPath("/");
+    ServletContextHandler context = getServletContextHandler();
     server.setHandler(context);
+    serverStart();
+  }
+
+  private void serverStart() {
     try {
       server.start();
       server.join();
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.warn("OpenApiServer start failed: {}", e.getMessage());
     } finally {
       server.destroy();
     }
   }
 
   private int getOpenApiPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getOpenApiPort();
+    return IoTDBopenApiDescriptor.getInstance().getConfig().getOpenApiPort();
   }
 
   private String getKeyStorePath() {
-    return IoTDBDescriptor.getInstance().getConfig().getKeyStorePath();
+    return IoTDBopenApiDescriptor.getInstance().getConfig().getKeyStorePath();
   }
 
   private String getTrustStorePath() {
-    return IoTDBDescriptor.getInstance().getConfig().getTrustStorePath();
+    return IoTDBopenApiDescriptor.getInstance().getConfig().getTrustStorePath();
   }
 
   private String getKeyStorePwd() {
-    return IoTDBDescriptor.getInstance().getConfig().getKeyStorePwd();
+    return IoTDBopenApiDescriptor.getInstance().getConfig().getKeyStorePwd();
   }
 
   private String getTrustStorePwd() {
-    return IoTDBDescriptor.getInstance().getConfig().getTrustStorePwd();
+    return IoTDBopenApiDescriptor.getInstance().getConfig().getTrustStorePwd();
   }
 
   public int getIdleTimeout() {
-    return IoTDBDescriptor.getInstance().getConfig().getIdleTimeout();
+    return IoTDBopenApiDescriptor.getInstance().getConfig().getIdleTimeout();
   }
 
   @Override
   public void start() throws StartupException {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnable_https()) {
+    if (IoTDBopenApiDescriptor.getInstance().getConfig().isEnable_https()) {
       startSSL(
           getOpenApiPort(),
           getKeyStorePath(),
@@ -161,7 +154,13 @@ public class OpenApiServer implements IService {
 
   @Override
   public void stop() {
-    // do nothing.
+    try {
+      server.stop();
+    } catch (Exception e) {
+      LOGGER.warn("OpenApiServer stop failed: {}", e.getMessage());
+    } finally {
+      server.destroy();
+    }
   }
 
   @Override

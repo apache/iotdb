@@ -14,13 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.rest.handler.filter;
+package org.apache.iotdb.db.rest.filter;
 
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.rest.handler.model.User;
 import org.apache.iotdb.db.rest.model.ResponseResult;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.glassfish.jersey.internal.util.Base64;
 import org.slf4j.Logger;
@@ -56,7 +56,10 @@ public class AuthorizationFilter implements ContainerRequestFilter {
         Response resp =
             Response.status(Status.BAD_REQUEST)
                 .type(MediaType.APPLICATION_JSON)
-                .entity(getResponseResult(13004, "Authorization is illegal"))
+                .entity(
+                    getResponseResult(
+                        TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode(),
+                        TSStatusCode.SYSTEM_CHECK_ERROR.name()))
                 .build();
         containerRequestContext.abortWith(resp);
       } else {
@@ -71,7 +74,10 @@ public class AuthorizationFilter implements ContainerRequestFilter {
             Response resp =
                 Response.status(Status.OK)
                     .type(MediaType.APPLICATION_JSON)
-                    .entity(getResponseResult(13200, "username or passowrd is incorrect!"))
+                    .entity(
+                        getResponseResult(
+                            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode(),
+                            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.name()))
                     .build();
             containerRequestContext.abortWith(resp);
           }
@@ -80,7 +86,9 @@ public class AuthorizationFilter implements ContainerRequestFilter {
           Response resp =
               Response.status(Status.INTERNAL_SERVER_ERROR)
                   .type(MediaType.APPLICATION_JSON)
-                  .entity(getResponseResult(Status.UNAUTHORIZED.getStatusCode(), e.getMessage()))
+                  .entity(
+                      getResponseResult(
+                          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), e.getMessage()))
                   .build();
           containerRequestContext.abortWith(resp);
         }

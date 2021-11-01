@@ -14,9 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.rest.handler.filter;
-
-import org.apache.iotdb.db.rest.handler.model.User;
+package org.apache.iotdb.db.rest.filter;
 
 import javax.ws.rs.core.SecurityContext;
 

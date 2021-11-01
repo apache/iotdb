@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.rest.handler.filter;
+package org.apache.iotdb.db.rest.filter;
 
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;

@@ -22,6 +22,8 @@ import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.openApi.IoTDBopenApiCheck;
+import org.apache.iotdb.db.conf.openApi.IoTDBopenApiDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -39,7 +41,7 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TVListAllocator;
-import org.apache.iotdb.db.rest.handler.OpenApiServer;
+import org.apache.iotdb.db.rest.OpenApiServer;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 
@@ -64,6 +66,7 @@ public class IoTDB implements IoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
+      IoTDBopenApiCheck.getInstance().checkConfig();
     } catch (IOException e) {
       logger.error("meet error when doing start checking", e);
     }
@@ -138,7 +141,7 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }
-    if (IoTDBDescriptor.getInstance().getConfig().isStartOpenApi()) {
+    if (IoTDBopenApiDescriptor.getInstance().getConfig().isStartOpenApi()) {
       registerManager.register(OpenApiServer.getInstance());
     }
     logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");

@@ -14,26 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.rest.handler.exception;
+package org.apache.iotdb.db.rest.filter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public class User {
+  String username;
+  String password;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.ext.ExceptionMapper;
-import javax.ws.rs.ext.Provider;
+  public String getPassword() {
+    return password;
+  }
 
-@Provider
-public class BaseExceptionMapper implements ExceptionMapper<Exception> {
-  private static Logger log = LoggerFactory.getLogger(BaseExceptionMapper.class);
+  public void setPassword(String password) {
+    this.password = password;
+  }
 
-  @Override
-  public Response toResponse(Exception exception) {
-    log.error("toResponse() caught exception", exception);
-    Response resp =
-        Response.status(Status.INTERNAL_SERVER_ERROR).entity(exception.getMessage()).build();
+  public String getUsername() {
+    return username;
+  }
 
-    return resp;
+  public void setUsername(String username) {
+    this.username = username;
   }
 }
