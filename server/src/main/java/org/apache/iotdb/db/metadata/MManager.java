@@ -104,7 +104,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -644,7 +643,7 @@ public class MManager {
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p.getExactPath(), failedNames);
+        deleteSingleTimeseriesInternal(p, failedNames);
       }
       return failedNames.isEmpty() ? null : String.join(",", failedNames);
     } catch (IOException e) {
@@ -1065,36 +1064,6 @@ public class MManager {
   // region Interfaces for timeseries, measurement and schema info Query
 
   /**
-   * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
-   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
-   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
-   *
-   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
-   *     series.
-   * @return Size of partial path list could NOT equal to the input list size. For example, the
-   *     vector1 (s1,s2) would be returned once.
-   */
-  public List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) throws MetadataException {
-    Map<String, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
-    for (PartialPath path : fullPaths) {
-      String fullPath = path.getFullPath();
-      if (!nodeToPartialPath.containsKey(fullPath)) {
-        nodeToPartialPath.put(fullPath, path.copy());
-      } else {
-        // if nodeToPartialPath contains node
-        PartialPath existPath = nodeToPartialPath.get(fullPath);
-        if (!existPath.equals(path)) {
-          // could be AlignedPath
-          AlignedPath alignedPath = (AlignedPath) path;
-          ((AlignedPath) existPath)
-              .addMeasurement(alignedPath.getMeasurementList(), alignedPath.getSchemaList());
-        }
-      }
-    }
-    return new ArrayList<>(nodeToPartialPath.values());
-  }
-
-  /**
    * Return all measurement paths for given path if the path is abstract. Or return the path itself.
    * Regular expression in this method is formed by the amalgamation of seriesPath and the character
    * '*'.
@@ -1194,7 +1163,7 @@ public class MManager {
         }
         res.add(
             new ShowTimeSeriesResult(
-                ansString.left.getExactFullPath(),
+                ansString.left.getFullPath(),
                 ansString.right[0],
                 ansString.right[1],
                 TSDataType.valueOf(ansString.right[2]),

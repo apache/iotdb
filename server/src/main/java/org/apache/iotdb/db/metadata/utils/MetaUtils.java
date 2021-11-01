@@ -22,11 +22,15 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -102,6 +106,36 @@ public class MetaUtils {
     String[] storageGroupNodes = new String[level + 1];
     System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
     return new PartialPath(storageGroupNodes);
+  }
+
+  /**
+   * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
+   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
+   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   *
+   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
+   *     series.
+   * @return Size of partial path list could NOT equal to the input list size. For example, the
+   *     vector1 (s1,s2) would be returned once.
+   */
+  public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
+    List<PartialPath> result = new LinkedList<>();
+    Map<String, AlignedPath> alignedEntityToPath = new HashMap<>();
+    for (PartialPath path : fullPaths) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result.add(measurementPath);
+      } else {
+        String entity = measurementPath.getDevice();
+        if (!alignedEntityToPath.containsKey(entity)) {
+          alignedEntityToPath.put(entity, new AlignedPath(measurementPath));
+        } else {
+          alignedEntityToPath.get(entity).addMeasurement(measurementPath);
+        }
+      }
+    }
+    result.addAll(alignedEntityToPath.values());
+    return result;
   }
 
   @TestOnly

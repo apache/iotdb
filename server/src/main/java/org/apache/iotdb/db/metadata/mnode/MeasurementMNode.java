@@ -84,6 +84,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   public MeasurementPath getMeasurementPath() {
     MeasurementPath result = new MeasurementPath(super.getPartialPath());
     result.setMeasurementSchema(schema);
+    result.setUnderAlignedEntity(getParent().isAligned());
     return result;
   }
 

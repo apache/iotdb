@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
@@ -66,7 +67,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   @Override
   public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
-    return getCMManager().groupAlignedPaths(paths);
+    return MetaUtils.groupAlignedPaths(paths);
   }
 
   @Override

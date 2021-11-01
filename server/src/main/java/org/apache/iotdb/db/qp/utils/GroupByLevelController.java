@@ -81,7 +81,7 @@ public class GroupByLevelController {
         String functionName = ((FunctionExpression) expression).getFunctionName();
         String groupedPath =
             generatePartialPathByLevel(isCountStar, paths.get(0).getNodes(), levels);
-        String rawPath = String.format("%s(%s)", functionName, paths.get(0).getExactFullPath());
+        String rawPath = String.format("%s(%s)", functionName, paths.get(0).getFullPath());
         String pathWithFunction = String.format("%s(%s)", functionName, groupedPath);
 
         if (seriesLimit == 0 && seriesOffset == 0) {

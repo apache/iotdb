@@ -35,6 +35,9 @@ import java.util.Set;
 public class MeasurementPath extends PartialPath {
 
   private IMeasurementSchema measurementSchema;
+
+  private boolean isUnderAlignedEntity = false;
+
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   private String measurementAlias = "";
 
@@ -69,6 +72,14 @@ public class MeasurementPath extends PartialPath {
   @Override
   public String getFullPathWithAlias() {
     return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
+  }
+
+  public boolean isUnderAlignedEntity() {
+    return isUnderAlignedEntity;
+  }
+
+  public void setUnderAlignedEntity(boolean underAlignedEntity) {
+    isUnderAlignedEntity = underAlignedEntity;
   }
 
   public PartialPath copy() {

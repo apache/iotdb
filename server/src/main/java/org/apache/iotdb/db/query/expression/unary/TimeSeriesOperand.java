@@ -116,6 +116,6 @@ public class TimeSeriesOperand extends Expression {
 
   @Override
   public String toString() {
-    return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getExactFullPath();
+    return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
   }
 }

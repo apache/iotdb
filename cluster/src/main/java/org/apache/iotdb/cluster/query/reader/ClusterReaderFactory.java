@@ -340,7 +340,7 @@ public class ClusterReaderFactory {
                 dataGroupMember,
                 ascending,
                 null);
-        partialPathPointReaderMap.put(partialPath.getExactFullPath(), seriesPointReader);
+        partialPathPointReaderMap.put(partialPath.getFullPath(), seriesPointReader);
       }
 
       if (logger.isDebugEnabled()) {
@@ -1125,7 +1125,7 @@ public class ClusterReaderFactory {
               ascending,
               null,
               false);
-      partialPathBatchReaderMap.put(partialPath.getExactFullPath(), batchReader);
+      partialPathBatchReaderMap.put(partialPath.getFullPath(), batchReader);
     }
     return new MultBatchReader(partialPathBatchReaderMap);
   }

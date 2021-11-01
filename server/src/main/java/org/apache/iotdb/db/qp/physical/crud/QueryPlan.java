@@ -136,7 +136,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
     ResultColumn resultColumn = resultColumns.get(pathIndex);
-    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getExactFullPath();
+    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getFullPath();
   }
 
   public String getColumnForDisplay(String columnForReader, int pathIndex) {
