@@ -564,7 +564,7 @@ public class Coordinator {
       isBatchFailure =
           (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) || isBatchFailure;
       if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
-          || tmpStatus.isSetRedirectNode() && !(parentPlan instanceof CreateTimeSeriesPlan)) {
+          || tmpStatus.isSetRedirectNode() && !(parentPlan instanceof CreateMultiTimeSeriesPlan)) {
         if (parentPlan instanceof InsertMultiTabletPlan) {
           // the subStatus is the two-dimensional array,
           // The first dimension is the number of InsertTabletPlans,
