@@ -114,21 +114,21 @@ public class MetaSimpleSnapshot extends Snapshot {
       dataOutputStream.writeInt(userMap.size());
       for (Map.Entry<String, User> entry : userMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        logger.info("A user into snapshot: {}", entry.getValue());
+        logger.debug("A user into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
       dataOutputStream.writeInt(roleMap.size());
       for (Map.Entry<String, Role> entry : roleMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        logger.info("A role into snapshot: {}", entry.getValue());
+        logger.debug("A role into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
       dataOutputStream.writeInt(templateMap.size());
       for (Map.Entry<String, Template> entry : templateMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        logger.info("A template into snapshot: {}", entry.getValue());
+        logger.debug("A template into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
