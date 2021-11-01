@@ -896,7 +896,7 @@ NAN_LITERAL
  */
 
 ID
-    : FIRST_NAME_CHAR NAME_CHAR+
+    : FIRST_NAME_CHAR NAME_CHAR*
     | '"' (~('"' | '.') | '""')+ '"'
     | '`' (~('`' | '.') | '``')+ '`'
     ;
