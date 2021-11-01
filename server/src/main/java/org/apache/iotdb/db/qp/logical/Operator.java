@@ -174,5 +174,8 @@ public abstract class Operator {
     SET_SYSTEM_MODE,
 
     EMPTY,
+    SETTLE,
+
+    UNSET_SCHEMA_TEMPLATE
   }
 }

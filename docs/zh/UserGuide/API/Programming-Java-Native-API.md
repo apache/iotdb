@@ -178,9 +178,11 @@ void insertRecord(String prefixPath, long time, List<String> measurements,
 * 插入多个 Record。提供数据类型后，服务器不需要做类型推断，可以提高性能
 
 ```java
-void insertRecords(List<String> deviceIds, List<Long> times,
-    List<List<String>> measurementsList,
-    List<List<Object>> valuesList)
+void insertRecords(List<String> deviceIds,
+        List<Long> times,
+        List<List<String>> measurementsList,
+        List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
 ```
 
 * 插入同属于一个 device 的多个 Record。
@@ -234,6 +236,14 @@ void createSchemaTemplate(
 ``` 
 void setSchemaTemplate(String templateName, String prefixPath)
 ```
+
+``` 
+void unsetSchemaTemplate(String prefixPath, String templateName)
+```
+
+* 卸载'prefixPath'路径下的名为'templateName'的物理量模板。你需要保证给定的路径'prefixPath'下需要有名为'templateName'的物理量模板。
+
+注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。
 
 ### 测试接口说明
 

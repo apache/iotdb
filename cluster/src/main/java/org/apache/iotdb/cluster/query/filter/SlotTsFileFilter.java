@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -53,7 +53,8 @@ public class SlotTsFileFilter implements TsFileFilter {
 
   private static boolean fileNotInSlots(TsFileResource resource, Set<Integer> nodeSlots) {
     Pair<String, Long> sgNameAndPartitionIdPair =
-        FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(resource);
+        FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(
+            resource.getTsFile().getAbsolutePath());
     int slot =
         SlotPartitionTable.getSlotStrategy()
             .calculateSlotByPartitionNum(

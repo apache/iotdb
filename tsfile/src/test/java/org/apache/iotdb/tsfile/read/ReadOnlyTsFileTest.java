@@ -60,13 +60,16 @@ public class ReadOnlyTsFileTest {
 
   @Test
   public void multiPagesTest() throws IOException, WriteProcessException {
-    final String filePath = "target/multiPages.tsfile";
+    final String filePath = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
+    File file = new File(filePath);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
 
     TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
     // make multi pages in one group
     tsFileConfig.setMaxNumberOfPointsInPage(100);
     tsFileConfig.setGroupSizeInByte(100 * 1024 * 1024);
-    File file = new File(filePath);
     TsFileWriter tsFileWriter = new TsFileWriter(file, new Schema(), tsFileConfig);
 
     Path path = new Path("t", "id");

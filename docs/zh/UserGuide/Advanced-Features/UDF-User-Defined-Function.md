@@ -364,7 +364,7 @@ CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME>
 例子中注册 UDF 的 SQL 语句如下：
 
 ```sql
-CREATE FUNCTION example AS "org.apache.iotdb.udf.UDTFExample"
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample'
 ```
 
 由于 IoTDB 的 UDF 是通过反射技术动态装载的，因此您在装载过程中无需启停服务器。
@@ -422,8 +422,8 @@ UDF 的使用方法与普通内建函数的类似。
 您可以在进行 UDF 查询的时候，向 UDF 传入任意数量的键值对参数。键值对中的键和值都需要被单引号或者双引号引起来。注意，键值对参数只能在所有时间序列后传入。下面是一组例子：
 
 ``` sql
-SELECT example(s1, "key1"="value1", "key2"="value2"), example(*, "key3"="value3") FROM root.sg.d1;
-SELECT example(s1, s2, "key1"="value1", "key2"="value2") FROM root.sg.d1;
+SELECT example(s1, 'key1'='value1', 'key2'='value2'), example(*, 'key3'='value3') FROM root.sg.d1;
+SELECT example(s1, s2, 'key1'='value1', 'key2'='value2') FROM root.sg.d1;
 ```
 
 ### 与其他查询的嵌套查询

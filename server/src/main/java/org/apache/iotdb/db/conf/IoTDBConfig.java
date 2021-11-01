@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -54,17 +56,16 @@ public class IoTDBConfig {
 
   // e.g., a31+/$%#&[]{}3e4
   private static final String ID_MATCHER =
-      "([a-zA-Z0-9/\"[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+      "([a-zA-Z0-9/\"`[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
 
   // e.g.,  .s1
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
-  // for path like: root.sg1.d1."1.2.3", root.sg.d1."1.2.3"
   // TODO : need to match the rule of antlr grammar
   private static final String NODE_MATCHER =
-      "([" + PATH_SEPARATOR + "][\"])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*([\"])?";
+      "([" + PATH_SEPARATOR + "])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
@@ -342,62 +343,67 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
+  /** Only compact the sequence files */
+  private boolean enableSeqSpaceCompaction = true;
+
+  /** Only compact the unsequence files */
+  private boolean enableUnseqSpaceCompaction = true;
+
+  /** Compact the unsequence files into the overlapped sequence files */
+  private boolean enableCrossSpaceCompaction = true;
+
   /**
-   * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
-   * the files to the last level. During a merge, if a chunk with less number of chunks than this
-   * parameter, the chunk will be merged with its succeeding chunks even if it is not overflowed,
-   * until the merged chunks reach this threshold and the new chunk will be flushed.
+   * The strategy of inner space compaction task. There are just one inner space compaction strategy
+   * SIZE_TIRED_COMPACTION:
+   */
+  private InnerCompactionStrategy innerCompactionStrategy =
+      InnerCompactionStrategy.SIZE_TIERED_COMPACTION;
+
+  /**
+   * The strategy of cross space compaction task. There are just one cross space compaction strategy
+   * SIZE_TIRED_COMPACTION:
+   */
+  private CrossCompactionStrategy crossCompactionStrategy =
+      CrossCompactionStrategy.INPLACE_COMPACTION;
+
+  /**
+   * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
+   * prioritize inner space compaction, reduce the number of files first CROSS INNER: prioritize
+   * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
+   * types
+   */
+  private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
+
+  /** The target tsfile size in compaction. */
+  private long targetCompactionFileSize = 2147483648L;
+
+  /** The max candidate file num in compaction */
+  private int maxCompactionCandidateFileNum = 10;
+  /**
+   * When merge point number reaches this, merge the files to the last level. During a merge, if a
+   * chunk with less number of chunks than this parameter, the chunk will be merged with its
+   * succeeding chunks even if it is not overflowed, until the merged chunks reach this threshold
+   * and the new chunk will be flushed.
    */
   private int mergeChunkPointNumberThreshold = 100000;
 
   /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION. When point number of a page reaches
-   * this, use "append merge" instead of "deserialize merge".
+   * When point number of a page reaches this, use "append merge" instead of "deserialize merge".
    */
   private int mergePagePointNumberThreshold = 100;
 
-  /** LEVEL_COMPACTION, NO_COMPACTION */
-  private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
+  /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
+  private long compactionScheduleInterval = 10_000L;
+
+  /** The interval of compaction task submission from queue in CompactionTaskMananger */
+  private long compactionSubmissionInterval = 1_000L;
 
   /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to merge unseq files into seq
-   * files or not.
+   * The max open file num in each unseq compaction task. We use the unseq file num as the open file
+   * num # This parameters have to be much smaller than the permitted max open file num of each
+   * process controlled by operator system(65535 in most system).
    */
-  private boolean enableUnseqCompaction = true;
-
-  /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to start next compaction task
-   * automatically after finish one compaction task
-   */
-  private boolean enableContinuousCompaction = true;
-
-  /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
-   * When the num of files in one level exceeds this, the files in this level will merge to one and
-   * put to upper level.
-   */
-  private int seqFileNumInEachLevel = 6;
-
-  /** Works when the compaction_strategy is LEVEL_COMPACTION. The max num of seq level. */
-  private int seqLevelNum = 3;
-
-  /**
-   * Works when compaction_strategy is LEVEL_COMPACTION. The max ujseq file num of each level. When
-   * the num of files in one level exceeds this, the files in this level will merge to one and put
-   * to upper level.
-   */
-  private int unseqFileNumInEachLevel = 10;
-
-  /** Works when the compaction_strategy is LEVEL_COMPACTION. The max num of unseq level. */
-  private int unseqLevelNum = 1;
-
-  /**
-   * Works when compaction_strategy is LEVEL_COMPACTION. The max open file num in each unseq
-   * compaction task. We use the unseq file num as the open file num # This parameters have to be
-   * much smaller than the permitted max open file num of each process controlled by operator
-   * system(65535 in most system).
-   */
-  private int maxOpenFileNumInEachUnseqCompaction = 2000;
+  private int maxOpenFileNumInCrossSpaceCompaction = 2000;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -459,9 +465,6 @@ public class IoTDBConfig {
 
   /** Is stat performance of sub-module enable. */
   private boolean enablePerformanceStat = false;
-
-  /** Is performance tracing enable. */
-  private boolean enablePerformanceTracing = false;
 
   /** The display of stat performance interval in ms. Unit: millisecond */
   private long performanceStatDisplayInterval = 60000;
@@ -535,8 +538,8 @@ public class IoTDBConfig {
   /** How many threads will be set up to perform upgrade tasks. */
   private int upgradeThreadNum = 1;
 
-  /** How many threads will be set up to perform main merge tasks. */
-  private int mergeThreadNum = 1;
+  /** How many threads will be set up to perform settle tasks. */
+  private int settleThreadNum = 1;
 
   /** How many threads will be set up to perform unseq merge chunk sub-tasks. */
   private int mergeChunkSubThreadNum = 4;
@@ -562,9 +565,9 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /**
-   * When set to true, all unseq merges becomes full merge (the whole SeqFiles are re-written
-   * despite how much they are overflowed). This may increase merge overhead depending on how much
-   * the SeqFiles are overflowed.
+   * When set to true, all cross space compaction becomes full merge (the whole SeqFiles are
+   * re-written despite how much they are overflowed). This may increase merge overhead depending on
+   * how much the SeqFiles are overflowed.
    */
   private boolean forceFullMerge = true;
 
@@ -575,7 +578,7 @@ public class IoTDBConfig {
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
    * equal to 0.
    */
-  private int compactionThreadNum = 10;
+  private int concurrentCompactionThread = 10;
 
   /*
    * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
@@ -1353,14 +1356,6 @@ public class IoTDBConfig {
     this.mergeMemoryBudget = mergeMemoryBudget;
   }
 
-  public int getMergeThreadNum() {
-    return mergeThreadNum;
-  }
-
-  void setMergeThreadNum(int mergeThreadNum) {
-    this.mergeThreadNum = mergeThreadNum;
-  }
-
   public boolean isContinueMergeAfterReboot() {
     return continueMergeAfterReboot;
   }
@@ -1473,14 +1468,6 @@ public class IoTDBConfig {
     this.enablePerformanceStat = enablePerformanceStat;
   }
 
-  public boolean isEnablePerformanceTracing() {
-    return enablePerformanceTracing;
-  }
-
-  public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {
-    this.enablePerformanceTracing = enablePerformanceTracing;
-  }
-
   public long getPerformanceStatDisplayInterval() {
     return performanceStatDisplayInterval;
   }
@@ -1513,12 +1500,12 @@ public class IoTDBConfig {
     this.forceFullMerge = forceFullMerge;
   }
 
-  public int getCompactionThreadNum() {
-    return compactionThreadNum;
+  public int getConcurrentCompactionThread() {
+    return concurrentCompactionThread;
   }
 
-  public void setCompactionThreadNum(int compactionThreadNum) {
-    this.compactionThreadNum = compactionThreadNum;
+  public void setConcurrentCompactionThread(int concurrentCompactionThread) {
+    this.concurrentCompactionThread = concurrentCompactionThread;
   }
 
   public int getContinuousQueryThreadNum() {
@@ -1681,68 +1668,12 @@ public class IoTDBConfig {
     this.mergeFileStrategy = mergeFileStrategy;
   }
 
-  public CompactionStrategy getCompactionStrategy() {
-    return compactionStrategy;
+  public int getMaxOpenFileNumInCrossSpaceCompaction() {
+    return maxOpenFileNumInCrossSpaceCompaction;
   }
 
-  public void setCompactionStrategy(CompactionStrategy compactionStrategy) {
-    this.compactionStrategy = compactionStrategy;
-  }
-
-  public boolean isEnableUnseqCompaction() {
-    return enableUnseqCompaction;
-  }
-
-  public void setEnableUnseqCompaction(boolean enableUnseqCompaction) {
-    this.enableUnseqCompaction = enableUnseqCompaction;
-  }
-
-  public boolean isEnableContinuousCompaction() {
-    return enableContinuousCompaction;
-  }
-
-  public void setEnableContinuousCompaction(boolean enableContinuousCompaction) {
-    this.enableContinuousCompaction = enableContinuousCompaction;
-  }
-
-  public int getSeqFileNumInEachLevel() {
-    return seqFileNumInEachLevel;
-  }
-
-  public void setSeqFileNumInEachLevel(int seqFileNumInEachLevel) {
-    this.seqFileNumInEachLevel = seqFileNumInEachLevel;
-  }
-
-  public int getSeqLevelNum() {
-    return seqLevelNum;
-  }
-
-  public void setSeqLevelNum(int seqLevelNum) {
-    this.seqLevelNum = seqLevelNum;
-  }
-
-  public int getUnseqFileNumInEachLevel() {
-    return unseqFileNumInEachLevel;
-  }
-
-  public void setUnseqFileNumInEachLevel(int unseqFileNumInEachLevel) {
-    this.unseqFileNumInEachLevel = unseqFileNumInEachLevel;
-  }
-
-  public int getUnseqLevelNum() {
-    return unseqLevelNum;
-  }
-
-  public void setUnseqLevelNum(int unseqLevelNum) {
-    this.unseqLevelNum = unseqLevelNum;
-  }
-
-  public int getMaxOpenFileNumInEachUnseqCompaction() {
-    return maxOpenFileNumInEachUnseqCompaction;
-  }
-
-  public void setMaxOpenFileNumInEachUnseqCompaction(int maxOpenFileNumInEachUnseqCompaction) {
-    this.maxOpenFileNumInEachUnseqCompaction = maxOpenFileNumInEachUnseqCompaction;
+  public void setMaxOpenFileNumInCrossSpaceCompaction(int maxOpenFileNumInCrossSpaceCompaction) {
+    this.maxOpenFileNumInCrossSpaceCompaction = maxOpenFileNumInCrossSpaceCompaction;
   }
 
   public int getMergeChunkSubThreadNum() {
@@ -2053,6 +1984,10 @@ public class IoTDBConfig {
 
   public int getUpgradeThreadNum() {
     return upgradeThreadNum;
+  }
+
+  public int getSettleThreadNum() {
+    return settleThreadNum;
   }
 
   void setUpgradeThreadNum(int upgradeThreadNum) {
@@ -2396,5 +2331,85 @@ public class IoTDBConfig {
 
   public void setAdminPassword(String adminPassword) {
     this.adminPassword = adminPassword;
+  }
+
+  public boolean isEnableSeqSpaceCompaction() {
+    return enableSeqSpaceCompaction;
+  }
+
+  public void setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
+    this.enableSeqSpaceCompaction = enableSeqSpaceCompaction;
+  }
+
+  public boolean isEnableUnseqSpaceCompaction() {
+    return enableUnseqSpaceCompaction;
+  }
+
+  public void setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
+    this.enableUnseqSpaceCompaction = enableUnseqSpaceCompaction;
+  }
+
+  public boolean isEnableCrossSpaceCompaction() {
+    return enableCrossSpaceCompaction;
+  }
+
+  public void setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
+    this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
+  }
+
+  public InnerCompactionStrategy getInnerCompactionStrategy() {
+    return innerCompactionStrategy;
+  }
+
+  public void setInnerCompactionStrategy(InnerCompactionStrategy innerCompactionStrategy) {
+    this.innerCompactionStrategy = innerCompactionStrategy;
+  }
+
+  public CrossCompactionStrategy getCrossCompactionStrategy() {
+    return crossCompactionStrategy;
+  }
+
+  public void setCrossCompactionStrategy(CrossCompactionStrategy crossCompactionStrategy) {
+    this.crossCompactionStrategy = crossCompactionStrategy;
+  }
+
+  public CompactionPriority getCompactionPriority() {
+    return compactionPriority;
+  }
+
+  public void setCompactionPriority(CompactionPriority compactionPriority) {
+    this.compactionPriority = compactionPriority;
+  }
+
+  public long getTargetCompactionFileSize() {
+    return targetCompactionFileSize;
+  }
+
+  public void setTargetCompactionFileSize(long targetCompactionFileSize) {
+    this.targetCompactionFileSize = targetCompactionFileSize;
+  }
+
+  public long getCompactionScheduleInterval() {
+    return compactionScheduleInterval;
+  }
+
+  public void setCompactionScheduleInterval(long compactionScheduleInterval) {
+    this.compactionScheduleInterval = compactionScheduleInterval;
+  }
+
+  public int getMaxCompactionCandidateFileNum() {
+    return maxCompactionCandidateFileNum;
+  }
+
+  public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
+    this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
+  }
+
+  public long getCompactionSubmissionInterval() {
+    return compactionSubmissionInterval;
+  }
+
+  public void setCompactionSubmissionInterval(long interval) {
+    compactionSubmissionInterval = interval;
   }
 }

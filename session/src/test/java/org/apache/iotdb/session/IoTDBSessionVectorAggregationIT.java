@@ -21,7 +21,6 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -47,10 +46,12 @@ public class IoTDBSessionVectorAggregationIT {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static Session session;
+  private static int originCompactionThreadNum;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    CONFIG.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    originCompactionThreadNum = CONFIG.getConcurrentCompactionThread();
+    CONFIG.setConcurrentCompactionThread(0);
     EnvironmentUtils.envSetUp();
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -62,7 +63,7 @@ public class IoTDBSessionVectorAggregationIT {
   public static void tearDown() throws Exception {
     session.close();
     EnvironmentUtils.cleanEnv();
-    CONFIG.setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
+    CONFIG.setConcurrentCompactionThread(originCompactionThreadNum);
   }
 
   @Test

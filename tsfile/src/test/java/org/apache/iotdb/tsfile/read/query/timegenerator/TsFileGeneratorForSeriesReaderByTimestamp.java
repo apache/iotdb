@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -29,6 +28,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.FileUtils;
 import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -53,7 +53,8 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
       LoggerFactory.getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
-  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
+  public static String outputDataFile =
+      TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 0);
   public static String errorOutputDataFile;
   public static Schema schema;
   private static int rowCount;
@@ -71,8 +72,20 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   }
 
   public static void prepare() throws IOException {
-    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
-    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
+    File file = new File(outputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    inputDataFile = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
+    file = new File(inputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    errorOutputDataFile = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 2);
+    file = new File(errorOutputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
     generateTestData();
     generateSampleInputDataFile();
   }

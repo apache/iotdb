@@ -19,8 +19,6 @@
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -51,14 +49,10 @@ import static org.junit.Assert.fail;
 public class SessionPoolTest {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
-  private final CompactionStrategy defaultCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
+  private static final long DEFAULT_QUERY_TIMEOUT = -1;
 
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
@@ -67,7 +61,6 @@ public class SessionPoolTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(defaultCompaction);
   }
 
   @Test
@@ -158,11 +151,18 @@ public class SessionPoolTest {
   @Test
   public void executeQueryStatement() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
-    correctQuery(pool);
+    correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
     pool.close();
   }
 
-  private void correctQuery(SessionPool pool) {
+  @Test
+  public void executeQueryStatementWithTimeout() {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+    correctQuery(pool, 2000);
+    pool.close();
+  }
+
+  private void correctQuery(SessionPool pool, long timeoutInMs) {
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
     // now let's query
@@ -171,8 +171,15 @@ public class SessionPoolTest {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper =
-                  pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+              SessionDataSetWrapper wrapper;
+              if (timeoutInMs == DEFAULT_QUERY_TIMEOUT) {
+                wrapper =
+                    pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+              } else {
+                wrapper =
+                    pool.executeQueryStatement(
+                        "select * from root.sg1.d1 where time = " + no, timeoutInMs);
+              }
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
               logger.error("correctQuery failed", e);
@@ -269,7 +276,7 @@ public class SessionPoolTest {
               null,
               false,
               Config.DEFAULT_CONNECTION_TIMEOUT_MS);
-      correctQuery(pool);
+      correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
       return;
     } catch (StatementExecutionException e) {
@@ -301,7 +308,7 @@ public class SessionPoolTest {
                 null,
                 false,
                 Config.DEFAULT_CONNECTION_TIMEOUT_MS);
-        correctQuery(pool);
+        correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
         pool.close();
       } catch (StatementExecutionException es) {
         fail("should be TTransportException but get an exception: " + e.getMessage());

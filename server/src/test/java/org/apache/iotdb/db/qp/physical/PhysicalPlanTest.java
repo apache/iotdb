@@ -185,7 +185,7 @@ public class PhysicalPlanTest {
   @Test
   public void testAuthor() throws QueryProcessException {
     String sql =
-        "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
+        "grant role xm privileges SET_STORAGE_GROUP,DELETE_TIMESERIES on root.vehicle.d1.s1";
     Planner processor = new Planner();
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
     assertEquals(
@@ -505,7 +505,7 @@ public class PhysicalPlanTest {
     try {
       PhysicalPlan plan =
           processor.parseSQLToPhysicalPlan(
-              "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+              "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
         fail();
       }
@@ -524,7 +524,7 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
           .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
@@ -566,12 +566,12 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
           .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
-          "select udf(d2.s1, d1.s1, \"addend\"=\"100\"), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
+          "select udf(d2.s1, d1.s1, 'addend'='100'), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
       UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
@@ -611,7 +611,7 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
           .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
@@ -963,7 +963,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testShowFlushInfo() throws QueryProcessException {
-    String metadata = "show flush task info";
+    String metadata = "SHOW FLUSH INFO";
     Planner processor = new Planner();
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("SHOW FLUSH_TASK_INFO", plan.toString());
@@ -972,7 +972,7 @@ public class PhysicalPlanTest {
   @Test
   public void testLoadFiles() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
-    String metadata = String.format("load \"%s\"", filePath);
+    String metadata = String.format("load '%s'", filePath);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -982,7 +982,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true", filePath);
+    metadata = String.format("load '%s' autoregister=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -992,7 +992,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=false", filePath);
+    metadata = String.format("load '%s' autoregister=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1002,7 +1002,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1012,7 +1012,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=false", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3,verify=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1022,7 +1022,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=true", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3,verify=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1036,7 +1036,7 @@ public class PhysicalPlanTest {
   @Test
   public void testRemoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
-    String metadata = String.format("remove \"%s\"", filePath);
+    String metadata = String.format("remove '%s'", filePath);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1050,7 +1050,7 @@ public class PhysicalPlanTest {
   public void testUnloadFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String targetDir = "user" + File.separator + "backup";
-    String metadata = String.format("unload \"%s\" \"%s\"", filePath, targetDir);
+    String metadata = String.format("unload '%s' '%s'", filePath, targetDir);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1143,7 +1143,7 @@ public class PhysicalPlanTest {
   @Test
   public void testSpecialCharacters() throws QueryProcessException {
     String sqlStr1 =
-        "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE.81+12.+2.s/io.in[jack].hel[jjj.s[1].desc with "
+        "create timeseries root.`3e-3`.`-1+1/2`.`SNAPPY`.`RLE`.`81+12+2s/io`.`in[jack]`.`hel[jjj[]s[1]`.`desc` with "
             + "datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)"
             + " attributes(attr1=v1, attr2=v2)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
@@ -1204,7 +1204,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testStartTrigger() throws QueryProcessException {
-    String sql = "START TRIGGER my-trigger";
+    String sql = "START TRIGGER `my-trigger`";
 
     StartTriggerPlan plan = (StartTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
@@ -1213,7 +1213,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testStopTrigger() throws QueryProcessException {
-    String sql = "STOP TRIGGER my-trigger";
+    String sql = "STOP TRIGGER `my-trigger`";
 
     StopTriggerPlan plan = (StopTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());

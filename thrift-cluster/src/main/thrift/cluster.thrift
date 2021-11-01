@@ -194,7 +194,7 @@ struct PullSchemaResp {
 }
 
 struct SingleSeriesQueryRequest {
-  1: required string path
+  1: required list<string> path
   2: optional binary timeFilterBytes
   3: optional binary valueFilterBytes
   4: required long queryId
@@ -209,7 +209,7 @@ struct SingleSeriesQueryRequest {
 }
 
 struct MultSeriesQueryRequest {
-  1: required list<string> path
+  1: required list<list<string>> path
   2: optional binary timeFilterBytes
   3: optional binary valueFilterBytes
   4: required long queryId
@@ -273,7 +273,7 @@ struct LastQueryRequest {
 }
 
 struct GetAllPathsResult {
-  1: required list<string> paths
+  1: required list<list<string>> paths
   2: optional list<string> aliasList
 }
 
@@ -490,6 +490,8 @@ service TSDataService extends RaftService {
   binary last(1: LastQueryRequest request)
 
   int getPathCount(1: RaftNode header, 2: list<string> pathsToQuery, 3: int level)
+
+  int getDeviceCount(1: RaftNode header, 2: list<string> pathsToQuery)
 
   /**
   * During slot transfer, when a member has pulled snapshot from a group, the member will use this

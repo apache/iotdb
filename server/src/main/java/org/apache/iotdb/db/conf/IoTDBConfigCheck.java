@@ -22,13 +22,13 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.metadata.logfile.MLogUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -229,7 +229,7 @@ public class IoTDBConfigCheck {
       moveVersionFile();
       logger.info("checking files successful");
       logger.info("Start upgrading files...");
-      MLogWriter.upgradeMLog();
+      MLogUpgrader.upgradeMLog();
       logger.info("Mlog upgraded!");
       upgradePropertiesFile();
     }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -101,6 +102,12 @@ public class FunctionExpression extends Expression {
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return !isAggregationFunctionExpression;
+  }
+
+  public boolean isCountStar() {
+    return getPaths().size() == 1
+        && paths.get(0).getTailNode().equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        && functionName.equals(IoTDBConstant.COLUMN_COUNT);
   }
 
   public void addAttribute(String key, String value) {

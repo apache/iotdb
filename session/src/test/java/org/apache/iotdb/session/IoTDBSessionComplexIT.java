@@ -417,13 +417,13 @@ public class IoTDBSessionComplexIT {
     session.createTimeseries(
         "root.sg1.d1.1_2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.1+2+3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.1+2+4", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.1_2"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1.2.3\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1.2.4\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+3\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+4\""));
 
     session.setStorageGroup("root.1");
     session.createTimeseries(
@@ -847,9 +847,9 @@ public class IoTDBSessionComplexIT {
     createTimeseries();
 
     session.executeNonQueryStatement(
-        "create trigger d1s1 after insert on root.sg1.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+        "create trigger d1s1 after insert on root.sg1.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
     session.executeNonQueryStatement(
-        "create trigger d1s2 before insert on root.sg1.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+        "create trigger d1s2 before insert on root.sg1.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
     assertEquals(
         Counter.BASE,
