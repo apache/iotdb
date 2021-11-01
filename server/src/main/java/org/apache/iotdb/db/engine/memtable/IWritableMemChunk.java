@@ -101,10 +101,10 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
-   * @param columnIndexList indices of queried columns in the full VectorTVList
+   * @param measurementList the measurementList to be queried
    * @return sorted tv list
    */
-  TVList getSortedTvListForQuery(List<Integer> columnIndexList);
+  TVList getSortedTvListForQuery(List<String> measurementList);
 
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add

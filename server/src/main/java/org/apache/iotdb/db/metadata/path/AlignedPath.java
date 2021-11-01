@@ -19,31 +19,38 @@
 
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.VectorWritableMemChunk;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 /**
  * VectorPartialPath represents a vector's fullPath. It not only contains the full path of vector's
@@ -54,7 +61,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 public class AlignedPath extends PartialPath {
 
   // todo improve vector implementation by remove this placeholder
-  private static final String VECTOR_PLACEHOLDER = "";
+  public static final String VECTOR_PLACEHOLDER = "";
 
   private List<String> measurementList;
   private List<IMeasurementSchema> schemaList;
@@ -92,6 +99,11 @@ public class AlignedPath extends PartialPath {
     measurementList.add(path.getMeasurement());
     schemaList = new ArrayList<>();
     schemaList.add(path.getMeasurementSchema());
+  }
+
+  @Override
+  public String getDevice() {
+    return getFullPath();
   }
 
   public List<String> getMeasurementList() {
@@ -234,11 +246,15 @@ public class AlignedPath extends PartialPath {
   }
 
   @Override
-  public TsFileResource createTsFileResource(List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList, TsFileResource originTsFileResource)
+  public TsFileResource createTsFileResource(
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList,
+      TsFileResource originTsFileResource)
       throws IOException {
-    TsFileResource tsFileResource = new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
-    tsFileResource.setTimeSeriesMetadata(generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+    TsFileResource tsFileResource =
+        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+    tsFileResource.setTimeSeriesMetadata(
+        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
     return tsFileResource;
   }
 
@@ -246,14 +262,14 @@ public class AlignedPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
-  private AlignedTimeSeriesMetadata generateTimeSeriesMetadata(List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList) throws IOException {
+  private AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
+      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
+      throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
     timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setMeasurementId("");
     timeTimeSeriesMetadata.setTSDataType(TSDataType.INT64);
-
 
     Statistics<? extends Serializable> timeStatistics =
         Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
@@ -266,15 +282,13 @@ public class AlignedPath extends PartialPath {
       valueMetadata.setDataSizeOfChunkMetaDataList(-1);
       valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
       valueMetadata.setTSDataType(valueChunkMetadata.getType());
-      valueMetadata.setStatistics(
-          Statistics.getStatsByType(valueChunkMetadata.getType()));
+      valueMetadata.setStatistics(Statistics.getStatsByType(valueChunkMetadata.getType()));
       valueTimeSeriesMetadataList.add(valueMetadata);
     }
 
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
-      timeStatistics.mergeStatistics(
-          alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
+      timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
         valueTimeSeriesMetadataList
             .get(i)
@@ -288,8 +302,7 @@ public class AlignedPath extends PartialPath {
       if (!memChunk.isEmpty()) {
         AlignedChunkMetadata alignedChunkMetadata =
             (AlignedChunkMetadata) memChunk.getChunkMetaData();
-        timeStatistics.mergeStatistics(
-            alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
+        timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
           valueTimeSeriesMetadataList
               .get(i)
@@ -302,5 +315,29 @@ public class AlignedPath extends PartialPath {
     timeTimeSeriesMetadata.setStatistics(timeStatistics);
 
     return new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
+  }
+
+  @Override
+  public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
+      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      throws QueryProcessException, IOException {
+    if (!memTableMap.containsKey(getDevice())) {
+      return null;
+    }
+    VectorWritableMemChunk vectorMemChunk =
+        ((VectorWritableMemChunk) memTableMap.get(getDevice()).get(VECTOR_PLACEHOLDER));
+    List<String> validMeasurementList = new ArrayList<>();
+    for (String measurement : measurementList) {
+      if (vectorMemChunk.containsMeasurement(measurement)) {
+        validMeasurementList.add(measurement);
+      }
+    }
+    if (validMeasurementList.isEmpty()) {
+      return null;
+    }
+    // get sorted tv list is synchronized so different query can get right sorted list reference
+    TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(validMeasurementList);
+    int curSize = vectorTvListCopy.size();
+    return new ReadOnlyMemChunk(getMeasurementSchema(), vectorTvListCopy, curSize, deletionList);
   }
 }

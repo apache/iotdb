@@ -28,13 +28,17 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(VectorWritableMemChunk.class);
 
-  public VectorWritableMemChunk(IMeasurementSchema schema) {
+  public VectorWritableMemChunk(VectorMeasurementSchema schema) {
     this.schema = schema;
     vectorIdIndexMap = new HashMap<>();
     for (int i = 0; i < schema.getSubMeasurementsCount(); i++) {
       vectorIdIndexMap.put(schema.getSubMeasurementsList().get(i), i);
     }
     this.list = TVListAllocator.getInstance().allocate(schema.getSubMeasurementsTSDataTypeList());
+  }
+
+  public boolean containsMeasurement(String measurementId) {
+    return vectorIdIndexMap.containsKey(measurementId);
   }
 
   @Override
@@ -148,6 +152,11 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public TVList getTVList() {
+    return list;
+  }
+
+  @Override
   public long count() {
     return list.size() * vectorIdIndexMap.size();
   }
@@ -166,10 +175,14 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getSortedTvListForQuery(List<Integer> columnIndexList) {
+  public TVList getSortedTvListForQuery(List<String> measurementList) {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
+    List<Integer> columnIndexList = new ArrayList<>();
+    for (String measurement : measurementList) {
+      columnIndexList.add(vectorIdIndexMap.get(measurement));
+    }
     return list.getTvListByColumnIndex(columnIndexList);
   }
 
