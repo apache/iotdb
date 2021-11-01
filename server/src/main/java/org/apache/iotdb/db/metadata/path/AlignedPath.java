@@ -19,9 +19,17 @@
 
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
@@ -29,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * VectorPartialPath represents a vector's fullPath. It not only contains the full path of vector's
@@ -163,5 +172,50 @@ public class AlignedPath extends PartialPath {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), measurementList);
+  }
+
+  @Override
+  public AlignedSeriesReader createSeriesReader(
+          Set<String> allSensors,
+          TSDataType dataType,
+          QueryContext context,
+          QueryDataSource dataSource,
+          Filter timeFilter,
+          Filter valueFilter,
+          TsFileFilter fileFilter,
+          boolean ascending) {
+    return new AlignedSeriesReader(
+            this,
+            allSensors,
+            dataType,
+            context,
+            dataSource,
+            timeFilter,
+            valueFilter,
+            fileFilter,
+            ascending);
+  }
+
+  @Override
+  @TestOnly
+  public AlignedSeriesReader createSeriesReader(
+          Set<String> allSensors,
+          TSDataType dataType,
+          QueryContext context,
+          List<TsFileResource> seqFileResource,
+          List<TsFileResource> unseqFileResource,
+          Filter timeFilter,
+          Filter valueFilter,
+          boolean ascending) {
+    return new AlignedSeriesReader(
+            this,
+            allSensors,
+            dataType,
+            context,
+            seqFileResource,
+            unseqFileResource,
+            timeFilter,
+            valueFilter,
+            ascending);
   }
 }

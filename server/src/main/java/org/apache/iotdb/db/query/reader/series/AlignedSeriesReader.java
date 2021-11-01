@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,82 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.path;
+package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.query.reader.series.SeriesReader;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
-public class MeasurementPath extends PartialPath {
+public class AlignedSeriesReader extends SeriesReader {
 
-  private IMeasurementSchema measurementSchema;
-
-  private boolean isUnderAlignedEntity = false;
-
-  // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
-  private String measurementAlias = "";
-
-  public MeasurementPath() {}
-
-  public MeasurementPath(PartialPath measurementPath) {
-    super(measurementPath.getNodes());
-  }
-
-  public IMeasurementSchema getMeasurementSchema() {
-    return measurementSchema;
-  }
-
-  public void setMeasurementSchema(IMeasurementSchema measurementSchema) {
-    this.measurementSchema = measurementSchema;
-  }
-
-  public String getMeasurementAlias() {
-    return measurementAlias;
-  }
-
-  public void setMeasurementAlias(String measurementAlias) {
-    if (measurementAlias != null) {
-      this.measurementAlias = measurementAlias;
-    }
-  }
-
-  public boolean isMeasurementAliasExists() {
-    return measurementAlias != null && !measurementAlias.isEmpty();
-  }
-
-  @Override
-  public String getFullPathWithAlias() {
-    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
-  }
-
-  public boolean isUnderAlignedEntity() {
-    return isUnderAlignedEntity;
-  }
-
-  public void setUnderAlignedEntity(boolean underAlignedEntity) {
-    isUnderAlignedEntity = underAlignedEntity;
-  }
-
-  public PartialPath copy() {
-    MeasurementPath result = new MeasurementPath();
-    result.nodes = nodes;
-    result.fullPath = fullPath;
-    result.device = device;
-    result.measurementAlias = measurementAlias;
-    return result;
-  }
-
-  public SeriesReader createSeriesReader(
+  public AlignedSeriesReader(
+      PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
@@ -100,8 +46,8 @@ public class MeasurementPath extends PartialPath {
       Filter valueFilter,
       TsFileFilter fileFilter,
       boolean ascending) {
-    return new SeriesReader(
-        this,
+    super(
+        seriesPath,
         allSensors,
         dataType,
         context,
@@ -113,7 +59,8 @@ public class MeasurementPath extends PartialPath {
   }
 
   @TestOnly
-  public SeriesReader createSeriesReader(
+  public AlignedSeriesReader(
+      PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
@@ -122,8 +69,8 @@ public class MeasurementPath extends PartialPath {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
-    return new SeriesReader(
-        this,
+    super(
+        seriesPath,
         allSensors,
         dataType,
         context,
@@ -132,5 +79,17 @@ public class MeasurementPath extends PartialPath {
         timeFilter,
         valueFilter,
         ascending);
+  }
+
+  @Override
+  protected ITimeSeriesMetadata loadTimeSeriesMetadata(
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter filter,
+      Set<String> allSensors)
+      throws IOException {
+    return FileLoaderUtils.loadTimeSeriesMetadata(
+        resource, (AlignedPath) seriesPath, context, filter, allSensors);
   }
 }

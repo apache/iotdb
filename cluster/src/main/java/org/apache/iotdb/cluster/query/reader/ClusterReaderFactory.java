@@ -560,8 +560,7 @@ public class ClusterReaderFactory {
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
-    return new SeriesReader(
-        path,
+    return path.createSeriesReader(
         allSensors,
         dataType,
         context,

@@ -53,7 +53,7 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
       TsFileFilter fileFilter,
       boolean ascending) {
     this.seriesReader =
-        new SeriesReader(
+        new AlignedSeriesReader(
             seriesPath,
             allSensors,
             dataType,
