@@ -26,7 +26,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -176,46 +175,46 @@ public class AlignedPath extends PartialPath {
 
   @Override
   public AlignedSeriesReader createSeriesReader(
-          Set<String> allSensors,
-          TSDataType dataType,
-          QueryContext context,
-          QueryDataSource dataSource,
-          Filter timeFilter,
-          Filter valueFilter,
-          TsFileFilter fileFilter,
-          boolean ascending) {
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
     return new AlignedSeriesReader(
-            this,
-            allSensors,
-            dataType,
-            context,
-            dataSource,
-            timeFilter,
-            valueFilter,
-            fileFilter,
-            ascending);
+        this,
+        allSensors,
+        dataType,
+        context,
+        dataSource,
+        timeFilter,
+        valueFilter,
+        fileFilter,
+        ascending);
   }
 
   @Override
   @TestOnly
   public AlignedSeriesReader createSeriesReader(
-          Set<String> allSensors,
-          TSDataType dataType,
-          QueryContext context,
-          List<TsFileResource> seqFileResource,
-          List<TsFileResource> unseqFileResource,
-          Filter timeFilter,
-          Filter valueFilter,
-          boolean ascending) {
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
     return new AlignedSeriesReader(
-            this,
-            allSensors,
-            dataType,
-            context,
-            seqFileResource,
-            unseqFileResource,
-            timeFilter,
-            valueFilter,
-            ascending);
+        this,
+        allSensors,
+        dataType,
+        context,
+        seqFileResource,
+        unseqFileResource,
+        timeFilter,
+        valueFilter,
+        ascending);
   }
 }
