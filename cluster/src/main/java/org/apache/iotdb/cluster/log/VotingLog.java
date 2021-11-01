@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -27,6 +28,7 @@ public class VotingLog {
   protected Set<Integer> stronglyAcceptedNodeIds;
   protected Set<Integer> weaklyAcceptedNodeIds;
   public long acceptedTime;
+  public volatile ByteBuffer serializedCache;
 
   public VotingLog(Log log, int groupSize) {
     this.log = log;

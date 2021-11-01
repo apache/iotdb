@@ -114,6 +114,10 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
       synchronized (log) {
+        if (log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size()
+            >= quorumSize) {
+          log.acceptedTime = System.nanoTime();
+        }
         log.getWeaklyAcceptedNodeIds().add(receiver.nodeIdentifier);
         log.notifyAll();
       }

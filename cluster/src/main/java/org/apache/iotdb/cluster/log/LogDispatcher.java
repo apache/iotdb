@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -83,7 +84,7 @@ public class LogDispatcher {
 
   void createQueueAndBindingThreads() {
     for (Node node : member.getAllNodes()) {
-      if (!node.equals(member.getThisNode())) {
+      if (!ClusterUtils.isNodeEquals(node, member.getThisNode())) {
         nodeLogQueues.add(createQueueAndBindingThread(node));
       }
     }

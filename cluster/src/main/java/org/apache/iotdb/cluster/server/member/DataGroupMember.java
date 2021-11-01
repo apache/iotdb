@@ -266,7 +266,7 @@ public class DataGroupMember extends RaftMember {
   long checkElectorLogProgress(ElectionRequest electionRequest) {
     Node elector = electionRequest.getElector();
     // check if the node is in the group
-    if (!allNodes.contains(elector)) {
+    if (!containsNode(elector)) {
       logger.info(
           "{}: the elector {} is not in the data group {}, so reject this election.",
           name,
@@ -316,7 +316,7 @@ public class DataGroupMember extends RaftMember {
       logger.debug("{}: start to pre adding node {}", name, node);
     }
     synchronized (allNodes) {
-      if (allNodes.contains(node)) {
+      if (containsNode(node)) {
         return false;
       }
       int insertIndex = -1;
@@ -367,7 +367,7 @@ public class DataGroupMember extends RaftMember {
 
     synchronized (allNodes) {
       preAddNode(node);
-      if (allNodes.contains(node) && allNodes.size() > config.getReplicationNum()) {
+      if (containsNode(node) && allNodes.size() > config.getReplicationNum()) {
         // remove the last node because the group size is fixed to replication number
         Node removedNode = allNodes.remove(allNodes.size() - 1);
         peerMap.remove(removedNode);
@@ -895,7 +895,7 @@ public class DataGroupMember extends RaftMember {
       logger.debug("{}: start to pre remove node {}", name, removedNode);
     }
     synchronized (allNodes) {
-      if (allNodes.contains(removedNode) && allNodes.size() == config.getReplicationNum()) {
+      if (containsNode(removedNode) && allNodes.size() == config.getReplicationNum()) {
         // update the group if the deleted node was in it
         PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
         if (newGroup == null) {
@@ -933,7 +933,7 @@ public class DataGroupMember extends RaftMember {
 
     synchronized (allNodes) {
       preRemoveNode(removedNode);
-      if (allNodes.contains(removedNode)) {
+      if (containsNode(removedNode)) {
         // update the group if the deleted node was in it
         allNodes.remove(removedNode);
         peerMap.remove(removedNode);

@@ -21,10 +21,14 @@ package org.apache.iotdb.cluster.expr;
 
 import org.apache.iotdb.cluster.log.VotingLog;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class VotingLogList {
+  private static final Logger logger = LoggerFactory.getLogger(VotingLogList.class);
 
   private List<VotingLog> logList = new ArrayList<>();
   private volatile long currTerm = -1;
@@ -58,28 +62,36 @@ public class VotingLogList {
    * @param acceptingNodeId
    * @return the lastly removed entry if any.
    */
-  public synchronized void onStronglyAccept(long index, long term, int acceptingNodeId) {
+  public void onStronglyAccept(long index, long term, int acceptingNodeId) {
     int lastEntryIndexToCommit = -1;
-    for (int i = 0, logListSize = logList.size(); i < logListSize; i++) {
-      VotingLog votingLog = logList.get(i);
-      if (votingLog.getLog().getCurrLogIndex() <= index
-          && votingLog.getLog().getCurrLogTerm() == term) {
-        votingLog.getStronglyAcceptedNodeIds().add(acceptingNodeId);
-        if (votingLog.getStronglyAcceptedNodeIds().size() >= quorumSize) {
-          lastEntryIndexToCommit = i;
+
+    List<VotingLog> acceptedLogs;
+    synchronized (this) {
+      for (int i = 0, logListSize = logList.size(); i < logListSize; i++) {
+        VotingLog votingLog = logList.get(i);
+        if (votingLog.getLog().getCurrLogIndex() <= index
+            && votingLog.getLog().getCurrLogTerm() == term) {
+          votingLog.getStronglyAcceptedNodeIds().add(acceptingNodeId);
+          if (votingLog.getStronglyAcceptedNodeIds().size() >= quorumSize) {
+            lastEntryIndexToCommit = i;
+          }
+        } else if (votingLog.getLog().getCurrLogIndex() > index) {
+          break;
         }
       }
+
+      List<VotingLog> tmpAcceptedLogs = logList.subList(0, lastEntryIndexToCommit + 1);
+      acceptedLogs = new ArrayList<>(tmpAcceptedLogs);
+      tmpAcceptedLogs.clear();
     }
 
     if (lastEntryIndexToCommit != -1) {
-      List<VotingLog> acceptedLogs = logList.subList(0, lastEntryIndexToCommit + 1);
       for (VotingLog acceptedLog : acceptedLogs) {
         synchronized (acceptedLog) {
           acceptedLog.acceptedTime = System.nanoTime();
           acceptedLog.notifyAll();
         }
       }
-      acceptedLogs.clear();
     }
   }
 

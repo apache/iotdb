@@ -205,6 +205,7 @@ public class ExprMember extends MetaGroupMember {
 
     // flush [0, flushPos)
     List<Log> logs = Arrays.asList(logWindow).subList(0, flushPos);
+    // logger.info("{}, Flushing {} into log manager", logManager.getLastLogIndex(), logs);
     long success =
         logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
     if (success != -1) {

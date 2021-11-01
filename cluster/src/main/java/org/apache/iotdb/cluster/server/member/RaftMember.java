@@ -64,6 +64,7 @@ import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -168,7 +169,7 @@ public abstract class RaftMember {
    * the current term of the node, this object also works as lock of some transactions of the member
    * like elections.
    */
-  AtomicLong term = new AtomicLong(0);
+  protected AtomicLong term = new AtomicLong(0);
 
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   AtomicReference<Node> leader = new AtomicReference<>(ClusterConstant.EMPTY_NODE);
@@ -787,6 +788,19 @@ public abstract class RaftMember {
   public void setAllNodes(PartitionGroup allNodes) {
     this.allNodes = allNodes;
     this.votingLogList = new VotingLogList(allNodes.size() / 2);
+
+    // update the reference of thisNode to keep consistency
+    boolean foundThisNode = false;
+    for (Node node : allNodes) {
+      if (ClusterUtils.isNodeEquals(node, thisNode)) {
+        thisNode = node;
+        foundThisNode = true;
+        break;
+      }
+    }
+    if (!foundThisNode) {
+      logger.error("{}: did not find this node {}, in the raft group {}", name, thisNode, allNodes);
+    }
   }
 
   public Map<Node, Long> getLastCatchUpResponseTime() {
@@ -1192,10 +1206,9 @@ public abstract class RaftMember {
 
       startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
       log.setCreateTime(System.nanoTime());
+      votingLogList.insert(sendLogRequest.getVotingLog());
       getLogDispatcher().offer(sendLogRequest);
       Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
-
-      votingLogList.insert(sendLogRequest.getVotingLog());
     }
 
     try {
@@ -1586,7 +1599,7 @@ public abstract class RaftMember {
     return term;
   }
 
-  private synchronized LogDispatcher getLogDispatcher() {
+  protected synchronized LogDispatcher getLogDispatcher() {
     if (logDispatcher == null) {
       if (USE_INDIRECT_LOG_DISPATCHER) {
         logDispatcher = new IndirectLogDispatcher(this);
@@ -1602,23 +1615,24 @@ public abstract class RaftMember {
    * one follower tells the node that it is no longer a valid leader, or a timeout is triggered.
    */
   @SuppressWarnings({"java:S2445"}) // safe synchronized
-  private AppendLogResult waitAppendResult(
+  protected AppendLogResult waitAppendResult(
       VotingLog log, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, int quorumSize) {
     // wait for the followers to vote
     long startTime = Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.getOperationStartTime();
     long nextTimeToPrint = 3000;
+
+    int stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
+    int weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
+    int totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
     synchronized (log) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
-      int stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
-      int weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
       while (stronglyAcceptedNodeNum < quorumSize
+          && (!ENABLE_WEAK_ACCEPTANCE || (totalAccepted < quorumSize))
           && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
-          && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)
-          && (!ENABLE_WEAK_ACCEPTANCE
-              || (stronglyAcceptedNodeNum + weaklyAcceptedNodeNum < quorumSize))) {
+          && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
         try {
-          log.wait(1);
+          log.wait(0);
           logger.debug("{} ends waiting", log);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
@@ -1636,6 +1650,7 @@ public abstract class RaftMember {
         }
         stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
         weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
+        totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
       }
 
       if (alreadyWait > 3000) {
@@ -1663,15 +1678,11 @@ public abstract class RaftMember {
     }
 
     // cannot get enough agreements within a certain amount of time
-    if (log.getStronglyAcceptedNodeIds().size() < quorumSize
-        && (log.getStronglyAcceptedNodeIds().size() + log.getWeaklyAcceptedNodeIds().size())
-            < quorumSize) {
+    if (stronglyAcceptedNodeNum < quorumSize && totalAccepted < quorumSize) {
       return AppendLogResult.TIME_OUT;
     }
 
-    if (log.getStronglyAcceptedNodeIds().size() < quorumSize
-        && (log.getStronglyAcceptedNodeIds().size() + log.getWeaklyAcceptedNodeIds().size())
-            >= quorumSize) {
+    if (stronglyAcceptedNodeNum < quorumSize && totalAccepted >= quorumSize) {
       return AppendLogResult.WEAK_ACCEPT;
     }
 
@@ -1680,17 +1691,21 @@ public abstract class RaftMember {
   }
 
   @SuppressWarnings("java:S2445")
-  void commitLog(Log log) throws LogExecutionException {
+  protected void commitLog(Log log) throws LogExecutionException {
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
-    synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
-          startTime);
+    if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
+      synchronized (logManager) {
+        if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
+          Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
+              startTime);
 
-      startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
-      logManager.commitTo(log.getCurrLogIndex());
+          startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
+          logManager.commitTo(log.getCurrLogIndex());
+        }
+      }
+      Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(startTime);
     }
-    Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(startTime);
     if (ENABLE_COMMIT_RETURN) {
       return;
     }
@@ -1701,7 +1716,7 @@ public abstract class RaftMember {
       while (!log.isApplied()) {
         // wait until the log is applied
         try {
-          log.wait(5);
+          log.wait(0);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new LogExecutionException(e);
@@ -1742,7 +1757,7 @@ public abstract class RaftMember {
     return tsStatus;
   }
 
-  AppendEntryRequest buildAppendEntryRequest(Log log, boolean serializeNow) {
+  protected AppendEntryRequest buildAppendEntryRequest(Log log, boolean serializeNow) {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     if (serializeNow) {
@@ -2249,7 +2264,7 @@ public abstract class RaftMember {
     return allNodes.getId();
   }
 
-  enum AppendLogResult {
+  protected enum AppendLogResult {
     OK,
     TIME_OUT,
     LEADERSHIP_STALE,
@@ -2292,5 +2307,15 @@ public abstract class RaftMember {
 
   public void setSkipElection(boolean skipElection) {
     this.skipElection = skipElection;
+  }
+
+  protected boolean containsNode(Node node) {
+    for (Node localNode : allNodes) {
+      if ((localNode.getInternalIp().equals(node.getInternalIp())
+          && localNode.getMetaPort() == node.getMetaPort())) {
+        return true;
+      }
+    }
+    return false;
   }
 }

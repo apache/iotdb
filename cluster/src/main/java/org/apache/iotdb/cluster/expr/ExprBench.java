@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.expr;
 import org.apache.iotdb.cluster.client.sync.SyncClientFactory;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -107,6 +108,7 @@ public class ExprBench {
   }
 
   public static void main(String[] args) {
+    ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(50000);
     Node target = new Node();
     target.setInternalIp(args[0]);
     target.setMetaPort(Integer.parseInt(args[1]));

@@ -169,7 +169,7 @@ public class MetaGroupMember extends RaftMember {
    * every "REPORT_INTERVAL_SEC" seconds, a reporter thread will print the status of all raft
    * members in this node
    */
-  private static final int REPORT_INTERVAL_SEC = 10;
+  protected static final int REPORT_INTERVAL_SEC = 10;
 
   /**
    * during snapshot, hardlinks of data files are created to for downloading. hardlinks will be
@@ -219,7 +219,7 @@ public class MetaGroupMember extends RaftMember {
    * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the status
    * of all raft members in this node
    */
-  private ScheduledExecutorService reportThread;
+  protected ScheduledExecutorService reportThread;
 
   /**
    * containing configurations that should be kept the same cluster-wide, and must be checked before
@@ -397,7 +397,7 @@ public class MetaGroupMember extends RaftMember {
       if (node != null
           && (!node.getInternalIp().equals(thisNode.internalIp)
               || node.getMetaPort() != thisNode.getMetaPort())
-          && !allNodes.contains(node)) {
+          && !containsNode(node)) {
         // do not add the local node since it is added in the constructor
         allNodes.add(node);
       }
@@ -417,7 +417,7 @@ public class MetaGroupMember extends RaftMember {
         logger.debug("{}: adding a new node {} into {}", name, newNode, allNodes);
       }
 
-      if (!allNodes.contains(newNode)) {
+      if (!containsNode(newNode)) {
         registerNodeIdentifier(newNode, newNode.getNodeIdentifier());
         allNodes.add(newNode);
       }
@@ -473,7 +473,7 @@ public class MetaGroupMember extends RaftMember {
         TimeUnit.SECONDS);
   }
 
-  private void generateNodeReport() {
+  protected void generateNodeReport() {
     try {
       if (logger.isInfoEnabled()) {
         NodeReport report = genNodeReport();
@@ -619,7 +619,7 @@ public class MetaGroupMember extends RaftMember {
   long checkElectorLogProgress(ElectionRequest electionRequest) {
     Node elector = electionRequest.getElector();
     // check if the node is in the group
-    if (partitionTable != null && !allNodes.contains(elector)) {
+    if (partitionTable != null && !containsNode(elector)) {
       logger.info(
           "{}: the elector {} is not in the data group {}, so reject this election.",
           name,
@@ -723,7 +723,20 @@ public class MetaGroupMember extends RaftMember {
     if (response.isSetFollowerIdentifier()) {
       // register the follower, the response.getFollower() contains the node information of the
       // receiver.
-      registerNodeIdentifier(response.getFollower(), response.getFollowerIdentifier());
+      Node localNode = null;
+      for (Node node : allNodes) {
+        if (node.getInternalIp().equals(response.getFollower().internalIp)
+            && node.getMetaPort() == response.getFollower().getMetaPort()) {
+          localNode = node;
+        }
+      }
+      if (localNode == null) {
+        logger.warn(
+            "Received a heartbeat response from a node that is not in the node list: {}",
+            response.getFollower());
+        return;
+      }
+      registerNodeIdentifier(localNode, response.getFollowerIdentifier());
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
         // When the meta raft group is established, the follower reports its node information to the
@@ -902,7 +915,7 @@ public class MetaGroupMember extends RaftMember {
         break;
       }
     }
-    if (allNodes.contains(newNode)) {
+    if (containsNode(newNode)) {
       logger.debug("Node {} is already in the cluster", newNode);
       response.setRespNum((int) Response.RESPONSE_AGREE);
       synchronized (partitionTable) {
@@ -1741,7 +1754,7 @@ public class MetaGroupMember extends RaftMember {
         logger.debug("{}: Removing a node {} from {}", name, oldNode, allNodes);
       }
 
-      if (allNodes.contains(oldNode)) {
+      if (containsNode(oldNode)) {
         allNodes.remove(oldNode);
         idNodeMap.remove(oldNode.nodeIdentifier);
       }
@@ -1857,7 +1870,7 @@ public class MetaGroupMember extends RaftMember {
   private NodeReport genNodeReport() {
     NodeReport report = new NodeReport(thisNode);
     report.setMetaMemberReport(genMemberReport());
-    report.setDataMemberReportList(dataClusterServer.genMemberReports());
+    // report.setDataMemberReportList(dataClusterServer.genMemberReports());
     return report;
   }
 

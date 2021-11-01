@@ -96,8 +96,8 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           // the election is valid
           electionValid.set(true);
           terminated.set(true);
-          raftMember.getTerm().notifyAll();
           raftMember.onElectionWins();
+          raftMember.getTerm().notifyAll();
           logger.info("{}: Election {} is won", memberName, currTerm);
         }
         // still need more votes

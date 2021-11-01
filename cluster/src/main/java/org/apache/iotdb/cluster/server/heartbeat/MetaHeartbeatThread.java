@@ -86,6 +86,7 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     super.startElection();
 
     if (localMetaMember.getCharacter() == NodeCharacter.LEADER) {
+
       // A new raft leader needs to have at least one log in its term for committing logs with older
       // terms.
       // In the meta group, log frequency is very low. When the leader is changed whiling changing
@@ -93,7 +94,13 @@ public class MetaHeartbeatThread extends HeartbeatThread {
       // operation can be carried out in time.
       localMetaMember
           .getAppendLogThreadPool()
-          .submit(() -> localMetaMember.processPlanLocally(new DummyPlan()));
+          .submit(
+              () -> {
+                while (localMetaMember.getPartitionTable() == null) {
+                  // wait until partition table is ready
+                }
+                localMetaMember.processPlanLocally(new DummyPlan());
+              });
     }
   }
 }
