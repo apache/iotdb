@@ -37,6 +37,10 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
     this.list = TVListAllocator.getInstance().allocate(schema.getSubMeasurementsTSDataTypeList());
   }
 
+  public boolean containsMeasurement(String measurementId) {
+    return vectorIdIndexMap.containsKey(measurementId);
+  }
+
   @Override
   public void putLong(long t, long v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
@@ -166,10 +170,16 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getSortedTvListForQuery(List<Integer> columnIndexList) {
+  public TVList getSortedTvListForQuery(List<String> measurementList) {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
+    List<Integer> columnIndexList = new ArrayList<>();
+    for (String measurement : measurementList) {
+      if (vectorIdIndexMap.containsKey(measurement)) {
+        columnIndexList.add(vectorIdIndexMap.get(measurement));
+      }
+    }
     return list.getTvListByColumnIndex(columnIndexList);
   }
 

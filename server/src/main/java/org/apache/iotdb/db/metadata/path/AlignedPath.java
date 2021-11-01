@@ -19,22 +19,30 @@
 
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.VectorWritableMemChunk;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -47,7 +55,7 @@ import java.util.Set;
 public class AlignedPath extends PartialPath {
 
   // todo improve vector implementation by remove this placeholder
-  private static final String VECTOR_PLACEHOLDER = "";
+  public static final String VECTOR_PLACEHOLDER = "";
 
   private List<String> measurementList;
   private List<IMeasurementSchema> schemaList;
@@ -224,5 +232,29 @@ public class AlignedPath extends PartialPath {
         timeFilter,
         valueFilter,
         ascending);
+  }
+
+  @Override
+  public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
+      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      throws QueryProcessException, IOException {
+    if (!memTableMap.containsKey(getDevice())) {
+      return null;
+    }
+    VectorWritableMemChunk vectorMemChunk =
+        ((VectorWritableMemChunk) memTableMap.get(getDevice()).get(VECTOR_PLACEHOLDER));
+    List<String> validMeasurementList = new ArrayList<>();
+    for (String measurement : measurementList) {
+      if (vectorMemChunk.containsMeasurement(measurement)) {
+        validMeasurementList.add(measurement);
+      }
+    }
+    if (validMeasurementList.isEmpty()) {
+      return null;
+    }
+    // get sorted tv list is synchronized so different query can get right sorted list reference
+    TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(validMeasurementList);
+    int curSize = vectorTvListCopy.size();
+    return new ReadOnlyMemChunk(getMeasurementSchema(), vectorTvListCopy, curSize, deletionList);
   }
 }

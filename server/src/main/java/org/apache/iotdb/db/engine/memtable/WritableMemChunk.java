@@ -200,7 +200,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery(List<Integer> columnIndexList) {
+  public synchronized TVList getSortedTvListForQuery(List<String> measurementList) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
