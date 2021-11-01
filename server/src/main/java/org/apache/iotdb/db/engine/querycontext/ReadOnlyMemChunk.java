@@ -191,11 +191,7 @@ public class ReadOnlyMemChunk {
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         timeStatistics.update(timeValuePair.getTimestamp());
-        if (schema.getSubMeasurementsTSDataTypeList().size() == 1) {
-          updateValueStatisticsForSingleColumn(schema, valueStatistics, timeValuePair);
-        } else {
-          updateValueStatistics(schema, valueStatistics, timeValuePair);
-        }
+        updateValueStatistics(schema, valueStatistics, timeValuePair);
       }
     }
     timeStatistics.setEmpty(isEmpty());

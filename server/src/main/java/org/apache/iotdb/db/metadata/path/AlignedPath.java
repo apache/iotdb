@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -93,6 +94,11 @@ public class AlignedPath extends PartialPath {
     measurementList.add(path.getMeasurement());
     schemaList = new ArrayList<>();
     schemaList.add(path.getMeasurementSchema());
+  }
+
+  @Override
+  public String getDevice() {
+    return getFullPath();
   }
 
   public List<String> getMeasurementList() {

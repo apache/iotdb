@@ -181,9 +181,7 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
     list.increaseReferenceCount();
     List<Integer> columnIndexList = new ArrayList<>();
     for (String measurement : measurementList) {
-      if (vectorIdIndexMap.containsKey(measurement)) {
-        columnIndexList.add(vectorIdIndexMap.get(measurement));
-      }
+      columnIndexList.add(vectorIdIndexMap.get(measurement));
     }
     return list.getTvListByColumnIndex(columnIndexList);
   }
