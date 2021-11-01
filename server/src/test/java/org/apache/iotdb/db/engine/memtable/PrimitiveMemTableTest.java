@@ -354,8 +354,7 @@ public class PrimitiveMemTableTest {
     mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
 
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
-            new PartialPath(deviceId), measurements, dataTypesList);
+        new InsertTabletPlan(new PartialPath(deviceId), measurements, dataTypesList);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];

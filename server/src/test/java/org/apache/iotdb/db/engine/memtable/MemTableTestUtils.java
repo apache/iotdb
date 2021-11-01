@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,8 +97,7 @@ public class MemTableTestUtils {
     mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
 
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
-            new PartialPath(deviceId0), measurements, dataTypesList);
+        new InsertTabletPlan(new PartialPath(deviceId0), measurements, dataTypesList);
 
     insertTabletPlan.setAligned(true);
 
