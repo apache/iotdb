@@ -124,7 +124,7 @@ public interface IWritableMemChunk {
   int delete(long lowerBound, long upperBound);
 
   // For delete one column in the vector
-  int delete(long lowerBound, long upperBound, int columnIndex);
+  int delete(long lowerBound, long upperBound, String measurementId);
 
   IChunkWriter createIChunkWriter();
 
