@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -203,7 +203,7 @@ public class ReadOnlyMemChunk {
       valueStatistic.setEmpty(isEmpty());
     }
     IChunkMetadata vectorChunkMetadata =
-        new VectorChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
+        new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
     vectorChunkMetadata.setChunkLoader(new MemChunkLoader(this));
     vectorChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = vectorChunkMetadata;

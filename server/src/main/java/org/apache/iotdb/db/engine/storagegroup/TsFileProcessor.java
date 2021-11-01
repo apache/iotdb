@@ -1281,7 +1281,7 @@ public class TsFileProcessor {
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
         tsfileResourcesForQuery.add(
-            new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
+            fullPath.createTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error(

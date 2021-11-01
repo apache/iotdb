@@ -19,24 +19,31 @@
 
 package org.apache.iotdb.db.metadata.path;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
 /**
  * VectorPartialPath represents a vector's fullPath. It not only contains the full path of vector's
@@ -224,5 +231,76 @@ public class AlignedPath extends PartialPath {
         timeFilter,
         valueFilter,
         ascending);
+  }
+
+  @Override
+  public TsFileResource createTsFileResource(List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList, TsFileResource originTsFileResource)
+      throws IOException {
+    TsFileResource tsFileResource = new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+    tsFileResource.setTimeSeriesMetadata(generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+    return tsFileResource;
+  }
+
+  /**
+   * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
+   * have chunkMetadata, but query will use these, so we need to generate it for them.
+   */
+  private AlignedTimeSeriesMetadata generateTimeSeriesMetadata(List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList) throws IOException {
+    TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
+    timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
+    timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
+    timeTimeSeriesMetadata.setMeasurementId("");
+    timeTimeSeriesMetadata.setTSDataType(TSDataType.INT64);
+
+
+    Statistics<? extends Serializable> timeStatistics =
+        Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
+
+    // init each value time series meta
+    List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
+    for (IMeasurementSchema valueChunkMetadata : schemaList) {
+      TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
+      valueMetadata.setOffsetOfChunkMetaDataList(-1);
+      valueMetadata.setDataSizeOfChunkMetaDataList(-1);
+      valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
+      valueMetadata.setTSDataType(valueChunkMetadata.getType());
+      valueMetadata.setStatistics(
+          Statistics.getStatsByType(valueChunkMetadata.getType()));
+      valueTimeSeriesMetadataList.add(valueMetadata);
+    }
+
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
+      timeStatistics.mergeStatistics(
+          alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
+      for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+        valueTimeSeriesMetadataList
+            .get(i)
+            .getStatistics()
+            .mergeStatistics(
+                alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+      }
+    }
+
+    for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+      if (!memChunk.isEmpty()) {
+        AlignedChunkMetadata alignedChunkMetadata =
+            (AlignedChunkMetadata) memChunk.getChunkMetaData();
+        timeStatistics.mergeStatistics(
+            alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
+        for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+          valueTimeSeriesMetadataList
+              .get(i)
+              .getStatistics()
+              .mergeStatistics(
+                  alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+        }
+      }
+    }
+    timeTimeSeriesMetadata.setStatistics(timeStatistics);
+
+    return new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
   }
 }

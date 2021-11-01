@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.VectorChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -154,14 +154,14 @@ public class FileLoaderUtils {
    *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
    * @param allSensors all sensors belonging to this device that appear in query
    */
-  public static VectorTimeSeriesMetadata loadTimeSeriesMetadata(
+  public static AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       AlignedPath vectorPath,
       QueryContext context,
       Filter filter,
       Set<String> allSensors)
       throws IOException {
-    VectorTimeSeriesMetadata vectorTimeSeriesMetadata = null;
+    AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
       if (!resource.getTsFile().exists()) {
@@ -194,35 +194,35 @@ public class FileLoaderUtils {
               .setChunkMetadataLoader(
                   new DiskChunkMetadataLoader(resource, subPath, context, filter));
         }
-        vectorTimeSeriesMetadata =
-            new VectorTimeSeriesMetadata(
+        alignedTimeSeriesMetadata =
+            new AlignedTimeSeriesMetadata(
                 timeSeriesMetadata.get(0),
                 timeSeriesMetadata.subList(1, timeSeriesMetadata.size()));
       }
     } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
-      vectorTimeSeriesMetadata = (VectorTimeSeriesMetadata) resource.getTimeSeriesMetadata();
-      if (vectorTimeSeriesMetadata != null) {
-        vectorTimeSeriesMetadata.setChunkMetadataLoader(
+      alignedTimeSeriesMetadata = (AlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata();
+      if (alignedTimeSeriesMetadata != null) {
+        alignedTimeSeriesMetadata.setChunkMetadataLoader(
             new MemChunkMetadataLoader(resource, vectorPath, context, filter));
       }
     }
 
-    if (vectorTimeSeriesMetadata != null) {
+    if (alignedTimeSeriesMetadata != null) {
       List<Modification> pathModifications =
           context.getPathModifications(resource.getModFile(), vectorPath);
-      vectorTimeSeriesMetadata.getTimeseriesMetadata().setModified(!pathModifications.isEmpty());
-      if (vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
-          > vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
+      alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(!pathModifications.isEmpty());
+      if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
+          > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
         return null;
       }
       if (filter != null
           && !filter.satisfyStartEndTime(
-              vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime(),
-              vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime())) {
+              alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime(),
+              alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime())) {
         return null;
       }
       List<TimeseriesMetadata> valueTimeSeriesMetadataList =
-          vectorTimeSeriesMetadata.getValueTimeseriesMetadataList();
+          alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
         pathModifications =
             context.getPathModifications(
@@ -230,7 +230,7 @@ public class FileLoaderUtils {
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
       }
     }
-    return vectorTimeSeriesMetadata;
+    return alignedTimeSeriesMetadata;
   }
 
   /**
@@ -265,10 +265,10 @@ public class FileLoaderUtils {
         chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
         chunkReader = new ChunkReader(chunk, timeFilter);
       } else {
-        VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetaData;
-        Chunk timeChunk = vectorChunkMetadata.getTimeChunk();
-        List<Chunk> valueChunkList = vectorChunkMetadata.getValueChunkList();
-        chunkReader = new VectorChunkReader(timeChunk, valueChunkList, timeFilter);
+        AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
+        Chunk timeChunk = alignedChunkMetadata.getTimeChunk();
+        List<Chunk> valueChunkList = alignedChunkMetadata.getValueChunkList();
+        chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, timeFilter);
       }
     }
     return chunkReader.loadPageReaderList();

@@ -34,7 +34,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VectorPageReader implements IPageReader {
+public class AlignedPageReader implements IPageReader {
 
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;
@@ -42,7 +42,7 @@ public class VectorPageReader implements IPageReader {
   private Filter filter;
   private boolean isModified;
 
-  public VectorPageReader(
+  public AlignedPageReader(
       PageHeader timePageHeader,
       ByteBuffer timePageData,
       Decoder timeDecoder,

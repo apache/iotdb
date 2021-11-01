@@ -18,20 +18,25 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
-import java.util.List;
-import java.util.Set;
 
 public class MeasurementPath extends PartialPath {
 
@@ -139,5 +144,42 @@ public class MeasurementPath extends PartialPath {
         timeFilter,
         valueFilter,
         ascending);
+  }
+
+  @Override
+  public TsFileResource createTsFileResource(List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList, TsFileResource originTsFileResource)
+      throws IOException {
+    TsFileResource tsFileResource = new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+    tsFileResource.setTimeSeriesMetadata(generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+    return tsFileResource;
+  }
+
+  /**
+   * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
+   * have chunkMetadata, but query will use these, so we need to generate it for them.
+   */
+  private TimeseriesMetadata generateTimeSeriesMetadata(List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList) throws IOException {
+    TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
+    timeSeriesMetadata.setMeasurementId(measurementSchema.getMeasurementId());
+    timeSeriesMetadata.setTSDataType(measurementSchema.getType());
+    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
+    timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
+
+    Statistics<? extends Serializable> seriesStatistics =
+        Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
+    // flush chunkMetadataList one by one
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+    }
+
+    for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+      if (!memChunk.isEmpty()) {
+        seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+      }
+    }
+    timeSeriesMetadata.setStatistics(seriesStatistics);
+    return timeSeriesMetadata;
   }
 }

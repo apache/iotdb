@@ -33,8 +33,8 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.page.VectorPageReader;
+import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -276,10 +276,10 @@ public class SeriesReader {
   }
 
   Statistics currentFileStatistics(int index) throws IOException {
-    if (!(firstTimeSeriesMetadata instanceof VectorTimeSeriesMetadata)) {
+    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
       throw new IOException("Can only get statistics by index from vectorTimeSeriesMetaData");
     }
-    return ((VectorTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
   }
 
   boolean currentFileModified() throws IOException {
@@ -409,10 +409,10 @@ public class SeriesReader {
   }
 
   Statistics currentChunkStatistics(int index) throws IOException {
-    if (!(firstChunkMetadata instanceof VectorChunkMetadata)) {
+    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
       throw new IOException("Can only get statistics by index from vectorChunkMetaData");
     }
-    return ((VectorChunkMetadata) firstChunkMetadata).getStatistics(index);
+    return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
   }
 
   boolean currentChunkModified() throws IOException {
@@ -1071,7 +1071,7 @@ public class SeriesReader {
     }
 
     public boolean isVectorPageReader() {
-      return data instanceof VectorPageReader;
+      return data instanceof AlignedPageReader;
     }
 
     Statistics getStatistics() {
@@ -1079,10 +1079,10 @@ public class SeriesReader {
     }
 
     Statistics getStatistics(int index) throws IOException {
-      if (!(data instanceof VectorPageReader)) {
+      if (!(data instanceof AlignedPageReader)) {
         throw new IOException("Can only get statistics by index from VectorPageReader");
       }
-      return ((VectorPageReader) data).getStatistics(index);
+      return ((AlignedPageReader) data).getStatistics(index);
     }
 
     BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

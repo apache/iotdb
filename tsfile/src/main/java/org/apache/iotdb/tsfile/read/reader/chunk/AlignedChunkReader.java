@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.page.VectorPageReader;
+import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -41,7 +41,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-public class VectorChunkReader implements IChunkReader {
+public class AlignedChunkReader implements IChunkReader {
 
   // chunk header of the time column
   private final ChunkHeader timeChunkHeader;
@@ -69,7 +69,7 @@ public class VectorChunkReader implements IChunkReader {
    *
    * @param filter filter
    */
-  public VectorChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter filter)
+  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter filter)
       throws IOException {
     this.filter = filter;
     this.timeChunkDataBuffer = timeChunk.getData();
@@ -142,7 +142,7 @@ public class VectorChunkReader implements IChunkReader {
     return filter == null || filter.satisfy(pageHeader.getStatistics());
   }
 
-  private VectorPageReader constructPageReaderForNextPage(
+  private AlignedPageReader constructPageReaderForNextPage(
       PageHeader timePageHeader, List<PageHeader> valuePageHeader) throws IOException {
     PageInfo timePageInfo = new PageInfo();
     getPageInfo(timePageHeader, timeChunkDataBuffer, timeChunkHeader, timePageInfo);
@@ -175,8 +175,8 @@ public class VectorChunkReader implements IChunkReader {
         valueDecoderList.add(null);
       }
     }
-    VectorPageReader vectorPageReader =
-        new VectorPageReader(
+    AlignedPageReader alignedPageReader =
+        new AlignedPageReader(
             timePageHeader,
             timePageInfo.pageData,
             timeDecoder,
@@ -185,8 +185,8 @@ public class VectorChunkReader implements IChunkReader {
             valueDataTypeList,
             valueDecoderList,
             filter);
-    vectorPageReader.setDeleteIntervalList(valueDeleteIntervalList);
-    return vectorPageReader;
+    alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
+    return alignedPageReader;
   }
 
   /**
