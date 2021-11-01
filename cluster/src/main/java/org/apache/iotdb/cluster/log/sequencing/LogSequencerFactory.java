@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.log.sequencing;
 
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;

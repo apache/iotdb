@@ -19,16 +19,9 @@
 
 package org.apache.iotdb.cluster.log.sequencing;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
+import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -36,8 +29,17 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class AsynchronousSequencer implements LogSequencer {
 
@@ -51,8 +53,7 @@ public class AsynchronousSequencer implements LogSequencer {
 
   private BlockingQueue<SendLogRequest> unsequencedLogQueue;
 
-  public AsynchronousSequencer(RaftMember member,
-      RaftLogManager logManager) {
+  public AsynchronousSequencer(RaftMember member, RaftLogManager logManager) {
     this.member = member;
     this.logManager = logManager;
     unsequencedLogQueue = new ArrayBlockingQueue<>(4096);
@@ -62,12 +63,13 @@ public class AsynchronousSequencer implements LogSequencer {
   }
 
   public SendLogRequest enqueueSendLogRequest(Log log) {
-    AtomicInteger voteCounter = new AtomicInteger(member.getAllNodes().size() / 2);
+    VotingLog votingLog = member.buildVotingLog(log);
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(member.getTerm().get());
 
-    SendLogRequest request = new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm,
-        null);
+    SendLogRequest request =
+        new SendLogRequest(
+            votingLog, leaderShipStale, newLeaderTerm, null, member.getAllNodes().size() / 2);
     try {
       unsequencedLogQueue.put(request);
     } catch (InterruptedException e) {
@@ -81,7 +83,7 @@ public class AsynchronousSequencer implements LogSequencer {
     long startTime;
     synchronized (logManager) {
       for (SendLogRequest sendLogRequest : sendLogRequests) {
-        Log log = sendLogRequest.getLog();
+        Log log = sendLogRequest.getVotingLog().getLog();
         log.setCurrLogTerm(member.getTerm().get());
         log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
         if (log instanceof PhysicalPlanLog) {
@@ -100,6 +102,7 @@ public class AsynchronousSequencer implements LogSequencer {
 
         startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
         log.setCreateTime(System.nanoTime());
+        member.getVotingLogList().insert(sendLogRequest.getVotingLog());
         member.getLogDispatcher().offer(sendLogRequest);
         Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
       }
@@ -127,7 +130,7 @@ public class AsynchronousSequencer implements LogSequencer {
 
   @Override
   public SendLogRequest sequence(Log log) {
-    return null;
+    return enqueueSendLogRequest(log);
   }
 
   @Override

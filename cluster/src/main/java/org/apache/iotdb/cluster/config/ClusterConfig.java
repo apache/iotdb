@@ -183,8 +183,7 @@ public class ClusterConfig {
 
   private boolean useIndirectBroadcasting = false;
 
-  private boolean useAsyncSequencing = false;
-
+  private boolean useAsyncSequencing = true;
 
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If

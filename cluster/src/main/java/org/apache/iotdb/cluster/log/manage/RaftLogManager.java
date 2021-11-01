@@ -976,6 +976,8 @@ public abstract class RaftLogManager {
     while (!Thread.currentThread().isInterrupted()) {
       try {
         doCheckAppliedLogIndex();
+      } catch (IndexOutOfBoundsException e) {
+        // ignore
       } catch (Exception e) {
         logger.error("{}, an exception occurred when checking the applied log index", name, e);
       }
@@ -998,7 +1000,7 @@ public abstract class RaftLogManager {
       }
       Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
       if (log == null || log.getCurrLogIndex() != nextToCheckIndex) {
-        logger.warn(
+        logger.debug(
             "{}, get log error when checking the applied log index, log={}, nextToCheckIndex={}",
             name,
             log,

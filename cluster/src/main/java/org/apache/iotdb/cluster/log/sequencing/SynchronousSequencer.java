@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.sequencing;
 
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
+import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -28,7 +29,6 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -70,6 +70,7 @@ public class SynchronousSequencer implements LogSequencer {
 
       startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
       log.setCreateTime(System.nanoTime());
+      member.getVotingLogList().insert(sendLogRequest.getVotingLog());
       member.getLogDispatcher().offer(sendLogRequest);
       Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
     }
@@ -82,7 +83,7 @@ public class SynchronousSequencer implements LogSequencer {
   }
 
   private SendLogRequest buildSendLogRequest(Log log) {
-    AtomicInteger voteCounter = new AtomicInteger(member.getAllNodes().size() / 2);
+    VotingLog votingLog = member.buildVotingLog(log);
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(member.getTerm().get());
 
@@ -90,7 +91,12 @@ public class SynchronousSequencer implements LogSequencer {
     AppendEntryRequest appendEntryRequest = member.buildAppendEntryRequest(log, false);
     Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.calOperationCostTimeFromStart(startTime);
 
-    return new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm, appendEntryRequest);
+    return new SendLogRequest(
+        votingLog,
+        leaderShipStale,
+        newLeaderTerm,
+        appendEntryRequest,
+        member.getAllNodes().size() / 2);
   }
 
   public static class Factory implements LogSequencerFactory {
