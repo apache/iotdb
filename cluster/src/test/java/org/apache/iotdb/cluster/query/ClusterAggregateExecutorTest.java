@@ -78,17 +78,17 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
             SQLConstant.COUNT,
             SQLConstant.SUM);
     plan.setPaths(paths);
-    plan.setDeduplicatedPaths(paths);
+    plan.setDeduplicatedPathsAndUpdate(paths);
     plan.setDataTypes(dataTypes);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
 
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
-      executor = new ClusterAggregateExecutor(plan, testMetaMember);
-      QueryDataSet queryDataSet = executor.executeWithoutValueFilter(context, plan);
+      executor = new ClusterAggregateExecutor(context, plan, testMetaMember);
+      QueryDataSet queryDataSet = executor.executeWithoutValueFilter(plan);
       assertTrue(queryDataSet.hasNext());
       RowRecord record = queryDataSet.next();
       List<Field> fields = record.getFields();
@@ -129,7 +129,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
             SQLConstant.COUNT,
             SQLConstant.SUM);
     plan.setPaths(paths);
-    plan.setDeduplicatedPaths(paths);
+    plan.setDeduplicatedPathsAndUpdate(paths);
     plan.setDataTypes(dataTypes);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);
@@ -142,10 +142,10 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
                 new PartialPath(TestUtils.getTestSeries(0, 0)), TimeFilter.gtEq(3))));
 
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
-      executor = new ClusterAggregateExecutor(plan, testMetaMember);
-      QueryDataSet queryDataSet = executor.executeWithValueFilter(context, plan);
+      executor = new ClusterAggregateExecutor(context, plan, testMetaMember);
+      QueryDataSet queryDataSet = executor.executeWithValueFilter(plan);
       assertTrue(queryDataSet.hasNext());
       RowRecord record = queryDataSet.next();
       List<Field> fields = record.getFields();

@@ -44,6 +44,7 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -54,12 +55,13 @@ public class IoTDBStatement implements Statement {
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
   private int fetchSize;
+  private int maxRows = 0;
 
   /**
-   * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
-   * will use server configuration.
+   * Timeout of query can be set by users. Unit: s. A negative number means using the default
+   * configuration of server. And value 0 will disable the function of query timeout.
    */
-  private int queryTimeout;
+  private int queryTimeout = -1;
 
   protected TSIService.Iface client;
   private List<String> batchSQLList;
@@ -249,7 +251,11 @@ public class IoTDBStatement implements Statement {
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    execReq.setFetchSize(fetchSize);
+    int rows = fetchSize;
+    if (maxRows != 0 && fetchSize > maxRows) {
+      rows = maxRows;
+    }
+    execReq.setFetchSize(rows);
     execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
@@ -262,6 +268,7 @@ public class IoTDBStatement implements Statement {
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
       if (execResp.queryDataSet == null) {
+        BitSet aliasColumn = listToBitSet(execResp.getAliasColumns());
         this.resultSet =
             new IoTDBNonAlignJDBCResultSet(
                 this,
@@ -274,7 +281,11 @@ public class IoTDBStatement implements Statement {
                 queryId,
                 sessionId,
                 execResp.nonAlignQueryDataSet,
-                execReq.timeout);
+                execResp.tracingInfo,
+                execReq.timeout,
+                execResp.operationType,
+                execResp.getSgColumns(),
+                aliasColumn);
       } else {
         this.resultSet =
             new IoTDBJDBCResultSet(
@@ -288,7 +299,9 @@ public class IoTDBStatement implements Statement {
                 queryId,
                 sessionId,
                 execResp.queryDataSet,
-                execReq.timeout);
+                execResp.tracingInfo,
+                execReq.timeout,
+                true);
       }
       return true;
     }
@@ -313,6 +326,8 @@ public class IoTDBStatement implements Statement {
         throw new SQLException(
             "Fail to reconnect to server when executing batch sqls. please check server status", e);
       }
+    } finally {
+      clearBatch();
     }
   }
 
@@ -322,14 +337,19 @@ public class IoTDBStatement implements Statement {
     TSStatus execResp = client.executeBatchStatement(execReq);
     int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
-    String message = "";
+    StringBuilder message = new StringBuilder(System.lineSeparator());
     for (int i = 0; i < result.length; i++) {
       if (execResp.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         result[i] = execResp.getSubStatus().get(i).code;
         if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && result[i] != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           allSuccess = false;
-          message = execResp.getSubStatus().get(i).message;
+          message.append(
+              execResp.getSubStatus().get(i).message
+                  + " for SQL: \""
+                  + batchSQLList.get(i)
+                  + "\""
+                  + System.lineSeparator());
         }
       } else {
         allSuccess =
@@ -337,11 +357,12 @@ public class IoTDBStatement implements Statement {
                 && (execResp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
                     || execResp.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode());
         result[i] = execResp.getCode();
-        message = execResp.getMessage();
+        message.setLength(0);
+        message.append(execResp.getMessage());
       }
     }
     if (!allSuccess) {
-      throw new BatchUpdateException(message, result);
+      throw new BatchUpdateException(message.toString(), result);
     }
     return result;
   }
@@ -353,9 +374,6 @@ public class IoTDBStatement implements Statement {
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
-    if (timeoutInMS < 0) {
-      throw new SQLException("Timeout must be >= 0, please check and try again.");
-    }
     isClosed = false;
     try {
       return executeQuerySQL(sql, timeoutInMS);
@@ -380,8 +398,13 @@ public class IoTDBStatement implements Statement {
   private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    execReq.setFetchSize(fetchSize);
+    int rows = fetchSize;
+    if (maxRows != 0 && fetchSize > maxRows) {
+      rows = maxRows;
+    }
+    execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
+    execReq.setJdbcQuery(true);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();
     try {
@@ -390,11 +413,13 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
-    // Because diffent resultSet share the same TTransport and buffer, if the former has not
-    // comsumed
-    // result timely, the latter will overlap the former byte buffer, thus problem will occur
+    // Because different result sets share the TTransport and buffer, if the previous result set was
+    // not consumed timely, the byte buffer will be overwritten by the incoming result set
     deepCopyResp(execResp);
-
+    BitSet aliasColumn = null;
+    if (execResp.getAliasColumns() != null && execResp.getAliasColumns().size() > 0) {
+      aliasColumn = listToBitSet(execResp.getAliasColumns());
+    }
     if (execResp.queryDataSet == null) {
       this.resultSet =
           new IoTDBNonAlignJDBCResultSet(
@@ -408,7 +433,11 @@ public class IoTDBStatement implements Statement {
               queryId,
               sessionId,
               execResp.nonAlignQueryDataSet,
-              execReq.timeout);
+              execResp.tracingInfo,
+              execReq.timeout,
+              execResp.operationType,
+              execResp.sgColumns,
+              aliasColumn);
     } else {
       this.resultSet =
           new IoTDBJDBCResultSet(
@@ -422,9 +451,23 @@ public class IoTDBStatement implements Statement {
               queryId,
               sessionId,
               execResp.queryDataSet,
-              execReq.timeout);
+              execResp.tracingInfo,
+              execReq.timeout,
+              execResp.operationType,
+              execResp.columns,
+              execResp.sgColumns,
+              aliasColumn);
     }
     return resultSet;
+  }
+
+  private BitSet listToBitSet(List<Byte> listAlias) {
+    byte[] byteAlias = new byte[listAlias.size()];
+    for (int i = 0; i < listAlias.size(); i++) {
+      byteAlias[i] = listAlias.get(i);
+    }
+    BitSet aliasColumn = BitSet.valueOf(byteAlias);
+    return aliasColumn;
   }
 
   private void deepCopyResp(TSExecuteStatementResp queryRes) {
@@ -575,18 +618,21 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getMaxRows() throws SQLException {
-    throw new SQLException("Not support getMaxRows");
+    return this.maxRows;
   }
 
   @Override
   public void setMaxRows(int num) throws SQLException {
-    throw new SQLException(
-        "Not support getMaxRows" + ". Please use the LIMIT clause in a query instead.");
+    checkConnection("setMaxRows");
+    if (num <= 0) {
+      throw new SQLException(String.format("maxRows %d must be > 0!", num));
+    }
+    this.maxRows = num;
   }
 
   @Override
   public boolean getMoreResults() throws SQLException {
-    throw new SQLException("Not support getMoreResults");
+    return false;
   }
 
   @Override
@@ -602,9 +648,6 @@ public class IoTDBStatement implements Statement {
   @Override
   public void setQueryTimeout(int seconds) throws SQLException {
     checkConnection("setQueryTimeout");
-    if (seconds < 0) {
-      throw new SQLException(String.format("queryTimeout %d must be >= 0!", seconds));
-    }
     this.queryTimeout = seconds;
   }
 

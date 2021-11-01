@@ -57,6 +57,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 public class StatMonitor implements StatMonitorMBean, IService {
@@ -159,20 +160,25 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   private TimeValuePair getLastValue(PartialPath monitorSeries)
       throws StorageEngineException, QueryProcessException, IOException {
+    HashSet<String> measurementSet = new HashSet<>();
+    measurementSet.add(monitorSeries.getMeasurement());
     if (mManager.isPathExist(monitorSeries)) {
-      TimeValuePair timeValuePair =
-          LastQueryExecutor.calculateLastPairForSeriesLocally(
-                  Collections.singletonList(monitorSeries),
-                  Collections.singletonList(TSDataType.INT64),
-                  new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
-                  null,
-                  Collections.singletonMap(
-                      monitorSeries.getDevice(),
-                      Collections.singleton(monitorSeries.getMeasurement())))
-              .get(0)
-              .right;
-      if (timeValuePair.getValue() != null) {
-        return timeValuePair;
+      long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      try {
+        TimeValuePair timeValuePair =
+            LastQueryExecutor.calculateLastPairForSeriesLocally(
+                    Collections.singletonList(monitorSeries),
+                    Collections.singletonList(TSDataType.INT64),
+                    new QueryContext(queryId),
+                    null,
+                    Collections.singletonMap(monitorSeries.getDevice(), measurementSet))
+                .get(0)
+                .right;
+        if (timeValuePair.getValue() != null) {
+          return timeValuePair;
+        }
+      } finally {
+        QueryResourceManager.getInstance().endQuery(queryId);
       }
     }
     return null;
@@ -180,7 +186,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   private PartialPath getStorageGroupMonitorSeries(String storageGroupName) {
     String[] monitorSeries = Arrays.copyOf(MonitorConstants.STAT_STORAGE_GROUP_ARRAY, 4);
-    monitorSeries[2] = "\"" + storageGroupName + "\"";
+    monitorSeries[2] = "\"" + storageGroupName.replace('.', '#') + "\"";
     monitorSeries[3] = StatMeasurementConstants.TOTAL_POINTS.getMeasurement();
     return new PartialPath(monitorSeries);
   }
@@ -197,7 +203,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public void updateStatGlobalValue(int successPointsNum) {
     // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS
     globalSeriesValue.set(0, globalSeriesValue.get(0) + successPointsNum);
-    globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    if (successPointsNum != 0) {
+      globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    }
   }
 
   public void updateFailedStatValue() {

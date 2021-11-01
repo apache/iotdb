@@ -30,8 +30,9 @@ public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFrame
 
   private TSocket underlyingSocket;
 
-  public TimeoutChangeableTSnappyFramedTransport(TSocket underlying) {
-    super(underlying);
+  public TimeoutChangeableTSnappyFramedTransport(
+      TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
     this.underlyingSocket = underlying;
   }
 
@@ -46,12 +47,23 @@ public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFrame
   }
 
   public static class Factory extends TTransportFactory {
+
+    private final int thriftDefaultBufferSize;
+    protected final int thriftMaxFrameSize;
+
+    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+      this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+    }
+
     @Override
     public TTransport getTransport(TTransport trans) {
       if (trans instanceof TSocket) {
-        return new TimeoutChangeableTSnappyFramedTransport((TSocket) trans);
+        return new TimeoutChangeableTSnappyFramedTransport(
+            (TSocket) trans, thriftDefaultBufferSize, thriftMaxFrameSize);
       } else {
-        return new TSnappyElasticFramedTransport(trans);
+        return new TSnappyElasticFramedTransport(
+            trans, thriftDefaultBufferSize, thriftMaxFrameSize);
       }
     }
   }

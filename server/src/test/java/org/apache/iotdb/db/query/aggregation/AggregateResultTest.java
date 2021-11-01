@@ -138,6 +138,31 @@ public class AggregateResultTest {
   }
 
   @Test
+  public void ExtremeAggrResultTest() throws QueryProcessException, IOException {
+    AggregateResult extremeAggrResult1 =
+        AggregateResultFactory.getAggrResultByName(SQLConstant.EXTREME, TSDataType.DOUBLE, true);
+    AggregateResult extremeAggrResult2 =
+        AggregateResultFactory.getAggrResultByName(SQLConstant.EXTREME, TSDataType.DOUBLE, true);
+
+    Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    statistics1.update(1L, 1d);
+    statistics2.update(1L, -2d);
+
+    extremeAggrResult1.updateResultFromStatistics(statistics1);
+    extremeAggrResult2.updateResultFromStatistics(statistics2);
+    extremeAggrResult1.merge(extremeAggrResult2);
+
+    Assert.assertEquals(-2d, (double) extremeAggrResult1.getResult(), 0.01);
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    extremeAggrResult1.serializeTo(outputStream);
+    ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
+    AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
+    Assert.assertEquals(-2d, (double) result.getResult(), 0.01);
+  }
+
+  @Test
   public void minTimeAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult finalResult =
         AggregateResultFactory.getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE, true);

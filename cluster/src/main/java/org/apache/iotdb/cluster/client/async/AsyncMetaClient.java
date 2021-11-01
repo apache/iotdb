@@ -23,11 +23,11 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.async.TAsyncMethodCall;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +64,7 @@ public class AsyncMetaClient extends AsyncClient {
     super(
         protocolFactory,
         clientManager,
-        new TNonblockingSocket(
+        TNonblockingSocketWrapper.wrap(
             node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;

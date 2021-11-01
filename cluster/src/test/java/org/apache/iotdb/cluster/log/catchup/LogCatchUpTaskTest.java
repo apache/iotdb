@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -57,7 +58,7 @@ import static org.junit.Assert.fail;
 public class LogCatchUpTaskTest {
 
   private List<Log> receivedLogs = new ArrayList<>();
-  private Node header = new Node();
+  private RaftNode header = new RaftNode(new Node(), 0);
   private boolean testLeadershipFlag;
   private boolean prevUseAsyncServer;
 
@@ -126,7 +127,7 @@ public class LogCatchUpTaskTest {
         }
 
         @Override
-        public Node getHeader() {
+        public RaftNode getHeader() {
           return header;
         }
       };
@@ -192,7 +193,7 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(logSize);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, useBatch);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, useBatch);
     task.call();
 
     assertEquals(logList, receivedLogs);
@@ -207,7 +208,7 @@ public class LogCatchUpTaskTest {
       List<Log> logList = TestUtils.prepareTestLogs(10);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, false);
       task.call();
 
       assertEquals(logList, receivedLogs);
@@ -223,7 +224,7 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, false);
     task.setUseBatch(false);
     try {
       task.call();
@@ -257,7 +258,7 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(1030);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, true);
     task.call();
 
     assertEquals(logList.subList(0, 1024), receivedLogs);
@@ -275,7 +276,7 @@ public class LogCatchUpTaskTest {
           .setThriftMaxFrameSize(100 * singleLogSize + IoTDBConstant.LEFT_SIZE_IN_REQUEST);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, true);
       task.call();
 
       assertEquals(logList, receivedLogs);
@@ -294,7 +295,7 @@ public class LogCatchUpTaskTest {
       IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(0);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, 0, sender, true);
       task.call();
 
       assertTrue(receivedLogs.isEmpty());

@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.auth.AuthException;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -95,6 +95,7 @@ public class SlotPartitionTableTest {
   SlotPartitionTable localTable;
   Node localNode;
   int replica_size = 5;
+  int raftId = 0;
   MManager[] mManager;
 
   SlotPartitionTable[] tables; // The PartitionTable on each node.
@@ -133,11 +134,11 @@ public class SlotPartitionTableTest {
     for (int i = 0; i < 20; i++) {
       storageNames[i] = String.format("root.sg.l2.l3.%d", i);
       // determine which node the sg belongs to
-      Node node = localTable.routeToHeaderByTime(storageNames[i], 0);
-      nodeSGs[node.getMetaPort() - 30000].add(storageNames[i]);
+      RaftNode node = localTable.routeToHeaderByTime(storageNames[i], 0);
+      nodeSGs[node.getNode().getMetaPort() - 30000].add(storageNames[i]);
       storageNames[i + 20] = String.format("root.sg.l2.l3.l4.%d", i + 20);
       node = localTable.routeToHeaderByTime(storageNames[i + 20], 0);
-      nodeSGs[node.getMetaPort() - 30000].add(storageNames[i + 20]);
+      nodeSGs[node.getNode().getMetaPort() - 30000].add(storageNames[i + 20]);
     }
     for (int i = 0; i < 20; i++) {
       mManager[i] = MManagerWhiteBox.newMManager("target/schemas/mlog_" + i);
@@ -205,13 +206,15 @@ public class SlotPartitionTableTest {
   private void assertGetHeaderGroup(int start, int last) {
     PartitionGroup group =
         localTable.getHeaderGroup(
-            new Node(
-                "localhost",
-                30000 + start,
-                start,
-                40000 + start,
-                Constants.RPC_PORT + start,
-                "localhost"));
+            new RaftNode(
+                new Node(
+                    "localhost",
+                    30000 + start,
+                    start,
+                    40000 + start,
+                    Constants.RPC_PORT + start,
+                    "localhost"),
+                0));
     assertEquals(replica_size, group.size());
     assertEquals(
         new Node(
@@ -221,7 +224,7 @@ public class SlotPartitionTableTest {
             40000 + start,
             Constants.RPC_PORT + start,
             "localhost"),
-        group.getHeader());
+        group.getHeader().getNode());
 
     assertEquals(
         new Node(
@@ -259,9 +262,9 @@ public class SlotPartitionTableTest {
 
   @Test
   public void routeToHeader() {
-    Node node1 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 0);
-    Node node2 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 1);
-    Node node3 =
+    RaftNode node1 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 0);
+    RaftNode node2 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 1);
+    RaftNode node3 =
         localTable.routeToHeaderByTime(
             "root.sg.l2.l3.l4.28", 1 + StorageEngine.getTimePartitionInterval());
     assertEquals(node1, node2);
@@ -304,7 +307,7 @@ public class SlotPartitionTableTest {
   @Test
   public void getPreviousNodeMap() {
     // before adding or deleting node, it should be null
-    assertNull(localTable.getPreviousNodeMap(localNode));
+    assertNull(localTable.getPreviousNodeMap(new RaftNode(localNode, 0)));
     // TODO after adding or deleting node, it has data
   }
 
@@ -350,7 +353,7 @@ public class SlotPartitionTableTest {
     assertTrue(PartitionUtils.isGlobalMetaPlan(globalLoadConfigPlan));
     PhysicalPlan localLoadConfigPlan = new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
     assertFalse(PartitionUtils.isGlobalMetaPlan(localLoadConfigPlan));
-    PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.TABLESCAN);
+    PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.LOAD_FILES);
     assertTrue(PartitionUtils.isLocalNonQueryPlan(operateFilePlan));
 
     PhysicalPlan setStorageGroupPlan = new SetStorageGroupPlan();
@@ -489,42 +492,6 @@ public class SlotPartitionTableTest {
   }
 
   // @Test
-  public void testCountPlan() throws IllegalPathException {
-    PhysicalPlan countPlan1 =
-        new CountPlan(
-            ShowContentType.COUNT_TIMESERIES, new PartialPath("root.sg.*.l3" + ".l4.28.*"));
-    PhysicalPlan countPlan2 =
-        new CountPlan(ShowContentType.COUNT_TIMESERIES, new PartialPath("root.sg.*.l3" + ".*"));
-    PhysicalPlan countPlan3 =
-        new CountPlan(
-            ShowContentType.COUNT_NODE_TIMESERIES, new PartialPath("root.sg" + ".l2.l3.l4.28"));
-    PhysicalPlan countPlan4 =
-        new CountPlan(
-            ShowContentType.COUNT_NODE_TIMESERIES, new PartialPath("root.sg" + ".l2.l3"), 6);
-    PhysicalPlan countPlan5 =
-        new CountPlan(ShowContentType.COUNT_NODES, new PartialPath("root.sg.l2.l3"), 5);
-    try {
-      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
-      assertTrue(countPlan1.canBeSplit());
-      Map<PhysicalPlan, PartitionGroup> result1 = router.splitAndRoutePlan(countPlan1);
-      assertEquals(1, result1.size());
-      Map<PhysicalPlan, PartitionGroup> result2 = router.splitAndRoutePlan(countPlan2);
-      assertEquals(40, result2.size());
-      Map<PhysicalPlan, PartitionGroup> result3 = router.splitAndRoutePlan(countPlan3);
-      assertEquals(1, result3.size());
-      Map<PhysicalPlan, PartitionGroup> result4 = router.splitAndRoutePlan(countPlan4);
-      // TODO this case can be optimized
-      assertEquals(40, result4.size());
-      Map<PhysicalPlan, PartitionGroup> result5 = router.splitAndRoutePlan(countPlan5);
-      // TODO this case can be optimized
-      assertEquals(40, result5.size());
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  // @Test
   public void testShowChildPathsPlan() throws IllegalPathException {
     PhysicalPlan showChildPathsPlan1 =
         new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new PartialPath("root.sg.l2.l3.l4.28"));
@@ -553,21 +520,22 @@ public class SlotPartitionTableTest {
     return new Node("localhost", 30000 + i, i, 40000 + i, Constants.RPC_PORT + i, "localhost");
   }
 
+  private RaftNode getRaftNode(int i, int raftId) {
+    return new RaftNode(getNode(i), raftId);
+  }
+
   @Test
   public void testRemoveNode() {
-    List<Integer> nodeSlots = localTable.getNodeSlots(getNode(0));
-    NodeRemovalResult nodeRemovalResult = localTable.removeNode(getNode(0));
+    List<Integer> nodeSlots = localTable.getNodeSlots(getRaftNode(0, raftId));
+    localTable.removeNode(getNode(0));
+    NodeRemovalResult nodeRemovalResult = localTable.getNodeRemovalResult();
     assertFalse(localTable.getAllNodes().contains(getNode(0)));
-    PartitionGroup removedGroup = nodeRemovalResult.getRemovedGroup();
+    PartitionGroup removedGroup = nodeRemovalResult.getRemovedGroup(0);
     for (int i = 0; i < 5; i++) {
       assertTrue(removedGroup.contains(getNode(i)));
     }
-    PartitionGroup newGroup = nodeRemovalResult.getNewGroup();
-    for (int i : new int[] {18, 19, 1, 2, 3}) {
-      assertTrue(newGroup.contains(getNode(i)));
-    }
     // the slots owned by the removed one should be redistributed to other nodes
-    Map<Node, List<Integer>> newSlotOwners =
+    Map<RaftNode, List<Integer>> newSlotOwners =
         ((SlotNodeRemovalResult) nodeRemovalResult).getNewSlotOwners();
     for (List<Integer> slots : newSlotOwners.values()) {
       assertTrue(nodeSlots.containsAll(slots));

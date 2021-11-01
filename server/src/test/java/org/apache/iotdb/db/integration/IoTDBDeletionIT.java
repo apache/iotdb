@@ -37,6 +37,7 @@ import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
 
 public class IoTDBDeletionIT {
 
@@ -73,6 +74,86 @@ public class IoTDBDeletionIT {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
+  /**
+   * Should delete this case after the deletion value filter feature be implemented
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testUnsupportedValueFilter() throws SQLException {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("insert into root.vehicle.d0(time,s0) values (10,310)");
+      statement.execute("insert into root.vehicle.d0(time,s3) values (10,'text')");
+      statement.execute("insert into root.vehicle.d0(time,s4) values (10,true)");
+
+      String errorMsg =
+          "303: Check metadata error: For delete statement, where clause can only"
+              + " contain time expressions, value filter is not currently supported.";
+
+      String errorMsg2 =
+          "303: Check metadata error: For delete statement, where clause can only contain"
+              + " atomic expressions like : time > XXX, time <= XXX,"
+              + " or two atomic expressions connected by 'AND'";
+
+      try {
+        statement.execute(
+            "DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND time > 0 AND time < 100");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(errorMsg2, e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND s0 > 0");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(errorMsg, e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM root.vehicle.d0.s3  WHERE s3 = 'text'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(errorMsg, e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM root.vehicle.d0.s4  WHERE s4 != true");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(errorMsg, e.getMessage());
+      }
+
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+
+      try (ResultSet set = statement.executeQuery("SELECT s3 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+
+      try (ResultSet set = statement.executeQuery("SELECT s4 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    }
+  }
+
   @Test
   public void test() throws SQLException {
     prepareData();
@@ -85,7 +166,7 @@ public class IoTDBDeletionIT {
       statement.execute(
           "DELETE FROM root.vehicle.d0.s1,root.vehicle.d0.s2,root.vehicle.d0.s3"
               + " WHERE time <= 350");
-      statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 150");
+      statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 150");
 
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
@@ -123,7 +204,7 @@ public class IoTDBDeletionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("merge");
-      statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
+      statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
 
       // before merge completes
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
@@ -195,7 +276,7 @@ public class IoTDBDeletionIT {
         assertEquals(150, cnt);
       }
 
-      statement.execute("DELETE FROM root.vehicle.d0 WHERE time > 50 and time <= 250");
+      statement.execute("DELETE FROM root.vehicle.d0.** WHERE time > 50 and time <= 250");
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
@@ -326,13 +407,21 @@ public class IoTDBDeletionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE TIMESERIES root.ln.d1.\"status,01\" WITH DATATYPE=BOOLEAN," + " ENCODING=PLAIN");
-      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") " + "values(300,true)");
-      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") VALUES(500, false)");
+          "CREATE TIMESERIES root.ln.d1.`\"status,01\"` WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,`\"status,01\"`) VALUES(300, true)");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,`\"status,01\"`) VALUES(500, false)");
 
-      statement.execute("DELETE FROM root.ln.d1.\"status,01\" WHERE time <= 400");
+      try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
 
-      try (ResultSet resultSet = statement.executeQuery("select \"status,01\" from root.ln.d1")) {
+      statement.execute("DELETE FROM root.ln.d1.`\"status,01\"` WHERE time <= 400");
+
+      try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -340,9 +429,9 @@ public class IoTDBDeletionIT {
         Assert.assertEquals(1, cnt);
       }
 
-      statement.execute("DELETE FROM root.ln.d1.\"status,01\"");
+      statement.execute("DELETE FROM root.ln.d1.`\"status,01\"`");
 
-      try (ResultSet resultSet = statement.executeQuery("select \"status,01\" from root.ln.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;

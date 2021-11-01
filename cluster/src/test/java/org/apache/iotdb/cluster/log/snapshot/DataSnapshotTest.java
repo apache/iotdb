@@ -25,6 +25,8 @@ import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -59,8 +62,13 @@ public abstract class DataSnapshotTest {
   int failureCnt;
   boolean addNetFailure = false;
 
+  private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  private boolean isAsyncServer;
+
   @Before
   public void setUp() throws MetadataException, StartupException {
+    isAsyncServer = config.isUseAsyncServer();
+    config.setUseAsyncServer(true);
     dataGroupMember =
         new TestDataGroupMember() {
           @Override
@@ -132,6 +140,17 @@ public abstract class DataSnapshotTest {
 
                       @Override
                       public void write(byte[] bytes, int i, int i1) {}
+
+                      @Override
+                      public TConfiguration getConfiguration() {
+                        return null;
+                      }
+
+                      @Override
+                      public void updateKnownMessageSize(long size) {}
+
+                      @Override
+                      public void checkReadBytesAvailable(long numBytes) {}
                     })) {
               @Override
               public ByteBuffer readFile(String filePath, long offset, int length)
@@ -171,6 +190,7 @@ public abstract class DataSnapshotTest {
 
   @After
   public void tearDown() throws Exception {
+    config.setUseAsyncServer(isAsyncServer);
     metaGroupMember.closeLogManager();
     dataGroupMember.closeLogManager();
     metaGroupMember.stop();

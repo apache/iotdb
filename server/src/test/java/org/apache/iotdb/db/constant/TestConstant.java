@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.constant;
 
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
@@ -29,6 +30,10 @@ public class TestConstant {
   public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
   public static final String OUTPUT_DATA_DIR =
       BASE_OUTPUT_PATH.concat("data").concat(File.separator);
+  public static final String PARTIAL_PATH_STRING =
+      "%s" + File.separator + "%d" + File.separator + "%d" + File.separator;
+  public static final String TEST_TSFILE_PATH =
+      BASE_OUTPUT_PATH + "testTsFile".concat(File.separator) + PARTIAL_PATH_STRING;
 
   public static final String d0 = "root.vehicle.d0";
   public static final String s0 = "s0";
@@ -90,6 +95,10 @@ public class TestConstant {
     return String.format("max_value(%s)", path);
   }
 
+  public static String extreme(String path) {
+    return String.format("extreme(%s)", path);
+  }
+
   public static String min_value(String path) {
     return String.format("min_value(%s)", path);
   }
@@ -102,5 +111,30 @@ public class TestConstant {
       values.append(",").append(dataPoint.getValue());
     }
     return String.format(insertTemplate, record.deviceId, measurements, record.time, values);
+  }
+
+  public static String getTestTsFilePath(
+      String logicalStorageGroupName,
+      long VirtualStorageGroupId,
+      long TimePartitionId,
+      long tsFileVersion) {
+    String filePath =
+        String.format(
+            TEST_TSFILE_PATH, logicalStorageGroupName, VirtualStorageGroupId, TimePartitionId);
+    String fileName =
+        System.currentTimeMillis()
+            + FilePathUtils.FILE_NAME_SEPARATOR
+            + tsFileVersion
+            + "-0-0.tsfile";
+    return filePath.concat(fileName);
+  }
+
+  public static String getTestTsFileDir(
+      String logicalStorageGroupName, long VirtualStorageGroupId, long TimePartitionId) {
+    return String.format(
+        TestConstant.TEST_TSFILE_PATH,
+        logicalStorageGroupName,
+        VirtualStorageGroupId,
+        TimePartitionId);
   }
 }

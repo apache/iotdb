@@ -45,8 +45,10 @@ public class StatusUtils {
   public static final TSStatus TIMESERIES_NOT_EXIST_ERROR =
       getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
   public static final TSStatus NO_CONNECTION = getStatus(TSStatusCode.NO_CONNECTION);
+  public static final TSStatus PARSE_LOG_ERROR = getStatus(TSStatusCode.PARSE_LOG_ERROR);
+  public static final TSStatus DUPLICATED_TEMPLATE = getStatus(TSStatusCode.DUPLICATED_TEMPLATE);
 
-  private static TSStatus getStatus(TSStatusCode statusCode) {
+  public static TSStatus getStatus(TSStatusCode statusCode) {
     TSStatus status = new TSStatus();
     status.setCode(statusCode.getStatusCode());
     switch (statusCode) {
@@ -196,10 +198,19 @@ public class StatusUtils {
       case NO_CONNECTION:
         status.setMessage("Node cannot be reached.");
         break;
+      case PARSE_LOG_ERROR:
+        status.setMessage("Parse log error.");
+        break;
       default:
         status.setMessage("");
         break;
     }
+    return status;
+  }
+
+  public static TSStatus getStatus(TSStatusCode statusCode, EndPoint redirectedNode) {
+    TSStatus status = getStatus(statusCode);
+    status.setRedirectNode(redirectedNode);
     return status;
   }
 

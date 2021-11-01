@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.query.executor;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -76,7 +76,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       boolean cachedValue = cachedIterator.next();
       Path selectedPath = selectedPathIterator.next();
 
-      List<ChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(selectedPath);
+      List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(selectedPath);
       if (chunkMetadataList.size() != 0) {
         dataTypes.add(chunkMetadataList.get(0).getDataType());
         if (cachedValue) {

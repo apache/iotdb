@@ -20,6 +20,9 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.trigger.example.Counter;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -30,7 +33,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -213,10 +217,10 @@ public class IoTDBSessionComplexIT {
 
     createTimeseries();
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
 
@@ -264,7 +268,7 @@ public class IoTDBSessionComplexIT {
 
     session.testInsertRecords(deviceIds, timestamps, measurementsList, valuesList);
 
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -285,6 +289,20 @@ public class IoTDBSessionComplexIT {
     insertRecords();
 
     rawDataQuery();
+  }
+
+  @Test
+  public void testLastDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+
+    insertRecords();
+
+    lastDataQuery();
   }
 
   @Test
@@ -399,13 +417,13 @@ public class IoTDBSessionComplexIT {
     session.createTimeseries(
         "root.sg1.d1.1_2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.1+2+3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.1+2+4", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.1_2"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1.2.3\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1.2.4\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+3\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+4\""));
 
     session.setStorageGroup("root.1");
     session.createTimeseries(
@@ -429,7 +447,7 @@ public class IoTDBSessionComplexIT {
 
     insertTablet("root.sg5.d1");
 
-    SessionDataSet dataSet = session.executeQueryStatement("select * from root group by device");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.** group by device");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -472,10 +490,10 @@ public class IoTDBSessionComplexIT {
       session.insertRecord(deviceId, time, measurements, types, values);
     }
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 200);
     long[] timestamps = tablet.timestamps;
@@ -590,13 +608,32 @@ public class IoTDBSessionComplexIT {
     sessionDataSet.closeOperationHandle();
   }
 
+  private void lastDataQuery() throws StatementExecutionException, IoTDBConnectionException {
+    List<String> paths = new ArrayList<>();
+
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d2.s1");
+
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(paths);
+    sessionDataSet.setFetchSize(1024);
+
+    int count = 0;
+    while (sessionDataSet.hasNext()) {
+      count++;
+      List<Field> fields = sessionDataSet.next().getFields();
+      Assert.assertEquals("[root.sg1.d2.s1,1,INT64]", fields.toString().replace(" ", ""));
+    }
+    Assert.assertEquals(1, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
   private void insertTablet(String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
@@ -784,7 +821,7 @@ public class IoTDBSessionComplexIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
+      ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
       for (int i = 0; i < colCount; i++) {
@@ -799,5 +836,92 @@ public class IoTDBSessionComplexIT {
       }
       Assert.assertEquals(700, count);
     }
+  }
+
+  @Test
+  public void testInsertTabletWithTriggers()
+      throws StatementExecutionException, IoTDBConnectionException, TriggerManagementException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    session.setStorageGroup("root.sg1");
+    createTimeseries();
+
+    session.executeNonQueryStatement(
+        "create trigger d1s1 after insert on root.sg1.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+    session.executeNonQueryStatement(
+        "create trigger d1s2 before insert on root.sg1.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+
+    assertEquals(
+        Counter.BASE,
+        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s1"))
+            .getCounter());
+    assertEquals(
+        Counter.BASE,
+        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s2"))
+            .getCounter());
+    try {
+      int counter =
+          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s3"))
+              .getCounter();
+      fail(String.valueOf(counter - Counter.BASE));
+    } catch (TriggerManagementException e) {
+      assertEquals("Trigger d1s3 does not exist.", e.getMessage());
+    }
+
+    insertTablet("root.sg1.d1");
+
+    assertEquals(
+        Counter.BASE + 200,
+        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s1"))
+            .getCounter());
+    assertEquals(
+        Counter.BASE + 200,
+        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s2"))
+            .getCounter());
+    try {
+      int counter =
+          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s3"))
+              .getCounter();
+      fail(String.valueOf(counter - Counter.BASE));
+    } catch (TriggerManagementException e) {
+      assertEquals("Trigger d1s3 does not exist.", e.getMessage());
+    }
+
+    session.close();
+  }
+
+  @Test
+  public void testSessionCluster() throws IoTDBConnectionException, StatementExecutionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    nodeList.add("127.0.0.1:6669");
+    nodeList.add("127.0.0.1:6667");
+    nodeList.add("127.0.0.1:6668");
+    session = new Session(nodeList, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+    insertByStr();
+
+    insertViaSQL();
+    queryByDevice("root.sg1.d1");
+
+    session.close();
+  }
+
+  @Test
+  public void testErrorSessionCluster() throws IoTDBConnectionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    // test Format error
+    nodeList.add("127.0.0.16669");
+    nodeList.add("127.0.0.1:6667");
+    session = new Session(nodeList, "root", "root");
+    try {
+      session.open();
+    } catch (Exception e) {
+      Assert.assertEquals("NodeUrl Incorrect format", e.getMessage());
+    }
+    session.close();
   }
 }

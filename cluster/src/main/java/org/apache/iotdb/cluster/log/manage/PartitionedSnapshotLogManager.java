@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
@@ -28,20 +29,21 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to a
@@ -74,6 +76,9 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     this.dataGroupMember = dataGroupMember;
   }
 
+  public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots, boolean needLeader)
+      throws IOException {}
+
   @Override
   public Snapshot getSnapshot(long minIndex) {
     // copy snapshots
@@ -89,30 +94,24 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     }
   }
 
-  void collectTimeseriesSchemas() {
+  void collectTimeseriesSchemas(List<Integer> requiredSlots) {
     slotTimeseries.clear();
-    List<StorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-    boolean slotExistsInPartition;
-    List<Integer> slots = null;
-    if (dataGroupMember.getMetaGroupMember() != null) {
-      slots =
-          ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-              .getNodeSlots(dataGroupMember.getHeader());
-    }
-    for (MNode sgNode : allSgNodes) {
-      String storageGroupName = sgNode.getFullPath();
+    List<PartialPath> allSgPaths = IoTDB.metaManager.getAllStorageGroupPaths();
+
+    Set<Integer> requiredSlotsSet = new HashSet<Integer>(requiredSlots);
+    for (PartialPath sgPath : allSgPaths) {
+      String storageGroupName = sgPath.getFullPath();
       int slot =
           SlotPartitionTable.getSlotStrategy()
-              .calculateSlotByTime(
-                  storageGroupName, 0, ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
-      slotExistsInPartition = slots == null || slots.contains(slot);
+              .calculateSlotByTime(storageGroupName, 0, ClusterConstant.SLOT_NUM);
 
-      if (slotExistsInPartition) {
-        Collection<TimeseriesSchema> schemas =
-            slotTimeseries.computeIfAbsent(slot, s -> new HashSet<>());
-        IoTDB.metaManager.collectTimeseriesSchema(sgNode, schemas);
-        logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
+      if (!requiredSlotsSet.contains(slot)) {
+        continue;
       }
+      Collection<TimeseriesSchema> schemas =
+          slotTimeseries.computeIfAbsent(slot, s -> new HashSet<>());
+      IoTDB.metaManager.collectTimeseriesSchema(sgPath, schemas);
+      logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
     }
   }
 }

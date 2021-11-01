@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.logical.crud.AggregationQueryOperator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -1642,12 +1644,32 @@ public class IoTDBGroupByFillIT {
   @Test(expected = IoTDBSQLException.class)
   public void linearFailTest2() throws SQLException {
     try (Connection connection =
+                 DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute(
+              "select first_value(text) from "
+                      + "root.ln.wf01.wt01 "
+                      + "GROUP BY ([17, 55), 5ms) FILL(text[linear])");
+    }
+  }
+
+  /**
+   * Test group by fill without aggregation function used in select clause. The expected situation
+   * is throwing an exception.
+   */
+  @Test
+  public void TestGroupByFillWithoutAggregationFunc() {
+    try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+
       statement.execute(
-          "select first_value(text) from "
-              + "root.ln.wf01.wt01 "
-              + "GROUP BY ([17, 55), 5ms) FILL(text[linear])");
+          "select temperature from root.ln.wf01.wt01 "
+              + "group by ([0, 100), 5ms) FILL(int32[previous])");
+
+      fail("No expected exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(AggregationQueryOperator.ERROR_MESSAGE1));
     }
   }
 

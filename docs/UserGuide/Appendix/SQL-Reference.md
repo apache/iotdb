@@ -40,7 +40,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.12.0-SNAPSHOT|
+|0.13.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -53,17 +53,17 @@ It costs 0.417s
 ``` SQL
 SET STORAGE GROUP TO <FullPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
-Note: FullPath can not include `*`
+Note: FullPath can not include wildcard `*` or `**`
 ```
 
 * Delete Storage Group
 
 ```
-DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
+DELETE STORAGE GROUP <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
-Eg: IoTDB > DELETE STORAGE GROUP root.*
+Eg: IoTDB > DELETE STORAGE GROUP root.**
 ```
 
 * Create Timeseries Statement
@@ -104,10 +104,31 @@ Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is t
 Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
+* Create schema template
+```
+CREATE schema template <TemplateName> WITH <AttributeClauses>
+attributeClauses
+    : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*)
+    attributeClause
+    ;
+Eg: create schema template temp1(
+        (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
+        (s2 FLOAT with encoding=RLE, compression=SNAPPY)
+       )  
+```
+
+* Set schema template
+```
+set schema template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set schema template temp1 to root.beijing
+```
+
 * Delete Timeseries Statement
 
 ```
-DELETE TIMESERIES <PrefixPath> [COMMA <PrefixPath>]*
+DELETE TIMESERIES <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
@@ -150,18 +171,18 @@ Note: This statement can only be used in IoTDB Client. If you need to show all t
 
 ```
 SHOW TIMESERIES <Path>
-Eg: IoTDB > SHOW TIMESERIES root
-Eg: IoTDB > SHOW TIMESERIES root.ln
+Eg: IoTDB > SHOW TIMESERIES root.**
+Eg: IoTDB > SHOW TIMESERIES root.ln.**
 Eg: IoTDB > SHOW TIMESERIES root.ln.*.*.status
 Eg: IoTDB > SHOW TIMESERIES root.ln.wf01.wt01.status
-Note: The path can be prefix path, star path or timeseries path
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * Show Specific Timeseries Statement with where clause
 
 ```
-SHOW TIMESERIES prefixPath? showWhereClause?
+SHOW TIMESERIES pathPattern? showWhereClause?
 showWhereClause
     : WHERE (property | containsExpression)
     ;
@@ -169,14 +190,14 @@ containsExpression
     : name=ID OPERATOR_CONTAINS value=propertyValue
     ;
 
-Eg: show timeseries root.ln where unit='c'
-Eg: show timeseries root.ln where description contains 'test1'
+Eg: show timeseries root.ln.** where unit='c'
+Eg: show timeseries root.ln.** where description contains 'test1'
 ```
 
 * Show Specific Timeseries Statement with where clause start from offset and limit the total number of result
 
 ```
-SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
+SHOW TIMESERIES pathPattern? showWhereClause? limitClause?
 
 showWhereClause
     : WHERE (property | containsExpression)
@@ -189,9 +210,9 @@ limitClause
     | offsetClause? LIMIT INT
     ;
     
-Eg: show timeseries root.ln where unit='c'
-Eg: show timeseries root.ln where description contains 'test1'
-Eg: show timeseries root.ln where unit='c' limit 10 offset 10
+Eg: show timeseries root.ln.** where unit='c'
+Eg: show timeseries root.ln.** where description contains 'test1'
+Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
 ```
 
 * Show Storage Group Statement
@@ -205,18 +226,18 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * Show Specific Storage Group Statement
 
 ```
-SHOW STORAGE GROUP <PrefixPath>
+SHOW STORAGE GROUP <Path>
 Eg: IoTDB > SHOW STORAGE GROUP root.*
 Eg: IoTDB > SHOW STORAGE GROUP root.ln
-Note: The path can be prefix path or star path.
+Note: The path can be full path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * Show Merge Status Statement
 
 ```
-SHOW MERGE
-Eg: IoTDB > SHOW MERGE
+SHOW MERGE INFO
+Eg: IoTDB > SHOW MERGE INFO
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -224,20 +245,20 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT TIMESERIES <Path>
-Eg: IoTDB > COUNT TIMESERIES root
-Eg: IoTDB > COUNT TIMESERIES root.ln
+Eg: IoTDB > COUNT TIMESERIES root.**
+Eg: IoTDB > COUNT TIMESERIES root.ln.**
 Eg: IoTDB > COUNT TIMESERIES root.ln.*.*.status
 Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
-Note: The path can be prefix path, star path or timeseries path.
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 ```
 COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>
-Eg: IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
-Eg: IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-Eg: IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
-Note: The path can be prefix path or timeseries path.
+Eg: IoTDB > COUNT TIMESERIES root.** GROUP BY LEVEL=1
+Eg: IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=3
+Note: The path can be timeseries path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -245,11 +266,11 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 ```
 COUNT NODES <Path> LEVEL=<INTEGER>
-Eg: IoTDB > COUNT NODES root LEVEL=2
-Eg: IoTDB > COUNT NODES root.ln LEVEL=2
+Eg: IoTDB > COUNT NODES root.** LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.** LEVEL=2
 Eg: IoTDB > COUNT NODES root.ln.* LEVEL=3
 Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
-Note: The path can be prefix path or timeseries path.
+Note: The path can be full path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -265,13 +286,12 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * Show Specific Devices Statement
 
 ```
-SHOW DEVICES <PrefixPath> (WITH STORAGE GROUP)? limitClause?
-Eg: IoTDB > SHOW DEVICES root
-Eg: IoTDB > SHOW DEVICES root.ln
+SHOW DEVICES <PathPattern> (WITH STORAGE GROUP)? limitClause?
+Eg: IoTDB > SHOW DEVICES root.**
+Eg: IoTDB > SHOW DEVICES root.ln.**
 Eg: IoTDB > SHOW DEVICES root.*.wf01
 Eg: IoTDB > SHOW DEVICES root.ln WITH STORAGE GROUP
 Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
-Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -284,12 +304,11 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 * Show Child Paths Statement
 ```
-SHOW CHILD PATHS <Path>
+SHOW CHILD PATHS <PathPattern>
 Eg: IoTDB > SHOW CHILD PATHS root
 Eg: IoTDB > SHOW CHILD PATHS root.ln
 Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
-Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
-Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf* 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -308,7 +327,8 @@ Sensor : Identifier
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
-Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (1509466680000, false, 20.060787);
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) VALUES (1509466680000,false,20.060787)
+Eg: IoTDB > INSERT INTO root.sg.d1(timestamp,(s1,s2),(s3,s4)) VALUES (1509466680000,(1.0,2),(NULL,4))
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 Note: The order of Sensor and PointValue need one-to-one correspondence
 ```
@@ -316,7 +336,7 @@ Note: The order of Sensor and PointValue need one-to-one correspondence
 * Delete Record Statement
 
 ```
-DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* [WHERE <WhereClause>]?
+DELETE FROM <PathPattern> [COMMA <PathPattern>]* [WHERE <WhereClause>]?
 WhereClause : <Condition> [(AND) <Condition>]*
 Condition  : <TimeExpr> [(AND) <TimeExpr>]*
 TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
@@ -341,7 +361,8 @@ RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
 RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
-Eg. IoTDB > SELECT * FROM root
+Eg. IoTDB > SELECT ** FROM root
+Eg. IoTDB > SELECT * FROM root.**
 Eg. IoTDB > SELECT * FROM root where time > now() - 5m
 Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
@@ -455,10 +476,10 @@ SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByCl
 orderByTimeClause: order by time (asc | desc)?
 
 Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS]) order by time desc
-Eg: SELECT * from root order by time desc
-Eg: SELECT * from root order by time desc align by device 
-Eg: SELECT * from root order by time desc disable align
-Eg: SELECT last * from root order by time desc
+Eg: SELECT * from root.** order by time desc
+Eg: SELECT * from root.** order by time desc align by device 
+Eg: SELECT * from root.** order by time desc disable align
+Eg: SELECT last * from root.** order by time desc
 ```
 
 * Limit Statement
@@ -497,18 +518,18 @@ AlignbyDeviceClause : ALIGN BY DEVICE
 
 Rules:  
 1. Both uppercase and lowercase are ok.  
-Correct example: select * from root.sg1 align by device  
-Correct example: select * from root.sg1 ALIGN BY DEVICE  
+Correct example: select * from root.sg1.* align by device  
+Correct example: select * from root.sg1.* ALIGN BY DEVICE  
 
 2. AlignbyDeviceClause can only be used at the end of a query statement.  
-Correct example: select * from root.sg1 where time > 10 align by device  
-Wrong example: select * from root.sg1 align by device where time > 10  
+Correct example: select * from root.sg1.* where time > 10 align by device  
+Wrong example: select * from root.sg1.* align by device where time > 10  
 
 3. The paths of the SELECT clause can only be single level. In other words, the paths of the SELECT clause can only be measurements or STAR, without DOT.
 Correct example: select s0,s1 from root.sg1.* align by device  
 Correct example: select s0,s1 from root.sg1.d0, root.sg1.d1 align by device  
 Correct example: select * from root.sg1.* align by device  
-Correct example: select * from root align by device  
+Correct example: select * from root.** align by device  
 Correct example: select s0,s1,* from root.*.* align by device  
 Wrong example: select d0.s1, d0.s2, d1.s0 from root.sg1 align by device  
 Wrong example: select *.s0, *.s1 from root.* align by device  
@@ -560,16 +581,16 @@ For example, "select s0,s0,s1 from root.sg.* align by device" is not equal to "s
 - select * from root.sg.d0 where root.sg.d0.s0 = 15 align by device
 
 9. More correct examples:
-   - select * from root.vehicle align by device
+   - select * from root.vehicle.* align by device
    - select s0,s0,s1 from root.vehicle.* align by device
    - select s0,s1 from root.vehicle.* limit 10 offset 1 align by device
-   - select * from root.vehicle slimit 10 soffset 2 align by device
-   - select * from root.vehicle where time > 10 align by device
+   - select * from root.vehicle.* slimit 10 soffset 2 align by device
+   - select * from root.vehicle.* where time > 10 align by device
    - select * from root.vehicle.* where time < 10 AND s0 > 25 align by device
-   - select * from root.vehicle where root.vehicle.d0.s0>0 align by device
+   - select * from root.vehicle.* where root.vehicle.d0.s0>0 align by device
    - select count(*) from root.vehicle align by device
-   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) align by device
-   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device
+   - select sum(*) from root.vehicle.* GROUP BY (20ms,0,[2,50]) align by device
+   - select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device
 ```
 * Disable Align Statement
 
@@ -578,19 +599,19 @@ Disable Align Clause: DISABLE ALIGN
 
 Rules:  
 1. Both uppercase and lowercase are ok.  
-Correct example: select * from root.sg1 disable align  
-Correct example: select * from root.sg1 DISABLE ALIGN  
+Correct example: select * from root.sg1.* disable align  
+Correct example: select * from root.sg1.* DISABLE ALIGN  
 
 2. Disable Align Clause can only be used at the end of a query statement.  
-Correct example: select * from root.sg1 where time > 10 disable align 
-Wrong example: select * from root.sg1 disable align where time > 10 
+Correct example: select * from root.sg1.* where time > 10 disable align 
+Wrong example: select * from root.sg1.* disable align where time > 10 
 
 3. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements.
-Correct example: select * from root.sg1 limit 3 offset 2 disable align
-Correct example: select * from root.sg1 slimit 3 soffset 2 disable align
+Correct example: select * from root.sg1.* limit 3 offset 2 disable align
+Correct example: select * from root.sg1.* slimit 3 soffset 2 disable align
 Wrong example: select count(s0),count(s1) from root.sg1.d1 disable align
-Wrong example: select * from root.vehicle where root.vehicle.d0.s0>0 disable align
-Wrong example: select * from root.vehicle align by device disable align
+Wrong example: select * from root.vehicle.* where root.vehicle.d0.s0>0 disable align
+Wrong example: select * from root.vehicle.* align by device disable align
 
 4. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
 
@@ -603,11 +624,11 @@ You could expect a table like:
 |      |               |      |               | 900  | 8000          |
 
 5. More correct examples: 
-   - select * from root.vehicle disable align
+   - select * from root.vehicle.* disable align
    - select s0,s0,s1 from root.vehicle.* disable align
    - select s0,s1 from root.vehicle.* limit 10 offset 1 disable align
-   - select * from root.vehicle slimit 10 soffset 2 disable align
-   - select * from root.vehicle where time > 10 disable align
+   - select * from root.vehicle.* slimit 10 soffset 2 disable align
+   - select * from root.vehicle.* where time > 10 disable align
 
 ```
 
@@ -636,12 +657,12 @@ Rules:
 3. The result set of last query will always be displayed in a fixed three column table format.
 For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result would be:
 
-| Time | Path         | Value |
-| ---  | ------------ | ----- |
-|  5   | root.sg.d1.s1| 100   |
-|  2   | root.sg.d1.s2| 400   |
-|  4   | root.sg.d2.s1| 250   |
-|  9   | root.sg.d2.s2| 600   |
+| Time | Path          | Value | dataType |
+| ---  | ------------- |------ | -------- |
+|  5   | root.sg.d1.s1 | 100   | INT32    |
+|  2   | root.sg.d1.s2 | 400   | INT32    |
+|  4   | root.sg.d2.s1 | 250   | INT32    |
+|  9   | root.sg.d2.s2 | 600   | INT32    |
 
 4. It is not supported to use "diable align" in LAST query. 
 
@@ -694,6 +715,47 @@ In this situation, it will throws an exception if * corresponds to multiple sens
 
 ```
 
+* Regexp Statement
+
+Regexp Statement only supports regular expressions with Java standard library style on timeseries which is TEXT data type
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) REGEXP regularExpression
+regularExpression: Java standard regularexpression, like '^[a-z][0-9]$', [details](https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html)
+
+Eg. select s1 from root.sg.d1 where s1 regexp '^[0-9]*$'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$' and s2 regexp '^\d{15}|\d{18}$'
+Eg. select * from root.sg.d1 where s1 regexp '^[a-zA-Z]\w{5,17}$'
+Eg. select * from root.sg.d1 where s1 regexp '^\d{4}-\d{1,2}-\d{1,2}' and time > 100
+```
+
+* Like Statement
+
+The usage of LIKE Statement similar with mysql, but only support timeseries which is TEXT data type
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE likeExpression
+likeExpression : string that may contains "%" or "_", while "%value" means a string that ends with the value,  "value%" means a string starts with the value, "%value%" means string that contains values, and "_" represents any character.
+
+Eg. select s1 from root.sg.d1 where s1 like 'abc'
+Eg. select s1, s2 from root.sg.d1 where s1 like 'a%bc'
+Eg. select * from root.sg.d1 where s1 like 'abc_'
+Eg. select * from root.sg.d1 where s1 like 'abc\%' and time > 100
+In this situation, '\%' means '%' will be escaped
+The result set will be like:
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  200 | root.sg.d1.s1| abc%  |
+```
+
 ## Database Management Statement
 
 * Create User
@@ -736,7 +798,7 @@ GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 userName:=identifier  
 nodeName:=identifier (DOT identifier)*  
 privileges:= string (COMMA string)*
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * Grant Role Privileges
@@ -746,7 +808,7 @@ GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 roleName:=identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
 ```
 
 * Grant User Role
@@ -765,7 +827,7 @@ REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 userName:=identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * Revoke Role Privileges
@@ -775,7 +837,7 @@ REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;
 privileges:= string (COMMA string)*  
 roleName:= identifier  
 nodeName:=identifier (DOT identifier)*
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
 ```
 
 * Revoke Role From User
@@ -912,6 +974,17 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
+* EXTREME
+
+The EXTREME function returns the extreme value(lexicographically ordered) of the choosen timeseries (one or more).
+extreme value: The value that has the maximum absolute value.
+If the maximum absolute value of a positive value and a negative value is equal, return the positive value.
+```
+SELECT EXTREME (Path) (COMMA EXT (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT EXTREME(status), EXTREME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+```
+
 * AVG(Rename from `MEAN` at `V0.9.0`)
 
 The AVG function returns the arithmetic mean value of the choosen timeseries over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number.
@@ -1018,15 +1091,6 @@ This example will delete the first 3 time partitions of storage group root.sg1.
 ```
 The partitionId can be found in data folders or converted using `timestamp / partitionInterval`.
 
-## Performance Tracing
-
-IoTDB supports tracking the execution of query statements by using `TRACING` statements. The number of tsfile files and chunks accessed by the query etc are output through the log file. The default output location is in `./data/tracing`. The performance tracing function is turned off by default. Users can use the TRACING ON/OFF command to turn this function on/off.
-
-```
-TRACING ON    // Open performance tracing
-TRACING OFF   // Close performance tracing
-```
-
 ## Kill query
 
 - Show the list of queries in progress
@@ -1043,6 +1107,14 @@ E.g. KILL QUERY
 E.g. KILL QUERY 2
 ```
 
+## SET STSTEM TO READONLY / WRITABLE
+
+Set IoTDB system to read-only or writable mode.
+
+```
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
+```
 
 ## Identifiers
 
@@ -1074,8 +1146,7 @@ Boolean := TRUE | FALSE | 0 | 1 (case insensitive)
 ```
 
 ```
-StringLiteral := ( '\'' ( ~('\'') )* '\'' | '\"' ( ~('\"') )* '\"');
-eg. 'abc'
+StringLiteral := ( '\'' ( ~('\'') )* '\'';
 eg. 'abc'
 ```
 

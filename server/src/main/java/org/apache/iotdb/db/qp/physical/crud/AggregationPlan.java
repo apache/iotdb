@@ -18,14 +18,10 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.factory.AggregateResultFactory;
-import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -41,9 +37,10 @@ public class AggregationPlan extends RawDataQueryPlan {
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
 
-  private int level = -1;
+  private int[] levels;
+  private GroupByLevelController groupByLevelController;
   // group by level aggregation result path
-  private final Map<String, AggregateResult> levelAggPaths = new LinkedHashMap<>();
+  private final Map<String, AggregateResult> groupPathsResultMap = new LinkedHashMap<>();
 
   public AggregationPlan() {
     super();
@@ -71,66 +68,64 @@ public class AggregationPlan extends RawDataQueryPlan {
     this.deduplicatedAggregations = deduplicatedAggregations;
   }
 
-  public int getLevel() {
-    return level;
+  public int[] getLevels() {
+    return levels;
   }
 
-  public void setLevel(int level) {
-    this.level = level;
+  public void setLevels(int[] levels) {
+    this.levels = levels;
   }
 
-  public Map<String, AggregateResult> getAggPathByLevel() throws QueryProcessException {
-    if (!levelAggPaths.isEmpty()) {
-      return levelAggPaths;
+  public void setGroupByLevelController(GroupByLevelController groupByLevelController) {
+    this.groupByLevelController = groupByLevelController;
+  }
+
+  public Map<String, AggregateResult> getGroupPathsResultMap() {
+    return groupPathsResultMap;
+  }
+
+  public Map<String, AggregateResult> groupAggResultByLevel(
+      List<AggregateResult> aggregateResults) {
+    if (!groupPathsResultMap.isEmpty()) {
+      groupPathsResultMap.clear();
     }
-    List<PartialPath> seriesPaths = getPaths();
-    List<TSDataType> dataTypes = getDataTypes();
-    try {
-      for (int i = 0; i < seriesPaths.size(); i++) {
-        String transformedPath =
-            FilePathUtils.generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), getLevel());
-        String key = getAggregations().get(i) + "(" + transformedPath + ")";
-        if (!levelAggPaths.containsKey(key)) {
-          AggregateResult aggRet =
-              AggregateResultFactory.getAggrResultByName(
-                  getAggregations().get(i), dataTypes.get(i));
-          levelAggPaths.put(key, aggRet);
-        }
+    for (int i = 0; i < paths.size(); i++) {
+      String rawPath =
+          String.format(
+              "%s(%s)",
+              deduplicatedAggregations.get(i), getDeduplicatedPaths().get(i).getExactFullPath());
+      String transformedPath = groupByLevelController.getGroupedPath(rawPath);
+      AggregateResult result = groupPathsResultMap.get(transformedPath);
+      if (result == null) {
+        groupPathsResultMap.put(transformedPath, aggregateResults.get(i));
+      } else {
+        result.merge(aggregateResults.get(i));
+        groupPathsResultMap.put(transformedPath, result);
       }
-    } catch (IllegalPathException e) {
-      throw new QueryProcessException(e.getMessage());
     }
-    return levelAggPaths;
+    return groupPathsResultMap;
   }
 
   @Override
-  public void setAlignByTime(boolean align) throws QueryProcessException {
-    if (!align) {
-      throw new QueryProcessException(
-          getOperatorType().name() + " doesn't support disable align clause.");
-    }
+  public boolean isGroupByLevel() {
+    return levels != null;
   }
 
   @Override
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
-    String columnForReader = super.getColumnForReaderFromPath(path, pathIndex);
-    if (!path.isTsAliasExists()) {
-      columnForReader = this.getAggregations().get(pathIndex) + "(" + columnForReader + ")";
-    }
-    return columnForReader;
+    return resultColumns.get(pathIndex).getResultColumnName();
   }
 
   @Override
-  public String getColumnForDisplay(String columnForReader, int pathIndex)
-      throws IllegalPathException {
+  public String getColumnForDisplay(String columnForReader, int pathIndex) {
     String columnForDisplay = columnForReader;
-    if (level >= 0) {
+    if (isGroupByLevel()) {
       PartialPath path = paths.get(pathIndex);
+      String functionName = aggregations.get(pathIndex);
       String aggregatePath =
-          path.isMeasurementAliasExists()
-              ? FilePathUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), level)
-              : FilePathUtils.generatePartialPathByLevel(path.toString(), level);
-      columnForDisplay = aggregations.get(pathIndex) + "(" + aggregatePath + ")";
+          groupByLevelController.getGroupedPath(
+              String.format("%s(%s)", functionName, path.getExactFullPath()));
+      columnForDisplay = aggregatePath;
     }
     return columnForDisplay;
   }

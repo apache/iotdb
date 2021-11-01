@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.upgrade;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.tools.upgrade.TsFileOnlineUpgradeTool;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,19 +61,17 @@ public class UpgradeTask extends WrappedRunnable {
         logger.info("find upgraded file for {}", upgradeResource.getTsFile());
         upgradedResources = findUpgradedFiles();
       }
-      upgradeResource.writeLock();
-      try {
-        upgradeResource.setUpgradedResources(upgradedResources);
-        upgradeResource.getUpgradeTsFileResourceCallBack().call(upgradeResource);
-      } finally {
-        upgradeResource.writeUnlock();
-      }
-      UpgradeSevice.setCntUpgradeFileNum(UpgradeSevice.getCntUpgradeFileNum() - 1);
+      upgradeResource.setUpgradedResources(upgradedResources);
+      upgradeResource.getUpgradeTsFileResourceCallBack().call(upgradeResource);
+      UpgradeSevice.getTotalUpgradeFileNum().getAndAdd(-1);
       logger.info(
           "Upgrade completes, file path:{} , the remaining upgraded file num: {}",
           oldTsfilePath,
-          UpgradeSevice.getCntUpgradeFileNum());
-      if (UpgradeSevice.getCntUpgradeFileNum() == 0) {
+          UpgradeSevice.getTotalUpgradeFileNum().get());
+      if (UpgradeSevice.getTotalUpgradeFileNum().get() == 0) {
+        logger.info("Start delete empty tmp folders");
+        clearTmpFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
+        clearTmpFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
         UpgradeSevice.getINSTANCE().stop();
         logger.info("All files upgraded successfully! ");
       }
@@ -125,5 +125,45 @@ public class UpgradeTask extends WrappedRunnable {
       upgradeResource.readUnlock();
     }
     return upgradedResources;
+  }
+
+  private void clearTmpFolders(List<String> folders) {
+    for (String baseDir : folders) {
+      File fileFolder = fsFactory.getFile(baseDir);
+      if (!fileFolder.isDirectory()) {
+        continue;
+      }
+      for (File storageGroup : fileFolder.listFiles()) {
+        if (!storageGroup.isDirectory()) {
+          continue;
+        }
+        File virtualStorageGroupDir = fsFactory.getFile(storageGroup, "0");
+        File upgradeDir = fsFactory.getFile(virtualStorageGroupDir, "upgrade");
+        if (upgradeDir == null) {
+          continue;
+        }
+        File[] tmpPartitionDirList = upgradeDir.listFiles();
+        if (tmpPartitionDirList == null) {
+          continue;
+        }
+        for (File tmpPartitionDir : tmpPartitionDirList) {
+          if (tmpPartitionDir.isDirectory()) {
+            try {
+              Files.delete(tmpPartitionDir.toPath());
+            } catch (IOException e) {
+              logger.error("Delete tmpPartitionDir {} failed", tmpPartitionDir);
+            }
+          }
+        }
+        // delete upgrade folder when it is empty
+        if (upgradeDir.isDirectory()) {
+          try {
+            Files.delete(upgradeDir.toPath());
+          } catch (IOException e) {
+            logger.error("Delete tmpUpgradeDir {} failed", upgradeDir);
+          }
+        }
+      }
+    }
   }
 }

@@ -39,3 +39,24 @@ def test_simple_query():
 
     assert list(df.columns) == ["Time", "root.device.pressure"]
     assert_array_equal(df.values, [[123.0, 15.0]])
+
+
+def test_non_time_query():
+    with IoTDBContainer("apache/iotdb:0.11.2") as db:
+        db: IoTDBContainer
+        session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
+        session.open(False)
+
+        # Write data
+        session.insert_str_record("root.device", 123, "pressure", "15.0")
+
+        # Read
+        session_data_set = session.execute_query_statement("SHOW TIMESERIES")
+        df = session_data_set.todf()
+
+        session.close()
+
+    assert list(df.columns) == ['timeseries', 'alias', 'storage group', 'dataType', 'encoding', 'compression', 'tags',
+                                'attributes']
+    assert_array_equal(df.values,
+                       [['root.device.pressure', None, 'root.device', 'FLOAT', 'GORILLA', 'SNAPPY', None, None]])

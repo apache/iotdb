@@ -22,14 +22,18 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import java.util.List;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
-  private MeasurementSchema schema;
+  private IMeasurementSchema schema;
   private TVList list;
+  private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
-  public WritableMemChunk(MeasurementSchema schema, TVList list) {
+  public WritableMemChunk(IMeasurementSchema schema, TVList list) {
     this.schema = schema;
     this.list = list;
   }
@@ -55,40 +59,48 @@ public class WritableMemChunk implements IWritableMemChunk {
       case TEXT:
         putBinary(insertTime, (Binary) objectValue);
         break;
+      case VECTOR:
+        putVector(insertTime, (Object[]) objectValue);
+        break;
       default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + schema.getType());
+        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
     }
   }
 
   @Override
-  public void write(long[] times, Object valueList, TSDataType dataType, int start, int end) {
+  public void write(
+      long[] times, Object valueList, Object bitMap, TSDataType dataType, int start, int end) {
     switch (dataType) {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) valueList;
-        putBooleans(times, boolValues, start, end);
+        putBooleans(times, boolValues, (BitMap) bitMap, start, end);
         break;
       case INT32:
         int[] intValues = (int[]) valueList;
-        putInts(times, intValues, start, end);
+        putInts(times, intValues, (BitMap) bitMap, start, end);
         break;
       case INT64:
         long[] longValues = (long[]) valueList;
-        putLongs(times, longValues, start, end);
+        putLongs(times, longValues, (BitMap) bitMap, start, end);
         break;
       case FLOAT:
         float[] floatValues = (float[]) valueList;
-        putFloats(times, floatValues, start, end);
+        putFloats(times, floatValues, (BitMap) bitMap, start, end);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) valueList;
-        putDoubles(times, doubleValues, start, end);
+        putDoubles(times, doubleValues, (BitMap) bitMap, start, end);
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) valueList;
-        putBinaries(times, binaryValues, start, end);
+        putBinaries(times, binaryValues, (BitMap) bitMap, start, end);
+        break;
+      case VECTOR:
+        Object[] vectorValues = (Object[]) valueList;
+        putVectors(times, vectorValues, (BitMap[]) bitMap, start, end);
         break;
       default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
     }
   }
 
@@ -123,41 +135,62 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putLongs(long[] t, long[] v, int start, int end) {
-    list.putLongs(t, v, start, end);
+  public void putVector(long t, Object[] v) {
+    list.putVector(t, v);
   }
 
   @Override
-  public void putInts(long[] t, int[] v, int start, int end) {
-    list.putInts(t, v, start, end);
+  public void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end) {
+    list.putLongs(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putFloats(long[] t, float[] v, int start, int end) {
-    list.putFloats(t, v, start, end);
+  public void putInts(long[] t, int[] v, BitMap bitMap, int start, int end) {
+    list.putInts(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putDoubles(long[] t, double[] v, int start, int end) {
-    list.putDoubles(t, v, start, end);
+  public void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end) {
+    list.putFloats(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putBinaries(long[] t, Binary[] v, int start, int end) {
-    list.putBinaries(t, v, start, end);
+  public void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end) {
+    list.putDoubles(t, v, bitMap, start, end);
   }
 
   @Override
-  public void putBooleans(long[] t, boolean[] v, int start, int end) {
-    list.putBooleans(t, v, start, end);
+  public void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end) {
+    list.putBinaries(t, v, bitMap, start, end);
   }
 
   @Override
-  public synchronized TVList getSortedTVListForQuery() {
+  public void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end) {
+    list.putBooleans(t, v, bitMap, start, end);
+  }
+
+  @Override
+  public void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
+    list.putVectors(t, v, bitMaps, start, end);
+  }
+
+  @Override
+  public synchronized TVList getSortedTvListForQuery() {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
     return list;
+  }
+
+  @Override
+  public synchronized TVList getSortedTvListForQuery(List<Integer> columnIndexList) {
+    if (list.getDataType() != TSDataType.VECTOR) {
+      throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
+    }
+    sortTVList();
+    // increase reference count
+    list.increaseReferenceCount();
+    return list.getTvListByColumnIndex(columnIndexList);
   }
 
   private void sortTVList() {
@@ -172,7 +205,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTVListForFlush() {
+  public synchronized TVList getSortedTvListForFlush() {
     sortTVList();
     return list;
   }
@@ -188,7 +221,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
@@ -197,22 +230,56 @@ public class WritableMemChunk implements IWritableMemChunk {
     return list.getMinTime();
   }
 
+  public Long getFirstPoint() {
+    if (list.size() == 0) return Long.MAX_VALUE;
+    return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
+  }
+
+  public Long getLastPoint() {
+    if (list.size() == 0) return Long.MIN_VALUE;
+    return getSortedTvListForQuery()
+        .getTimeValuePair(getSortedTvListForQuery().size() - 1)
+        .getTimestamp();
+  }
+
   @Override
   public int delete(long lowerBound, long upperBound) {
     return list.delete(lowerBound, upperBound);
   }
 
+  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
+  @Override
+  public int delete(long lowerBound, long upperBound, int columnIndex) {
+    return list.delete(lowerBound, upperBound, columnIndex);
+  }
+
   @Override
   public String toString() {
-    int size = getSortedTVListForQuery().size();
+    int size = list.size();
+    int firstIndex = 0;
+    int lastIndex = size - 1;
+    long minTime = Long.MAX_VALUE;
+    long maxTime = Long.MIN_VALUE;
+    for (int i = 0; i < size; i++) {
+      long currentTime = list.getTime(i);
+      if (currentTime < minTime) {
+        firstIndex = i;
+        minTime = currentTime;
+      }
+      if (currentTime >= maxTime) {
+        lastIndex = i;
+        maxTime = currentTime;
+      }
+    }
+
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
       out.append("Data type:").append(schema.getType()).append(System.lineSeparator());
       out.append("First point:")
-          .append(getSortedTVListForQuery().getTimeValuePair(0))
+          .append(list.getTimeValuePair(firstIndex))
           .append(System.lineSeparator());
       out.append("Last point:")
-          .append(getSortedTVListForQuery().getTimeValuePair(size - 1))
+          .append(list.getTimeValuePair(lastIndex))
           .append(System.lineSeparator());
     }
     return out.toString();

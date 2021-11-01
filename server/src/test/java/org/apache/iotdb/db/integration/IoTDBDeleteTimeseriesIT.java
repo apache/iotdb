@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -35,33 +34,31 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.junit.Assert.fail;
+
 public class IoTDBDeleteTimeseriesIT {
 
   private long memtableSizeThreshold;
-  private CompactionStrategy tsFileManagementStrategy;
 
   @Before
-  public void setUp() {
+  public void setUp() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(16);
-    tsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
   }
 
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(tsFileManagementStrategy);
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void deleteTimeseriesAndCreateDifferentTypeTest() throws Exception {
-    Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[] {"1,1,", "2,1.1,"};
     int cnt = 0;
 
@@ -113,14 +110,13 @@ public class IoTDBDeleteTimeseriesIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResult = statement.execute("SELECT * FROM root");
+      boolean hasResult = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResult);
     }
   }
 
   @Test
   public void deleteTimeseriesAndCreateSameTypeTest() throws Exception {
-    Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[] {"1,1,", "2,5,"};
     int cnt = 0;
 
@@ -172,8 +168,54 @@ public class IoTDBDeleteTimeseriesIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResult = statement.execute("SELECT * FROM root");
+      boolean hasResult = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResult);
+    }
+  }
+
+  @Test
+  public void deleteTimeSeriesMultiIntervalTest() {
+    String[] retArray1 = new String[] {"0,0"};
+
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      String insertSql = "insert into root.sg.d1(time, s1) values(%d, %d)";
+      for (int i = 1; i <= 4; i++) {
+        statement.execute(String.format(insertSql, i, i));
+      }
+      statement.execute("flush");
+
+      statement.execute("delete from root.sg.d1.s1 where time >= 1 and time <= 2");
+      statement.execute("delete from root.sg.d1.s1 where time >= 3 and time <= 4");
+
+      boolean hasResultSet =
+          statement.execute("select count(s1) from root.sg.d1 where time >= 3 and time <= 4");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.sg.d1.s1"));
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 }

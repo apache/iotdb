@@ -31,11 +31,12 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -51,13 +52,17 @@ import static org.junit.Assert.*;
 
 public class TsFileWriterTest {
   TsFileWriter writer = null;
-  long fileName = System.nanoTime();
+  String fileName = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
   boolean closed = false;
 
   @Before
   public void setUp() {
     try {
-      writer = new TsFileWriter(new File("target/tsfileWriter-" + fileName));
+      File f = new File(fileName);
+      if (!f.getParentFile().exists()) {
+        Assert.assertTrue(f.getParentFile().mkdirs());
+      }
+      writer = new TsFileWriter(f);
       addMeasurement();
     } catch (IOException e) {
       e.printStackTrace();
@@ -71,7 +76,7 @@ public class TsFileWriterTest {
       closeFile();
     }
     try {
-      Files.deleteIfExists(new File("target/tsfileWriter-" + fileName).toPath());
+      Files.deleteIfExists(new File(fileName).toPath());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -84,7 +89,8 @@ public class TsFileWriterTest {
       //      CompressionType compressionType
       writer.registerTimeseries(
           new Path("d1", "s1"),
-          new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+          new UnaryMeasurementSchema(
+              "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -94,7 +100,8 @@ public class TsFileWriterTest {
       //      CompressionType compressionType
       writer.registerTimeseries(
           new Path("d1", "s1"),
-          new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+          new UnaryMeasurementSchema(
+              "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       Assert.assertEquals("given timeseries has exists! d1.s1", e.getMessage());
     }
@@ -103,7 +110,8 @@ public class TsFileWriterTest {
       //      CompressionType compressionType
       writer.registerTimeseries(
           new Path("d1", "s2"),
-          new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
+          new UnaryMeasurementSchema(
+              "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -112,7 +120,8 @@ public class TsFileWriterTest {
       for (int i = 2; i < 3; i++) {
         writer.registerTimeseries(
             new Path("d" + i, "s1"),
-            new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+            new UnaryMeasurementSchema(
+                "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
       }
     } catch (WriteProcessException e) {
       e.printStackTrace();
@@ -201,9 +210,9 @@ public class TsFileWriterTest {
         new Tablet(
             "d1",
             Arrays.asList(
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)));
     tablet.timestamps[0] = 10000;
     ((float[]) tablet.values[0])[0] = 5.0f;
@@ -220,9 +229,9 @@ public class TsFileWriterTest {
         new Tablet(
             "d1",
             Arrays.asList(
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)));
     tablet.timestamps[0] = 10000;
     ((float[]) tablet.values[0])[0] = 5.0f;
@@ -269,8 +278,7 @@ public class TsFileWriterTest {
   private void readNothing() {
     // using TsFileReader for test
     try {
-      ReadOnlyTsFile readOnlyTsFile =
-          new ReadOnlyTsFile(new TsFileSequenceReader("target/tsfileWriter-" + fileName));
+      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(fileName));
       QueryDataSet dataSet =
           readOnlyTsFile.query(
               QueryExpression.create()
@@ -290,8 +298,7 @@ public class TsFileWriterTest {
 
   private void readOneRow(int s2Value) {
     try {
-      ReadOnlyTsFile readOnlyTsFile =
-          new ReadOnlyTsFile(new TsFileSequenceReader("target/tsfileWriter-" + fileName));
+      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(fileName));
       QueryDataSet dataSet =
           readOnlyTsFile.query(
               QueryExpression.create()

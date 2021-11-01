@@ -20,21 +20,40 @@
 
 
 echo ---------------------
-echo Starting IoTDB
+echo "Starting IoTDB (Cluster Mode)"
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi
 
-IOTDB_CONF=${IOTDB_HOME}/conf
-# IOTDB_LOGS=${IOTDB_HOME}/logs
+enable_printgc=false
+if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+  enable_printgc=true;
+  shift
+fi
+
+IOTDB_CONF=$1
+if [ -z "${IOTDB_CONF}" ]; then
+  export IOTDB_CONF=${IOTDB_HOME}/conf
+fi
 
 if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
-    . "$IOTDB_CONF/iotdb-env.sh"
+    if [ $enable_printgc == "true" ]; then
+      . "$IOTDB_CONF/iotdb-env.sh" "printgc"
+    else
+       . "$IOTDB_CONF/iotdb-env.sh"
+    fi
+elif [ -f "${IOTDB_HOME}/conf/iotdb-env.sh" ]; then
+    if [ $enable_printgc == "true" ]; then
+      . "${IOTDB_HOME}/conf/iotdb-env.sh" "printgc"
+    else
+      . "${IOTDB_HOME}/conf/iotdb-env.sh"
+    fi
 else
     echo "can't find $IOTDB_CONF/iotdb-env.sh"
 fi
+
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do

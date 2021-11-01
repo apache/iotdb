@@ -87,7 +87,7 @@ The data can also be written as some time series on disk. To enable it, set `ena
 
 At present, the monitor system can be divided into two modules: global writing statistics and storage group writing statistics. The global statistics records the number of total points and requests, and the storage group statistics counts the write data of each storage group.
 
-The system sets the collection granularity of the monitoring module to **update the statistical information once one data file is flushed into the disk **, so the data accuracy may be different from the actual situation. To obtain accurate information, **Please call the `flush` method before querying **. 
+The system sets the collection granularity of the monitoring module to **update the statistical information once one data file is flushed into the disk**, so the data accuracy may be different from the actual situation. To obtain accurate information, **Please call the `flush` method before querying**. 
 
 Here are the writing data statistics (the range supported is shown in brackets):
 
@@ -96,7 +96,7 @@ Here are the writing data statistics (the range supported is shown in brackets):
 |Name| TOTAL\_POINTS |
 |:---:|:---|
 |Description| Calculate the total number of global writing points. |
-|Timeseries Name| root.stats.{"global" \|"storageGroupName"}.TOTAL\_POINTS |
+|Timeseries Name| root.stats."global".TOTAL_POINTS<br/>root.stats."{storageGroupName}".TOTAL_POINTS<br/>where storageGroupName equals to `the-actual-sg-name.replace('.', '#')`<br/>For example, the total write points of the storage group `root.sg` is recorded in root.stats."root#sg".TOTAL_POINTS |
 
 * TOTAL\_REQ\_SUCCESS (GLOBAL)
 
@@ -151,7 +151,9 @@ To grasp the performance of iotdb, this module is added to count the time-consum
 
 location：conf/iotdb-engine.properties
 
-<center>**Table -parameter and description**
+<center>
+
+**Table -parameter and description**
 
 |Parameter|Default Value|Description|
 |:---|:---|:---|

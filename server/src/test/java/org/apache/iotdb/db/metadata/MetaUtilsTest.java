@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -28,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
 
 public class MetaUtilsTest {
 
@@ -38,20 +40,20 @@ public class MetaUtilsTest {
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s1"));
 
     assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "\"s.1\"").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s.1\""));
+        Arrays.asList("root", "sg", "d1", "\"s+1\"").toArray(),
+        MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s+1\""));
 
     assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "\"s\\\".1\"").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s\\\".1\""));
+        Arrays.asList("root", "sg", "d1", "\"s\\\"+-1\"").toArray(),
+        MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s\\\"+-1\""));
 
     assertArrayEquals(
-        Arrays.asList("root", "\"s g\"", "d1", "\"s.1\"").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.\"s g\".d1.\"s.1\""));
+        Arrays.asList("root", "\"s g\"", "d1", "\"s+1\"").toArray(),
+        MetaUtils.splitPathToDetachedPath("root.\"s g\".d1.\"s+1\""));
 
     assertArrayEquals(
-        Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\"").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.\"s g\".\"d_.1\".\"s.1.1\""));
+        Arrays.asList("root", "\"s g\"", "\"d_+-1\"", "\"s+1+2\"").toArray(),
+        MetaUtils.splitPathToDetachedPath("root.\"s g\".\"d_+-1\".\"s+1+2\""));
 
     assertArrayEquals(
         Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
@@ -61,42 +63,38 @@ public class MetaUtilsTest {
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
 
     try {
-      MetaUtils.splitPathToDetachedPath("root.sg.\"d.1\"\"s.1\"");
-    } catch (IllegalPathException e) {
-      Assert.assertEquals("root.sg.\"d.1\"\"s.1\" is not a legal path", e.getMessage());
-    }
-
-    try {
       MetaUtils.splitPathToDetachedPath("root..a");
+      fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root..a is not a legal path", e.getMessage());
     }
 
     try {
-      MetaUtils.splitPathToDetachedPath("root.sg.d1.'s1'");
+      MetaUtils.splitPathToDetachedPath("root.sg.d1.");
+      fail();
     } catch (IllegalPathException e) {
-      Assert.assertEquals("root.sg.d1.'s1' is not a legal path", e.getMessage());
+      Assert.assertEquals("root.sg.d1. is not a legal path", e.getMessage());
     }
   }
 
   @Test
   public void testGetMultiFullPaths() {
-    MNode rootNode = new MNode(null, "root");
+    InternalMNode rootNode = new InternalMNode(null, "root");
 
     // builds the relationship of root.a and root.aa
-    MNode aNode = new MNode(rootNode, "a");
+    InternalMNode aNode = new InternalMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode);
-    MNode aaNode = new MNode(rootNode, "aa");
+    InternalMNode aaNode = new InternalMNode(rootNode, "aa");
     rootNode.addChild(aaNode.getName(), aaNode);
 
     // builds the relationship of root.a.b and root.aa.bb
-    MNode bNode = new MNode(aNode, "b");
+    InternalMNode bNode = new InternalMNode(aNode, "b");
     aNode.addChild(bNode.getName(), bNode);
-    MNode bbNode = new MNode(aaNode, "bb");
+    InternalMNode bbNode = new InternalMNode(aaNode, "bb");
     aaNode.addChild(bbNode.getName(), bbNode);
 
     // builds the relationship of root.aa.bb.cc
-    MNode ccNode = new MNode(bbNode, "cc");
+    InternalMNode ccNode = new InternalMNode(bbNode, "cc");
     bbNode.addChild(ccNode.getName(), ccNode);
 
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);

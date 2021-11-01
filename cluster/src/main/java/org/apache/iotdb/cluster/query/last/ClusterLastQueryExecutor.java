@@ -127,6 +127,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         List<Pair<Boolean, TimeValuePair>> timeValuePairs = groupFuture.get();
         for (int i = 0; i < timeValuePairs.size(); i++) {
           if (timeValuePairs.get(i) != null
+              && timeValuePairs.get(i).right != null
               && timeValuePairs.get(i).right.getTimestamp() > results.get(i).right.getTimestamp()) {
             results.get(i).right = timeValuePairs.get(i).right;
           }
@@ -187,7 +188,8 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     private List<Pair<Boolean, TimeValuePair>> calculateSeriesLastLocally(
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
-      DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
+      DataGroupMember localDataMember =
+          metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
       try {
         localDataMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {
@@ -257,20 +259,28 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     }
 
     private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
+      ByteBuffer res;
       try (SyncDataClient syncDataClient =
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        return syncDataClient.last(
-            new LastQueryRequest(
-                PartialPath.toStringList(seriesPaths),
-                dataTypeOrdinals,
-                context.getQueryId(),
-                queryPlan.getDeviceToMeasurements(),
-                group.getHeader(),
-                syncDataClient.getNode()));
+        try {
+          res =
+              syncDataClient.last(
+                  new LastQueryRequest(
+                      PartialPath.toStringList(seriesPaths),
+                      dataTypeOrdinals,
+                      context.getQueryId(),
+                      queryPlan.getDeviceToMeasurements(),
+                      group.getHeader(),
+                      syncDataClient.getNode()));
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
+        }
       }
+      return res;
     }
   }
 }

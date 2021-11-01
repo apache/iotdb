@@ -25,7 +25,7 @@ The versions required for Spark and Java are as follow:
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | :-------------: | :-------------: | :------------: |:------------: |
-| `2.4.3`        | `2.11`        | `1.8`        | `0.12.0`|
+| `2.4.3`        | `2.11`        | `1.8`        | `0.13.0-SNAPSHOT`|
 
 
 > Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it
@@ -41,7 +41,7 @@ mvn clean scala:compile compile install
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.10.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 ```
 
@@ -49,7 +49,7 @@ mvn clean scala:compile compile install
 #### spark-shell user guide
 
 ```
-spark-shell --jars spark-iotdb-connector-0.12.0.jar,iotdb-jdbc-0.12.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -63,7 +63,7 @@ df.show()
 To partition rdd:
 
 ```
-spark-shell --jars spark-iotdb-connector-0.12.0.jar,iotdb-jdbc-0.12.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -114,23 +114,17 @@ You can also use narrow table form which as follows: (You can see part 4 about h
 |    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
 |    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
-#### Transform between wide and narrow table
-
-* from wide to narrow
-
+#### Get narrow form of data
 ```
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
+
 import org.apache.iotdb.spark.db._
 
-val wide_df = spark.read.format("org.apache.iotdb.spark.db").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
-val narrow_df = Transformer.toNarrowForm(spark, wide_df)
-```
+val df = spark.read.format("org.apache.iotdb.spark.db").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root align by device").load
 
-* from narrow to wide
+df.printSchema()
 
-```
-import org.apache.iotdb.spark.db._
-
-val wide_df = Transformer.toWideForm(spark, narrow_df)
+df.show()
 ```
 
 #### Java user guide

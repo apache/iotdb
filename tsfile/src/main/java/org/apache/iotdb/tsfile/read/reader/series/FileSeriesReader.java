@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.reader.series;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -34,18 +35,18 @@ import java.util.List;
 public class FileSeriesReader extends AbstractFileSeriesReader {
 
   public FileSeriesReader(
-      IChunkLoader chunkLoader, List<ChunkMetadata> chunkMetadataList, Filter filter) {
+      IChunkLoader chunkLoader, List<IChunkMetadata> chunkMetadataList, Filter filter) {
     super(chunkLoader, chunkMetadataList, filter);
   }
 
   @Override
-  protected void initChunkReader(ChunkMetadata chunkMetaData) throws IOException {
-    Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
+  protected void initChunkReader(IChunkMetadata chunkMetaData) throws IOException {
+    Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
     this.chunkReader = new ChunkReader(chunk, filter);
   }
 
   @Override
-  protected boolean chunkSatisfied(ChunkMetadata chunkMetaData) {
+  protected boolean chunkSatisfied(IChunkMetadata chunkMetaData) {
     return filter == null || filter.satisfy(chunkMetaData.getStatistics());
   }
 }

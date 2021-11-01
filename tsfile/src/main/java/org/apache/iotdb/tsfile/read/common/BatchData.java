@@ -22,7 +22,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +58,8 @@ public class BatchData {
 
   protected TSDataType dataType;
 
+  protected BatchDataType batchDataType = BatchDataType.Ordinary;
+
   // outer list index for read
   protected int readCurListIndex;
   // inner array index for read
@@ -77,6 +80,7 @@ public class BatchData {
   protected List<float[]> floatRet;
   protected List<double[]> doubleRet;
   protected List<Binary[]> binaryRet;
+  protected List<TsPrimitiveType[][]> vectorRet;
 
   public BatchData() {
     dataType = null;
@@ -134,6 +138,8 @@ public class BatchData {
         return getBoolean();
       case TEXT:
         return getBinary();
+      case VECTOR:
+        return getVector();
       default:
         return null;
     }
@@ -153,6 +159,8 @@ public class BatchData {
         return new TsBoolean(getBoolean());
       case TEXT:
         return new TsBinary(getBinary());
+      case VECTOR:
+        return new TsVector(getVector());
       default:
         return null;
     }
@@ -160,6 +168,14 @@ public class BatchData {
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
+  public BatchDataType getBatchDataType() {
+    return batchDataType;
   }
 
   /**
@@ -202,6 +218,10 @@ public class BatchData {
       case TEXT:
         binaryRet = new ArrayList<>();
         binaryRet.add(new Binary[capacity]);
+        break;
+      case VECTOR:
+        vectorRet = new ArrayList<>();
+        vectorRet.add(new TsPrimitiveType[capacity][]);
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
@@ -417,6 +437,41 @@ public class BatchData {
     count++;
   }
 
+  /**
+   * put vector data.
+   *
+   * @param t timestamp
+   * @param v vector data.
+   */
+  public void putVector(long t, TsPrimitiveType[] v) {
+    if (writeCurArrayIndex == capacity) {
+      if (capacity >= CAPACITY_THRESHOLD) {
+        timeRet.add(new long[capacity]);
+        vectorRet.add(new TsPrimitiveType[capacity][]);
+        writeCurListIndex++;
+        writeCurArrayIndex = 0;
+      } else {
+        int newCapacity = capacity << 1;
+
+        long[] newTimeData = new long[newCapacity];
+        TsPrimitiveType[][] newValueData = new TsPrimitiveType[newCapacity][];
+
+        System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
+        System.arraycopy(vectorRet.get(0), 0, newValueData, 0, capacity);
+
+        timeRet.set(0, newTimeData);
+        vectorRet.set(0, newValueData);
+
+        capacity = newCapacity;
+      }
+    }
+    timeRet.get(writeCurListIndex)[writeCurArrayIndex] = t;
+    vectorRet.get(writeCurListIndex)[writeCurArrayIndex] = v;
+
+    writeCurArrayIndex++;
+    count++;
+  }
+
   public boolean getBoolean() {
     return this.booleanRet.get(readCurListIndex)[readCurArrayIndex];
   }
@@ -465,6 +520,14 @@ public class BatchData {
     this.binaryRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
+  public TsPrimitiveType[] getVector() {
+    return this.vectorRet.get(readCurListIndex)[readCurArrayIndex];
+  }
+
+  public void setVector(TsPrimitiveType[] v) {
+    this.vectorRet.get(readCurListIndex)[readCurArrayIndex] = v;
+  }
+
   public void setTime(long v) {
     this.timeRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
@@ -494,6 +557,9 @@ public class BatchData {
         break;
       case TEXT:
         putBinary(t, (Binary) v);
+        break;
+      case VECTOR:
+        putVector(t, (TsPrimitiveType[]) v);
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
@@ -532,6 +598,10 @@ public class BatchData {
     return booleanRet.get(idx / capacity)[idx % capacity];
   }
 
+  public TsPrimitiveType[] getVectorByIndex(int idx) {
+    return vectorRet.get(idx / capacity)[idx % capacity];
+  }
+
   public TimeValuePair getLastPairBeforeOrEqualTimestamp(long queryTime) {
     TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
     resetBatchData();
@@ -567,7 +637,12 @@ public class BatchData {
   }
 
   public BatchDataIterator getBatchDataIterator() {
-    return new BatchDataIterator(this);
+    return new BatchDataIterator();
+  }
+
+  /** Only used for the batch data of vector time series. */
+  public IBatchDataIterator getBatchDataIterator(int subIndex) {
+    return new VectorBatchDataIterator(subIndex);
   }
 
   /**
@@ -598,5 +673,103 @@ public class BatchData {
    */
   public BatchData flip() {
     return this;
+  }
+
+  public enum BatchDataType {
+    Ordinary,
+    DescRead,
+    DescReadWrite;
+
+    BatchDataType() {}
+
+    /**
+     * give an integer to return a BatchType type.
+     *
+     * @param type -param to judge enum type
+     * @return -enum type
+     */
+    public static BatchData deserialize(byte type, TSDataType dataType) {
+      switch (type) {
+        case 0:
+          return new BatchData(dataType);
+        case 1:
+          return new DescReadBatchData(dataType);
+        case 2:
+          return new DescReadWriteBatchData(dataType);
+        default:
+          throw new IllegalArgumentException("Invalid input: " + type);
+      }
+    }
+  }
+
+  private class BatchDataIterator implements IPointReader, IBatchDataIterator {
+
+    @Override
+    public boolean hasNext() {
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public void next() {
+      BatchData.this.next();
+    }
+
+    @Override
+    public long currentTime() {
+      return BatchData.this.currentTime();
+    }
+
+    @Override
+    public Object currentValue() {
+      return BatchData.this.currentValue();
+    }
+
+    @Override
+    public void reset() {
+      BatchData.this.resetBatchData();
+    }
+
+    @Override
+    public int totalLength() {
+      return BatchData.this.length();
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      return hasNext();
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      TimeValuePair timeValuePair = new TimeValuePair(currentTime(), currentTsPrimitiveType());
+      next();
+      return timeValuePair;
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return new TimeValuePair(currentTime(), currentTsPrimitiveType());
+    }
+
+    @Override
+    public void close() {}
+  }
+
+  private class VectorBatchDataIterator extends BatchDataIterator {
+
+    private final int subIndex;
+
+    private VectorBatchDataIterator(int subIndex) {
+      this.subIndex = subIndex;
+    }
+
+    @Override
+    public Object currentValue() {
+      if (dataType == TSDataType.VECTOR) {
+        return getVector()[subIndex].getValue();
+      } else {
+        return null;
+      }
+    }
   }
 }

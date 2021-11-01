@@ -30,7 +30,7 @@ IoTDB provides Cli/shell tools for users to interact with IoTDB server in comman
 
 Under the root path of iotdb:
 
-```
+```shell
 > mvn clean package -pl cli -am -DskipTests
 ```
 
@@ -51,12 +51,12 @@ You also can set your own environment variable at the front of the start script 
 
 The Linux and MacOS system startup commands are as follows:
 
-```
+```shell
 Shell > sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 The Windows system startup commands are as follows:
 
-```
+```shell
 Shell > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 After using these commands, the cli can be started successfully. The successful status will be as follows:
@@ -94,21 +94,68 @@ Following is a cli command which connects the host with IP
 
 The Linux and MacOS system startup commands are as follows:
 
-```
+```shell
 Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 The Windows system startup commands are as follows:
 
-```
+```shell
 Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
 ### Note on using the CLI with OpenID Connect Auth enabled on Server side
 
+Openid connect (oidc) uses keycloack as the authority authentication service of oidc service
+
+#### configuration
+The configuration is located in iotdb-engines.properties , set the author_provider_class is org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer Openid service is enabled, and the default value is org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer Indicates that the openid service is not enabled.
+
+```
+authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer
+```
+If the openid service is turned on, openid_URL is required,openID_url value is http://ip:port/auth/realms/{realmsName}
+
+```
+openID_url=http://127.0.0.1:8080/auth/realms/iotdb/
+```
+####keycloack configuration
+
+1、Download the keycloack file and start keycloack in keycloack/bin
+
+```shell
+Shell >cd bin
+Shell >./standalone.sh
+```
+2、use url(https://ip:port/auth) login keycloack, the first login needs to create a user
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/login_keycloak.png?raw=true)
+
+3、Click administration console
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/Administration%20Console.png?raw=true)
+
+4、In the master menu on the left, click Add realm and enter name to create a new realm
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add%20Realm_1.png?raw=true)
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add%20Realm_2.png?raw=true)
+
+
+5、Click the menu clients on the left to create clients
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/client.png?raw=true)
+
+6、Click user on the left menu to create user
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/user.png?raw=true)
+
+7、Click the newly created user ID, click the credentials navigation, enter the password and close the temporary option. The configuration of keycloud is completed
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
+
+The above steps provide a way for keycloak to log into iotdb. For more ways, please refer to keycloak configuration
+
 If OIDC is enabled on server side then no username / passwort is needed but a valid Access Token from the OIDC Provider.
 So as username you use the token and the password has to be empty, e.g.
 
-```
+```shell
 Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
@@ -117,7 +164,7 @@ In the simplest case you can get this via the command line with the `passwort-gr
 For example, if you use keycloack as OIDC and you have a realm with a client `iotdb` defined as public you could use
 the following `curl` command to fetch a token (replace all `{}` with appropriate values).
 
-```
+```shell
 curl -X POST "https://{your-keycloack-server}/auth/realms/{your-realm}/protocol/openid-connect/token" \                                                                                                                      
  -H "Content-Type: application/x-www-form-urlencoded" \
  -d "username={username}" \
@@ -144,13 +191,13 @@ The usage of -e parameter for Cli/shell is as follows:
 
 The Linux and MacOS system commands:
 
-```
+```shell
 Shell > sbin/start-cli.sh -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
 The Windows system commands:
 
-```
+```shell
 Shell > sbin\start-cli.bat -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
@@ -160,7 +207,7 @@ In order to better explain the use of -e parameter, take following as an example
 
 Suppose you want to create a storage group root.demo to a newly launched IoTDB, create a timeseries root.demo.s1 and insert three data points into it. With -e parameter, you could write a shell like this:
 
-```
+```shell
 # !/bin/bash
 
 host=127.0.0.1
@@ -178,7 +225,7 @@ pass=root
 
 The print results are shown in the figure, which are consistent with the cli and jdbc operations.
 
-```
+```shell
  Shell > ./shell.sh 
 +-----------------------------+------------+
 |                         Time|root.demo.s1|

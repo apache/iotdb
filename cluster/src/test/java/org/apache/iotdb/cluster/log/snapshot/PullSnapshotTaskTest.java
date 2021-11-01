@@ -36,7 +36,6 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
@@ -48,11 +47,13 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -80,15 +81,13 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   private List<TsFileResource> tsFileResources;
   private boolean hintRegistered;
   private int requiredRetries;
-  private CompactionStrategy defaultCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
+  private int defaultCompactionThread =
+      IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
 
   @Override
   @Before
   public void setUp() throws MetadataException, StartupException {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(0);
     super.setUp();
     hintRegistered = false;
     sourceMember =
@@ -172,6 +171,18 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
 
                       @Override
                       public void write(byte[] buf, int off, int len) {}
+
+                      @Override
+                      public TConfiguration getConfiguration() {
+                        return null;
+                      }
+
+                      @Override
+                      public void updateKnownMessageSize(long size) {}
+
+                      @Override
+                      public void checkReadBytesAvailable(long numBytes)
+                          throws TTransportException {}
                     });
               }
             };
@@ -183,6 +194,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
           }
         };
     sourceMember.setMetaGroupMember(metaGroupMember);
+    sourceMember.setLogManager(new TestLogManager(0));
     sourceMember.setThisNode(TestUtils.getNode(0));
     targetMember =
         new TestDataGroupMember() {
@@ -298,7 +310,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
             loadedFiles.get(i).getMaxPlanIndex(),
             loadedFiles.get(i).getTsFile().getAbsolutePath());
       }
-      assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
+      assertEquals(-1, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
 
@@ -322,6 +334,8 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     sourceMember.stop();
     targetMember.stop();
     super.tearDown();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(defaultCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setConcurrentCompactionThread(defaultCompactionThread);
   }
 }

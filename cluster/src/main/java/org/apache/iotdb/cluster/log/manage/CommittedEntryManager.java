@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import org.slf4j.Logger;
@@ -50,6 +51,17 @@ public class CommittedEntryManager {
   CommittedEntryManager(int maxNumOfLogInMem) {
     entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
     entries.add(new EmptyContentLog(-1, -1));
+    entryTotalMemSize = 0;
+  }
+
+  CommittedEntryManager(int maxNumOfLogInMem, LogManagerMeta meta) {
+    entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
+    entries.add(
+        new EmptyContentLog(
+            meta.getMaxHaveAppliedCommitIndex() == -1
+                ? -1
+                : meta.getMaxHaveAppliedCommitIndex() - 1,
+            meta.getLastLogTerm()));
     entryTotalMemSize = 0;
   }
 
@@ -208,13 +220,19 @@ public class CommittedEntryManager {
       throw new EntryUnavailableException(compactIndex, getLastIndex());
     }
     int index = (int) (compactIndex - dummyIndex);
+    for (int i = 1; i <= index; i++) {
+      entryTotalMemSize -= entries.get(i).getByteSize();
+    }
+    // The following two lines of code should be tightly linked,
+    // because the check apply thread will read the entry also, and there will be concurrency
+    // problems,
+    // but please rest assured that we have done concurrency security check in the check apply
+    // thread.
+    // They are put together just to reduce the probability of concurrency.
     entries.set(
         0,
         new EmptyContentLog(
             entries.get(index).getCurrLogIndex(), entries.get(index).getCurrLogTerm()));
-    for (int i = 1; i <= index; i++) {
-      entryTotalMemSize -= entries.get(i).getByteSize();
-    }
     entries.subList(1, index + 1).clear();
   }
 

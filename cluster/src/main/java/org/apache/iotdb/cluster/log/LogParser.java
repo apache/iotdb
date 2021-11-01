@@ -64,6 +64,10 @@ public class LogParser {
       case ADD_NODE:
         AddNodeLog addNodeLog = new AddNodeLog();
         addNodeLog.deserialize(buffer);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "The last meta log index of log {} is {}", addNodeLog, addNodeLog.getMetaLogIndex());
+        }
         log = addNodeLog;
         break;
       case PHYSICAL_PLAN:
@@ -79,6 +83,12 @@ public class LogParser {
       case REMOVE_NODE:
         RemoveNodeLog removeNodeLog = new RemoveNodeLog();
         removeNodeLog.deserialize(buffer);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "The last meta log index of log {} is {}",
+              removeNodeLog,
+              removeNodeLog.getMetaLogIndex());
+        }
         log = removeNodeLog;
         break;
       case EMPTY_CONTENT:

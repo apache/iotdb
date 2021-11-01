@@ -41,7 +41,10 @@ public enum TSDataType {
   DOUBLE((byte) 4),
 
   /** TEXT */
-  TEXT((byte) 5);
+  TEXT((byte) 5),
+
+  /** VECTOR */
+  VECTOR((byte) 6);
 
   private final byte type;
 
@@ -73,6 +76,8 @@ public enum TSDataType {
         return TSDataType.DOUBLE;
       case 5:
         return TSDataType.TEXT;
+      case 6:
+        return TSDataType.VECTOR;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
@@ -105,6 +110,7 @@ public enum TSDataType {
       case TEXT:
       case INT64:
       case DOUBLE:
+      case VECTOR:
         return 8;
       default:
         throw new UnSupportedDataTypeException(this.toString());

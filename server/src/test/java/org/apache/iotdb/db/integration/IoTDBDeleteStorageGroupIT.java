@@ -154,7 +154,7 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("SET STORAGE GROUP TO root.ln4.wf01.wt02");
       statement.execute("SET STORAGE GROUP TO root.ln4.wf02.wt03");
       statement.execute("SET STORAGE GROUP TO root.ln4.wf02.wt04");
-      statement.execute("DELETE STORAGE GROUP root.*");
+      statement.execute("DELETE STORAGE GROUP root.**");
       boolean hasResult = statement.execute("SHOW STORAGE GROUP");
       assertTrue(hasResult);
       List<String> result = new ArrayList<>();

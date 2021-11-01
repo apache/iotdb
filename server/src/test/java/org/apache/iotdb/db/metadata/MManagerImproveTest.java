@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -35,6 +35,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -136,12 +137,16 @@ public class MManagerImproveTest {
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
-    MNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
-    for (String s : measurementList) {
-      assertTrue(node.hasChild(s));
-      MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
-      TSDataType dataType = measurementNode.getSchema().getType();
-      assertEquals(TSDataType.TEXT, dataType);
+    try {
+      IMNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
+      for (String s : measurementList) {
+        assertTrue(node.hasChild(s));
+        IMeasurementMNode measurementNode = node.getChild(s).getAsMeasurementMNode();
+        TSDataType dataType = measurementNode.getSchema().getType();
+        assertEquals(TSDataType.TEXT, dataType);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
 

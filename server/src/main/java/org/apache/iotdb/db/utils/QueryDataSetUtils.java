@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -41,18 +42,6 @@ public class QueryDataSetUtils {
   private static final int flag = 0x01;
 
   private QueryDataSetUtils() {}
-
-  /**
-   * convert query data set by fetch size.
-   *
-   * @param queryDataSet -query dataset
-   * @param fetchSize -fetch size
-   * @return -convert query dataset
-   */
-  public static TSQueryDataSet convertQueryDataSetByFetchSize(
-      QueryDataSet queryDataSet, int fetchSize) throws IOException {
-    return convertQueryDataSetByFetchSize(queryDataSet, fetchSize, null);
-  }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TSQueryDataSet convertQueryDataSetByFetchSize(
@@ -78,6 +67,14 @@ public class QueryDataSetUtils {
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
+        // filter rows whose columns are null according to the rule
+        if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
+            || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
+          // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+          queryDataSet.decreaseAlreadyReturnedRowNum();
+          i--;
+          continue;
+        }
         if (watermarkEncoder != null) {
           rowRecord = watermarkEncoder.encodeRecord(rowRecord);
         }
@@ -181,6 +178,24 @@ public class QueryDataSetUtils {
       times[i] = buffer.getLong();
     }
     return times;
+  }
+
+  public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns, int size) {
+    if (!buffer.hasRemaining()) {
+      return null;
+    }
+    BitMap[] bitMaps = new BitMap[columns];
+    for (int i = 0; i < columns; i++) {
+      boolean hasBitMap = BytesUtils.byteToBool(buffer.get());
+      if (hasBitMap) {
+        byte[] bytes = new byte[size / Byte.SIZE + 1];
+        for (int j = 0; j < bytes.length; j++) {
+          bytes[j] = buffer.get();
+        }
+        bitMaps[i] = new BitMap(size, bytes);
+      }
+    }
+    return bitMaps;
   }
 
   public static Object[] readValuesFromBuffer(

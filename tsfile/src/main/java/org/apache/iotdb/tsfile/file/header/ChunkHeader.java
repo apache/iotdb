@@ -38,6 +38,9 @@ public class ChunkHeader {
   /**
    * 1 means this chunk has more than one page, so each page has its own page statistic 5 means this
    * chunk has only one page, and this page has no page statistic
+   *
+   * <p>if the 8th bit of this byte is 1 means this chunk is a time chunk of one vector if the 7th
+   * bit of this byte is 1 means this chunk is a value chunk of one vector
    */
   private byte chunkType;
 
@@ -58,8 +61,21 @@ public class ChunkHeader {
       CompressionType compressionType,
       TSEncoding encoding,
       int numOfPages) {
+    this(measurementID, dataSize, dataType, compressionType, encoding, numOfPages, 0);
+  }
+
+  public ChunkHeader(
+      String measurementID,
+      int dataSize,
+      TSDataType dataType,
+      CompressionType compressionType,
+      TSEncoding encoding,
+      int numOfPages,
+      int mask) {
     this(
-        numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER,
+        (byte)
+            ((numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER)
+                | (byte) mask),
         measurementID,
         dataSize,
         getSerializedSize(measurementID, dataSize),

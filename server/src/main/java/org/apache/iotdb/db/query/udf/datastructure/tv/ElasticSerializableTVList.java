@@ -224,7 +224,7 @@ public class ElasticSerializableTVList implements PointCollector {
     }
   }
 
-  public LayerPointReader getPointReaderUsingEvictionStrategy() {
+  public LayerPointReader constructPointReaderUsingTrivialEvictionStrategy() {
 
     return new LayerPointReader() {
 
@@ -290,7 +290,7 @@ public class ElasticSerializableTVList implements PointCollector {
    * @param evictionUpperBound the index of the first element that cannot be evicted. in other
    *     words, elements whose index are <b>less than</b> the evictionUpperBound can be evicted.
    */
-  private void setEvictionUpperBound(int evictionUpperBound) {
+  public void setEvictionUpperBound(int evictionUpperBound) {
     this.evictionUpperBound = evictionUpperBound;
   }
 

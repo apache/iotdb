@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.HashMap;
@@ -31,6 +32,7 @@ import java.util.Map;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
+  protected List<ResultColumn> resultColumns = null;
   protected List<PartialPath> paths = null;
   protected List<TSDataType> dataTypes = null;
   private boolean alignByTime = true; // for disable align sql
@@ -43,6 +45,13 @@ public abstract class QueryPlan extends PhysicalPlan {
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
   private boolean enableRedirect = false;
+  private boolean enableTracing = false;
+
+  // if true, we don't need the row whose any column is null
+  private boolean withoutAnyNull;
+
+  // if true, we don't need the row whose all columns are null
+  private boolean withoutAllNull;
 
   public QueryPlan() {
     super(true);
@@ -52,6 +61,8 @@ public abstract class QueryPlan extends PhysicalPlan {
   public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
     super(isQuery, operatorType);
   }
+
+  public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
 
   @Override
   public List<PartialPath> getPaths() {
@@ -95,12 +106,20 @@ public abstract class QueryPlan extends PhysicalPlan {
     return alignByTime;
   }
 
-  public void setAlignByTime(boolean align) throws QueryProcessException {
+  public void setAlignByTime(boolean align) {
     alignByTime = align;
   }
 
-  public void addPathToIndex(String columnName, Integer index) {
+  public void setColumnNameToDatasetOutputIndex(String columnName, Integer index) {
     pathToIndex.put(columnName, index);
+  }
+
+  public boolean isGroupByLevel() {
+    return false;
+  }
+
+  public void setPathToIndex(Map<String, Integer> pathToIndex) {
+    this.pathToIndex = pathToIndex;
   }
 
   public Map<String, Integer> getPathToIndex() {
@@ -116,17 +135,12 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
-    String columnForReader = path.isTsAliasExists() ? path.getTsAlias() : null;
-    if (columnForReader == null) {
-      columnForReader =
-          path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.toString();
-    }
-    return columnForReader;
+    ResultColumn resultColumn = resultColumns.get(pathIndex);
+    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getExactFullPath();
   }
 
-  public String getColumnForDisplay(String columnForReader, int pathIndex)
-      throws IllegalPathException {
-    return columnForReader;
+  public String getColumnForDisplay(String columnForReader, int pathIndex) {
+    return resultColumns.get(pathIndex).getResultColumnName();
   }
 
   public boolean isEnableRedirect() {
@@ -135,5 +149,37 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setEnableRedirect(boolean enableRedirect) {
     this.enableRedirect = enableRedirect;
+  }
+
+  public boolean isEnableTracing() {
+    return enableTracing;
+  }
+
+  public void setEnableTracing(boolean enableTracing) {
+    this.enableTracing = enableTracing;
+  }
+
+  public List<ResultColumn> getResultColumns() {
+    return resultColumns;
+  }
+
+  public void setResultColumns(List<ResultColumn> resultColumns) {
+    this.resultColumns = resultColumns;
+  }
+
+  public boolean isWithoutAnyNull() {
+    return withoutAnyNull;
+  }
+
+  public void setWithoutAnyNull(boolean withoutAnyNull) {
+    this.withoutAnyNull = withoutAnyNull;
+  }
+
+  public boolean isWithoutAllNull() {
+    return withoutAllNull;
+  }
+
+  public void setWithoutAllNull(boolean withoutAllNull) {
+    this.withoutAllNull = withoutAllNull;
   }
 }

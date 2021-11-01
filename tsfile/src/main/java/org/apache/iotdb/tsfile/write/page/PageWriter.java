@@ -26,12 +26,13 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -57,13 +58,13 @@ public class PageWriter {
    * statistic of current page. It will be reset after calling {@code
    * writePageHeaderAndDataIntoBuff()}
    */
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   public PageWriter() {
     this(null, null);
   }
 
-  public PageWriter(MeasurementSchema measurementSchema) {
+  public PageWriter(IMeasurementSchema measurementSchema) {
     this(measurementSchema.getTimeEncoder(), measurementSchema.getValueEncoder());
     this.statistics = Statistics.getStatsByType(measurementSchema.getType());
     this.compressor = ICompressor.getCompressor(measurementSchema.getCompressor());
@@ -263,7 +264,7 @@ public class PageWriter {
   }
 
   /** reset this page */
-  public void reset(MeasurementSchema measurementSchema) {
+  public void reset(IMeasurementSchema measurementSchema) {
     timeOut.reset();
     valueOut.reset();
     statistics = Statistics.getStatsByType(measurementSchema.getType());
@@ -285,7 +286,7 @@ public class PageWriter {
     return statistics.getCount();
   }
 
-  public Statistics<?> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return statistics;
   }
 }

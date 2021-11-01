@@ -21,6 +21,8 @@ package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -30,7 +32,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -123,14 +125,23 @@ public class LogReplayer {
         logger.error("Cannot close the modifications file {}", modFile.getFilePath(), e);
       }
     }
-    tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
-    tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
+
+    Map<String, Map<String, IWritableMemChunk>> memTableMap = recoverMemTable.getMemTableMap();
+    for (Map.Entry<String, Map<String, IWritableMemChunk>> deviceEntry : memTableMap.entrySet()) {
+      String deviceId = deviceEntry.getKey();
+      for (Map.Entry<String, IWritableMemChunk> measurementEntry :
+          deviceEntry.getValue().entrySet()) {
+        WritableMemChunk memChunk = (WritableMemChunk) measurementEntry.getValue();
+        currentTsFileResource.updateStartTime(deviceId, memChunk.getFirstPoint());
+        currentTsFileResource.updateEndTime(deviceId, memChunk.getLastPoint());
+      }
+    }
   }
 
   private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      for (PartialPath device : IoTDB.metaManager.getDevices(path.getDevicePath())) {
+      for (PartialPath device : IoTDB.metaManager.getBelongedDevices(path)) {
         recoverMemTable.delete(
             path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
@@ -154,28 +165,36 @@ public class LogReplayer {
         minTime = ((InsertTabletPlan) plan).getMinTime();
         maxTime = ((InsertTabletPlan) plan).getMaxTime();
       }
+      String deviceId =
+          plan.isAligned()
+              ? plan.getPrefixPath().getDevicePath().getFullPath()
+              : plan.getPrefixPath().getFullPath();
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId().getFullPath());
+      long lastEndTime = currentTsFileResource.getEndTime(deviceId);
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(plan.getDeviceId().getFullPath());
+      Long startTime = tempStartTimeMap.get(deviceId);
       if (startTime == null || startTime > minTime) {
-        tempStartTimeMap.put(plan.getDeviceId().getFullPath(), minTime);
+        tempStartTimeMap.put(deviceId, minTime);
       }
-      Long endTime = tempEndTimeMap.get(plan.getDeviceId().getFullPath());
+      Long endTime = tempEndTimeMap.get(deviceId);
       if (endTime == null || endTime < maxTime) {
-        tempEndTimeMap.put(plan.getDeviceId().getFullPath(), maxTime);
+        tempEndTimeMap.put(deviceId, maxTime);
       }
     }
-    MeasurementMNode[] mNodes;
+    IMeasurementMNode[] mNodes;
     try {
-      mNodes = IoTDB.metaManager.getMNodes(plan.getDeviceId(), plan.getMeasurements());
+      mNodes = IoTDB.metaManager.getMeasurementMNodes(plan.getPrefixPath(), plan.getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
     // set measurementMNodes, WAL already serializes the real data type, so no need to infer type
     plan.setMeasurementMNodes(mNodes);
+
+    if (plan.isAligned()) {
+      plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
+    }
     // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
@@ -186,20 +205,29 @@ public class LogReplayer {
     }
   }
 
-  private void checkDataTypeAndMarkFailed(final MeasurementMNode[] mNodes, InsertPlan tPlan) {
+  private void checkDataTypeAndMarkFailed(final IMeasurementMNode[] mNodes, InsertPlan tPlan) {
     for (int i = 0; i < mNodes.length; i++) {
       if (mNodes[i] == null) {
         tPlan.markFailedMeasurementInsertion(
             i,
             new PathNotExistException(
-                tPlan.getDeviceId().getFullPath()
+                tPlan.getPrefixPath().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
-      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
+      } else if (!tPlan.isAligned() && mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
         tPlan.markFailedMeasurementInsertion(
             i,
             new DataTypeMismatchException(
                 mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
+      } else if (tPlan.isAligned()
+          && mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)
+              != tPlan.getDataTypes()[i]) {
+        tPlan.markFailedMeasurementInsertion(
+            i,
+            new DataTypeMismatchException(
+                mNodes[i].getName() + "." + mNodes[i].getSchema().getSubMeasurementsList().get(i),
+                tPlan.getDataTypes()[i],
+                mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)));
       }
     }
   }

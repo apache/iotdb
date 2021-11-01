@@ -21,10 +21,10 @@
 
 ## 查询历史可视化工具
 
-IoTDB查询历史可视化工具使用一个监控网页来提供查看查询历史和SQL语句执行时间的服务，同时也可以查看当前host的内存和CPU使用情况。
+IoTDB 查询历史可视化工具使用一个监控网页来提供查看查询历史和 SQL 语句执行时间的服务，同时也可以查看当前 host 的内存和 CPU 使用情况。
 
-IoTDB查询历史可视化工具使用`8181`端口。在浏览器中输入`ip:8181`，你就可以看到如下网页：
+IoTDB 查询历史可视化工具使用`8181`端口。在浏览器中输入`ip:8181`，你就可以看到如下网页：
 
 <img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/65688727-3038e380-e09e-11e9-8266-24ff0a1efa96.png">
 
-> 注意：目前，我们仅支持查看Windows和Linux系统的CPU使用率。如果你在使用其他操作系统，你将看到如下提示信息："Can't get the cpu ratio, because this OS is not support".
+> 注意：目前，我们仅支持查看 Windows 和 Linux 系统的 CPU 使用率。如果你在使用其他操作系统，你将看到如下提示信息："Can't get the cpu ratio, because this OS is not support".

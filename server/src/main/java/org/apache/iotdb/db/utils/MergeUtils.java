@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -53,22 +53,25 @@ public class MergeUtils {
   public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+        chunkWriter.write(
+            timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary(), false);
         break;
       case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+        chunkWriter.write(
+            timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble(), false);
         break;
       case BOOLEAN:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+        chunkWriter.write(
+            timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean(), false);
         break;
       case INT64:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong(), false);
         break;
       case INT32:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt(), false);
         break;
       case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat(), false);
         break;
       default:
         throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
@@ -109,22 +112,22 @@ public class MergeUtils {
   public static void writeBatchPoint(BatchData batchData, int i, IChunkWriter chunkWriter) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i), false);
         break;
       case DOUBLE:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), false);
         break;
       case BOOLEAN:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i), false);
         break;
       case INT64:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i), false);
         break;
       case INT32:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i), false);
         break;
       case FLOAT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i), false);
         break;
       default:
         throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
@@ -139,7 +142,7 @@ public class MergeUtils {
     List<Path> paths = collectFileSeries(sequenceReader);
 
     for (Path path : paths) {
-      List<ChunkMetadata> chunkMetadataList = sequenceReader.getChunkMetadataList(path);
+      List<ChunkMetadata> chunkMetadataList = sequenceReader.getChunkMetadataList(path, true);
       totalChunkNum += chunkMetadataList.size();
       maxChunkNum = chunkMetadataList.size() > maxChunkNum ? chunkMetadataList.size() : maxChunkNum;
     }
@@ -163,7 +166,9 @@ public class MergeUtils {
    * @param paths names of the timeseries
    */
   public static List<Chunk>[] collectUnseqChunks(
-      List<PartialPath> paths, List<TsFileResource> unseqResources, MergeResource mergeResource)
+      List<PartialPath> paths,
+      List<TsFileResource> unseqResources,
+      CrossSpaceMergeResource mergeResource)
       throws IOException {
     List<Chunk>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
@@ -186,13 +191,13 @@ public class MergeUtils {
   private static void buildMetaHeap(
       List<PartialPath> paths,
       TsFileSequenceReader tsFileReader,
-      MergeResource resource,
+      CrossSpaceMergeResource resource,
       TsFileResource tsFileResource,
       PriorityQueue<MetaListEntry> chunkMetaHeap)
       throws IOException {
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
-      List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path);
+      List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path, true);
       if (metaDataList.isEmpty()) {
         continue;
       }

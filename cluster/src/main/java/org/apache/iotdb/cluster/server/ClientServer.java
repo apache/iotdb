@@ -24,21 +24,20 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
-import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -46,7 +45,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -66,7 +64,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -208,6 +205,12 @@ public class ClientServer extends TSServiceImpl {
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       plan.checkIntegrity();
+      if (!(plan instanceof SetSystemModePlan)
+          && !(plan instanceof FlushPlan)
+          && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+        throw new QueryProcessException(
+            "Current system mode is read-only, does not support non-query operation");
+      }
     } catch (QueryProcessException e) {
       logger.warn("Illegal plan detected： {}", plan);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -244,36 +247,6 @@ public class ClientServer extends TSServiceImpl {
   }
 
   /**
-   * Get the data types of each path in “paths”. If "aggregations" is not null, then it should be
-   * corresponding to "paths" one to one and the data type will be the type of the aggregation over
-   * the corresponding path.
-   *
-   * @param paths full timeseries paths
-   * @param aggregations if not null, it should be the same size as "paths"
-   * @return the data types of "paths" (using the aggregations)
-   * @throws MetadataException
-   */
-  @Override
-  protected List<TSDataType> getSeriesTypesByPaths(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getSeriesTypesByPath(paths, aggregations).left;
-  }
-
-  /**
-   * Get the data types of each path in “paths”. If "aggregation" is not null, all "paths" will use
-   * this aggregation.
-   *
-   * @param paths full timeseries paths
-   * @param aggregation if not null, it means "paths" all use this aggregation
-   * @return the data types of "paths" (using the aggregation)
-   * @throws MetadataException
-   */
-  protected List<TSDataType> getSeriesTypesByString(List<PartialPath> paths, String aggregation)
-      throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getSeriesTypesByPaths(paths, aggregation).left;
-  }
-
-  /**
    * Generate and cache a QueryContext using "queryId". In the distributed version, the QueryContext
    * is a RemoteQueryContext.
    *
@@ -281,8 +254,10 @@ public class ClientServer extends TSServiceImpl {
    * @return a RemoteQueryContext using queryId
    */
   @Override
-  protected QueryContext genQueryContext(long queryId, boolean debug) {
-    RemoteQueryContext context = new RemoteQueryContext(queryId, debug);
+  protected QueryContext genQueryContext(
+      long queryId, boolean debug, long startTime, String statement, long timeout) {
+    RemoteQueryContext context =
+        new RemoteQueryContext(queryId, debug, startTime, statement, timeout);
     queryContextMap.put(queryId, context);
     return context;
   }
@@ -301,8 +276,8 @@ public class ClientServer extends TSServiceImpl {
     RemoteQueryContext context = queryContextMap.remove(queryId);
     if (context != null) {
       // release the resources in every queried node
-      for (Entry<Node, Set<Node>> headerEntry : context.getQueriedNodesMap().entrySet()) {
-        Node header = headerEntry.getKey();
+      for (Entry<RaftNode, Set<Node>> headerEntry : context.getQueriedNodesMap().entrySet()) {
+        RaftNode header = headerEntry.getKey();
         Set<Node> queriedNodes = headerEntry.getValue();
 
         for (Node queriedNode : queriedNodes) {
@@ -317,7 +292,13 @@ public class ClientServer extends TSServiceImpl {
               try (SyncDataClient syncDataClient =
                   coordinator.getSyncDataClient(
                       queriedNode, RaftServer.getReadOperationTimeoutMS())) {
-                syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
+                try {
+                  syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
+                } catch (TException e) {
+                  // the connection may be broken, close it to avoid it being reused
+                  syncDataClient.getInputProtocol().getTransport().close();
+                  throw e;
+                }
               }
             }
           } catch (IOException | TException e) {

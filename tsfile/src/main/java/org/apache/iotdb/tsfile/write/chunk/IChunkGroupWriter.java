@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.write.chunk;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -77,7 +77,7 @@ public interface IChunkGroupWriter {
    * @param measurementSchema a measurement descriptor containing the message of the series
    * @param pageSize the specified page size
    */
-  void tryToAddSeriesWriter(MeasurementSchema measurementSchema, int pageSize);
+  void tryToAddSeriesWriter(IMeasurementSchema measurementSchema, int pageSize);
 
   /**
    * get the serialized size of current chunkGroup header + all chunks. Notice, the value does not

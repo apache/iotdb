@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -71,7 +71,7 @@ public class ReaderTest {
   public void readTest() throws IOException {
     int count = 0;
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
-    List<ChunkMetadata> chunkMetadataList =
+    List<IChunkMetadata> chunkMetadataList =
         metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s1"));
 
     AbstractFileSeriesReader seriesReader =
@@ -107,7 +107,7 @@ public class ReaderTest {
   @Test
   public void readWithFilterTest() throws IOException {
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
-    List<ChunkMetadata> chunkMetadataList =
+    List<IChunkMetadata> chunkMetadataList =
         metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s1"));
 
     Filter filter =

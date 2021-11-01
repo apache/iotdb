@@ -99,8 +99,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     logger.debug("Using Provider Metadata: {}", providerMetadata);
 
     try {
-      URL url =
-          new URI(providerMetadata.getJWKSetURI().toString().replace("http", "https")).toURL();
+      URL url = new URI(providerMetadata.getJWKSetURI().toString()).toURL();
       logger.debug("Using url {}", url);
       return getProviderRSAJWK(url.openStream());
     } catch (IOException e) {

@@ -31,7 +31,35 @@ import java.util.Objects;
 
 public class RemoveNodeLog extends Log {
 
+  private ByteBuffer partitionTable;
+
   private Node removedNode;
+
+  private long metaLogIndex;
+
+  public RemoveNodeLog(ByteBuffer partitionTable, Node removedNode) {
+    this.partitionTable = partitionTable;
+    this.removedNode = removedNode;
+  }
+
+  public RemoveNodeLog() {}
+
+  public long getMetaLogIndex() {
+    return metaLogIndex;
+  }
+
+  public void setMetaLogIndex(long metaLogIndex) {
+    this.metaLogIndex = metaLogIndex;
+  }
+
+  public ByteBuffer getPartitionTable() {
+    partitionTable.rewind();
+    return partitionTable;
+  }
+
+  public void setPartitionTable(ByteBuffer partitionTable) {
+    this.partitionTable = partitionTable;
+  }
 
   @Override
   public ByteBuffer serialize() {
@@ -40,8 +68,12 @@ public class RemoveNodeLog extends Log {
       dataOutputStream.writeByte(Types.REMOVE_NODE.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
+      dataOutputStream.writeLong(getMetaLogIndex());
 
       NodeSerializeUtils.serialize(removedNode, dataOutputStream);
+
+      dataOutputStream.writeInt(partitionTable.array().length);
+      dataOutputStream.write(partitionTable.array());
     } catch (IOException e) {
       // ignored
     }
@@ -52,9 +84,15 @@ public class RemoveNodeLog extends Log {
   public void deserialize(ByteBuffer buffer) {
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
+    setMetaLogIndex(buffer.getLong());
 
     removedNode = new Node();
     NodeSerializeUtils.deserialize(removedNode, buffer);
+
+    int len = buffer.getInt();
+    byte[] data = new byte[len];
+    System.arraycopy(buffer.array(), buffer.position(), data, 0, len);
+    partitionTable = ByteBuffer.wrap(data);
   }
 
   public Node getRemovedNode() {
@@ -77,11 +115,17 @@ public class RemoveNodeLog extends Log {
       return false;
     }
     RemoveNodeLog that = (RemoveNodeLog) o;
-    return Objects.equals(removedNode, that.removedNode);
+    return Objects.equals(removedNode, that.removedNode)
+        && Objects.equals(partitionTable, that.partitionTable);
+  }
+
+  @Override
+  public String toString() {
+    return "RemoveNodeLog{" + "removedNode=" + removedNode.toString() + '}';
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), removedNode);
+    return Objects.hash(super.hashCode(), removedNode, partitionTable);
   }
 }

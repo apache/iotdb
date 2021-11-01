@@ -28,22 +28,25 @@ import java.io.IOException;
 public interface IChunkWriter {
 
   /** write a time value pair. */
-  void write(long time, int value);
+  void write(long time, int value, boolean isNull);
 
   /** write a time value pair. */
-  void write(long time, long value);
+  void write(long time, long value, boolean isNull);
 
   /** write a time value pair. */
-  void write(long time, boolean value);
+  void write(long time, boolean value, boolean isNull);
 
   /** write a time value pair. */
-  void write(long time, float value);
+  void write(long time, float value, boolean isNull);
 
   /** write a time value pair. */
-  void write(long time, double value);
+  void write(long time, double value, boolean isNull);
 
   /** write a time value pair. */
-  void write(long time, Binary value);
+  void write(long time, Binary value, boolean isNull);
+
+  /** write a time. */
+  void write(long time);
 
   /** write time series */
   void write(long[] timestamps, int[] values, int batchSize);
@@ -76,7 +79,7 @@ public interface IChunkWriter {
    * If there is no data points in the chunk, return 0 (i.e., in this case, the size of header is
    * not calculated, because nothing will be serialized latter)</>
    */
-  long getCurrentChunkSize();
+  long getSerializedChunkSize();
 
   /** seal the current page which may has not enough data points in force. */
   void sealCurrentPage();

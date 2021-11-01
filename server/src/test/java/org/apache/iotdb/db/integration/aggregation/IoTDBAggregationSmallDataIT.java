@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.integration.aggregation;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -37,6 +36,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.extreme;
 import static org.apache.iotdb.db.constant.TestConstant.first_value;
 import static org.apache.iotdb.db.constant.TestConstant.last_value;
 import static org.apache.iotdb.db.constant.TestConstant.max_time;
@@ -117,18 +117,12 @@ public class IoTDBAggregationSmallDataIT {
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     insertSQL();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   @Test
@@ -227,7 +221,11 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Binary statistics does not support: max"));
+                    String.format(
+                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
+                            + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
+                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
+                        OperationType.EXECUTE_STATEMENT.getName())));
       }
 
       boolean hasResultSet =
@@ -242,6 +240,52 @@ public class IoTDBAggregationSmallDataIT {
                   + resultSet.getString(max_value(d0s0))
                   + ","
                   + resultSet.getString(max_value(d1s1));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void extremeWithoutFilterTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"0,22222,null"};
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      try {
+        statement.execute("SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) FROM root.vehicle");
+        fail();
+      } catch (IoTDBSQLException e) {
+        Assert.assertTrue(
+            e.toString()
+                .contains(
+                    String.format(
+                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
+                            + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
+                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
+                        OperationType.EXECUTE_STATEMENT.getName())));
+      }
+
+      boolean hasResultSet =
+          statement.execute("SELECT extreme(d0.s0),extreme(d1.s1) FROM root.vehicle");
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(extreme(d0s0))
+                  + ","
+                  + resultSet.getString(extreme(d1s1));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -327,7 +371,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void sumWithoutFilterTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"0,22610.0,0.0"};
+    String[] retArray = new String[] {"0,22610.0,null"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -687,6 +731,43 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
+  public void extremeWithMultiValueFiltersTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"0,99,40000,11.11"};
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT extreme(s0),extreme(s1),extreme(s2)"
+                  + " FROM root.vehicle.d0 "
+                  + "WHERE s1 < 50000 AND s1 != 100");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(extreme(d0s0))
+                  + ","
+                  + resultSet.getString(extreme(d0s1))
+                  + ","
+                  + resultSet.getString(extreme(d0s2));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void selectAllSQLTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
@@ -713,7 +794,7 @@ public class IoTDBAggregationSmallDataIT {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SELECT * FROM root");
+      boolean hasResultSet = statement.execute("SELECT * FROM root.**");
       if (hasResultSet) {
         try (ResultSet resultSet = statement.getResultSet()) {
           int cnt = 0;
