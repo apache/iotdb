@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.log.sequencing.LogSequencer;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -244,6 +245,8 @@ public abstract class RaftMember {
    */
   protected PlanExecutor localExecutor;
 
+  protected LogSequencer logSequencer;
+
   protected RaftMember() {}
 
   protected RaftMember(
@@ -328,6 +331,9 @@ public abstract class RaftMember {
       this.logManager.close();
     }
     this.logManager = logManager;
+    if (logSequencer != null) {
+      logSequencer.setLogManager(logManager);
+    }
   }
 
   /**
@@ -1060,53 +1066,32 @@ public abstract class RaftMember {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
     }
-    // assign term and index to the new log and append it
-    SendLogRequest sendLogRequest;
 
-    long startTime =
-        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
     Log log;
-    synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
-          startTime);
-
-      if (plan instanceof LogPlan) {
-        try {
-          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
-        } catch (UnknownLogTypeException e) {
-          logger.error("Can not parse LogPlan {}", plan, e);
-          return StatusUtils.PARSE_LOG_ERROR;
-        }
-      } else {
-        log = new PhysicalPlanLog();
-        ((PhysicalPlanLog) log).setPlan(plan);
-        plan.setIndex(logManager.getLastLogIndex() + 1);
+    if (plan instanceof LogPlan) {
+      try {
+        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+      } catch (UnknownLogTypeException e) {
+        logger.error("Can not parse LogPlan {}", plan, e);
+        return StatusUtils.PARSE_LOG_ERROR;
       }
-      log.setCurrLogTerm(getTerm().get());
-      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-      startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
-      // just like processPlanLocally,we need to check the size of log
-      if (log.serialize().capacity() + Integer.BYTES
-          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
-        logger.error(
-            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
-                + "or reduce the size of requests you send.");
-        return StatusUtils.INTERNAL_ERROR;
-      }
-      // logDispatcher will serialize log, and set log size, and we will use the size after it
-      logManager.append(log);
-      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
-
-      startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
-      sendLogRequest = buildSendLogRequest(log);
-      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
-
-      startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
-      log.setCreateTime(System.nanoTime());
-      getLogDispatcher().offer(sendLogRequest);
-      Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
+    } else {
+      log = new PhysicalPlanLog();
+      ((PhysicalPlanLog) log).setPlan(plan);
+      plan.setIndex(logManager.getLastLogIndex() + 1);
     }
+
+    // just like processPlanLocally,we need to check the size of log
+    if (log.serialize().capacity() + Integer.BYTES
+        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+      logger.error(
+          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+              + "or reduce the size of requests you send.");
+      return StatusUtils.INTERNAL_ERROR;
+    }
+
+    // assign term and index to the new log and append it
+    SendLogRequest sendLogRequest = logSequencer.sequence(log);
 
     try {
       AppendLogResult appendLogResult =
@@ -1116,6 +1101,7 @@ public abstract class RaftMember {
               sendLogRequest.getNewLeaderTerm());
       Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.calOperationCostTimeFromStart(
           sendLogRequest.getLog().getCreateTime());
+      long startTime;
       switch (appendLogResult) {
         case OK:
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
@@ -1486,7 +1472,7 @@ public abstract class RaftMember {
     return term;
   }
 
-  private synchronized LogDispatcher getLogDispatcher() {
+  public synchronized LogDispatcher getLogDispatcher() {
     if (logDispatcher == null) {
       logDispatcher = new LogDispatcher(this);
     }
@@ -1598,7 +1584,7 @@ public abstract class RaftMember {
     return tsStatus;
   }
 
-  AppendEntryRequest buildAppendEntryRequest(Log log, boolean serializeNow) {
+  public AppendEntryRequest buildAppendEntryRequest(Log log, boolean serializeNow) {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     if (serializeNow) {
