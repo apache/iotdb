@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionFileInfo;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
+import org.h2.store.fs.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +53,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_INFO;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_INFO;
 
 /** The TsFileManagement for LEVEL_COMPACTION, use level struct to manage TsFile list */
 public class LevelCompactionTsFileManagement extends TsFileManagement {
@@ -85,8 +87,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
 
-  public LevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
-    super(storageGroupName, storageGroupDir);
+  public LevelCompactionTsFileManagement(
+      String storageGroupName, String virtualStorageGroupId, String storageGroupDir) {
+    super(storageGroupName, virtualStorageGroupId, storageGroupDir);
     clear();
   }
 
@@ -121,17 +124,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   private void deleteLevelFilesInDisk(Collection<TsFileResource> mergeTsFiles) {
-    logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
+    logger.info("{} [compaction] merge starts to delete real file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
-      logger.debug(
+      logger.info(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
   }
 
   private void deleteLevelFilesInList(
       long timePartitionId, Collection<TsFileResource> mergeTsFiles, int level, boolean sequence) {
-    logger.debug("{} [compaction] merge starts to delete file list", storageGroupName);
+    logger.info("{} [compaction] merge starts to delete file list", storageGroupName);
     if (sequence) {
       if (sequenceTsFileResources.containsKey(timePartitionId)) {
         if (sequenceTsFileResources.get(timePartitionId).size() > level) {
@@ -427,44 +430,60 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
         logAnalyzer.analyze();
         Set<String> deviceSet = logAnalyzer.getDeviceSet();
-        List<String> sourceFileList = logAnalyzer.getSourceFiles();
-        String targetFile = logAnalyzer.getTargetFile();
+        List<CompactionFileInfo> sourceFileInfo = logAnalyzer.getSourceFileInfo();
+        CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
+        String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+        File targetFile = null;
         boolean isSeq = logAnalyzer.isSeq();
-        if (targetFile == null || sourceFileList.isEmpty()) {
+        if (targetFileInfo == null || sourceFileInfo.isEmpty()) {
           return;
         }
-        File target = new File(targetFile);
-        if (deviceSet.isEmpty()) {
+        if (deviceSet.isEmpty() && targetFileInfo != null) {
           // if not in compaction, just delete the target file
-          if (target.exists()) {
-            Files.delete(target.toPath());
+          for (String dataDir : dataDirs) {
+            targetFile = targetFileInfo.getFile(dataDir);
+            if (targetFile.exists()) {
+              logger.info(
+                  "[Compaction][Recover] Target file {} found, device set is null, delete it",
+                  targetFile);
+              FileUtils.delete(targetFile.getPath());
+              return;
+            }
           }
-          return;
         }
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-        TsFileResource targetResource = getRecoverTsFileResource(targetFile, isSeq);
+        TsFileResource targetResource =
+            getResourceFromDataDirs(true, dataDirs, isSeq, targetFileInfo);
         if (targetResource != null) {
           // target tsfile is not compeleted
+          logger.info(
+              "[Compaction][Recover] target file {} is not compeleted, remove it", targetResource);
           targetResource.remove();
           if (isSeq) {
             sequenceRecoverTsFileResources.clear();
           } else {
             unSequenceRecoverTsFileResources.clear();
           }
-        } else if ((targetResource = getTsFileResource(targetFile, isSeq)) != null) {
+        } else if ((targetResource =
+                getResourceFromDataDirs(false, dataDirs, isSeq, targetFileInfo))
+            != null) {
           // complete compaction, delete source files
+          logger.info(
+              "[Compaction][Recover] target file {} is compeleted, remove resource file",
+              targetResource);
           long timePartition = targetResource.getTimePartition();
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          for (String file : sourceFileList) {
+          for (CompactionFileInfo sourceInfo : sourceFileInfo) {
             // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-            TsFileResource sourceTsFileResource = getTsFileResource(file, isSeq);
+            TsFileResource sourceTsFileResource =
+                getResourceFromDataDirs(false, dataDirs, isSeq, sourceInfo);
             if (sourceTsFileResource == null) {
               // if sourceTsFileResource is null, it has been deleted
               continue;
             }
             sourceTsFileResources.add(sourceTsFileResource);
           }
-          if (sourceFileList.size() != 0) {
+          if (sourceFileInfo.size() != 0) {
             List<Modification> modifications = new ArrayList<>();
             // if not complete compaction, remove target file
             writeLock();
@@ -473,7 +492,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 throw new InterruptedException(
                     String.format("%s [Compaction] abort", storageGroupName));
               }
-              int level = TsFileResource.getMergeLevel(new File(sourceFileList.get(0)).getName());
+              int level = TsFileResource.getMergeLevel(sourceFileInfo.get(0).getFilename());
               deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
             } finally {
               writeUnlock();
@@ -501,6 +520,27 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     }
+  }
+
+  private TsFileResource getResourceFromDataDirs(
+      boolean recover, String[] dataDirs, boolean isSeq, CompactionFileInfo info)
+      throws IOException {
+    TsFileResource foundResource = null;
+    if (recover) {
+      for (String dataDir : dataDirs) {
+        if ((foundResource = getRecoverTsFileResource(info.getFile(dataDir).getPath(), isSeq))
+            != null) {
+          return foundResource;
+        }
+      }
+    } else {
+      for (String dataDir : dataDirs) {
+        if ((foundResource = getTsFileResource(info.getFile(dataDir).getPath(), isSeq)) != null) {
+          return foundResource;
+        }
+      }
+    }
+    return null;
   }
 
   private void deleteAllSubLevelFiles(boolean isSeq, long timePartition) {
@@ -592,6 +632,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       int currMaxLevel,
       int currMaxFileNumInEachLevel) {
     // wait until unseq merge has finished
+    List<TsFileResource> mergingFiles = new ArrayList<>();
     while (isUnseqMerging) {
       try {
         Thread.sleep(200);
@@ -632,18 +673,31 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               if (!checkAndSetFilesMergingIfNotSet(toMergeTsFiles, null)) {
                 return false;
               }
+              mergingFiles.addAll(toMergeTsFiles);
             } finally {
               compactionSelectionLock.unlock();
             }
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
-              compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
+              compactionLogger.logFile(
+                  SOURCE_INFO,
+                  storageGroupName,
+                  virtualStorageGroupId,
+                  timePartition,
+                  mergeResource.getTsFile(),
+                  sequence);
             }
             File newLevelFile =
                 TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());
             compactionLogger.logSequence(sequence);
-            compactionLogger.logFile(TARGET_NAME, newLevelFile);
+            compactionLogger.logFile(
+                TARGET_INFO,
+                storageGroupName,
+                virtualStorageGroupId,
+                timePartition,
+                newLevelFile,
+                sequence);
             logger.info(
                 "{} [Compaction] merge level-{}'s {} TsFiles to next level",
                 storageGroupName,
@@ -709,6 +763,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         } catch (IOException ioException) {
           logger.error("{} Compaction log close fail", storageGroupName + COMPACTION_LOG_NAME);
         }
+      }
+      for (TsFileResource resource : mergingFiles) {
+        resource.setMerging(false);
       }
       isMergeExecutedInCurrentTask = false;
       restoreCompaction();

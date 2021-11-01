@@ -61,6 +61,7 @@
 * [IOTDB-1850] Fix deserialize page merge rate limiter
 * [IOTDB-1879] Fix some Unsequence files never be merged to higher level or Sequence folder
 * [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
+* [IOTDB-1872] Fix data increases abnormally after IoTDB restarts
 * fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
 * init dummyIndex after restart cluster

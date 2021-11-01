@@ -30,7 +30,9 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.FULL_MERGE;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_INFO;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_INFO;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.UNSEQUENCE_NAME;
 
@@ -42,6 +44,8 @@ public class CompactionLogAnalyzer {
   private List<String> deviceList = new ArrayList<>();
   private List<Long> offsets = new ArrayList<>();
   private List<String> sourceFiles = new ArrayList<>();
+  private List<CompactionFileInfo> sourceFileInfo = new ArrayList<>();
+  private CompactionFileInfo targetFileInfo = null;
   private String targetFile = null;
   private boolean isSeq = false;
   private boolean fullMerge = false;
@@ -61,11 +65,19 @@ public class CompactionLogAnalyzer {
         switch (currLine) {
           case SOURCE_NAME:
             currLine = bufferedReader.readLine();
-            sourceFiles.add(currLine);
+            sourceFileInfo.add(CompactionFileInfo.parseCompactionFileInfoFromPath(currLine));
+            break;
+          case SOURCE_INFO:
+            currLine = bufferedReader.readLine();
+            sourceFileInfo.add(CompactionFileInfo.parseCompactionFileInfo(currLine));
             break;
           case TARGET_NAME:
             currLine = bufferedReader.readLine();
-            targetFile = currLine;
+            targetFileInfo = CompactionFileInfo.parseCompactionFileInfoFromPath(currLine);
+            break;
+          case TARGET_INFO:
+            currLine = bufferedReader.readLine();
+            targetFileInfo = CompactionFileInfo.parseCompactionFileInfo(currLine);
             break;
           case FULL_MERGE:
             fullMerge = true;
@@ -116,5 +128,13 @@ public class CompactionLogAnalyzer {
 
   public boolean isFullMerge() {
     return fullMerge;
+  }
+
+  public List<CompactionFileInfo> getSourceFileInfo() {
+    return sourceFileInfo;
+  }
+
+  public CompactionFileInfo getTargetFileInfo() {
+    return targetFileInfo;
   }
 }

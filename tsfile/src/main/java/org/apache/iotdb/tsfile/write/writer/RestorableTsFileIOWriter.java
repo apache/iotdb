@@ -91,7 +91,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     if (file.exists()) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
 
-        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
+        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true, false);
         minPlanIndex = reader.getMinPlanIndex();
         maxPlanIndex = reader.getMaxPlanIndex();
         if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
@@ -112,7 +112,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
   }
 
-  public RestorableTsFileIOWriter(File file, boolean truncate) throws IOException {
+  public RestorableTsFileIOWriter(File file, boolean truncate, boolean appendLastChunkGroupMetadata)
+      throws IOException {
     if (logger.isDebugEnabled()) {
       logger.debug("{} is opened.", file.getName());
     }
@@ -130,7 +131,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     if (file.exists()) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
 
-        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
+        truncatedSize =
+            reader.selfCheck(
+                knownSchemas, chunkGroupMetadataList, true, appendLastChunkGroupMetadata);
         minPlanIndex = reader.getMinPlanIndex();
         maxPlanIndex = reader.getMaxPlanIndex();
         if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {

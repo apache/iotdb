@@ -67,7 +67,7 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
   @Test
   public void testCompactionMods() throws IllegalPathException, IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, "0", tempSGDir.getPath());
     TsFileResource sourceTsFileResource = seqResources.get(0);
     TsFileResource targetTsFileResource = seqResources.get(1);
     List<Modification> filterModifications = new ArrayList<>();
@@ -100,7 +100,7 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
   @Test
   public void testCompactionModsByOffset() throws IllegalPathException, IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, "0", tempSGDir.getPath());
     TsFileResource sourceTsFileResource = seqResources.get(0);
     TsFileResource targetTsFileResource = seqResources.get(1);
     List<Modification> filterModifications = new ArrayList<>();

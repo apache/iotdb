@@ -1075,7 +1075,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
+        reader.selfCheck(schemaMap, chunkGroupMetadataList, false, false);
         if (plan.getVerifyMetadata()) {
           loadNewTsFileVerifyMetadata(reader);
         }

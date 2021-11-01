@@ -48,7 +48,6 @@ import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
 
 /**
@@ -59,9 +58,9 @@ import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FIL
  * server/0seq.tsfile.merge 338 end start root.mergeTest.device0.sensor1 server/0seq.tsfile.merge
  * 664 end all ts end server/0seq.tsfile 145462 end merge end
  */
-public class LogAnalyzer {
+public class MergeLogAnalyzer {
 
-  private static final Logger logger = LoggerFactory.getLogger(LogAnalyzer.class);
+  private static final Logger logger = LoggerFactory.getLogger(MergeLogAnalyzer.class);
 
   private MergeResource resource;
   private String taskName;
@@ -70,6 +69,7 @@ public class LogAnalyzer {
 
   private Map<File, Long> fileLastPositions = new HashMap<>();
   private Map<File, Long> tempFileLastPositions = new HashMap<>();
+  private Map<File, Long> prevTempFileLastPositions = null;
 
   private List<PartialPath> mergedPaths = new ArrayList<>();
   private List<PartialPath> unmergedPaths;
@@ -78,7 +78,7 @@ public class LogAnalyzer {
 
   private Status status;
 
-  public LogAnalyzer(
+  public MergeLogAnalyzer(
       MergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
@@ -126,9 +126,10 @@ public class LogAnalyzer {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
+      MergeFileInfo toMatchedInfo = MergeFileInfo.getFileInfoFromString(currLine);
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
-        if (seqFile.getTsFile().getAbsolutePath().equals(currLine)) {
+        if (MergeFileInfo.getFileInfoFromFile(seqFile.getTsFile()).equals(toMatchedInfo)) {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -153,13 +154,14 @@ public class LogAnalyzer {
     long startTime = System.currentTimeMillis();
     List<TsFileResource> mergeUnseqFiles = new ArrayList<>();
     while ((currLine = bufferedReader.readLine()) != null) {
-      if (currLine.equals(STR_TIMESERIES)) {
+      if (currLine.equals(STR_MERGE_START)) {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
+      MergeFileInfo toMatchInfo = MergeFileInfo.getFileInfoFromString(currLine);
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
-        if (unseqFile.getTsFile().getAbsolutePath().equals(currLine)) {
+        if (MergeFileInfo.getFileInfoFromFile(unseqFile.getTsFile()).equals(toMatchInfo)) {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -192,6 +194,7 @@ public class LogAnalyzer {
     }
 
     List<PartialPath> currTSList = new ArrayList<>();
+    List<PartialPath> prevTSList = null;
     long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (STR_ALL_TS_END.equals(currLine)) {
@@ -211,16 +214,33 @@ public class LogAnalyzer {
       } else if (!currLine.contains(STR_END)) {
         // file position
         String[] splits = currLine.split(" ");
-        File file = SystemFileFactory.INSTANCE.getFile(splits[0]);
-        Long position = Long.parseLong(splits[1]);
+        Long position = Long.parseLong(splits[splits.length - 1]);
+        MergeFileInfo fileInfo =
+            MergeFileInfo.getFileInfoFromString(currLine.substring(0, currLine.lastIndexOf(' ')));
+        File file = fileInfo.getFileFromDataDirs();
         tempFileLastPositions.put(file, position);
       } else {
         // a TS ends merging
-        unmergedPaths.removeAll(currTSList);
-        for (Entry<File, Long> entry : tempFileLastPositions.entrySet()) {
-          fileLastPositions.put(entry.getKey(), entry.getValue());
+        if (prevTempFileLastPositions == null) {
+          prevTempFileLastPositions = tempFileLastPositions;
+          tempFileLastPositions = new HashMap<>();
+          prevTSList = currTSList;
+          currTSList = new ArrayList<>();
+        } else {
+          unmergedPaths.removeAll(prevTSList);
+          for (Entry<File, Long> entry : prevTempFileLastPositions.entrySet()) {
+            for (File file : fileLastPositions.keySet()) {
+              if (file.getName().equals(entry.getKey().getName())) {
+                fileLastPositions.put(file, entry.getValue());
+              }
+            }
+          }
+          prevTempFileLastPositions = tempFileLastPositions;
+          tempFileLastPositions = new HashMap<>();
+          prevTSList = currTSList;
+          currTSList = new ArrayList<>();
+          mergedPaths.addAll(prevTSList);
         }
-        mergedPaths.addAll(currTSList);
       }
     }
     tempFileLastPositions = null;
@@ -252,8 +272,10 @@ public class LogAnalyzer {
       }
       if (!currLine.contains(STR_END)) {
         String[] splits = currLine.split(" ");
-        currFile = SystemFileFactory.INSTANCE.getFile(splits[0]);
         Long lastPost = Long.parseLong(splits[1]);
+        MergeFileInfo fileInfo =
+            MergeFileInfo.getFileInfoFromString(currLine.substring(0, currLine.lastIndexOf(' ')));
+        currFile = fileInfo.getFileFromDataDirs();
         fileLastPositions.put(currFile, lastPost);
       } else {
         if (currFile == null) {
