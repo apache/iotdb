@@ -51,7 +51,7 @@ public class ClusterConstant {
 
   /**
    * every "REPORT_INTERVAL_SEC" seconds, a reporter thread will print the status of all raft
-   * members in this node
+   * members in this node.
    */
   public static final int REPORT_INTERVAL_SEC = 10;
 

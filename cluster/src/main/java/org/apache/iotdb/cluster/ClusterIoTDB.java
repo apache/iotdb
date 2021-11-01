@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster;
 
 import org.apache.iotdb.cluster.client.ClientCategory;
@@ -92,11 +93,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       String.format(
           "%s:%s=%s", "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "ClusterIoTDB");
 
-  /**
-   * TODO: fix me: better to throw exception if the client can not be get. Then we can remove this
-   * field.
-   */
-  public static boolean printClientConnectionErrorStack = false;
+  // TODO: better to throw exception if the client can not be get. Then we can remove this field.
+  private static boolean printClientConnectionErrorStack = false;
 
   // establish the cluster as a seed
   private static final String MODE_START = "-s";
@@ -120,18 +118,18 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   /**
    * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the status
-   * of all raft members in this node
+   * of all raft members in this node.
    */
   private ScheduledExecutorService reportThread;
 
   private boolean allowReport = true;
 
-  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
+  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots. */
   private ScheduledExecutorService hardLinkCleanerThread;
 
   /**
    * The clientManager is only used by those instances who do not belong to any DataGroup or
-   * MetaGroup
+   * MetaGroup.
    */
   private IClientManager clientManager;
 
@@ -139,6 +137,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     // we do not init anything here, so that we can re-initialize the instance in IT.
   }
 
+  /** initialize the current node and its services */
   public boolean initLocalEngines() {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     thisNode = new Node();
@@ -299,7 +298,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
           "Seed number less than quorum, seed number: %s, quorum: " + "%s.",
           config.getSeedNodeUrls().size(), quorum);
     }
-    // TODO duplicate code,consider to solve it later
+    // TODO: duplicate code
     Set<Node> seedNodes = new HashSet<>();
     for (String url : config.getSeedNodeUrls()) {
       Node node = ClusterUtils.parseNode(url);
@@ -312,6 +311,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     return null;
   }
 
+  /** Start as a seed node */
   public void activeStartNodeMode() {
     try {
       // start iotdb server first
@@ -338,7 +338,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     JMXService.registerMBean(this, mbeanName);
     // register MetaGroupMember. MetaGroupMember has the same position with "StorageEngine" in the
     // cluster module.
-    // TODO fixme it is better to remove coordinator out of metaGroupEngine
+    // TODO: it is better to remove coordinator out of metaGroupEngine
 
     registerManager.register(metaGroupEngine);
     registerManager.register(dataGroupEngine);
@@ -361,14 +361,12 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     // start RPC service
     logger.info("start Meta Heartbeat RPC service... ");
     registerManager.register(MetaRaftHeartBeatService.getInstance());
-    // TODO: better to start the Meta RPC service untill the heartbeatservice has elected the
-    // leader.
-    // and quorum of followers have caught up.
+    /* TODO: better to start the Meta RPC service until the heartbeatService has elected the leader and quorum of followers have caught up. */
     logger.info("start Meta RPC service... ");
     registerManager.register(MetaRaftService.getInstance());
   }
 
-  private void postInitCluster() throws StartupException, QueryProcessException {
+  private void postInitCluster() throws StartupException {
     logger.info("start Data Heartbeat RPC service... ");
     registerManager.register(DataRaftHeartBeatService.getInstance());
     logger.info("start Data RPC service... ");
@@ -382,17 +380,17 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   private void startClientRPC() throws QueryProcessException, StartupException {
     // we must wait until the metaGroup established.
     // So that the ClusterRPCService can work.
-    ClusterTSServiceImpl clusterRPCServiceImpl = new ClusterTSServiceImpl();
-    clusterRPCServiceImpl.setCoordinator(coordinator);
-    clusterRPCServiceImpl.setExecutor(metaGroupEngine);
-    ClusterRPCService.getInstance().initSyncedServiceImpl(clusterRPCServiceImpl);
+    ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl();
+    clusterServiceImpl.setCoordinator(coordinator);
+    clusterServiceImpl.setExecutor(metaGroupEngine);
+    ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());
   }
 
+  /** Be added to the cluster by seed nodes */
   public void activeAddNodeMode() {
     try {
-      long startTime = System.currentTimeMillis();
-
+      final long startTime = System.currentTimeMillis();
       preInitCluster();
       metaGroupEngine.joinCluster();
       postInitCluster();
@@ -444,7 +442,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     if (!seedNodes.contains(thisNode)) {
       String message =
           String.format(
-              "SeedNodes must contains local node in start-server mode. LocalNode: %s ,SeedNodes: %s",
+              "SeedNodes must contains local node in start-server mode. LocalNode: %s ,SeedNodes: "
+                  + "%s",
               thisNode.toString(), config.getSeedNodeUrls());
       throw new StartupException(metaGroupEngine.getName(), message);
     }
@@ -499,7 +498,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       logger.error("Node {} is not found in the cluster, please check", nodeToRemove);
     } else if (response == Response.RESPONSE_DATA_MIGRATION_NOT_FINISH) {
       logger.warn(
-          "The data migration of the previous membership change operation is not finished. Please try again later");
+          "The data migration of the previous membership change operation is not finished. Please "
+              + "try again later");
     } else {
       logger.error("Unexpected response {}", response);
     }
@@ -513,14 +513,15 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     // nodes evenly, and use default strategy for other groups
     SlotPartitionTable.setSlotStrategy(
         new SlotStrategy() {
-          SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
-          int k = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls().size();
+          final SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
+          final int clusterSize =
+              ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls().size();
 
           @Override
           public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
-            int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
+            int sgSerialNum = extractSerialNumInSGName(storageGroupName) % clusterSize;
             if (sgSerialNum >= 0) {
-              return maxSlotNum / k * sgSerialNum;
+              return maxSlotNum / clusterSize * sgSerialNum;
             } else {
               return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
             }
@@ -529,9 +530,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
           @Override
           public int calculateSlotByPartitionNum(
               String storageGroupName, long partitionId, int maxSlotNum) {
-            int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
+            int sgSerialNum = extractSerialNumInSGName(storageGroupName) % clusterSize;
             if (sgSerialNum >= 0) {
-              return maxSlotNum / k * sgSerialNum;
+              return maxSlotNum / clusterSize * sgSerialNum;
             } else {
               return defaultStrategy.calculateSlotByPartitionNum(
                   storageGroupName, partitionId, maxSlotNum);
@@ -634,10 +635,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   public boolean startRaftInfoReport() {
     logger.info("Raft status report is enabled.");
     allowReport = true;
-    if (logger.isDebugEnabled()) {
-      return true;
-    }
-    return false;
+    return logger.isDebugEnabled();
   }
 
   @Override
@@ -654,6 +652,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   @Override
   public void disablePrintClientConnectionErrorStack() {
     printClientConnectionErrorStack = false;
+  }
+
+  public static boolean shouldPrintClientConnectionErrorStack() {
+    return printClientConnectionErrorStack;
   }
 
   public SyncDataClient getSyncDataClient(Node node, int readOperationTimeoutMS)

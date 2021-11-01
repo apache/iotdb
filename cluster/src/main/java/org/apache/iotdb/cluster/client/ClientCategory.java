@@ -26,7 +26,7 @@ public enum ClientCategory {
   DATA_HEARTBEAT("DataHeartbeatClient"),
   DATA_ASYNC_APPEND_CLIENT("DataAsyncAppendClient");
 
-  private String name;
+  private final String name;
 
   ClientCategory(String name) {
     this.name = name;

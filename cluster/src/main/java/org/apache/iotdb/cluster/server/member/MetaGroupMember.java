@@ -147,10 +147,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   /** in case of data loss, some file changes would be made to a temporary file first */
   private static final String TEMP_SUFFIX = ".tmp";
 
-  private static final String MSG_MULTIPLE_ERROR =
-      "The following errors occurred when executing "
-          + "the query, please retry or contact the DBA: ";
-
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
   /**
    * when joining a cluster this node will retry at most "DEFAULT_JOIN_RETRY" times before returning
@@ -185,9 +181,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
    * establishing a cluster or joining a cluster.
    */
   private StartUpStatus startUpStatus;
-
-  //  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
-  //  private ScheduledExecutorService hardLinkCleanerThread;
 
   private Coordinator coordinator;
 
@@ -237,8 +230,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     loadIdentifier();
     allNodes.add(thisNode);
 
-    DataGroupMember.Factory dataMemberFactory = new DataGroupMember.Factory(factory, this);
-
     startUpStatus = getNewStartUpStatus();
 
     // try loading the partition table if there was a previous cluster
@@ -280,11 +271,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     addSeedNodes();
     NodeStatusManager.getINSTANCE().setMetaGroupMember(this);
     super.start();
-  }
-
-  @Override
-  void startBackGroundThreads() {
-    super.startBackGroundThreads();
   }
 
   /**
@@ -625,11 +611,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     this.coordinator.setRouter(router);
 
     updateNodeList(newTable.getAllNodes());
-
-    // we can not start the data group engine here,
-    // because the partitionTable is not verified.
-    // TODO
-    //    restartSubServers();
   }
 
   // this is the behavior of the follower
@@ -1126,12 +1107,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
 
   // TODO rewrite this method.
 
-  /**
-   * check whether the nodes having consistent setting.
-   *
-   * @param consistentNum
-   * @param inconsistentNum
-   */
+  /** check whether the nodes having consistent setting. */
   private void checkSeedNodesStatusOnce(
       AtomicInteger consistentNum, AtomicInteger inconsistentNum) {
     // use a thread pool to avoid being blocked by an unavailable node

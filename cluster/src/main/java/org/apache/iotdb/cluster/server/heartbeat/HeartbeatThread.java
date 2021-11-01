@@ -234,7 +234,7 @@ public class HeartbeatThread implements Runnable {
                   HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
                   heartbeatHandler.onComplete(heartBeatResponse);
                 } catch (TTransportException e) {
-                  if (ClusterIoTDB.printClientConnectionErrorStack) {
+                  if (ClusterIoTDB.shouldPrintClientConnectionErrorStack()) {
                     logger.warn(
                         "{}: Cannot send heartbeat to node {} due to network", memberName, node, e);
                   } else {

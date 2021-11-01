@@ -72,7 +72,9 @@ public class SyncMetaClient extends TSMetaService.Client {
   }
 
   public void returnSelf() {
-    if (clientManager != null) clientManager.returnSyncClient(this, node, category);
+    if (clientManager != null) {
+      clientManager.returnSyncClient(this, node, category);
+    }
   }
 
   public void setTimeout(int timeout) {

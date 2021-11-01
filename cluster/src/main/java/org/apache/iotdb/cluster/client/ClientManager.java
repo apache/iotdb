@@ -76,11 +76,11 @@ public class ClientManager implements IClientManager {
 
   private void constructAsyncClientMap(Type type) {
     switch (type) {
-        /**
-         * request from external clients are forward via data group port, so it's type is {@link
-         * ClientCategory.DATA} *
-         */
       case RequestForwardClient:
+        /*
+         request from external clients are forward via data group port, so it's type is {@link
+        * ClientCategory.DATA} *
+        */
         asyncClientPoolMap.put(
             ClientCategory.DATA, clientPoolFactory.createAsyncDataPool(ClientCategory.DATA));
         break;
@@ -109,11 +109,11 @@ public class ClientManager implements IClientManager {
 
   private void constructSyncClientMap(Type type) {
     switch (type) {
-        /**
-         * request from external clients are forward via data group port, so it's type is {@link
-         * ClientCategory.DATA} *
-         */
       case RequestForwardClient:
+        /*
+         request from external clients are forward via data group port, so it's type is {@link
+        * ClientCategory.DATA} *
+        */
         syncClientPoolMap.put(
             ClientCategory.DATA, clientPoolFactory.createSyncDataPool(ClientCategory.DATA));
         break;
@@ -142,7 +142,6 @@ public class ClientManager implements IClientManager {
    * DATA or DATA_HEARTBEAT; 2. RaftService.AsyncClient to TSMetaService.AsyncClient when category
    * is META or META_HEARTBEAT.
    *
-   * @param category
    * @return RaftService.AsyncClient
    */
   @Override
@@ -162,7 +161,8 @@ public class ClientManager implements IClientManager {
       }
     } else {
       logger.warn(
-          "BorrowSyncClient invoke on unsupported mode or category: Node:{}, ClientCategory:{}, isSyncMode:{}",
+          "BorrowSyncClient invoke on unsupported mode or category: Node:{}, ClientCategory:{}, "
+              + "isSyncMode:{}",
           node,
           clientPoolFactory,
           syncClientPoolMap != null);
@@ -175,7 +175,6 @@ public class ClientManager implements IClientManager {
    * DATA_HEARTBEAT; 2. RaftService.Client to TSMetaService.Client when category is META or
    * META_HEARTBEAT.
    *
-   * @param category
    * @return RaftService.Client
    */
   @Override
@@ -198,7 +197,8 @@ public class ClientManager implements IClientManager {
       }
     } else {
       logger.warn(
-          "BorrowSyncClient invoke on unsupported mode or category: Node:{}, ClientCategory:{}, isSyncMode:{}",
+          "BorrowSyncClient invoke on unsupported mode or category: Node:{}, ClientCategory:{}, "
+              + "isSyncMode:{}",
           node,
           clientPoolFactory,
           syncClientPoolMap != null);

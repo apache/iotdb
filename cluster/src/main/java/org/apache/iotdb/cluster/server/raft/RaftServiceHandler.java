@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster.server.raft;
 
 import org.apache.thrift.protocol.TProtocol;
@@ -28,15 +29,15 @@ public class RaftServiceHandler implements TServerEventHandler {
   public void preServe() {}
 
   @Override
-  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+  public ServerContext createContext(TProtocol inputProtocol, TProtocol outputProtocol) {
     return null;
   }
 
   @Override
   public void deleteContext(
-      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
+      ServerContext serverContext, TProtocol inputProtocol, TProtocol outputProtocol) {}
 
   @Override
   public void processContext(
-      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
+      ServerContext serverContext, TTransport inputProtocol, TTransport outputProtocol) {}
 }

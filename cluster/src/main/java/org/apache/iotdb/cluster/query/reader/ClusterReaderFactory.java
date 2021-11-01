@@ -244,9 +244,6 @@ public class ClusterReaderFactory {
    * @param valueFilter value filter
    * @param context query context
    * @param ascending asc or aesc
-   * @return
-   * @throws StorageEngineException
-   * @throws EmptyIntervalException
    */
   public List<AbstractMultPointReader> getMultSeriesReader(
       List<PartialPath> paths,
@@ -944,10 +941,7 @@ public class ClusterReaderFactory {
         executorId = syncDataClient.getGroupByExecutor(request);
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) {
-          syncDataClient.close();
-        }
-
+        syncDataClient.close();
         throw e;
       } finally {
         if (syncDataClient != null) {

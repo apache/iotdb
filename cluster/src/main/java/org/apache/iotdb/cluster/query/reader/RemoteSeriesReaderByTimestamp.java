@@ -107,9 +107,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       return curSyncClient.fetchSingleSeriesByTimestamps(
           sourceInfo.getHeader(), sourceInfo.getReaderId(), timestampList);
     } catch (TException e) {
-      if (curSyncClient != null) {
-        curSyncClient.close();
-      }
+      curSyncClient.close();
       // try other node
       if (!sourceInfo.switchNode(true, timestamps[0])) {
         return null;

@@ -753,8 +753,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public String getMBeanName() {
     return String.format(
-        "%s:%s=%s",
-        "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "Engine", getRaftGroupId());
+        "%s:%s=%s", "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "Engine");
   }
 
   /** call back after syncLeader */
@@ -1748,8 +1747,6 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return an AppendLogResult
    */
   protected AppendLogResult sendLogToFollowers(Log log) {
-    // TODO: now requireedQuorum <= allNodes.size() / 2.
-    //  The reason? by default, this node has been sent?
     int requiredQuorum = allNodes.size() / 2;
     if (requiredQuorum <= 0) {
       // use half of the members' size as the quorum

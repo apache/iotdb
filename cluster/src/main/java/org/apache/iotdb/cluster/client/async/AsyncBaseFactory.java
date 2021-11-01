@@ -37,7 +37,7 @@ public abstract class AsyncBaseFactory<K, T extends RaftService.AsyncClient>
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncBaseFactory.class);
 
-  public AsyncBaseFactory(TProtocolFactory protocolFactory, ClientCategory category) {
+  protected AsyncBaseFactory(TProtocolFactory protocolFactory, ClientCategory category) {
     super(protocolFactory, category);
     managers =
         new TAsyncClientManager
@@ -51,7 +51,7 @@ public abstract class AsyncBaseFactory<K, T extends RaftService.AsyncClient>
     }
   }
 
-  public AsyncBaseFactory(
+  protected AsyncBaseFactory(
       TProtocolFactory protocolFactory, ClientCategory category, IClientManager clientManager) {
     super(protocolFactory, category, clientManager);
     managers =

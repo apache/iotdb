@@ -40,7 +40,7 @@ public class ClientPoolFactory {
 
   protected long waitClientTimeoutMS;
   protected int maxConnectionForEachNode;
-  private TProtocolFactory protocolFactory;
+  private final TProtocolFactory protocolFactory;
   private GenericKeyedObjectPoolConfig poolConfig;
   private IClientManager clientManager;
 

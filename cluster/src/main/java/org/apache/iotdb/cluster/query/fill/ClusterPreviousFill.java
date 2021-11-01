@@ -60,6 +60,8 @@ public class ClusterPreviousFill extends PreviousFill {
   private static final Logger logger = LoggerFactory.getLogger(ClusterPreviousFill.class);
   private MetaGroupMember metaGroupMember;
   private TimeValuePair fillResult;
+  private final String PreviousFillExceptionLoggerFormat =
+      "{}: Cannot perform previous fill of {} to {}";
 
   ClusterPreviousFill(PreviousFill fill, MetaGroupMember metaGroupMember) {
     super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange());
@@ -121,9 +123,7 @@ public class ClusterPreviousFill extends PreviousFill {
     }
     CountDownLatch latch = new CountDownLatch(partitionGroups.size());
     PreviousFillHandler handler = new PreviousFillHandler(latch);
-    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
-    // function call.
-    // BUT is it suitable to create a thread pool for each calling??
+    // TODO: create a thread pool for each query calling.
     ExecutorService fillService = Executors.newFixedThreadPool(partitionGroups.size());
     PreviousFillArguments arguments =
         new PreviousFillArguments(path, dataType, queryTime, beforeRange, deviceMeasurements);
@@ -228,11 +228,7 @@ public class ClusterPreviousFill extends PreviousFill {
       logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
     } catch (Exception e) {
       logger.error(
-          "{}: Cannot perform previous fill of {} to {}",
-          metaGroupMember,
-          arguments.getPath(),
-          node,
-          e);
+          PreviousFillExceptionLoggerFormat, metaGroupMember, arguments.getPath(), node, e);
     }
     return byteBuffer;
   }
@@ -249,19 +245,16 @@ public class ClusterPreviousFill extends PreviousFill {
 
     } catch (TException e) {
       // the connection may be broken, close it to avoid it being reused
-      if (syncDataClient != null) {
-        syncDataClient.close();
-      }
-
+      syncDataClient.close();
       logger.error(
-          "{}: Cannot perform previous fill of {} to {}",
+          PreviousFillExceptionLoggerFormat,
           metaGroupMember.getName(),
           arguments.getPath(),
           node,
           e);
     } catch (Exception e) {
       logger.error(
-          "{}: Cannot perform previous fill of {} to {}",
+          PreviousFillExceptionLoggerFormat,
           metaGroupMember.getName(),
           arguments.getPath(),
           node,

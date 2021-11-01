@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster.server.raft;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;

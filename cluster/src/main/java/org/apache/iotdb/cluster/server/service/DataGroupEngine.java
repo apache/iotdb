@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster.server.service;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
@@ -45,7 +46,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,7 +131,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
         });
   }
 
-  public <T> DataSyncService getDataSyncService(RaftNode header) {
+  public DataSyncService getDataSyncService(RaftNode header) {
     return syncServiceMap.computeIfAbsent(
         header,
         h -> {
@@ -143,13 +143,11 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   /**
    * Add a DataGroupMember into this server, if a member with the same header exists, the old member
    * will be stopped and replaced by the new one.
-   *
-   * @param dataGroupMember
    */
   public DataGroupMember addDataGroupMember(DataGroupMember dataGroupMember, RaftNode header) {
     synchronized (headerGroupMap) {
-      // TODO this method won't update headerMap if a new dataGroupMember comes with the same header
-      // ?
+      // TODO this method won't update headerMap if a new dataGroupMember comes with the same
+      // header.
       if (headerGroupMap.containsKey(header)) {
         logger.debug("Group {} already exist.", dataGroupMember.getAllNodes());
         return headerGroupMap.get(header);
@@ -216,7 +214,6 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   }
 
   /**
-   * @param header
    * @return A DataGroupMember representing this node in the data group of the header.
    * @throws NotInSameGroupException If this node is not in the group of the header.
    */
@@ -276,9 +273,6 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
    * Try adding the node into the group of each DataGroupMember, and if the DataGroupMember no
    * longer stays in that group, also remove and stop it. If the new group contains this node, also
    * create and add a new DataGroupMember for it.
-   *
-   * @param node
-   * @param result
    */
   public void addNode(Node node, NodeAdditionResult result) {
     // If the node executed adding itself to the cluster, it's unnecessary to add new groups because
@@ -332,12 +326,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     }
   }
 
-  /**
-   * Make sure the group will not receive new raft logs
-   *
-   * @param header
-   * @param dataGroupMember
-   */
+  /** Make sure the group will not receive new raft logs. */
   private void removeMember(
       RaftNode header, DataGroupMember dataGroupMember, boolean removedGroup) {
     dataGroupMember.setReadOnly();
@@ -367,9 +356,6 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   /**
    * Set the partition table as the in-use one and build a DataGroupMember for each local group (the
    * group which the local node is in) and start them.
-   *
-   * @param partitionTable
-   * @throws TTransportException
    */
   @SuppressWarnings("java:S1135")
   public void buildDataGroupMembers(PartitionTable partitionTable) {
@@ -496,7 +482,9 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     DataGroupEngine.metaGroupMember = metaGroupMember;
   }
 
-  static class InstanceHolder {
+  private static class InstanceHolder {
+    private InstanceHolder() {}
+
     private static final DataGroupEngine Instance = new DataGroupEngine();
   }
 

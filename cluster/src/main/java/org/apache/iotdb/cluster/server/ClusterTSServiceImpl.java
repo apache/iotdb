@@ -85,12 +85,7 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
     this.coordinator = coordinator;
   }
 
-  /**
-   * Redirect the plan to the local Coordinator so that it will be processed cluster-wide.
-   *
-   * @param plan
-   * @return
-   */
+  /** Redirect the plan to the local Coordinator so that it will be processed cluster-wide. */
   @Override
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
@@ -113,7 +108,6 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
    * Generate and cache a QueryContext using "queryId". In the distributed version, the QueryContext
    * is a RemoteQueryContext.
    *
-   * @param queryId
    * @return a RemoteQueryContext using queryId
    */
   @Override
@@ -125,12 +119,7 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
     return context;
   }
 
-  /**
-   * Release the local and remote resources used by a query.
-   *
-   * @param queryId
-   * @throws StorageEngineException
-   */
+  /** Release the local and remote resources used by a query. */
   @Override
   protected void releaseQueryResource(long queryId) throws StorageEngineException {
     // release resources locally

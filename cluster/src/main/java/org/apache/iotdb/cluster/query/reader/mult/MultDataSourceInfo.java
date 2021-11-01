@@ -140,14 +140,16 @@ public class MultDataSourceInfo {
     return partialPaths;
   }
 
-  private Long getReaderId(Node node, long timestamp) throws Exception {
+  private Long getReaderId(Node node, long timestamp)
+      throws TException, InterruptedException, IOException {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return applyForReaderIdAsync(node, timestamp);
     }
     return applyForReaderIdSync(node, timestamp);
   }
 
-  private Long applyForReaderIdAsync(Node node, long timestamp) throws Exception {
+  private Long applyForReaderIdAsync(Node node, long timestamp)
+      throws IOException, TException, InterruptedException {
     AsyncDataClient client =
         ClusterIoTDB.getInstance()
             .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
@@ -171,9 +173,9 @@ public class MultDataSourceInfo {
     return result.get();
   }
 
-  private Long applyForReaderIdSync(Node node, long timestamp) throws Exception {
+  private Long applyForReaderIdSync(Node node, long timestamp) throws IOException, TException {
 
-    Long newReaderId;
+    long newReaderId;
     SyncDataClient client = null;
     try {
       client =
@@ -192,9 +194,7 @@ public class MultDataSourceInfo {
       return newReaderId;
     } catch (TException e) {
       // the connection may be broken, close it to avoid it being reused
-      if (client != null) {
-        client.close();
-      }
+      client.close();
       throw e;
     } finally {
       if (client != null) {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster.server.member;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;

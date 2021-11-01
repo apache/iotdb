@@ -45,7 +45,7 @@ import java.net.SocketException;
  * should not cache it anywhere else.
  */
 // TODO: Refine the interfaces of TSDataService. TSDataService interfaces doesn't need extends
-// TODO: RaftService interfaces
+// RaftService interfaces.
 public class SyncDataClient extends TSDataService.Client {
 
   private Node node;
@@ -82,7 +82,9 @@ public class SyncDataClient extends TSDataService.Client {
   }
 
   public void returnSelf() {
-    if (clientManager != null) clientManager.returnSyncClient(this, node, category);
+    if (clientManager != null) {
+      clientManager.returnSyncClient(this, node, category);
+    }
   }
 
   public void setTimeout(int timeout) {

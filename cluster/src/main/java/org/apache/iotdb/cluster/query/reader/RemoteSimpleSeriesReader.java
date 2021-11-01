@@ -148,9 +148,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
       curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
       return curSyncClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId());
     } catch (TException e) {
-      if (curSyncClient != null) {
-        curSyncClient.close();
-      }
+      curSyncClient.close();
       // try other node
       if (!sourceInfo.switchNode(false, lastTimestamp)) {
         return null;

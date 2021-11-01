@@ -920,9 +920,7 @@ public class CMManager extends MManager {
                 syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
+            syncDataClient.close();
             throw e;
           } finally {
             if (syncDataClient != null) {
@@ -1084,9 +1082,7 @@ public class CMManager extends MManager {
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) {
-          syncDataClient.close();
-        }
+        syncDataClient.close();
         throw e;
       } finally {
         if (syncDataClient != null) {
@@ -1102,7 +1098,7 @@ public class CMManager extends MManager {
       for (int i = 0; i < result.paths.size(); i++) {
         PartialPath matchedPath = getAssembledPathFromRequest(result.paths.get(i));
         partialPaths.add(matchedPath);
-        if (withAlias) {
+        if (withAlias && matchedPath != null) {
           matchedPath.setMeasurementAlias(result.aliasList.get(i));
         }
       }
@@ -1218,9 +1214,7 @@ public class CMManager extends MManager {
           paths = syncDataClient.getAllDevices(header, pathsToQuery);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          if (syncDataClient != null) {
-            syncDataClient.close();
-          }
+          syncDataClient.close();
           throw e;
         }
       } finally {
@@ -1666,9 +1660,7 @@ public class CMManager extends MManager {
                   group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          if (syncDataClient != null) {
-            syncDataClient.close();
-          }
+          syncDataClient.close();
           throw e;
         }
       } finally {
@@ -1701,9 +1693,7 @@ public class CMManager extends MManager {
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) {
-          syncDataClient.close();
-        }
+        syncDataClient.close();
         throw e;
       } finally {
         if (syncDataClient != null) {

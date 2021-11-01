@@ -16,14 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster;
 
 // we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
 public interface ClusterIoTDBMBean {
   /**
-   * try to enable the raft info report
+   * try to enable the raft info report.
    *
-   * @return true only if the log level is lower than debug and the report is enabled
+   * @return true only if the log level is lower than debug and the report is enabled.
    */
   boolean startRaftInfoReport();
 

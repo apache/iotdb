@@ -69,8 +69,8 @@ public class LogDispatcher {
   private List<BlockingQueue<SendLogRequest>> nodeLogQueues = new ArrayList<>();
   private ExecutorService executorService;
 
-  // TODO we have no way to close this pool. should change later.
-  private static ExecutorService serializationService =
+  // TODO we have no way to close this pool.
+  private static final ExecutorService serializationService =
       IoTDBThreadPoolFactory.newFixedThreadPoolWithDaemonThread(
           Runtime.getRuntime().availableProcessors(), "DispatcherEncoder");
 
@@ -244,7 +244,6 @@ public class LogDispatcher {
         while (!Thread.interrupted()) {
           SendLogRequest poll = logBlockingDeque.take();
           currBatch.add(poll);
-          // TODO drainTo is not thread-safy. is it ok?
           logBlockingDeque.drainTo(currBatch);
           if (logger.isDebugEnabled()) {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);

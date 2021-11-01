@@ -85,10 +85,12 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
 
   /**
    * return self if clientManager is not null, the method doesn't need to call by user, it will
-   * trigger once client transport complete
+   * trigger once client transport complete.
    */
   public void returnSelf() {
-    if (clientManager != null) clientManager.returnAsyncClient(this, node, category);
+    if (clientManager != null) {
+      clientManager.returnAsyncClient(this, node, category);
+    }
   }
 
   @Override

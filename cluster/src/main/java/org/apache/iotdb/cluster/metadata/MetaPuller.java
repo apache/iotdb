@@ -252,10 +252,7 @@ public class MetaPuller {
         }
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) {
-          syncDataClient.close();
-        }
-
+        syncDataClient.close();
         throw e;
       } finally {
         if (syncDataClient != null) {
@@ -442,10 +439,7 @@ public class MetaPuller {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
         }
       } catch (TException e) {
-        if (syncDataClient != null) {
-          syncDataClient.close();
-        }
-
+        syncDataClient.close();
         throw e;
       } finally {
         if (syncDataClient != null) {

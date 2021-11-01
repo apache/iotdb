@@ -234,10 +234,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
             count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
-
+            syncDataClient.close();
             throw e;
           } finally {
             if (syncDataClient != null) {
@@ -336,9 +333,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     if (groupPathMap.isEmpty()) {
       return result.get();
     }
-    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
-    // function call.
-    // BUT is it suitable to create a thread pool for each calling??
+    // TODO: create a thread pool for each query calling.
     ExecutorService remoteQueryThreadPool = Executors.newFixedThreadPool(groupPathMap.size());
     List<Future<Void>> remoteFutures = new ArrayList<>();
     // query each data group separately
@@ -401,10 +396,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
             count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
-
+            syncDataClient.close();
             throw e;
           } finally {
             if (syncDataClient != null) {
@@ -435,14 +427,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
       throws MetadataException {
-
     ConcurrentSkipListSet<PartialPath> nodeSet = new ConcurrentSkipListSet<>();
 
-    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
-    // function call.
-    // BUT is it suitable to create a thread pool for each calling??
+    // TODO: create a thread pool for each query calling.
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-
     List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       futureList.add(
@@ -459,7 +447,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 return null;
               }));
     }
-    // TODO seems there is a long-term block here.
     waitForThreadPool(futureList, pool, "getNodesList()");
     return new ArrayList<>(nodeSet);
   }
@@ -514,9 +501,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
+            syncDataClient.close();
             throw e;
           } finally {
             if (syncDataClient != null) {
@@ -543,9 +528,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
-    // function call.
-    // BUT is it suitable to create a thread pool for each calling??
+    // TODO: create a thread pool for each query calling.
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : globalGroups) {
@@ -613,10 +596,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
-
+            syncDataClient.close();
             throw e;
           } finally {
             if (syncDataClient != null) {
@@ -642,9 +622,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
-    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
-    // function call.
-    // BUT is it suitable to create a thread pool for each calling??
+    // TODO: create a thread pool for each query calling.
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
     List<Future<Void>> futureList = new ArrayList<>();
@@ -735,10 +713,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
           } catch (TException e) {
             // the connection may be broken, close it to avoid it being reused
-            if (syncDataClient != null) {
-              syncDataClient.close();
-            }
-
+            syncDataClient.close();
             throw e;
           } finally {
             if (syncDataClient != null) {

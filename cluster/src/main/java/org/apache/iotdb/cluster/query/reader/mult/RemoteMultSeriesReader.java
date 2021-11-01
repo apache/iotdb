@@ -91,10 +91,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
 
   private boolean checkPathBatchData(String fullPath) {
     BatchData batchData = cachedBatchs.get(fullPath).peek();
-    if (batchData != null && !batchData.isEmpty()) {
-      return true;
-    }
-    return false;
+    return batchData != null && !batchData.isEmpty();
   }
 
   @Override
@@ -186,9 +183,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
       return curSyncClient.fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
     } catch (TException e) {
-      if (curSyncClient != null) {
-        curSyncClient.close();
-      }
+      curSyncClient.close();
       logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
       return null;
     } finally {
