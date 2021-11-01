@@ -21,8 +21,8 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
@@ -99,11 +99,6 @@ public class FileLoaderUtils {
       Filter filter,
       Set<String> allSensors)
       throws IOException {
-    // deal with vector
-    if (seriesPath instanceof VectorPartialPath) {
-      return loadVectorTimeSeriesMetadata(
-          resource, (VectorPartialPath) seriesPath, context, filter, allSensors);
-    }
 
     // common path
     ITimeSeriesMetadata timeSeriesMetadata;
@@ -159,9 +154,9 @@ public class FileLoaderUtils {
    *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
    * @param allSensors all sensors belonging to this device that appear in query
    */
-  private static VectorTimeSeriesMetadata loadVectorTimeSeriesMetadata(
+  public static VectorTimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
-      VectorPartialPath vectorPath,
+      AlignedPath vectorPath,
       QueryContext context,
       Filter filter,
       Set<String> allSensors)
@@ -182,7 +177,7 @@ public class FileLoaderUtils {
                       resource.getTsFilePath(),
                       vectorPath.getDevice(),
                       vectorPath.getMeasurement()),
-                  new ArrayList<>(vectorPath.getSubSensorsList()),
+                  new ArrayList<>(vectorPath.getMeasurementList()),
                   allSensors,
                   context.isDebug());
 
@@ -193,7 +188,7 @@ public class FileLoaderUtils {
             .setChunkMetadataLoader(
                 new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
         for (int i = 1; i < timeSeriesMetadata.size(); i++) {
-          PartialPath subPath = vectorPath.getPathWithSubSensor(i - 1);
+          PartialPath subPath = vectorPath.getPathWithMeasurement(i - 1);
           timeSeriesMetadata
               .get(i)
               .setChunkMetadataLoader(
@@ -230,7 +225,8 @@ public class FileLoaderUtils {
           vectorTimeSeriesMetadata.getValueTimeseriesMetadataList();
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
         pathModifications =
-            context.getPathModifications(resource.getModFile(), vectorPath.getPathWithSubSensor(i));
+            context.getPathModifications(
+                resource.getModFile(), vectorPath.getPathWithMeasurement(i));
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
       }
     }

@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
@@ -60,7 +58,6 @@ import java.util.stream.Collectors;
 
 public class SeriesReader {
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   // inner class of SeriesReader for order purpose
   protected TimeOrderUtils orderUtils;
 
@@ -185,7 +182,7 @@ public class SeriesReader {
 
   @TestOnly
   @SuppressWarnings("squid:S107")
-  SeriesReader(
+  public SeriesReader(
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
@@ -1028,13 +1025,24 @@ public class SeriesReader {
 
   protected void unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
-        FileLoaderUtils.loadTimeSeriesMetadata(
+        loadTimeSeriesMetadata(
             unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }
+  }
+
+  protected ITimeSeriesMetadata loadTimeSeriesMetadata(
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter filter,
+      Set<String> allSensors)
+      throws IOException {
+    return FileLoaderUtils.loadTimeSeriesMetadata(
+        resource, seriesPath, context, filter, allSensors);
   }
 
   protected Filter getAnyFilter() {

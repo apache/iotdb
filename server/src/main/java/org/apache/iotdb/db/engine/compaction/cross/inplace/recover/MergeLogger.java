@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.BufferedWriter;
 import java.io.File;

@@ -33,7 +33,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.*;
@@ -46,6 +45,9 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -887,13 +889,6 @@ public class MTree implements Serializable {
 
   // region Interfaces for timeseries, measurement and schema info Query
   /**
-   * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
-   */
-  public IMeasurementSchema getSchema(PartialPath fullPath) throws MetadataException {
-    return getMeasurementMNode(fullPath).getSchema();
-  }
-
-  /**
    * Get all measurement paths matching the given path pattern
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
@@ -916,12 +911,16 @@ public class MTree implements Serializable {
         new MeasurementCollector<List<PartialPath>>(root, pathPattern, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            PartialPath path = node.getPartialPath();
+            MeasurementPath path = node.getMeasurementPath();
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
             }
-            result.add(path);
+            if (node.getParent().isAligned()) {
+              result.add(new AlignedPath(path));
+            } else {
+              result.add(path);
+            }
           }
         };
     collector.traverse();
