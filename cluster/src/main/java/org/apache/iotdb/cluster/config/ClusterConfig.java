@@ -181,6 +181,8 @@ public class ClusterConfig {
 
   private boolean openServerRpcPort = false;
 
+  private boolean useAsyncSequencing = false;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -538,5 +540,13 @@ public class ClusterConfig {
 
   public void setClusterInfoRpcPort(int clusterInfoRpcPort) {
     this.clusterInfoRpcPort = clusterInfoRpcPort;
+  }
+
+  public boolean isUseAsyncSequencing() {
+    return useAsyncSequencing;
+  }
+
+  public void setUseAsyncSequencing(boolean useAsyncSequencing) {
+    this.useAsyncSequencing = useAsyncSequencing;
   }
 }

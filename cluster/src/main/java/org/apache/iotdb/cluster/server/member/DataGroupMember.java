@@ -211,7 +211,7 @@ public class DataGroupMember extends RaftMember {
     logManager =
         new FilePartitionedSnapshotLogManager(
             dataLogApplier, metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode, this);
-    logSequencer = new SynchronousSequencer(this, logManager);
+    logSequencer = SEQUENCER_FACTORY.create(this, logManager);
     initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();

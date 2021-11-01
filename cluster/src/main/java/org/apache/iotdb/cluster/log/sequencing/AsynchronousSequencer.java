@@ -134,4 +134,12 @@ public class AsynchronousSequencer implements LogSequencer {
   public void setLogManager(RaftLogManager logManager) {
     this.logManager = logManager;
   }
+
+  public static class Factory implements LogSequencerFactory {
+
+    @Override
+    public LogSequencer create(RaftMember member, RaftLogManager logManager) {
+      return new AsynchronousSequencer(member, logManager);
+    }
+  }
 }

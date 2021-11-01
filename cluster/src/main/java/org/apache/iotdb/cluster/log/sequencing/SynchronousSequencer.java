@@ -92,4 +92,12 @@ public class SynchronousSequencer implements LogSequencer {
 
     return new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm, appendEntryRequest);
   }
+
+  public static class Factory implements LogSequencerFactory {
+
+    @Override
+    public LogSequencer create(RaftMember member, RaftLogManager logManager) {
+      return new SynchronousSequencer(member, logManager);
+    }
+  }
 }
