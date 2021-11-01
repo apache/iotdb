@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingCompositeReporter;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -80,6 +81,14 @@ public class MetricService {
     } else if (size > 1) {
       logger.warn(
           "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
+    }
+
+    compositeReporter = new CompositeReporter();
+
+    ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
+    size = 0;
+    for(Reporter reporter: reporters){
+
     }
 
     ServiceLoader<CompositeReporter> reporter = ServiceLoader.load(CompositeReporter.class);

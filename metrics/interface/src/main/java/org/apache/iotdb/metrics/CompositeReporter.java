@@ -75,7 +75,7 @@ public class CompositeReporter {
     return true;
   }
 
-  /** Stop reporter by name name values in jmx, prometheus, iotdb, internal */
+  /** Stop reporter by name, values in jmx, prometheus, internal */
   boolean stop(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
@@ -86,10 +86,13 @@ public class CompositeReporter {
     return true;
   }
 
+  /** Add reporter */
+  void addReporter(Reporter reporter){
+    reporters.add(reporter);
+  }
+
   /**
    * set manager to reporter
-   *
-   * @param metricManager
    */
   void setMetricManager(MetricManager metricManager) {
     this.metricManager = metricManager;

@@ -57,10 +57,10 @@ public class MetricConfigDescriptor {
       logger.warn(
           "Cannot find IOTDB_CONF environment variable when loading "
               + "config file {}, use default configuration",
-          MetricConfig.CONFIG_NAME);
+          MetricConstant.CONFIG_NAME);
       return null;
     } else {
-      url += (File.separatorChar + MetricConfig.CONFIG_NAME);
+      url += (File.separatorChar + MetricConstant.CONFIG_NAME);
     }
     return url;
   }

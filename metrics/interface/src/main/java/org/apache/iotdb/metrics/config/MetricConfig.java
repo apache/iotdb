@@ -26,19 +26,19 @@ import java.util.Arrays;
 import java.util.List;
 
 public class MetricConfig {
-  static final String CONFIG_NAME = "iotdb-metric.yml";
-
   /** enable publishing data. */
   private Boolean enableMetric = true;
 
   /** The period of data pushed by the reporter to the remote monitoring system. */
   private Integer pushPeriodInSecond = 5;
 
+  /** The of monitor frame */
   private MonitorType monitorType = MonitorType.DROPWIZARD;
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
   private List<ReporterType> metricReporterList = Arrays.asList(ReporterType.JMX);
 
+  /** the config of prometheus reporter */
   private PrometheusReporterConfig prometheusReporterConfig;
 
   public Boolean getEnableMetric() {
@@ -57,12 +57,12 @@ public class MetricConfig {
     this.pushPeriodInSecond = pushPeriodInSecond;
   }
 
-  public void setMonitorType(MonitorType monitorType) {
-    this.monitorType = monitorType;
-  }
-
   public MonitorType getMonitorType() {
     return monitorType;
+  }
+
+  public void setMonitorType(MonitorType monitorType) {
+    this.monitorType = monitorType;
   }
 
   public List<ReporterType> getMetricReporterList() {
