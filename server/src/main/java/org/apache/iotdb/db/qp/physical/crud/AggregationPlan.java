@@ -93,7 +93,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       String rawPath =
           String.format(
               "%s(%s)",
-              deduplicatedAggregations.get(i), getDeduplicatedPaths().get(i).getExactFullPath());
+              deduplicatedAggregations.get(i), getDeduplicatedPaths().get(i).getFullPath());
       String transformedPath = groupByLevelController.getGroupedPath(rawPath);
       AggregateResult result = groupPathsResultMap.get(transformedPath);
       if (result == null) {
@@ -124,7 +124,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       String functionName = aggregations.get(pathIndex);
       String aggregatePath =
           groupByLevelController.getGroupedPath(
-              String.format("%s(%s)", functionName, path.getExactFullPath()));
+              String.format("%s(%s)", functionName, path.getFullPath()));
       columnForDisplay = aggregatePath;
     }
     return columnForDisplay;

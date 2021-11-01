@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -88,18 +87,30 @@ public class AlignedPath extends PartialPath {
     this.measurementList = measurementList;
   }
 
-  public void addMeasurement(String subSensor) {
-    this.measurementList.add(subSensor);
+  public void addMeasurement(String measurement) {
+    this.measurementList.add(measurement);
   }
 
-  public void addMeasurement(List<String> subSensors) {
-    this.measurementList.addAll(subSensors);
+  public void addMeasurement(List<String> measurements) {
+    this.measurementList.addAll(measurements);
+  }
+
+  public void addMeasurement(MeasurementPath measurementPath) {
+    if (measurementList == null) {
+      measurementList = new ArrayList<>();
+    }
+    measurementList.add(measurementPath.getMeasurement());
+
+    if (schemaList == null) {
+      schemaList = new ArrayList<>();
+    }
+    schemaList.add(measurementPath.getMeasurementSchema());
   }
 
   public void addMeasurement(List<String> measurementList, List<IMeasurementSchema> schemaList) {
     this.measurementList.addAll(measurementList);
-    if (schemaList == null) {
-      schemaList = new ArrayList<>();
+    if (this.schemaList == null) {
+      this.schemaList = new ArrayList<>();
     }
     this.schemaList.addAll(schemaList);
   }
@@ -152,23 +163,5 @@ public class AlignedPath extends PartialPath {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), measurementList);
-  }
-
-  @Override
-  public PartialPath getExactPath() {
-    PartialPath path = super.getExactPath();
-    if (measurementList.size() == 1) {
-      return path.concatNode(measurementList.get(0));
-    }
-    return path;
-  }
-
-  @Override
-  public String getExactFullPath() {
-    fullPath = getFullPath();
-    if (measurementList.size() == 1) {
-      return fullPath + TsFileConstant.PATH_SEPARATOR + measurementList.get(0);
-    }
-    return fullPath;
   }
 }

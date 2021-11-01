@@ -353,21 +353,4 @@ public class PartialPath extends Path implements Comparable<Path> {
     }
     return ret;
   }
-
-  // todo eliminate such "exact" related logic in future work
-  /**
-   * If the partialPath is AlignedPath and it has only one measurement, return the measurement's
-   * PartialPath. Otherwise, return this partialPath
-   */
-  public PartialPath getExactPath() {
-    return this;
-  }
-
-  /**
-   * If the partialPath is AlignedPath and it has only one measurement, return the measurement's
-   * full path. Otherwise, return the partialPath's fullPath
-   */
-  public String getExactFullPath() {
-    return getFullPath();
-  }
 }
