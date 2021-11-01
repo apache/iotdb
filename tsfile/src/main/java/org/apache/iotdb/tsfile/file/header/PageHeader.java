@@ -50,7 +50,7 @@ public class PageHeader {
     return 2 * (Integer.BYTES + 1);
   }
 
-  public static PageHeader deserializeFrom( // Todo:添加若是空page
+  public static PageHeader deserializeFrom(
       InputStream inputStream, TSDataType dataType, boolean hasStatistic) throws IOException {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     if (uncompressedSize == 0) {

@@ -33,13 +33,14 @@ public class TsFileWriteAlignedWithTablet {
       measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
       measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
       measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+      measurementSchemas.add(new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerAlignedTimeseries(new Path(deviceId), measurementSchemas);
 
       // construct and write Tablet1
       List<IMeasurementSchema> tmpSchemas = new ArrayList<>();
       tmpSchemas.add(measurementSchemas.get(0));
       tmpSchemas.add(measurementSchemas.get(1));
-      writeWithTablet(tsFileWriter, tmpSchemas, 10000);
+      writeWithTablet(tsFileWriter, tmpSchemas, 100000);
 
       // construct and write Tablet2
       tmpSchemas = new ArrayList<>();

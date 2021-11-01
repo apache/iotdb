@@ -90,21 +90,26 @@ public class TsFileAlignedSequenceRead {
                 TimePageReader timePageReader =
                     new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
                 timeBatch.add((timePageReader.nexTimeBatch()));
-                System.out.println("\t\tpoints in the page: " + timeBatch.size());
-                /*for (int i = 0; i < timeBatch.length; i++) {
-                  System.out.println("\t\t\ttime: " + timeBatch[i]);
+                System.out.println(
+                    "\t\tpoints in the page: " + timeBatch.get(timeBatchIndex).length);
+                /*for (int i = 0; i < timeBatch.get(timeBatchIndex).length; i++) {
+                  System.out.println("\t\t\ttime: " + timeBatch.get(timeBatchIndex)[i]);
                 }*/
               } else { // Value Chunk
                 ValuePageReader valuePageReader =
                     new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
                 TsPrimitiveType[] valueBatch =
-                    valuePageReader.nextValueBatch(timeBatch.get(timeBatchIndex++));
-                System.out.println("\t\tpoints in the page: " + valueBatch.length);
+                    valuePageReader.nextValueBatch(timeBatch.get(timeBatchIndex));
+                if (valueBatch.length == 0) {
+                  System.out.println("\t\t-- Empty Page ");
+                } else {
+                  System.out.println("\t\tpoints in the page: " + valueBatch.length);
+                }
                 /*for (int i = 0; i < valueBatch.length; i++) {
                   System.out.println("\t\t\tvalue: " + valueBatch[i]);
                 }*/
               }
-
+              timeBatchIndex++;
               dataSize -= pageHeader.getSerializedPageSize();
             }
             break;
