@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -39,13 +43,13 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FileLoaderUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(FileLoaderUtils.class);
+
 
   private FileLoaderUtils() {}
 
@@ -157,18 +161,24 @@ public class FileLoaderUtils {
     if (chunkMetaData == null) {
       throw new IOException("Can't init null chunkMeta");
     }
-    IChunkReader chunkReader;
-    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-    if (chunkLoader instanceof MemChunkLoader) {
-      MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
-      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
-    } else {
-      Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
-      chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
-      chunkReader = new ChunkReader(chunk, timeFilter);
-      chunkReader.hasNextSatisfiedPage();
+    try {
+      IChunkReader chunkReader;
+      IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+      if (chunkLoader instanceof MemChunkLoader) {
+        MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
+        chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
+      } else {
+        Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
+        chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+        chunkReader = new ChunkReader(chunk, timeFilter);
+        chunkReader.hasNextSatisfiedPage();
+      }
+      return chunkReader.loadPageReaderList();
+    } catch (IOException e) {
+      logger.error("Something wrong happened while reading chunk from " + chunkMetaData.getFilePath());
+      throw e;
     }
-    return chunkReader.loadPageReaderList();
+
   }
 
   public static List<ChunkMetadata> getChunkMetadataList(Path path, String filePath)
