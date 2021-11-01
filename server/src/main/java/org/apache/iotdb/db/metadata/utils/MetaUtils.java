@@ -128,9 +128,10 @@ public class MetaUtils {
       } else {
         String entity = measurementPath.getDevice();
         if (!alignedEntityToPath.containsKey(entity)) {
-          alignedEntityToPath.put(entity, new AlignedPath());
+          alignedEntityToPath.put(entity, new AlignedPath(measurementPath));
+        } else {
+          alignedEntityToPath.get(entity).addMeasurement(measurementPath);
         }
-        alignedEntityToPath.get(entity).addMeasurement(measurementPath);
       }
     }
     result.addAll(alignedEntityToPath.values());
