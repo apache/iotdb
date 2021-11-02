@@ -50,7 +50,7 @@ public class IoTDBopenApiDescriptor {
   private void loadProps() {
     URL url = getPropsUrl();
     if (url == null) {
-      logger.warn("Couldn't load the configuration from any of the known sources.");
+      logger.warn("Couldn't load the OpenAPI configuration from any of the known sources.");
       return;
     }
     try (InputStream inputStream = url.openStream()) {
