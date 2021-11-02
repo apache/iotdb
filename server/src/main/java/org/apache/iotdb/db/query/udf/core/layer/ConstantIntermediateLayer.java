@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.layer;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
@@ -30,14 +31,17 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 /** IntermediateLayer for constants. */
 public class ConstantIntermediateLayer extends IntermediateLayer {
 
-  public ConstantIntermediateLayer(
-      ConstantOperand expression, long queryId, float memoryBudgetInMB) {
+  private final LayerPointReader constantLayerPointReaderCache;
+
+  public ConstantIntermediateLayer(ConstantOperand expression, long queryId, float memoryBudgetInMB)
+      throws QueryProcessException {
     super(expression, queryId, memoryBudgetInMB);
+    constantLayerPointReaderCache = new ConstantLayerPointReader(expression);
   }
 
   @Override
   public LayerPointReader constructPointReader() {
-    return new ConstantLayerPointReader((ConstantOperand) expression);
+    return constantLayerPointReaderCache;
   }
 
   @Override

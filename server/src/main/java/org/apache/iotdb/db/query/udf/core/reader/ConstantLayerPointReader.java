@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.udf.core.reader;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -33,8 +34,45 @@ public class ConstantLayerPointReader implements LayerPointReader {
 
   private final ConstantOperand expression;
 
-  public ConstantLayerPointReader(ConstantOperand expression) {
+  protected int cachedInt;
+  protected long cachedLong;
+  protected float cachedFloat;
+  protected double cachedDouble;
+  protected boolean cachedBoolean;
+  protected Binary cachedBinary;
+
+  public ConstantLayerPointReader(ConstantOperand expression) throws QueryProcessException {
     this.expression = Validate.notNull(expression);
+
+    Object value =
+        CommonUtils.parseValue(expression.getDataType(), expression.getExpressionString());
+    if (value == null) {
+      throw new QueryProcessException(
+          "Invalid constant operand: " + expression.getExpressionString());
+    }
+
+    switch (expression.getDataType()) {
+      case INT32:
+        cachedInt = (int) value;
+        break;
+      case INT64:
+        cachedLong = (long) value;
+        break;
+      case FLOAT:
+        cachedFloat = (float) value;
+        break;
+      case DOUBLE:
+        cachedDouble = (double) value;
+        break;
+      case TEXT:
+        cachedBinary = new Binary((String) value);
+        break;
+      case BOOLEAN:
+        cachedBoolean = (boolean) value;
+        break;
+      default:
+        throw new QueryProcessException("Unsupported type: " + expression.getDataType());
+    }
   }
 
   @Override
@@ -64,55 +102,31 @@ public class ConstantLayerPointReader implements LayerPointReader {
 
   @Override
   public int currentInt() throws IOException {
-    if (TSDataType.INT32.equals(expression.getDataType())) {
-      return (int) expression.getValue();
-    }
-    throw new ClassCastException(
-        "Cannot cast " + expression.getDataType() + " to " + TSDataType.INT32);
+    return cachedInt;
   }
 
   @Override
   public long currentLong() throws IOException {
-    if (TSDataType.INT64.equals(expression.getDataType())) {
-      return (long) expression.getValue();
-    }
-    throw new ClassCastException(
-        "Cannot cast " + expression.getDataType() + " to " + TSDataType.INT64);
+    return cachedLong;
   }
 
   @Override
   public float currentFloat() throws IOException {
-    if (TSDataType.FLOAT.equals(expression.getDataType())) {
-      return (float) expression.getValue();
-    }
-    throw new ClassCastException(
-        "Cannot cast " + expression.getDataType() + " to " + TSDataType.FLOAT);
+    return cachedFloat;
   }
 
   @Override
   public double currentDouble() throws IOException {
-    if (TSDataType.DOUBLE.equals(expression.getDataType())) {
-      return (double) expression.getValue();
-    }
-    throw new ClassCastException(
-        "Cannot cast " + expression.getDataType() + " to " + TSDataType.DOUBLE);
+    return cachedDouble;
   }
 
   @Override
   public boolean currentBoolean() throws IOException {
-    if (TSDataType.BOOLEAN.equals(expression.getDataType())) {
-      return (boolean) expression.getValue();
-    }
-    throw new ClassCastException(
-        "Cannot cast " + expression.getDataType() + " to " + TSDataType.BOOLEAN);
+    return cachedBoolean;
   }
 
   @Override
   public Binary currentBinary() throws IOException {
-    if (TSDataType.TEXT.equals(expression.getDataType())) {
-      return new Binary((String) expression.getValue());
-    }
-    throw new ClassCastException(
-        "Cannot cast " + expression.getDataType() + " to " + TSDataType.TEXT);
+    return cachedBinary;
   }
 }

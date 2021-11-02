@@ -2024,7 +2024,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           return new ConstantOperand(TSDataType.DOUBLE, constantContext.realLiteral().getText());
         } else {
           throw new SQLParserException(
-              "Unsupported constant expression: " + constantContext.getText());
+              "Unsupported constant operand: " + constantContext.getText());
         }
       } catch (QueryProcessException e) {
         throw new SQLParserException(e.getMessage());
@@ -2052,7 +2052,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     // non-pure-constant sub-expression, otherwise the timestamp of the row cannot be inferred.
     if (!hasNonPureConstantSubExpression) {
       throw new SQLParserException(
-          "Invalid function expression, all the arguments are constant expressions: "
+          "Invalid function expression, all the arguments are constant operands: "
               + functionClause.getText());
     }
 
@@ -2296,7 +2296,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {
     Expression expression = parseExpression(resultColumnContext.expression());
     if (expression.isConstantOperand()) {
-      throw new SQLParserException("Pure constant expression is not allowed: " + expression);
+      throw new SQLParserException("Constant operand is not allowed: " + expression);
     }
     return new ResultColumn(
         expression,

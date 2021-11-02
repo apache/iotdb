@@ -83,6 +83,7 @@ public class FunctionExpression extends Expression {
     expressions = new ArrayList<>();
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+    isConstantOperandCache = true;
   }
 
   public FunctionExpression(

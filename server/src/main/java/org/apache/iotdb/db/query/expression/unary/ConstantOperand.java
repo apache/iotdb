@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -30,8 +29,9 @@ import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.commons.lang3.Validate;
 
 import java.time.ZoneId;
 import java.util.List;
@@ -41,16 +41,12 @@ import java.util.Set;
 /** Constant operand */
 public class ConstantOperand extends Expression {
 
-  private final Object value;
+  private final String valueString;
   private final TSDataType dataType;
 
   public ConstantOperand(TSDataType dataType, String str) throws QueryProcessException {
-    this.dataType = dataType;
-    this.value = CommonUtils.parseValue(dataType, str);
-  }
-
-  public Object getValue() {
-    return value;
+    this.dataType = Validate.notNull(dataType);
+    this.valueString = Validate.notNull(str);
   }
 
   public TSDataType getDataType() {
@@ -68,8 +64,8 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
+  public void removeWildcards(
+      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions) {
     resultExpressions.add(this);
   }
 
@@ -96,16 +92,20 @@ public class ConstantOperand extends Expression {
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner) {
-    expressionDataTypeMap.put(this, this.getDataType());
-    IntermediateLayer intermediateLayer =
-        new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
-    expressionIntermediateLayerMap.put(this, intermediateLayer);
-    return intermediateLayer;
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      expressionDataTypeMap.put(this, this.getDataType());
+      IntermediateLayer intermediateLayer =
+          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
+      expressionIntermediateLayerMap.put(this, intermediateLayer);
+    }
+
+    return expressionIntermediateLayerMap.get(this);
   }
 
   @Override
   public String getExpressionStringInternal() {
-    return value.toString();
+    return valueString;
   }
 }

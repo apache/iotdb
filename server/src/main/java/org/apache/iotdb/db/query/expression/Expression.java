@@ -41,7 +41,7 @@ import java.util.Set;
 public abstract class Expression {
 
   private String expressionStringCache;
-  private Boolean isConstantOperandCache = null;
+  protected Boolean isConstantOperandCache = null;
 
   public boolean isAggregationFunctionExpression() {
     return false;
@@ -74,7 +74,7 @@ public abstract class Expression {
       throws QueryProcessException, IOException;
 
   /** Sub-classes should override this method indicating if the expression is a constant operand */
-  public abstract boolean isConstantOperandInternal();
+  protected abstract boolean isConstantOperandInternal();
 
   /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
   public final boolean isConstantOperand() {
