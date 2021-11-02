@@ -176,16 +176,6 @@ public class AlignedChunkMetadata implements IChunkMetadata {
     return 0;
   }
 
-  @Override
-  public boolean isTimeColumn() {
-    return false;
-  }
-
-  @Override
-  public boolean isValueColumn() {
-    return false;
-  }
-
   public Chunk getTimeChunk() throws IOException {
     return timeChunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) timeChunkMetadata);
   }
