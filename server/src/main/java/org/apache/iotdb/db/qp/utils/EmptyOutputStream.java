@@ -21,20 +21,14 @@ package org.apache.iotdb.db.qp.utils;
 import java.io.IOException;
 import java.io.OutputStream;
 
-/**
- * Empty OutputStream
- * To count serialize size without serialization
- */
+/** Empty OutputStream To count serialize size without serialization */
 public class EmptyOutputStream extends OutputStream {
 
-    @Override
-    public void write(int b) throws IOException {
-    }
+  @Override
+  public void write(int b) throws IOException {}
 
-    @Override
-    public void write(byte b[], int off, int len) throws IOException {
-    }
+  @Override
+  public void write(byte b[], int off, int len) throws IOException {}
 
-    public void write(byte b[]) throws IOException {
-    }
+  public void write(byte b[]) throws IOException {}
 }

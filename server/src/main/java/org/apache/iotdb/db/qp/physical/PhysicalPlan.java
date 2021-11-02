@@ -163,7 +163,7 @@ public abstract class PhysicalPlan {
       DataOutputStream dataOutputStream = new DataOutputStream(new EmptyOutputStream());
       serialize(dataOutputStream);
       return dataOutputStream.size();
-    }catch (UnsupportedOperationException e){
+    } catch (UnsupportedOperationException e) {
       throw e;
     }
   }
