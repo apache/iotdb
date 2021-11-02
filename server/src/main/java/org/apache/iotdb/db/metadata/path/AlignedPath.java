@@ -321,22 +321,24 @@ public class AlignedPath extends PartialPath {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
+    // check If Memtable Contains this path
     if (!memTableMap.containsKey(getDevice())) {
       return null;
     }
     VectorWritableMemChunk vectorMemChunk =
         ((VectorWritableMemChunk) memTableMap.get(getDevice()).get(VECTOR_PLACEHOLDER));
-    List<String> validMeasurementList = new ArrayList<>();
+    boolean containsMeasurement = false;
     for (String measurement : measurementList) {
       if (vectorMemChunk.containsMeasurement(measurement)) {
-        validMeasurementList.add(measurement);
+        containsMeasurement = true;
+        break;
       }
     }
-    if (validMeasurementList.isEmpty()) {
+    if (!containsMeasurement) {
       return null;
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(validMeasurementList);
+    TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(schemaList);
     int curSize = vectorTvListCopy.size();
     return new ReadOnlyMemChunk(getMeasurementSchema(), vectorTvListCopy, curSize, deletionList);
   }

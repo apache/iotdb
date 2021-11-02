@@ -121,7 +121,7 @@ public abstract class AbstractMemTable implements IMemTable {
         k -> {
           seriesNumber++;
           totalPointsNumThreshold +=
-              avgSeriesPointNumThreshold + vectorSchema.getSubMeasurementsCount();
+              avgSeriesPointNumThreshold * vectorSchema.getSubMeasurementsCount();
           return genVectorMemSeries(vectorSchema);
         });
   }
