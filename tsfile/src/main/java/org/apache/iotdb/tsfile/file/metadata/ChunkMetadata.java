@@ -74,6 +74,8 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   private boolean isSeq = true;
   private boolean isClosed;
   private String filePath;
+  
+  // 0x80 for time chunk, 0x40 for value chunk, 0x00 for common chunk
   private byte mask;
 
   // used for ChunkCache, Eg:"root.sg1/0/0"

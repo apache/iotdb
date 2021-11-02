@@ -58,7 +58,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
       IChunkWriter seriesWriter = null;
       // initialize depend on schema type
       if (schema instanceof VectorMeasurementSchema) {
-        seriesWriter = new VectorChunkWriterImpl(schema);
+        seriesWriter = new AlignedChunkWriterImpl(schema);
       } else if (schema instanceof UnaryMeasurementSchema) {
         seriesWriter = new ChunkWriterImpl(schema);
       }

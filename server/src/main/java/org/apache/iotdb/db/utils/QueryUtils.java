@@ -47,8 +47,7 @@ public class QueryUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(
       List<? extends IChunkMetadata> chunkMetaData, List<Modification> modifications) {
-    for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
-      IChunkMetadata metaData = chunkMetaData.get(metaIndex);
+    for (IChunkMetadata metaData : chunkMetaData) {
       for (Modification modification : modifications) {
         // When the chunkMetadata come from an old TsFile, the method modification.getFileOffset()
         // is gerVersionNum actually. In this case, we compare the versions of modification and
