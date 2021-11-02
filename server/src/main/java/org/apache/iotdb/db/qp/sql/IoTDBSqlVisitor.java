@@ -1235,6 +1235,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     for (TSDataType tsDataType : TSDataType.values()) {
+      if (tsDataType == TSDataType.VECTOR) {
+        // ignore TSDataType VECTOR
+        continue;
+      }
+      if (fill instanceof LinearFill && (tsDataType == TSDataType.BOOLEAN || tsDataType == TSDataType.TEXT)) {
+        continue;
+      }
       fillTypes.put(tsDataType, fill.copy());
     }
   }
@@ -1242,7 +1249,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parsePrimitiveTypeClause(
       IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     TSDataType dataType = parseType(ctx.dataType.getText());
-    if (ctx.linearClause() != null && dataType == TSDataType.TEXT) {
+    if (dataType == TSDataType.VECTOR) {
+      throw new SQLParserException(
+        String.format("type %s cannot use fill function", dataType)
+      );
+    }
+
+    if (ctx.linearClause() != null && (dataType == TSDataType.TEXT || dataType == TSDataType.BOOLEAN)) {
       throw new SQLParserException(
           String.format(
               "type %s cannot use %s fill function",

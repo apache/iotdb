@@ -50,7 +50,6 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
   private long[] nextTimes;
 
   // the query and result datatype for each time series
-  private TSDataType[] queryDataType;
   private TSDataType[] resultDataType;
 
   // the next query time range of each path
@@ -93,7 +92,6 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
     queryEndTimes = new long[paths.size()];
     queryIntervalTimes = new long[paths.size()];
     hasCachedQueryInterval = new boolean[paths.size()];
-    queryDataType = new TSDataType[aggregations.size()];
     resultDataType = new TSDataType[aggregations.size()];
     Arrays.fill(queryStartTimes, curStartTime);
     Arrays.fill(queryEndTimes, curEndTime);
@@ -102,7 +100,6 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
     for (int i = 0; i < paths.size(); i++) {
       List<Integer> indexes = resultIndexes.get((PartialPath) paths.get(i));
       for (int index : indexes) {
-        queryDataType[index] = dataTypes.get(i);
         switch (aggregations.get(index)) {
           case "avg":
           case "sum":
@@ -269,7 +266,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       return;
     }
 
-    IFill fill = fillTypes.get(queryDataType[pathId]);
+    IFill fill = fillTypes.get(resultDataType[pathId]);
     if (fill instanceof PreviousFill) {
       if (beforePair.right != null
           && ((!((PreviousFill) fill).isUntilLast())

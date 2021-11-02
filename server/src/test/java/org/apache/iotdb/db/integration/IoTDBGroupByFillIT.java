@@ -259,7 +259,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -279,7 +279,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -311,7 +311,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -331,7 +331,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -415,7 +415,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -435,7 +435,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -738,7 +738,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previousUntilLast])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -758,7 +758,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previousUntilLast]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -790,7 +790,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previousUntilLast])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -810,7 +810,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previousUntilLast]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -894,7 +894,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previousUntilLast])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -914,7 +914,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previousUntilLast]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1250,7 +1250,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[10])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[10])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1270,7 +1270,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[10]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[10]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1302,7 +1302,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[888])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[888])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1322,7 +1322,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[888]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[888]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1406,7 +1406,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[1])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[1])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1426,7 +1426,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[1]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[1]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1740,7 +1740,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1760,7 +1760,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(boolean[linear]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1792,7 +1792,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1812,7 +1812,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1896,7 +1896,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1916,7 +1916,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -2055,7 +2055,7 @@ public class IoTDBGroupByFillIT {
       boolean hasResultSet =
           statement.execute(
               "select avg(temperature) from root.ln.wf01.wt01 "
-                  + "GROUP BY ((5, 40], 5ms) FILL(int32[previous])");
+                  + "GROUP BY ((5, 40], 5ms) FILL(double[previous])");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -2075,7 +2075,7 @@ public class IoTDBGroupByFillIT {
       hasResultSet =
           statement.execute(
               "select avg(temperature) from root.ln.wf01.wt01 "
-                  + "GROUP BY ((5, 40], 5ms) FILL(int32[previous]) order by time desc");
+                  + "GROUP BY ((5, 40], 5ms) FILL(double[previous]) order by time desc");
 
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -2161,7 +2161,6 @@ public class IoTDBGroupByFillIT {
     }
   }
 
-  // TODO: Judge boolean
   @Test(expected = IoTDBSQLException.class)
   public void linearFailTest1() throws SQLException {
     try (Connection connection =
