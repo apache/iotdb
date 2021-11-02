@@ -141,7 +141,7 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }
-    if (IoTDBopenApiDescriptor.getInstance().getConfig().isStartOpenApi()) {
+    if (IoTDBopenApiDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(OpenApiServer.getInstance());
     }
     logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
