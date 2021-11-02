@@ -9,6 +9,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -31,7 +32,7 @@ public class TsFileWriteAlignedWithTablet {
       // register align timeseries
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
       measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
       measurementSchemas.add(new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerAlignedTimeseries(new Path(deviceId), measurementSchemas);
@@ -65,8 +66,14 @@ public class TsFileWriteAlignedWithTablet {
       int row = tablet.rowSize++;
       timestamps[row] = timestamp++;
       for (int i = 0; i < sensorNum; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = value;
+        if (i == 1) {
+          Binary[] textSensor = (Binary[]) values[i];
+          textSensor[row] =
+              new Binary("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+          continue;
+        }
+        long[] longSensor = (long[]) values[i];
+        longSensor[row] = value;
       }
       // write
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
