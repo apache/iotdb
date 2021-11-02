@@ -177,7 +177,7 @@
         <repository>
             <id>for_pentaho</id>
             <name>public.nexus.pentaho.org</name>
-            <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
+            <url>http://maven.aliyun.com/nexus/content/groups/public</url>
             <layout>default</layout>
             <releases>
                 <enabled>true</enabled>
