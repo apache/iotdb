@@ -206,38 +206,6 @@ public class ReadOnlyMemChunk {
     cachedMetaData = vectorChunkMetadata;
   }
 
-  // When query one measurement in a Vector, the timeValuePair is not a vector type
-  private void updateValueStatisticsForSingleColumn(
-      IMeasurementSchema schema, Statistics[] valueStatistics, TimeValuePair timeValuePair)
-      throws QueryProcessException {
-    switch (schema.getSubMeasurementsTSDataTypeList().get(0)) {
-      case BOOLEAN:
-        valueStatistics[0].update(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        break;
-      case TEXT:
-        valueStatistics[0].update(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        break;
-      case FLOAT:
-        valueStatistics[0].update(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        break;
-      case INT32:
-        valueStatistics[0].update(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        break;
-      case INT64:
-        valueStatistics[0].update(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        break;
-      case DOUBLE:
-        valueStatistics[0].update(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        break;
-      default:
-        throw new QueryProcessException("Unsupported data type:" + dataType);
-    }
-  }
-
   private void updateValueStatistics(
       IMeasurementSchema schema, Statistics[] valueStatistics, TimeValuePair timeValuePair)
       throws QueryProcessException {

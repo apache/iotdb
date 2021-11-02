@@ -207,21 +207,34 @@ public class VectorTVList extends TVList {
   }
 
   @Override
-  public TVList getTvListByColumnIndex(List<Integer> columns) {
+  public TVList getTvListByColumnIndex(List<Integer> columnIndex, List<TSDataType> dataTypes) {
     List<TSDataType> types = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     List<List<BitMap>> bitMaps = null;
-    for (int column : columns) {
-      types.add(this.dataTypes.get(column));
-      values.add(this.values.get(column));
-      if (this.bitMaps != null && this.bitMaps.get(column) != null) {
+    for (int i = 0; i < columnIndex.size(); i++) {
+      // columnIndex == -1 means querying a non-exist column, generate empty column here
+      if (columnIndex.get(i) == -1) {
+        types.add(dataTypes.get(i));
+        // use bitmap to mark as null value
         if (bitMaps == null) {
-          bitMaps = new ArrayList<>(columns.size());
-          for (int i = 0; i < columns.size(); i++) {
+          bitMaps = new ArrayList<>(columnIndex.size());
+          for (int j = 0; j < columnIndex.size(); j++) {
             bitMaps.add(null);
           }
         }
-        bitMaps.set(columns.indexOf(column), this.bitMaps.get(column));
+        generateEmptyColumn(dataTypes.get(i), values, bitMaps);
+      } else {
+        types.add(this.dataTypes.get(columnIndex.get(i)));
+        values.add(this.values.get(columnIndex.get(i)));
+        if (this.bitMaps != null && this.bitMaps.get(columnIndex.get(i)) != null) {
+          if (bitMaps == null) {
+            bitMaps = new ArrayList<>(columnIndex.size());
+            for (int j = 0; j < columnIndex.size(); j++) {
+              bitMaps.add(null);
+            }
+          }
+          bitMaps.set(i, this.bitMaps.get(columnIndex.get(i)));
+        }
       }
     }
     VectorTVList vectorTvList = new VectorTVList(types);
@@ -231,6 +244,41 @@ public class VectorTVList extends TVList {
     vectorTvList.bitMaps = bitMaps;
     vectorTvList.size = this.size;
     return vectorTvList;
+  }
+
+  private void generateEmptyColumn(
+      TSDataType dataType, List<List<Object>> values, List<List<BitMap>> bitMaps) {
+    List<Object> columnValue = new ArrayList<>();
+    List<BitMap> columnBitMaps = new ArrayList<>();
+    for (int i = 0; i < timestamps.size(); i++) {
+      switch (dataType) {
+        case TEXT:
+          columnValue.add(new Binary[ARRAY_SIZE]);
+          break;
+        case FLOAT:
+          columnValue.add(new float[ARRAY_SIZE]);
+          break;
+        case INT32:
+          columnValue.add(new int[ARRAY_SIZE]);
+          break;
+        case INT64:
+          columnValue.add(new long[ARRAY_SIZE]);
+          break;
+        case DOUBLE:
+          columnValue.add(new double[ARRAY_SIZE]);
+          break;
+        case BOOLEAN:
+          columnValue.add(new boolean[ARRAY_SIZE]);
+          break;
+        default:
+          break;
+      }
+      BitMap bitMap = new BitMap(ARRAY_SIZE);
+      bitMap.markAll();
+      columnBitMaps.add(bitMap);
+    }
+    values.add(columnValue);
+    bitMaps.add(columnBitMaps);
   }
 
   /**

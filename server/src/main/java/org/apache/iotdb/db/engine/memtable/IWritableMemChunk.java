@@ -104,7 +104,7 @@ public interface IWritableMemChunk {
    * @param measurementList the measurementList to be queried
    * @return sorted tv list
    */
-  TVList getSortedTvListForQuery(List<String> measurementList);
+  TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList);
 
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add

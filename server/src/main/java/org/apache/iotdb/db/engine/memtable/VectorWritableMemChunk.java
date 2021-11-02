@@ -175,15 +175,17 @@ public class VectorWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getSortedTvListForQuery(List<String> measurementList) {
+  public TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
     List<Integer> columnIndexList = new ArrayList<>();
-    for (String measurement : measurementList) {
-      columnIndexList.add(vectorIdIndexMap.get(measurement));
+    List<TSDataType> dataTypeList = new ArrayList<>();
+    for (IMeasurementSchema measurementSchema : schemaList) {
+      columnIndexList.add(vectorIdIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
+      dataTypeList.add(measurementSchema.getType());
     }
-    return list.getTvListByColumnIndex(columnIndexList);
+    return list.getTvListByColumnIndex(columnIndexList, dataTypeList);
   }
 
   private void sortTVList() {
