@@ -175,16 +175,8 @@
     to use https://public.nexus.pentaho.org or http://conjars.org/repo  -->
     <repositories>
         <repository>
-            <id>for_pentaho</id>
-            <name>public.nexus.pentaho.org</name>
-            <url>https://mvnrepository.com/artifact/org.pentaho/pentaho-aggdesigner-algorithm</url>
-            <layout>default</layout>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
+            <id>conjars.org</id>
+            <url>http://conjars.org/repo</url>
         </repository>
     </repositories>
     <profiles>
