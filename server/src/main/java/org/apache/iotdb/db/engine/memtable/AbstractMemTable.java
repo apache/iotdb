@@ -110,7 +110,7 @@ public abstract class AbstractMemTable implements IMemTable {
         });
   }
 
-  private IWritableMemChunk createVectorMemChunkIfNotExistAndGet(
+  private IWritableMemChunk createAlignedMemChunkIfNotExistAndGet(
       String deviceId, IMeasurementSchema schema) {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
@@ -122,13 +122,13 @@ public abstract class AbstractMemTable implements IMemTable {
           seriesNumber++;
           totalPointsNumThreshold +=
               avgSeriesPointNumThreshold * vectorSchema.getSubMeasurementsCount();
-          return genVectorMemSeries(vectorSchema);
+          return genAlignedMemSeries(vectorSchema);
         });
   }
 
   protected abstract IWritableMemChunk genMemSeries(IMeasurementSchema schema);
 
-  protected abstract IWritableMemChunk genVectorMemSeries(IMeasurementSchema schema);
+  protected abstract IWritableMemChunk genAlignedMemSeries(IMeasurementSchema schema);
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
@@ -229,8 +229,8 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void writeAlignedRow(
       String deviceId, IMeasurementSchema schema, long insertTime, Object[] objectValue) {
-    IWritableMemChunk memSeries = createVectorMemChunkIfNotExistAndGet(deviceId, schema);
-    memSeries.writeVector(insertTime, objectValue, schema);
+    IWritableMemChunk memSeries = createAlignedMemChunkIfNotExistAndGet(deviceId, schema);
+    memSeries.writeAlignedValue(insertTime, objectValue, schema);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -279,7 +279,7 @@ public abstract class AbstractMemTable implements IMemTable {
             encodings.toArray(new TSEncoding[measurements.size()]),
             compressionType);
     IWritableMemChunk memSeries =
-        createVectorMemChunkIfNotExistAndGet(
+        createAlignedMemChunkIfNotExistAndGet(
             insertTabletPlan.getPrefixPath().getFullPath(), vectorSchema);
     memSeries.writeVector(
         insertTabletPlan.getTimes(),

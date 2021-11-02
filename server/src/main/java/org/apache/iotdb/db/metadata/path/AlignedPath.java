@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.db.engine.memtable.VectorWritableMemChunk;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -269,7 +269,7 @@ public class AlignedPath extends PartialPath {
     timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setMeasurementId("");
-    timeTimeSeriesMetadata.setTSDataType(TSDataType.INT64);
+    timeTimeSeriesMetadata.setTSDataType(TSDataType.VECTOR);
 
     Statistics<? extends Serializable> timeStatistics =
         Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
@@ -325,8 +325,8 @@ public class AlignedPath extends PartialPath {
     if (!memTableMap.containsKey(getDevice())) {
       return null;
     }
-    VectorWritableMemChunk vectorMemChunk =
-        ((VectorWritableMemChunk) memTableMap.get(getDevice()).get(VECTOR_PLACEHOLDER));
+    AlignedWritableMemChunk vectorMemChunk =
+        ((AlignedWritableMemChunk) memTableMap.get(getDevice()).get(VECTOR_PLACEHOLDER));
     boolean containsMeasurement = false;
     for (String measurement : measurementList) {
       if (vectorMemChunk.containsMeasurement(measurement)) {

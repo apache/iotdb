@@ -41,7 +41,7 @@ public interface IWritableMemChunk {
 
   void putBoolean(long t, boolean v);
 
-  void putVector(long t, Object[] v, int[] columnOrder);
+  void putAlignedValue(long t, Object[] v, int[] columnOrder);
 
   void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
@@ -55,11 +55,12 @@ public interface IWritableMemChunk {
 
   void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
-  void putVectors(long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end);
+  void putAlignedValues(
+      long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end);
 
   void write(long insertTime, Object objectValue);
 
-  void writeVector(long insertTime, Object[] objectValue, IMeasurementSchema schema);
+  void writeAlignedValue(long insertTime, Object[] objectValue, IMeasurementSchema schema);
 
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the

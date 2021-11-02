@@ -24,8 +24,8 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayDeque;
@@ -57,24 +57,12 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     return list != null ? list : TVList.newList(dataType);
   }
 
-  public synchronized VectorTVList allocate(List<TSDataType> dataTypes) {
-    return VectorTVList.newVectorList(dataTypes);
+  public synchronized AlignedTVList allocate(List<TSDataType> dataTypes) {
+    return AlignedTVList.newAlignedList(dataTypes);
   }
 
-  /** For non-vector types. */
-  public synchronized void release(TSDataType dataType, TVList list) {
-    list.clear();
-    if (dataType != TSDataType.VECTOR) {
-      tvListCache.get(list.getDataType()).add(list);
-    }
-  }
-
-  /** For VECTOR type only. */
   public synchronized void release(TVList list) {
-    list.clear();
-    if (list.getDataType() != TSDataType.VECTOR) {
-      tvListCache.get(list.getDataType()).add(list);
-    }
+    list.clear(tvListCache);
   }
 
   @Override

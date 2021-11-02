@@ -145,7 +145,7 @@ public class ReadOnlyMemChunk {
   }
 
   /**
-   * The constructor for VECTOR type.
+   * The constructor for Aligned type.
    *
    * @param schema VectorMeasurementSchema
    * @param tvList VectorTvList
@@ -164,11 +164,11 @@ public class ReadOnlyMemChunk {
 
     this.chunkPointReader =
         tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-    initVectorChunkMeta((VectorMeasurementSchema) schema);
+    initAlignedChunkMeta((VectorMeasurementSchema) schema);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private void initVectorChunkMeta(VectorMeasurementSchema schema)
+  private void initAlignedChunkMeta(VectorMeasurementSchema schema)
       throws IOException, QueryProcessException {
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =

@@ -48,8 +48,8 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -212,7 +212,7 @@ public class TsFileProcessor {
     long[] memIncrements = null;
     if (enableMemControl) {
       if (insertRowPlan.isAligned()) {
-        memIncrements = checkMemCostAndAddToTspInfoForVector(insertRowPlan);
+        memIncrements = checkAlignedMemCostAndAddToTspInfo(insertRowPlan);
       } else {
         memIncrements = checkMemCostAndAddToTspInfo(insertRowPlan);
       }
@@ -278,7 +278,7 @@ public class TsFileProcessor {
     try {
       if (enableMemControl) {
         if (insertTabletPlan.isAligned()) {
-          memIncrements = checkMemCostAndAddToTspInfoForVector(insertTabletPlan, start, end);
+          memIncrements = checkAlignedMemCostAndAddToTsp(insertTabletPlan, start, end);
         } else {
           memIncrements = checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
         }
@@ -372,7 +372,7 @@ public class TsFileProcessor {
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private long[] checkMemCostAndAddToTspInfoForVector(InsertRowPlan insertRowPlan)
+  private long[] checkAlignedMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
@@ -384,13 +384,13 @@ public class TsFileProcessor {
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(
               insertRowPlan.getMeasurements()[0], insertRowPlan.getDataTypes()[0]);
-      memTableIncrement += VectorTVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes());
+      memTableIncrement += AlignedTVList.alignedTvListArrayMemSize(insertRowPlan.getDataTypes());
     } else {
       // here currentChunkPointNum >= 1
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, null);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-              ? VectorTVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes())
+              ? AlignedTVList.alignedTvListArrayMemSize(insertRowPlan.getDataTypes())
               : 0;
     }
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
@@ -433,7 +433,7 @@ public class TsFileProcessor {
     return memIncrements;
   }
 
-  private long[] checkMemCostAndAddToTspInfoForVector(
+  private long[] checkAlignedMemCostAndAddToTsp(
       InsertTabletPlan insertTabletPlan, int start, int end) throws WriteProcessException {
     if (start >= end) {
       return new long[] {0, 0, 0};
@@ -442,7 +442,7 @@ public class TsFileProcessor {
 
     String deviceId = insertTabletPlan.getPrefixPath().getFullPath();
 
-    updateVectorMemCost(
+    updateAlignedMemCost(
         insertTabletPlan.getDataTypes(),
         deviceId,
         insertTabletPlan.getMeasurements()[0],
@@ -494,7 +494,7 @@ public class TsFileProcessor {
     }
   }
 
-  private void updateVectorMemCost(
+  private void updateAlignedMemCost(
       TSDataType[] dataTypes,
       String deviceId,
       String measurementId,
@@ -509,19 +509,21 @@ public class TsFileProcessor {
           dataTypes.length * ChunkMetadata.calculateRamSize(measurementId, dataTypes[0]);
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-              * VectorTVList.vectorTvListArrayMemSize(dataTypes);
+              * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
     } else {
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, null);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * VectorTVList.vectorTvListArrayMemSize(dataTypes);
+                * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
       } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         memIncrements[0] +=
-            acquireArray == 0 ? 0 : acquireArray * VectorTVList.vectorTvListArrayMemSize(dataTypes);
+            acquireArray == 0
+                ? 0
+                : acquireArray * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
       }
     }
     // TEXT data size
