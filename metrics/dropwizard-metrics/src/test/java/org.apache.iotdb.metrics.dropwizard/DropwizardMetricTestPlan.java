@@ -17,7 +17,9 @@
  * under the License.
  */
 
-public class TestPlan {
+package org.apache.iotdb.metrics.dropwizard;
+
+public class DropwizardMetricTestPlan {
   private static final Integer[] TAG_NUMBERS = {2, 4, 6, 8, 10};
   private static final Integer[] METRIC_NUMBERS = {1000, 10000, 50000, 100000, 500000, 1000000};
   private static final Integer LOOP = 10;
@@ -26,7 +28,7 @@ public class TestPlan {
 
   private static void test(Integer metric, Integer tag) {
     Long[] times = {0L, 0L, 0L};
-    Test test = new Test(metric, tagTotalNumber, tag, searchNumber);
+    DropwizardMetricTest test = new DropwizardMetricTest(metric, tagTotalNumber, tag, searchNumber);
     times[0] += test.createMetricInorder();
     for (int i = 0; i < LOOP; i++) {
       times[1] += test.searchMetricInorder();
@@ -50,7 +52,7 @@ public class TestPlan {
   }
 
   public static void main(String[] args) {
-    System.setProperty("IOTDB_CONF", "path of yml");
+    System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources");
     for (Integer metric : METRIC_NUMBERS) {
       for (Integer tag : TAG_NUMBERS) {
         test(metric, tag);

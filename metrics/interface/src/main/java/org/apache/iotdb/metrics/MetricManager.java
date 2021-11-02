@@ -165,7 +165,4 @@ public interface MetricManager {
 
   /** clear metrics */
   boolean stop();
-
-  /** Get name of manager */
-  String getName();
 }

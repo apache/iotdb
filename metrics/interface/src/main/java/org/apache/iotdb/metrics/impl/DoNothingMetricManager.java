@@ -152,11 +152,6 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public String getName() {
-    return "DoNothingMetricManager";
-  }
-
-  @Override
   public void removeCounter(String metric, String... tags) {}
 
   @Override

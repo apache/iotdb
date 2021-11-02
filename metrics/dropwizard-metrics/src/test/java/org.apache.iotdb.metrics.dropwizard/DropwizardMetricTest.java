@@ -17,12 +17,14 @@
  * under the License.
  */
 
+package org.apache.iotdb.metrics.dropwizard;
+
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
 
 import java.util.*;
 
-public class Test {
+public class DropwizardMetricTest {
   private Integer metricNumberTotal;
   private Integer metricNameNumberLength;
   private Integer tagTotalNumber;
@@ -39,7 +41,7 @@ public class Test {
    * @param tagSingleNumber
    * @param searchNumber
    */
-  Test(
+  DropwizardMetricTest(
       Integer metricNumber, Integer tagTotalNumber, Integer tagSingleNumber, Integer searchNumber) {
     this.metricNumberTotal = metricNumber;
     this.metricNameNumberLength = String.valueOf(metricNumberTotal).length();

@@ -406,9 +406,4 @@ public class DropwizardMetricManager implements MetricManager {
     // clear everything
     return true;
   }
-
-  @Override
-  public String getName() {
-    return "DropwizardMetricManager";
-  }
 }

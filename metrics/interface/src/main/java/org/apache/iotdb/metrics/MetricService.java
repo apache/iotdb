@@ -64,7 +64,8 @@ public class MetricService {
 
     for (MetricManager mf : metricManagers) {
       size++;
-      if (mf.getName()
+      if (mf.getClass()
+          .getName()
           .toLowerCase()
           .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
         metricManager = mf;
@@ -84,8 +85,16 @@ public class MetricService {
 
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
     for (Reporter reporter : reporters) {
-      reporter.setMetricManager(metricManager);
-      compositeReporter.addReporter(reporter);
+      if (metricConfig.getMetricReporterList() != null
+          && metricConfig.getMetricReporterList().contains(reporter.getReporterType())
+          && reporter
+              .getClass()
+              .getName()
+              .toLowerCase()
+              .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+        reporter.setMetricManager(metricManager);
+        compositeReporter.addReporter(reporter);
+      }
     }
 
     // do some init work

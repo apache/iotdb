@@ -40,11 +40,13 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -68,14 +70,16 @@ public class MicrometerMetricManager implements MetricManager {
    * init of manager
    *
    * @see org.apache.iotdb.metrics.MetricService
-   * @return
    */
   @Override
   public boolean init() {
     logger.info("micrometer init registry");
     List<ReporterType> reporters = metricConfig.getMetricReporterList();
+    if (reporters == null) {
+      return false;
+    }
     for (ReporterType report : reporters) {
-      if (!startMeterRegistry(report)) {
+      if (!addMeterRegistry(report)) {
         return false;
       }
     }
@@ -451,7 +455,7 @@ public class MicrometerMetricManager implements MetricManager {
     return true;
   }
 
-  private boolean startMeterRegistry(ReporterType reporter) {
+  private boolean addMeterRegistry(ReporterType reporter) {
     switch (reporter) {
       case jmx:
         Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
@@ -466,41 +470,8 @@ public class MicrometerMetricManager implements MetricManager {
     return true;
   }
 
-  /**
-   * find registries by name
-   *
-   * @param reporterName ReporterType
-   * @see ReporterType
-   * @return
-   */
-  private Set<MeterRegistry> getMeterRegistries(String reporterName) {
-    Set<MeterRegistry> meterRegistrySet = new HashSet<>();
-    switch (ReporterType.get(reporterName)) {
-      case jmx:
-        meterRegistrySet =
-            Metrics.globalRegistry.getRegistries().stream()
-                .filter(m -> m instanceof JmxMeterRegistry)
-                .collect(Collectors.toSet());
-        break;
-      case prometheus:
-        meterRegistrySet =
-            Metrics.globalRegistry.getRegistries().stream()
-                .filter(m -> m instanceof PrometheusMeterRegistry)
-                .collect(Collectors.toSet());
-        break;
-      default:
-        logger.warn("Unsupported report type {}, please check the config.", reporterName);
-    }
-    return meterRegistrySet;
-  }
-
   @Override
   public boolean isEnable() {
     return isEnable;
-  }
-
-  @Override
-  public String getName() {
-    return "MicrometerMetricManager";
   }
 }
