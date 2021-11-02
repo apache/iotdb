@@ -187,8 +187,20 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public final String getExpressionStringInternal() {
-    return String.format(
-        "%s %s %s", leftExpression.toString(), operator(), rightExpression.toString());
+    StringBuilder builder = new StringBuilder();
+    if (leftExpression instanceof BinaryExpression) {
+      builder.append("(").append(leftExpression.getExpressionString()).append(")");
+    } else {
+      builder.append(leftExpression.getExpressionString());
+    }
+    builder.append(" ").append(operator()).append(" ");
+    if (rightExpression instanceof BinaryExpression) {
+      builder.append("(").append(rightExpression.getExpressionString()).append(")");
+    } else {
+      builder.append(rightExpression.getExpressionString());
+    }
+
+    return builder.toString();
   }
 
   protected abstract String operator();

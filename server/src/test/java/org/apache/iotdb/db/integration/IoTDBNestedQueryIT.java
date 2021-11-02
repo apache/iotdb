@@ -462,4 +462,127 @@ public class IoTDBNestedQueryIT {
       Assert.fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testCommutativeLaws() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String query = "SELECT s1, s1 + 1, 1 + s1, s1 * 2, 2 * s1 FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i, rs.getInt(2));
+          Assert.assertEquals(i + 1.0D, rs.getDouble(3), 0.01);
+          Assert.assertEquals(i + 1.0D, rs.getDouble(4), 0.01);
+          Assert.assertEquals(i * 2.0D, rs.getDouble(5), 0.01);
+          Assert.assertEquals(i * 2.0D, rs.getDouble(6), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAssociativeLaws() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String query =
+          "SELECT s1, s1 + 1 + 2, (s1 + 1) + 2, s1 + (1 + 2), s1 * 2 * 3, s1 * (2 * 3), (s1 * 2) * 3 FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i, rs.getInt(2));
+          Assert.assertEquals(i + 3.0D, rs.getDouble(3), 0.01);
+          Assert.assertEquals(i + 3.0D, rs.getDouble(4), 0.01);
+          Assert.assertEquals(i + 3.0D, rs.getDouble(5), 0.01);
+          Assert.assertEquals(i * 6.0D, rs.getDouble(6), 0.01);
+          Assert.assertEquals(i * 6.0D, rs.getDouble(7), 0.01);
+          Assert.assertEquals(i * 6.0D, rs.getDouble(8), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDistributiveLaw() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String query =
+          "SELECT s1, (s1 + 1) * 2, s1 * 2 + 1 * 2, (s1 + 1) / 2, s1 / 2 + 1 / 2 FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i, rs.getInt(2));
+          Assert.assertEquals(2 * i + 2.0D, rs.getDouble(3), 0.01);
+          Assert.assertEquals(2 * i + 2.0D, rs.getDouble(4), 0.01);
+          Assert.assertEquals(i / 2.0D + 0.5D, rs.getDouble(5), 0.01);
+          Assert.assertEquals(i / 2.0D + 0.5D, rs.getDouble(6), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testOrderOfArithmeticOperations() {
+    // Priority from high to low:
+    //   1. exponentiation and root extraction (not supported yet)
+    //   2. multiplication and division
+    //   3. addition and subtraction
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String query =
+          "SELECT 1 + s1 * 2 + 1, (1 + s1) * 2 + 1, (1 + s1) * (2 + 1)  FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(2 * i + 2.0D, rs.getDouble(2), 0.01);
+          Assert.assertEquals(2 * i + 3.0D, rs.getDouble(3), 0.01);
+          Assert.assertEquals(3 * i + 3.0D, rs.getDouble(4), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      query = "SELECT 1 - s1 / 2 + 1, (1 - s1) / 2 + 1, (1 - s1) / (2 + 1)  FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(2.0D - i / 2.0D, rs.getDouble(2), 0.01);
+          Assert.assertEquals(1.5 - i / 2.0D, rs.getDouble(3), 0.01);
+          Assert.assertEquals((1.0D / 3.0D) * (1.0D - i), rs.getDouble(4), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
 }
