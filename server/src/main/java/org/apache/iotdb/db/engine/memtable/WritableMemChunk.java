@@ -72,7 +72,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void writeVector(long insertTime, String[] measurementIds, Object[] objectValue) {
+  public void writeVector(long insertTime, Object[] objectValue, IMeasurementSchema schema) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
@@ -112,9 +112,9 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void writeVector(
       long[] times,
-      String[] measurements,
       Object[] valueList,
       BitMap[] bitMaps,
+      IMeasurementSchema schema,
       int start,
       int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
@@ -200,7 +200,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery(List<Integer> columnIndexList) {
+  public synchronized TVList getSortedTvListForQuery(List<String> measurementList) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
@@ -257,10 +257,9 @@ public class WritableMemChunk implements IWritableMemChunk {
     return list.delete(lowerBound, upperBound);
   }
 
-  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
   @Override
-  public int delete(long lowerBound, long upperBound, int columnIndex) {
-    return list.delete(lowerBound, upperBound, columnIndex);
+  public int delete(long lowerBound, long upperBound, String measurementId) {
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
   @Override

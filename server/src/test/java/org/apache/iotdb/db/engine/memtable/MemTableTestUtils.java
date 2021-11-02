@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -90,14 +89,15 @@ public class MemTableTestUtils {
     encodings[1] = TSEncoding.GORILLA;
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    IMeasurementSchema schema =
-        new VectorMeasurementSchema("vectorName", measurements, dataTypes, encodings);
-    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema, null);
-    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema, null);
+    IMeasurementSchema schema0 =
+        new UnaryMeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
+    IMeasurementSchema schema1 =
+        new UnaryMeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
+    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema0, null);
+    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
 
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
-            new PartialPath(deviceId0), new String[] {"(sensor0,sensor1)"}, dataTypesList);
+        new InsertTabletPlan(new PartialPath(deviceId0), measurements, dataTypesList);
 
     insertTabletPlan.setAligned(true);
 

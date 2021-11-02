@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -163,8 +164,8 @@ public class LogReplayerTest {
           });
 
       for (int i = 0; i < 5; i++) {
-        ReadOnlyMemChunk memChunk =
-            memTable.query(
+        MeasurementPath fullPath =
+            new MeasurementPath(
                 "root.sg.device" + i,
                 "sensor" + i,
                 new UnaryMeasurementSchema(
@@ -172,19 +173,16 @@ public class LogReplayerTest {
                     TSDataType.INT64,
                     TSEncoding.RLE,
                     CompressionType.UNCOMPRESSED,
-                    Collections.emptyMap()),
-                Long.MIN_VALUE,
-                null);
+                    Collections.emptyMap()));
+        ReadOnlyMemChunk memChunk = memTable.query(fullPath, Long.MIN_VALUE, null);
         IPointReader iterator = memChunk.getPointReader();
-        if (i == 0) {
-          assertFalse(iterator.hasNextTimeValuePair());
-        } else {
+        if (i != 0) {
           assertTrue(iterator.hasNextTimeValuePair());
           TimeValuePair timeValuePair = iterator.nextTimeValuePair();
           assertEquals(i, timeValuePair.getTimestamp());
           assertEquals(i, timeValuePair.getValue().getLong());
-          assertFalse(iterator.hasNextTimeValuePair());
         }
+        assertFalse(iterator.hasNextTimeValuePair());
       }
 
       Modification[] mods = modFile.getModifications().toArray(new Modification[0]);
@@ -202,8 +200,8 @@ public class LogReplayerTest {
 
       // test insert tablet
       for (int i = 0; i < 2; i++) {
-        ReadOnlyMemChunk memChunk =
-            memTable.query(
+        MeasurementPath fullPath =
+            new MeasurementPath(
                 "root.sg.device5",
                 "sensor" + i,
                 new UnaryMeasurementSchema(
@@ -211,9 +209,8 @@ public class LogReplayerTest {
                     TSDataType.INT64,
                     TSEncoding.PLAIN,
                     CompressionType.UNCOMPRESSED,
-                    Collections.emptyMap()),
-                Long.MIN_VALUE,
-                null);
+                    Collections.emptyMap()));
+        ReadOnlyMemChunk memChunk = memTable.query(fullPath, Long.MIN_VALUE, null);
         // s0 has datatype boolean, but required INT64, will return null
         if (i == 0) {
           assertNull(memChunk);

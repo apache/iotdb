@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -50,6 +49,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -62,7 +62,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -385,13 +384,13 @@ public class TsFileProcessor {
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(
               insertRowPlan.getMeasurements()[0], insertRowPlan.getDataTypes()[0]);
-      memTableIncrement += TVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes());
+      memTableIncrement += VectorTVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes());
     } else {
       // here currentChunkPointNum >= 1
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, null);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-              ? TVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes())
+              ? VectorTVList.vectorTvListArrayMemSize(insertRowPlan.getDataTypes())
               : 0;
     }
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
@@ -510,19 +509,19 @@ public class TsFileProcessor {
           dataTypes.length * ChunkMetadata.calculateRamSize(measurementId, dataTypes[0]);
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-              * TVList.vectorTvListArrayMemSize(dataTypes);
+              * VectorTVList.vectorTvListArrayMemSize(dataTypes);
     } else {
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, null);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * TVList.vectorTvListArrayMemSize(dataTypes);
+                * VectorTVList.vectorTvListArrayMemSize(dataTypes);
       } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         memIncrements[0] +=
-            acquireArray == 0 ? 0 : acquireArray * TVList.vectorTvListArrayMemSize(dataTypes);
+            acquireArray == 0 ? 0 : acquireArray * VectorTVList.vectorTvListArrayMemSize(dataTypes);
       }
     }
     // TEXT data size
@@ -1212,20 +1211,16 @@ public class TsFileProcessor {
    * construct a deletion list from a memtable
    *
    * @param memTable memtable
-   * @param deviceId device id
-   * @param measurement measurement name
    * @param timeLowerBound time water mark
    */
   private List<TimeRange> constructDeletionList(
-      IMemTable memTable, String deviceId, String measurement, long timeLowerBound)
-      throws MetadataException {
+      IMemTable memTable, PartialPath fullPath, long timeLowerBound) {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : getModificationsForMemtable(memTable)) {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().matchFullPath(new PartialPath(deviceId, measurement))
-            && deletion.getEndTime() > timeLowerBound) {
+        if (deletion.getPath().matchFullPath(fullPath) && deletion.getEndTime() > timeLowerBound) {
           long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
           deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
         }
@@ -1238,17 +1233,10 @@ public class TsFileProcessor {
    * get the chunk(s) in the memtable (one from work memtable and the other ones in flushing
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
-   *
-   * @param deviceId device id
-   * @param measurementId measurements id
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void query(
-      String deviceId,
-      String measurementId,
-      IMeasurementSchema schema,
-      QueryContext context,
-      List<TsFileResource> tsfileResourcesForQuery)
+      PartialPath fullPath, QueryContext context, List<TsFileResource> tsfileResourcesForQuery)
       throws IOException, MetadataException {
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -1264,32 +1252,28 @@ public class TsFileProcessor {
           continue;
         }
         List<TimeRange> deletionList =
-            constructDeletionList(
-                flushingMemTable, deviceId, measurementId, context.getQueryTimeLowerBound());
+            constructDeletionList(flushingMemTable, fullPath, context.getQueryTimeLowerBound());
         ReadOnlyMemChunk memChunk =
-            flushingMemTable.query(
-                deviceId, measurementId, schema, context.getQueryTimeLowerBound(), deletionList);
+            flushingMemTable.query(fullPath, context.getQueryTimeLowerBound(), deletionList);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
       }
       if (workMemTable != null) {
         ReadOnlyMemChunk memChunk =
-            workMemTable.query(
-                deviceId, measurementId, schema, context.getQueryTimeLowerBound(), null);
+            workMemTable.query(fullPath, context.getQueryTimeLowerBound(), null);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
       }
 
       ModificationFile modificationFile = tsFileResource.getModFile();
-      List<Modification> modifications =
-          context.getPathModifications(
-              modificationFile,
-              new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
+      List<Modification> modifications = context.getPathModifications(modificationFile, fullPath);
 
       List<IChunkMetadata> chunkMetadataList =
-          schema.getVisibleMetadataListFromWriter(writer, deviceId);
+          fullPath
+              .getMeasurementSchema()
+              .getVisibleMetadataListFromWriter(writer, fullPath.getDevice());
 
       QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
       chunkMetadataList.removeIf(context::chunkNotSatisfy);
@@ -1297,7 +1281,7 @@ public class TsFileProcessor {
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
         tsfileResourcesForQuery.add(
-            new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
+            fullPath.createTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error(

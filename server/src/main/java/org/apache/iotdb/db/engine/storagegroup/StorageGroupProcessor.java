@@ -82,7 +82,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -1790,8 +1789,6 @@ public class StorageGroupProcessor {
           (timeFilter == null ? "null" : timeFilter));
     }
 
-    IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
-
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long ttlLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
@@ -1822,7 +1819,7 @@ public class StorageGroupProcessor {
         } else {
           tsFileResource
               .getUnsealedFileProcessor()
-              .query(deviceId, fullPath.getMeasurement(), schema, context, tsfileResourcesForQuery);
+              .query(fullPath, context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);

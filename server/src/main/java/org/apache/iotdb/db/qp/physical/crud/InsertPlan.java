@@ -33,7 +33,6 @@ import java.util.List;
 public abstract class InsertPlan extends PhysicalPlan {
 
   protected PartialPath prefixPath;
-  protected PartialPath originalPrefixPath;
   protected boolean isAligned;
   protected String[] measurements;
   // get from client
@@ -56,14 +55,6 @@ public abstract class InsertPlan extends PhysicalPlan {
   }
 
   public void setPrefixPath(PartialPath prefixPath) {
-    this.prefixPath = prefixPath;
-  }
-
-  /*
-  the original prefixPath needs to be recorded and recovered by recoverFromFailure because cluster may try to execute this plan twice
-   */
-  public void setPrefixPathForAlignTimeSeries(PartialPath prefixPath) {
-    this.originalPrefixPath = this.prefixPath;
     this.prefixPath = prefixPath;
   }
 
@@ -153,9 +144,6 @@ public abstract class InsertPlan extends PhysicalPlan {
    * @return the plan itself, with measurements replaced with the previously failed ones.
    */
   public InsertPlan getPlanFromFailed() {
-    if (isAligned && originalPrefixPath != null) {
-      prefixPath = originalPrefixPath;
-    }
     if (failedMeasurements == null) {
       return null;
     }
@@ -183,9 +171,6 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   /** Reset measurements from failed measurements (if any), as if no failure had ever happened. */
   public void recoverFromFailure() {
-    if (isAligned && originalPrefixPath != null) {
-      prefixPath = originalPrefixPath;
-    }
     if (failedMeasurements == null) {
       return;
     }

@@ -160,11 +160,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(DataOutputStream stream) throws IOException {
-    if (isAligned && originalPrefixPath != null) {
-      putString(stream, originalPrefixPath.getFullPath());
-    } else {
-      putString(stream, prefixPath.getFullPath());
-    }
+    putString(stream, prefixPath.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -258,11 +254,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(ByteBuffer buffer) {
-    if (isAligned && originalPrefixPath != null) {
-      putString(buffer, originalPrefixPath.getFullPath());
-    } else {
-      putString(buffer, prefixPath.getFullPath());
-    }
+    putString(buffer, prefixPath.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);

@@ -23,9 +23,9 @@ import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,11 +164,11 @@ public class ReadOnlyMemChunk {
 
     this.chunkPointReader =
         tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-    initVectorChunkMeta(schema);
+    initVectorChunkMeta((VectorMeasurementSchema) schema);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private void initVectorChunkMeta(IMeasurementSchema schema)
+  private void initVectorChunkMeta(VectorMeasurementSchema schema)
       throws IOException, QueryProcessException {
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
@@ -191,11 +192,7 @@ public class ReadOnlyMemChunk {
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         timeStatistics.update(timeValuePair.getTimestamp());
-        if (schema.getSubMeasurementsTSDataTypeList().size() == 1) {
-          updateValueStatisticsForSingleColumn(schema, valueStatistics, timeValuePair);
-        } else {
-          updateValueStatistics(schema, valueStatistics, timeValuePair);
-        }
+        updateValueStatistics(schema, valueStatistics, timeValuePair);
       }
     }
     timeStatistics.setEmpty(isEmpty());
@@ -203,7 +200,7 @@ public class ReadOnlyMemChunk {
       valueStatistic.setEmpty(isEmpty());
     }
     IChunkMetadata vectorChunkMetadata =
-        new VectorChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
+        new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
     vectorChunkMetadata.setChunkLoader(new MemChunkLoader(this));
     vectorChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = vectorChunkMetadata;

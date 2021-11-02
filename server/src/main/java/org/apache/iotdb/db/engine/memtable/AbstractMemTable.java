@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -89,15 +90,6 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   /**
-   * check whether the given seriesPath is within this memtable.
-   *
-   * @return true if seriesPath is within this memtable
-   */
-  private boolean checkPath(String deviceId, String measurement) {
-    return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
-  }
-
-  /**
    * create this MemChunk if it's not exist
    *
    * @param deviceId device id
@@ -123,12 +115,14 @@ public abstract class AbstractMemTable implements IMemTable {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
+    VectorMeasurementSchema vectorSchema = (VectorMeasurementSchema) schema;
     return memSeries.computeIfAbsent(
-        schema.getMeasurementId(),
+        vectorSchema.getMeasurementId(),
         k -> {
           seriesNumber++;
-          totalPointsNumThreshold += avgSeriesPointNumThreshold + schema.getSubMeasurementsCount();
-          return genVectorMemSeries(schema);
+          totalPointsNumThreshold +=
+              avgSeriesPointNumThreshold + vectorSchema.getSubMeasurementsCount();
+          return genVectorMemSeries(vectorSchema);
         });
   }
 
@@ -180,7 +174,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     VectorMeasurementSchema vectorSchema =
         new VectorMeasurementSchema(
-            null,
+            AlignedPath.VECTOR_PLACEHOLDER,
             measurements.toArray(new String[measurements.size()]),
             types.toArray(new TSDataType[measurements.size()]),
             encodings.toArray(new TSEncoding[measurements.size()]),
@@ -234,9 +228,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void writeAlignedRow(
-      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
+      String deviceId, IMeasurementSchema schema, long insertTime, Object[] objectValue) {
     IWritableMemChunk memSeries = createVectorMemChunkIfNotExistAndGet(deviceId, schema);
-    memSeries.write(insertTime, objectValue);
+    memSeries.writeVector(insertTime, objectValue, schema);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -279,7 +273,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     VectorMeasurementSchema vectorSchema =
         new VectorMeasurementSchema(
-            null,
+            AlignedPath.VECTOR_PLACEHOLDER,
             measurements.toArray(new String[measurements.size()]),
             types.toArray(new TSDataType[measurements.size()]),
             encodings.toArray(new TSEncoding[measurements.size()]),
@@ -289,9 +283,9 @@ public abstract class AbstractMemTable implements IMemTable {
             insertTabletPlan.getPrefixPath().getFullPath(), vectorSchema);
     memSeries.writeVector(
         insertTabletPlan.getTimes(),
-        insertTabletPlan.getMeasurements(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
+        vectorSchema,
         start,
         end);
   }
@@ -364,50 +358,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(
-      String deviceId,
-      String measurement,
-      IMeasurementSchema partialVectorSchema,
-      long ttlLowerBound,
-      List<TimeRange> deletionList)
+      PartialPath fullPath, long ttlLowerBound, List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
-    if (partialVectorSchema.getType() == TSDataType.VECTOR) {
-      if (!memTableMap.containsKey(deviceId)) {
-        return null;
-      }
-      IWritableMemChunk vectorMemChunk =
-          memTableMap.get(deviceId).get(partialVectorSchema.getMeasurementId());
-      if (vectorMemChunk == null) {
-        return null;
-      }
-
-      List<String> measurementIdList = partialVectorSchema.getSubMeasurementsList();
-      List<Integer> columns = new ArrayList<>();
-      IMeasurementSchema vectorSchema = vectorMemChunk.getSchema();
-      for (String queryingMeasurement : measurementIdList) {
-        columns.add(vectorSchema.getSubMeasurementsList().indexOf(queryingMeasurement));
-      }
-      // get sorted tv list is synchronized so different query can get right sorted list reference
-      TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(columns);
-      int curSize = vectorTvListCopy.size();
-      return new ReadOnlyMemChunk(partialVectorSchema, vectorTvListCopy, curSize, deletionList);
-    } else {
-      if (!checkPath(deviceId, measurement)) {
-        return null;
-      }
-      IWritableMemChunk memChunk =
-          memTableMap.get(deviceId).get(partialVectorSchema.getMeasurementId());
-      // get sorted tv list is synchronized so different query can get right sorted list reference
-      TVList chunkCopy = memChunk.getSortedTvListForQuery();
-      int curSize = chunkCopy.size();
-      return new ReadOnlyMemChunk(
-          measurement,
-          partialVectorSchema.getType(),
-          partialVectorSchema.getEncodingType(),
-          chunkCopy,
-          partialVectorSchema.getProps(),
-          curSize,
-          deletionList);
-    }
+    return fullPath.getReadOnlyMemChunkFromMemTable(memTableMap, deletionList);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity

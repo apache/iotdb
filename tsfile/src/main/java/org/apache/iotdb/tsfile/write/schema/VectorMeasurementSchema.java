@@ -22,9 +22,9 @@ package org.apache.iotdb.tsfile.write.schema;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -286,7 +286,7 @@ public class VectorMeasurementSchema
         valueChunkMetadata.add(chunkMetadata.get(i));
       }
       chunkMetadataList.add(
-          new VectorChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+          new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
     }
     return chunkMetadataList;
   }

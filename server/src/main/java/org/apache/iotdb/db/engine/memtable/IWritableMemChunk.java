@@ -59,7 +59,7 @@ public interface IWritableMemChunk {
 
   void write(long insertTime, Object objectValue);
 
-  void writeVector(long insertTime, String[] measurements, Object[] objectValue);
+  void writeVector(long insertTime, Object[] objectValue, IMeasurementSchema schema);
 
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the
@@ -70,9 +70,9 @@ public interface IWritableMemChunk {
 
   void writeVector(
       long[] times,
-      String[] measurements,
       Object[] valueList,
       BitMap[] bitMaps,
+      IMeasurementSchema schema,
       int start,
       int end);
 
@@ -101,10 +101,10 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
-   * @param columnIndexList indices of queried columns in the full VectorTVList
+   * @param measurementList the measurementList to be queried
    * @return sorted tv list
    */
-  TVList getSortedTvListForQuery(List<Integer> columnIndexList);
+  TVList getSortedTvListForQuery(List<String> measurementList);
 
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
@@ -124,7 +124,7 @@ public interface IWritableMemChunk {
   int delete(long lowerBound, long upperBound);
 
   // For delete one column in the vector
-  int delete(long lowerBound, long upperBound, int columnIndex);
+  int delete(long lowerBound, long upperBound, String measurementId);
 
   IChunkWriter createIChunkWriter();
 

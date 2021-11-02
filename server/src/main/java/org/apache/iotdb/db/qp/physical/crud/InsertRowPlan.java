@@ -340,11 +340,7 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(DataOutputStream stream) throws IOException {
     stream.writeLong(time);
-    if (isAligned && originalPrefixPath != null) {
-      putString(stream, originalPrefixPath.getFullPath());
-    } else {
-      putString(stream, prefixPath.getFullPath());
-    }
+    putString(stream, prefixPath.getFullPath());
     serializeMeasurementsAndValues(stream);
   }
 
@@ -495,11 +491,7 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(ByteBuffer buffer) {
     buffer.putLong(time);
-    if (isAligned && originalPrefixPath != null) {
-      putString(buffer, originalPrefixPath.getFullPath());
-    } else {
-      putString(buffer, prefixPath.getFullPath());
-    }
+    putString(buffer, prefixPath.getFullPath());
     serializeMeasurementsAndValues(buffer);
   }
 

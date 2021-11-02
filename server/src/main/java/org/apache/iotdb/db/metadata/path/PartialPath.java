@@ -18,28 +18,35 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -385,6 +392,24 @@ public class PartialPath extends Path implements Comparable<Path> {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  public TsFileResource createTsFileResource(
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList,
+      TsFileResource originTsFileResource)
+      throws IOException {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+  /**
+   * get the ReadOnlyMemChunk from the given MemTable.
+   *
+   * @return ReadOnlyMemChunk
+   */
+  public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
+      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      throws QueryProcessException, IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
 }

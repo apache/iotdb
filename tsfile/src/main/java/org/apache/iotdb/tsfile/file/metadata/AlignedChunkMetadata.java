@@ -29,14 +29,14 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VectorChunkMetadata implements IChunkMetadata {
+public class AlignedChunkMetadata implements IChunkMetadata {
 
   // ChunkMetadata for time column
   private final IChunkMetadata timeChunkMetadata;
   // ChunkMetadata for all subSensors in the vector
   private final List<IChunkMetadata> valueChunkMetadataList;
 
-  public VectorChunkMetadata(
+  public AlignedChunkMetadata(
       IChunkMetadata timeChunkMetadata, List<IChunkMetadata> valueChunkMetadataList) {
     this.timeChunkMetadata = timeChunkMetadata;
     this.valueChunkMetadataList = valueChunkMetadataList;

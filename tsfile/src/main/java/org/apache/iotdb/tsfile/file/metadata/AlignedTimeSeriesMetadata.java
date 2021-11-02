@@ -25,14 +25,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
+public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
 
   // TimeSeriesMetadata for time column
   private final TimeseriesMetadata timeseriesMetadata;
   // TimeSeriesMetadata for all subSensors in the vector
   private final List<TimeseriesMetadata> valueTimeseriesMetadataList;
 
-  public VectorTimeSeriesMetadata(
+  public AlignedTimeSeriesMetadata(
       TimeseriesMetadata timeseriesMetadata, List<TimeseriesMetadata> valueTimeseriesMetadataList) {
     this.timeseriesMetadata = timeseriesMetadata;
     this.valueTimeseriesMetadataList = valueTimeseriesMetadataList;
@@ -105,7 +105,7 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
         for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
           chunkMetadataList.add(chunkMetadata.get(i));
         }
-        res.add(new VectorChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+        res.add(new AlignedChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
       }
       return res;
     }
