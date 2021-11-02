@@ -49,9 +49,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /** test for MetadataIndexConstructor */
 public class MetadataIndexConstructorTest {
@@ -73,6 +79,10 @@ public class MetadataIndexConstructorTest {
   @After
   public void after() {
     conf.setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
+    File file = new File(FILE_PATH);
+    if (file.exists()) {
+      file.delete();
+    }
   }
 
   /** Example 1: 5 entities with 5 measurements each */
