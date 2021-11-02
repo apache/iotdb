@@ -105,7 +105,7 @@ public class ConstantExpression extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return value.toString();
   }
 }

@@ -137,7 +137,7 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return "-" + expression.toString();
   }
 }

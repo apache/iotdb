@@ -120,7 +120,7 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getExactFullPath();
   }
 }

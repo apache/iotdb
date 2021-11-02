@@ -307,7 +307,7 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return functionName + "(" + getParametersString() + ")";
   }
 
@@ -320,7 +320,7 @@ public class FunctionExpression extends Expression {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2'
    */
-  public String getParametersString() {
+  private String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {

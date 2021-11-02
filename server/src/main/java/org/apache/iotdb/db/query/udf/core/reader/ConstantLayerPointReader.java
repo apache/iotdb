@@ -28,6 +28,7 @@ import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 
+/** LayerPointReader for constants. */
 public class ConstantLayerPointReader implements LayerPointReader {
 
   private final ConstantExpression expression;

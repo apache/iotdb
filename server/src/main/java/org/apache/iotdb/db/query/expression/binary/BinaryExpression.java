@@ -186,7 +186,7 @@ public abstract class BinaryExpression extends Expression {
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override
-  public final String toString() {
+  public final String getExpressionStringInternal() {
     return String.format(
         "%s %s %s", leftExpression.toString(), operator(), rightExpression.toString());
   }

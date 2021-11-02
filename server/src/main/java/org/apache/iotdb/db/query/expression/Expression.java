@@ -39,7 +39,7 @@ import java.util.Set;
 
 public abstract class Expression {
 
-  private String expressionString;
+  private String expressionStringCache;
 
   public boolean isAggregationFunctionExpression() {
     return false;
@@ -74,20 +74,34 @@ public abstract class Expression {
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
 
-  public String getExpressionString() {
-    if (expressionString == null) {
-      expressionString = toString();
+  /**
+   * Sub-classes should override this method to provide valid string representation of this object.
+   * See {@link #getExpressionString()}
+   */
+  protected abstract String getExpressionStringInternal();
+
+  /**
+   * Get the representation of the expression in string. The hash code of the returned value will be
+   * the hash code of this object. See {@link #hashCode()} and {@link #equals(Object)}. In other
+   * words, same expressions should have exactly the same string representation, and different
+   * expressions must have different string representations.
+   */
+  public final String getExpressionString() {
+    if (expressionStringCache == null) {
+      expressionStringCache = getExpressionStringInternal();
     }
-    return expressionString;
+    return expressionStringCache;
   }
 
+  /** Sub-classes must not override this method. */
   @Override
-  public int hashCode() {
+  public final int hashCode() {
     return getExpressionString().hashCode();
   }
 
+  /** Sub-classes must not override this method. */
   @Override
-  public boolean equals(Object o) {
+  public final boolean equals(Object o) {
     if (this == o) {
       return true;
     }
@@ -99,13 +113,9 @@ public abstract class Expression {
     return getExpressionString().equals(((Expression) o).getExpressionString());
   }
 
-  /**
-   * Enforce the subclasses to override {@link Object#toString()}.
-   *
-   * <p>Otherwise, there will be a call loop. The default implementation {@link Object#toString()}
-   * calls {@link #hashCode()}, while {@link #hashCode()} calls {@link #getExpressionString()}, and
-   * {@link #getExpressionString()} calls {@link Object#toString()}.
-   */
+  /** Sub-classes must not override this method. */
   @Override
-  public abstract String toString();
+  public final String toString() {
+    return getExpressionString();
+  }
 }
