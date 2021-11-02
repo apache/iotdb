@@ -27,7 +27,7 @@ public class IoTDBOpenApiConfig {
   private int openApiPort = 18080;
 
   /** enable the OpenApi ssl. */
-  private boolean enable_https = false;
+  private boolean enableHttps = false;
 
   /** openapi ssl key Store Path */
   private String keyStorePath = "";
