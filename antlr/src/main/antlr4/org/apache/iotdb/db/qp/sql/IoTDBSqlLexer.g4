@@ -925,7 +925,7 @@ fragment FIRST_NAME_CHAR
     | '$'
     | '{'
     | '}'
-    |   CN_CHAR
+    | CN_CHAR
     ;
 
 fragment CN_CHAR
