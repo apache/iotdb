@@ -21,16 +21,13 @@ package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.impl.DoNothingCompositeReporter;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.ServiceLoader;
 
 /**
@@ -86,74 +83,56 @@ public class MetricService {
     compositeReporter = new CompositeReporter();
 
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
-    size = 0;
-    for(Reporter reporter: reporters){
-
+    for (Reporter reporter : reporters) {
+      reporter.setMetricManager(metricManager);
+      compositeReporter.addReporter(reporter);
     }
 
-    ServiceLoader<CompositeReporter> reporter = ServiceLoader.load(CompositeReporter.class);
-    size = 0;
-    for (CompositeReporter r : reporter) {
-      size++;
-      if (r.getName()
-          .toLowerCase()
-          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
-        compositeReporter = r;
-        logger.info("detect MetricReporter {}", r.getClass().getName());
-      }
-    }
-
-    // if no more implementations, we use nothingReporter.
-    if (size == 0 || compositeReporter == null) {
-      compositeReporter = new DoNothingCompositeReporter();
-    } else if (size > 1) {
-      logger.warn(
-          "detect more than one MetricReporter, will use {}",
-          compositeReporter.getClass().getName());
-    }
     // do some init work
     metricManager.init();
     compositeReporter.setMetricManager(metricManager);
-    List<ReporterType> reporters = metricConfig.getMetricReporterList();
-    for (ReporterType report : reporters) {
-      if (!compositeReporter.start(report)) {
-        logger.warn("fail to start {}", report);
-      }
-    }
+    compositeReporter.startAll();
   }
 
-  /**
-   * start reporter by name name values in jmx, prometheus, iotdb, internal
-   *
-   * @param reporter
-   */
+  /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
   public static void start(ReporterType reporter) {
-    compositeReporter.start(reporter);
-  }
-
-  /**
-   * stop reporter by name name values in jmx, prometheus, iotdb, internal
-   *
-   * @param reporter
-   */
-  public static void stop(ReporterType reporter) {
-    compositeReporter.stop(reporter);
-  }
-
-  /** Stop metric service. If disable, do nothing. */
-  public static void stop() {
     if (!isEnable()) {
       return;
     }
-    compositeReporter.stop();
+    compositeReporter.start(reporter);
+  }
+
+  /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
+  public static void stop(ReporterType reporter) {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.stop(reporter);
+  }
+
+  /** Start all reporter. if is disabled, do nothing */
+  public static void startAll() {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.startAll();
+  }
+
+  /** Stop metric service. if is disabled, do nothing */
+  public static void stopAll() {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.stopAll();
+  }
+
+  /** Enable some predefined metric, now support jvm */
+  public static void enablePredefinedMetric(PredefinedMetric metric) {
+    metricManager.enablePredefinedMetric(metric);
   }
 
   public static MetricManager getMetricManager() {
     return metricManager;
-  }
-
-  public static void enablePredefinedMetric(PredefinedMetric metric) {
-    metricManager.enablePredefinedMetric(metric);
   }
 
   public static boolean isEnable() {

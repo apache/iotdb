@@ -30,168 +30,78 @@ public interface MetricManager {
   /**
    * Get Counter If exists, then return or create one to return
    *
-   * @param metric
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
-   * @return
    */
   Counter getOrCreateCounter(String metric, String... tags);
 
   /**
    * Get Gauge If exists, then return or create one to return
    *
-   * @param metric
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
-   * @return
    */
   Gauge getOrCreatGauge(String metric, String... tags);
 
   /**
    * Get Rate If exists, then return or create one to return
    *
-   * @param metric
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
-   * @return
    */
   Rate getOrCreatRate(String metric, String... tags);
 
   /**
    * Get Histogram If exists, then return or create one to return
    *
-   * @param metric
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
-   * @return
    */
   Histogram getOrCreateHistogram(String metric, String... tags);
 
   /**
    * Get Timer If exists, then return or create one to return
    *
-   * @param metric
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
-   * @return
    */
   Timer getOrCreateTimer(String metric, String... tags);
 
-  /**
-   * Update Counter
-   *
-   * @param delta
-   * @param metric
-   * @param tags
-   */
+  /** Update Counter */
   void count(int delta, String metric, String... tags);
 
-  /**
-   * Update Counter
-   *
-   * @param delta
-   * @param metric
-   * @param tags
-   */
+  /** Update Counter */
   void count(long delta, String metric, String... tags);
 
-  /**
-   * update Gauge
-   *
-   * @param value
-   * @param metric
-   * @param tags
-   */
+  /** update Gauge */
   void gauge(int value, String metric, String... tags);
 
-  /**
-   * update Gauge
-   *
-   * @param value
-   * @param metric
-   * @param tags
-   */
+  /** update Gauge */
   void gauge(long value, String metric, String... tags);
 
-  /**
-   * update Rate
-   *
-   * @param value
-   * @param metric
-   * @param tags
-   */
+  /** update Rate */
   void rate(int value, String metric, String... tags);
 
-  /**
-   * update Rate
-   *
-   * @param value
-   * @param metric
-   * @param tags
-   */
+  /** update Rate */
   void rate(long value, String metric, String... tags);
 
-  /**
-   * update Histogram
-   *
-   * @param value
-   * @param metric
-   * @param tags
-   */
+  /** update Histogram */
   void histogram(int value, String metric, String... tags);
 
-  /**
-   * update Histogram
-   *
-   * @param value
-   * @param metric
-   * @param tags
-   */
+  /** update Histogram */
   void histogram(long value, String metric, String... tags);
 
-  /**
-   * update Timer
-   *
-   * @param delta
-   * @param timeUnit
-   * @param metric
-   * @param tags
-   */
+  /** update Timer */
   void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
 
-  /**
-   * remove counter
-   *
-   * @param metric
-   * @param tags
-   */
+  /** remove counter */
   void removeCounter(String metric, String... tags);
 
-  /**
-   * remove gauge
-   *
-   * @param metric
-   * @param tags
-   */
+  /** remove gauge */
   void removeGauge(String metric, String... tags);
 
-  /**
-   * remove rate
-   *
-   * @param metric
-   * @param tags
-   */
+  /** remove rate */
   void removeRate(String metric, String... tags);
 
-  /**
-   * remove histogram
-   *
-   * @param metric
-   * @param tags
-   */
+  /** remove histogram */
   void removeHistogram(String metric, String... tags);
 
-  /**
-   * update timer
-   *
-   * @param metric
-   * @param tags
-   */
+  /** update timer */
   void removeTimer(String metric, String... tags);
 
   /**
@@ -236,11 +146,7 @@ public interface MetricManager {
    */
   Map<String[], Timer> getAllTimers();
 
-  /**
-   * whether is enable monitor
-   *
-   * @return
-   */
+  /** whether is enabled monitor */
   boolean isEnable();
 
   /**
@@ -257,17 +163,9 @@ public interface MetricManager {
    */
   boolean init();
 
-  /**
-   * stop everything and clear
-   *
-   * @return
-   */
+  /** clear metrics */
   boolean stop();
 
-  /**
-   * Get name of manager
-   *
-   * @return
-   */
+  /** Get name of manager */
   String getName();
 }

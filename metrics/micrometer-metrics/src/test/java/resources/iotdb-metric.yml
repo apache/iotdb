@@ -20,17 +20,16 @@
 # whether enable the module
 enableMetric: true
 
-# can be multiple reporter, e.g., jmx,prometheus,iotdb
+# can be multiple reporter, e.g., jmx, prometheus
 metricReporterList:
   - jmx
+  - prometheus
 
-  # the following configure should be matched
-  # MicrometerMetricManager MicrometerMetricReporter
-metricManagerType: MicrometerMetricManager
-metricReporterType: MicrometerMetricReporter
+# you can check choose one type of monitor frame, such as dropwizard, micrometer
+monitorType: dropwizard
 
+# you can set the period time of push
 pushPeriodInSecond: 5
-
 
 ########################################################
 #                                                      #

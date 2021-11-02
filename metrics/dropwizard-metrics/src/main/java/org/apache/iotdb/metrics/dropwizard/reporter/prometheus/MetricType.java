@@ -17,12 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.Prometheus;
+package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
 
-final class TextFormat {
+enum MetricType {
+  COUNTER("counter"),
+  GAUGE("gauge"),
+  SUMMARY("summary"),
+  HISTOGRAM("histogram"),
+  UNTYPED("untyped");
 
-  public static final String REQUEST_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8";
-  public static final String CONTENT_TYPE = "text/plain; version=0.0.4";
+  private final String text;
 
-  private TextFormat() {}
+  MetricType(String text) {
+    this.text = text;
+  }
+
+  public String getText() {
+    return text;
+  }
 }

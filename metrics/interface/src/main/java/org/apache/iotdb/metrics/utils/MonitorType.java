@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum MonitorType {
-  DROPWIZARD("dropwizard"),
-  MICROMETER("micrometer");
+  dropwizard("dropwizard"),
+  micrometer("micrometer");
 
   private String name;
 

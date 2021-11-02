@@ -21,7 +21,6 @@ package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
@@ -37,38 +36,32 @@ public class CompositeReporter {
   private static final List<Reporter> reporters = new ArrayList<>();
   private MetricManager metricManager;
 
-  /**
-   * Start all reporter
-   *
-   * @return
-   */
-  public boolean start() {
-    for (ReporterType reporterType : metricConfig.getMetricReporterList()) {
-      // TODO init reporter
+  /** Start all reporter */
+  public boolean startAll() {
+    for (Reporter reporter : reporters) {
+      if (!reporter.start()) {
+        LOGGER.warn("Failed to init {} reporter.", reporter.getReporterType());
+      }
     }
     return true;
   }
 
   /** Start reporter by name name values in jmx, prometheus, iotdb, internal */
-  boolean start(ReporterType reporterType) {
+  public boolean start(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
         return reporter.start();
       }
     }
-    // TODO check whether to add reporter
+    LOGGER.error("Failed to find {} reporter.", reporterType);
     return false;
   }
 
-  /**
-   * Stop all reporter
-   *
-   * @return
-   */
-  boolean stop() {
+  /** Stop all reporter */
+  public boolean stopAll() {
     for (Reporter reporter : reporters) {
       if (!reporter.stop()) {
-        LOGGER.error("Failed to stop reporter: {}.", reporter.getReporterType().getName());
+        LOGGER.error("Failed to stop {} reporter.", reporter.getReporterType());
         return false;
       }
     }
@@ -76,7 +69,7 @@ public class CompositeReporter {
   }
 
   /** Stop reporter by name, values in jmx, prometheus, internal */
-  boolean stop(ReporterType reporterType) {
+  public boolean stop(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
         return reporter.stop();
@@ -87,14 +80,12 @@ public class CompositeReporter {
   }
 
   /** Add reporter */
-  void addReporter(Reporter reporter){
+  public void addReporter(Reporter reporter) {
     reporters.add(reporter);
   }
 
-  /**
-   * set manager to reporter
-   */
-  void setMetricManager(MetricManager metricManager) {
+  /** set manager to reporter */
+  public void setMetricManager(MetricManager metricManager) {
     this.metricManager = metricManager;
   }
 }

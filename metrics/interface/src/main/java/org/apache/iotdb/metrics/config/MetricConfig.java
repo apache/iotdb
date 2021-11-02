@@ -33,10 +33,10 @@ public class MetricConfig {
   private Integer pushPeriodInSecond = 5;
 
   /** The of monitor frame */
-  private MonitorType monitorType = MonitorType.DROPWIZARD;
+  private MonitorType monitorType = MonitorType.dropwizard;
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
-  private List<ReporterType> metricReporterList = Arrays.asList(ReporterType.JMX);
+  private List<ReporterType> metricReporterList = Arrays.asList(ReporterType.jmx);
 
   /** the config of prometheus reporter */
   private PrometheusReporterConfig prometheusReporterConfig;

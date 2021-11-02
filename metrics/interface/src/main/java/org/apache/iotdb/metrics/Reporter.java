@@ -1,4 +1,4 @@
-package org.apache.iotdb.metrics.reporter;
+package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -9,10 +9,9 @@ public interface Reporter {
   /** Stop reporter */
   boolean stop();
 
-  /**
-   * Get type of reporter
-   *
-   * @return
-   */
+  /** Get type of reporter */
   ReporterType getReporterType();
+
+  /** Set metric manager */
+  void setMetricManager(MetricManager metricManager);
 }

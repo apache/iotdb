@@ -23,9 +23,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum ReporterType {
-  JMX("jmx"),
-  PROMETHEUS("prometheus"),
-  INTERNAL("internal");
+  jmx("jmx"),
+  prometheus("prometheus"),
+  internal("internal");
 
   private String name;
 

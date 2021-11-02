@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.CompositeReporter;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -55,14 +54,12 @@ public class MicrometerMetricManager implements MetricManager {
   Map<Meter.Id, IMetric> currentMeters;
   boolean isEnable;
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
-  CompositeReporter compositeReporter;
 
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
   /** init the field with micrometer library. */
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
-    compositeReporter = new MicrometerCompositeReporter();
     currentMeters = new ConcurrentHashMap<>();
     isEnable = metricConfig.getEnableMetric();
   }
@@ -447,22 +444,19 @@ public class MicrometerMetricManager implements MetricManager {
     currentMeters.remove(id);
   }
 
-  /**
-   * stop everything and clear
-   *
-   * @return
-   */
+  /** stop everything and clear */
   @Override
   public boolean stop() {
-    return compositeReporter.stop();
+    // do nothing
+    return true;
   }
 
   private boolean startMeterRegistry(ReporterType reporter) {
     switch (reporter) {
-      case JMX:
+      case jmx:
         Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
         break;
-      case PROMETHEUS:
+      case prometheus:
         Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
         break;
       default:
@@ -482,13 +476,13 @@ public class MicrometerMetricManager implements MetricManager {
   private Set<MeterRegistry> getMeterRegistries(String reporterName) {
     Set<MeterRegistry> meterRegistrySet = new HashSet<>();
     switch (ReporterType.get(reporterName)) {
-      case JMX:
+      case jmx:
         meterRegistrySet =
             Metrics.globalRegistry.getRegistries().stream()
                 .filter(m -> m instanceof JmxMeterRegistry)
                 .collect(Collectors.toSet());
         break;
-      case PROMETHEUS:
+      case prometheus:
         meterRegistrySet =
             Metrics.globalRegistry.getRegistries().stream()
                 .filter(m -> m instanceof PrometheusMeterRegistry)

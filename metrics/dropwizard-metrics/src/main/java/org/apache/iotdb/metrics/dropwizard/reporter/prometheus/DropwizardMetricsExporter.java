@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.Prometheus;
+package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
 
 import com.codahale.metrics.*;
 import org.slf4j.Logger;
@@ -38,13 +38,7 @@ class DropwizardMetricsExporter {
     this.writer = writer;
   }
 
-  /**
-   * Export Gauge as Prometheus Guage
-   *
-   * @param name
-   * @param gauge
-   * @throws IOException
-   */
+  /** Export Gauge as Prometheus Guage */
   public void writeGauge(String name, Gauge<?> gauge) throws IOException {
     final String sanitizedName = sanitizeMetricName(name);
     writer.writeHelp(sanitizedName, getHelpMessage(name, gauge));

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.Prometheus;
+package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
 
 import com.codahale.metrics.*;
 
