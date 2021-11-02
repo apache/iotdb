@@ -16,32 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.openApi;
+package org.apache.iotdb.db.conf.rest;
 
-public class IoTDBOpenApiConfig {
-  static final String CONFIG_NAME = "iotdb-openapi.properties";
-  /** if the startOpenApi is true, we will start OpenApi */
-  private boolean startOpenApi = true;
+public class IoTDBRestServiceConfig {
+  static final String CONFIG_NAME = "iotdb-rest.properties";
+  /** if the enableRestService is true, we will start REST Service */
+  private boolean enableRestService = true;
 
-  /** set the OpenApi reset port. */
-  private int openApiPort = 18080;
+  /** set the REST Service port. */
+  private int restServicePort = 18080;
 
-  /** enable the OpenApi ssl. */
+  /** enable the REST Service ssl. */
   private boolean enableHttps = false;
 
-  /** openapi ssl key Store Path */
+  /** REST Service ssl key Store Path */
   private String keyStorePath = "";
 
-  /** openapi ssl trust Store Path */
+  /** REST Service ssl trust Store Path */
   private String trustStorePath = "";
 
-  /** openapi ssl key Store password */
+  /** REST Service ssl key Store password */
   private String keyStorePwd = "";
 
-  /** openapi ssl trust Store password */
+  /** REST Service ssl trust Store password */
   private String trustStorePwd = "";
 
-  /** OpenApi ssl timeout */
+  /** REST Service ssl timeout */
   private int idleTimeout = 50000;
 
   public String getTrustStorePwd() {
@@ -58,14 +58,6 @@ public class IoTDBOpenApiConfig {
 
   public void setIdleTimeout(int idleTimeout) {
     this.idleTimeout = idleTimeout;
-  }
-
-  public boolean isEnable_https() {
-    return enable_https;
-  }
-
-  public void setEnable_https(boolean enable_https) {
-    this.enable_https = enable_https;
   }
 
   public String getKeyStorePath() {
@@ -92,19 +84,27 @@ public class IoTDBOpenApiConfig {
     this.keyStorePwd = keyStorePwd;
   }
 
-  public boolean isStartOpenApi() {
-    return startOpenApi;
+  public int getRestServicePort() {
+    return restServicePort;
   }
 
-  public void setStartOpenApi(boolean startOpenApi) {
-    this.startOpenApi = startOpenApi;
+  public void setRestServicePort(int restServicePort) {
+    this.restServicePort = restServicePort;
   }
 
-  public int getOpenApiPort() {
-    return OpenApiPort;
+  public boolean isEnableHttps() {
+    return enableHttps;
   }
 
-  public void setOpenApiPort(int openApiPort) {
-    OpenApiPort = openApiPort;
+  public void setEnableHttps(boolean enableHttps) {
+    this.enableHttps = enableHttps;
+  }
+
+  public boolean isEnableRestService() {
+    return enableRestService;
+  }
+
+  public void setEnableRestService(boolean enableRestService) {
+    this.enableRestService = enableRestService;
   }
 }

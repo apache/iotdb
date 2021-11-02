@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-
 package org.apache.iotdb.db.rest.impl;
 
 import org.apache.iotdb.db.rest.PingApiService;

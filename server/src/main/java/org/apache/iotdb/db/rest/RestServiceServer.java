@@ -16,7 +16,7 @@
  */
 package org.apache.iotdb.db.rest;
 
-import org.apache.iotdb.db.conf.openApi.IoTDBopenApiDescriptor;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.rest.filter.ApiOriginFilter;
 import org.apache.iotdb.db.service.IService;
@@ -40,11 +40,11 @@ import javax.servlet.DispatcherType;
 
 import java.util.EnumSet;
 
-public class OpenApiServer implements IService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpenApiServer.class);
+public class RestServiceServer implements IService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RestServiceServer.class);
 
-  public static OpenApiServer getInstance() {
-    return OpenApiServerHolder.INSTANCE;
+  public static RestServiceServer getInstance() {
+    return RestServerHolder.INSTANCE;
   }
 
   Server server;
@@ -105,50 +105,48 @@ public class OpenApiServer implements IService {
   private void serverStart() {
     try {
       server.start();
-      server.join();
     } catch (Exception e) {
-      LOGGER.warn("OpenApiServer start failed: {}", e.getMessage());
-    } finally {
+      LOGGER.warn("RestServiceServer start failed: {}", e.getMessage());
       server.destroy();
     }
   }
 
-  private int getOpenApiPort() {
-    return IoTDBopenApiDescriptor.getInstance().getConfig().getOpenApiPort();
+  private int getRestServicePort() {
+    return IoTDBRestServiceDescriptor.getInstance().getConfig().getRestServicePort();
   }
 
   private String getKeyStorePath() {
-    return IoTDBopenApiDescriptor.getInstance().getConfig().getKeyStorePath();
+    return IoTDBRestServiceDescriptor.getInstance().getConfig().getKeyStorePath();
   }
 
   private String getTrustStorePath() {
-    return IoTDBopenApiDescriptor.getInstance().getConfig().getTrustStorePath();
+    return IoTDBRestServiceDescriptor.getInstance().getConfig().getTrustStorePath();
   }
 
   private String getKeyStorePwd() {
-    return IoTDBopenApiDescriptor.getInstance().getConfig().getKeyStorePwd();
+    return IoTDBRestServiceDescriptor.getInstance().getConfig().getKeyStorePwd();
   }
 
   private String getTrustStorePwd() {
-    return IoTDBopenApiDescriptor.getInstance().getConfig().getTrustStorePwd();
+    return IoTDBRestServiceDescriptor.getInstance().getConfig().getTrustStorePwd();
   }
 
   public int getIdleTimeout() {
-    return IoTDBopenApiDescriptor.getInstance().getConfig().getIdleTimeout();
+    return IoTDBRestServiceDescriptor.getInstance().getConfig().getIdleTimeout();
   }
 
   @Override
   public void start() throws StartupException {
-    if (IoTDBopenApiDescriptor.getInstance().getConfig().isEnable_https()) {
+    if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableHttps()) {
       startSSL(
-          getOpenApiPort(),
+          getRestServicePort(),
           getKeyStorePath(),
           getTrustStorePath(),
           getKeyStorePwd(),
           getTrustStorePwd(),
           getIdleTimeout());
     } else {
-      start(getOpenApiPort());
+      start(getRestServicePort());
     }
   }
 
@@ -157,7 +155,7 @@ public class OpenApiServer implements IService {
     try {
       server.stop();
     } catch (Exception e) {
-      LOGGER.warn("OpenApiServer stop failed: {}", e.getMessage());
+      LOGGER.warn("RestServiceServer stop failed: {}", e.getMessage());
     } finally {
       server.destroy();
     }
@@ -168,10 +166,10 @@ public class OpenApiServer implements IService {
     return ServiceType.OPEN_API_SERVICE;
   }
 
-  private static class OpenApiServerHolder {
+  private static class RestServerHolder {
 
-    private static final OpenApiServer INSTANCE = new OpenApiServer();
+    private static final RestServiceServer INSTANCE = new RestServiceServer();
 
-    private OpenApiServerHolder() {}
+    private RestServerHolder() {}
   }
 }

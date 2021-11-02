@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.openApi;
+package org.apache.iotdb.db.conf.rest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,34 +24,36 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Properties;
 
-public class IoTDBopenApiCheck {
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBopenApiCheck.class);
-  private Properties properties = new Properties();
-  private static final IoTDBopenApiConfig config = IoTDBopenApiDescriptor.getInstance().getConfig();
+public class IoTDBRestServiceCheck {
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBRestServiceCheck.class);
+  private final Properties properties = new Properties();
+  private static final IoTDBRestServiceConfig config =
+      IoTDBRestServiceDescriptor.getInstance().getConfig();
 
-  private static String ENABLE_OPENAPI_VALUE = String.valueOf(config.isStartOpenApi());
+  private static final String ENABLE_REST_SERVICE_VALUE =
+      String.valueOf(config.isEnableRestService());
 
-  private static String OPENAPI_PORT_VALUE = String.valueOf(config.getOpenApiPort());
+  private static final String REST_SERVICE_VALUE = String.valueOf(config.getRestServicePort());
 
-  public static IoTDBopenApiCheck getInstance() {
-    return IoTDBopenApiConfigCheckHolder.INSTANCE;
+  public static IoTDBRestServiceCheck getInstance() {
+    return IoTDBRestServiceConfigCheckHolder.INSTANCE;
   }
 
-  private static class IoTDBopenApiConfigCheckHolder {
+  private static class IoTDBRestServiceConfigCheckHolder {
 
-    private static final IoTDBopenApiCheck INSTANCE = new IoTDBopenApiCheck();
+    private static final IoTDBRestServiceCheck INSTANCE = new IoTDBRestServiceCheck();
   }
 
   public void checkConfig() throws IOException {
     try {
-      Integer.parseInt(OPENAPI_PORT_VALUE);
+      Integer.parseInt(REST_SERVICE_VALUE);
     } catch (NumberFormatException e) {
-      printErrorLogAndExit(OPENAPI_PORT_VALUE);
+      printErrorLogAndExit(REST_SERVICE_VALUE);
     }
     try {
-      Boolean.parseBoolean(ENABLE_OPENAPI_VALUE);
+      Boolean.parseBoolean(ENABLE_REST_SERVICE_VALUE);
     } catch (NumberFormatException e) {
-      printErrorLogAndExit(ENABLE_OPENAPI_VALUE);
+      printErrorLogAndExit(ENABLE_REST_SERVICE_VALUE);
     }
   }
 

@@ -29,20 +29,20 @@ RESTful 服务使用了基础（basic）鉴权，每次 url 请求都需要在 h
 
 
 ### Configuration
-配置位于“iotdb-openapi.properties”中，将“enable_openApi”设置为“true”以启用该模块，而将“false”设置为禁用该模块。
+配置位于“iotdb-rest.properties”中，将“enable_rest_service”设置为“true”以启用该模块，而将“false”设置为禁用该模块。
 默认情况下，该值为“false”。
 ```
-enable_openApi=true
+enable_rest_service=true
 ```
 
-仅在“enable_openApi=true”时生效。将“openApi_port”设置为数字（1025~65535），以自定义rest服务套接字端口。
+仅在“enable_rest_service=true”时生效。将“rest_service_port”设置为数字（1025~65535），以自定义REST服务套接字端口。
 默认情况下，值为“18080”。
 
 ```
-openApi_port=18080
+rest_service_port=18080
 ```
 
-openApi 开启ssl配置，将“enable_https”设置为“true”以启用该模块，而将“false”设置为禁用该模块。
+REST Service 开启ssl配置，将“enable_https”设置为“true”以启用该模块，而将“false”设置为禁用该模块。
 默认情况下，该值为“false”。
 
 ```
@@ -52,22 +52,22 @@ enable_https=false
 keyStore所在路径
 
 ```
-key_store_path=/xxx/xxx.keystore
+key_store_path=
 ```
-keystore密码
+keyStore密码
 
 ```
-key_store_pwd=xxxx
+key_store_pwd=
 ```
 trustStore所在路径（非必填）
 
 ```
-trust_store_path=xxxx
+trust_store_path=
 ```
 
 trustStore密码
 ```
-trust_store_pwd=xxxx
+trust_store_pwd=
 ```
 ssl 超时时间单位为秒
 
@@ -78,6 +78,7 @@ idle_timeout=5000
 ## 检查iotdb服务是否在运行
 请求方式：get
 请求url：http://ip:port/ping
+示例中使用的用户名为：root，密码为：root
 ```
 $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 ```

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.openApi;
+package org.apache.iotdb.db.conf.rest;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -32,41 +32,43 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Properties;
 
-public class IoTDBopenApiDescriptor {
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBopenApiDescriptor.class);
+public class IoTDBRestServiceDescriptor {
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBRestServiceDescriptor.class);
 
-  private final IoTDBopenApiConfig conf = new IoTDBopenApiConfig();
+  private final IoTDBRestServiceConfig conf = new IoTDBRestServiceConfig();
 
-  protected IoTDBopenApiDescriptor() {
+  protected IoTDBRestServiceDescriptor() {
     loadProps();
   }
 
-  public static IoTDBopenApiDescriptor getInstance() {
-    return IoTDBOpenApiDescriptorHolder.INSTANCE;
+  public static IoTDBRestServiceDescriptor getInstance() {
+    return IoTDBRestServiceDescriptorHolder.INSTANCE;
   }
 
-  /** load an property file and set TsfileDBConfig variables. */
+  /** load an property file. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl();
     if (url == null) {
-      logger.warn("Couldn't load the OpenAPI configuration from any of the known sources.");
+      logger.warn("Couldn't load the REST Service configuration from any of the known sources.");
       return;
     }
     try (InputStream inputStream = url.openStream()) {
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      conf.setStartOpenApi(
+      conf.setEnableRestService(
           Boolean.parseBoolean(
-              properties.getProperty("enable_openApi", Boolean.toString(conf.isStartOpenApi()))));
-      conf.setOpenApiPort(
+              properties.getProperty(
+                  "enable_rest_service", Boolean.toString(conf.isEnableRestService()))));
+      conf.setRestServicePort(
           Integer.parseInt(
-              properties.getProperty("openApi_port", Integer.toString(conf.getOpenApiPort()))));
+              properties.getProperty(
+                  "rest_service_port", Integer.toString(conf.getRestServicePort()))));
 
-      conf.setEnable_https(
+      conf.setEnableHttps(
           Boolean.parseBoolean(
-              properties.getProperty("enable_https", Boolean.toString(conf.isEnable_https()))));
+              properties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
       conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
       conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
       conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getTrustStorePath()));
@@ -101,19 +103,19 @@ public class IoTDBopenApiDescriptor {
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + "openApi"
+                + "rest"
                 + File.separatorChar
-                + IoTDBopenApiConfig.CONFIG_NAME;
+                + IoTDBRestServiceConfig.CONFIG_NAME;
       } else {
         // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + IoTDBopenApiConfig.CONFIG_NAME);
+        URL uri = IoTDBConfig.class.getResource("/" + IoTDBRestServiceConfig.CONFIG_NAME);
         if (uri != null) {
           return uri;
         }
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
-            IoTDBopenApiConfig.CONFIG_NAME);
+            IoTDBRestServiceConfig.CONFIG_NAME);
         // update all data seriesPath
         return null;
       }
@@ -121,7 +123,7 @@ public class IoTDBopenApiDescriptor {
     // If a config location was provided, but it doesn't end with a properties file,
     // append the default location.
     else if (!urlString.endsWith(".properties")) {
-      urlString += (File.separatorChar + IoTDBopenApiConfig.CONFIG_NAME);
+      urlString += (File.separatorChar + IoTDBRestServiceConfig.CONFIG_NAME);
     }
 
     // If the url doesn't start with "file:" or "classpath:", it's provided as a no path.
@@ -136,14 +138,14 @@ public class IoTDBopenApiDescriptor {
     }
   }
 
-  public IoTDBopenApiConfig getConfig() {
+  public IoTDBRestServiceConfig getConfig() {
     return conf;
   }
 
-  private static class IoTDBOpenApiDescriptorHolder {
+  private static class IoTDBRestServiceDescriptorHolder {
 
-    private static final IoTDBopenApiDescriptor INSTANCE = new IoTDBopenApiDescriptor();
+    private static final IoTDBRestServiceDescriptor INSTANCE = new IoTDBRestServiceDescriptor();
 
-    private IoTDBOpenApiDescriptorHolder() {}
+    private IoTDBRestServiceDescriptorHolder() {}
   }
 }
