@@ -24,7 +24,7 @@ public class IoTDBopenApiConfig {
   private boolean startOpenApi = true;
 
   /** set the OpenApi reset port. */
-  private int OpenApiPort = 18080;
+  private int openApiPort = 18080;
 
   /** enable the OpenApi ssl. */
   private boolean enable_https = false;
