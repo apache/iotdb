@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadataV2;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -370,6 +371,50 @@ public class TsFileSequenceReader implements AutoCloseable {
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
   }
 
+  public TimeseriesMetadataV2 readTimeseriesMetadataV2(Path path, boolean ignoreNotExists)
+      throws IOException {
+    readFileMetadata();
+    MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
+    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
+    if (metadataIndexPair == null) {
+      if (ignoreNotExists) {
+        return null;
+      }
+      throw new IOException("Device {" + path.getDevice() + "} is not in tsFileMetaData");
+    }
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
+    if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+      try {
+        metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      } catch (BufferOverflowException e) {
+        logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
+        throw e;
+      }
+      metadataIndexPair =
+          getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
+    }
+    if (metadataIndexPair == null) {
+      return null;
+    }
+    List<TimeseriesMetadataV2> timeseriesMetadataList = new ArrayList<>();
+    buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    while (buffer.hasRemaining()) {
+      try {
+        timeseriesMetadataList.add(TimeseriesMetadataV2.deserializeFrom(buffer, true));
+      } catch (BufferOverflowException e) {
+        logger.error(
+            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+        throw e;
+      }
+    }
+    // return null if path does not exist in the TsFile
+    int searchResult =
+        binarySearchInTimeseriesMetadataV2List(timeseriesMetadataList, path.getMeasurement());
+    return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
+  }
+
   /**
    * Find the leaf node that contains this vector, return all the needed subSensor and time column
    *
@@ -517,6 +562,69 @@ public class TsFileSequenceReader implements AutoCloseable {
     return resultTimeseriesMetadataList;
   }
 
+  public List<TimeseriesMetadataV2> readTimeseriesMetadataV2(
+      String device, Set<String> measurements) throws IOException {
+    readFileMetadata();
+    MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
+    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, false);
+    if (metadataIndexPair == null) {
+      return Collections.emptyList();
+    }
+    List<TimeseriesMetadataV2> resultTimeseriesMetadataList = new ArrayList<>();
+    List<String> measurementList = new ArrayList<>(measurements);
+    Set<String> measurementsHadFound = new HashSet<>();
+    for (int i = 0; i < measurementList.size(); i++) {
+      if (measurementsHadFound.contains(measurementList.get(i))) {
+        continue;
+      }
+      ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+      Pair<MetadataIndexEntry, Long> measurementMetadataIndexPair = metadataIndexPair;
+      List<TimeseriesMetadataV2> timeseriesMetadataList = new ArrayList<>();
+      MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
+      if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        try {
+          metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+        } catch (BufferOverflowException e) {
+          logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
+          throw e;
+        }
+        measurementMetadataIndexPair =
+            getMetadataAndEndOffset(metadataIndexNode, measurementList.get(i), false, false);
+      }
+      if (measurementMetadataIndexPair == null) {
+        return Collections.emptyList();
+      }
+      buffer =
+          readData(
+              measurementMetadataIndexPair.left.getOffset(), measurementMetadataIndexPair.right);
+      while (buffer.hasRemaining()) {
+        try {
+          timeseriesMetadataList.add(TimeseriesMetadataV2.deserializeFrom(buffer, true));
+        } catch (BufferOverflowException e) {
+          logger.error(
+              "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+          throw e;
+        }
+      }
+      for (int j = i; j < measurementList.size(); j++) {
+        String current = measurementList.get(j);
+        if (!measurementsHadFound.contains(current)) {
+          int searchResult =
+              binarySearchInTimeseriesMetadataV2List(timeseriesMetadataList, current);
+          if (searchResult >= 0) {
+            resultTimeseriesMetadataList.add(timeseriesMetadataList.get(searchResult));
+            measurementsHadFound.add(current);
+          }
+        }
+        if (measurementsHadFound.size() == measurements.size()) {
+          return resultTimeseriesMetadataList;
+        }
+      }
+    }
+    return resultTimeseriesMetadataList;
+  }
+
   protected int binarySearchInTimeseriesMetadataList(
       List<TimeseriesMetadata> timeseriesMetadataList, String key) {
     int low = 0;
@@ -525,6 +633,27 @@ public class TsFileSequenceReader implements AutoCloseable {
     while (low <= high) {
       int mid = (low + high) >>> 1;
       TimeseriesMetadata midVal = timeseriesMetadataList.get(mid);
+      int cmp = midVal.getMeasurementId().compareTo(key);
+
+      if (cmp < 0) {
+        low = mid + 1;
+      } else if (cmp > 0) {
+        high = mid - 1;
+      } else {
+        return mid; // key found
+      }
+    }
+    return -1; // key not found
+  }
+
+  protected int binarySearchInTimeseriesMetadataV2List(
+      List<TimeseriesMetadataV2> timeseriesMetadataList, String key) {
+    int low = 0;
+    int high = timeseriesMetadataList.size() - 1;
+
+    while (low <= high) {
+      int mid = (low + high) >>> 1;
+      TimeseriesMetadataV2 midVal = timeseriesMetadataList.get(mid);
       int cmp = midVal.getMeasurementId().compareTo(key);
 
       if (cmp < 0) {
@@ -1212,6 +1341,17 @@ public class TsFileSequenceReader implements AutoCloseable {
     return chunkMetadataList;
   }
 
+  public List<ChunkMetadata> getChunkMetadataListV2(Path path, boolean ignoreNotExists)
+      throws IOException {
+    TimeseriesMetadataV2 timeseriesMetaData = readTimeseriesMetadataV2(path, ignoreNotExists);
+    if (timeseriesMetaData == null) {
+      return Collections.emptyList();
+    }
+    List<ChunkMetadata> chunkMetadataList = readChunkMetaDataListV2(timeseriesMetaData);
+    chunkMetadataList.sort(Comparator.comparingLong(IChunkMetadata::getStartTime));
+    return chunkMetadataList;
+  }
+
   public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
     return getChunkMetadataList(path, false);
   }
@@ -1222,6 +1362,13 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return List of ChunkMetaData
    */
   public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
+      throws IOException {
+    return timeseriesMetaData.getChunkMetadataList().stream()
+        .map(chunkMetadata -> (ChunkMetadata) chunkMetadata)
+        .collect(Collectors.toList());
+  }
+
+  public List<ChunkMetadata> readChunkMetaDataListV2(TimeseriesMetadataV2 timeseriesMetaData)
       throws IOException {
     return timeseriesMetaData.getChunkMetadataList().stream()
         .map(chunkMetadata -> (ChunkMetadata) chunkMetadata)

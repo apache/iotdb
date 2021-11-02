@@ -350,9 +350,15 @@ public class TsFileWriter implements AutoCloseable {
    */
   @Override
   public void close() throws IOException {
+    //    LOG.info("start close file");
+    //    flushAllChunkGroups();
+    //    fileWriter.endFile();
+    //  }
+    //
+    //  public void closeV2() throws IOException {
     LOG.info("start close file");
     flushAllChunkGroups();
-    fileWriter.endFile();
+    fileWriter.endFileV2();
   }
 
   /**

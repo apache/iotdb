@@ -46,7 +46,8 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename =
+        "/Users/samperson1997/git/iotdb/data/data/sequence/root.sg/0/1832/test5.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -65,6 +66,7 @@ public class TsFileSequenceRead {
       System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());
       byte marker;
+      int pageNum = 0;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
@@ -88,6 +90,7 @@ public class TsFileSequenceRead {
             while (dataSize > 0) {
               valueDecoder.reset();
               System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
+              pageNum++;
               PageHeader pageHeader =
                   reader.readPageHeader(
                       header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
@@ -105,11 +108,11 @@ public class TsFileSequenceRead {
                 System.out.println("\t\tpoints in the page: " + batchData.length());
               }
               while (batchData.hasCurrent()) {
-                System.out.println(
-                    "\t\t\ttime, value: "
-                        + batchData.currentTime()
-                        + ", "
-                        + batchData.currentValue());
+                //                System.out.println(
+                //                    "\t\t\ttime, value: "
+                //                        + batchData.currentTime()
+                //                        + ", "
+                //                        + batchData.currentValue());
                 batchData.next();
               }
               dataSize -= pageHeader.getSerializedPageSize();
@@ -129,6 +132,7 @@ public class TsFileSequenceRead {
             MetaMarker.handleUnexpectedMarker(marker);
         }
       }
+      System.out.println("[Page Num]: " + pageNum);
       System.out.println("[Metadata]");
       for (String device : reader.getAllDevices()) {
         Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
