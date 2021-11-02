@@ -591,7 +591,7 @@ public class StorageGroupProcessor {
           .getCompactionRecoverTask(
               tsFileManager.getStorageGroupName(),
               tsFileManager.getVirtualStorageGroup(),
-              InnerSpaceCompactionUtils.getTimePartitionFromLog(logFile),
+              -1,
               logFile,
               logFile.getParent(),
               isSequence)
