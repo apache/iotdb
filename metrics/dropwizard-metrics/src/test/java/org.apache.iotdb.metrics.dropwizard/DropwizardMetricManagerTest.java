@@ -254,11 +254,6 @@ public class DropwizardMetricManagerTest {
     metricManager.enablePredefinedMetric(PredefinedMetric.JVM);
   }
 
-  @Test
-  public void getName() {
-    assertEquals("DropwizardMetricManager", metricManager.getName());
-  }
-
   @AfterClass
   public static void stop() {
     metricManager.stop();
