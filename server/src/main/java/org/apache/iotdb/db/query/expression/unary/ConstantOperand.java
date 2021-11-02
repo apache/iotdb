@@ -38,13 +38,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Constant expression */
-public class ConstantExpression extends Expression {
+/** Constant operand */
+public class ConstantOperand extends Expression {
 
   private final Object value;
   private final TSDataType dataType;
 
-  public ConstantExpression(TSDataType dataType, String str) throws QueryProcessException {
+  public ConstantOperand(TSDataType dataType, String str) throws QueryProcessException {
     this.dataType = dataType;
     this.value = CommonUtils.parseValue(dataType, str);
   }
@@ -58,7 +58,7 @@ public class ConstantExpression extends Expression {
   }
 
   @Override
-  public boolean isPureConstantExpression() {
+  public boolean isConstantOperand() {
     return true;
   }
 

@@ -110,7 +110,7 @@ import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.unary.ConstantExpression;
+import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
@@ -2013,16 +2013,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       try {
         ConstantContext constantContext = context.constant();
         if (constantContext.BOOLEAN_LITERAL() != null) {
-          return new ConstantExpression(
+          return new ConstantOperand(
               TSDataType.BOOLEAN, constantContext.BOOLEAN_LITERAL().getText());
         } else if (constantContext.STRING_LITERAL() != null) {
           String text = constantContext.STRING_LITERAL().getText();
-          return new ConstantExpression(TSDataType.TEXT, text.substring(1, text.length() - 1));
+          return new ConstantOperand(TSDataType.TEXT, text.substring(1, text.length() - 1));
         } else if (constantContext.INTEGER_LITERAL() != null) {
-          return new ConstantExpression(
-              TSDataType.INT64, constantContext.INTEGER_LITERAL().getText());
+          return new ConstantOperand(TSDataType.INT64, constantContext.INTEGER_LITERAL().getText());
         } else if (constantContext.realLiteral() != null) {
-          return new ConstantExpression(TSDataType.DOUBLE, constantContext.realLiteral().getText());
+          return new ConstantOperand(TSDataType.DOUBLE, constantContext.realLiteral().getText());
         } else {
           throw new SQLParserException(
               "Unsupported constant expression: " + constantContext.getText());
@@ -2043,7 +2042,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     boolean hasNonPureConstantSubExpression = false;
     for (IoTDBSqlParser.ExpressionContext expression : functionClause.expression()) {
       Expression subexpression = parseExpression(expression);
-      if (!subexpression.isPureConstantExpression()) {
+      if (!subexpression.isConstantOperand()) {
         hasNonPureConstantSubExpression = true;
       }
       functionExpression.addExpression(subexpression);
@@ -2296,7 +2295,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {
     Expression expression = parseExpression(resultColumnContext.expression());
-    if (expression.isPureConstantExpression()) {
+    if (expression.isConstantOperand()) {
       throw new SQLParserException("Pure constant expression is not allowed: " + expression);
     }
     return new ResultColumn(

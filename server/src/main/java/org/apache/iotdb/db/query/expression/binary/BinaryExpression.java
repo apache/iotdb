@@ -54,8 +54,8 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public boolean isPureConstantExpression() {
-    return leftExpression.isPureConstantExpression() && rightExpression.isPureConstantExpression();
+  public boolean isConstantOperand() {
+    return leftExpression.isConstantOperand() && rightExpression.isConstantOperand();
   }
 
   @Override
@@ -172,7 +172,7 @@ public abstract class BinaryExpression extends Expression {
 
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1 || isPureConstantExpression()
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(

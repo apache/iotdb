@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.reader;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.expression.unary.ConstantExpression;
+import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -31,9 +31,9 @@ import java.io.IOException;
 /** LayerPointReader for constants. */
 public class ConstantLayerPointReader implements LayerPointReader {
 
-  private final ConstantExpression expression;
+  private final ConstantOperand expression;
 
-  public ConstantLayerPointReader(ConstantExpression expression) {
+  public ConstantLayerPointReader(ConstantOperand expression) {
     this.expression = Validate.notNull(expression);
   }
 

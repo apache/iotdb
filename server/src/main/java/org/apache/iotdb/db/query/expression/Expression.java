@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
-import org.apache.iotdb.db.query.expression.unary.ConstantExpression;
+import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -45,8 +45,8 @@ public abstract class Expression {
     return false;
   }
 
-  /** If this expression and all of its sub-expressions are {@link ConstantExpression}. */
-  public abstract boolean isPureConstantExpression();
+  /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
+  public abstract boolean isConstantOperand();
 
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;

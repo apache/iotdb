@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
 
-  boolean isPureConstantExpression = true;
+  boolean isConstantOperand = true;
 
   /**
    * true: aggregation function<br>
@@ -94,7 +94,7 @@ public class FunctionExpression extends Expression {
     this.expressions = expressions;
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
-    isPureConstantExpression = expressions.stream().anyMatch(Expression::isPureConstantExpression);
+    isConstantOperand = expressions.stream().anyMatch(Expression::isConstantOperand);
   }
 
   @Override
@@ -103,8 +103,8 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public boolean isPureConstantExpression() {
-    return isPureConstantExpression;
+  public boolean isConstantOperand() {
+    return isConstantOperand;
   }
 
   @Override
@@ -123,7 +123,7 @@ public class FunctionExpression extends Expression {
   }
 
   public void addExpression(Expression expression) {
-    isPureConstantExpression = isPureConstantExpression && expression.isPureConstantExpression();
+    isConstantOperand = isConstantOperand && expression.isConstantOperand();
     expressions.add(expression);
   }
 
@@ -227,7 +227,7 @@ public class FunctionExpression extends Expression {
 
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1 || isPureConstantExpression()
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(

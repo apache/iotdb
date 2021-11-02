@@ -55,8 +55,8 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public boolean isPureConstantExpression() {
-    return expression.isPureConstantExpression();
+  public boolean isConstantOperand() {
+    return expression.isConstantOperand();
   }
 
   @Override
@@ -126,7 +126,7 @@ public class NegationExpression extends Expression {
 
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1 || isPureConstantExpression()
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(

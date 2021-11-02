@@ -56,7 +56,7 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  public boolean isPureConstantExpression() {
+  public boolean isConstantOperand() {
     return false;
   }
 
@@ -109,7 +109,7 @@ public class TimeSeriesOperand extends Expression {
 
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1 || isPureConstantExpression()
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, parentLayerPointReader)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
