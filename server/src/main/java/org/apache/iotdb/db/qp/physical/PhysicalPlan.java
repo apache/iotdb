@@ -484,7 +484,8 @@ public abstract class PhysicalPlan {
     CREATE_FUNCTION,
     DROP_FUNCTION,
     SELECT_INTO,
-    SET_SYSTEM_MODE
+    SET_SYSTEM_MODE,
+    UNSET_SCHEMA_TEMPLATE
   }
 
   public long getIndex() {

@@ -186,7 +186,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   private PartialPath getStorageGroupMonitorSeries(String storageGroupName) {
     String[] monitorSeries = Arrays.copyOf(MonitorConstants.STAT_STORAGE_GROUP_ARRAY, 4);
-    monitorSeries[2] = "\"" + storageGroupName + "\"";
+    monitorSeries[2] = "\"" + storageGroupName.replace('.', '#') + "\"";
     monitorSeries[3] = StatMeasurementConstants.TOTAL_POINTS.getMeasurement();
     return new PartialPath(monitorSeries);
   }

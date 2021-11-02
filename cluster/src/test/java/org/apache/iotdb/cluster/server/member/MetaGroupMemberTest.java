@@ -76,6 +76,7 @@ import org.apache.iotdb.cluster.server.service.DataGroupEngine;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -91,8 +92,11 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -779,14 +783,26 @@ public class MetaGroupMemberTest extends BaseMember {
       Assert.fail(e.getMessage());
     }
 
-    // 4. prepare the partition table
+    // 4. prepare the template info
+    Map<String, Template> templateMap = new HashMap<>();
+
+    CreateTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
+    for (int i = 0; i < 10; i++) {
+      String templateName = "template_" + i;
+      createTemplatePlan.setName(templateName);
+      Template template = new Template(createTemplatePlan);
+      templateMap.put(templateName, template);
+    }
+
+    // 5. prepare the partition table
     SlotPartitionTable partitionTable = (SlotPartitionTable) TestUtils.getPartitionTable(3);
     partitionTable.setLastMetaLogIndex(0);
 
     ByteBuffer beforePartitionTableBuffer = partitionTable.serialize();
-    // 5. serialize
+    // 6. serialize
     MetaSimpleSnapshot snapshot =
-        new MetaSimpleSnapshot(storageGroupTTL, userMap, roleMap, beforePartitionTableBuffer);
+        new MetaSimpleSnapshot(
+            storageGroupTTL, userMap, roleMap, templateMap, beforePartitionTableBuffer);
     request.setSnapshotBytes(snapshot.serialize());
     AtomicReference<Void> reference = new AtomicReference<>();
     new MetaAsyncService(testMetaMember)
@@ -809,6 +825,9 @@ public class MetaGroupMemberTest extends BaseMember {
 
       Map<String, Role> localRoleMap = authorizer.getAllRoles();
       assertEquals(roleMap, localRoleMap);
+
+      Map<String, Template> localTemplateMap = TemplateManager.getInstance().getTemplateMap();
+      assertEquals(templateMap, localTemplateMap);
 
       PartitionTable localPartitionTable = this.testMetaMember.getPartitionTable();
       assertEquals(localPartitionTable, partitionTable);
