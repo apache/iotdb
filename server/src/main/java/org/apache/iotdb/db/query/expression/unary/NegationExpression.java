@@ -55,7 +55,7 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public boolean isConstantOperand() {
+  public boolean isConstantOperandInternal() {
     return expression.isConstantOperand();
   }
 

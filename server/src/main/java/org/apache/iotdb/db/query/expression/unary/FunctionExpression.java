@@ -55,8 +55,6 @@ import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
 
-  boolean isConstantOperand = true;
-
   /**
    * true: aggregation function<br>
    * false: time series generating function
@@ -94,7 +92,7 @@ public class FunctionExpression extends Expression {
     this.expressions = expressions;
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
-    isConstantOperand = expressions.stream().anyMatch(Expression::isConstantOperand);
+    isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
   }
 
   @Override
@@ -103,8 +101,8 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public boolean isConstantOperand() {
-    return isConstantOperand;
+  public boolean isConstantOperandInternal() {
+    return isConstantOperandCache;
   }
 
   @Override
@@ -123,7 +121,7 @@ public class FunctionExpression extends Expression {
   }
 
   public void addExpression(Expression expression) {
-    isConstantOperand = isConstantOperand && expression.isConstantOperand();
+    isConstantOperandCache = isConstantOperandCache && expression.isConstantOperand();
     expressions.add(expression);
   }
 

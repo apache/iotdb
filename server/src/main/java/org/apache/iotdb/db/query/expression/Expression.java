@@ -37,16 +37,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/** A skeleton class for expression */
 public abstract class Expression {
 
   private String expressionStringCache;
+  private Boolean isConstantOperandCache = null;
 
   public boolean isAggregationFunctionExpression() {
     return false;
   }
-
-  /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
-  public abstract boolean isConstantOperand();
 
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
@@ -73,6 +72,17 @@ public abstract class Expression {
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
+
+  /** Sub-classes should override this method indicating if the expression is a constant operand */
+  public abstract boolean isConstantOperandInternal();
+
+  /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
+  public final boolean isConstantOperand() {
+    if (isConstantOperandCache == null) {
+      isConstantOperandCache = isConstantOperandInternal();
+    }
+    return isConstantOperandCache;
+  }
 
   /**
    * Sub-classes should override this method to provide valid string representation of this object.

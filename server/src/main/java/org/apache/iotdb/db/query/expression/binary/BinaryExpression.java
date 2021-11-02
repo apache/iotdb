@@ -54,7 +54,7 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public boolean isConstantOperand() {
+  public boolean isConstantOperandInternal() {
     return leftExpression.isConstantOperand() && rightExpression.isConstantOperand();
   }
 

@@ -56,7 +56,7 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  public boolean isConstantOperand() {
+  public boolean isConstantOperandInternal() {
     return false;
   }
 

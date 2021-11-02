@@ -58,7 +58,7 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  public boolean isConstantOperand() {
+  public boolean isConstantOperandInternal() {
     return true;
   }
 
