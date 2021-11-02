@@ -20,8 +20,12 @@
 -->
 
 ## OpenAPI 协议（RESTful 服务）
-IoTDB 的 openApi 设计用于支持查询、写入和nonquery 接口,它使用 OpenAPI 标准来定义接口和生成框架源代码。
-OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在 header 中携带 'Authorization': 'Basic ' + base64.encode(username + ':' + password)例如:
+IoTDB 的 RESTful 服务可用于查询、写入和管理操作，它使用 OpenAPI 标准来定义接口并生成框架。
+
+### 鉴权
+RESTful 服务使用了基础（basic）鉴权，每次 url 请求都需要在 header 中携带 'Authorization': 'Basic ' + base64.encode(username + ':' + password)
+
+例如:
 
 
 ### Configuration
