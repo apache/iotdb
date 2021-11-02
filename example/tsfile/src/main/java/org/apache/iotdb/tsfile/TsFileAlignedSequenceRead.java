@@ -72,7 +72,11 @@ public class TsFileAlignedSequenceRead {
             }
             while (dataSize > 0) {
               valueDecoder.reset();
-              System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
+              System.out.println(
+                  "\t\t[Page"
+                      + timeBatchIndex
+                      + "]\n \t\tPage head position: "
+                      + reader.position());
               PageHeader pageHeader =
                   reader.readPageHeader(
                       header.getDataType(),
