@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.conf.openApi;
 
-public class IoTDBopenApiConfig {
+public class IoTDBOpenApiConfig {
   static final String CONFIG_NAME = "iotdb-openapi.properties";
   /** if the startOpenApi is true, we will start OpenApi */
   private boolean startOpenApi = true;
