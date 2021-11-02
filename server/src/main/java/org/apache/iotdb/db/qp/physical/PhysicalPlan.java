@@ -68,6 +68,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -149,6 +150,22 @@ public abstract class PhysicalPlan {
 
   public void setDebug(boolean debug) {
     this.debug = debug;
+  }
+
+  /**
+   * Calculate size after serialization.
+   *
+   * @return size
+   * @throws IOException
+   */
+  public int getSerializedSize() throws IOException {
+    try {
+      DataOutputStream dataOutputStream = new DataOutputStream(new EmptyOutputStream());
+      serialize(dataOutputStream);
+      return dataOutputStream.size();
+    }catch (UnsupportedOperationException e){
+      throw e;
+    }
   }
 
   /**

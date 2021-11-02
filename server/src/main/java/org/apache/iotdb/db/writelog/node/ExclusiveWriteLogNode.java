@@ -113,11 +113,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (BufferOverflowException e) {
       // if the size of a single plan bigger than logBufferWorking
       // we need to clear the buffer to drop something wrong that has written.
-      DataOutputStream dos = new DataOutputStream(new ByteArrayOutputStream());
-      plan.serialize(dos);
-      int neededSize = dos.size();
-      dos.close();
       logBufferWorking.clear();
+      int neededSize = plan.getSerializedSize();
       throw new IOException(
           "Log cannot fit into the buffer, please increase wal_buffer_size to more than "
               + neededSize * 2,
