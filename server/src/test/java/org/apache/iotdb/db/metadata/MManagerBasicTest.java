@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -942,6 +943,72 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testUnsetSchemaTemplate() throws MetadataException {
+
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s1"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Collections.singletonList("s3"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s1");
+    schemaNames.add("s2");
+    schemaNames.add("s3");
+
+    CreateTemplatePlan createTemplatePlan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
+    SetSchemaTemplatePlan setSchemaTemplatePlan =
+        new SetSchemaTemplatePlan("template1", "root.sg.1");
+    UnsetSchemaTemplatePlan unsetSchemaTemplatePlan =
+        new UnsetSchemaTemplatePlan("root.sg.1", "template1");
+    MManager manager = IoTDB.metaManager;
+    manager.createSchemaTemplate(createTemplatePlan);
+
+    // path does not exist test
+    try {
+      manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      assertEquals("Path [root.sg.1] does not exist", e.getMessage());
+    }
+
+    manager.setSchemaTemplate(setSchemaTemplatePlan);
+
+    // template unset test
+    manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+    manager.setSchemaTemplate(setSchemaTemplatePlan);
+
+    // no template on path test
+    manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+    try {
+      manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      assertEquals("NO template on root.sg.1", e.getMessage());
+    }
+  }
+
+  @Test
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
     MManager manager = IoTDB.metaManager;
@@ -1823,9 +1890,9 @@ public class MManagerBasicTest {
     PartialPath deviceId = new PartialPath("root.sg.d");
     InsertPlan insertPlan;
 
-    insertPlan = getInsertPlan("\"a.b\"");
+    insertPlan = getInsertPlan("\"a+b\"");
     manager.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
+    assertTrue(manager.isPathExist(deviceId.concatNode("\"a+b\"")));
 
     String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String measurementId : illegalMeasurementIds) {
@@ -1853,7 +1920,7 @@ public class MManagerBasicTest {
   @Test
   public void testTemplateSchemaNameCheckWhileCreate() {
     MManager manager = IoTDB.metaManager;
-    String[] illegalSchemaNames = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    String[] illegalSchemaNames = {"a+b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String schemaName : illegalSchemaNames) {
       CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
       try {

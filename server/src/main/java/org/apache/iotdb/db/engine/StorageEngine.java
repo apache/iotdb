@@ -361,6 +361,9 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      virtualStorageGroupManager.stopCompactionSchedulerPool();
+    }
     syncCloseAllProcessor();
     stopTimedService(ttlCheckThread, "TTlCheckThread");
     stopTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
@@ -390,6 +393,9 @@ public class StorageEngine implements IService {
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
+      for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+        virtualStorageGroupManager.stopCompactionSchedulerPool();
+      }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);

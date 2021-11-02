@@ -21,7 +21,6 @@ package org.apache.iotdb.db.sync.sender.transfer;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.SyncConnectionException;
@@ -95,7 +94,7 @@ public class SyncClient implements ISyncClient {
 
   private static final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final int TIMEOUT_MS = 1000;
+  private static final int TIMEOUT_MS = 2000;
 
   /**
    * When transferring schema information, it is a better choice to transfer only new schema
@@ -126,6 +125,8 @@ public class SyncClient implements ISyncClient {
 
   /** Record sync progress in log. */
   private ISyncSenderLogger syncLog;
+
+  private boolean isSyncConnect = false;
 
   private ISyncFileManager syncFileManager = SyncFileManager.getInstance();
 
@@ -233,6 +234,11 @@ public class SyncClient implements ISyncClient {
             syncAll();
           } catch (Exception e) {
             logger.error("Sync failed", e);
+          } finally {
+            if (transport != null && transport.isOpen()) {
+              transport.close();
+            }
+            isSyncConnect = false;
           }
         },
         SyncConstant.SYNC_PROCESS_DELAY,
@@ -269,12 +275,12 @@ public class SyncClient implements ISyncClient {
           dataDirs.length);
 
       config.update(dataDir);
+      checkRecovery();
       syncFileManager.getValidFiles(dataDir);
       allSG = syncFileManager.getAllSGs();
       lastLocalFilesMap = syncFileManager.getLastLocalFilesMap();
       deletedFilesMap = syncFileManager.getDeletedFilesMap();
       toBeSyncedFilesMap = syncFileManager.getToBeSyncedFilesMap();
-      checkRecovery();
       if (SyncUtils.isEmpty(deletedFilesMap) && SyncUtils.isEmpty(toBeSyncedFilesMap)) {
         logger.info("There has no data to sync in data dir {}", dataDir);
         continue;
@@ -322,10 +328,28 @@ public class SyncClient implements ISyncClient {
       if (!transport.isOpen()) {
         transport.open();
       }
+
+      isSyncConnect = true;
     } catch (TTransportException e) {
       logger.error("Cannot connect to the receiver.");
       throw new SyncConnectionException(e);
     }
+  }
+
+  private boolean reconnect() {
+    if (transport != null && transport.isOpen()) {
+      transport.close();
+    }
+
+    try {
+      establishConnection(config.getServerIp(), config.getServerPort());
+      confirmIdentity();
+      serviceClient.startSync();
+    } catch (SyncConnectionException | TException e) {
+      logger.warn("Can not reconnect to receiver {}. Caused by ", config.getSyncReceiverName(), e);
+      return false;
+    }
+    return true;
   }
 
   @Override
@@ -336,7 +360,7 @@ public class SyncClient implements ISyncClient {
               socket.getLocalAddress().getHostAddress(),
               getOrCreateUUID(getUuidFile()),
               ioTDBConfig.getPartitionInterval(),
-              IoTDBConstant.MAJOR_VERSION);
+              ioTDBConfig.getIoTDBMajorVersion());
       SyncStatus status = serviceClient.check(info);
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
@@ -394,12 +418,15 @@ public class SyncClient implements ISyncClient {
       return;
     }
     int retryCount = 0;
-    serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
     while (true) {
       if (retryCount > config.getMaxNumOfSyncFileRetry()) {
         throw new SyncConnectionException(
             String.format(
                 "Can not sync schema after %s retries.", config.getMaxNumOfSyncFileRetry()));
+      }
+      if (!isSyncConnect && !reconnect()) {
+        retryCount++;
+        continue;
       }
       if (tryToSyncSchema()) {
         writeSyncSchemaPos(getSchemaPosFile());
@@ -415,6 +442,8 @@ public class SyncClient implements ISyncClient {
     // start to sync file data and get digest of this file.
     try (FileInputStream fis = new FileInputStream(getSchemaLogFile());
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
+      serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
+
       long skipNum = fis.skip(schemaFilePos);
       if (skipNum != schemaFilePos) {
         logger.warn(
@@ -438,7 +467,13 @@ public class SyncClient implements ISyncClient {
 
       // check digest
       return checkDigestForSchema(new BigInteger(1, md.digest()).toString(16));
-    } catch (NoSuchAlgorithmException | IOException | TException e) {
+    } catch (TException e) {
+      logger.error(
+          "Can not finish transfer schema to receiver, thrift error happen {}, try to reconnect",
+          e);
+      isSyncConnect = false;
+      return false;
+    } catch (NoSuchAlgorithmException | IOException e) {
       logger.error("Can not finish transfer schema to receiver", e);
       return false;
     }
@@ -571,14 +606,18 @@ public class SyncClient implements ISyncClient {
     logger.info("Start to sync names of deleted files in storage group {}", sgName);
     for (File file : deletedFilesName) {
       try {
-        if (serviceClient.syncDeletedFileName(getFileNameWithSG(file)).code == SUCCESS_CODE) {
-          logger.info(
-              "Receiver has received deleted file name {} successfully.", getFileNameWithSG(file));
+        if (!isSyncConnect && !reconnect()) {
+          continue;
+        }
+        if (serviceClient.syncDeletedFileName(getFileInfoWithVgAndTimePartition(file)).code
+            == SUCCESS_CODE) {
+          logger.info("Receiver has received deleted file name {} successfully.", file.getPath());
           lastLocalFilesMap.get(sgName).get(vgId).get(timeRangeId).remove(file);
           syncLog.finishSyncDeletedFileName(file);
         }
       } catch (TException e) {
         logger.error("Can not sync deleted file name {}, skip it.", file);
+        isSyncConnect = false;
       }
     }
     logger.info("Finish to sync names of deleted files in storage group {}", sgName);
@@ -644,7 +683,7 @@ public class SyncClient implements ISyncClient {
     try {
       int retryCount = 0;
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
-      serviceClient.initSyncData(getFileNameWithSG(snapshotFile));
+      serviceClient.initSyncData(getFileInfoWithVgAndTimePartition(snapshotFile));
       outer:
       while (true) {
         retryCount++;
@@ -766,13 +805,11 @@ public class SyncClient implements ISyncClient {
     SyncClient.config = config;
   }
 
-  private String getFileNameWithSG(File file) {
-    return file.getParentFile().getParentFile().getParentFile().getName()
-        + File.separator
-        + file.getParentFile().getParentFile().getName()
-        + File.separator
+  private String getFileInfoWithVgAndTimePartition(File file) {
+    return file.getParentFile().getParentFile().getName()
+        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
         + file.getParentFile().getName()
-        + File.separator
+        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
         + file.getName();
   }
 }
