@@ -104,7 +104,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   // metaport-of-removed-node
   private static final String MODE_REMOVE = "-r";
 
-  private MetaGroupMember metaGroupEngine;
+  private MetaGroupMember metaGroupMember;
 
   private DataGroupEngine dataGroupEngine;
 
@@ -114,7 +114,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   private final IoTDB iotdb = IoTDB.getInstance();
 
   // Cluster IoTDB uses a individual registerManager with its parent.
-  private RegisterManager registerManager = new RegisterManager();
+  private final RegisterManager registerManager = new RegisterManager();
 
   /**
    * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the status
@@ -153,18 +153,18 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     TProtocolFactory protocolFactory =
         ThriftServiceThread.getProtocolFactory(
             IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
-    metaGroupEngine = new MetaGroupMember(protocolFactory, thisNode, coordinator);
+    metaGroupMember = new MetaGroupMember(protocolFactory, thisNode, coordinator);
     IoTDB.setClusterMode();
     IoTDB.setMetaManager(CMManager.getInstance());
-    ((CMManager) IoTDB.metaManager).setMetaGroupMember(metaGroupEngine);
+    ((CMManager) IoTDB.metaManager).setMetaGroupMember(metaGroupMember);
     ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
-    MetaPuller.getInstance().init(metaGroupEngine);
+    MetaPuller.getInstance().init(metaGroupMember);
 
     // from the scope of the DataGroupEngine,it should be singleton pattern
     // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in
     // future commit.
     DataGroupEngine.setProtocolFactory(protocolFactory);
-    DataGroupEngine.setMetaGroupMember(metaGroupEngine);
+    DataGroupEngine.setMetaGroupMember(metaGroupMember);
     dataGroupEngine = DataGroupEngine.getInstance();
     clientManager =
         new ClientManager(
@@ -174,7 +174,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     try {
       // we need to check config after initLocalEngines.
       startServerCheck();
-      JMXService.registerMBean(metaGroupEngine, metaGroupEngine.getMBeanName());
+      JMXService.registerMBean(metaGroupMember, metaGroupMember.getMBeanName());
     } catch (StartupException e) {
       logger.error("Failed to check cluster config.", e);
       stop();
@@ -207,7 +207,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     if (logger.isDebugEnabled() && allowReport) {
       try {
         NodeReport report = new NodeReport(thisNode);
-        report.setMetaMemberReport(metaGroupEngine.genMemberReport());
+        report.setMetaMemberReport(metaGroupMember.genMemberReport());
         report.setDataMemberReportList(dataGroupEngine.genMemberReports());
         logger.debug(report.toString());
       } catch (Exception e) {
@@ -319,7 +319,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       // some work about cluster
       preInitCluster();
       // try to build cluster
-      metaGroupEngine.buildCluster();
+      metaGroupMember.buildCluster();
       // register service after cluster build
       postInitCluster();
       // init ServiceImpl to handle request of client
@@ -340,19 +340,19 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     // cluster module.
     // TODO: it is better to remove coordinator out of metaGroupEngine
 
-    registerManager.register(metaGroupEngine);
+    registerManager.register(metaGroupMember);
     registerManager.register(dataGroupEngine);
 
     // rpc service initialize
     DataGroupServiceImpls dataGroupServiceImpls = new DataGroupServiceImpls();
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      MetaAsyncService metaAsyncService = new MetaAsyncService(metaGroupEngine);
+      MetaAsyncService metaAsyncService = new MetaAsyncService(metaGroupMember);
       MetaRaftHeartBeatService.getInstance().initAsyncedServiceImpl(metaAsyncService);
       MetaRaftService.getInstance().initAsyncedServiceImpl(metaAsyncService);
       DataRaftService.getInstance().initAsyncedServiceImpl(dataGroupServiceImpls);
       DataRaftHeartBeatService.getInstance().initAsyncedServiceImpl(dataGroupServiceImpls);
     } else {
-      MetaSyncService syncService = new MetaSyncService(metaGroupEngine);
+      MetaSyncService syncService = new MetaSyncService(metaGroupMember);
       MetaRaftHeartBeatService.getInstance().initSyncedServiceImpl(syncService);
       MetaRaftService.getInstance().initSyncedServiceImpl(syncService);
       DataRaftService.getInstance().initSyncedServiceImpl(dataGroupServiceImpls);
@@ -382,7 +382,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     // So that the ClusterRPCService can work.
     ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl();
     clusterServiceImpl.setCoordinator(coordinator);
-    clusterServiceImpl.setExecutor(metaGroupEngine);
+    clusterServiceImpl.setExecutor(metaGroupMember);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());
   }
@@ -392,7 +392,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     try {
       final long startTime = System.currentTimeMillis();
       preInitCluster();
-      metaGroupEngine.joinCluster();
+      metaGroupMember.joinCluster();
       postInitCluster();
       dataGroupEngine.pullSnapshots();
       startClientRPC();
@@ -419,20 +419,20 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
         String message =
             String.format(
                 "SeedNodes must not repeat each other. SeedNodes: %s", config.getSeedNodeUrls());
-        throw new StartupException(metaGroupEngine.getName(), message);
+        throw new StartupException(metaGroupMember.getName(), message);
       }
       seedNodes.add(node);
     }
 
     // assert this node is in all nodes when restart
-    if (!metaGroupEngine.getAllNodes().isEmpty()) {
-      if (!metaGroupEngine.getAllNodes().contains(metaGroupEngine.getThisNode())) {
+    if (!metaGroupMember.getAllNodes().isEmpty()) {
+      if (!metaGroupMember.getAllNodes().contains(metaGroupMember.getThisNode())) {
         String message =
             String.format(
                 "All nodes in partitionTables must contains local node in start-server mode. "
                     + "LocalNode: %s, AllNodes: %s",
-                metaGroupEngine.getThisNode(), metaGroupEngine.getAllNodes());
-        throw new StartupException(metaGroupEngine.getName(), message);
+                metaGroupMember.getThisNode(), metaGroupMember.getAllNodes());
+        throw new StartupException(metaGroupMember.getName(), message);
       } else {
         return;
       }
@@ -445,7 +445,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
               "SeedNodes must contains local node in start-server mode. LocalNode: %s ,SeedNodes: "
                   + "%s",
               thisNode.toString(), config.getSeedNodeUrls());
-      throw new StartupException(metaGroupEngine.getName(), message);
+      throw new StartupException(metaGroupMember.getName(), message);
     }
   }
 
@@ -599,8 +599,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     this.dataGroupEngine = dataGroupEngine;
   }
 
-  public MetaGroupMember getMetaGroupEngine() {
-    return metaGroupEngine;
+  public MetaGroupMember getMetaGroupMember() {
+    return metaGroupMember;
   }
 
   public Node getThisNode() {
@@ -623,8 +623,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     return dataGroupEngine;
   }
 
-  public void setMetaGroupEngine(MetaGroupMember metaGroupEngine) {
-    this.metaGroupEngine = metaGroupEngine;
+  public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
+    this.metaGroupMember = metaGroupMember;
   }
 
   public static ClusterIoTDB getInstance() {

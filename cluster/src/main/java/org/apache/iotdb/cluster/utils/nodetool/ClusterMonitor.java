@@ -77,7 +77,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   @Override
   public List<Pair<Node, NodeCharacter>> getMetaGroup() {
-    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupEngine();
+    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupMember();
     if (metaMember == null || metaMember.getPartitionTable() == null) {
       return null;
     }
@@ -95,7 +95,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   public List<Node> getRing() {
-    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupEngine();
+    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupMember();
     if (metaMember == null || metaMember.getPartitionTable() == null) {
       return null;
     }
@@ -104,7 +104,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   @Override
   public List<Pair<Node, NodeCharacter>> getDataGroup(int raftId) throws Exception {
-    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupEngine();
+    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupMember();
     if (metaMember == null || metaMember.getPartitionTable() == null) {
       return null;
     }
@@ -130,7 +130,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   @Override
   public Map<PartitionGroup, Integer> getSlotNumInDataMigration() throws Exception {
-    MetaGroupMember member = ClusterIoTDB.getInstance().getMetaGroupEngine();
+    MetaGroupMember member = ClusterIoTDB.getInstance().getMetaGroupMember();
     if (member == null || member.getPartitionTable() == null) {
       throw new Exception(BUILDING_CLUSTER_INFO);
     }
@@ -195,7 +195,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   @Override
   public Map<Node, Integer> getAllNodeStatus() {
-    MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupEngine();
+    MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
     if (metaGroupMember == null) {
       return null;
     }
@@ -203,7 +203,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   private PartitionTable getPartitionTable() {
-    MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupEngine();
+    MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
     if (metaGroupMember == null) {
       return null;
     }

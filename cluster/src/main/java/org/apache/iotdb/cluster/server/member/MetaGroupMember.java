@@ -158,13 +158,13 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
    * blind nodes are nodes that do not have the partition table, and if this node is the leader, the
    * partition table should be sent to them at the next heartbeat
    */
-  private Set<Node> blindNodes = new HashSet<>();
+  private final Set<Node> blindNodes = new HashSet<>();
   /**
    * as a leader, when a follower sent this node its identifier, the identifier may conflict with
    * other nodes', such conflicting nodes will be recorded and at the next heartbeat, and they will
    * be required to regenerate an identifier.
    */
-  private Set<Node> idConflictNodes = new HashSet<>();
+  private final Set<Node> idConflictNodes = new HashSet<>();
   /**
    * the identifier and its belonging node, for conflict detection, may be used in more places in
    * the future

@@ -50,7 +50,7 @@ public class ClusterInfoServiceImplTest {
     metaGroupMemberTest.setUp();
     MetaGroupMember metaGroupMember = metaGroupMemberTest.getTestMetaGroupMember();
 
-    ClusterIoTDB.getInstance().setMetaGroupEngine(metaGroupMember);
+    ClusterIoTDB.getInstance().setMetaGroupMember(metaGroupMember);
 
     ClusterIoTDB.getInstance()
         .getIotdb()
@@ -66,7 +66,7 @@ public class ClusterInfoServiceImplTest {
         .getIotdb()
         .metaManager
         .deleteStorageGroups(Collections.singletonList(new PartialPath("root", "sg")));
-    ClusterIoTDB.getInstance().getMetaGroupEngine().stop();
+    ClusterIoTDB.getInstance().getMetaGroupMember().stop();
     EnvironmentUtils.cleanEnv();
   }
 
