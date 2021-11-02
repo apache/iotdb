@@ -47,8 +47,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected boolean hasCachedTimeInterval;
 
   protected boolean leftCRightO;
-  private boolean isIntervalByMonth = false;
-  private boolean isSlidingStepByMonth = false;
+  protected boolean isIntervalByMonth = false;
+  protected boolean isSlidingStepByMonth = false;
   protected int intervalTimes;
   private static final long MS_TO_MONTH = 30 * 86400_000L;
   protected AggregateResult[] curAggregateResults;

@@ -1116,7 +1116,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<IoTDBSqlParser.TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     for (IoTDBSqlParser.TypeClauseContext typeClause : list) {
-      parsePrimitiveTypeClause(typeClause, fillTypes);
+      if (typeClause.ALL() != null) {
+        parseAllTypeClause(typeClause, fillTypes);
+      } else {
+        parsePrimitiveTypeClause(typeClause, fillTypes);
+      }
     }
     groupByFillClauseComponent.setFillTypes(fillTypes);
     queryOp.setSpecialClauseComponent(groupByFillClauseComponent);
@@ -1194,26 +1198,42 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseAllTypeClause(
       IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     IFill fill;
-    long preRange;
-    if (ctx.previousUntilLastClause() != null) {
-      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
-        preRange =
+    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+
+    if (ctx.linearClause() != null) { // linear
+      if (ctx.linearClause().DURATION_LITERAL(0) != null) {
+        long beforeRange =
             DatetimeUtils.convertDurationStrToLong(
-                ctx.previousUntilLastClause().DURATION_LITERAL().getText());
+                ctx.linearClause().DURATION_LITERAL(0).getText());
+        long afterRange =
+            DatetimeUtils.convertDurationStrToLong(
+                ctx.linearClause().DURATION_LITERAL(1).getText());
+        fill = new LinearFill(beforeRange, afterRange);
       } else {
-        preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+        fill = new LinearFill(defaultFillInterval, defaultFillInterval);
       }
-      fill = new PreviousFill(preRange, true);
-    } else {
+    } else if (ctx.previousClause() != null) { // previous
       if (ctx.previousClause().DURATION_LITERAL() != null) {
-        preRange =
+        long preRange =
             DatetimeUtils.convertDurationStrToLong(
                 ctx.previousClause().DURATION_LITERAL().getText());
+        fill = new PreviousFill(preRange);
       } else {
-        preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+        fill = new PreviousFill(defaultFillInterval);
       }
-      fill = new PreviousFill(preRange);
+    } else if (ctx.specificValueClause() != null) {
+      throw new SQLParserException("fill all doesn't support value fill");
+    } else { // previous until last
+      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
+        long preRange =
+            DatetimeUtils.convertDurationStrToLong(
+                ctx.previousUntilLastClause().DURATION_LITERAL().getText());
+        fill = new PreviousFill(preRange, true);
+      } else {
+        fill = new PreviousFill(defaultFillInterval, true);
+      }
     }
+
     for (TSDataType tsDataType : TSDataType.values()) {
       fillTypes.put(tsDataType, fill.copy());
     }
@@ -1222,8 +1242,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parsePrimitiveTypeClause(
       IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     TSDataType dataType = parseType(ctx.dataType.getText());
-    if (ctx.linearClause() != null
-        && (dataType == TSDataType.TEXT || dataType == TSDataType.BOOLEAN)) {
+    if (ctx.linearClause() != null && dataType == TSDataType.TEXT) {
       throw new SQLParserException(
           String.format(
               "type %s cannot use %s fill function",
@@ -1253,7 +1272,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
-    } else if (ctx.specificValueClause() != null) {
+    } else if (ctx.specificValueClause() != null) { // value
       if (ctx.specificValueClause().constant() != null) {
         fillTypes.put(
             dataType, new ValueFill(ctx.specificValueClause().constant().getText(), dataType));
