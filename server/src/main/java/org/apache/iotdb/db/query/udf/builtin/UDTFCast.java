@@ -19,93 +19,227 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.exception.UDFAttributeNotProvidedException;
+import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesNumberNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.io.IOException;
 
 public class UDTFCast implements UDTF {
 
-  protected TSDataType dataType;
-  protected TSDataType outType;
+  private TSDataType sourceDataType;
+  private TSDataType targetDataType;
 
   @Override
-  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-      throws Exception {
-    dataType = parameters.getDataType(0);
-
-    String typeStr = parameters.getString("type");
-    if (typeStr == null) {
-      throw new Exception("No output type is set");
-    }
-    outType = getType(typeStr);
-    if (outType == null) {
-      throw new Exception(typeStr + " is an unknown type");
-    }
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(outType);
+  public void validate(UDFParameterValidator validator)
+      throws UDFInputSeriesNumberNotValidException, UDFAttributeNotProvidedException {
+    validator.validateInputSeriesNumber(1).validateRequiredAttribute("type");
   }
 
   @Override
-  public void transform(Row row, PointCollector collector) throws Exception {
-    long time = row.getTime();
-    if (dataType == TSDataType.INT32) {
-      int value = row.getInt(0);
-      if (outType == TSDataType.INT32) collector.putInt(time, value);
-      else if (outType == TSDataType.INT64) collector.putLong(time, value);
-      else if (outType == TSDataType.FLOAT) collector.putFloat(time, value);
-      else if (outType == TSDataType.DOUBLE) collector.putDouble(time, value);
-      else if (outType == TSDataType.BOOLEAN) collector.putBoolean(time, value != 0);
-      else if (outType == TSDataType.TEXT) collector.putString(time, String.valueOf(value));
-    } else if (dataType == TSDataType.INT64) {
-      long value = row.getLong(0);
-      if (outType == TSDataType.INT32) collector.putInt(time, (int) value);
-      else if (outType == TSDataType.INT64) collector.putLong(time, value);
-      else if (outType == TSDataType.FLOAT) collector.putFloat(time, value);
-      else if (outType == TSDataType.DOUBLE) collector.putDouble(time, value);
-      else if (outType == TSDataType.BOOLEAN) collector.putBoolean(time, value != 0);
-      else if (outType == TSDataType.TEXT) collector.putString(time, String.valueOf(value));
-    } else if (dataType == TSDataType.FLOAT) {
-      float value = row.getFloat(0);
-      if (outType == TSDataType.INT32) collector.putInt(time, (int) value);
-      else if (outType == TSDataType.INT64) collector.putLong(time, (long) value);
-      else if (outType == TSDataType.FLOAT) collector.putFloat(time, value);
-      else if (outType == TSDataType.DOUBLE) collector.putDouble(time, value);
-      else if (outType == TSDataType.BOOLEAN) collector.putBoolean(time, value != 0.0);
-      else if (outType == TSDataType.TEXT) collector.putString(time, String.valueOf(value));
-    } else if (dataType == TSDataType.DOUBLE) {
-      double value = row.getDouble(0);
-      if (outType == TSDataType.INT32) collector.putInt(time, (int) value);
-      else if (outType == TSDataType.INT64) collector.putLong(time, (long) value);
-      else if (outType == TSDataType.FLOAT) collector.putFloat(time, (float) value);
-      else if (outType == TSDataType.DOUBLE) collector.putDouble(time, value);
-      else if (outType == TSDataType.BOOLEAN) collector.putBoolean(time, value != 0.0);
-      else if (outType == TSDataType.TEXT) collector.putString(time, String.valueOf(value));
-    } else if (dataType == TSDataType.BOOLEAN) {
-      boolean value = row.getBoolean(0);
-      if (outType == TSDataType.INT32) collector.putInt(time, !value ? 0 : 1);
-      else if (outType == TSDataType.INT64) collector.putLong(time, !value ? 0l : 1l);
-      else if (outType == TSDataType.FLOAT) collector.putFloat(time, (float) (!value ? 0.0 : 1.0));
-      else if (outType == TSDataType.DOUBLE) collector.putDouble(time, !value ? 0.0 : 1.0);
-      else if (outType == TSDataType.BOOLEAN) collector.putBoolean(time, value);
-      else if (outType == TSDataType.TEXT) collector.putString(time, String.valueOf(value));
-    } else if (dataType == TSDataType.TEXT) {
-      String value = row.getString(0);
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+      throws MetadataException {
+    sourceDataType = parameters.getDataType(0);
+    targetDataType = TSDataType.valueOf(parameters.getString("type"));
 
-      if (outType == TSDataType.BOOLEAN)
-        collector.putBoolean(time, !(value.equals("false") || value.equals("")));
-      else if (outType == TSDataType.TEXT) collector.putString(time, value);
-      else {
-        if (isNumeric(value)) {
-          double doubleValue = Double.valueOf(value);
-          if (outType == TSDataType.INT32) collector.putInt(time, (int) doubleValue);
-          else if (outType == TSDataType.INT64) collector.putLong(time, (long) doubleValue);
-          else if (outType == TSDataType.FLOAT) collector.putFloat(time, (float) doubleValue);
-          else if (outType == TSDataType.DOUBLE) collector.putDouble(time, doubleValue);
-        }
-      }
+    configurations
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(targetDataType);
+  }
+
+  @Override
+  public void transform(Row row, PointCollector collector)
+      throws IOException, QueryProcessException {
+    switch (sourceDataType) {
+      case INT32:
+        cast(row.getTime(), row.getInt(0), collector);
+        return;
+      case INT64:
+        cast(row.getTime(), row.getLong(0), collector);
+        return;
+      case FLOAT:
+        cast(row.getTime(), row.getFloat(0), collector);
+        return;
+      case DOUBLE:
+        cast(row.getTime(), row.getDouble(0), collector);
+        return;
+      case BOOLEAN:
+        cast(row.getTime(), row.getBoolean(0), collector);
+        return;
+      case TEXT:
+        cast(row.getTime(), row.getBinary(0), collector);
+        return;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  private void cast(long time, int value, PointCollector collector)
+      throws IOException, QueryProcessException {
+    switch (targetDataType) {
+      case INT32:
+        collector.putInt(time, value);
+        return;
+      case INT64:
+        collector.putLong(time, value);
+        return;
+      case FLOAT:
+        collector.putFloat(time, value);
+        return;
+      case DOUBLE:
+        collector.putDouble(time, value);
+        return;
+      case BOOLEAN:
+        collector.putBoolean(time, value != 0);
+        return;
+      case TEXT:
+        collector.putString(time, String.valueOf(value));
+        return;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  private void cast(long time, long value, PointCollector collector)
+      throws IOException, QueryProcessException {
+    switch (targetDataType) {
+      case INT32:
+        collector.putInt(time, (int) value);
+        return;
+      case INT64:
+        collector.putLong(time, value);
+        return;
+      case FLOAT:
+        collector.putFloat(time, value);
+        return;
+      case DOUBLE:
+        collector.putDouble(time, value);
+        return;
+      case BOOLEAN:
+        collector.putBoolean(time, value != 0l);
+        return;
+      case TEXT:
+        collector.putString(time, String.valueOf(value));
+        return;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  private void cast(long time, float value, PointCollector collector)
+      throws IOException, QueryProcessException {
+    switch (targetDataType) {
+      case INT32:
+        collector.putInt(time, (int) value);
+        return;
+      case INT64:
+        collector.putLong(time, (long) value);
+        return;
+      case FLOAT:
+        collector.putFloat(time, value);
+        return;
+      case DOUBLE:
+        collector.putDouble(time, value);
+        return;
+      case BOOLEAN:
+        collector.putBoolean(time, value != 0f);
+        return;
+      case TEXT:
+        collector.putString(time, String.valueOf(value));
+        return;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  private void cast(long time, double value, PointCollector collector)
+      throws IOException, QueryProcessException {
+    switch (targetDataType) {
+      case INT32:
+        collector.putInt(time, (int) value);
+        return;
+      case INT64:
+        collector.putLong(time, (long) value);
+        return;
+      case FLOAT:
+        collector.putFloat(time, (float) value);
+        return;
+      case DOUBLE:
+        collector.putDouble(time, value);
+        return;
+      case BOOLEAN:
+        collector.putBoolean(time, value != 0.0);
+        return;
+      case TEXT:
+        collector.putString(time, String.valueOf(value));
+        return;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  private void cast(long time, boolean value, PointCollector collector)
+      throws IOException, QueryProcessException {
+    switch (targetDataType) {
+      case INT32:
+        collector.putInt(time, value ? 1 : 0);
+        return;
+      case INT64:
+        collector.putLong(time, value ? 1L : 0L);
+        return;
+      case FLOAT:
+        collector.putFloat(time, value ? 1.0f : 0.0f);
+        return;
+      case DOUBLE:
+        collector.putDouble(time, value ? 1.0 : 0.0);
+        return;
+      case BOOLEAN:
+        collector.putBoolean(time, value);
+        return;
+      case TEXT:
+        collector.putString(time, String.valueOf(value));
+        return;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  private void cast(long time, Binary value, PointCollector collector)
+      throws IOException, QueryProcessException {
+    String stringValue = value.getStringValue();
+    boolean numeric = isNumeric(stringValue);
+    switch (targetDataType) {
+      case INT32:
+        if (numeric) collector.putInt(time, (int) Double.parseDouble(stringValue));
+        return;
+      case INT64:
+        if (numeric) collector.putLong(time, (long) Double.parseDouble(stringValue));
+        return;
+      case FLOAT:
+        if (numeric) collector.putFloat(time, (float) Double.parseDouble(stringValue));
+        return;
+      case DOUBLE:
+        if (numeric) collector.putDouble(time, Double.parseDouble(stringValue));
+        return;
+      case BOOLEAN:
+        collector.putBoolean(
+            time, !(stringValue.equals("false") || stringValue.equals("")));
+        return;
+      case TEXT:
+        collector.putBinary(time, value);
+        return;
+      default:
+        throw new UnsupportedOperationException();
     }
   }
 
@@ -115,25 +249,6 @@ public class UDTFCast implements UDTF {
       return true;
     } catch (Exception e) {
       return false;
-    }
-  }
-
-  private TSDataType getType(String type) {
-    switch (type) {
-      case "INT32":
-        return TSDataType.INT32;
-      case "INT64":
-        return TSDataType.INT64;
-      case "FLOAT":
-        return TSDataType.FLOAT;
-      case "DOUBLE":
-        return TSDataType.DOUBLE;
-      case "BOOLEAN":
-        return TSDataType.BOOLEAN;
-      case "TEXT":
-        return TSDataType.TEXT;
-      default:
-        return null;
     }
   }
 }
