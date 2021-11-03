@@ -37,6 +37,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -53,7 +54,20 @@ public class TSFHadoopTest {
   private TSFInputFormat inputFormat = null;
 
   private final String tsfilePath =
-      TestConstant.BASE_OUTPUT_PATH.concat("data/data/sequence/root.sg1/0/0/1-0-0-0.tsfile");
+      TestConstant.BASE_OUTPUT_PATH
+          .concat("data")
+          .concat(File.separator)
+          .concat("data")
+          .concat(File.separator)
+          .concat("sequence")
+          .concat(File.separator)
+          .concat("root.sg1")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("1-0-0-0.tsfile");
 
   @Before
   public void setUp() {

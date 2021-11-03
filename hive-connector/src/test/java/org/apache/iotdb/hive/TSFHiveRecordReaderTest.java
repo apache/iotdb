@@ -31,6 +31,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_DELTAOBJECTS;
@@ -43,8 +44,21 @@ import static org.junit.Assert.fail;
 public class TSFHiveRecordReaderTest {
 
   private TSFHiveRecordReader tsfHiveRecordReader;
-  private String filePath =
-      TestConstant.BASE_OUTPUT_PATH.concat("data/data/sequence/root.sg1/0/0/1-0-0-0.tsfile");
+  private final String filePath =
+      TestConstant.BASE_OUTPUT_PATH
+          .concat("data")
+          .concat(File.separator)
+          .concat("data")
+          .concat(File.separator)
+          .concat("sequence")
+          .concat(File.separator)
+          .concat("root.sg1")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("1-0-0-0.tsfile");
 
   @Before
   public void setUp() throws IOException {
