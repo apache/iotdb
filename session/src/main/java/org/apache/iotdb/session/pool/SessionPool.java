@@ -238,8 +238,7 @@ public class SessionPool {
             }
           }
         } catch (InterruptedException e) {
-          logger.error("the SessionPool is damaged", e);
-          Thread.currentThread().interrupt();
+          // wake up from this.wait(1000) by this.notify()
         }
 
         session = queue.poll();
