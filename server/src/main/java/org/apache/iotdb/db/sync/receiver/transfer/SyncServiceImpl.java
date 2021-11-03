@@ -20,7 +20,6 @@ package org.apache.iotdb.db.sync.receiver.transfer;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -78,11 +77,11 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus check(ConfirmInfo info) {
     String ipAddress = info.address, uuid = info.uuid;
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
-    if (!getMajorVersion(info.version).equals(IoTDBConstant.MAJOR_VERSION)) {
+    if (!config.getIoTDBMajorVersion(info.version).equals(config.getIoTDBMajorVersion())) {
       return getErrorResult(
           String.format(
               "Version mismatch: the sender <%s>, the receiver <%s>",
-              info.version, IoTDBConstant.MAJOR_VERSION));
+              info.version, config.getIoTDBVersion()));
     }
     if (info.partitionInterval
         != IoTDBDescriptor.getInstance().getConfig().getPartitionInterval()) {
@@ -104,12 +103,6 @@ public class SyncServiceImpl implements SyncService.Iface {
       return getErrorResult(
           "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
     }
-  }
-
-  private String getMajorVersion(String version) {
-    return version.equals("UNKNOWN")
-        ? "UNKNOWN"
-        : version.split("\\.")[0] + "." + version.split("\\.")[1];
   }
 
   private boolean checkRecovery() {
@@ -173,6 +166,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus syncDeletedFileName(String fileInfo) {
     String filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
     try {
+      syncLog.get().startSyncDeletedFilesName();
       syncLog.get().finishSyncDeletedFileName(new File(getSyncDataPath(), filePath));
       FileLoaderManager.getInstance()
           .getFileLoader(senderName.get())
@@ -199,15 +193,13 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus initSyncData(String fileInfo) {
     File file;
     String filePath = fileInfo;
-    logger.info("initSyncData receive: " + fileInfo); // change back
     try {
-      if (currentSG.get() == null) { // schema mlog.txt file
+      if (fileInfo.equals(MetadataConstant.METADATA_LOG)) { // schema mlog.txt file
         file = new File(getSyncDataPath(), filePath);
       } else {
         filePath = currentSG.get() + File.separator + getFilePathByFileInfo(fileInfo);
         file = new File(getSyncDataPath(), filePath);
       }
-      logger.info("initSyncData file: " + file); // change back
       file.delete();
       currentFile.set(file);
       if (!file.getParentFile().exists()) {
@@ -219,8 +211,6 @@ public class SyncServiceImpl implements SyncService.Iface {
       currentFileWriter.set(new FileOutputStream(file));
       syncLog.get().startSyncTsFiles();
       messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
-      logger.info(
-          "initSyncData currentFileWriter: " + currentFileWriter.get().toString()); // change back
     } catch (IOException | NoSuchAlgorithmException e) {
       logger.error("Can not init sync resource for file {}", filePath, e);
       return getErrorResult(
@@ -234,11 +224,6 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus syncData(ByteBuffer buff) {
     try {
       int pos = buff.position();
-      logger.info("syncData currentSG: " + currentSG.get()); // change back
-      logger.info("syncData currentFileWriter: " + currentFileWriter.get().toString());
-      logger.info(
-          "syncData currentFileWriterChannel is Open: "
-              + currentFileWriter.get().getChannel().isOpen());
       currentFileWriter.get().getChannel().write(buff);
       buff.position(pos);
       messageDigest.get().update(buff);

@@ -223,9 +223,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     try {
       MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       Set<String> res = new HashSet<>(deviceNode.getChildren().keySet());
-      for (MNode mnode : deviceNode.getChildren().values()) {
-        res.addAll(mnode.getChildren().keySet());
-      }
 
       Template template = deviceNode.getUpperTemplate();
       if (template != null) {

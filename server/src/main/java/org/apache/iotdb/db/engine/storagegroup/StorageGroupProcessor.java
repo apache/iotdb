@@ -110,7 +110,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -379,7 +378,10 @@ public class StorageGroupProcessor {
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCompactionStrategy()
-            .getTsFileManagement(logicalStorageGroupName, storageGroupSysDir.getAbsolutePath());
+            .getTsFileManagement(
+                logicalStorageGroupName,
+                virtualStorageGroupId,
+                storageGroupSysDir.getAbsolutePath());
 
     ScheduledExecutorService executorService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -598,10 +600,6 @@ public class StorageGroupProcessor {
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
 
-      // some TsFiles were going to be replaced by the merged files when the system crashed and
-      // the process was interrupted before the merged files could be named
-      continueFailedRenames(fileFolder, MERGE_SUFFIX);
-
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
@@ -609,14 +607,8 @@ public class StorageGroupProcessor {
             logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
           } else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
             // some TsFileResource may be being persisted when the system crashed, try recovered
-            // such
-            // resources
+            // such resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
-
-            // some TsFiles were going to be replaced by the merged files when the system crashed
-            // and
-            // the process was interrupted before the merged files could be named
-            continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
             Collections.addAll(
                 tsFiles,
@@ -674,7 +666,7 @@ public class StorageGroupProcessor {
               isSeq,
               i == tsFiles.size() - 1);
 
-      RestorableTsFileIOWriter writer;
+      RestorableTsFileIOWriter writer = null;
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName()) > 0) {
@@ -695,6 +687,10 @@ public class StorageGroupProcessor {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;
+      } finally {
+        if (writer != null) {
+          writer.close();
+        }
       }
 
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {

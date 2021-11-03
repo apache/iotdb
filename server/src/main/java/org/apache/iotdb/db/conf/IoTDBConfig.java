@@ -1170,6 +1170,20 @@ public class IoTDBConfig {
     this.languageVersion = languageVersion;
   }
 
+  public String getIoTDBVersion() {
+    return IoTDBConstant.VERSION;
+  }
+
+  public String getIoTDBMajorVersion() {
+    return IoTDBConstant.MAJOR_VERSION;
+  }
+
+  public String getIoTDBMajorVersion(String version) {
+    return version.equals("UNKNOWN")
+        ? "UNKNOWN"
+        : version.split("\\.")[0] + "." + version.split("\\.")[1];
+  }
+
   public String getIpWhiteList() {
     return ipWhiteList;
   }

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.sync.sender.transfer;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.SyncConnectionException;
@@ -173,16 +172,19 @@ public class SyncClient implements ISyncClient {
    * @param lockFile lock file
    */
   private boolean lockInstance(File lockFile) {
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw")) {
+    RandomAccessFile randomAccessFile = null;
+    try {
+      randomAccessFile = new RandomAccessFile(lockFile, "rw");
       final FileLock fileLock = randomAccessFile.getChannel().tryLock();
       if (fileLock != null) {
+        final RandomAccessFile randomAccessFile2 = randomAccessFile;
         Runtime.getRuntime()
             .addShutdownHook(
                 new Thread(
                     () -> {
                       try {
                         fileLock.release();
-                        randomAccessFile.close();
+                        randomAccessFile2.close();
                       } catch (Exception e) {
                         logger.error("Unable to remove lock file: {}", lockFile, e);
                       }
@@ -191,6 +193,14 @@ public class SyncClient implements ISyncClient {
       }
     } catch (Exception e) {
       logger.error("Unable to create and/or lock file: {}", lockFile, e);
+    } finally {
+      if (randomAccessFile != null) {
+        try {
+          randomAccessFile.close();
+        } catch (Exception e) {
+          logger.error("Unable to close randomAccessFile: {}", randomAccessFile, e);
+        }
+      }
     }
     return false;
   }
@@ -265,12 +275,12 @@ public class SyncClient implements ISyncClient {
           dataDirs.length);
 
       config.update(dataDir);
+      checkRecovery();
       syncFileManager.getValidFiles(dataDir);
       allSG = syncFileManager.getAllSGs();
       lastLocalFilesMap = syncFileManager.getLastLocalFilesMap();
       deletedFilesMap = syncFileManager.getDeletedFilesMap();
       toBeSyncedFilesMap = syncFileManager.getToBeSyncedFilesMap();
-      checkRecovery();
       if (SyncUtils.isEmpty(deletedFilesMap) && SyncUtils.isEmpty(toBeSyncedFilesMap)) {
         logger.info("There has no data to sync in data dir {}", dataDir);
         continue;
@@ -333,7 +343,9 @@ public class SyncClient implements ISyncClient {
 
     try {
       establishConnection(config.getServerIp(), config.getServerPort());
-    } catch (SyncConnectionException e) {
+      confirmIdentity();
+      serviceClient.startSync();
+    } catch (SyncConnectionException | TException e) {
       logger.warn("Can not reconnect to receiver {}. Caused by ", config.getSyncReceiverName(), e);
       return false;
     }
@@ -348,7 +360,7 @@ public class SyncClient implements ISyncClient {
               socket.getLocalAddress().getHostAddress(),
               getOrCreateUUID(getUuidFile()),
               ioTDBConfig.getPartitionInterval(),
-              IoTDBConstant.MAJOR_VERSION);
+              ioTDBConfig.getIoTDBMajorVersion());
       SyncStatus status = serviceClient.check(info);
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
@@ -396,7 +408,6 @@ public class SyncClient implements ISyncClient {
       return;
     }
     int retryCount = 0;
-    serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
     while (true) {
       if (retryCount > config.getMaxNumOfSyncFileRetry()) {
         throw new SyncConnectionException(
@@ -421,6 +432,8 @@ public class SyncClient implements ISyncClient {
     // start to sync file data and get digest of this file.
     try (FileInputStream fis = new FileInputStream(getSchemaLogFile());
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
+      serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
+
       long skipNum = fis.skip(schemaFilePos);
       if (skipNum != schemaFilePos) {
         logger.warn(
@@ -594,6 +607,7 @@ public class SyncClient implements ISyncClient {
         }
       } catch (TException e) {
         logger.error("Can not sync deleted file name {}, skip it.", file);
+        isSyncConnect = false;
       }
     }
     logger.info("Finish to sync names of deleted files in storage group {}", sgName);

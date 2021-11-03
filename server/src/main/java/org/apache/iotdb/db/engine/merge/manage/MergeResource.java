@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine.merge.manage;
 
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -36,6 +38,7 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,8 +67,6 @@ public class MergeResource {
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<TsFileResource, Map<String, Pair<Long, Long>>> startEndTimeCache =
       new HashMap<>(); // pair<startTime, endTime>
-  private Map<PartialPath, MeasurementSchema> measurementSchemaMap =
-      new HashMap<>(); // is this too waste?
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
@@ -103,12 +104,7 @@ public class MergeResource {
     fileReaderCache.clear();
     fileWriterCache.clear();
     modificationCache.clear();
-    measurementSchemaMap.clear();
     chunkWriterCache.clear();
-  }
-
-  public MeasurementSchema getSchema(PartialPath path) {
-    return measurementSchemaMap.get(path);
   }
 
   /**
@@ -117,15 +113,27 @@ public class MergeResource {
    *
    * @return A RestorableTsFileIOWriter of a merge temp file for a SeqFile.
    */
-  public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
+  public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource, boolean recover)
+      throws IOException {
     RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
     if (writer == null) {
       writer =
           new RestorableTsFileIOWriter(
-              FSFactoryProducer.getFSFactory().getFile(resource.getTsFilePath() + MERGE_SUFFIX));
+              FSFactoryProducer.getFSFactory().getFile(resource.getTsFilePath() + MERGE_SUFFIX),
+              !recover,
+              recover);
       fileWriterCache.put(resource, writer);
     }
     return writer;
+  }
+
+  public void closeAndRemoveWriter(File file) throws IOException {
+    for (TsFileResource resource : fileWriterCache.keySet()) {
+      if (resource.getTsFile().getAbsolutePath().equals(file.getAbsolutePath())) {
+        RestorableTsFileIOWriter writer = fileWriterCache.remove(resource);
+        writer.close();
+      }
+    }
   }
 
   /**
@@ -161,11 +169,12 @@ public class MergeResource {
    * @param paths names of the timeseries
    * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
    */
-  public IPointReader[] getUnseqReaders(List<PartialPath> paths) throws IOException {
+  public IPointReader[] getUnseqReaders(List<PartialPath> paths)
+      throws IOException, MetadataException {
     List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = getSchema(paths.get(i)).getType();
+      TSDataType dataType = MManager.getInstance().getSeriesType(paths.get(i));
       ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
     }
     return ret;
@@ -258,10 +267,6 @@ public class MergeResource {
 
   public void setCacheDeviceMeta(boolean cacheDeviceMeta) {
     this.cacheDeviceMeta = cacheDeviceMeta;
-  }
-
-  public void setMeasurementSchemaMap(Map<PartialPath, MeasurementSchema> measurementSchemaMap) {
-    this.measurementSchemaMap = measurementSchemaMap;
   }
 
   public void clearChunkWriterCache() {

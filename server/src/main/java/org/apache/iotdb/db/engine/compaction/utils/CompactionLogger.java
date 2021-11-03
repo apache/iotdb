@@ -30,7 +30,9 @@ public class CompactionLogger {
 
   public static final String COMPACTION_LOG_NAME = ".compaction.log";
   public static final String SOURCE_NAME = "source";
+  public static final String SOURCE_INFO = "info-source";
   public static final String TARGET_NAME = "target";
+  public static final String TARGET_INFO = "info-target";
   public static final String SEQUENCE_NAME = "sequence";
   public static final String UNSEQUENCE_NAME = "unsequence";
   public static final String FULL_MERGE = "full merge";
@@ -61,6 +63,29 @@ public class CompactionLogger {
     logStream.write(prefix);
     logStream.newLine();
     logStream.write(file.getPath());
+    logStream.newLine();
+    logStream.flush();
+  }
+
+  public void logFile(
+      String prefix,
+      String logicalStorageGroup,
+      String virtualStorageGroup,
+      long timePartition,
+      File file,
+      boolean sequence)
+      throws IOException {
+    logStream.write(prefix);
+    logStream.newLine();
+    logStream.write(logicalStorageGroup);
+    logStream.write(" ");
+    logStream.write(virtualStorageGroup);
+    logStream.write(" ");
+    logStream.write(String.valueOf(timePartition));
+    logStream.write(" ");
+    logStream.write(file.getName());
+    logStream.write(" ");
+    logStream.write(sequence ? "sequence" : "unsequence");
     logStream.newLine();
     logStream.flush();
   }
