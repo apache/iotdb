@@ -21,20 +21,10 @@ package org.apache.iotdb.cluster.server.member;
 
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.common.TestAsyncClient;
-import org.apache.iotdb.cluster.common.TestAsyncDataClient;
-import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
-import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
-import org.apache.iotdb.cluster.common.TestSnapshot;
-import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.common.*;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
-import org.apache.iotdb.cluster.exception.EmptyIntervalException;
-import org.apache.iotdb.cluster.exception.LogExecutionException;
-import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
-import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.exception.*;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
@@ -49,21 +39,8 @@ import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
-import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
-import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.*;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
-import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -74,6 +51,7 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -89,8 +67,11 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -122,29 +103,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
-import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
-import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
+import static org.apache.iotdb.cluster.server.NodeCharacter.*;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class MetaGroupMemberTest extends BaseMember {
 
@@ -767,14 +735,26 @@ public class MetaGroupMemberTest extends BaseMember {
       Assert.fail(e.getMessage());
     }
 
-    // 4. prepare the partition table
+    // 4. prepare the template info
+    Map<String, Template> templateMap = new HashMap<>();
+
+    CreateTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
+    for (int i = 0; i < 10; i++) {
+      String templateName = "template_" + i;
+      createTemplatePlan.setName(templateName);
+      Template template = new Template(createTemplatePlan);
+      templateMap.put(templateName, template);
+    }
+
+    // 5. prepare the partition table
     SlotPartitionTable partitionTable = (SlotPartitionTable) TestUtils.getPartitionTable(3);
     partitionTable.setLastMetaLogIndex(0);
 
     ByteBuffer beforePartitionTableBuffer = partitionTable.serialize();
-    // 5. serialize
+    // 6. serialize
     MetaSimpleSnapshot snapshot =
-        new MetaSimpleSnapshot(storageGroupTTL, userMap, roleMap, beforePartitionTableBuffer);
+        new MetaSimpleSnapshot(
+            storageGroupTTL, userMap, roleMap, templateMap, beforePartitionTableBuffer);
     request.setSnapshotBytes(snapshot.serialize());
     AtomicReference<Void> reference = new AtomicReference<>();
     new MetaAsyncService(testMetaMember)
@@ -797,6 +777,9 @@ public class MetaGroupMemberTest extends BaseMember {
 
       Map<String, Role> localRoleMap = authorizer.getAllRoles();
       assertEquals(roleMap, localRoleMap);
+
+      Map<String, Template> localTemplateMap = TemplateManager.getInstance().getTemplateMap();
+      assertEquals(templateMap, localTemplateMap);
 
       PartitionTable localPartitionTable = this.testMetaMember.getPartitionTable();
       assertEquals(localPartitionTable, partitionTable);

@@ -74,12 +74,9 @@ public class DeletionFileNodeTest {
   private String processorName = "root.test";
   private TSDataType dataType = TSDataType.DOUBLE;
   private TSEncoding encoding = TSEncoding.PLAIN;
-  private int prevUnseqLevelNum = 0;
 
   @Before
   public void setup() throws MetadataException {
-    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     EnvironmentUtils.envSetUp();
 
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
@@ -96,13 +93,6 @@ public class DeletionFileNodeTest {
   @After
   public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
-  }
-
-  private void insertToStorageEngine(TSRecord record)
-      throws StorageEngineException, IllegalPathException {
-    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    StorageEngine.getInstance().insert(insertRowPlan);
   }
 
   @Test

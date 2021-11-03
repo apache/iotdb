@@ -63,6 +63,7 @@ import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -129,6 +130,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
+import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -387,7 +389,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   protected List<PartialPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+    return IoTDB.metaManager.getFlatMeasurementPaths(path);
   }
 
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
@@ -2116,6 +2118,26 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     SetSchemaTemplatePlan plan = new SetSchemaTemplatePlan(req.templateName, req.prefixPath);
+
+    TSStatus status = checkAuthority(plan, req.getSessionId());
+    return status != null ? status : executeNonQueryPlan(plan);
+  }
+
+  @Override
+  public TSStatus unsetSchemaTemplate(TSUnsetSchemaTemplateReq req) throws TException {
+    if (!checkLogin(req.getSessionId())) {
+      return getNotLoggedInStatus();
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session-{} unset device template {}.{}",
+          sessionManager.getCurrSessionId(),
+          req.getPrefixPath(),
+          req.getTemplateName());
+    }
+
+    UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(req.prefixPath, req.templateName);
 
     TSStatus status = checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);

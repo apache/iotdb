@@ -21,7 +21,6 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -46,29 +45,32 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 
 public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
-  String DOT = ".";
-  String tempDir = "temp";
+  private String DOT = ".";
+  private String tempDir = "temp";
 
   String STORAGE_GROUP = "root.ln";
   String[] devices = new String[] {"d1", "d2", "d3"};
   String[] measurements = new String[] {"s1", "s2", "s3"};
 
   // generate several tsFiles, with timestamp from startTime(inclusive) to endTime(exclusive)
-  long startTime = 0;
-  long endTime = 1000_000;
+  private long startTime = 0;
+  private long endTime = 1000_000;
 
-  long timePartition = 100; // unit s
-
+  private long timePartition = 100; // unit s
   long recordTimeGap = 1000;
 
-  long[] deviceDataPointNumber = new long[devices.length];
+  private int originalTsFileNum = 0;
 
-  int originalTsFileNum = 0;
+  long[] deviceDataPointNumber = new long[devices.length];
 
   boolean originalIsEnablePartition;
   long originalPartitionInterval;
@@ -90,9 +92,6 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     StorageEngine.setEnablePartition(originalIsEnablePartition);
     StorageEngine.setTimePartitionInterval(originalPartitionInterval);
     File f = new File(tempDir);
@@ -107,7 +106,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   }
 
   /** write a record, given timestamp */
-  void writeData(TsFileWriter tsFileWriter, long timestamp)
+  private void writeData(TsFileWriter tsFileWriter, long timestamp)
       throws IOException, WriteProcessException {
     for (String deviceId : devices) {
       TSRecord tsRecord = new TSRecord(timestamp, STORAGE_GROUP + DOT + deviceId);
@@ -120,7 +119,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   }
 
   /** register all timeseries in tsfiles */
-  void register(TsFileWriter tsFileWriter) {
+  private void register(TsFileWriter tsFileWriter) {
     try {
       for (String deviceId : devices) {
         for (String measurement : measurements) {
@@ -145,6 +144,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
       File f;
       TsFileWriter tsFileWriter = null;
       int counter = 0;
+      long recordTimeGap = 1000;
       for (long timestamp = startTime; timestamp < endTime; timestamp += recordTimeGap) {
         if (timestamp % (timePartition * recordTimeGap) == 0) {
           if (tsFileWriter != null) {

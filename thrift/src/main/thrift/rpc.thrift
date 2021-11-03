@@ -369,6 +369,12 @@ struct TSCreateSchemaTemplateReq {
   7: required list<i32> compressors
 }
 
+struct TSUnsetSchemaTemplateReq {
+  1: required i64 sessionId
+  2: required string prefixPath
+  3: required string templateName
+}
+
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -447,4 +453,6 @@ service TSIService {
   TSStatus createSchemaTemplate(1:TSCreateSchemaTemplateReq req);
 
   TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
+
+  TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 }

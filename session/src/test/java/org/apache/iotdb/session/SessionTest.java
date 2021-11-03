@@ -288,4 +288,98 @@ public class SessionTest {
       fail();
     }
   }
+
+  @Test
+  public void testUnsetSchemaTemplate()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s1"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Collections.singletonList("s3"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s1");
+    schemaNames.add("s2");
+    schemaNames.add("s3");
+
+    session.createSchemaTemplate(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+
+    // path does not exist test
+    try {
+      session.unsetSchemaTemplate("root.sg.1", "template1");
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      assertEquals("304: Path [root.sg.1] does not exist", e.getMessage());
+    }
+
+    session.setSchemaTemplate("template1", "root.sg.1");
+
+    // template already exists test
+    try {
+      session.setSchemaTemplate("template1", "root.sg.1");
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      assertEquals("303: Template already exists on root.sg.1", e.getMessage());
+    }
+
+    // template unset test
+    session.unsetSchemaTemplate("root.sg.1", "template1");
+
+    session.setSchemaTemplate("template1", "root.sg.1");
+
+    // no template on path test
+    session.unsetSchemaTemplate("root.sg.1", "template1");
+    try {
+      session.unsetSchemaTemplate("root.sg.1", "template1");
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      assertEquals("324: NO template on root.sg.1", e.getMessage());
+    }
+
+    // template is in use test
+    session.setSchemaTemplate("template1", "root.sg.1");
+
+    String deviceId = "root.sg.1.cd";
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
+    for (long time = 0; time < 5; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      session.insertRecord(deviceId, time, measurements, types, values);
+    }
+
+    try {
+      session.unsetSchemaTemplate("root.sg.1", "template1");
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
+    }
+  }
 }

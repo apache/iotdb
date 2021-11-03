@@ -37,6 +37,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -1985,6 +1986,12 @@ public class Session {
     defaultSessionConnection.createSchemaTemplate(request);
   }
 
+  public void unsetSchemaTemplate(String prefixPath, String templateName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSUnsetSchemaTemplateReq request = getTSUnsetSchemaTemplateReq(prefixPath, templateName);
+    defaultSessionConnection.unsetSchemaTemplate(request);
+  }
+
   private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
     TSSetSchemaTemplateReq request = new TSSetSchemaTemplateReq();
     request.setTemplateName(templateName);
@@ -2018,6 +2025,14 @@ public class Session {
     request.setEncodings(requestEncoding);
     request.setCompressors(
         compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+    return request;
+  }
+
+  private TSUnsetSchemaTemplateReq getTSUnsetSchemaTemplateReq(
+      String prefixPath, String templateName) {
+    TSUnsetSchemaTemplateReq request = new TSUnsetSchemaTemplateReq();
+    request.setPrefixPath(prefixPath);
+    request.setTemplateName(templateName);
     return request;
   }
 

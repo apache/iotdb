@@ -1257,7 +1257,7 @@ public class IoTDBSimpleQueryIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.group-with-hyphen");
+      statement.execute("SET STORAGE GROUP TO root.`group-with-hyphen`");
     } catch (SQLException e) {
       fail();
     }
@@ -1319,6 +1319,43 @@ public class IoTDBSimpleQueryIT {
       for (int i = 0; i < columnCount; i++) {
         Assert.assertEquals(types[i], metaData.getColumnType(i + 1));
       }
+    }
+  }
+
+  @Test
+  public void testFromFuzzyMatching() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
+              + "max_point_number=4");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
+              + "max_point_number=2.5");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, "
+              + "max_point_number=q");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, "
+              + "max_point_number=-1");
+      statement.execute(
+          "insert into root.sg1.da1cb(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
+      statement.execute(
+          "insert into root.sg1.da1ce(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
+
+      try (ResultSet r1 = statement.executeQuery("select s1 from root.sg1.*a*")) {
+        while (r1.next()) {
+          Assert.assertEquals(1.1234f, r1.getFloat(2), 0);
+        }
+        Assert.assertEquals(3, r1.getMetaData().getColumnCount());
+      }
+
+    } catch (SQLException e) {
+      fail();
     }
   }
 }
