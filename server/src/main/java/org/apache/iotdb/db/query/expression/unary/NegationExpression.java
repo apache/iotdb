@@ -124,6 +124,9 @@ public class NegationExpression extends Expression {
           new ArithmeticNegationTransformer(parentLayerPointReader.constructPointReader());
       expressionDataTypeMap.put(this, transformer.getDataType());
 
+      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
+      // yet. And since a ConstantLayerPointReader won't produce too much IO,
+      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
       expressionIntermediateLayerMap.put(
           this,
           memoryAssigner.getReference(this) == 1 || isConstantOperand()

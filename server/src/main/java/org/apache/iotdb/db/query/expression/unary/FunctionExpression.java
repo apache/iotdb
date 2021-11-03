@@ -226,7 +226,7 @@ public class FunctionExpression extends Expression {
 
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
+          memoryAssigner.getReference(this) == 1
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(

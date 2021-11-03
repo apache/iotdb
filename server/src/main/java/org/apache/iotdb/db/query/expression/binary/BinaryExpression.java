@@ -170,6 +170,9 @@ public abstract class BinaryExpression extends Expression {
               rightParentIntermediateLayer.constructPointReader());
       expressionDataTypeMap.put(this, transformer.getDataType());
 
+      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
+      // yet. And since a ConstantLayerPointReader won't produce too much IO,
+      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
       expressionIntermediateLayerMap.put(
           this,
           memoryAssigner.getReference(this) == 1 || isConstantOperand()
