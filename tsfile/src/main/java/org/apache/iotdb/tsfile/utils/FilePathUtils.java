@@ -148,6 +148,7 @@ public class FilePathUtils {
     } catch (Exception e) {
       System.out.println("pathSegments: " + Arrays.toString(pathSegments));
       System.out.println("path: " + tsFileAbsolutePath);
+      System.out.println("PATH_SPLIT_STRING: " + PATH_SPLIT_STRING);
       throw e;
     }
   }
