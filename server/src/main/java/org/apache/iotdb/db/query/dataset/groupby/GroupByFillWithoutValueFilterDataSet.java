@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -42,6 +60,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
   private Map<PartialPath, GroupByExecutor> extraNextExecutors = null;
 
   // the extra previous means first not null value before startTime
+  // used to fill result before the first not null data
   private Object[] extraPreviousValues;
   private long[] extraPreviousTimes;
 
@@ -52,6 +71,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
   private long[] previousTimes;
 
   // the extra next means first not null value after endTime
+  // used to fill result after the last not null data
   private Object[] extraNextValues;
   private long[] extraNextTimes;
 
@@ -61,7 +81,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
   private Object[] nextValues;
   private long[] nextTimes;
 
-  // the query and result datatype for each time series
+  // the result datatype for each time series
   private TSDataType[] resultDataType;
 
   // the next query time range of each path
@@ -185,6 +205,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
     }
   }
 
+  /* Init extra path executors to query data outside the original group by query */
   private void initExtraExecutors(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws StorageEngineException, QueryProcessException {
     long minBeforeRange = Long.MAX_VALUE;
@@ -421,6 +442,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
     }
   }
 
+  /* Cache the previous and next query data before group by fill query */
   private void initCachedTimesAndValues() throws QueryProcessException {
     for (int pathId = 0; pathId < deduplicatedPaths.size(); pathId++) {
       try {
@@ -535,7 +557,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       }
     }
 
-    // slide paths
+    // Slide paths
     // the aggregation results of one path are either all null or all not null,
     // thus slide all results together
     for (int pathId = 0; pathId < deduplicatedPaths.size(); pathId++) {
