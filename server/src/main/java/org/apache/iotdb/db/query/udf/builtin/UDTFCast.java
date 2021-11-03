@@ -220,16 +220,24 @@ public class UDTFCast implements UDTF {
     boolean numeric = isNumeric(stringValue);
     switch (targetDataType) {
       case INT32:
-        if (numeric) collector.putInt(time, (int) Double.parseDouble(stringValue));
+        if (numeric) {
+          collector.putInt(time, (int) Double.parseDouble(stringValue));
+        }
         return;
       case INT64:
-        if (numeric) collector.putLong(time, (long) Double.parseDouble(stringValue));
+        if (numeric) {
+          collector.putLong(time, (long) Double.parseDouble(stringValue));
+        }
         return;
       case FLOAT:
-        if (numeric) collector.putFloat(time, (float) Double.parseDouble(stringValue));
+        if (numeric) {
+          collector.putFloat(time, (float) Double.parseDouble(stringValue));
+        }
         return;
       case DOUBLE:
-        if (numeric) collector.putDouble(time, Double.parseDouble(stringValue));
+        if (numeric) {
+          collector.putDouble(time, Double.parseDouble(stringValue));
+        }
         return;
       case BOOLEAN:
         collector.putBoolean(time, !(stringValue.equals("false") || stringValue.equals("")));
