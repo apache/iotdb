@@ -29,7 +29,7 @@ set JMX_IP="127.0.0.1"
 
 if %JMX_LOCAL% == "false" (
   echo "setting remote JMX..."
-  echo "you may have no permission to run chmod. If so, contact your system administrator."
+  @REM you may have no permission to run chmod. If so, contact your system administrator.
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote"
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.port=%JMX_PORT%"
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.rmi.port=%JMX_PORT%"
