@@ -72,6 +72,7 @@ public class TSFHadoopTest {
   @Before
   public void setUp() {
 
+    System.out.println("tsfilePath: " + tsfilePath);
     TsFileTestHelper.deleteTsFile(tsfilePath);
     inputFormat = new TSFInputFormat();
   }
