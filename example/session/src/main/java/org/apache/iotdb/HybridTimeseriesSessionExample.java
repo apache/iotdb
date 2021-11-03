@@ -98,7 +98,7 @@ public class HybridTimeseriesSessionExample {
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
+      session.insertAlignedTablet(tablet);
       tablet.reset();
     }
   }

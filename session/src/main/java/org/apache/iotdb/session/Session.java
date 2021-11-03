@@ -18,6 +18,25 @@
  */
 package org.apache.iotdb.session;
 
+import java.nio.ByteBuffer;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
@@ -51,29 +70,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
 public class Session {
@@ -1406,12 +1404,7 @@ public class Session {
    */
   public void insertTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
-    try {
-      getSessionConnection(tablet.prefixPath).insertTablet(request);
-    } catch (RedirectException e) {
-      handleRedirection(tablet.prefixPath, e.getEndPoint());
-    }
+    insertTablet(tablet, false);
   }
 
   /**
@@ -1428,6 +1421,32 @@ public class Session {
     } catch (RedirectException e) {
       handleRedirection(tablet.prefixPath, e.getEndPoint());
     }
+  }
+
+  /**
+   * insert the aligned timeseries data of a device. For each timestamp, the number of measurements
+   * is the same.
+   *
+   * <p>a Tablet example: device1 time s1, s2, s3 1, 1, 1, 1 2, 2, 2, 2 3, 3, 3, 3
+   *
+   * <p>times in Tablet may be not in ascending order
+   *
+   * @param tablet data batch
+   */
+  public void insertAlignedTablet(Tablet tablet)
+      throws StatementExecutionException, IoTDBConnectionException {
+    insertTablet(tablet);
+  }
+
+  /**
+   * insert the aligned timeseries data of a device.
+   *
+   * @param tablet data batch
+   * @param sorted whether times in Tablet are in ascending order
+   */
+  public void insertAlignedTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertTablet(tablet, sorted);
   }
 
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
@@ -1499,6 +1518,31 @@ public class Session {
         // ignored
       }
     }
+  }
+
+  /**
+   * insert aligned data of several deivces. Given a deivce, for each timestamp, the number of
+   * measurements is the same.
+   *
+   * <p>Times in each Tablet may not be in ascending order
+   *
+   * @param tablets data batch in multiple device
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertTablets(tablets, false);
+  }
+
+  /**
+   * insert aligned data of several devices. Given a device, for each timestamp, the number of
+   * measurements is the same.
+   *
+   * @param tablets data batch in multiple device
+   * @param sorted whether times in each Tablet are in ascending order
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertTablets(tablets, sorted);
   }
 
   private void insertTabletsWithLeaderCache(Map<String, Tablet> tablets, boolean sorted)
