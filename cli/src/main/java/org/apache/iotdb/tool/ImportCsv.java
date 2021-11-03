@@ -323,24 +323,31 @@ public class ImportCsv extends AbstractCsvTool {
                             TSDataType type;
                             if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
                               type = typeInfer(value);
-                              headerTypeMap.put(header, type);
+                              if (type != null) {
+                                headerTypeMap.put(header, type);
+                              } else {
+                                System.out.println(
+                                    String.format(
+                                        "Line '%s', column '%s': '%s' unknown type",
+                                        (records.indexOf(record) + 1), header, value));
+                                isFail.set(true);
+                              }
                             }
                             type = headerTypeMap.get(headerNameMap.get(header));
-                            Object valueTransed = typeTrans(value, type);
-                            if (valueTransed == null) {
-                              isFail.set(true);
-                              System.out.println(
-                                  "Line "
-                                      + (records.indexOf(record) + 1)
-                                      + ": "
-                                      + value
-                                      + " can't convert to "
-                                      + type);
-                            } else {
-                              measurements.add(
-                                  headerNameMap.get(header).replace(deviceId + '.', ""));
-                              types.add(type);
-                              values.add(valueTransed);
+                            if (type != null) {
+                              Object valueTransed = typeTrans(value, type);
+                              if (valueTransed == null) {
+                                isFail.set(true);
+                                System.out.println(
+                                    String.format(
+                                        "Line '%s', column '%s': '%s' can't convert to '%s'",
+                                        (records.indexOf(record) + 1), header, value, type));
+                              } else {
+                                measurements.add(
+                                    headerNameMap.get(header).replace(deviceId + '.', ""));
+                                types.add(type);
+                                values.add(valueTransed);
+                              }
                             }
                           }
                         });
@@ -434,23 +441,33 @@ public class ImportCsv extends AbstractCsvTool {
                                     if (!headerTypeMap.containsKey(
                                         headerNameMap.get(measurement))) {
                                       type = typeInfer(value);
-                                      headerTypeMap.put(measurement, type);
+                                      if (type != null) {
+                                        headerTypeMap.put(measurement, type);
+                                      } else {
+                                        System.out.println(
+                                            String.format(
+                                                "Line '%s', column '%s': '%s' unknown type",
+                                                (records.indexOf(record) + 1), measurement, value));
+                                        isFail.set(true);
+                                      }
                                     }
                                     type = headerTypeMap.get(headerNameMap.get(measurement));
-                                    Object valueTransed = typeTrans(value, type);
-                                    if (valueTransed == null) {
-                                      isFail.set(true);
-                                      System.out.println(
-                                          "Line "
-                                              + (records.indexOf(record) + 1)
-                                              + ": "
-                                              + value
-                                              + " can't convert to "
-                                              + type);
-                                    } else {
-                                      values.add(valueTransed);
-                                      measurements.add(headerNameMap.get(measurement));
-                                      types.add(type);
+                                    if (type != null) {
+                                      Object valueTransed = typeTrans(value, type);
+                                      if (valueTransed == null) {
+                                        isFail.set(true);
+                                        System.out.println(
+                                            String.format(
+                                                "Line '%s', column '%s': '%s' can't convert to '%s'",
+                                                (records.indexOf(record) + 1),
+                                                measurement,
+                                                value,
+                                                type));
+                                      } else {
+                                        values.add(valueTransed);
+                                        measurements.add(headerNameMap.get(measurement));
+                                        types.add(type);
+                                      }
                                     }
                                   }
                                 });
@@ -502,7 +519,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static CSVParser readCsvFile(String path) throws IOException {
     return CSVFormat.EXCEL
         .withFirstRecordAsHeader()
-        .withQuote('\'')
+        .withQuote('`')
         .withEscape('\\')
         .withIgnoreEmptyLines()
         .parse(new InputStreamReader(new FileInputStream(path)));
@@ -642,7 +659,12 @@ public class ImportCsv extends AbstractCsvTool {
         Integer.valueOf(value);
         return INT32;
       } catch (Exception e) {
-        return INT64;
+        try {
+          Long.valueOf(value);
+          return INT64;
+        } catch (Exception exception) {
+          return null;
+        }
       }
     } else {
       if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length())

@@ -121,13 +121,13 @@ public class IoTDBStatMonitorTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResult = statement.execute("select TOTAL_POINTS from root.stats.\"root.sg\"");
+      boolean hasResult = statement.execute("select TOTAL_POINTS from root.stats.\"\"root#sg\"\"");
       Assert.assertTrue(hasResult);
 
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          long ans = resultSet.getLong("root.stats.\"root.sg\".TOTAL_POINTS");
+          long ans = resultSet.getLong("root.stats.\"root#sg\".TOTAL_POINTS");
           Assert.assertEquals(5, ans);
           cnt++;
         }

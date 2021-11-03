@@ -63,23 +63,21 @@ public class IoTDBQuotedPathIT {
           };
       statement.execute("SET STORAGE GROUP TO root.ln");
       statement.execute(
-          "CREATE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ln.\"wf+01\".wt01.\"status+2+3\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
       statement.execute(
-          "INSERT INTO root.ln.\"wf.01\".wt01(timestamp,\"status.2.3\") values(1509465600000,true)");
+          "INSERT INTO root.ln.\"wf+01\".wt01(timestamp,\"status+2+3\") values(1509465600000,true)");
       statement.execute(
-          "INSERT INTO root.ln.\"wf.01\".wt01(timestamp,\"status.2.3\") values(1509465600001,true)");
+          "INSERT INTO root.ln.\"wf+01\".wt01(timestamp,\"status+2+3\") values(1509465600001,true)");
       statement.execute(
-          "INSERT INTO root.ln.\"wf.01\".wt01(timestamp,\"status.2.3\") values(1509465600002,false)");
+          "INSERT INTO root.ln.\"wf+01\".wt01(timestamp,\"status+2+3\") values(1509465600002,false)");
       statement.execute(
-          "INSERT INTO root.ln.\"wf.01\".wt01(timestamp,\"status.2.3\") values(1509465600003,false)");
+          "INSERT INTO root.ln.\"wf+01\".wt01(timestamp,\"status+2+3\") values(1509465600003,false)");
       statement.execute(
-          "CREATE TIMESERIES root.ln.\"wf.01\".wt02.\"abd\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ln.\"wf+01\".wt02.\"abd\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
       statement.execute(
-          "CREATE TIMESERIES root.ln.\"wf.01\".wt02.\"asf.asd.sdf\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      statement.execute(
-          "CREATE TIMESERIES root.ln.\"wf.01\".wt02.\"asd12\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ln.\"wf+01\".wt02.\"asd12\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
 
-      boolean hasResultSet = statement.execute("SELECT * FROM root.ln.\"wf.01\".wt01");
+      boolean hasResultSet = statement.execute("SELECT * FROM root.ln.\"wf+01\".wt01");
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       try {
@@ -90,7 +88,7 @@ public class IoTDBQuotedPathIT {
         }
 
         hasResultSet =
-            statement.execute("SELECT * FROM root.ln.\"wf.01\".wt01 WHERE \"status.2.3\" = false");
+            statement.execute("SELECT * FROM root.ln.\"wf+01\".wt01 WHERE \"status+2+3\" = false");
         assertTrue(hasResultSet);
         exp = new String[] {"1509465600002,false", "1509465600003,false"};
         cnt = 0;
@@ -102,14 +100,14 @@ public class IoTDBQuotedPathIT {
 
         hasResultSet =
             statement.execute(
-                "select \"status.2.3\", 'status.2.3' from root.ln.\"wf.01\".wt01 align by device");
+                "select \"status+2+3\", 'status.2.3' from root.ln.\"wf+01\".wt01 align by device");
         assertTrue(hasResultSet);
         exp =
             new String[] {
-              "1509465600000,root.ln.\"wf.01\".wt01,true,'status.2.3',",
-              "1509465600001,root.ln.\"wf.01\".wt01,true,'status.2.3',",
-              "1509465600002,root.ln.\"wf.01\".wt01,false,'status.2.3',",
-              "1509465600003,root.ln.\"wf.01\".wt01,false,'status.2.3',"
+              "1509465600000,root.ln.wf+01.wt01,true,'status.2.3',",
+              "1509465600001,root.ln.wf+01.wt01,true,'status.2.3',",
+              "1509465600002,root.ln.wf+01.wt01,false,'status.2.3',",
+              "1509465600003,root.ln.wf+01.wt01,false,'status.2.3',"
             };
         cnt = 0;
         resultSet = statement.getResultSet();
@@ -122,8 +120,7 @@ public class IoTDBQuotedPathIT {
         }
 
         statement.execute(
-            "DELETE FROM root.ln.\"wf.01\".wt01.\"status.2.3\" WHERE time < 1509465600001");
-        statement.execute("DELETE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\"");
+            "DELETE FROM root.ln.\"wf+01\".wt01.\"status+2+3\" WHERE time < 1509465600001");
       } finally {
         resultSet.close();
       }
@@ -139,7 +136,7 @@ public class IoTDBQuotedPathIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.\"ln\"");
+      statement.execute("SET STORAGE GROUP TO root.`\"ln\"`");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(
           "315: The storage group name can only be characters, numbers and underscores. root.\"ln\" is not a legal path",
