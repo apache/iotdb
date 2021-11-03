@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -207,7 +208,7 @@ public class MTreeTest {
     }
 
     try {
-      List<PartialPath> result = root.getMeasurementPaths(new PartialPath("root.a.*.s0"));
+      List<MeasurementPath> result = root.getMeasurementPaths(new PartialPath("root.a.*.s0"));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
@@ -274,7 +275,7 @@ public class MTreeTest {
     }
 
     try {
-      List<PartialPath> result = root.getMeasurementPaths(new PartialPath("root.a.*.s0"));
+      List<MeasurementPath> result = root.getMeasurementPaths(new PartialPath("root.a.*.s0"));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
@@ -284,7 +285,7 @@ public class MTreeTest {
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
-      List<PartialPath> result2 =
+      List<MeasurementPath> result2 =
           root.getMeasurementPathsWithAlias(new PartialPath("root.a.*.s0"), 0, 0).left;
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
@@ -298,7 +299,7 @@ public class MTreeTest {
       assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
       assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
 
-      Pair<List<PartialPath>, Integer> result3 =
+      Pair<List<MeasurementPath>, Integer> result3 =
           root.getMeasurementPathsWithAlias(new PartialPath("root.a.**"), 2, 0);
       assertEquals(2, result3.left.size());
       assertEquals(2, result3.right.intValue());

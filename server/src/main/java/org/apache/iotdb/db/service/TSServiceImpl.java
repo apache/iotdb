@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
@@ -388,7 +389,7 @@ public class TSServiceImpl implements TSIService.Iface {
     return IoTDB.metaManager.getMetadataInString();
   }
 
-  protected List<PartialPath> getPaths(PartialPath path) throws MetadataException {
+  protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getMeasurementPaths(path);
   }
 

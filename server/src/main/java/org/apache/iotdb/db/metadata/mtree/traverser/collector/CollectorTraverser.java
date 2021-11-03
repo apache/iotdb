@@ -46,7 +46,7 @@ public abstract class CollectorTraverser<T> extends Traverser {
     super(startNode, path);
     this.limit = limit;
     this.offset = offset;
-    if (limit != 0 || offset != 0) {
+    if (limit > 0 || offset > 0) {
       hasLimit = true;
     }
   }
@@ -79,14 +79,14 @@ public abstract class CollectorTraverser<T> extends Traverser {
 
   public void setLimit(int limit) {
     this.limit = limit;
-    if (limit != 0) {
+    if (limit > 0) {
       hasLimit = true;
     }
   }
 
   public void setOffset(int offset) {
     this.offset = offset;
-    if (offset != 0) {
+    if (offset > 0) {
       hasLimit = true;
     }
   }

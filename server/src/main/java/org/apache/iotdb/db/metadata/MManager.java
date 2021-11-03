@@ -44,7 +44,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -91,7 +91,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -630,7 +629,7 @@ public class MManager {
    */
   public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     try {
-      List<PartialPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
+      List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
       if (allTimeseries.isEmpty()) {
         throw new MetadataException(
             String.format(
@@ -1070,7 +1069,8 @@ public class MManager {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
-  public List<PartialPath> getMeasurementPaths(PartialPath pathPattern) throws MetadataException {
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
+      throws MetadataException {
     return mtree.getMeasurementPaths(pathPattern);
   }
 
@@ -1078,7 +1078,7 @@ public class MManager {
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
    * limit and offset.
    */
-  public Pair<List<PartialPath>, Integer> getMeasurementPathsWithAlias(
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset);
   }
@@ -1190,37 +1190,17 @@ public class MManager {
       return TSDataType.INT64;
     }
 
-    IMeasurementSchema schema = getSeriesSchema(fullPath);
-    if (schema instanceof UnaryMeasurementSchema) {
-      return schema.getType();
-    } else {
-      if (((AlignedPath) fullPath).getMeasurementList().size() != 1) {
-        return TSDataType.VECTOR;
-      } else {
-        String subSensor = ((AlignedPath) fullPath).getMeasurement(0);
-        List<String> measurements = schema.getSubMeasurementsList();
-        return schema.getSubMeasurementsTSDataTypeList().get(measurements.indexOf(subSensor));
+    // todo eliminate this after Query interaction refactor
+    try {
+      IMeasurementSchema schema = fullPath.getMeasurementSchema();
+      if (schema != null) {
+        return schema.getType();
       }
-    }
-  }
+    } catch (MetadataException ignored) {
 
-  /**
-   * get MeasurementSchema
-   *
-   * @param device device path
-   * @param measurement measurement name
-   * @return MeasurementSchema
-   */
-  public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
-      throws MetadataException {
-    IMNode deviceIMNode = getDeviceNode(device);
-    IMeasurementMNode measurementMNode = deviceIMNode.getChild(measurement).getAsMeasurementMNode();
-    if (measurementMNode == null) {
-      // Just for the initial adaptation of the template functionality and merge functionality
-      // The getSeriesSchema interface needs to be cleaned up later
-      return getSeriesSchema(device.concatNode(measurement));
     }
-    return measurementMNode.getSchema();
+
+    return getSeriesSchema(fullPath).getType();
   }
 
   /**
@@ -1230,16 +1210,6 @@ public class MManager {
    * @return MeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    try {
-      IMeasurementSchema schema = fullPath.getMeasurementSchema();
-      if (schema != null) {
-        return schema;
-      }
-    } catch (MetadataException ignored) {
-
-    }
-
-    // Path get from remote doesn't contain schema
     return getMeasurementMNode(fullPath).getSchema();
   }
 

@@ -892,7 +892,8 @@ public class MTree implements Serializable {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
-  public List<PartialPath> getMeasurementPaths(PartialPath pathPattern) throws MetadataException {
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
+      throws MetadataException {
     return getMeasurementPathsWithAlias(pathPattern, 0, 0).left;
   }
 
@@ -903,9 +904,9 @@ public class MTree implements Serializable {
    * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
    *     if we don't set offset.
    */
-  public Pair<List<PartialPath>, Integer> getMeasurementPathsWithAlias(
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    List<PartialPath> result = new LinkedList<>();
+    List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(root, pathPattern, limit, offset) {
           @Override

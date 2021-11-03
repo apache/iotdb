@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -501,7 +502,8 @@ public class QueryOperator extends Operator {
   }
 
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getMeasurementPaths(path);
+    // todo eliminate this transform and use MeasurementPath directly
+    return new LinkedList<>(IoTDB.metaManager.getMeasurementPaths(path));
   }
 
   public boolean isEnableTracing() {

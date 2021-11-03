@@ -309,6 +309,10 @@ public class PartialPath extends Path implements Comparable<Path> {
     throw new MetadataException("This path doesn't represent a measurement");
   }
 
+  public TSDataType getSeriesType() throws MetadataException {
+    throw new MetadataException("This path doesn't represent a measurement");
+  }
+
   @Override
   public int compareTo(Path path) {
     PartialPath partialPath = (PartialPath) path;
