@@ -1136,6 +1136,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
         // last chunk group Metadata
         chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
+        lastDeviceId = null;
       }
       truncatedSize = this.position() - 1;
     } catch (Exception e) {
@@ -1146,13 +1147,8 @@ public class TsFileSequenceReader implements AutoCloseable {
           e.getMessage());
     }
     if (loadLastChunkMetadata && lastDeviceId != null) {
-      if (chunkGroupMetadataList.size() == 0
-          || !chunkGroupMetadataList
-              .get(chunkGroupMetadataList.size() - 1)
-              .getDevice()
-              .equals(lastDeviceId))
-        // add last chunk group metadata list
-        chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
+      // add last chunk group metadata list
+      chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
     }
     // Despite the completeness of the data section, we will discard current FileMetadata
     // so that we can continue to write data into this tsfile.
