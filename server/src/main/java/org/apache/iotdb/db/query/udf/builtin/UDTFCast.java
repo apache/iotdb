@@ -232,8 +232,7 @@ public class UDTFCast implements UDTF {
         if (numeric) collector.putDouble(time, Double.parseDouble(stringValue));
         return;
       case BOOLEAN:
-        collector.putBoolean(
-            time, !(stringValue.equals("false") || stringValue.equals("")));
+        collector.putBoolean(time, !(stringValue.equals("false") || stringValue.equals("")));
         return;
       case TEXT:
         collector.putBinary(time, value);
