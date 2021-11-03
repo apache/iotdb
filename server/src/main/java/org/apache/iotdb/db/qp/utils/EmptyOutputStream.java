@@ -16,36 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.query.udf.core.reader;
-
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+package org.apache.iotdb.db.qp.utils;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
-public interface LayerPointReader {
+/** Empty OutputStream To count serialize size without serialization */
+public class EmptyOutputStream extends OutputStream {
 
-  boolean isConstantPointReader();
+  @Override
+  public void write(int b) throws IOException {}
 
-  boolean next() throws QueryProcessException, IOException;
+  @Override
+  public void write(byte b[], int off, int len) throws IOException {}
 
-  void readyForNext();
-
-  TSDataType getDataType();
-
-  long currentTime() throws IOException;
-
-  int currentInt() throws IOException;
-
-  long currentLong() throws IOException;
-
-  float currentFloat() throws IOException;
-
-  double currentDouble() throws IOException;
-
-  boolean currentBoolean() throws IOException;
-
-  Binary currentBinary() throws IOException;
+  public void write(byte b[]) throws IOException {}
 }

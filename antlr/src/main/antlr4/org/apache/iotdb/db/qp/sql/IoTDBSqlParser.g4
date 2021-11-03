@@ -709,6 +709,8 @@ dateExpression
     : datetimeLiteral ((PLUS | MINUS) DURATION_LITERAL)*
     ;
 
+// The order of following expressions decides their priorities. Thus, the priority of
+// multiplication, division, and modulus higher than that of addition and substraction.
 expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
     | (PLUS | MINUS) unaryAfterSign=expression
@@ -716,7 +718,7 @@ expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPath
-    | literal=STRING_LITERAL
+    | constant
     ;
 
 functionName

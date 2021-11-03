@@ -54,6 +54,11 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
+  public boolean isConstantOperandInternal() {
+    return leftExpression.isConstantOperand() && rightExpression.isConstantOperand();
+  }
+
+  @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return true;
   }
@@ -165,9 +170,12 @@ public abstract class BinaryExpression extends Expression {
               rightParentIntermediateLayer.constructPointReader());
       expressionDataTypeMap.put(this, transformer.getDataType());
 
+      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
+      // yet. And since a ConstantLayerPointReader won't produce too much IO,
+      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
@@ -181,9 +189,21 @@ public abstract class BinaryExpression extends Expression {
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override
-  public final String toString() {
-    return String.format(
-        "%s %s %s", leftExpression.toString(), operator(), rightExpression.toString());
+  public final String getExpressionStringInternal() {
+    StringBuilder builder = new StringBuilder();
+    if (leftExpression instanceof BinaryExpression) {
+      builder.append("(").append(leftExpression.getExpressionString()).append(")");
+    } else {
+      builder.append(leftExpression.getExpressionString());
+    }
+    builder.append(" ").append(operator()).append(" ");
+    if (rightExpression instanceof BinaryExpression) {
+      builder.append("(").append(rightExpression.getExpressionString()).append(")");
+    } else {
+      builder.append(rightExpression.getExpressionString());
+    }
+
+    return builder.toString();
   }
 
   protected abstract String operator();
