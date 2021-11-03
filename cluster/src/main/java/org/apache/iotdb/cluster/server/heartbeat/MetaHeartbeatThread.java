@@ -73,8 +73,8 @@ public class MetaHeartbeatThread extends HeartbeatThread {
   }
 
   @Override
-  void startElection() {
-    super.startElection();
+  void startElection(long currentTerm) {
+    super.startElection(currentTerm);
 
     if (localMetaMember.getCharacter() == NodeCharacter.LEADER) {
       // A new raft leader needs to have at least one log in its term for committing logs with older

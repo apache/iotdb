@@ -1635,7 +1635,7 @@ public abstract class RaftMember {
       long currTerm = term.get();
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
-        logger.info("{} has update it's term to {}", getName(), newTerm);
+        logger.info("{} has update it's term from {} to {}", getName(), currTerm, newTerm);
         term.set(newTerm);
         setVoteFor(null);
         setCharacter(NodeCharacter.ELECTOR);

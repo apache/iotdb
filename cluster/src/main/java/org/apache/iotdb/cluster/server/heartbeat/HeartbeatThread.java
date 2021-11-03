@@ -71,6 +71,7 @@ public class HeartbeatThread implements Runnable {
     logger.info("{}: Heartbeat thread starts...", memberName);
     // sleep random time to reduce first election conflicts
     long electionWait = getElectionRandomWaitMs();
+    long currentTerm = -1;
     try {
       logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
       Thread.sleep(electionWait);
@@ -96,9 +97,16 @@ public class HeartbeatThread implements Runnable {
                 RaftServer.getElectionTimeoutMs() + getElectionRandomWaitMs();
             if (heartbeatInterval >= randomElectionTimeout) {
               // the leader is considered dead, an election will be started in the next loop
-              logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
+              logger.info(
+                  "{}: The leader {} timed out in term {}",
+                  memberName,
+                  localMember.getLeader(),
+                  localMember.getTerm().get());
               localMember.setCharacter(NodeCharacter.ELECTOR);
               localMember.setLeader(ClusterConstant.EMPTY_NODE);
+              synchronized (localMember.getTerm()) {
+                currentTerm = localMember.getTerm().get();
+              }
             } else {
               logger.debug(
                   "{}: Heartbeat from leader {} is still valid",
@@ -117,9 +125,9 @@ public class HeartbeatThread implements Runnable {
             break;
           case ELECTOR:
           default:
-            onElectionsStart();
-            startElections();
-            onElectionsEnd();
+            onElectionsStart(currentTerm);
+            startElections(currentTerm);
+            onElectionsEnd(currentTerm);
             break;
         }
       } catch (InterruptedException e) {
@@ -133,12 +141,12 @@ public class HeartbeatThread implements Runnable {
     logger.info("{}: Heartbeat thread exits", memberName);
   }
 
-  protected void onElectionsStart() {
-    logger.info("{}: Start elections", memberName);
+  protected void onElectionsStart(long currentTerm) {
+    logger.info("{}: Try to start elections in term {}", memberName, currentTerm + 1);
   }
 
-  protected void onElectionsEnd() {
-    logger.info("{}: End elections", memberName);
+  protected void onElectionsEnd(long currentTerm) {
+    logger.info("{}: End elections in term {}", currentTerm + 1);
   }
 
   /** Send each node (except the local node) in the group of the member a heartbeat. */
@@ -256,22 +264,32 @@ public class HeartbeatThread implements Runnable {
    *
    * @throws InterruptedException
    */
-  private void startElections() throws InterruptedException {
+  private void startElections(long currentTerm) throws InterruptedException {
     if (localMember.getAllNodes().size() == 1) {
       // single node group, this node is always the leader
       localMember.setCharacter(NodeCharacter.LEADER);
       localMember.setLeader(localMember.getThisNode());
-      logger.info("{}: Winning the election because the node is the only node.", memberName);
+      logger.info(
+          "{}: Winning the election in term {} because the node is the only node.",
+          memberName,
+          currentTerm);
     }
 
     // the election goes on until this node becomes a follower or a leader
     while (localMember.getCharacter() == NodeCharacter.ELECTOR) {
-      startElection();
+      startElection(currentTerm);
       if (localMember.getCharacter() == NodeCharacter.ELECTOR) {
         // sleep random time to reduce election conflicts
         long electionWait = getElectionRandomWaitMs();
-        logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
         Thread.sleep(electionWait);
+        // election base on latest term
+        currentTerm = localMember.getTerm().get();
+        logger.info(
+            "{}: Wake up after {}ms sleep, current term: {}, character: {}",
+            memberName,
+            electionWait,
+            currentTerm,
+            localMember.getCharacter());
       }
     }
     // take the election request as the first heartbeat
@@ -284,12 +302,23 @@ public class HeartbeatThread implements Runnable {
    */
   @SuppressWarnings({"java:S2274"})
   // enable timeout
-  void startElection() {
+  void startElection(long currentTerm) {
     if (localMember.isSkipElection()) {
-      logger.info("{}: Skip election because this node has stopped.", memberName);
+      logger.info(
+          "{}: Skip the round of election in term {} because this node has stopped.",
+          memberName,
+          currentTerm + 1);
       return;
     }
     synchronized (localMember.getTerm()) {
+      if (currentTerm < localMember.getTerm().get()) {
+        logger.info(
+            "{}: Skip the election in term {}. Because term has been updated to {}",
+            memberName,
+            currentTerm + 1,
+            localMember.getTerm().get());
+        return;
+      }
       long nextTerm = localMember.getTerm().incrementAndGet();
       localMember.setVoteFor(localMember.getThisNode());
       localMember.updateHardState(nextTerm, this.localMember.getVoteFor());
@@ -327,13 +356,14 @@ public class HeartbeatThread implements Runnable {
 
       try {
         logger.info(
-            "{}: Wait for {}ms until election time out",
+            "{}: Wait for {}ms until election time out in term {}",
             memberName,
-            RaftServer.getElectionTimeoutMs());
+            RaftServer.getElectionTimeoutMs(),
+            nextTerm);
         localMember.getTerm().wait(RaftServer.getElectionTimeoutMs());
       } catch (InterruptedException e) {
         logger.info(
-            "{}: Unexpected interruption when waiting the result of election {}",
+            "{}: Unexpected interruption when waiting the result of election in term {}",
             memberName,
             nextTerm);
         Thread.currentThread().interrupt();
@@ -342,7 +372,7 @@ public class HeartbeatThread implements Runnable {
       // if the election times out, the remaining votes do not matter
       electionTerminated.set(true);
       if (electionValid.get()) {
-        logger.info("{}: Election {} accepted", memberName, nextTerm);
+        logger.info("{}: Election in term {} accepted", memberName, nextTerm);
         localMember.setCharacter(NodeCharacter.LEADER);
         localMember.setLeader(localMember.getThisNode());
       }

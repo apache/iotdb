@@ -52,7 +52,7 @@ public class DataHeartbeatThread extends HeartbeatThread {
    * to it. So the progress of meta logs is also examined.
    */
   @Override
-  void startElection() {
+  void startElection(long currentTerm) {
     // skip first few elections to let the header have a larger chance to become the leader, so
     // possibly each node will only be one leader at the same time
     if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader().getNode())
@@ -63,6 +63,6 @@ public class DataHeartbeatThread extends HeartbeatThread {
     }
     electionRequest.setHeader(dataGroupMember.getHeader());
 
-    super.startElection();
+    super.startElection(currentTerm);
   }
 }
