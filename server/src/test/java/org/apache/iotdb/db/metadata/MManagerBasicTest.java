@@ -892,36 +892,18 @@ public class MManagerBasicTest {
   private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
-    List<String> measurements = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      measurements.add("s" + i);
-    }
-    measurementList.add(measurements);
 
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      dataTypes.add(TSDataType.INT64);
-    }
-    dataTypeList.add(dataTypes);
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      encodings.add(TSEncoding.RLE);
-    }
-    encodingList.add(encodings);
 
     List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 2; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
-    }
+    compressionTypes.add(CompressionType.SNAPPY);
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");
-    schemaNames.add("aligned_device");
 
     return new CreateTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
@@ -1020,7 +1002,7 @@ public class MManagerBasicTest {
 
     CreateTimeSeriesPlan createTimeSeriesPlan2 =
         new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.aligned_device"),
+            new PartialPath("root.sg1.d1.s11"),
             TSDataType.INT32,
             TSEncoding.PLAIN,
             CompressionType.GZIP,
@@ -1034,7 +1016,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.sg1.d1.aligned_device ( which is incompatible with template )] already exist",
+          "Path [root.sg1.d1.s11 ( which is incompatible with template )] already exist",
           e.getMessage());
     }
   }
@@ -1072,27 +1054,6 @@ public class MManagerBasicTest {
     }
 
     manager.deleteTimeseries(new PartialPath("root.sg1.d1.s11"));
-
-    CreateTimeSeriesPlan createTimeSeriesPlan2 =
-        new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.aligned_device.s1"),
-            TSDataType.INT32,
-            TSEncoding.PLAIN,
-            CompressionType.GZIP,
-            null,
-            null,
-            null,
-            null);
-    manager.createTimeseries(createTimeSeriesPlan2);
-
-    try {
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
-      fail();
-    } catch (MetadataException e) {
-      assertEquals(
-          "Schema name aligned_device in template has conflict with node's child root.sg1.d1.aligned_device",
-          e.getMessage());
-    }
   }
 
   @Test
