@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -73,7 +74,8 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
 
   @Test
   public void testMatchPaths() throws MetadataException {
-    List<PartialPath> allMatchedPaths = queryExecutor.getPathsName(new PartialPath("root.*.s0"));
+    List<MeasurementPath> allMatchedPaths =
+        queryExecutor.getPathsName(new PartialPath("root.*.s0"));
     allMatchedPaths.sort(null);
     for (int i = 0; i < allMatchedPaths.size(); i++) {
       assertEquals(pathList.get(i), allMatchedPaths.get(i));

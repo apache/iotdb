@@ -45,6 +45,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -630,7 +631,7 @@ public class MManager {
    */
   public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     try {
-      List<PartialPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
+      List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
       if (allTimeseries.isEmpty()) {
         throw new MetadataException(
             String.format(
@@ -1070,7 +1071,8 @@ public class MManager {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
-  public List<PartialPath> getMeasurementPaths(PartialPath pathPattern) throws MetadataException {
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
+      throws MetadataException {
     return mtree.getMeasurementPaths(pathPattern);
   }
 
@@ -1078,7 +1080,7 @@ public class MManager {
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
    * limit and offset.
    */
-  public Pair<List<PartialPath>, Integer> getMeasurementPathsWithAlias(
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset);
   }
