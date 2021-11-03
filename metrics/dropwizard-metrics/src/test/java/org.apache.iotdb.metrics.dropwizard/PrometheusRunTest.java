@@ -33,6 +33,7 @@ public class PrometheusRunTest {
     System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources");
     PrometheusRunTest prometheusRunTest = new PrometheusRunTest();
     Counter counter = prometheusRunTest.metricManager.getOrCreateCounter("counter");
+    MetricService.startAll();
     while (true) {
       counter.inc();
       TimeUnit.SECONDS.sleep(1);

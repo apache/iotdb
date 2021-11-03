@@ -34,7 +34,6 @@ public class CompositeReporter {
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final List<Reporter> reporters = new ArrayList<>();
-  private MetricManager metricManager;
 
   /** Start all reporter */
   public boolean startAll() {
@@ -82,10 +81,5 @@ public class CompositeReporter {
   /** Add reporter */
   public void addReporter(Reporter reporter) {
     reporters.add(reporter);
-  }
-
-  /** set manager to reporter */
-  public void setMetricManager(MetricManager metricManager) {
-    this.metricManager = metricManager;
   }
 }

@@ -80,7 +80,13 @@ public class MetricService {
       logger.warn(
           "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
     }
+    // load reporter
+    loadReporter();
+    // do some init work
+    metricManager.init();
+  }
 
+  public static void loadReporter() {
     compositeReporter = new CompositeReporter();
 
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
@@ -96,11 +102,6 @@ public class MetricService {
         compositeReporter.addReporter(reporter);
       }
     }
-
-    // do some init work
-    metricManager.init();
-    compositeReporter.setMetricManager(metricManager);
-    compositeReporter.startAll();
   }
 
   /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
