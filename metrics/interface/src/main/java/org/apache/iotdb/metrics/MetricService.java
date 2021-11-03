@@ -57,11 +57,19 @@ public class MetricService {
 
   /** init config, manager and reporter */
   private static void init() {
-    logger.info("init metric service");
+    logger.info("Init metric service");
+    // load manager
+    loadManager();
+    // load reporter
+    loadReporter();
+    // do some init work
+    metricManager.init();
+  }
+
+  public static void loadManager() {
+    logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
-    MetricManager nothingManager = new DoNothingMetricManager();
-
     for (MetricManager mf : metricManagers) {
       size++;
       if (mf.getClass()
@@ -75,18 +83,15 @@ public class MetricService {
 
     // if no more implementations, we use nothingManager.
     if (size == 0 || metricManager == null) {
-      metricManager = nothingManager;
+      metricManager = new DoNothingMetricManager();
     } else if (size > 1) {
       logger.warn(
           "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
     }
-    // load reporter
-    loadReporter();
-    // do some init work
-    metricManager.init();
   }
 
   public static void loadReporter() {
+    logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
     compositeReporter = new CompositeReporter();
 
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
