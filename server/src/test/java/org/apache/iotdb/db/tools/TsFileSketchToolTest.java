@@ -41,7 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TsFileSketchToolTest {
-  String path = "test.tsfile";
+  String path = "data/data/sequence/root.sg1/0/0/1-0-0-0.tsfile";
   String sketchOut = "sketch.out";
   String device = "root.device_0";
 
