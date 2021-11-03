@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -161,6 +163,8 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
     } catch (IOException e) {
       LOGGER.error("recover inner space compaction error", e);
     } finally {
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
       if (compactionLogFile.exists()) {
         if (!compactionLogFile.delete()) {
           LOGGER.warn(

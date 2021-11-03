@@ -54,11 +54,8 @@ import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.LineNumberReader;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Collections;
@@ -72,7 +69,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
@@ -598,43 +594,6 @@ public class InnerSpaceCompactionUtils {
           (dir, name) -> name.endsWith(SizeTieredCompactionLogger.COMPACTION_LOG_NAME));
     } else {
       return new File[0];
-    }
-  }
-
-  public static long getTimePartitionFromLog(File logFile) {
-    if (!logFile.exists()) {
-      return -1;
-    }
-    // get the line number of log file
-    try (LineNumberReader lineNumberReader = new LineNumberReader(new FileReader(logFile))) {
-      lineNumberReader.skip(Long.MAX_VALUE);
-      if (lineNumberReader.getLineNumber() < 1) {
-        // the log doesn't record any file name
-        return -1;
-      }
-    } catch (IOException e) {
-      return -1;
-    }
-    try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
-      String currentLine;
-      while ((currentLine = reader.readLine()) != null && !currentLine.equals(SOURCE_NAME)) {}
-      if (currentLine == null) {
-        return -1;
-      }
-      String sourceFileName = reader.readLine();
-      String splitSeparator = File.separator;
-      if (splitSeparator.equals("\\")) {
-        splitSeparator = "\\\\";
-      }
-      String[] splits = sourceFileName.split(splitSeparator);
-      // not a full source file name
-      if (splits.length < 4) {
-        return -1;
-      }
-      int length = splits.length;
-      return Long.parseLong(splits[length - 2]);
-    } catch (IOException e) {
-      return -1;
     }
   }
 }
