@@ -73,6 +73,10 @@ public class MeasurementPath extends PartialPath {
     return measurementSchema;
   }
 
+  public TSDataType getSeriesType() {
+    return getMeasurementSchema().getType();
+  }
+
   public void setMeasurementSchema(IMeasurementSchema measurementSchema) {
     this.measurementSchema = measurementSchema;
   }

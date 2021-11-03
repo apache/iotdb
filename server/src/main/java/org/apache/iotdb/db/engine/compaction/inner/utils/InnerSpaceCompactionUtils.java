@@ -206,7 +206,7 @@ public class InnerSpaceCompactionUtils {
     try {
       chunkWriter =
           new ChunkWriterImpl(
-              IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
+              IoTDB.metaManager.getSeriesSchema(new PartialPath(device, entry.getKey())), true);
     } catch (MetadataException e) {
       // this may caused in IT by restart
       logger.error("{} get schema {} error, skip this sensor", device, entry.getKey(), e);

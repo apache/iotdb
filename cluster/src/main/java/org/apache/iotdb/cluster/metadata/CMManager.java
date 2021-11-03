@@ -418,45 +418,6 @@ public class CMManager extends MManager {
     return super.getSeriesSchemasAndReadLockDevice(plan);
   }
 
-  @Override
-  public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
-      throws MetadataException {
-    try {
-      IMeasurementSchema measurementSchema = super.getSeriesSchema(device, measurement);
-      if (measurementSchema != null) {
-        return measurementSchema;
-      }
-    } catch (PathNotExistException e) {
-      // not found in local
-    }
-
-    // try cache
-    cacheLock.readLock().lock();
-    try {
-      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(device.concatNode(measurement));
-      if (measurementMNode != null) {
-        return measurementMNode.getSchema();
-      }
-    } finally {
-      cacheLock.readLock().unlock();
-    }
-
-    // pull from remote
-    pullSeriesSchemas(device, new String[] {measurement});
-
-    // try again
-    cacheLock.readLock().lock();
-    try {
-      IMeasurementMNode measurementMeta = mRemoteMetaCache.get(device.concatNode(measurement));
-      if (measurementMeta != null) {
-        return measurementMeta.getSchema();
-      }
-    } finally {
-      cacheLock.readLock().unlock();
-    }
-    return super.getSeriesSchema(device, measurement);
-  }
-
   /**
    * Check whether the path exists.
    *

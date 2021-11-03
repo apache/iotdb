@@ -1179,7 +1179,7 @@ public class PlanExecutor implements IPlanExecutor {
         PartialPath fullPath =
             new PartialPath(deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId());
         if (IoTDB.metaManager.isPathExist(fullPath)) {
-          TSDataType dataType = IoTDB.metaManager.getSeriesSchema(fullPath).getType();
+          TSDataType dataType = IoTDB.metaManager.getSeriesType(fullPath);
           if (dataType != metadata.getTSDataType()) {
             throw new QueryProcessException(
                 fullPath.getFullPath()
