@@ -142,8 +142,8 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
     Arrays.fill(queryEndTimes, curEndTime);
     Arrays.fill(queryIntervalTimes, intervalTimes);
     Arrays.fill(hasCachedQueryInterval, true);
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      List<Integer> indexes = resultIndexes.get(deduplicatedPaths.get(i));
+    for (PartialPath deduplicatedPath : deduplicatedPaths) {
+      List<Integer> indexes = resultIndexes.get(deduplicatedPath);
       for (int index : indexes) {
         switch (aggregations.get(index)) {
           case "avg":
@@ -159,7 +159,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
           case "last_value":
           case "max_value":
           case "min_value":
-            resultDataType[index] = dataTypes.get(i);
+            resultDataType[index] = dataTypes.get(index);
             break;
         }
       }
@@ -254,6 +254,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
     }
   }
 
+  /* check if specified path has next extra range */
   private boolean pathHasExtra(int pathId, boolean isExtraPrevious, long extraStartTime) {
     List<Integer> Indexes = resultIndexes.get(deduplicatedPaths.get(pathId));
     for (int resultIndex : Indexes) {
@@ -311,6 +312,8 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
           List<AggregateResult> aggregations =
               executor.calcResult(extraTimeRange.left, extraTimeRange.right);
           if (!resultIsNull(aggregations)) {
+            // we check extra time range in single path together,
+            // thus the extra result will be cached together
             for (int i = 0; i < aggregations.size(); i++) {
               if (extraValues[Indexes.get(i)] == null) {
                 extraValues[Indexes.get(i)] = aggregations.get(i).getResult();
