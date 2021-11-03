@@ -22,7 +22,13 @@ import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
-import org.apache.hadoop.io.*;
+import org.apache.hadoop.io.BooleanWritable;
+import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.FloatWritable;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
@@ -32,15 +38,22 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TSFHadoopTest {
 
   private TSFInputFormat inputFormat = null;
 
-  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("example_mr.tsfile");
+  private final String tsfilePath =
+      TestConstant.BASE_OUTPUT_PATH.concat("data/data/sequence/root.sg1/0/0/1-0-0-0.tsfile");
 
   @Before
   public void setUp() {
