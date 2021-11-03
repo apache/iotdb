@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.tsfile.utils;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
 import java.util.Arrays;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class FilePathUtils {
 
@@ -149,6 +150,5 @@ public class FilePathUtils {
       System.out.println("path: " + tsFileAbsolutePath);
       throw e;
     }
-
   }
 }
