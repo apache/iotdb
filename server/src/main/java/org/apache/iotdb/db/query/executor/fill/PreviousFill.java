@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -31,6 +33,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.Set;
 
 public class PreviousFill extends IFill {
@@ -75,6 +78,18 @@ public class PreviousFill extends IFill {
             : TimeFilter.gtEq(queryTime - beforeRange);
     // time in [queryTime - beforeRange, queryTime]
     timeFilter = FilterFactory.and(lowerBound, TimeFilter.ltEq(queryTime));
+  }
+
+  public void convertRange(long startTime) {
+    if (beforeRange % GroupByEngineDataSet.MS_TO_MONTH == 0) {
+      Calendar calendar = Calendar.getInstance();
+      calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+      calendar.setTimeInMillis(startTime);
+      calendar.add(Calendar.MONTH, (int) (-beforeRange / GroupByEngineDataSet.MS_TO_MONTH));
+      beforeRange = calendar.getTimeInMillis();
+    } else {
+      beforeRange = startTime - beforeRange;
+    }
   }
 
   public long getBeforeRange() {

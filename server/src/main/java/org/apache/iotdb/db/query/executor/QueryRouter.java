@@ -272,6 +272,7 @@ public class QueryRouter implements IQueryRouter {
       dataSet = new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
     } else {
       // dataSet = new GroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      throw new QueryProcessException("Group by fill doesn't support valueFilter yet.");
     }
 
     // TODO: support group by level in group by fill

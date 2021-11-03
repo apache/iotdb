@@ -49,8 +49,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected boolean leftCRightO;
   protected boolean isIntervalByMonth = false;
   protected boolean isSlidingStepByMonth = false;
-  protected int intervalTimes;
-  private static final long MS_TO_MONTH = 30 * 86400_000L;
+  protected long intervalTimes;
+  public static final long MS_TO_MONTH = 30 * 86400_000L;
   protected AggregateResult[] curAggregateResults;
 
   public GroupByEngineDataSet() {}
@@ -64,6 +64,83 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
     // find the startTime of the first aggregation interval
     initGroupByEngineDataSetFields(context, groupByTimePlan);
+  }
+
+  protected Pair<Long, Long> getFirstTimeRange() {
+    long retEndTime;
+    if (isIntervalByMonth) {
+      // calculate interval length by natural month based on startTime
+      // ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
+      retEndTime = Math.min(calcIntervalByMonth(interval), endTime);
+    } else {
+      retEndTime = Math.min(startTime + interval, endTime);
+    }
+    return new Pair<>(startTime, retEndTime);
+  }
+
+  protected Pair<Long, Long> getLastTimeRange() {
+    long retStartTime, retEndTime;
+    long queryRange = endTime - startTime;
+    long intervalNum;
+
+    if (isSlidingStepByMonth) {
+      intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep * MS_TO_MONTH));
+      retStartTime = calcIntervalByMonth(intervalNum * slidingStep);
+      while (retStartTime >= endTime) {
+        intervalNum -= 1;
+        retStartTime = calcIntervalByMonth(intervalNum * slidingStep);
+      }
+    } else {
+      intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
+      retStartTime = slidingStep * (intervalNum - 1) + startTime;
+    }
+
+    if (isIntervalByMonth) {
+      // calculate interval length by natural month based on curStartTime
+      // ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
+      retEndTime = Math.min(calcIntervalByMonth(interval + slidingStep * intervalNum), endTime);
+    } else {
+      retEndTime = Math.min(retStartTime + interval, endTime);
+    }
+
+    return new Pair<>(retStartTime, retEndTime);
+  }
+
+  protected Pair<Long, Long> getNextTimeRange(
+      long curStartTime, boolean isAscending, long intervalNums, boolean isInside) {
+    long retStartTime, retEndTime;
+
+    if (isAscending) {
+      if (isSlidingStepByMonth) {
+        retStartTime = calcIntervalByMonth(slidingStep * intervalNums);
+      } else {
+        retStartTime = curStartTime + slidingStep;
+      }
+      // This is an open interval , [0-100)
+      if (retStartTime >= endTime && isInside) {
+        return null;
+      }
+    } else {
+      if (isSlidingStepByMonth) {
+        retStartTime = calcIntervalByMonth(slidingStep * intervalNums);
+      } else {
+        retStartTime = curStartTime - slidingStep;
+      }
+      if (retStartTime < startTime && isInside) {
+        return null;
+      }
+    }
+
+    if (isIntervalByMonth) {
+      retEndTime = calcIntervalByMonth(intervalNums * slidingStep + interval);
+    } else {
+      retEndTime = retStartTime + interval;
+    }
+    if (isInside) {
+      retEndTime = Math.min(retEndTime, endTime);
+    }
+
+    return new Pair<>(retStartTime, retEndTime);
   }
 
   protected void initGroupByEngineDataSetFields(
@@ -82,40 +159,36 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       interval = interval / MS_TO_MONTH;
     }
 
-    // find the startTime of the first aggregation interval
-    if (ascending) {
-      curStartTime = startTime;
-    } else {
-      long queryRange = endTime - startTime;
-      // calculate the total interval number
-      long intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
-      if (isSlidingStepByMonth) {
-        intervalTimes = (int) intervalNum - 1;
-        curStartTime = calcIntervalByMonth(intervalTimes * slidingStep / MS_TO_MONTH);
-      } else {
-        curStartTime = slidingStep * (intervalNum - 1) + startTime;
-      }
-    }
-
     if (isSlidingStepByMonth) {
       slidingStep = slidingStep / MS_TO_MONTH;
     }
 
-    if (isIntervalByMonth) {
-      // calculate interval length by natural month based on curStartTime
-      // ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
-      curEndTime = Math.min(calcIntervalByMonth(interval + slidingStep * intervalTimes), endTime);
+    // find the first aggregation interval
+    Pair<Long, Long> retTimeRange;
+    if (ascending) {
+      retTimeRange = getFirstTimeRange();
     } else {
-      curEndTime = Math.min(curStartTime + interval, endTime);
+      retTimeRange = getLastTimeRange();
+      if (isSlidingStepByMonth) {
+        // Save intervalTimes
+        long queryRange = endTime - startTime;
+        long intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep * MS_TO_MONTH));
+        long lastStartTime = calcIntervalByMonth(intervalNum * slidingStep);
+        while (lastStartTime >= endTime) {
+          intervalNum -= 1;
+          lastStartTime = calcIntervalByMonth(intervalNum * slidingStep);
+        }
+        this.intervalTimes = intervalNum;
+      }
     }
+    curStartTime = retTimeRange.left;
+    curEndTime = retTimeRange.right;
 
     this.hasCachedTimeInterval = true;
   }
 
   @Override
   public boolean hasNextWithoutConstraint() {
-    long curSlidingStep = slidingStep;
-    long curInterval = interval;
     // has cached
     if (hasCachedTimeInterval) {
       return true;
@@ -124,33 +197,15 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     // for group by natural months addition
     intervalTimes += ascending ? 1 : -1;
 
-    if (ascending) {
-      if (isSlidingStepByMonth) {
-        curStartTime = calcIntervalByMonth(slidingStep * intervalTimes);
-      } else {
-        curStartTime += curSlidingStep;
-      }
-      // This is an open interval , [0-100)
-      if (curStartTime >= endTime) {
-        return false;
-      }
-    } else {
-      if (isSlidingStepByMonth) {
-        curStartTime = calcIntervalByMonth(slidingStep * intervalTimes);
-      } else {
-        curStartTime -= curSlidingStep;
-      }
-      if (curStartTime < startTime) {
-        return false;
-      }
+    // find the next aggregation interval
+    Pair<Long, Long> nextTimeRange = getNextTimeRange(curStartTime, ascending, intervalTimes, true);
+    if (nextTimeRange == null) {
+      return false;
     }
+    curStartTime = nextTimeRange.left;
+    curEndTime = nextTimeRange.right;
 
     hasCachedTimeInterval = true;
-    if (isIntervalByMonth) {
-      curEndTime = Math.min(calcIntervalByMonth(intervalTimes * slidingStep + interval), endTime);
-    } else {
-      curEndTime = Math.min(curStartTime + curInterval, endTime);
-    }
     return true;
   }
 

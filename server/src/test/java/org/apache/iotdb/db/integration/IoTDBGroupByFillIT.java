@@ -48,25 +48,25 @@ public class IoTDBGroupByFillIT {
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(10, 21, false, 11.1)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(12, 23, true, 22.3)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(14, 25, false, 33.5)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(23, 28, true, 34.9)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(25, 23, false, 31.7)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(33, 29, false, 44.6)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(36, 24, true, 44.8)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(48, 28, false, 54.6)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(50, 30, true, 55.8)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) "
             + "values(66, 40, false, 33.0)",
         "flush"
       };

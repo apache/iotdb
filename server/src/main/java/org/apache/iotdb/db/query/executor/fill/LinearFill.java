@@ -29,6 +29,8 @@ import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -39,6 +41,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 
@@ -66,6 +69,28 @@ public class LinearFill extends IFill {
   }
 
   public LinearFill() {}
+
+  public void convertRange(long startTime, long endTime) {
+    if (beforeRange % GroupByEngineDataSet.MS_TO_MONTH == 0) {
+      Calendar calendar = Calendar.getInstance();
+      calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+      calendar.setTimeInMillis(startTime);
+      calendar.add(Calendar.MONTH, (int) (-beforeRange / GroupByEngineDataSet.MS_TO_MONTH));
+      beforeRange = calendar.getTimeInMillis();
+    } else {
+      beforeRange = startTime - beforeRange;
+    }
+
+    if (afterRange % GroupByEngineDataSet.MS_TO_MONTH == 0) {
+      Calendar calendar = Calendar.getInstance();
+      calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+      calendar.setTimeInMillis(endTime);
+      calendar.add(Calendar.MONTH, (int) (afterRange / GroupByEngineDataSet.MS_TO_MONTH));
+      afterRange = calendar.getTimeInMillis();
+    } else {
+      afterRange = endTime + afterRange;
+    }
+  }
 
   public long getBeforeRange() {
     return beforeRange;
