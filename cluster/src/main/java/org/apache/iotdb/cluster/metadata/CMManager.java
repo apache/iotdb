@@ -48,6 +48,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -415,45 +416,6 @@ public class CMManager extends MManager {
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
     return super.getSeriesSchemasAndReadLockDevice(plan);
-  }
-
-  @Override
-  public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
-      throws MetadataException {
-    try {
-      IMeasurementSchema measurementSchema = super.getSeriesSchema(device, measurement);
-      if (measurementSchema != null) {
-        return measurementSchema;
-      }
-    } catch (PathNotExistException e) {
-      // not found in local
-    }
-
-    // try cache
-    cacheLock.readLock().lock();
-    try {
-      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(device.concatNode(measurement));
-      if (measurementMNode != null) {
-        return measurementMNode.getSchema();
-      }
-    } finally {
-      cacheLock.readLock().unlock();
-    }
-
-    // pull from remote
-    pullSeriesSchemas(device, new String[] {measurement});
-
-    // try again
-    cacheLock.readLock().lock();
-    try {
-      IMeasurementMNode measurementMeta = mRemoteMetaCache.get(device.concatNode(measurement));
-      if (measurementMeta != null) {
-        return measurementMeta.getSchema();
-      }
-    } finally {
-      cacheLock.readLock().unlock();
-    }
-    return super.getSeriesSchema(device, measurement);
   }
 
   /**
@@ -963,9 +925,9 @@ public class CMManager extends MManager {
    *     storage group added
    * @return a collection of all queried paths
    */
-  private List<PartialPath> getMatchedPaths(Map<String, String> sgPathMap, boolean withAlias)
+  private List<MeasurementPath> getMatchedPaths(Map<String, String> sgPathMap, boolean withAlias)
       throws MetadataException {
-    List<PartialPath> result = new ArrayList<>();
+    List<MeasurementPath> result = new ArrayList<>();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> remoteGroupPathMap = new HashMap<>();
     for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
@@ -984,7 +946,7 @@ public class CMManager extends MManager {
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
-        List<PartialPath> allTimeseriesName = getMatchedPathsLocally(pathUnderSG, withAlias);
+        List<MeasurementPath> allTimeseriesName = getMatchedPathsLocally(pathUnderSG, withAlias);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
             metaGroupMember.getName(),
@@ -1010,7 +972,7 @@ public class CMManager extends MManager {
     return result;
   }
 
-  private List<PartialPath> getMatchedPathsLocally(PartialPath partialPath, boolean withAlias)
+  private List<MeasurementPath> getMatchedPathsLocally(PartialPath partialPath, boolean withAlias)
       throws MetadataException {
     if (!withAlias) {
       return getMeasurementPaths(partialPath);
@@ -1019,14 +981,14 @@ public class CMManager extends MManager {
     }
   }
 
-  private List<PartialPath> getMatchedPaths(
+  private List<MeasurementPath> getMatchedPaths(
       PartitionGroup partitionGroup, List<String> pathsToQuery, boolean withAlias)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        List<PartialPath> paths =
+        List<MeasurementPath> paths =
             getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery, withAlias);
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -1054,7 +1016,7 @@ public class CMManager extends MManager {
   }
 
   @SuppressWarnings("java:S1168") // null and empty list are different
-  private List<PartialPath> getMatchedPaths(
+  private List<MeasurementPath> getMatchedPaths(
       Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
       throws IOException, TException, InterruptedException {
     GetAllPathsResult result;
@@ -1082,9 +1044,11 @@ public class CMManager extends MManager {
     if (result != null) {
       // paths may be empty, implying that the group does not contain matched paths, so we do not
       // need to query other nodes in the group
-      List<PartialPath> partialPaths = new ArrayList<>();
+      List<MeasurementPath> partialPaths = new ArrayList<>();
       for (int i = 0; i < result.paths.size(); i++) {
-        PartialPath matchedPath = getAssembledPathFromRequest(result.paths.get(i));
+        // todo check this transform
+        MeasurementPath matchedPath =
+            (MeasurementPath) getAssembledPathFromRequest(result.paths.get(i));
         partialPaths.add(matchedPath);
         if (withAlias) {
           matchedPath.setMeasurementAlias(result.aliasList.get(i));
@@ -1212,10 +1176,10 @@ public class CMManager extends MManager {
 
   /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
   @Override
-  public Pair<List<PartialPath>, Integer> getMeasurementPathsWithAlias(
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     Map<String, String> sgPathMap = groupPathByStorageGroup(pathPattern);
-    List<PartialPath> result = getMatchedPaths(sgPathMap, true);
+    List<MeasurementPath> result = getMatchedPaths(sgPathMap, true);
 
     int skippedOffset = 0;
     // apply offset and limit
@@ -1240,9 +1204,9 @@ public class CMManager extends MManager {
    * @param originPath a path potentially with wildcard
    * @return all paths after removing wildcards in the path
    */
-  public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
+  public List<MeasurementPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
     Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
-    List<PartialPath> ret = getMatchedPaths(sgPathMap, false);
+    List<MeasurementPath> ret = getMatchedPaths(sgPathMap, false);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
   }
@@ -1264,7 +1228,7 @@ public class CMManager extends MManager {
       getAllPathsService.submit(
           () -> {
             try {
-              List<PartialPath> fullPathStrs = getMatchedPaths(pathStr);
+              List<MeasurementPath> fullPathStrs = getMatchedPaths(pathStr);
               if (fullPathStrs.isEmpty()) {
                 nonExistPaths.add(pathStr);
                 logger.debug("Path {} is not found.", pathStr);
@@ -1691,7 +1655,7 @@ public class CMManager extends MManager {
     List<String> alias = withAlias ? new ArrayList<>() : null;
 
     for (String path : paths) {
-      List<PartialPath> allTimeseriesPathWithAlias =
+      List<MeasurementPath> allTimeseriesPathWithAlias =
           super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
       for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
         retPaths.add(getPathStrListForRequest(timeseriesPathWithAlias));

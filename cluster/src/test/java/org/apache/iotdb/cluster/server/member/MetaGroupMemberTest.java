@@ -88,6 +88,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -1021,7 +1022,7 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testGetMatchedPaths() throws MetadataException {
     System.out.println("Start testGetMatchedPaths()");
-    List<PartialPath> matchedPaths =
+    List<MeasurementPath> matchedPaths =
         ((CMManager) IoTDB.metaManager)
             .getMatchedPaths(new PartialPath(TestUtils.getTestSg(0) + ".*"));
     assertEquals(20, matchedPaths.size());

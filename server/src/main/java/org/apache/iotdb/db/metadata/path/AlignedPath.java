@@ -170,6 +170,10 @@ public class AlignedPath extends PartialPath {
         VECTOR_PLACEHOLDER, array, types, encodings, schemaList.get(0).getCompressor());
   }
 
+  public TSDataType getSeriesType() {
+    return getMeasurementSchema().getType();
+  }
+
   @Override
   public PartialPath copy() {
     AlignedPath result = new AlignedPath();

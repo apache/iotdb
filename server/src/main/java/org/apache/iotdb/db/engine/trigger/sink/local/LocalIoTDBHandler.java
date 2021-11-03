@@ -72,7 +72,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
             TSFileDescriptor.getInstance().getConfig().getCompressor(),
             Collections.emptyMap());
       } else {
-        if (!IoTDB.metaManager.getSeriesSchema(device, measurement).getType().equals(dataType)) {
+        if (!IoTDB.metaManager.getSeriesType(path).equals(dataType)) {
           throw new SinkException(
               String.format("The data type of %s you provided was not correct.", path));
         }

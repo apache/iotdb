@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -151,7 +152,7 @@ public class MManagerAdvancedTest {
       assertEquals(
           new PartialPath("root.vehicle.d0"),
           mmanager.getBelongedStorageGroup(new PartialPath("root.vehicle.d0.s1")));
-      List<PartialPath> pathList =
+      List<MeasurementPath> pathList =
           mmanager.getMeasurementPaths(new PartialPath("root.vehicle.d1.**"));
       assertEquals(6, pathList.size());
       pathList = mmanager.getMeasurementPaths(new PartialPath("root.vehicle.d0.**"));
