@@ -42,14 +42,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_ALL_TS_END;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_END;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_MERGE_END;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_MERGE_START;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_TIMESERIES;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_UNSEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_MERGE_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_START;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_TIMESERIES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_UNSEQ_FILES;
 
 /**
  * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge, the
@@ -59,9 +59,9 @@ import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeL
  * server/0seq.tsfile.merge 338 end start root.mergeTest.device0.sensor1 server/0seq.tsfile.merge
  * 664 end all ts end server/0seq.tsfile 145462 end merge end
  */
-public class LogAnalyzer {
+public class InplaceCompactionLogAnalyzer {
 
-  private static final Logger logger = LoggerFactory.getLogger(LogAnalyzer.class);
+  private static final Logger logger = LoggerFactory.getLogger(InplaceCompactionLogAnalyzer.class);
 
   private CrossSpaceMergeResource resource;
   private String taskName;
@@ -78,7 +78,7 @@ public class LogAnalyzer {
 
   private Status status;
 
-  public LogAnalyzer(
+  public InplaceCompactionLogAnalyzer(
       CrossSpaceMergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;

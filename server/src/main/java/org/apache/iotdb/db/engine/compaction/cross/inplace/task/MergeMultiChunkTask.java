@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.IMergePathSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -72,7 +72,7 @@ public class MergeMultiChunkTask {
   private static int minChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
 
-  private MergeLogger mergeLogger;
+  private InplaceCompactionLogger inplaceCompactionLogger;
   private List<PartialPath> unmergedSeries;
 
   private String taskName;
@@ -109,7 +109,7 @@ public class MergeMultiChunkTask {
   public MergeMultiChunkTask(
       CrossSpaceMergeContext context,
       String taskName,
-      MergeLogger mergeLogger,
+      InplaceCompactionLogger inplaceCompactionLogger,
       CrossSpaceMergeResource mergeResource,
       boolean fullMerge,
       List<PartialPath> unmergedSeries,
@@ -117,7 +117,7 @@ public class MergeMultiChunkTask {
       String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
-    this.mergeLogger = mergeLogger;
+    this.inplaceCompactionLogger = inplaceCompactionLogger;
     this.resource = mergeResource;
     this.fullMerge = fullMerge;
     this.unmergedSeries = unmergedSeries;
@@ -158,7 +158,7 @@ public class MergeMultiChunkTask {
       logger.info(
           "{} all series are merged after {}ms", taskName, System.currentTimeMillis() - startTime);
     }
-    mergeLogger.logAllTsEnd();
+    inplaceCompactionLogger.logAllTsEnd();
   }
 
   private void logMergeProgress() {
@@ -176,7 +176,7 @@ public class MergeMultiChunkTask {
   }
 
   private void mergePaths() throws IOException {
-    mergeLogger.logTSStart(currMergingPaths);
+    inplaceCompactionLogger.logTSStart(currMergingPaths);
     IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
@@ -193,7 +193,7 @@ public class MergeMultiChunkTask {
         return;
       }
     }
-    mergeLogger.logTSEnd();
+    inplaceCompactionLogger.logTSEnd();
   }
 
   private String getMaxSensor(List<PartialPath> sensors) {
@@ -325,7 +325,7 @@ public class MergeMultiChunkTask {
             currTsFile);
     if (dataWritten) {
       mergeFileWriter.endChunkGroup();
-      mergeLogger.logFilePosition(mergeFileWriter.getFile());
+      inplaceCompactionLogger.logFilePosition(mergeFileWriter.getFile());
       currTsFile.updateStartTime(deviceId, currDeviceMinTime);
     }
   }

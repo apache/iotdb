@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.LogAnalyzer;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.LogAnalyzer.Status;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogAnalyzer;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogAnalyzer.Status;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -51,7 +51,7 @@ public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
 
   private static final Logger logger = LoggerFactory.getLogger(RecoverCrossMergeTask.class);
 
-  private LogAnalyzer analyzer;
+  private InplaceCompactionLogAnalyzer analyzer;
 
   public RecoverCrossMergeTask(
       List<TsFileResource> seqFiles,
@@ -73,7 +73,7 @@ public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
     }
     long startTime = System.currentTimeMillis();
 
-    analyzer = new LogAnalyzer(resource, taskName, logFile, storageGroupName);
+    analyzer = new InplaceCompactionLogAnalyzer(resource, taskName, logFile, storageGroupName);
     Status status = analyzer.analyze();
     if (logger.isInfoEnabled()) {
       logger.info(
@@ -118,7 +118,7 @@ public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
           new MergeMultiChunkTask(
               mergeContext,
               taskName,
-              mergeLogger,
+              inplaceCompactionLogger,
               resource,
               fullMerge,
               analyzer.getUnmergedPaths(),
@@ -128,7 +128,8 @@ public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
       mergeChunkTask.mergeSeries();
 
       MergeFileTask mergeFileTask =
-          new MergeFileTask(taskName, mergeContext, mergeLogger, resource, resource.getSeqFiles());
+          new MergeFileTask(
+              taskName, mergeContext, inplaceCompactionLogger, resource, resource.getSeqFiles());
       mergeFileTask.mergeFiles();
     }
     cleanUp(continueMerge);
@@ -139,7 +140,11 @@ public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
       resumeMergeProgress();
       MergeFileTask mergeFileTask =
           new MergeFileTask(
-              taskName, mergeContext, mergeLogger, resource, analyzer.getUnmergedFiles());
+              taskName,
+              mergeContext,
+              inplaceCompactionLogger,
+              resource,
+              analyzer.getUnmergedFiles());
       analyzer.setUnmergedFiles(null);
       mergeFileTask.mergeFiles();
     } else {
@@ -151,7 +156,7 @@ public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
   }
 
   private void resumeMergeProgress() throws IOException {
-    mergeLogger = new MergeLogger(storageGroupSysDir);
+    inplaceCompactionLogger = new InplaceCompactionLogger(storageGroupSysDir);
     truncateFiles();
     recoverChunkCounts();
   }

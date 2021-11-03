@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.util.List;
 
 /** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
-public class MergeLogger {
+public class InplaceCompactionLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log";
 
@@ -45,7 +45,7 @@ public class MergeLogger {
 
   private BufferedWriter logStream;
 
-  public MergeLogger(String storageGroupDir) throws IOException {
+  public InplaceCompactionLogger(String storageGroupDir) throws IOException {
     logStream = new BufferedWriter(new FileWriter(new File(storageGroupDir, MERGE_LOG_NAME), true));
   }
 
