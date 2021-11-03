@@ -98,6 +98,8 @@ The following are the constraints on the layer (`layer_name`):
   * root.sg."select"."+-from="."where""where"""."\$", which contains 6 layers: root, sg, select, +-from, where"where", \$
   * root.sg.\`\`\`\`.\`select\`.\`+="from"\`.\`\$\`, which contains 6 layers: root, sg, \`, select, +-"from", \$
 
+* Layer (`layer_name`) cannot start with a digit unless the layer(`layer_name`) is quoted with \` or `"`.
+
 * In particular, if the system is deployed on a Windows machine, the storage group layer name will be case-insensitive. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
 
 #### Path Pattern
