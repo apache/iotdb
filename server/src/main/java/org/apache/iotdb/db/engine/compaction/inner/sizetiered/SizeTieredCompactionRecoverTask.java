@@ -74,7 +74,10 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   public void doCompaction() {
     // read log -> Set<Device> -> doCompaction -> clear
     try {
+      LOGGER.info(
+          "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
       if (compactionLogFile.exists()) {
+        LOGGER.info("{} [Compaction][Recover] log exists, start recover", fullStorageGroupName);
         SizeTieredCompactionLogAnalyzer logAnalyzer =
             new SizeTieredCompactionLogAnalyzer(compactionLogFile);
         logAnalyzer.analyze();
@@ -85,27 +88,64 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         }
         File targetFile = new File(targetFileName);
         File resourceFile = new File(targetFileName + ".resource");
+        LOGGER.info("{} [Compaction][Recover] target file is {}", fullStorageGroupName, targetFile);
         if (!targetFile.exists()) {
           if (resourceFile.exists()) {
             if (!resourceFile.delete()) {
-              LOGGER.warn("Fail to delete tsfile resource {}", resourceFile);
+              LOGGER.warn(
+                  "{} [Compaction][Recover] Fail to delete tsfile resource {}",
+                  fullStorageGroupName,
+                  resourceFile);
+            } else {
+              LOGGER.info(
+                  "{} [Compaction][Recover] Deleted target file resource {}",
+                  fullStorageGroupName,
+                  resourceFile);
             }
           }
+          LOGGER.info(
+              "{} [Compaction][Recover] Target file {} not exists, return",
+              fullStorageGroupName,
+              targetFile);
           return;
         }
 
         RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
         if (writer.hasCrashed()) {
+          LOGGER.info(
+              "{} [Compaction][Recover] target file {} crash, start to delete it",
+              fullStorageGroupName,
+              targetFile);
           // the target tsfile is crashed, it is not completed
           writer.close();
           if (!targetFile.delete()) {
-            LOGGER.warn("Fail to delete uncompleted file {}", targetFile);
+            LOGGER.warn(
+                "{} [Compaction][Recover] Fail to delete uncompleted file {}",
+                fullStorageGroupName,
+                targetFile);
+          } else {
+            LOGGER.info(
+                "{} [Compaction][Recover] remove target file {}", fullStorageGroupName, targetFile);
           }
-          if (!resourceFile.delete()) {
-            LOGGER.warn("Fail to delete tsfile resource {}", resourceFile);
+          if (resourceFile.exists()) {
+            if (!resourceFile.delete()) {
+              LOGGER.warn(
+                  "{} [Compaction][Recover] Fail to delete tsfile resource {}",
+                  fullStorageGroupName,
+                  resourceFile);
+            } else {
+              LOGGER.info(
+                  "{} [Compaction][Recover] delete target file resource {}",
+                  fullStorageGroupName,
+                  resourceFile);
+            }
           }
         } else {
           // the target tsfile is completed
+          LOGGER.info(
+              "{} [Compaction][Recover] target file {} is completed, remove source files",
+              fullStorageGroupName,
+              targetFile);
           TsFileResource targetResource = new TsFileResource(targetFile);
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (String sourceFileName : sourceFileList) {
@@ -123,9 +163,15 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
     } finally {
       if (compactionLogFile.exists()) {
         if (!compactionLogFile.delete()) {
-          LOGGER.warn("fail to delete {}", compactionLogFile);
+          LOGGER.warn(
+              "{} [Compaction][Recover] fail to delete {}",
+              fullStorageGroupName,
+              compactionLogFile);
         } else {
-          LOGGER.info("delete compaction log {}", compactionLogFile);
+          LOGGER.info(
+              "{} [Compaction][Recover] delete compaction log {}",
+              fullStorageGroupName,
+              compactionLogFile);
         }
       }
     }
