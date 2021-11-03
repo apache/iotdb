@@ -43,8 +43,8 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  protected IWritableMemChunk genVectorMemSeries(IMeasurementSchema schema) {
-    return new VectorWritableMemChunk((VectorMeasurementSchema) schema);
+  protected IWritableMemChunk genAlignedMemSeries(IMeasurementSchema schema) {
+    return new AlignedWritableMemChunk((VectorMeasurementSchema) schema);
   }
 
   @Override

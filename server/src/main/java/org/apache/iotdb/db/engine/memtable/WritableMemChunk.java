@@ -72,7 +72,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void writeVector(long insertTime, Object[] objectValue, IMeasurementSchema schema) {
+  public void writeAlignedValue(long insertTime, Object[] objectValue, IMeasurementSchema schema) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
@@ -151,7 +151,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVector(long t, Object[] v, int[] columnOrder) {
+  public void putAlignedValue(long t, Object[] v, int[] columnOrder) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
@@ -186,7 +186,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVectors(
+  public void putAlignedValues(
       long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
@@ -200,7 +200,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery(List<String> measurementList) {
+  public synchronized TVList getSortedTvListForQuery(List<IMeasurementSchema> measurementSchema) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 

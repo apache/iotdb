@@ -214,16 +214,14 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   @Override
   public String getFullPath() {
-    if (fullPath != null) {
-      return fullPath;
-    } else {
+    if (fullPath == null) {
       StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR).append(nodes[i]);
       }
       fullPath = s.toString();
-      return fullPath;
     }
+    return fullPath;
   }
 
   public PartialPath copy() {

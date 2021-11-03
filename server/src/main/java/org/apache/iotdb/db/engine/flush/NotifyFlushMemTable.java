@@ -35,7 +35,7 @@ public class NotifyFlushMemTable extends AbstractMemTable {
   }
 
   @Override
-  protected IWritableMemChunk genVectorMemSeries(IMeasurementSchema schema) {
+  protected IWritableMemChunk genAlignedMemSeries(IMeasurementSchema schema) {
     return null;
   }
 

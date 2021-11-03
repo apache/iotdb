@@ -30,14 +30,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VectorChunkWriterImpl implements IChunkWriter {
+public class AlignedChunkWriterImpl implements IChunkWriter {
 
   private final TimeChunkWriter timeChunkWriter;
   private final List<ValueChunkWriter> valueChunkWriterList;
   private int valueIndex;
 
   /** @param schema schema of this measurement */
-  public VectorChunkWriterImpl(IMeasurementSchema schema) {
+  public AlignedChunkWriterImpl(IMeasurementSchema schema) {
     timeChunkWriter =
         new TimeChunkWriter(
             schema.getMeasurementId(),

@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import org.junit.Test;
 
@@ -35,12 +35,12 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class VectorChunkWriterImplTest {
+public class AlignedChunkWriterImplTest {
 
   @Test
   public void testWrite1() {
     VectorMeasurementSchemaStub measurementSchema = new VectorMeasurementSchemaStub();
-    VectorChunkWriterImpl chunkWriter = new VectorChunkWriterImpl(measurementSchema);
+    AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(measurementSchema);
 
     for (int time = 1; time <= 20; time++) {
       chunkWriter.write(time, (float) time, false);
@@ -107,7 +107,7 @@ public class VectorChunkWriterImplTest {
   @Test
   public void testWrite2() {
     VectorMeasurementSchemaStub measurementSchema = new VectorMeasurementSchemaStub();
-    VectorChunkWriterImpl chunkWriter = new VectorChunkWriterImpl(measurementSchema);
+    AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(measurementSchema);
 
     for (int time = 1; time <= 20; time++) {
       chunkWriter.write(time, (float) time, false);

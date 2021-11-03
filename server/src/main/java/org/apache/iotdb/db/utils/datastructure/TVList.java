@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
@@ -140,7 +142,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putVector(long time, Object[] value, int[] columnOrder) {
+  public void putAlignedValue(long time, Object[] value, int[] columnOrder) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -168,7 +170,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putVectors(
+  public void putAlignedValues(
       long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -201,7 +203,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public TVList getTvListByColumnIndex(List<Integer> columnIndexList) {
+  public TVList getTvListByColumnIndex(List<Integer> columnIndexList, List<TSDataType> dataTypes) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -276,7 +278,7 @@ public abstract class TVList {
     cloneList.minTime = minTime;
   }
 
-  public void clear() {
+  public void clear(Map<TSDataType, Queue<TVList>> tvListCache) {
     size = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;
@@ -285,6 +287,7 @@ public abstract class TVList {
 
     clearValue();
     clearSortedValue();
+    tvListCache.get(getDataType()).add(this);
   }
 
   protected void clearTime() {
