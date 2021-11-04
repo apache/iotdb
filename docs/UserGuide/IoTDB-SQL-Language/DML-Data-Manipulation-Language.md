@@ -459,7 +459,50 @@ select s1, s2, const(s1, 'value'='1024', 'type'='INT64'), pi(s2), e(s1, s2) from
 Total line number = 5
 It costs 0.005s
 ```
+#### Data Type Conversion Function
+The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE, BOOLEAN, TEXT. When we query or evaluate data, we may need to convert data types, such as TEXT to INT32, or improve the accuracy of the data, such as FLOAT to DOUBLE. Therefore, IoTDB supports the use of cast functions to convert data types.
 
+| Function Name | Required Attributes                                          | Output Series Data Type                      | Series Data Type  Description                               |
+| ------------- | ------------------------------------------------------------ | -------------------------------------------- | ----------------------------------------------------------- |
+| CAST          | `type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Converts data to the type specified by the `type` argument. |
+
+
+
+##### Notes
+1. The value of type BOOLEAN is `true`, when data is converted to BOOLEAN if INT32 and INT64 are not 0, FLOAT and DOUBLE are not 0.0, TEXT is not empty string or "false", otherwise `false`.    
+2. The value of type INT32, INT64, FLOAT, DOUBLE are 1 or 1.0 and TEXT is "true", when BOOLEAN data is true, otherwise 0, 0.0 or "false".  
+3. When TEXT is converted to INT32, INT64, or FLOAT, the TEXT is first converted to DOUBLE and then to the corresponding type, which may cause loss of precision. It will skip directly if the data can not be converted.
+
+##### Syntax
+Example data:
+```
+IoTDB> select text from root.test;
++-----------------------------+--------------+
+|                         Time|root.test.text|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|           1.1|
+|1970-01-01T08:00:00.002+08:00|             1|
+|1970-01-01T08:00:00.003+08:00|   hello world|
+|1970-01-01T08:00:00.004+08:00|         false|
++-----------------------------+--------------+
+```
+SQL:
+```sql
+select cast(text, 'type'='BOOLEAN'), cast(text, 'type'='INT32'), cast(text, 'type'='INT64'), cast(text, 'type'='FLOAT'), cast(text, 'type'='DOUBLE') from root.test;
+```
+Result:
+```
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+|                         Time|cast(root.test.text, "type"="BOOLEAN")|cast(root.test.text, "type"="INT32")|cast(root.test.text, "type"="INT64")|cast(root.test.text, "type"="FLOAT")|cast(root.test.text, "type"="DOUBLE")|
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                  true|                                   1|                                   1|                                 1.1|                                  1.1|
+|1970-01-01T08:00:00.002+08:00|                                  true|                                   1|                                   1|                                 1.0|                                  1.0|
+|1970-01-01T08:00:00.003+08:00|                                  true|                                null|                                null|                                null|                                 null|
+|1970-01-01T08:00:00.004+08:00|                                 false|                                null|                                null|                                null|                                 null|
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+Total line number = 4
+It costs 0.078s
+```
 #### User Defined Timeseries Generating Functions
 
 Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
