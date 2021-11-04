@@ -225,7 +225,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void encode(IChunkWriter chunkWriter) {
-
+    AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
     List<Integer> timeDuplicateAlignedRowIndexList = null;
     for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
@@ -253,24 +253,27 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         boolean isNull = list.isValueMarked(originRowIndex, columnIndex);
         switch (dataTypes.get(columnIndex)) {
           case BOOLEAN:
-            chunkWriter.write(
+            alignedChunkWriter.write(
                 time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case INT32:
-            chunkWriter.write(time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
+            alignedChunkWriter.write(
+                time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case INT64:
-            chunkWriter.write(time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
+            alignedChunkWriter.write(
+                time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case FLOAT:
-            chunkWriter.write(time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
+            alignedChunkWriter.write(
+                time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case DOUBLE:
-            chunkWriter.write(
+            alignedChunkWriter.write(
                 time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case TEXT:
-            chunkWriter.write(
+            alignedChunkWriter.write(
                 time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           default:
@@ -280,7 +283,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
             break;
         }
       }
-      chunkWriter.write(time);
+      alignedChunkWriter.write(time);
       timeDuplicateAlignedRowIndexList = null;
     }
   }

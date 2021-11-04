@@ -102,7 +102,6 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
-   * @param measurementList the measurementList to be queried
    * @return sorted tv list
    */
   TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList);

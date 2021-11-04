@@ -74,7 +74,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
         throw new NoMeasurementException(
             "time " + time + ", measurement id " + measurementId + " not found!");
       }
-      point.writeTo(time, chunkWriters.get(measurementId));
+      point.writeTo(time, (ChunkWriterImpl) chunkWriters.get(measurementId));
     }
   }
 
@@ -109,7 +109,8 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     VectorMeasurementSchema vectorMeasurementSchema =
         (VectorMeasurementSchema) tablet.getSchemas().get(index);
     List<TSDataType> valueDataTypes = vectorMeasurementSchema.getSubMeasurementsTSDataTypeList();
-    IChunkWriter vectorChunkWriter = chunkWriters.get(measurement);
+    AlignedChunkWriterImpl vectorChunkWriter =
+        (AlignedChunkWriterImpl) chunkWriters.get(measurement);
     for (int row = 0; row < batchSize; row++) {
       long time = tablet.timestamps[row];
       for (int columnIndex = 0; columnIndex < valueDataTypes.size(); columnIndex++) {
@@ -161,33 +162,27 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     int batchSize = tablet.rowSize;
     switch (dataType) {
       case INT32:
-        chunkWriters
-            .get(measurementId)
+        ((ChunkWriterImpl) chunkWriters.get(measurementId))
             .write(tablet.timestamps, (int[]) tablet.values[index], batchSize);
         break;
       case INT64:
-        chunkWriters
-            .get(measurementId)
+        ((ChunkWriterImpl) chunkWriters.get(measurementId))
             .write(tablet.timestamps, (long[]) tablet.values[index], batchSize);
         break;
       case FLOAT:
-        chunkWriters
-            .get(measurementId)
+        ((ChunkWriterImpl) chunkWriters.get(measurementId))
             .write(tablet.timestamps, (float[]) tablet.values[index], batchSize);
         break;
       case DOUBLE:
-        chunkWriters
-            .get(measurementId)
+        ((ChunkWriterImpl) chunkWriters.get(measurementId))
             .write(tablet.timestamps, (double[]) tablet.values[index], batchSize);
         break;
       case BOOLEAN:
-        chunkWriters
-            .get(measurementId)
+        ((ChunkWriterImpl) chunkWriters.get(measurementId))
             .write(tablet.timestamps, (boolean[]) tablet.values[index], batchSize);
         break;
       case TEXT:
-        chunkWriters
-            .get(measurementId)
+        ((ChunkWriterImpl) chunkWriters.get(measurementId))
             .write(tablet.timestamps, (Binary[]) tablet.values[index], batchSize);
         break;
       default:

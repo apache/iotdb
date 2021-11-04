@@ -72,8 +72,10 @@ public class AlignedTimeseriesSessionExample {
     //    insertTabletWithAlignedTimeseriesMethod2();
     //    insertNullableTabletWithAlignedTimeseries();
     //    insertTabletsWithAlignedTimeseries();
-
     selectTest();
+    session.executeNonQueryStatement("flush");
+    selectTest();
+
     //    selectWithValueFilterTest();
     //    selectWithGroupByTest();
     //    selectWithLastTest();

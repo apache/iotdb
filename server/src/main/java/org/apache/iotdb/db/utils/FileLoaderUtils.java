@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -47,6 +48,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -165,31 +167,34 @@ public class FileLoaderUtils {
       // load all the TimeseriesMetadata of vector, the first one is for time column and the
       // remaining is for sub sensors
       // the order of timeSeriesMetadata list is same as subSensorList's order
-      List<TimeseriesMetadata> timeSeriesMetadata =
-          TimeSeriesMetadataCache.getInstance()
-              .get(
-                  new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
-                      resource.getTsFilePath(), vectorPath.getDevice(), ""),
-                  new ArrayList<>(vectorPath.getMeasurementList()),
-                  context.isDebug());
-
-      // assemble VectorTimeSeriesMetadata
-      if (timeSeriesMetadata != null && !timeSeriesMetadata.isEmpty()) {
-        timeSeriesMetadata
-            .get(0)
-            .setChunkMetadataLoader(
-                new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
-        for (int i = 1; i < timeSeriesMetadata.size(); i++) {
-          PartialPath subPath = vectorPath.getPathWithMeasurement(i - 1);
-          timeSeriesMetadata
-              .get(i)
-              .setChunkMetadataLoader(
-                  new DiskChunkMetadataLoader(resource, subPath, context, filter));
+      TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+      List<String> valueMeasurementList = vectorPath.getMeasurementList();
+      ;
+      Set<String> allSensors = new HashSet<>(valueMeasurementList);
+      allSensors.add("");
+      boolean isDebug = context.isDebug();
+      String filePath = resource.getTsFilePath();
+      ;
+      String deviceId = vectorPath.getDevice();
+      TimeseriesMetadata timeColumn =
+          cache.get(new TimeSeriesMetadataCacheKey(filePath, deviceId, ""), allSensors, isDebug);
+      if (timeColumn != null) {
+        timeColumn.setChunkMetadataLoader(
+            new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
+        List<TimeseriesMetadata> valueTimeSeriesMetadataList =
+            new ArrayList<>(valueMeasurementList.size());
+        for (String valueMeasurement : valueMeasurementList) {
+          TimeseriesMetadata valueColumn =
+              cache.get(
+                  new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
+                  allSensors,
+                  isDebug);
+          valueColumn.setChunkMetadataLoader(
+              new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
+          valueTimeSeriesMetadataList.add(valueColumn);
         }
         alignedTimeSeriesMetadata =
-            new AlignedTimeSeriesMetadata(
-                timeSeriesMetadata.get(0),
-                timeSeriesMetadata.subList(1, timeSeriesMetadata.size()));
+            new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
       }
     } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
       alignedTimeSeriesMetadata = (AlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata();
