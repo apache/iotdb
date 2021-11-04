@@ -48,50 +48,60 @@ public class AuthorizationFilter implements ContainerRequestFilter {
         && !containerRequestContext.getUriInfo().getPath().equals("swagger.json")) {
       boolean isLogin;
       String authzHeader = containerRequestContext.getHeaderString("authorization");
-      String decoded = Base64.decodeAsString(authzHeader.replace("Basic ", ""));
-      String[] split = decoded.split(":");
-      User user = new User();
-      user.setUsername(split[0]);
-      if (split.length != 2) {
-        Response resp =
-            Response.status(Status.BAD_REQUEST)
-                .type(MediaType.APPLICATION_JSON)
-                .entity(
-                    getResponseResult(
-                        TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode(),
-                        TSStatusCode.SYSTEM_CHECK_ERROR.name()))
-                .build();
-        containerRequestContext.abortWith(resp);
-      } else {
-        user.setPassword(split[1]);
-        BasicSecurityContext basicSecurityContext =
-            new BasicSecurityContext(user, containerRequestContext.getSecurityContext().isSecure());
-        containerRequestContext.setSecurityContext(basicSecurityContext);
-        try {
-          authorizer = BasicAuthorizer.getInstance();
-          isLogin = authorizer.login(split[0], split[1]);
-          if (!isLogin) {
-            Response resp =
-                Response.status(Status.OK)
-                    .type(MediaType.APPLICATION_JSON)
-                    .entity(
-                        getResponseResult(
-                            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode(),
-                            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.name()))
-                    .build();
-            containerRequestContext.abortWith(resp);
-          }
-        } catch (AuthException e) {
-          LOGGER.warn(e.getMessage(), e);
+      UserCache userCache = UserCache.getInstance();
+      User user = userCache.getUser(authzHeader);
+      if (user == null) {
+        String decoded = Base64.decodeAsString(authzHeader.replace("Basic ", ""));
+        String[] split = decoded.split(":");
+        user = new User();
+        user.setUsername(split[0]);
+        if (split.length != 2) {
           Response resp =
-              Response.status(Status.INTERNAL_SERVER_ERROR)
+              Response.status(Status.BAD_REQUEST)
                   .type(MediaType.APPLICATION_JSON)
                   .entity(
                       getResponseResult(
-                          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), e.getMessage()))
+                          TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode(),
+                          TSStatusCode.SYSTEM_CHECK_ERROR.name()))
                   .build();
           containerRequestContext.abortWith(resp);
+        } else {
+          user.setPassword(split[1]);
+          userCache.setUser(authzHeader, user);
+          BasicSecurityContext basicSecurityContext =
+              new BasicSecurityContext(
+                  user, containerRequestContext.getSecurityContext().isSecure());
+          containerRequestContext.setSecurityContext(basicSecurityContext);
+          try {
+            authorizer = BasicAuthorizer.getInstance();
+            isLogin = authorizer.login(split[0], split[1]);
+            if (!isLogin) {
+              Response resp =
+                  Response.status(Status.OK)
+                      .type(MediaType.APPLICATION_JSON)
+                      .entity(
+                          getResponseResult(
+                              TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode(),
+                              TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.name()))
+                      .build();
+              containerRequestContext.abortWith(resp);
+            }
+          } catch (AuthException e) {
+            LOGGER.warn(e.getMessage(), e);
+            Response resp =
+                Response.status(Status.INTERNAL_SERVER_ERROR)
+                    .type(MediaType.APPLICATION_JSON)
+                    .entity(
+                        getResponseResult(
+                            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), e.getMessage()))
+                    .build();
+            containerRequestContext.abortWith(resp);
+          }
         }
+      } else {
+        BasicSecurityContext basicSecurityContext =
+            new BasicSecurityContext(user, containerRequestContext.getSecurityContext().isSecure());
+        containerRequestContext.setSecurityContext(basicSecurityContext);
       }
     }
   }

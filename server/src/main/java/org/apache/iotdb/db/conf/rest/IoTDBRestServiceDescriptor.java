@@ -76,6 +76,17 @@ public class IoTDBRestServiceDescriptor {
       conf.setIdleTimeout(
           Integer.parseInt(
               properties.getProperty("idle_timeout", Integer.toString(conf.getIdleTimeout()))));
+      conf.setSessionExpire(
+          Integer.parseInt(
+              properties.getProperty("session_expire", Integer.toString(conf.getSessionExpire()))));
+      conf.setSessionInitNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "session_init_num", Integer.toString(conf.getSessionInitNum()))));
+      conf.setSessionMaxNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "session_max_num", Integer.toString(conf.getSessionMaxNum()))));
 
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);

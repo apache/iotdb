@@ -78,7 +78,7 @@ public class RestApiServiceImpl extends RestApiService {
   }
 
   @Override
-  public Response postRestNonQuery(QueryData queryData, SecurityContext securityContext) {
+  public Response executeNonQueryStatement(QueryData queryData, SecurityContext securityContext) {
     boolean executorStatus;
     ResponseResult responseResult;
     try {
@@ -111,7 +111,7 @@ public class RestApiServiceImpl extends RestApiService {
   }
 
   @Override
-  public Response postRestDataQuery(QueryData queryData, SecurityContext securityContext) {
+  public Response executeQueryStatement(QueryData queryData, SecurityContext securityContext) {
     List<DataJsonInner> dataFrameInnerList = new ArrayList<>();
     try {
       Planner planner = new Planner();
@@ -178,7 +178,7 @@ public class RestApiServiceImpl extends RestApiService {
   }
 
   @Override
-  public Response postRestDataTablet(InsertRow insertRow, SecurityContext securityContext) {
+  public Response insertTablet(InsertRow insertRow, SecurityContext securityContext) {
     InsertTabletPlan insertTabletPlan;
     boolean authorizationStatus;
     boolean executeStatus;

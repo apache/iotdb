@@ -52,7 +52,7 @@ paths:
     post:
       summary: Serve for writing data by OpenApi
       description:
-      operationId: post-rest-data-tablet
+      operationId: insertTablet
       parameters: [ ]
       requestBody:
         description: Insert Plan
@@ -86,7 +86,7 @@ paths:
     post:
       summary: Serve for non query by OpenApi
       description:
-      operationId: post-rest-non-query
+      operationId: executeNonQueryStatement
       parameters: [ ]
       requestBody:
         description: non query Plan
@@ -121,7 +121,7 @@ paths:
     post:
       summary: Serve for query data by OpenApi
       description:
-      operationId: post-rest-data-query
+      operationId: executeQueryStatement
       parameters: []
       requestBody:
         description: query Plan

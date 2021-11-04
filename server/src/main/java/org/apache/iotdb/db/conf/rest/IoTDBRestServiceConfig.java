@@ -21,7 +21,7 @@ package org.apache.iotdb.db.conf.rest;
 public class IoTDBRestServiceConfig {
   static final String CONFIG_NAME = "iotdb-rest.properties";
   /** if the enableRestService is true, we will start REST Service */
-  private boolean enableRestService = true;
+  private boolean enableRestService = false;
 
   /** set the REST Service port. */
   private int restServicePort = 18080;
@@ -29,20 +29,29 @@ public class IoTDBRestServiceConfig {
   /** enable the REST Service ssl. */
   private boolean enableHttps = false;
 
-  /** REST Service ssl key Store Path */
+  /** ssl key Store Path */
   private String keyStorePath = "";
 
-  /** REST Service ssl trust Store Path */
+  /** ssl trust Store Path */
   private String trustStorePath = "";
 
-  /** REST Service ssl key Store password */
+  /** ssl key Store password */
   private String keyStorePwd = "";
 
-  /** REST Service ssl trust Store password */
+  /** ssl trust Store password */
   private String trustStorePwd = "";
 
-  /** REST Service ssl timeout */
+  /** ssl timeout */
   private int idleTimeout = 50000;
+
+  /** Session expiration time */
+  private int sessionExpire = 28800;
+
+  /** max number of session storage */
+  private int sessionMaxNum = 100;
+
+  /** init number of session storage */
+  private int sessionInitNum = 10;
 
   public String getTrustStorePwd() {
     return trustStorePwd;
@@ -106,5 +115,29 @@ public class IoTDBRestServiceConfig {
 
   public void setEnableRestService(boolean enableRestService) {
     this.enableRestService = enableRestService;
+  }
+
+  public int getSessionExpire() {
+    return sessionExpire;
+  }
+
+  public void setSessionExpire(int sessionExpire) {
+    this.sessionExpire = sessionExpire;
+  }
+
+  public int getSessionMaxNum() {
+    return sessionMaxNum;
+  }
+
+  public void setSessionMaxNum(int sessionMaxNum) {
+    this.sessionMaxNum = sessionMaxNum;
+  }
+
+  public int getSessionInitNum() {
+    return sessionInitNum;
+  }
+
+  public void setSessionInitNum(int sessionInitNum) {
+    this.sessionInitNum = sessionInitNum;
   }
 }
