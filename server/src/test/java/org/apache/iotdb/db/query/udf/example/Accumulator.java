@@ -53,7 +53,7 @@ public class Accumulator implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesDataType(0, TSDataType.INT32);
+    validator.validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.DOUBLE);
   }
 
   @Override
@@ -89,7 +89,14 @@ public class Accumulator implements UDTF {
     int accumulator = 0;
     RowIterator rowIterator = rowWindow.getRowIterator();
     while (rowIterator.hasNextRow()) {
-      accumulator += rowIterator.next().getInt(0);
+      switch (rowWindow.getDataType(0)) {
+        case INT32:
+          accumulator += rowIterator.next().getInt(0);
+          break;
+        case DOUBLE:
+          accumulator += (int) rowIterator.next().getDouble(0);
+          break;
+      }
     }
     if (rowWindow.windowSize() != 0) {
       collector.putInt(rowWindow.getRow(0).getTime(), accumulator);

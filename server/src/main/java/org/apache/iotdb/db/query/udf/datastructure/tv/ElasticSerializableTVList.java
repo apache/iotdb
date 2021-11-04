@@ -231,6 +231,11 @@ public class ElasticSerializableTVList implements PointCollector {
       private int currentPointIndex = -1;
 
       @Override
+      public boolean isConstantPointReader() {
+        return false;
+      }
+
+      @Override
       public boolean next() {
         if (size - 1 <= currentPointIndex) {
           return false;
