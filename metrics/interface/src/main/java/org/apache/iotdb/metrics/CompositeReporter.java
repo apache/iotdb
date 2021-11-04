@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.metrics;
 
-import org.apache.iotdb.metrics.config.MetricConfig;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
@@ -31,8 +29,6 @@ import java.util.List;
 
 public class CompositeReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompositeReporter.class);
-  private static final MetricConfig metricConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final List<Reporter> reporters = new ArrayList<>();
 
   /** Start all reporter */
