@@ -19,76 +19,70 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
-import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.commons.lang3.Validate;
 
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TimeSeriesOperand extends Expression {
+/** Constant operand */
+public class ConstantOperand extends Expression {
 
-  protected PartialPath path;
+  private final String valueString;
+  private final TSDataType dataType;
 
-  public TimeSeriesOperand(PartialPath path) {
-    this.path = path;
+  public ConstantOperand(TSDataType dataType, String str) throws QueryProcessException {
+    this.dataType = Validate.notNull(dataType);
+    this.valueString = Validate.notNull(str);
   }
 
-  public PartialPath getPath() {
-    return path;
-  }
-
-  public void setPath(PartialPath path) {
-    this.path = path;
+  public TSDataType getDataType() {
+    return dataType;
   }
 
   @Override
   public boolean isConstantOperandInternal() {
-    return false;
+    return true;
   }
 
   @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    for (PartialPath prefixPath : prefixPaths) {
-      resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
-    }
+    resultExpressions.add(this);
   }
 
   @Override
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
-      resultExpressions.add(new TimeSeriesOperand(actualPath));
-    }
+  public void removeWildcards(
+      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions) {
+    resultExpressions.add(this);
   }
 
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
-    pathSet.add(path);
+    // Do nothing
   }
 
   @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
-    // nothing to do
+    // Do nothing
   }
 
   @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
-    memoryAssigner.increaseExpressionReference(this);
+    // Do nothing
   }
 
   @Override
@@ -101,19 +95,10 @@ public class TimeSeriesOperand extends Expression {
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-
-      LayerPointReader parentLayerPointReader =
-          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path.getFullPath()));
-      expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
-
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, parentLayerPointReader)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, parentLayerPointReader));
+      expressionDataTypeMap.put(this, this.getDataType());
+      IntermediateLayer intermediateLayer =
+          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
+      expressionIntermediateLayerMap.put(this, intermediateLayer);
     }
 
     return expressionIntermediateLayerMap.get(this);
@@ -121,6 +106,6 @@ public class TimeSeriesOperand extends Expression {
 
   @Override
   public String getExpressionStringInternal() {
-    return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getExactFullPath();
+    return valueString;
   }
 }
