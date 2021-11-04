@@ -217,26 +217,33 @@ public class UDTFCast implements UDTF {
   private void cast(long time, Binary value, PointCollector collector)
       throws IOException, QueryProcessException {
     String stringValue = value.getStringValue();
-    boolean numeric = isNumeric(stringValue);
     switch (targetDataType) {
       case INT32:
-        if (numeric) {
+        try{
           collector.putInt(time, (int) Double.parseDouble(stringValue));
+        } catch (Exception ignored) {
+          // skip
         }
         return;
       case INT64:
-        if (numeric) {
+        try{
           collector.putLong(time, (long) Double.parseDouble(stringValue));
+        } catch (Exception ignored) {
+          // skip
         }
         return;
       case FLOAT:
-        if (numeric) {
+        try{
           collector.putFloat(time, (float) Double.parseDouble(stringValue));
+        } catch (Exception ignored) {
+          // skip
         }
         return;
       case DOUBLE:
-        if (numeric) {
+        try{
           collector.putDouble(time, Double.parseDouble(stringValue));
+        } catch (Exception ignored) {
+          // skip
         }
         return;
       case BOOLEAN:
@@ -247,15 +254,6 @@ public class UDTFCast implements UDTF {
         return;
       default:
         throw new UnsupportedOperationException();
-    }
-  }
-
-  private boolean isNumeric(String s) {
-    try {
-      Double.valueOf(s);
-      return true;
-    } catch (Exception e) {
-      return false;
     }
   }
 }
