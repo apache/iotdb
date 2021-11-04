@@ -108,8 +108,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void putAlignedValues(
-      long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
-    list.putAlignedValues(t, v, bitMaps, columnOrder, start, end);
+      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndex, int start, int end) {
+    list.putAlignedValues(t, v, bitMaps, columnIndex, start, end);
   }
 
   @Override
@@ -119,8 +119,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void writeAlignedValue(long insertTime, Object[] objectValue, IMeasurementSchema schema) {
-    int[] columnOrder = checkColumnOrder(schema);
-    putAlignedValue(insertTime, objectValue, columnOrder);
+    int[] columnIndexArray = checkColumnOrder(schema);
+    putAlignedValue(insertTime, objectValue, columnIndexArray);
   }
 
   @Override
@@ -137,18 +137,20 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       IMeasurementSchema schema,
       int start,
       int end) {
-    int[] columnOrder = checkColumnOrder(schema);
-    putAlignedValues(times, valueList, bitMaps, columnOrder, start, end);
+    int[] columnIndexArray = checkColumnOrder(schema);
+    putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
   private int[] checkColumnOrder(IMeasurementSchema schema) {
     VectorMeasurementSchema vectorSchema = (VectorMeasurementSchema) schema;
-    List<String> measurementIdList = vectorSchema.getSubMeasurementsList();
-    int[] columnOrder = new int[measurementIdList.size()];
-    for (int i = 0; i < measurementIdList.size(); i++) {
-      columnOrder[i] = alignedMeasurementIndexMap.get(measurementIdList.get(i));
+    List<String> measurementIdsInInsertPlan = vectorSchema.getSubMeasurementsList();
+    List<String> measurementIdsInTVList =
+        ((VectorMeasurementSchema) this.schema).getSubMeasurementsList();
+    int[] columnIndexArray = new int[measurementIdsInTVList.size()];
+    for (int i = 0; i < columnIndexArray.length; i++) {
+      columnIndexArray[i] = measurementIdsInInsertPlan.indexOf(measurementIdsInTVList.get(i));
     }
-    return columnOrder;
+    return columnIndexArray;
   }
 
   @Override
