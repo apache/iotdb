@@ -48,7 +48,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TsFileWriterTest {
   TsFileWriter writer = null;
@@ -58,6 +61,10 @@ public class TsFileWriterTest {
   @Before
   public void setUp() {
     try {
+      File outputDir = new File(TestConstant.BASE_OUTPUT_PATH);
+      if (!outputDir.exists()) {
+        Assert.assertTrue(outputDir.mkdirs());
+      }
       writer =
           new TsFileWriter(new File(TestConstant.BASE_OUTPUT_PATH + "tsfileWriter-" + fileName));
       addMeasurement();
