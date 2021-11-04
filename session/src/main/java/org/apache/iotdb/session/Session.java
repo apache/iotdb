@@ -1462,11 +1462,11 @@ public class Session {
     TSInsertTabletReq request = new TSInsertTabletReq();
 
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      request.setPrefixPath(tablet.prefixPath);
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
+    request.setPrefixPath(tablet.prefixPath);
     request.setIsAligned(tablet.isAligned());
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
