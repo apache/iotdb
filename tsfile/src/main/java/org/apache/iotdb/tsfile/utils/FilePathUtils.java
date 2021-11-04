@@ -113,7 +113,8 @@ public class FilePathUtils {
 
   /**
    * @return a long array whose length is 2, the first long value is tsfile version, second long
-   *     value is compaction version, high 32 bit is in-space compaction count, low 32 bit is cross-space compaction count
+   *     value is compaction version, high 32 bit is in-space compaction count, low 32 bit is
+   *     cross-space compaction count
    */
   private static long[] splitAndGetVersionArray(String tsFileName) {
     String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
