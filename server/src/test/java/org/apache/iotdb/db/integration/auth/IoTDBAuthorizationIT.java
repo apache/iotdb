@@ -21,11 +21,6 @@ package org.apache.iotdb.db.integration.auth;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -36,6 +31,11 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -1146,6 +1146,31 @@ public class IoTDBAuthorizationIT {
       }
       assertEquals(expected.length, result.size());
       assertTrue(expectedList.containsAll(result));
+    }
+  }
+
+  /** ISSUE-4308 */
+  @Test
+  public void testSelectUDTF() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStatement = adminConnection.createStatement()) {
+      adminStatement.execute("CREATE USER a_application 'a_application'");
+      adminStatement.execute("CREATE ROLE application_role");
+      adminStatement.execute("GRANT ROLE application_role PRIVILEGES READ_TIMESERIES ON root.test");
+      adminStatement.execute("GRANT application_role TO a_application");
+
+      adminStatement.execute("INSERT INTO root.test(time, s1) VALUES(1, 1)");
+    }
+
+    try (Connection userConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "a_application", "a_application");
+        Statement userStatement = userConnection.createStatement();
+        ResultSet resultSet = userStatement.executeQuery("SELECT s1, sin(s1) FROM root.test")) {
+      assertTrue(resultSet.next());
     }
   }
 }
