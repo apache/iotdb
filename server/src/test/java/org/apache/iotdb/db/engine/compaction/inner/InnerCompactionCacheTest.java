@@ -128,8 +128,8 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
             CompactionTaskManager.currentTaskNum);
     sizeTieredCompactionTask.call();
 
-    firstChunkMetadata.setFilePath(null);
     try {
+      firstChunkMetadata.setFilePath(null);
       ChunkCache.getInstance().get(firstChunkMetadata);
       fail();
     } catch (NullPointerException e) {

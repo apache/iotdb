@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -78,6 +79,8 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
 
   // used for ChunkCache, Eg:"root.sg1/0/0"
   private String tsFilePrefixPath;
+  // high 32 bit is compaction level, low 32 bit is merge count
+  private long compactionVersion;
 
   public ChunkMetadata() {}
 
@@ -246,12 +249,13 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
     ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader
         && version == that.version
+        && compactionVersion == that.compactionVersion
         && tsFilePrefixPath.equals(that.tsFilePrefixPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFilePrefixPath, version, offsetOfChunkHeader);
+    return Objects.hash(tsFilePrefixPath, version, compactionVersion, offsetOfChunkHeader);
   }
 
   @Override
@@ -326,8 +330,12 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   public void setFilePath(String filePath) {
     this.filePath = filePath;
 
+    Pair<String, long[]> tsFilePrefixPathAndTsFileVersionPair =
+        FilePathUtils.getTsFilePrefixPathAndTsFileVersionPair(filePath);
     // set tsFilePrefixPath
-    tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(filePath);
+    tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
+    this.version = tsFilePrefixPathAndTsFileVersionPair.right[0];
+    this.compactionVersion = tsFilePrefixPathAndTsFileVersionPair.right[1];
   }
 
   @Override
