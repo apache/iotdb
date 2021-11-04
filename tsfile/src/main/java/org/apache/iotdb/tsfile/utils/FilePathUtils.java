@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.File;
 import java.util.Arrays;
@@ -28,7 +30,11 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 public class FilePathUtils {
 
-  private static final String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
+  private static final String PATH_SPLIT_STRING =
+      TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs() == FSType.LOCAL
+              && File.separator.equals("\\")
+          ? "\\\\"
+          : "/";
   public static final String FILE_NAME_SEPARATOR = "-";
 
   private FilePathUtils() {
