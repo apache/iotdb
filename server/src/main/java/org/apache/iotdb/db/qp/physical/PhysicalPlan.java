@@ -217,6 +217,13 @@ public abstract class PhysicalPlan {
     this.loginUserName = loginUserName;
   }
 
+  /**
+   * Used to check whether a user has operation permissions to execute the plan under these paths.
+   */
+  public List<PartialPath> getAuthPaths() {
+    return getPaths();
+  }
+
   public static class Factory {
 
     private Factory() {

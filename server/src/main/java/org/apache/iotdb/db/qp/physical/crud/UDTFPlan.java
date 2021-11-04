@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
@@ -30,8 +31,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
@@ -137,5 +140,22 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
       return this.getExecutorByOriginalOutputColumnIndex(pathIndex).getContext().getColumnName();
     }
     return columnForReader;
+  }
+
+  @Override
+  public List<PartialPath> getAuthPaths() {
+    Set<PartialPath> authPathsSet = new HashSet<>();
+
+    for (PartialPath rawQueryPath : getPaths()) {
+      if (rawQueryPath != null) {
+        authPathsSet.add(rawQueryPath);
+      }
+    }
+
+    for (UDTFExecutor executor : columnName2Executor.values()) {
+      authPathsSet.addAll(executor.getContext().getPaths());
+    }
+
+    return new ArrayList<>(authPathsSet);
   }
 }
