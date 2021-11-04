@@ -20,7 +20,7 @@
 
 -->
 <assembly>
-    <id>server</id>
+    <id>metric</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
@@ -33,12 +33,8 @@
     </dependencySets>
     <fileSets>
         <fileSet>
-            <directory>src/assembly/resources</directory>
+            <directory>src/main/assembly/resources</directory>
             <outputDirectory>${file.separator}</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
-            <outputDirectory>conf</outputDirectory>
         </fileSet>
     </fileSets>
 </assembly>
