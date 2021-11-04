@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -266,11 +266,8 @@ public class AlignedTimeseriesSessionExample {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
@@ -280,13 +277,8 @@ public class AlignedTimeseriesSessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(0),
-          rowIndex,
-          new SecureRandom().nextLong());
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(1),
-          rowIndex,
-          new SecureRandom().nextInt());
+          schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextLong());
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -309,11 +301,8 @@ public class AlignedTimeseriesSessionExample {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector2",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR2, schemaList);
     tablet.setAligned(true);
@@ -349,11 +338,8 @@ public class AlignedTimeseriesSessionExample {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector3",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR3, schemaList);
     tablet.setAligned(true);
@@ -515,23 +501,16 @@ public class AlignedTimeseriesSessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
 
     List<IMeasurementSchema> schemaList1 = new ArrayList<>();
-    schemaList1.add(
-        new VectorMeasurementSchema(
-            "vector6",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64}));
+    schemaList1.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList1.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
+
     List<IMeasurementSchema> schemaList2 = new ArrayList<>();
-    schemaList2.add(
-        new VectorMeasurementSchema(
-            "vector7",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64}));
+    schemaList1.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList1.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
+
     List<IMeasurementSchema> schemaList3 = new ArrayList<>();
-    schemaList3.add(
-        new VectorMeasurementSchema(
-            "vector8",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64}));
+    schemaList1.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList1.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
 
     Tablet tablet1 = new Tablet(ROOT_SG2_D1_VECTOR6, schemaList1, 100);
     Tablet tablet2 = new Tablet(ROOT_SG2_D1_VECTOR7, schemaList2, 100);
