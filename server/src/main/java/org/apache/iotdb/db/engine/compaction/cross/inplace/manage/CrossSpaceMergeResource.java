@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -67,7 +66,7 @@ public class CrossSpaceMergeResource {
       new HashMap<>(); // pair<startTime, endTime>
   private Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
       new HashMap<>(); // is this too waste?
-  private Map<IMeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<IMeasurementSchema, ChunkWriterImpl> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long ttlLowerBound = Long.MIN_VALUE;
 
@@ -176,7 +175,7 @@ public class CrossSpaceMergeResource {
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
    * the same measurement and data type shares the same instance.
    */
-  public IChunkWriter getChunkWriter(IMeasurementSchema measurementSchema) {
+  public ChunkWriterImpl getChunkWriter(IMeasurementSchema measurementSchema) {
     return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
   }
 
