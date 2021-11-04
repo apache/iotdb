@@ -69,7 +69,7 @@ public interface IWritableMemChunk {
   void write(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
 
-  void writeVector(
+  void writeAlignedValues(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,

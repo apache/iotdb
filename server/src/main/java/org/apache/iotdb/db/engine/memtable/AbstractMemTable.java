@@ -281,7 +281,7 @@ public abstract class AbstractMemTable implements IMemTable {
     IWritableMemChunk memSeries =
         createAlignedMemChunkIfNotExistAndGet(
             insertTabletPlan.getPrefixPath().getFullPath(), vectorSchema);
-    memSeries.writeVector(
+    memSeries.writeAlignedValues(
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),

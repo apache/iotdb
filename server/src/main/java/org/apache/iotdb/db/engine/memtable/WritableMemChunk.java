@@ -110,7 +110,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void writeVector(
+  public void writeAlignedValues(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,

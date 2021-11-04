@@ -130,7 +130,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void writeVector(
+  public void writeAlignedValues(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
@@ -213,7 +213,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
   public int delete(long lowerBound, long upperBound, String measurementId) {
-    // TODO Auto-generated method stub
     return 0;
   }
 
