@@ -26,9 +26,12 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
@@ -181,5 +184,14 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setWithoutAllNull(boolean withoutAllNull) {
     this.withoutAllNull = withoutAllNull;
+  }
+
+  @Override
+  public List<PartialPath> getAuthPaths() {
+    Set<PartialPath> authPaths = new HashSet<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      authPaths.addAll(resultColumn.collectPaths());
+    }
+    return new ArrayList<>(authPaths);
   }
 }

@@ -252,6 +252,11 @@ public abstract class PhysicalPlan {
     }
   }
 
+  /** Used to check whether a user has the permission to execute the plan with these paths. */
+  public List<PartialPath> getAuthPaths() {
+    return getPaths();
+  }
+
   public static class Factory {
 
     private Factory() {
