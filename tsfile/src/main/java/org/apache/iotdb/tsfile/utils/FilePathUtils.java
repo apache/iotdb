@@ -111,7 +111,11 @@ public class FilePathUtils {
     return Long.parseLong(names[1]);
   }
 
-  public static long[] splitAndGetVersionArray(String tsFileName) {
+  /**
+   * @return a long array whose length is 2, the first long value is tsfile version, second long
+   *     value is compaction version, high 32 bit is compaction level, low 32 bit is merge count
+   */
+  private static long[] splitAndGetVersionArray(String tsFileName) {
     String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
     long[] versionArray = new long[2];
     if (names.length != 4) {
