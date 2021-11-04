@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.hive;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
+import org.apache.iotdb.hive.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 
-import java.io.File;
-import java.io.IOException;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
@@ -31,13 +30,16 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
-import org.apache.iotdb.hive.constant.TestConstant;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TSFHiveInputFormatTest {
 
@@ -45,20 +47,21 @@ public class TSFHiveInputFormatTest {
   private TSFHiveInputFormat inputFormat;
   private JobConf job;
   private FSType beforeFSType;
-  private final String filePath = TestConstant.BASE_OUTPUT_PATH
-      .concat("data")
-      .concat(File.separator)
-      .concat("data")
-      .concat(File.separator)
-      .concat("sequence")
-      .concat(File.separator)
-      .concat("root.sg1")
-      .concat(File.separator)
-      .concat("0")
-      .concat(File.separator)
-      .concat("0")
-      .concat(File.separator)
-      .concat("1-0-0-0.tsfile");
+  private final String filePath =
+      TestConstant.BASE_OUTPUT_PATH
+          .concat("data")
+          .concat(File.separator)
+          .concat("data")
+          .concat(File.separator)
+          .concat("sequence")
+          .concat(File.separator)
+          .concat("root.sg1")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("1-0-0-0.tsfile");
 
   @Before
   public void setUp() {
