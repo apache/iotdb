@@ -199,7 +199,11 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public Object getVector(int index) {
+  public Object getAlignedValue(int index) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public Object getAlignedValue(int index, Integer floatPrecision, TSEncoding encoding) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

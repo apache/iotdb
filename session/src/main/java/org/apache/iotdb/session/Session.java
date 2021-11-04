@@ -1437,6 +1437,7 @@ public class Session {
    */
   public void insertAlignedTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
+    tablet.setAligned(true);
     insertTablet(tablet);
   }
 
@@ -1448,6 +1449,7 @@ public class Session {
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
     insertTablet(tablet, sorted);
   }
 
@@ -1461,27 +1463,13 @@ public class Session {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    if (tablet.isAligned()) {
-      if (tablet.getSchemas().size() > 1) {
-        throw new BatchExecutionException("One tablet should only contain one aligned timeseries!");
-      }
-      request.setIsAligned(true);
-      IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
-      request.setPrefixPath(tablet.prefixPath);
-      int measurementsSize = measurementSchema.getSubMeasurementsList().size();
-      for (int i = 0; i < measurementsSize; i++) {
-        request.addToMeasurements(measurementSchema.getSubMeasurementsList().get(i));
-        request.addToTypes(measurementSchema.getSubMeasurementsTSDataTypeList().get(i).ordinal());
-      }
-      request.setIsAligned(true);
-    } else {
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.setPrefixPath(tablet.prefixPath);
-        request.addToMeasurements(measurementSchema.getMeasurementId());
-        request.addToTypes(measurementSchema.getType().ordinal());
-        request.setIsAligned(tablet.isAligned());
-      }
+    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
     }
+
+    request.setPrefixPath(tablet.prefixPath);
+    request.setIsAligned(tablet.isAligned());
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
     request.setSize(tablet.rowSize);
@@ -1532,6 +1520,9 @@ public class Session {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
     insertTablets(tablets, false);
   }
 
@@ -1544,6 +1535,9 @@ public class Session {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
     insertTablets(tablets, sorted);
   }
 
