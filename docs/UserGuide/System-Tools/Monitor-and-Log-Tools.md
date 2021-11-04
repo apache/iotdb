@@ -96,7 +96,7 @@ Here are the writing data statistics (the range supported is shown in brackets):
 |Name| TOTAL\_POINTS |
 |:---:|:---|
 |Description| Calculate the total number of global writing points. |
-|Timeseries Name| root.stats.{"global" \|"storageGroupName"}.TOTAL\_POINTS |
+|Timeseries Name| root.stats."global".TOTAL_POINTS<br/>root.stats."{storageGroupName}".TOTAL_POINTS<br/>where storageGroupName equals to `the-actual-sg-name.replace('.', '#')`<br/>For example, the total write points of the storage group `root.sg` is recorded in root.stats."root#sg".TOTAL_POINTS |
 
 * TOTAL\_REQ\_SUCCESS (GLOBAL)
 

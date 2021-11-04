@@ -142,7 +142,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putAlignedValue(long time, Object[] value, int[] columnOrder) {
+  public void putAlignedValue(long time, Object[] value, int[] columnIndexArray) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -171,7 +171,7 @@ public abstract class TVList {
   }
 
   public void putAlignedValues(
-      long[] time, Object[] value, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
+      long[] time, Object[] value, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

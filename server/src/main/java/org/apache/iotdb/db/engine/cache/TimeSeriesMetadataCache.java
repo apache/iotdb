@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -189,24 +188,16 @@ public class TimeSeriesMetadataCache {
    * @param key vector's own fullPath, e.g. root.sg1.d1.vector
    * @param subSensorList all subSensors of this vector in query, e.g. [vector.s1, vector.s2,
    *     vector.s3]
-   * @param allSensors all sensors belonging to this device that appear in query. For vector, this
-   *     should contain both vector name and subSensors' name, e.g. [vector, vector.s1, vector.s2,
-   *     vector.s3]
    */
   // Suppress synchronize warning
   // Suppress high Cognitive Complexity warning
   @SuppressWarnings({"squid:S1860", "squid:S3776"})
   public List<TimeseriesMetadata> get(
-      TimeSeriesMetadataCacheKey key,
-      List<String> subSensorList,
-      Set<String> allSensors,
-      boolean debug)
+      TimeSeriesMetadataCacheKey key, List<String> subSensorList, boolean debug)
       throws IOException {
-    // put all sub sensors into allSensors
-    for (int i = 0; i < subSensorList.size(); i++) {
-      subSensorList.set(i, key.measurement + TsFileConstant.PATH_SEPARATOR + subSensorList.get(i));
-    }
-    allSensors.addAll(subSensorList);
+    Set<String> allSensors = new HashSet<>(subSensorList);
+    // add the time column
+    allSensors.add("");
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -215,10 +206,7 @@ public class TimeSeriesMetadataCache {
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return Collections.emptyList();
       }
-      // for the condition that cache is disabled, we only get what we need
-      Set<String> allSensorSet = new HashSet<>(subSensorList);
-      allSensorSet.add(key.measurement);
-      return readTimeseriesMetadataForVector(reader, key, subSensorList, allSensorSet);
+      return readTimeseriesMetadataForVector(reader, key, subSensorList, allSensors);
     }
 
     List<TimeseriesMetadata> res = new ArrayList<>();
@@ -244,7 +232,6 @@ public class TimeSeriesMetadataCache {
             if (debug) {
               DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
             }
-            allSensors.removeAll(subSensorList);
             return Collections.emptyList();
           }
           res = readTimeseriesMetadataForVector(reader, key, subSensorList, allSensors);
@@ -280,7 +267,6 @@ public class TimeSeriesMetadataCache {
       }
     }
 
-    allSensors.removeAll(subSensorList);
     return res;
   }
 

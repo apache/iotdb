@@ -106,6 +106,11 @@ public class AlignedPath extends PartialPath {
     return getFullPath();
   }
 
+  @Override
+  public String getMeasurement() {
+    throw new UnsupportedOperationException("AlignedPath doesn't have measurement name!");
+  }
+
   public List<String> getMeasurementList() {
     return measurementList;
   }

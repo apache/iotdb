@@ -152,14 +152,9 @@ public class FileLoaderUtils {
    * @param resource corresponding TsFileResource
    * @param vectorPath instance of VectorPartialPath, vector's full path, e.g. (root.sg1.d1.vector,
    *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
-   * @param allSensors all sensors belonging to this device that appear in query
    */
   public static AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
-      TsFileResource resource,
-      AlignedPath vectorPath,
-      QueryContext context,
-      Filter filter,
-      Set<String> allSensors)
+      TsFileResource resource, AlignedPath vectorPath, QueryContext context, Filter filter)
       throws IOException {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // If the tsfile is closed, we need to load from tsfile
@@ -174,11 +169,8 @@ public class FileLoaderUtils {
           TimeSeriesMetadataCache.getInstance()
               .get(
                   new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
-                      resource.getTsFilePath(),
-                      vectorPath.getDevice(),
-                      vectorPath.getMeasurement()),
+                      resource.getTsFilePath(), vectorPath.getDevice(), ""),
                   new ArrayList<>(vectorPath.getMeasurementList()),
-                  allSensors,
                   context.isDebug());
 
       // assemble VectorTimeSeriesMetadata

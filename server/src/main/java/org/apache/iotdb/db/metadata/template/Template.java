@@ -19,11 +19,18 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,6 +38,8 @@ public class Template {
   private String name;
 
   private Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
+
+  public Template() {}
 
   /**
    * build a template from a createTemplatePlan
@@ -81,6 +90,40 @@ public class Template {
 
   public IMeasurementSchema getSchema(String measurementId) {
     return schemaMap.get(measurementId);
+  }
+
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+    SerializeUtils.serialize(name, dataOutputStream);
+    try {
+      dataOutputStream.writeInt(schemaMap.size());
+      for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
+        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        entry.getValue().partialSerializeTo(dataOutputStream);
+      }
+    } catch (IOException e) {
+      // unreachable
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    name = SerializeUtils.deserializeString(buffer);
+    int schemaSize = buffer.getInt();
+    schemaMap = new HashMap<>(schemaSize);
+    for (int i = 0; i < schemaSize; i++) {
+      String schemaName = SerializeUtils.deserializeString(buffer);
+      byte flag = ReadWriteIOUtils.readByte(buffer);
+      IMeasurementSchema measurementSchema = null;
+      if (flag == (byte) 0) {
+        measurementSchema = UnaryMeasurementSchema.partialDeserializeFrom(buffer);
+      } else if (flag == (byte) 1) {
+        measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
+      }
+      schemaMap.put(schemaName, measurementSchema);
+    }
   }
 
   @Override

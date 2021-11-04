@@ -27,6 +27,8 @@ import java.io.IOException;
 
 public interface LayerPointReader {
 
+  boolean isConstantPointReader();
+
   boolean next() throws QueryProcessException, IOException;
 
   void readyForNext();
