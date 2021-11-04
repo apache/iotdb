@@ -43,6 +43,7 @@ import java.util.*;
 public class ZigzagEncoder extends Encoder {
     private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
     private List<Integer> values;
+    byte[] buf = new byte[5];
     public ZigzagEncoder() {
         super(TSEncoding.ZIGZAG);
         this.values = new ArrayList<>();
@@ -60,7 +61,6 @@ public class ZigzagEncoder extends Encoder {
      * compression
      */
     private byte[] write_to_buffer(int n) {
-        byte[] buf = new byte[5];
         int idx = 0;
         while (true) {
             if ((n & ~0x7F) == 0) {
@@ -72,29 +72,6 @@ public class ZigzagEncoder extends Encoder {
             }
         }
         return Arrays.copyOfRange(buf, 0, idx);
-    }
-
-    /**
-     * transfer zigzag data to int
-     */
-    private int zigzagToInt(int n) {
-        return (n >>> 1) ^ -(n & 1);
-    }
-
-    /**
-     * decompression
-     */
-    private int read_from_buffer(byte[] buf){
-        int ret = 0;
-        int shift = 0;
-        int offset = 0;
-        while (true) {
-            byte b = buf[offset];
-            ret |= (int) (b & 0x7f) << shift;
-            if ((b & 0x80) != 0x80) break;
-            shift += 7;
-        }
-        return ret;
     }
 
     /**
