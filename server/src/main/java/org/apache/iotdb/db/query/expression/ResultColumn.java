@@ -73,6 +73,8 @@ public class ResultColumn {
 
   private TSDataType dataType;
 
+  private List<PartialPath> allPathsInExpression;
+
   public ResultColumn(Expression expression, String alias) {
     this.expression = expression;
     this.alias = alias;
@@ -118,10 +120,13 @@ public class ResultColumn {
     }
   }
 
-  public Set<PartialPath> collectPaths() {
-    Set<PartialPath> pathSet = new HashSet<>();
-    expression.collectPaths(pathSet);
-    return pathSet;
+  public List<PartialPath> collectPaths() {
+    if (allPathsInExpression == null) {
+      Set<PartialPath> pathSet = new HashSet<>();
+      expression.collectPaths(pathSet);
+      allPathsInExpression = new ArrayList<>(pathSet);
+    }
+    return allPathsInExpression;
   }
 
   public Expression getExpression() {
