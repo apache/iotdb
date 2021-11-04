@@ -18,28 +18,28 @@
  */
 package org.apache.iotdb.hive;
 
-import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
-import org.apache.iotdb.hive.constant.TestConstant;
-
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.JobConf;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-
 import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_DELTAOBJECTS;
 import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_MEASUREMENTID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.io.IOException;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.MapWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
+import org.apache.iotdb.hive.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 public class TSFHiveRecordReaderTest {
 
@@ -59,6 +59,8 @@ public class TSFHiveRecordReaderTest {
           .concat("0")
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
+  private FSType beforeFSType;
+
 
   @Before
   public void setUp() throws IOException {
@@ -83,11 +85,14 @@ public class TSFHiveRecordReaderTest {
     }; // configure reading which measurementIds
     job.set(READ_MEASUREMENTID, String.join(",", measurementIds));
     tsfHiveRecordReader = new TSFHiveRecordReader(inputSplit, job);
+    beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
   }
 
   @After
   public void tearDown() {
     TsFileTestHelper.deleteTsFile(filePath);
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(beforeFSType);
   }
 
   @Test

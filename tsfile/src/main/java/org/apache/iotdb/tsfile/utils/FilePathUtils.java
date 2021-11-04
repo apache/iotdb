@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.tsfile.utils;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-
-import java.io.File;
-import java.util.Arrays;
-
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class FilePathUtils {
 
@@ -140,24 +138,14 @@ public class FilePathUtils {
    */
   public static Pair<String, long[]> getTsFilePrefixPathAndTsFileVersionPair(
       String tsFileAbsolutePath) {
-    String[] pathSegments = null;
-    try {
-      pathSegments = splitTsFilePath(tsFileAbsolutePath);
-      int pathLength = pathSegments.length;
-      return new Pair<>(
-          pathSegments[pathLength - 4]
-              + File.separator
-              + pathSegments[pathLength - 3]
-              + File.separator
-              + pathSegments[pathLength - 2],
-          splitAndGetVersionArray(pathSegments[pathLength - 1]));
-    } catch (Exception e) {
-      System.out.println("pathSegments: " + Arrays.toString(pathSegments));
-      System.out.println("path: " + tsFileAbsolutePath);
-      System.out.println("PATH_SPLIT_STRING: " + PATH_SPLIT_STRING);
-      System.out.println("separator: " + File.separator);
-
-      throw e;
-    }
+    String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
+    int pathLength = pathSegments.length;
+    return new Pair<>(
+        pathSegments[pathLength - 4]
+            + File.separator
+            + pathSegments[pathLength - 3]
+            + File.separator
+            + pathSegments[pathLength - 2],
+        splitAndGetVersionArray(pathSegments[pathLength - 1]));
   }
 }

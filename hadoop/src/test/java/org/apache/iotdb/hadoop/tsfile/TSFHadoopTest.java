@@ -18,10 +18,17 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.FloatWritable;
@@ -33,21 +40,14 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class TSFHadoopTest {
 
@@ -69,18 +69,22 @@ public class TSFHadoopTest {
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
 
+  private FSType beforeFSType;
+
   @Before
   public void setUp() {
 
     System.out.println("tsfilePath: " + tsfilePath);
     TsFileTestHelper.deleteTsFile(tsfilePath);
     inputFormat = new TSFInputFormat();
+    beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
   }
 
   @After
   public void tearDown() {
-
     TsFileTestHelper.deleteTsFile(tsfilePath);
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(beforeFSType);
   }
 
   @Test
@@ -184,12 +188,7 @@ public class TSFHadoopTest {
       TSFRecordReader recordReader = new TSFRecordReader();
       TaskAttemptContextImpl attemptContextImpl =
           new TaskAttemptContextImpl(job.getConfiguration(), new TaskAttemptID());
-      try {
-        recordReader.initialize(inputSplits.get(0), attemptContextImpl);
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail();
-      }
+      recordReader.initialize(inputSplits.get(0), attemptContextImpl);
       System.out.println(inputSplits.get(0));
       long value = 1000000L;
       while (recordReader.nextKeyValue()) {
