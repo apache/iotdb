@@ -464,6 +464,7 @@ public class SessionPool {
    */
   public void insertAlignedTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
     insertTablet(tablet, false);
   }
 
@@ -477,6 +478,7 @@ public class SessionPool {
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
     insertTablet(tablet, sorted);
   }
 
@@ -497,6 +499,9 @@ public class SessionPool {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
     insertTablets(tablets, false);
   }
 
@@ -531,6 +536,9 @@ public class SessionPool {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
     insertTablets(tablets, sorted);
   }
 
