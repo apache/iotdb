@@ -90,6 +90,6 @@ public class AlignedSeriesReader extends SeriesReader {
       Set<String> allSensors)
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
-        resource, (AlignedPath) seriesPath, context, filter, allSensors);
+        resource, (AlignedPath) seriesPath, context, filter);
   }
 }

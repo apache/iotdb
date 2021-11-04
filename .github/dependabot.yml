@@ -25,7 +25,7 @@ updates:
     target-branch: "master"
     ignore:
       - dependency-name: "*"
-      - update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     labels:
       - "master"
       - "dependencies"
@@ -38,7 +38,7 @@ updates:
     target-branch: "rel/0.12"
     ignore:
       - dependency-name: "*"
-      - update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     labels:
       - "0.12"
       - "dependencies"
@@ -51,7 +51,7 @@ updates:
     target-branch: "master"
     ignore:
       - dependency-name: "*"
-      - update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     labels:
       - "master"
       - "dependencies"
@@ -64,7 +64,7 @@ updates:
     target-branch: "rel/0.12"
     ignore:
       - dependency-name: "*"
-      - update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     labels:
       - "0.12"
       - "dependencies"

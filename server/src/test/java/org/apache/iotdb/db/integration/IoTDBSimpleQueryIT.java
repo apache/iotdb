@@ -1257,7 +1257,7 @@ public class IoTDBSimpleQueryIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.group-with-hyphen");
+      statement.execute("SET STORAGE GROUP TO root.`group-with-hyphen`");
     } catch (SQLException e) {
       fail();
     }

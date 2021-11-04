@@ -150,7 +150,6 @@ public class SeriesReader {
       boolean ascending) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
-    this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
     this.context = context;
     QueryUtils.filterQueryDataSource(dataSource, fileFilter);
@@ -1011,7 +1010,7 @@ public class SeriesReader {
 
   protected void unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
-        FileLoaderUtils.loadTimeSeriesMetadata(
+        loadTimeSeriesMetadata(
             orderUtils.getNextSeqFileResource(seqFileResource, true),
             seriesPath,
             context,
