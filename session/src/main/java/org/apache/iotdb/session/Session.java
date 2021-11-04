@@ -1461,27 +1461,13 @@ public class Session {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    if (tablet.isAligned()) {
-      if (tablet.getSchemas().size() > 1) {
-        throw new BatchExecutionException("One tablet should only contain one aligned timeseries!");
-      }
-      request.setIsAligned(true);
-      IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
+    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       request.setPrefixPath(tablet.prefixPath);
-      int measurementsSize = measurementSchema.getSubMeasurementsList().size();
-      for (int i = 0; i < measurementsSize; i++) {
-        request.addToMeasurements(measurementSchema.getSubMeasurementsList().get(i));
-        request.addToTypes(measurementSchema.getSubMeasurementsTSDataTypeList().get(i).ordinal());
-      }
-      request.setIsAligned(true);
-    } else {
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.setPrefixPath(tablet.prefixPath);
-        request.addToMeasurements(measurementSchema.getMeasurementId());
-        request.addToTypes(measurementSchema.getType().ordinal());
-        request.setIsAligned(tablet.isAligned());
-      }
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
     }
+
+    request.setIsAligned(tablet.isAligned());
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
     request.setSize(tablet.rowSize);
