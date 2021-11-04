@@ -1127,6 +1127,7 @@ public class IoTDBSessionSimpleIT {
       assertEquals(excepted[index], next.toString());
       index++;
     }
+    session.close();
   }
 
   private void checkResult(Session session)
