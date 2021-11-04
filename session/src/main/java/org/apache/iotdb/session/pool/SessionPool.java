@@ -27,13 +27,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -466,9 +464,6 @@ public class SessionPool {
    */
   public void insertAlignedTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setSchemas(
-        Collections.singletonList(
-            VectorMeasurementSchema.buildFromSchemas(tablet.prefixPath, tablet.getSchemas())));
     insertTablet(tablet, false);
   }
 
@@ -482,9 +477,6 @@ public class SessionPool {
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setSchemas(
-        Collections.singletonList(
-            VectorMeasurementSchema.buildFromSchemas(tablet.prefixPath, tablet.getSchemas())));
     insertTablet(tablet, sorted);
   }
 
@@ -505,11 +497,6 @@ public class SessionPool {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setSchemas(
-          Collections.singletonList(
-              VectorMeasurementSchema.buildFromSchemas(tablet.prefixPath, tablet.getSchemas())));
-    }
     insertTablets(tablets, false);
   }
 
@@ -544,11 +531,6 @@ public class SessionPool {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setSchemas(
-          Collections.singletonList(
-              VectorMeasurementSchema.buildFromSchemas(tablet.prefixPath, tablet.getSchemas())));
-    }
     insertTablets(tablets, sorted);
   }
 

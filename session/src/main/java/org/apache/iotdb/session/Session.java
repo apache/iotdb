@@ -51,7 +51,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1438,9 +1437,6 @@ public class Session {
    */
   public void insertAlignedTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
-    tablet.setSchemas(
-        Collections.singletonList(
-            VectorMeasurementSchema.buildFromSchemas(tablet.prefixPath, tablet.getSchemas())));
     insertTablet(tablet);
   }
 
@@ -1452,9 +1448,6 @@ public class Session {
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setSchemas(
-        Collections.singletonList(
-            VectorMeasurementSchema.buildFromSchemas(tablet.prefixPath, tablet.getSchemas())));
     insertTablet(tablet, sorted);
   }
 
@@ -1539,11 +1532,6 @@ public class Session {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setSchemas(
-          Collections.singletonList(
-              VectorMeasurementSchema.buildFromSchemas(tablet.prefixPath, tablet.getSchemas())));
-    }
     insertTablets(tablets, false);
   }
 
@@ -1556,11 +1544,6 @@ public class Session {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setSchemas(
-          Collections.singletonList(
-              VectorMeasurementSchema.buildFromSchemas(tablet.prefixPath, tablet.getSchemas())));
-    }
     insertTablets(tablets, sorted);
   }
 
