@@ -219,28 +219,28 @@ public class UDTFCast implements UDTF {
     String stringValue = value.getStringValue();
     switch (targetDataType) {
       case INT32:
-        try{
+        try {
           collector.putInt(time, (int) Double.parseDouble(stringValue));
         } catch (Exception ignored) {
           // skip
         }
         return;
       case INT64:
-        try{
+        try {
           collector.putLong(time, (long) Double.parseDouble(stringValue));
         } catch (Exception ignored) {
           // skip
         }
         return;
       case FLOAT:
-        try{
+        try {
           collector.putFloat(time, (float) Double.parseDouble(stringValue));
         } catch (Exception ignored) {
           // skip
         }
         return;
       case DOUBLE:
-        try{
+        try {
           collector.putDouble(time, Double.parseDouble(stringValue));
         } catch (Exception ignored) {
           // skip
