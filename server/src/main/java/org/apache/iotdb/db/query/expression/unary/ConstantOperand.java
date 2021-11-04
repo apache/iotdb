@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.apache.commons.lang3.Validate;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -35,6 +30,13 @@ import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.commons.lang3.Validate;
+
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Constant operand */
 public class ConstantOperand extends Expression {
