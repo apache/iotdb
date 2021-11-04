@@ -41,7 +41,7 @@ public interface IWritableMemChunk {
 
   void putBoolean(long t, boolean v);
 
-  void putAlignedValue(long t, Object[] v, int[] columnOrder);
+  void putAlignedValue(long t, Object[] v, int[] columnIndexArray);
 
   void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
@@ -56,7 +56,7 @@ public interface IWritableMemChunk {
   void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
   void putAlignedValues(
-      long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end);
+      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end);
 
   void write(long insertTime, Object objectValue);
 
