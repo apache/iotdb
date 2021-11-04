@@ -117,6 +117,29 @@ public class VectorMeasurementSchema
         TSFileDescriptor.getInstance().getConfig().getCompressor());
   }
 
+  /**
+   * build a vector measurement schema from list of measurement schema
+   *
+   * @param deviceId device id
+   * @param schemas list of measurement schema
+   * @return vector measurement schema
+   */
+  public static VectorMeasurementSchema buildFromSchemas(
+      String deviceId, List<IMeasurementSchema> schemas) {
+    String[] subMeasurements = new String[schemas.size()];
+    TSDataType[] types = new TSDataType[schemas.size()];
+    TSEncoding[] encodings = new TSEncoding[schemas.size()];
+
+    for (int i = 0; i < schemas.size(); i++) {
+      IMeasurementSchema schema = schemas.get(i);
+      subMeasurements[i] = schema.getMeasurementId();
+      types[i] = schema.getType();
+      encodings[i] = schema.getEncodingType();
+    }
+
+    return new VectorMeasurementSchema(deviceId, subMeasurements, types, encodings);
+  }
+
   @Override
   public String getMeasurementId() {
     return vectorMeasurementId;
