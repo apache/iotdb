@@ -530,7 +530,7 @@ public abstract class TVList {
     protected boolean hasCachedPair;
     protected int cur;
     protected Integer floatPrecision;
-    protected TSEncoding encoding;
+    private TSEncoding encoding;
     private int deleteCursor = 0;
     /**
      * because TV list may be share with different query, each iterator has to record it's own size

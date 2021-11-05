@@ -148,9 +148,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
     for (int i = 0; i < measurementIdsInInsertPlan.size(); i++) {
       if (!containsMeasurement(measurementIdsInInsertPlan.get(i))) {
-        this.schema.addSubMeasurement(measurementIdsInInsertPlan.get(i), dataTypesInInsertPlan.get(i), encodingsInInsertPlan.get(i));
+        this.schema.addSubMeasurement(
+            measurementIdsInInsertPlan.get(i),
+            dataTypesInInsertPlan.get(i),
+            encodingsInInsertPlan.get(i));
         this.list.extendColumn(dataTypesInInsertPlan.get(i));
-        
       }
     }
     return columnIndexArray;
@@ -190,8 +192,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     list.increaseReferenceCount();
     List<Integer> columnIndexList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaList) {
-      columnIndexList.add(
-          schema.getSubMeasurementIndex(measurementSchema.getMeasurementId()));
+      columnIndexList.add(schema.getSubMeasurementIndex(measurementSchema.getMeasurementId()));
     }
     return list.getTvListByColumnIndex(columnIndexList);
   }

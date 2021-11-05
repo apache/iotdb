@@ -127,22 +127,30 @@ public class AlignedTVList extends TVList {
 
   @Override
   public Object getAlignedValue(int index) {
-    return getAlignedValue(index, null, null);
+    return getAlignedValueForQuery(index, null, null);
   }
 
   @Override
-  public Object getAlignedValue(int index, Integer floatPrecision, TSEncoding encoding) {
+  protected TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, TSEncoding encoding) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  private Object getAlignedValueForQuery(
+      int index, Integer floatPrecision, List<TSEncoding> encodingList) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encoding);
+    return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encodingList);
   }
 
   public TsPrimitiveType getAlignedValue(
-      List<Integer> timeDuplicatedIndexList, Integer floatPrecision, TSEncoding encoding) {
+      List<Integer> timeDuplicatedIndexList,
+      Integer floatPrecision,
+      List<TSEncoding> encodingList) {
     int[] validIndexesForTimeDuplicatedRows = new int[values.size()];
     for (int i = 0; i < values.size(); i++) {
       validIndexesForTimeDuplicatedRows[i] =
@@ -152,14 +160,14 @@ public class AlignedTVList extends TVList {
         timeDuplicatedIndexList.get(timeDuplicatedIndexList.size() - 1),
         validIndexesForTimeDuplicatedRows,
         floatPrecision,
-        encoding);
+        encodingList);
   }
 
   private TsPrimitiveType getAlignedValueByValueIndex(
       int valueIndex,
       int[] validIndexesForTimeDuplicatedRows,
       Integer floatPrecision,
-      TSEncoding encoding) {
+      List<TSEncoding> encodingList) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -170,8 +178,8 @@ public class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(columnIndex);
       if (columnValues == null
           || bitMaps != null
-          && bitMaps.get(columnIndex) != null
-          && isValueMarked(valueIndex, columnIndex)) {
+              && bitMaps.get(columnIndex) != null
+              && isValueMarked(valueIndex, columnIndex)) {
         continue;
       }
       if (validIndexesForTimeDuplicatedRows != null) {
@@ -186,9 +194,10 @@ public class AlignedTVList extends TVList {
         case FLOAT:
           float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
           if (floatPrecision != null
-              && encoding != null
+              && encodingList != null
               && !Float.isNaN(valueF)
-              && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+              && (encodingList.get(columnIndex) == TSEncoding.RLE
+                  || encodingList.get(columnIndex) == TSEncoding.TS_2DIFF)) {
             valueF = MathUtils.roundWithGivenPrecision(valueF, floatPrecision);
           }
           vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.FLOAT, valueF);
@@ -204,9 +213,10 @@ public class AlignedTVList extends TVList {
         case DOUBLE:
           double valueD = ((double[]) columnValues.get(arrayIndex))[elementIndex];
           if (floatPrecision != null
-              && encoding != null
+              && encodingList != null
               && !Double.isNaN(valueD)
-              && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+              && (encodingList.get(columnIndex) == TSEncoding.RLE
+                  || encodingList.get(columnIndex) == TSEncoding.TS_2DIFF)) {
             valueD = MathUtils.roundWithGivenPrecision(valueD, floatPrecision);
           }
           vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.DOUBLE, valueD);
@@ -672,20 +682,19 @@ public class AlignedTVList extends TVList {
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    return new TimeValuePair(getTime(index), (TsPrimitiveType) getAlignedValue(index, null, null));
-  }
-
-  @Override
-  protected TimeValuePair getTimeValuePair(
-      int index, long time, Integer floatPrecision, TSEncoding encoding) {
     return new TimeValuePair(
-        time, (TsPrimitiveType) getAlignedValue(index, floatPrecision, encoding));
+        getTime(index), (TsPrimitiveType) getAlignedValueForQuery(index, null, null));
   }
 
-  @Override
+  protected TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, List<TSEncoding> encodingList) {
+    return new TimeValuePair(
+        time, (TsPrimitiveType) getAlignedValueForQuery(index, floatPrecision, encodingList));
+  }
+
   public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
-      List<Integer> indexList, long time, Integer floatPrecision, TSEncoding encoding) {
-    return new TimeValuePair(time, getAlignedValue(indexList, floatPrecision, encoding));
+      List<Integer> indexList, long time, Integer floatPrecision, List<TSEncoding> encodingList) {
+    return new TimeValuePair(time, getAlignedValue(indexList, floatPrecision, encodingList));
   }
 
   @Override
@@ -865,18 +874,26 @@ public class AlignedTVList extends TVList {
   @Override
   public IPointReader getIterator(
       int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
-    return new AlignedIte(floatPrecision, encoding, size, deletionList);
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public IPointReader getAlignedIterator(
+      int floatPrecision, List<TSEncoding> encodingList, int size, List<TimeRange> deletionList) {
+    return new AlignedIte(floatPrecision, encodingList, size, deletionList);
   }
 
   private class AlignedIte extends Ite {
+
+    private List<TSEncoding> encodingList;
 
     public AlignedIte() {
       super();
     }
 
     public AlignedIte(
-        int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
-      super(floatPrecision, encoding, size, deletionList);
+        int floatPrecision, List<TSEncoding> encodingList, int size, List<TimeRange> deletionList) {
+      super(floatPrecision, null, size, deletionList);
+      this.encodingList = encodingList;
     }
 
     @Override
@@ -901,10 +918,10 @@ public class AlignedTVList extends TVList {
         if (timeDuplicatedAlignedRowIndexList != null) {
           tvPair =
               getTimeValuePairForTimeDuplicatedRows(
-                  timeDuplicatedAlignedRowIndexList, time, floatPrecision, encoding);
+                  timeDuplicatedAlignedRowIndexList, time, floatPrecision, encodingList);
           timeDuplicatedAlignedRowIndexList = null;
         } else {
-          tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
+          tvPair = getTimeValuePair(cur, time, floatPrecision, encodingList);
         }
         cur++;
         if (tvPair.getValue() != null) {

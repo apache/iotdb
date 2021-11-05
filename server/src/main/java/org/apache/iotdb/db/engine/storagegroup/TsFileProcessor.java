@@ -406,7 +406,8 @@ public class TsFileProcessor {
         continue;
       }
       // extending the column of aligned mem chunk
-      if (vectorMemChunk != null && !vectorMemChunk.containsMeasurement(insertRowPlan.getMeasurements()[i])) {
+      if (vectorMemChunk != null
+          && !vectorMemChunk.containsMeasurement(insertRowPlan.getMeasurements()[i])) {
         memTableIncrement +=
             (vectorMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
                 * insertRowPlan.getDataTypes()[i].getDataTypeSize();

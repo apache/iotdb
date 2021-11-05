@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -347,8 +348,9 @@ public class AlignedPath extends PartialPath {
       return null;
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList vectorTvListCopy = alignedMemChunk.getSortedTvListForQuery(schemaList);
-    int curSize = vectorTvListCopy.size();
-    return new ReadOnlyMemChunk(getMeasurementSchema(), vectorTvListCopy, curSize, deletionList);
+    TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(schemaList);
+    int curSize = alignedTvListCopy.size();
+    return new AlignedReadOnlyMemChunk(
+        getMeasurementSchema(), alignedTvListCopy, curSize, deletionList);
   }
 }
