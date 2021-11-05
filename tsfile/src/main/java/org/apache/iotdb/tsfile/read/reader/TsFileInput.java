@@ -127,4 +127,6 @@ public interface TsFileInput {
 
   /** read a string from the Input at the given position */
   String readVarIntString(long offset) throws IOException;
+
+  String getFilePath();
 }

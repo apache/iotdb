@@ -901,7 +901,7 @@ public class TSServiceImpl implements TSIService.Iface {
     List<String> columnsTypes = new ArrayList<>();
 
     // check permissions
-    if (!checkAuthorization(physicalPlan.getPaths(), physicalPlan, username)) {
+    if (!checkAuthorization(physicalPlan.getAuthPaths(), physicalPlan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,

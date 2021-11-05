@@ -55,6 +55,11 @@ public class NegationExpression extends Expression {
   }
 
   @Override
+  public boolean isConstantOperandInternal() {
+    return expression.isConstantOperand();
+  }
+
+  @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return true;
   }
@@ -119,9 +124,12 @@ public class NegationExpression extends Expression {
           new ArithmeticNegationTransformer(parentLayerPointReader.constructPointReader());
       expressionDataTypeMap.put(this, transformer.getDataType());
 
+      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
+      // yet. And since a ConstantLayerPointReader won't produce too much IO,
+      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
@@ -132,7 +140,7 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return "-" + expression.toString();
   }
 }

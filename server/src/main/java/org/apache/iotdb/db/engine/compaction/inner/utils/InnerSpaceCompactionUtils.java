@@ -551,7 +551,7 @@ public class InnerSpaceCompactionUtils {
 
   public static void deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
+    logger.info("{} [compaction] merge starts to delete real file ", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteTsFile(mergeTsFile);
       logger.info(

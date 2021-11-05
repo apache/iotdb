@@ -98,27 +98,6 @@ public class IoTDBQuotedPathIT {
           assertEquals(exp[cnt++], result);
         }
 
-        hasResultSet =
-            statement.execute(
-                "select \"status+2+3\", 'status.2.3' from root.ln.\"wf+01\".wt01 align by device");
-        assertTrue(hasResultSet);
-        exp =
-            new String[] {
-              "1509465600000,root.ln.wf+01.wt01,true,'status.2.3',",
-              "1509465600001,root.ln.wf+01.wt01,true,'status.2.3',",
-              "1509465600002,root.ln.wf+01.wt01,false,'status.2.3',",
-              "1509465600003,root.ln.wf+01.wt01,false,'status.2.3',"
-            };
-        cnt = 0;
-        resultSet = statement.getResultSet();
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(exp[cnt++], builder.toString());
-        }
-
         statement.execute(
             "DELETE FROM root.ln.\"wf+01\".wt01.\"status+2+3\" WHERE time < 1509465600001");
       } finally {

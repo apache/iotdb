@@ -79,6 +79,17 @@ public class TemplateManager {
     return template;
   }
 
+  public void setTemplateMap(Map<String, Template> templateMap) {
+    this.templateMap.clear();
+    for (Map.Entry<String, Template> templateEntry : templateMap.entrySet()) {
+      this.templateMap.put(templateEntry.getKey(), templateEntry.getValue());
+    }
+  }
+
+  public Map<String, Template> getTemplateMap() {
+    return templateMap;
+  }
+
   public void checkIsTemplateAndMNodeCompatible(Template template, IMNode node)
       throws MetadataException {
     if (node.getSchemaTemplate() != null) {

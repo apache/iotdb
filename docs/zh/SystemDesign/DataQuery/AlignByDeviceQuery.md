@@ -40,14 +40,14 @@ AlignByDevicePlan 即按设备对齐查询对应的表结构为：
 - `Map<String, IExpression> deviceToFilterMap`: 用来存储设备对应的过滤条件。
 - `Map<String, TSDataType> measurementDataTypeMap`：该字段用于记录时间序列的实际数据类型，用于实际查询，其键值不包含聚合函数。
 - `Map<String, TSDataType> columnDataTypeMap`：该字段用来记录结果集中每列的数据类型，用于构造表头，输出结果集，可含有聚合函数。
-- `enum MeasurementType`：记录三种 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；有单引号或双引号的 measurement 为 `Constant` 类型；存在的 measurement 为 `Exist` 类型。
+- `enum MeasurementType`：记录 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；存在的 measurement 为 `Exist` 类型。
 - `Map<String, MeasurementType> measurementTypeMap`: 该字段用来记录查询中所有 measurement 的类型。
 - groupByTimePlan, fillQueryPlan, aggregationPlan：为了避免冗余，这三个执行计划被设定为 RawDataQueryPlan 的子类，而在 AlignByDevicePlan 中被设置为变量。如果查询计划属于这三个计划中的一种，则该字段会被赋值并保存。
 
 在进行具体实现过程的讲解前，先给出一个覆盖较为完整的例子，下面的解释过程中将结合该示例进行说明。
 
 ```sql
-SELECT s1, '1', *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 ALIGN BY DEVICE
+SELECT s1, *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 ALIGN BY DEVICE
 ```
 
 其中，系统中的时间序列为：
@@ -86,11 +86,6 @@ SELECT s1, '1', *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
     Path suffixPath = suffixPaths.get(i);
     // 用于记录此后缀路径对应的所有 measurement，示例见下文
     Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
-    // 该后缀路径为常量，记录后继续遍历下一后缀路径
-    if (suffixPath.startWith("'")) {
-      ...
-      continue;
-    }
 
     // 后缀路径不为常量，则将其与各个设备拼接得到完整路径
     for (String device : devices) {
@@ -176,7 +171,6 @@ Map<String, IExpression> concatFilterByDevice(List<String> devices,
 - measurement 类型 `measurementTypeMap`：
   -  `s1 -> Exist`
   -  `s2 -> Exist`
-  -  `'1' -> Constant`
   -  `s5 -> NonExist`
 - 每个设备的过滤条件 `deviceToFilterMap`：
   -  `root.sg.d1 -> time = 1 AND root.sg.d1.s1 < 25`
@@ -265,6 +259,6 @@ private void getAlignByDeviceQueryHeaders(
 
 1. 首先从结果集中取得下一个按时间对齐的 `originRowRecord`。
 2. 新建一个添加了时间戳的 `RowRecord`，向其中加入设备列，先根据 `executeColumns` 与得到的结果建立一个由 `measurementName -> Field` 的 Map 结构 `currentColumnMap`.
-3. 之后只需要遍历去重后的 `measurements` 列表，判断其类型，如果类型为 `Exist` 则根据 measurementName 从 `currentColumnMap` 中取得其对应的结果，如果没有则设为 `null`；如果是 `NonExist`类型，则直接设为 `null`; 如果是 `Constant` 类型，则将 `measureName` 作为该列的值。
+3. 之后只需要遍历去重后的 `measurements` 列表，判断其类型，如果类型为 `Exist` 则根据 measurementName 从 `currentColumnMap` 中取得其对应的结果，如果没有则设为 `null`；如果是 `NonExist`类型，则直接设为 `null`。
 
 再根据变换后的 `RowRecord` 写入输出数据流后，即可将结果集返回。

@@ -197,7 +197,7 @@ public class PlannerTest {
     assertEquals(OperatorType.CREATE_TIMESERIES, plan12.getOperatorType());
 
     String queryStatement2 =
-        "select windDirection10min from root.national.`4`.`5`.`585`.9_6666.9_333.88_9";
+        "select windDirection10min from root.national.`4`.`5`.`585`.`9_6666`.`9_333`.`88_9`";
     PhysicalPlan plan13 = processor.parseSQLToPhysicalPlan(queryStatement2);
     assertEquals(OperatorType.QUERY, plan13.getOperatorType());
 
