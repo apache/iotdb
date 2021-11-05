@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
+import java.util.List;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -26,13 +27,11 @@ import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
@@ -54,7 +53,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata) {
-    List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+
+    List<IChunkMetadata> chunkMetadataList = ((TimeseriesMetadata)timeseriesMetadata).getChunkMetadataList();
 
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
 

@@ -169,12 +169,10 @@ public class FileLoaderUtils {
       // the order of timeSeriesMetadata list is same as subSensorList's order
       TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
       List<String> valueMeasurementList = vectorPath.getMeasurementList();
-      ;
       Set<String> allSensors = new HashSet<>(valueMeasurementList);
       allSensors.add("");
       boolean isDebug = context.isDebug();
       String filePath = resource.getTsFilePath();
-      ;
       String deviceId = vectorPath.getDevice();
       TimeseriesMetadata timeColumn =
           cache.get(new TimeSeriesMetadataCacheKey(filePath, deviceId, ""), allSensors, isDebug);
@@ -183,18 +181,25 @@ public class FileLoaderUtils {
             new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
+        // if all the queried aligned sensors does not exist, we will return null
+        boolean exist = false;
         for (String valueMeasurement : valueMeasurementList) {
           TimeseriesMetadata valueColumn =
               cache.get(
                   new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
                   allSensors,
                   isDebug);
-          valueColumn.setChunkMetadataLoader(
-              new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
+          if (valueColumn != null) {
+            valueColumn.setChunkMetadataLoader(
+                new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
+            exist = true;
+          }
           valueTimeSeriesMetadataList.add(valueColumn);
         }
-        alignedTimeSeriesMetadata =
-            new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
+        if (exist) {
+          alignedTimeSeriesMetadata =
+              new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
+        }
       }
     } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
       alignedTimeSeriesMetadata = (AlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata();
@@ -204,6 +209,7 @@ public class FileLoaderUtils {
       }
     }
 
+    // TODO Modification should be applied to each aligned sensor instead of only applying to time column
     if (alignedTimeSeriesMetadata != null) {
       List<Modification> pathModifications =
           context.getPathModifications(resource.getModFile(), vectorPath);
