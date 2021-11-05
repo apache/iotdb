@@ -211,7 +211,7 @@ public class PrometheusReporter extends ScheduledReporter {
 
       prometheus.flush();
     } catch (IOException e) {
-      LOGGER.warn("Unable to report to Prometheus", prometheus, e);
+      LOGGER.warn("Unable to report to Prometheus", e);
     } finally {
       prometheus.disConnect();
     }

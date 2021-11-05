@@ -137,11 +137,14 @@ public class PrometheusRunTest {
    2. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.MetricManager`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager`
 2. implement your reporter
    1. You need to implement jmx reporter and prometheus reporter
-   2. The name of your reporter should alse start with `monitorType`
+   2. The name of your reporter should also start with `monitorType`
    3. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.Reporter`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.reporter.DropwizardPrometheusReporter`
 3. implement your specific metric
    1. They are counter, gauge, histogram, histogramSnapshot, rate and timer.
    2. These metrics will be managed by your MetricManager, and reported by your reporter.
+4. extends preDefinedMetric module:
+   1. you can add value into `metrics/interface/src/main/java/org/apache/iotdb/metrics/utils/PredefinedMetric`, such as `System` and `Thread`.
+   2. then you need to fix the implementation of `enablePredefinedMetric(PredefinedMetric metric)` in your manager.
 
 # 5. Some docs
 1. <a href = "https://cwiki.apache.org/confluence/display/IOTDB/Monitor+Module">Monitor Module</a>

@@ -29,7 +29,7 @@ import java.util.List;
 
 public class CompositeReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompositeReporter.class);
-  private static final List<Reporter> reporters = new ArrayList<>();
+  private static List<Reporter> reporters = new ArrayList<>();
 
   /** Start all reporter */
   public boolean startAll() {
@@ -70,7 +70,7 @@ public class CompositeReporter {
         return reporter.stop();
       }
     }
-    LOGGER.error("Failed to stop reporter: {}", reporterType.getName());
+    LOGGER.error("Failed to stop reporter: {}", reporterType.name());
     return true;
   }
 

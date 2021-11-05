@@ -180,23 +180,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void histogram(int value, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
-    ((Histogram)
-            currentMeters.computeIfAbsent(
-                id,
-                key -> {
-                  io.micrometer.core.instrument.DistributionSummary distributionSummary =
-                      io.micrometer.core.instrument.DistributionSummary.builder(metric)
-                          .tags(tags)
-                          .publishPercentileHistogram()
-                          .publishPercentiles(0)
-                          .register(meterRegistry);
-                  return new MicrometerHistogram(distributionSummary);
-                }))
-        .update(value);
+    this.histogram(Long.valueOf(value), metric, tags);
   }
 
   @Override
@@ -246,17 +230,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void rate(int value, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
-    ((Rate)
-            currentMeters.computeIfAbsent(
-                id,
-                key ->
-                    new MicrometerRate(
-                        meterRegistry.gauge(metric, Tags.of(tags), new AtomicLong(0)))))
-        .mark(value);
+    this.rate(Long.valueOf(value), metric, tags);
   }
 
   @Override
@@ -373,10 +347,6 @@ public class MicrometerMetricManager implements MetricManager {
     switch (metric) {
       case JVM:
         enableJvmMetrics();
-        break;
-      case SYSTEM:
-        break;
-      case THREAD:
         break;
       default:
         logger.warn("Unsupported metric type {}", metric);

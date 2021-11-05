@@ -146,20 +146,7 @@ public class DropwizardMetricManager implements MetricManager {
 
   @Override
   public void gauge(int value, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    MetricName name = new MetricName(metric, tags);
-    ((Gauge)
-            currentMeters.computeIfAbsent(
-                name,
-                key -> {
-                  DropwizardGauge dropwizardGauge = new DropwizardGauge();
-                  metricRegistry.register(
-                      name.toFlatString(), dropwizardGauge.getDropwizardCachedGauge());
-                  return dropwizardGauge;
-                }))
-        .set(value);
+    this.gauge(Long.valueOf(value), metric, tags);
   }
 
   @Override
@@ -370,10 +357,6 @@ public class DropwizardMetricManager implements MetricManager {
     switch (metric) {
       case JVM:
         enableJvmMetrics();
-        break;
-      case SYSTEM:
-        break;
-      case THREAD:
         break;
       default:
         logger.warn("Unsupported metric type {}", metric);

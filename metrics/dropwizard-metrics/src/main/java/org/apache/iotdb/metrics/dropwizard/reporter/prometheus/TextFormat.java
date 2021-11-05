@@ -22,7 +22,6 @@ package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
 final class TextFormat {
 
   public static final String REQUEST_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8";
-  public static final String CONTENT_TYPE = "text/plain; version=0.0.4";
 
   private TextFormat() {}
 }

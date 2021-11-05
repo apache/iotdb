@@ -32,17 +32,17 @@ public interface PrometheusSender extends Closeable {
    * @throws IllegalStateException if the client is already connected
    * @throws IOException if there is an error connecting
    */
-  public void connect() throws IllegalStateException, IOException;
+  void connect() throws IllegalStateException, IOException;
 
-  public void sendGauge(String name, Gauge<?> gauge) throws IOException;
+  void sendGauge(String name, Gauge<?> gauge) throws IOException;
 
-  public void sendCounter(String name, Counter counter) throws IOException;
+  void sendCounter(String name, Counter counter) throws IOException;
 
-  public void sendHistogram(String name, Histogram histogram) throws IOException;
+  void sendHistogram(String name, Histogram histogram) throws IOException;
 
-  public void sendMeter(String name, Meter meter) throws IOException;
+  void sendMeter(String name, Meter meter) throws IOException;
 
-  public void sendTimer(String name, Timer timer) throws IOException;
+  void sendTimer(String name, Timer timer) throws IOException;
 
   /**
    * Flushes buffer, if applicable
