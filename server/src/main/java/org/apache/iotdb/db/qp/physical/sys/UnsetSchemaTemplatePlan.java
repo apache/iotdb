@@ -15,12 +15,13 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.qp.physical.crud;
+package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -29,25 +30,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class SetSchemaTemplatePlan extends PhysicalPlan {
-  String templateName;
+public class UnsetSchemaTemplatePlan extends PhysicalPlan {
+
   String prefixPath;
+  String templateName;
 
-  public SetSchemaTemplatePlan() {
-    super(false, OperatorType.SET_SCHEMA_TEMPLATE);
+  public UnsetSchemaTemplatePlan() {
+    super(false, Operator.OperatorType.UNSET_SCHEMA_TEMPLATE);
   }
 
-  public SetSchemaTemplatePlan(String templateName, String prefixPath) {
-    super(false, OperatorType.SET_SCHEMA_TEMPLATE);
-    this.templateName = templateName;
+  public UnsetSchemaTemplatePlan(String prefixPath, String templateName) {
+    super(false, Operator.OperatorType.UNSET_SCHEMA_TEMPLATE);
     this.prefixPath = prefixPath;
-  }
-
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public void setTemplateName(String templateName) {
     this.templateName = templateName;
   }
 
@@ -59,6 +53,14 @@ public class SetSchemaTemplatePlan extends PhysicalPlan {
     this.prefixPath = prefixPath;
   }
 
+  public String getTemplateName() {
+    return templateName;
+  }
+
+  public void setTemplateName(String templateName) {
+    this.templateName = templateName;
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return null;
@@ -66,28 +68,28 @@ public class SetSchemaTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.SET_SCHEMA_TEMPLATE.ordinal());
+    buffer.put((byte) PhysicalPlanType.UNSET_SCHEMA_TEMPLATE.ordinal());
 
-    ReadWriteIOUtils.write(templateName, buffer);
     ReadWriteIOUtils.write(prefixPath, buffer);
+    ReadWriteIOUtils.write(templateName, buffer);
 
     buffer.putLong(index);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    templateName = ReadWriteIOUtils.readString(buffer);
     prefixPath = ReadWriteIOUtils.readString(buffer);
+    templateName = ReadWriteIOUtils.readString(buffer);
 
     this.index = buffer.getLong();
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.SET_SCHEMA_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.UNSET_SCHEMA_TEMPLATE.ordinal());
 
-    ReadWriteIOUtils.write(templateName, stream);
     ReadWriteIOUtils.write(prefixPath, stream);
+    ReadWriteIOUtils.write(templateName, stream);
 
     stream.writeLong(index);
   }

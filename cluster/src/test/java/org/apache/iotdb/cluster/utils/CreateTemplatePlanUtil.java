@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -30,7 +30,7 @@ import java.util.List;
 
 public class CreateTemplatePlanUtil {
 
-  public static CreateTemplatePlan getCreateTemplatePlan() {
+  public static CreateSchemaTemplatePlan getCreateTemplatePlan() {
     // create createTemplatePlan for template
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("template_sensor"));
@@ -65,7 +65,7 @@ public class CreateTemplatePlanUtil {
     schemaNames.add("template_sensor");
     schemaNames.add("vector");
 
-    return new CreateTemplatePlan(
+    return new CreateSchemaTemplatePlan(
         "template", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }

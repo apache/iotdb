@@ -26,13 +26,13 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -864,7 +864,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTemplate() throws MetadataException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
+    CreateSchemaTemplatePlan plan = getCreateSchemaTemplatePlan();
 
     MManager manager = IoTDB.metaManager;
     manager.createSchemaTemplate(plan);
@@ -904,7 +904,7 @@ public class MManagerBasicTest {
     }
   }
 
-  private CreateTemplatePlan getCreateTemplatePlan() {
+  private CreateSchemaTemplatePlan getCreateSchemaTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     List<String> measurements = new ArrayList<>();
@@ -938,7 +938,7 @@ public class MManagerBasicTest {
     schemaNames.add("s11");
     schemaNames.add("vector");
 
-    return new CreateTemplatePlan(
+    return new CreateSchemaTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
@@ -969,8 +969,8 @@ public class MManagerBasicTest {
     schemaNames.add("s2");
     schemaNames.add("s3");
 
-    CreateTemplatePlan createTemplatePlan =
-        new CreateTemplatePlan(
+    CreateSchemaTemplatePlan createTemplatePlan =
+        new CreateSchemaTemplatePlan(
             "template1",
             schemaNames,
             measurementList,
@@ -1010,7 +1010,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
+    CreateSchemaTemplatePlan plan = getCreateSchemaTemplatePlan();
     MManager manager = IoTDB.metaManager;
     manager.createSchemaTemplate(plan);
 
@@ -1057,7 +1057,7 @@ public class MManagerBasicTest {
   @Test
   public void testTemplateAndNodePathCompatibility() throws MetadataException {
     MManager manager = IoTDB.metaManager;
-    CreateTemplatePlan plan = getCreateTemplatePlan();
+    CreateSchemaTemplatePlan plan = getCreateSchemaTemplatePlan();
     manager.createSchemaTemplate(plan);
 
     // set device template
@@ -1145,8 +1145,8 @@ public class MManagerBasicTest {
     schemaNames.add("s11");
     schemaNames.add("test_vector");
 
-    CreateTemplatePlan plan1 =
-        new CreateTemplatePlan(
+    CreateSchemaTemplatePlan plan1 =
+        new CreateSchemaTemplatePlan(
             "template1",
             new ArrayList<>(schemaNames),
             new ArrayList<>(measurementList),
@@ -1160,8 +1160,8 @@ public class MManagerBasicTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     compressionTypes.add(CompressionType.SNAPPY);
 
-    CreateTemplatePlan plan2 =
-        new CreateTemplatePlan(
+    CreateSchemaTemplatePlan plan2 =
+        new CreateSchemaTemplatePlan(
             "template2",
             new ArrayList<>(schemaNames),
             new ArrayList<>(measurementList),
@@ -1327,8 +1327,8 @@ public class MManagerBasicTest {
     schemaNames.add("s0");
     schemaNames.add("vector");
 
-    CreateTemplatePlan plan =
-        new CreateTemplatePlan(
+    CreateSchemaTemplatePlan plan =
+        new CreateSchemaTemplatePlan(
             "template1",
             schemaNames,
             measurementList,
@@ -1419,8 +1419,8 @@ public class MManagerBasicTest {
     schemaNames.add("s0");
     schemaNames.add("s1");
 
-    CreateTemplatePlan plan =
-        new CreateTemplatePlan(
+    CreateSchemaTemplatePlan plan =
+        new CreateSchemaTemplatePlan(
             "template1",
             schemaNames,
             measurementList,
@@ -1485,8 +1485,8 @@ public class MManagerBasicTest {
     schemaNames.add("s0");
     schemaNames.add("s1");
 
-    CreateTemplatePlan plan =
-        new CreateTemplatePlan(
+    CreateSchemaTemplatePlan plan =
+        new CreateSchemaTemplatePlan(
             "template1",
             schemaNames,
             measurementList,
@@ -1922,7 +1922,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
     String[] illegalSchemaNames = {"a+b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String schemaName : illegalSchemaNames) {
-      CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
+      CreateSchemaTemplatePlan plan = getCreateSchemaTemplatePlan(schemaName);
       try {
         manager.createSchemaTemplate(plan);
       } catch (MetadataException e) {
@@ -1931,7 +1931,7 @@ public class MManagerBasicTest {
     }
   }
 
-  private CreateTemplatePlan getCreateTemplatePlan(String schemaName) {
+  private CreateSchemaTemplatePlan getCreateSchemaTemplatePlan(String schemaName) {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
 
@@ -1947,7 +1947,7 @@ public class MManagerBasicTest {
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add(schemaName);
 
-    return new CreateTemplatePlan(
+    return new CreateSchemaTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
@@ -1981,7 +1981,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
     manager.setStorageGroup(new PartialPath("root.sg"));
 
-    CreateTemplatePlan plan = getCreateTemplatePlan("s1");
+    CreateSchemaTemplatePlan plan = getCreateSchemaTemplatePlan("s1");
     manager.createSchemaTemplate(plan);
     SetSchemaTemplatePlan setPlan = new SetSchemaTemplatePlan("template1", "root.sg.d1");
     manager.setSchemaTemplate(setPlan);

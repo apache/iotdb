@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.List;
@@ -55,7 +55,7 @@ public class TemplateManager {
 
   private TemplateManager() {}
 
-  public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
+  public void createSchemaTemplate(CreateSchemaTemplatePlan plan) throws MetadataException {
     // check schema and measurement name before create template
     for (String schemaNames : plan.getSchemaNames()) {
       MetaFormatUtils.checkNodeName(schemaNames);

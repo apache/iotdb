@@ -64,7 +64,6 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -80,9 +79,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
@@ -90,6 +87,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -103,9 +101,11 @@ import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SettlePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
@@ -118,6 +118,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
@@ -360,10 +361,12 @@ public class PlanExecutor implements IPlanExecutor {
           throw new QueryProcessException(e.getMessage());
         }
         return true;
-      case CREATE_TEMPLATE:
-        return createSchemaTemplate((CreateTemplatePlan) plan);
+      case CREATE_SCHEMA_TEMPLATE:
+        return createSchemaTemplate((CreateSchemaTemplatePlan) plan);
       case SET_SCHEMA_TEMPLATE:
         return setSchemaTemplate((SetSchemaTemplatePlan) plan);
+      case SET_USING_SCHEMA_TEMPLATE:
+        return setUsingSchemaTemplate((SetUsingSchemaTemplatePlan) plan);
       case UNSET_SCHEMA_TEMPLATE:
         return unsetSchemaTemplate((UnsetSchemaTemplatePlan) plan);
       case CREATE_CONTINUOUS_QUERY:
@@ -379,7 +382,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean createSchemaTemplate(CreateTemplatePlan createTemplatePlan)
+  private boolean createSchemaTemplate(CreateSchemaTemplatePlan createTemplatePlan)
       throws QueryProcessException {
     try {
       IoTDB.metaManager.createSchemaTemplate(createTemplatePlan);
@@ -393,6 +396,16 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.setSchemaTemplate(setSchemaTemplatePlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean setUsingSchemaTemplate(SetUsingSchemaTemplatePlan setUsingSchemaTemplatePlan)
+      throws QueryProcessException {
+    try {
+      IoTDB.metaManager.setUsingSchemaTemplate(setUsingSchemaTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

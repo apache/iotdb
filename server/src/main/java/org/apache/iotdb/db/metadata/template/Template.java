@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.template;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -50,7 +50,7 @@ public class Template {
    *
    * @param plan createTemplatePlan
    */
-  public Template(CreateTemplatePlan plan) {
+  public Template(CreateSchemaTemplatePlan plan) {
     name = plan.getName();
 
     // put measurement into a map

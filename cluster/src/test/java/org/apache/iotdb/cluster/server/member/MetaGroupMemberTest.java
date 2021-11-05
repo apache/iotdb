@@ -71,8 +71,8 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -738,7 +738,7 @@ public class MetaGroupMemberTest extends BaseMember {
     // 4. prepare the template info
     Map<String, Template> templateMap = new HashMap<>();
 
-    CreateTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
+    CreateSchemaTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
     for (int i = 0; i < 10; i++) {
       String templateName = "template_" + i;
       createTemplatePlan.setName(templateName);

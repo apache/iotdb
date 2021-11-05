@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.physical.crud;
+package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -33,7 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CreateTemplatePlan extends PhysicalPlan {
+public class CreateSchemaTemplatePlan extends PhysicalPlan {
 
   String name;
   List<String> schemaNames;
@@ -90,18 +90,18 @@ public class CreateTemplatePlan extends PhysicalPlan {
     this.compressors = compressors;
   }
 
-  public CreateTemplatePlan() {
-    super(false, OperatorType.CREATE_TEMPLATE);
+  public CreateSchemaTemplatePlan() {
+    super(false, OperatorType.CREATE_SCHEMA_TEMPLATE);
   }
 
-  public CreateTemplatePlan(
+  public CreateSchemaTemplatePlan(
       String name,
       List<String> schemaNames,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors) {
-    super(false, OperatorType.CREATE_TEMPLATE);
+    super(false, OperatorType.CREATE_SCHEMA_TEMPLATE);
     this.name = name;
     this.schemaNames = schemaNames;
     this.measurements = measurements;
@@ -112,7 +112,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
+    buffer.put((byte) PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, buffer);
 
@@ -217,7 +217,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, stream);
 

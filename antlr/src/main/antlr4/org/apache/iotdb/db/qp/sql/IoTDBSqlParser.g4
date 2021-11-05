@@ -35,11 +35,11 @@ statement
     ;
 
 ddlStatement
-    : setStorageGroup | createStorageGroup | createTimeseries
+    : setStorageGroup | createStorageGroup | createTimeseries | createSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery | createSnapshot
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
-    | dropFunction | dropTrigger | dropContinuousQuery
-    | setTTL | unsetTTL | startTrigger | stopTrigger
+    | dropFunction | dropTrigger | dropContinuousQuery | setTTL | unsetTTL
+    | setSchemaTemplate | setUsingSchemaTemplate | unsetSchemaTemplate | startTrigger | stopTrigger
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -77,20 +77,26 @@ createStorageGroup
 
 // Create Timeseries
 createTimeseries
-    : CREATE TIMESERIES fullPath alias? WITH attributeClauses
+    : CREATE ALIGNED TIMESERIES fullPath alignedMeasurements globalCompressorClause? #createAlignedTimeseries
+    | CREATE TIMESERIES fullPath attributeClauses  #createNonAlignedTimeseries
     ;
 
-alias
-    : LR_BRACKET ID RR_BRACKET
+alignedMeasurements
+    : LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
     ;
 
-attributeClauses
-    : DATATYPE OPERATOR_EQ dataType=DATATYPE_VALUE
-    (COMMA ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
-    (COMMA propertyClause)*
-    tagClause?
-    attributeClause?
+// Create Schema Template
+createSchemaTemplate
+    : CREATE SCHEMA TEMPLATE templateName=ID
+    LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    ;
+
+templateMeasurementClause
+    : nodeNameWithoutWildcard attributeClauses #nonAlignedTemplateMeasurement
+    | alignedDevice=nodeNameWithoutWildcard
+    LR_BRACKET nodeNameWithoutWildcard attributeClauses (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
+    globalCompressorClause? #alignedTemplateMeasurement
     ;
 
 // Create Function
@@ -193,6 +199,21 @@ setTTL
 // Unset TTL
 unsetTTL
     : UNSET TTL TO path=prefixPath
+    ;
+
+// Set Schema Template
+setSchemaTemplate
+    : SET SCHEMA TEMPLATE templateName=ID TO prefixPath
+    ;
+
+// Set Using Schema Template
+setUsingSchemaTemplate
+    : SET USING SCHEMA TEMPLATE ON prefixPath
+    ;
+
+// Unset Schema Template
+unsetSchemaTemplate
+    : UNSET SCHEMA TEMPLATE templateName=ID FROM prefixPath
     ;
 
 // Start Trigger
@@ -391,7 +412,7 @@ timeValue
 
 // Insert Statement
 insertStatement
-    : INSERT INTO prefixPath insertColumnsSpec VALUES insertValuesSpec
+    : INSERT INTO prefixPath insertColumnsSpec ALIGNED? VALUES insertValuesSpec
     ;
 
 insertColumnsSpec
@@ -795,7 +816,27 @@ fromClause
     ;
 
 
-// Tag & Property Clause
+// Attribute Clause
+
+attributeClauses
+    : alias? WITH DATATYPE OPERATOR_EQ dataType=DATATYPE_VALUE
+    (COMMA ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
+    (COMMA propertyClause)*
+    tagClause?
+    attributeClause?
+    // Simplified version (supported since v0.13)
+    | alias? dataType=DATATYPE_VALUE
+    (ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
+    ((COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
+    propertyClause*
+    tagClause?
+    attributeClause?
+    ;
+
+alias
+    : LR_BRACKET ID RR_BRACKET
+    ;
 
 tagClause
     : TAGS LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
@@ -816,6 +857,9 @@ attributeClause
     : ATTRIBUTES LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
     ;
 
+globalCompressorClause
+    : (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE
+    ;
 
 // Limit & Offset Clause
 
