@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
@@ -64,14 +65,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   /** constructor. */
   public GroupByWithValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
-      throws StorageEngineException, QueryProcessException {
+          throws StorageEngineException, QueryProcessException, MetadataException {
     super(context, groupByTimePlan);
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     initGroupBy(context, groupByTimePlan);
   }
 
   @TestOnly
-  public GroupByWithValueFilterDataSet(long queryId, GroupByTimePlan groupByTimePlan) {
+  public GroupByWithValueFilterDataSet(long queryId, GroupByTimePlan groupByTimePlan) throws MetadataException {
     super(new QueryContext(queryId), groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
@@ -128,14 +129,20 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           "need to call hasNext() before calling next()" + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    curAggregateResults = new AggregateResult[paths.size()];
-    for (int i = 0; i < paths.size(); i++) {
-      curAggregateResults[i] =
-          AggregateResultFactory.getAggrResultByName(
-              groupByTimePlan.getDeduplicatedAggregations().get(i),
-              groupByTimePlan.getDeduplicatedDataTypes().get(i),
-              ascending);
+
+    try {
+      curAggregateResults = new AggregateResult[paths.size()];
+      for (int i = 0; i < paths.size(); i++) {
+        curAggregateResults[i] =
+                AggregateResultFactory.getAggrResultByName(
+                        groupByTimePlan.getDeduplicatedAggregations().get(i),
+                        groupByTimePlan.getDeduplicatedDataTypes().get(i),
+                        ascending);
+      }
+    } catch (MetadataException e) {
+      e.printStackTrace();
     }
+
 
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
@@ -193,11 +200,16 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     }
 
     long[] timestampArray = new long[1];
-    AggregateResult aggrResultByName =
-        AggregateResultFactory.getAggrResultByName(
-            groupByTimePlan.getDeduplicatedAggregations().get(i),
-            groupByTimePlan.getDeduplicatedDataTypes().get(i),
-            ascending);
+    AggregateResult aggrResultByName = null;
+    try {
+      aggrResultByName =
+              AggregateResultFactory.getAggrResultByName(
+                      groupByTimePlan.getDeduplicatedAggregations().get(i),
+                      groupByTimePlan.getDeduplicatedDataTypes().get(i),
+                      ascending);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    }
 
     long tmpStartTime = curStartTime - slidingStep;
     int index = 0;

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
@@ -71,7 +72,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   /** constructor. */
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
-      throws StorageEngineException, QueryProcessException {
+          throws StorageEngineException, QueryProcessException, MetadataException {
     super(context, groupByTimePlan);
 
     initGroupBy(context, groupByTimePlan);

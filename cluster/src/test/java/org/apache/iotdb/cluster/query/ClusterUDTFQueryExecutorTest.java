@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -67,7 +68,7 @@ public class ClusterUDTFQueryExecutorTest extends BaseQueryTest {
       executor = new ClusterUDTFQueryExecutor(udtfPlan, testMetaMember);
       QueryDataSet queryDataSet = executor.executeWithoutValueFilterAlignByTime(context);
       checkSequentialDatasetWithMathFunction(queryDataSet, 0, 20, Math::sin);
-    } catch (StorageEngineException | IOException | InterruptedException e) {
+    } catch (StorageEngineException | IOException | InterruptedException | MetadataException e) {
       e.printStackTrace();
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
@@ -87,7 +88,7 @@ public class ClusterUDTFQueryExecutorTest extends BaseQueryTest {
       executor = new ClusterUDTFQueryExecutor(udtfPlan, testMetaMember);
       QueryDataSet queryDataSet = executor.executeWithoutValueFilterAlignByTime(context);
       checkSequentialDatasetWithMathFunction(queryDataSet, 5, 15, Math::sin);
-    } catch (QueryProcessException | InterruptedException e) {
+    } catch (QueryProcessException | InterruptedException | MetadataException e) {
       e.printStackTrace();
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());

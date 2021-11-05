@@ -86,7 +86,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteCache()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -115,7 +115,6 @@ public class DeletionQueryTest {
     dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -129,7 +128,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -157,7 +156,6 @@ public class DeletionQueryTest {
     dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -171,7 +169,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInOverflowCache()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -210,7 +208,6 @@ public class DeletionQueryTest {
     dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -224,7 +221,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInOverflowFile()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -263,7 +260,6 @@ public class DeletionQueryTest {
     dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -277,7 +273,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testSuccessiveDeletion()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -345,7 +341,6 @@ public class DeletionQueryTest {
     dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 

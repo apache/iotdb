@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -58,7 +59,7 @@ public class FillQueryExecutor {
   protected Map<TSDataType, IFill> typeIFillMap;
   protected long queryTime;
 
-  public FillQueryExecutor(FillQueryPlan fillQueryPlan) {
+  public FillQueryExecutor(FillQueryPlan fillQueryPlan) throws MetadataException {
     this.plan = fillQueryPlan;
     this.selectedSeries = plan.getDeduplicatedPaths();
     this.typeIFillMap = plan.getFillType();

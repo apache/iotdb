@@ -115,7 +115,7 @@ public abstract class PhysicalPlan {
     return "abstract plan";
   }
 
-  public abstract List<PartialPath> getPaths();
+  public abstract List<? extends PartialPath> getPaths();
 
   public void setPaths(List<PartialPath> paths) {}
 

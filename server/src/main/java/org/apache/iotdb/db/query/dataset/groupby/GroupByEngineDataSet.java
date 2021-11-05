@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -56,7 +57,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   public GroupByEngineDataSet() {}
 
   /** groupBy query. */
-  public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
+  public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) throws MetadataException {
     super(
         new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
         groupByTimePlan.getDeduplicatedDataTypes(),

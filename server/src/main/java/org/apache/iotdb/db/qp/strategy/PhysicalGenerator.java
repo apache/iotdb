@@ -27,8 +27,6 @@ import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigur
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
-import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 
@@ -52,10 +50,6 @@ public class PhysicalGenerator {
         throw new QueryProcessException(
             String.format("Unrecognized load configuration operator type, %s", type.name()));
     }
-  }
-
-  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
   public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {

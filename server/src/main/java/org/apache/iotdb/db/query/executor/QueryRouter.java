@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -67,7 +69,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException {
+          throws StorageEngineException, QueryProcessException, MetadataException {
     IExpression expression = queryPlan.getExpression();
     List<PartialPath> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
 
@@ -114,7 +116,7 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
+          IOException, MetadataException {
 
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -155,14 +157,14 @@ public class QueryRouter implements IQueryRouter {
   }
 
   protected AggregationExecutor getAggregationExecutor(
-      QueryContext context, AggregationPlan aggregationPlan) {
+      QueryContext context, AggregationPlan aggregationPlan) throws MetadataException {
     return new AggregationExecutor(context, aggregationPlan);
   }
 
   @Override
   public QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
+          IOException, MetadataException {
 
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -227,36 +229,36 @@ public class QueryRouter implements IQueryRouter {
 
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
       QueryContext context, GroupByTimePlan plan)
-      throws StorageEngineException, QueryProcessException {
+          throws StorageEngineException, QueryProcessException, MetadataException {
     return new GroupByWithoutValueFilterDataSet(context, plan);
   }
 
   protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(
       QueryContext context, GroupByTimePlan plan)
-      throws StorageEngineException, QueryProcessException {
+          throws StorageEngineException, QueryProcessException, MetadataException {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException {
+          throws StorageEngineException, QueryProcessException, IOException, MetadataException {
     FillQueryExecutor fillQueryExecutor = getFillExecutor(fillQueryPlan);
     return fillQueryExecutor.execute(context);
   }
 
-  protected FillQueryExecutor getFillExecutor(FillQueryPlan plan) {
+  protected FillQueryExecutor getFillExecutor(FillQueryPlan plan) throws MetadataException {
     return new FillQueryExecutor(plan);
   }
 
   @Override
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
+          IOException, MetadataException {
     GroupByEngineDataSet groupByEngineDataSet =
         (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
     return new GroupByFillDataSet(
         groupByFillPlan.getDeduplicatedPaths(),
-        groupByFillPlan.getDeduplicatedDataTypes(),
+        SchemaUtils.getSeriesTypesByPaths(groupByFillPlan.getPaths()),
         groupByEngineDataSet,
         groupByFillPlan.getFillType(),
         context,
@@ -265,18 +267,18 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException {
+          throws StorageEngineException, QueryProcessException, IOException, MetadataException {
     LastQueryExecutor lastQueryExecutor = getLastQueryExecutor(lastQueryPlan);
     return lastQueryExecutor.execute(context, lastQueryPlan);
   }
 
-  protected LastQueryExecutor getLastQueryExecutor(LastQueryPlan lastQueryPlan) {
+  protected LastQueryExecutor getLastQueryExecutor(LastQueryPlan lastQueryPlan) throws MetadataException {
     return new LastQueryExecutor(lastQueryPlan);
   }
 
   @Override
   public QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
+          throws StorageEngineException, QueryProcessException, IOException, InterruptedException, MetadataException {
     IExpression expression = udtfPlan.getExpression();
     IExpression optimizedExpression;
     try {

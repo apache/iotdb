@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -50,7 +51,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -200,11 +200,10 @@ public class QueryOperator extends Operator {
       FilterOperator filterOperator = whereComponent.getFilterOperator();
       List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
       try {
-        List<TSDataType> seriesTypes = generator.getSeriesTypes(filterPaths);
         HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-        for (int i = 0; i < filterPaths.size(); i++) {
-          rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPaths.get(i));
-          pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
+        for (PartialPath filterPath : filterPaths) {
+          rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
+          pathTSDataTypeHashMap.put(filterPath, filterPath.getSeriesType());
         }
         IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
         rawDataQueryPlan.setExpression(expression);
@@ -220,7 +219,6 @@ public class QueryOperator extends Operator {
     }
 
     try {
-      rawDataQueryPlan.setDataTypes(generator.getSeriesTypes(selectComponent.getPaths()));
       queryPlan.deduplicate(generator);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
@@ -265,9 +263,8 @@ public class QueryOperator extends Operator {
         PartialPath fullPath = device.concatPath(suffixPath);
         try {
           // remove stars in SELECT to get actual paths
-          List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
-          if (suffixPath.getNodes().length > 1
-              && (actualPaths.isEmpty() || !(actualPaths.get(0) instanceof AlignedPath))) {
+          List<MeasurementPath> actualPaths = getMatchedTimeseries(fullPath);
+          if (suffixPath.getNodes().length > 1) {
             throw new QueryProcessException(AlignByDevicePlan.MEASUREMENT_ERROR_MESSAGE);
           }
           if (resultColumn.hasAlias() && actualPaths.size() >= 2) {
@@ -283,7 +280,7 @@ public class QueryOperator extends Operator {
           } else {
             for (PartialPath path : actualPaths) {
               String measurementName = getMeasurementName(path, aggregation);
-              TSDataType measurementDataType = IoTDB.metaManager.getSeriesType(path);
+              TSDataType measurementDataType = path.getSeriesType();
               TSDataType columnDataType = getAggregationType(aggregation);
               columnDataType = columnDataType == null ? measurementDataType : columnDataType;
               MeasurementInfo measurementInfo =
@@ -444,10 +441,9 @@ public class QueryOperator extends Operator {
       // transform to a list so it can be indexed
       List<PartialPath> filterPathList = new ArrayList<>(filterPaths);
       try {
-        List<TSDataType> seriesTypes = generator.getSeriesTypes(filterPathList);
         Map<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-        for (int i = 0; i < filterPathList.size(); i++) {
-          pathTSDataTypeHashMap.put(filterPathList.get(i), seriesTypes.get(i));
+        for (PartialPath filterPath : filterPathList) {
+          pathTSDataTypeHashMap.put(filterPath, filterPath.getSeriesType());
         }
         deviceToFilterMap.put(
             device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
@@ -501,9 +497,8 @@ public class QueryOperator extends Operator {
     return IoTDB.metaManager.getMatchedDevices(path);
   }
 
-  protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    // todo eliminate this transform and use MeasurementPath directly
-    return new LinkedList<>(IoTDB.metaManager.getMeasurementPaths(path));
+  protected List<MeasurementPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getMeasurementPaths(path);
   }
 
   public boolean isEnableTracing() {

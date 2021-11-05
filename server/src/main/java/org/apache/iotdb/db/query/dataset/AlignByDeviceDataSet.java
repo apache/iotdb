@@ -82,7 +82,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private int pathsNum = 0;
 
   public AlignByDeviceDataSet(
-      AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter) {
+      AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter)
+      throws MetadataException {
     super(null, alignByDevicePlan.getDataTypes());
 
     this.measurements = alignByDevicePlan.getMeasurements();
@@ -177,7 +178,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         switch (dataSetType) {
           case GROUPBYTIME:
             groupByTimePlan.setDeduplicatedPathsAndUpdate(executePaths);
-            groupByTimePlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
             groupByTimePlan.setExpression(expression);
             currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
@@ -185,18 +185,15 @@ public class AlignByDeviceDataSet extends QueryDataSet {
           case AGGREGATE:
             aggregationPlan.setDeduplicatedPathsAndUpdate(executePaths);
             aggregationPlan.setDeduplicatedAggregations(executeAggregations);
-            aggregationPlan.setDeduplicatedDataTypes(tsDataTypes);
             aggregationPlan.setExpression(expression);
             currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;
           case FILL:
-            fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             fillQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
             currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
             rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
-            rawDataQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
             break;
@@ -205,7 +202,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         }
       } catch (QueryProcessException
           | QueryFilterOptimizationException
-          | StorageEngineException e) {
+          | StorageEngineException
+          | MetadataException e) {
         throw new IOException(e);
       }
 

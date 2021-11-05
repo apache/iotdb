@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -46,13 +47,13 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
   }
 
   public QueryDataSet executeWithoutValueFilterAlignByTime(QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
+          throws StorageEngineException, QueryProcessException, IOException, InterruptedException, MetadataException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     return new UDTFAlignByTimeDataSet(context, udtfPlan, readersOfSelectedSeries);
   }
 
   public QueryDataSet executeWithValueFilterAlignByTime(QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException {
+          throws StorageEngineException, QueryProcessException, IOException, MetadataException {
     TimeGenerator timestampGenerator = getTimeGenerator(context, udtfPlan);
     List<Boolean> cached =
         markFilterdPaths(
@@ -66,13 +67,13 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
   }
 
   public QueryDataSet executeWithoutValueFilterNonAlign(QueryContext context)
-      throws QueryProcessException, StorageEngineException, IOException, InterruptedException {
+          throws QueryProcessException, StorageEngineException, IOException, InterruptedException, MetadataException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     return new UDTFNonAlignDataSet(context, udtfPlan, readersOfSelectedSeries);
   }
 
   public QueryDataSet executeWithValueFilterNonAlign(QueryContext context)
-      throws QueryProcessException, StorageEngineException, IOException {
+          throws QueryProcessException, StorageEngineException, IOException, MetadataException {
     TimeGenerator timestampGenerator = getTimeGenerator(context, udtfPlan);
     List<Boolean> cached =
         markFilterdPaths(

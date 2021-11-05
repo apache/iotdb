@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -37,32 +38,32 @@ public interface IQueryRouter {
 
   /** Execute physical plan. */
   QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException;
+          throws StorageEngineException, QueryProcessException, MetadataException;
 
   /** Execute aggregation query. */
   QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, IOException,
-          QueryProcessException;
+          QueryProcessException, MetadataException;
 
   /** Execute groupBy query. */
   QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException;
+          IOException, MetadataException;
 
   /** Execute fill query. */
   QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException;
+          throws StorageEngineException, QueryProcessException, IOException, MetadataException;
 
   /** Execute group by fill query */
   QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException;
+          IOException, MetadataException;
 
   /** Execute last query */
   QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException;
+          throws StorageEngineException, QueryProcessException, IOException, MetadataException;
 
   /** Execute UDTF query */
   QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException, InterruptedException;
+          throws StorageEngineException, QueryProcessException, IOException, InterruptedException, MetadataException;
 }
