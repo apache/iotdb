@@ -1032,7 +1032,9 @@
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
-                <thrift.download-url>https://cloud.tsinghua.edu.cn/f/bb757414266040119b7d/?dl=1</thrift.download-url>
+                <thrift.download-url>
+                    https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-ubuntu
+                </thrift.download-url>
                 <thrift.executable>thrift_0.14.1_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
