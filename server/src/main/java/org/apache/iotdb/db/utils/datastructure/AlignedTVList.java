@@ -299,7 +299,7 @@ public class AlignedTVList extends TVList {
       }
       BitMap bitMap = new BitMap(ARRAY_SIZE);
       // last bitmap should be marked to the tslist size's position
-      if (i == timestamps.size()) {
+      if (i == timestamps.size() - 1) {
         for (int j = 0; j < size % ARRAY_SIZE; j++) {
           bitMap.mark(j);
         }
@@ -311,6 +311,7 @@ public class AlignedTVList extends TVList {
     // values.size() is the index of column
     this.bitMaps.set(values.size(), columnBitMaps);
     this.values.add(columnValue);
+    this.dataTypes.add(dataType);
   }
 
   /**

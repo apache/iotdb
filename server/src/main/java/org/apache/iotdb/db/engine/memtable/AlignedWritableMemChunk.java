@@ -140,12 +140,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     List<String> measurementIdsInInsertPlan = vectorSchema.getSubMeasurementsList();
     List<TSDataType> dataTypesInInsertPlan = vectorSchema.getSubMeasurementsTSDataTypeList();
     List<TSEncoding> encodingsInInsertPlan = vectorSchema.getSubMeasurementsTSEncodingList();
-    List<String> measurementIdsInTVList =
-        ((VectorMeasurementSchema) this.schema).getSubMeasurementsList();
-    int[] columnIndexArray = new int[measurementIdsInTVList.size()];
-    for (int i = 0; i < columnIndexArray.length; i++) {
-      columnIndexArray[i] = measurementIdsInInsertPlan.indexOf(measurementIdsInTVList.get(i));
-    }
     for (int i = 0; i < measurementIdsInInsertPlan.size(); i++) {
       if (!containsMeasurement(measurementIdsInInsertPlan.get(i))) {
         this.schema.addSubMeasurement(
@@ -154,6 +148,12 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
             encodingsInInsertPlan.get(i));
         this.list.extendColumn(dataTypesInInsertPlan.get(i));
       }
+    }
+    List<String> measurementIdsInTVList =
+        ((VectorMeasurementSchema) this.schema).getSubMeasurementsList();
+    int[] columnIndexArray = new int[measurementIdsInTVList.size()];
+    for (int i = 0; i < columnIndexArray.length; i++) {
+      columnIndexArray[i] = measurementIdsInInsertPlan.indexOf(measurementIdsInTVList.get(i));
     }
     return columnIndexArray;
   }
