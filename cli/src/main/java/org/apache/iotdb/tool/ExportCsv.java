@@ -36,11 +36,11 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.QuoteMode;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -152,7 +152,7 @@ public class ExportCsv extends AbstractCsvTool {
           session.close();
         } catch (IoTDBConnectionException e) {
           System.out.println(
-              "Encounter an error when closing session, error is: " + e.getMessage());
+                  "Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
     }
@@ -189,74 +189,74 @@ public class ExportCsv extends AbstractCsvTool {
     Options options = createNewOptions();
 
     Option opTargetFile =
-        Option.builder(TARGET_DIR_ARGS)
-            .required()
-            .argName(TARGET_DIR_NAME)
-            .hasArg()
-            .desc("Target File Directory (required)")
-            .build();
+            Option.builder(TARGET_DIR_ARGS)
+                    .required()
+                    .argName(TARGET_DIR_NAME)
+                    .hasArg()
+                    .desc("Target File Directory (required)")
+                    .build();
     options.addOption(opTargetFile);
 
     Option targetFileName =
-        Option.builder(TARGET_FILE_ARGS)
-            .argName(TARGET_FILE_NAME)
-            .hasArg()
-            .desc("Export file name (optional)")
-            .build();
+            Option.builder(TARGET_FILE_ARGS)
+                    .argName(TARGET_FILE_NAME)
+                    .hasArg()
+                    .desc("Export file name (optional)")
+                    .build();
     options.addOption(targetFileName);
 
     Option opSqlFile =
-        Option.builder(SQL_FILE_ARGS)
-            .argName(SQL_FILE_NAME)
-            .hasArg()
-            .desc("SQL File Path (optional)")
-            .build();
+            Option.builder(SQL_FILE_ARGS)
+                    .argName(SQL_FILE_NAME)
+                    .hasArg()
+                    .desc("SQL File Path (optional)")
+                    .build();
     options.addOption(opSqlFile);
 
     Option opTimeFormat =
-        Option.builder(TIME_FORMAT_ARGS)
-            .argName(TIME_FORMAT_NAME)
-            .hasArg()
-            .desc(
-                "Output time Format in csv file. "
-                    + "You can choose 1) timestamp, number, long 2) ISO8601, default 3) "
-                    + "user-defined pattern like yyyy-MM-dd\\ HH:mm:ss, default ISO8601 (optional)")
-            .build();
+            Option.builder(TIME_FORMAT_ARGS)
+                    .argName(TIME_FORMAT_NAME)
+                    .hasArg()
+                    .desc(
+                            "Output time Format in csv file. "
+                                    + "You can choose 1) timestamp, number, long 2) ISO8601, default 3) "
+                                    + "user-defined pattern like yyyy-MM-dd\\ HH:mm:ss, default ISO8601 (optional)")
+                    .build();
     options.addOption(opTimeFormat);
 
     Option opTimeZone =
-        Option.builder(TIME_ZONE_ARGS)
-            .argName(TIME_ZONE_NAME)
-            .hasArg()
-            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
-            .build();
+            Option.builder(TIME_ZONE_ARGS)
+                    .argName(TIME_ZONE_NAME)
+                    .hasArg()
+                    .desc("Time Zone eg. +08:00 or -01:00 (optional)")
+                    .build();
     options.addOption(opTimeZone);
 
     Option opDataType =
-        Option.builder(DATA_TYPE_ARGS)
-            .argName(DATA_TYPE_NAME)
-            .hasArg()
-            .desc(
-                "Will the data type of timeseries be printed in the head line of the CSV file?"
-                    + '\n'
-                    + "You can choose true) or false) . (optional)")
-            .build();
+            Option.builder(DATA_TYPE_ARGS)
+                    .argName(DATA_TYPE_NAME)
+                    .hasArg()
+                    .desc(
+                            "Will the data type of timeseries be printed in the head line of the CSV file?"
+                                    + '\n'
+                                    + "You can choose true) or false) . (optional)")
+                    .build();
     options.addOption(opDataType);
 
     Option opQuery =
-        Option.builder(QUERY_COMMAND_ARGS)
-            .argName(QUERY_COMMAND_NAME)
-            .hasArg()
-            .desc("The query command that you want to execute. (optional)")
-            .build();
+            Option.builder(QUERY_COMMAND_ARGS)
+                    .argName(QUERY_COMMAND_NAME)
+                    .hasArg()
+                    .desc("The query command that you want to execute. (optional)")
+                    .build();
     options.addOption(opQuery);
 
     Option opHelp =
-        Option.builder(HELP_ARGS)
-            .longOpt(HELP_ARGS)
-            .hasArg(false)
-            .desc("Display help information")
-            .build();
+            Option.builder(HELP_ARGS)
+                    .longOpt(HELP_ARGS)
+                    .hasArg(false)
+                    .desc("Display help information")
+                    .build();
     options.addOption(opHelp);
 
     return options;
@@ -286,68 +286,14 @@ public class ExportCsv extends AbstractCsvTool {
    * @param index use to create dump file name
    */
   private static void dumpResult(String sql, int index) {
-
     final String path = targetDirectory + targetFile + index + ".csv";
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
-      List<List<Object>> records = loadDataFromDataSet(sessionDataSet);
-      writeCsvFile(null, records, path);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 10000);
+      writeCsvFile(sessionDataSet, path);
       System.out.println("Export completely!");
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
+    } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
     }
-  }
-
-  /**
-   * Load data from the result of query command.
-   *
-   * @param sessionDataSet
-   * @return
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
-   */
-  public static List<List<Object>> loadDataFromDataSet(SessionDataSet sessionDataSet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<List<Object>> records = new ArrayList<>();
-    List<Object> headers = new ArrayList<>();
-    List<String> names = sessionDataSet.getColumnNames();
-    List<String> types = sessionDataSet.getColumnTypes();
-
-    if (needDataTypePrinted == true) {
-      for (int i = 0; i < names.size(); i++) {
-        if (!names.get(i).equals("Time") && !names.get(i).equals("Device"))
-          headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
-        else headers.add(names.get(i));
-      }
-    } else {
-      names.forEach(name -> headers.add(name));
-    }
-    records.add(headers);
-
-    while (sessionDataSet.hasNext()) {
-      RowRecord rowRecord = sessionDataSet.next();
-      ArrayList<Object> record = new ArrayList<>();
-      if (rowRecord.getTimestamp() != 0) {
-        record.add(timeTrans(rowRecord.getTimestamp()));
-      }
-      rowRecord
-          .getFields()
-          .forEach(
-              field -> {
-                String fieldStringValue = field.getStringValue();
-                if (!field.getStringValue().equals("null")) {
-                  if (field.getDataType() == TSDataType.TEXT
-                      && !fieldStringValue.startsWith("root.")) {
-                    fieldStringValue = "\"" + fieldStringValue + "\"";
-                  }
-                  record.add(fieldStringValue);
-                } else {
-                  record.add("");
-                }
-              });
-      records.add(record);
-    }
-    return records;
   }
 
   public static String timeTrans(Long time) {
@@ -355,14 +301,67 @@ public class ExportCsv extends AbstractCsvTool {
     switch (timeFormat) {
       case "default":
         return RpcUtils.parseLongToDateWithPrecision(
-            DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId, timestampPrecision);
+                DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId, timestampPrecision);
       case "timestamp":
       case "long":
       case "number":
         return String.valueOf(time);
       default:
         return ZonedDateTime.ofInstant(Instant.ofEpochMilli(time), zoneId)
-            .format(DateTimeFormatter.ofPattern(timeFormat));
+                .format(DateTimeFormatter.ofPattern(timeFormat));
     }
+  }
+
+  public static Boolean writeCsvFile(SessionDataSet sessionDataSet, String filePath)
+          throws IOException, IoTDBConnectionException, StatementExecutionException {
+    CSVPrinter printer =
+            CSVFormat.DEFAULT
+                    .withFirstRecordAsHeader()
+                    .withEscape('\\')
+                    .withQuoteMode(QuoteMode.NONE)
+                    .print(new PrintWriter(filePath));
+
+    List<Object> headers = new ArrayList<>();
+    List<String> names = sessionDataSet.getColumnNames();
+    List<String> types = sessionDataSet.getColumnTypes();
+
+    if (needDataTypePrinted) {
+      for (int i = 0; i < names.size(); i++) {
+        if (!names.get(i).equals("Time") && !names.get(i).equals("Device")) {
+          headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
+        } else {
+          headers.add(names.get(i));
+        }
+      }
+    } else {
+      names.forEach(name -> headers.add(name));
+    }
+    printer.printRecord(headers);
+
+    while (sessionDataSet.hasNext()) {
+      RowRecord rowRecord = sessionDataSet.next();
+      ArrayList<Object> record = new ArrayList<>();
+      record.add(timeTrans(rowRecord.getTimestamp()));
+      rowRecord
+              .getFields()
+              .forEach(
+                      field -> {
+                        String fieldStringValue = field.getStringValue();
+                        if (!field.getStringValue().equals("null")) {
+                          if (field.getDataType() == TSDataType.TEXT
+                                  && !fieldStringValue.startsWith("root.")) {
+                            fieldStringValue = "\"" + fieldStringValue + "\"";
+                          }
+                          record.add(fieldStringValue);
+                        } else {
+                          record.add("");
+                        }
+                      });
+      printer.printRecord(record);
+    }
+
+    printer.flush();
+    printer.close();
+    return true;
   }
 }
