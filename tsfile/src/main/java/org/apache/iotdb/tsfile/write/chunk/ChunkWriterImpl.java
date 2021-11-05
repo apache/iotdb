@@ -355,6 +355,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void sealCurrentPage() {
     if (pageWriter != null && pageWriter.getPointNumber() > 0) {
       writePageToPageBuffer();
+      logger.info("------------------Seal page----------------------------");
     }
   }
 
@@ -455,6 +456,7 @@ public class ChunkWriterImpl implements IChunkWriter {
         0);
 
     long dataOffset = writer.getPos();
+    logger.info("-------------------------------------first page offset:" + dataOffset);
 
     // write all pages of this column
     writer.writeBytesToStream(pageBuffer);

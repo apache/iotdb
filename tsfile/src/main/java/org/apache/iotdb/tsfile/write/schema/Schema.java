@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.MeasurementGroup;
@@ -52,17 +51,9 @@ public class Schema implements Serializable {
 
   // public void registerAlignedTimeseries(Path )
 
-  public void registerTimeseries(Path path, IMeasurementSchema measurementSchema) // Todo:
-      {
-    //    if (measurementSchema instanceof VectorMeasurementSchema) {
-    //      throw new WriteProcessException(
-    //          "registerTimeseries method can only register nonAligned timeseries.");
-    //    }
-  }
+  public void registerTimeseries(Path path, IMeasurementSchema measurementSchema) { // Todo:
 
-  public void registerTimeseries(Path devicePath, MeasurementGroup measurementGroup)
-      throws WriteProcessException {
-    if (this.registeredTimeseries.containsKey(devicePath)) {
+    /*if (this.registeredTimeseries.containsKey(devicePath)) {
       if (measurementGroup.isAligned()) {
         throw new WriteProcessException(
             "given aligned device has existed and should not be expanded! " + devicePath);
@@ -73,11 +64,14 @@ public class Schema implements Serializable {
               .getMeasurementSchemaMap()
               .containsKey(measurementId)) {
             throw new WriteProcessException(
-                "given nonAligned timeseries has existed! " + (devicePath + measurementId));
+                "given nonAligned timeseries has existed! " + (devicePath + "." + measurementId));
           }
         }
       }
-    }
+    }*/
+  }
+
+  public void registerTimeseries(Path devicePath, MeasurementGroup measurementGroup) {
     this.registeredTimeseries.put(devicePath, measurementGroup);
   }
 
@@ -101,14 +95,13 @@ public class Schema implements Serializable {
   }
 
   public void registerDevice(String deviceId, String templateName) {
+    if (!schemaTemplates.containsKey(templateName)) {
+      return;
+    }
     Map<String, IMeasurementSchema> template =
         schemaTemplates.get(templateName).getMeasurementSchemaMap();
     boolean isAligned = schemaTemplates.get(templateName).isAligned();
-    try {
-      registerTimeseries(new Path(deviceId), new MeasurementGroup(isAligned, template));
-    } catch (WriteProcessException e) {
-      e.printStackTrace();
-    }
+    registerTimeseries(new Path(deviceId), new MeasurementGroup(isAligned, template));
   }
 
   public MeasurementGroup getSeriesSchema(Path devicePath) {

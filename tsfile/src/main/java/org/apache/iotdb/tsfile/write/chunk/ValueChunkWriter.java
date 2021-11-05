@@ -149,6 +149,7 @@ public class ValueChunkWriter {
 
   public void writeEmptyPageToPageBuffer() {
     pageWriter.writeEmptyPageIntoBuff(pageBuffer);
+    numOfPages++;
   }
 
   public void writePageToPageBuffer() {

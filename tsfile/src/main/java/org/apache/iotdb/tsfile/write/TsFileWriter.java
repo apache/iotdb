@@ -161,6 +161,12 @@ public class TsFileWriter implements AutoCloseable {
     if (!schema.getSchemaTemplates().containsKey(templateName)) {
       throw new WriteProcessException("given template is not existed! " + templateName);
     }
+    if (schema.getRegisteredTimeseriesMap().containsKey(new Path(deviceId))) {
+      throw new WriteProcessException(
+          "this device "
+              + deviceId
+              + " has been registered, you can only use registerDevice method to register empty device.");
+    }
     schema.registerDevice(deviceId, templateName);
   }
 

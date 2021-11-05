@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -44,7 +43,7 @@ public interface IChunkGroupWriter {
    */
   void write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
 
-  void writeAligned(long time, List<DataPoint> data) throws NoMeasurementException, IOException;
+  void writeAligned(long time, List<DataPoint> data) throws WriteProcessException;
 
   /**
    * receive a tablet, write it to chunk writers
@@ -54,7 +53,7 @@ public interface IChunkGroupWriter {
    */
   void write(Tablet tablet) throws WriteProcessException, IOException;
 
-  void writeAligned(Tablet tablet);
+  void writeAligned(Tablet tablet) throws WriteProcessException;
 
   /**
    * flushing method for serializing to local file system or HDFS. Implemented by

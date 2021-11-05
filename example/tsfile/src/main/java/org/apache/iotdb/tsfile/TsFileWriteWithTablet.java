@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.tsfile;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -26,15 +29,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /** An example of writing data with Tablet to TsFile */
 public class TsFileWriteWithTablet {
@@ -43,46 +40,26 @@ public class TsFileWriteWithTablet {
 
   public static void main(String[] args) {
     try {
-      String path = "test.tsfile";
+      String path = "Tablet.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists() && !f.delete()) {
         throw new RuntimeException("can not delete " + f.getAbsolutePath());
       }
-
-      Schema schema = new Schema();
-
-      String device = Constant.DEVICE_PREFIX + 1;
-      String sensorPrefix = "sensor_";
-      // the number of rows to include in the tablet
-      int rowNum = 1000000;
-      // the number of values to include in the tablet
-      int sensorNum = 10;
-
-      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-      // add measurements into file schema (all with INT64 data type)
-      for (int i = 0; i < sensorNum; i++) {
-        IMeasurementSchema measurementSchema =
-            new UnaryMeasurementSchema(
-                sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
-        measurementSchemas.add(measurementSchema);
-        schema.registerTimeseries(
-            new Path(device, sensorPrefix + (i + 1)),
-            new UnaryMeasurementSchema(
-                sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
-      }
-
-      // add measurements into TSFileWriter
-      try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
-
-        // construct the tablet
-        Tablet tablet = new Tablet(device, measurementSchemas);
-
+      try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+        // register nonAlign timeseries
+        tsFileWriter.registerTimeseries(
+            new Path("root.sg.d1"),
+            new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+        // construct Tablet
+        List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+        measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+        Tablet tablet = new Tablet("root.sg.d1", measurementSchemas);
         long[] timestamps = tablet.timestamps;
         Object[] values = tablet.values;
-
+        int rowNum = 10000;
+        int sensorNum = measurementSchemas.size();
         long timestamp = 1;
-        long value = 1000000L;
-
+        long value = 1L;
         for (int r = 0; r < rowNum; r++, value++) {
           int row = tablet.rowSize++;
           timestamps[row] = timestamp++;
@@ -90,13 +67,13 @@ public class TsFileWriteWithTablet {
             long[] sensor = (long[]) values[i];
             sensor[row] = value;
           }
-          // write Tablet to TsFile
+          // write
           if (tablet.rowSize == tablet.getMaxRowNumber()) {
             tsFileWriter.write(tablet);
             tablet.reset();
           }
         }
-        // write Tablet to TsFile
+        // write
         if (tablet.rowSize != 0) {
           tsFileWriter.write(tablet);
           tablet.reset();
