@@ -209,7 +209,8 @@ public class FileLoaderUtils {
       }
     }
 
-    // TODO Modification should be applied to each aligned sensor instead of only applying to time column
+    // TODO Modification should be applied to each aligned sensor instead of only applying to time
+    // column
     if (alignedTimeSeriesMetadata != null) {
       List<Modification> pathModifications =
           context.getPathModifications(resource.getModFile(), vectorPath);

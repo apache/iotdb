@@ -127,7 +127,8 @@ public class AlignedChunkReader implements IChunkReader {
       }
       // if the current page satisfies
       if (exits && pageSatisfied(timePageHeader)) {
-        AlignedPageReader alignedPageReader = constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
+        AlignedPageReader alignedPageReader =
+            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
         if (alignedPageReader != null) {
           pageReaderList.add(alignedPageReader);
         }
@@ -172,7 +173,9 @@ public class AlignedChunkReader implements IChunkReader {
         valuePageDataList.add(null);
         valueDataTypeList.add(null);
         valueDecoderList.add(null);
-      } else if (pageSatisfied(valuePageHeader.get(i), valueDeleteIntervalList.get(i))) { // if the page is satisfied, deserialize it
+      } else if (pageSatisfied(
+          valuePageHeader.get(i),
+          valueDeleteIntervalList.get(i))) { // if the page is satisfied, deserialize it
         getPageInfo(
             valuePageHeader.get(i),
             valueChunkDataBufferList.get(i),
