@@ -104,6 +104,7 @@
         <module>client-py</module>
         <module>compile-tools</module>
         <module>client-cpp</module>
+        <module>client-nodejs</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -1244,6 +1245,19 @@
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>generate-thrift-sources-nodejs</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>js:node,ts</generator>
+                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
+                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                    <outputDirectory>${project.build.directory}/generated-sources-nodejs</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
