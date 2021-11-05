@@ -75,11 +75,6 @@ public class AlignedPageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     long[] timeBatch = timePageReader.nexTimeBatch();
-    // if the vector contains only one sub sensor, just return a common BatchData whose DataType is
-    // same as the only one sub sensor.
-    //    if (valuePageReaderList.size() == 1) {
-    //      return valuePageReaderList.get(0).nextBatch(timeBatch, ascending, filter);
-    //    }
 
     // if the vector contains more than on sub sensor, the BatchData's DataType is Vector
     List<TsPrimitiveType[]> valueBatchList = new ArrayList<>(valueCount);
