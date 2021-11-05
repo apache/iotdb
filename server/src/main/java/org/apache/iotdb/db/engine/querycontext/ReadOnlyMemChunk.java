@@ -210,7 +210,7 @@ public class ReadOnlyMemChunk {
       IMeasurementSchema schema, Statistics[] valueStatistics, TimeValuePair timeValuePair)
       throws QueryProcessException {
     for (int i = 0; i < schema.getSubMeasurementsTSDataTypeList().size(); i++) {
-      if (timeValuePair.getValue().getVector()[i] == null) {
+      if (timeValuePair.getValue().getVector() == null || timeValuePair.getValue().getVector()[i] == null) {
         continue;
       }
       switch (schema.getSubMeasurementsTSDataTypeList().get(i)) {

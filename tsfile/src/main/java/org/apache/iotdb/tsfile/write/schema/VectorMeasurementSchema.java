@@ -223,6 +223,22 @@ public class VectorMeasurementSchema
     return subMeasurementsToIndexMap.containsKey(subMeasurement);
   }
 
+  public void addSubMeasurement(String measurementId, TSDataType dataType, TSEncoding encoding) {
+    subMeasurementsToIndexMap.put(measurementId, subMeasurementsToIndexMap.size());
+    byte[] typesInByte = new byte[subMeasurementsToIndexMap.size()];
+    for (int i = 0; i < subMeasurementsToIndexMap.size(); i++) {
+      typesInByte[i] = types[i];
+    }
+    typesInByte[typesInByte.length - 1] = dataType.serialize();
+    this.types = typesInByte;
+    byte[] encodingsInByte = new byte[subMeasurementsToIndexMap.size()];
+    for (int i = 0; i < subMeasurementsToIndexMap.size(); i++) {
+      encodingsInByte[i] = encodings[i];
+    }
+    encodingsInByte[encodingsInByte.length - 1] = encoding.serialize();
+    this.encodings = encodingsInByte;
+  }
+
   @Override
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;

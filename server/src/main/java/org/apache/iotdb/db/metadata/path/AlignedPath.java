@@ -334,11 +334,11 @@ public class AlignedPath extends PartialPath {
     if (!memTableMap.containsKey(getDevice())) {
       return null;
     }
-    AlignedWritableMemChunk vectorMemChunk =
+    AlignedWritableMemChunk alignedMemChunk =
         ((AlignedWritableMemChunk) memTableMap.get(getDevice()).get(VECTOR_PLACEHOLDER));
     boolean containsMeasurement = false;
     for (String measurement : measurementList) {
-      if (vectorMemChunk.containsMeasurement(measurement)) {
+      if (alignedMemChunk.containsMeasurement(measurement)) {
         containsMeasurement = true;
         break;
       }
@@ -347,7 +347,7 @@ public class AlignedPath extends PartialPath {
       return null;
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(schemaList);
+    TVList vectorTvListCopy = alignedMemChunk.getSortedTvListForQuery(schemaList);
     int curSize = vectorTvListCopy.size();
     return new ReadOnlyMemChunk(getMeasurementSchema(), vectorTvListCopy, curSize, deletionList);
   }

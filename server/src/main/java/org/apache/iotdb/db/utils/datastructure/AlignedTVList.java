@@ -168,14 +168,15 @@ public class AlignedTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
-      if (validIndexesForTimeDuplicatedRows != null) {
-        arrayIndex = validIndexesForTimeDuplicatedRows[columnIndex] / ARRAY_SIZE;
-        elementIndex = validIndexesForTimeDuplicatedRows[columnIndex] % ARRAY_SIZE;
-      }
-      if (bitMaps != null
+      if (columnValues == null
+          || bitMaps != null
           && bitMaps.get(columnIndex) != null
           && isValueMarked(valueIndex, columnIndex)) {
         continue;
+      }
+      if (validIndexesForTimeDuplicatedRows != null) {
+        arrayIndex = validIndexesForTimeDuplicatedRows[columnIndex] / ARRAY_SIZE;
+        elementIndex = validIndexesForTimeDuplicatedRows[columnIndex] % ARRAY_SIZE;
       }
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
@@ -222,22 +223,15 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  public TVList getTvListByColumnIndex(List<Integer> columnIndex, List<TSDataType> dataTypes) {
+  public TVList getTvListByColumnIndex(List<Integer> columnIndex) {
     List<TSDataType> types = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     List<List<BitMap>> bitMaps = null;
     for (int i = 0; i < columnIndex.size(); i++) {
-      // columnIndex == -1 means querying a non-exist column, generate empty column here
+      // columnIndex == -1 means querying a non-exist column, add null column here
       if (columnIndex.get(i) == -1) {
-        types.add(dataTypes.get(i));
-        // use bitmap to mark as null value
-        if (bitMaps == null) {
-          bitMaps = new ArrayList<>(columnIndex.size());
-          for (int j = 0; j < columnIndex.size(); j++) {
-            bitMaps.add(null);
-          }
-        }
-        generateEmptyColumn(dataTypes.get(i), values, bitMaps);
+        types.add(null);
+        values.add(null);
       } else {
         types.add(this.dataTypes.get(columnIndex.get(i)));
         values.add(this.values.get(columnIndex.get(i)));
@@ -261,8 +255,13 @@ public class AlignedTVList extends TVList {
     return alignedTvList;
   }
 
-  private void generateEmptyColumn(
-      TSDataType dataType, List<List<Object>> values, List<List<BitMap>> bitMaps) {
+  public void extendColumn(TSDataType dataType) {
+    if (bitMaps == null) {
+      bitMaps = new ArrayList<>(values.size() + 1);
+      for (int i = 0; i < values.size() + 1; i++) {
+        bitMaps.add(null);
+      }
+    }
     List<Object> columnValue = new ArrayList<>();
     List<BitMap> columnBitMaps = new ArrayList<>();
     for (int i = 0; i < timestamps.size(); i++) {
@@ -289,12 +288,19 @@ public class AlignedTVList extends TVList {
           break;
       }
       BitMap bitMap = new BitMap(ARRAY_SIZE);
-      bitMap.markAll();
+      // last bitmap should be marked to the tslist size's position
+      if (i == timestamps.size()) {
+        for (int j = 0; j < size % ARRAY_SIZE; j++) {
+          bitMap.mark(j);
+        }
+      } else {
+        bitMap.markAll();
+      }
       columnBitMaps.add(bitMap);
     }
     // values.size() is the index of column
-    bitMaps.set(values.size(), columnBitMaps);
-    values.add(columnValue);
+    this.bitMaps.set(values.size(), columnBitMaps);
+    this.values.add(columnValue);
   }
 
   /**
