@@ -81,12 +81,10 @@ public class IoTDBRestServiceDescriptor {
               properties.getProperty("cache_expire", Integer.toString(conf.getCacheExpire()))));
       conf.setCacheInitNum(
           Integer.parseInt(
-              properties.getProperty(
-                  "cache_init_num", Integer.toString(conf.getCacheInitNum()))));
+              properties.getProperty("cache_init_num", Integer.toString(conf.getCacheInitNum()))));
       conf.setCacheMaxNum(
           Integer.parseInt(
-              properties.getProperty(
-                  "cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
+              properties.getProperty("cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
 
     } catch (FileNotFoundException e) {
       logger.warn("REST service fail to find config file {}", url, e);
