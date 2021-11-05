@@ -123,7 +123,7 @@ public class IoTDBGroupByFillMixPathsIT {
           "42,132.0,24,36",
           "47,135.0,22,51",
           "52,110.0,20,56",
-          "57,90.75,23,null",
+          "57,null,23,null",
           "62,71.5,26,null"
           // "72,33.0,33,72"
         };
@@ -136,7 +136,7 @@ public class IoTDBGroupByFillMixPathsIT {
               "select sum(temperature), last_value(temperature), max_time(temperature) "
                   + "from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 65), 5ms) "
-                  + "FILL(double[linear, 12ms, 6ms], int32[linear, 5ms, 18ms], int64[previousUntilLast, 17ms])");
+                  + "FILL(double[linear, 12ms, 12ms], int32[linear, 10ms, 18ms], int64[previousUntilLast, 17ms])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -161,7 +161,7 @@ public class IoTDBGroupByFillMixPathsIT {
               "select sum(temperature), last_value(temperature), max_time(temperature) "
                   + "from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 65), 5ms) "
-                  + "FILL(double[linear, 12ms, 6ms], int32[linear, 5ms, 18ms], int64[previousUntilLast, 17ms]) "
+                  + "FILL(double[linear, 12ms, 12ms], int32[linear, 10ms, 18ms], int64[previousUntilLast, 17ms]) "
                   + "order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -191,31 +191,31 @@ public class IoTDBGroupByFillMixPathsIT {
     String[] retArray =
         new String[] {
           "17,41.66666666666667,23.0,10,23,23.5,true",
-          "22,51.0,29.0,10,23,29.75,true",
-          "27,88.5,35.0,10,23,36.0,true",
+          "22,51.0,null,10,23,null,true",
+          "27,88.5,35.0,null,23,36.0,true",
           "32,126.0,43.36,36,22,48.2,false",
           "37,129.0,37.0,36,22,38.2,true",
-          "42,132.0,36.45,45,22,38.775000000000006,false",
+          "42,132.0,null,45,22,null,false",
           "47,135.0,35.900000000000006,45,22,39.35,true",
-          "52,110.0,35.35,56,13,39.925,false",
-          "57,90.75,34.800000000000004,null,18,40.5,true",
-          "62,71.5,null,null,23,null,true"
+          "52,110.0,null,56,13,null,false",
+          "57,null,34.800000000000004,null,18,40.5,true",
+          "62,71.5,38.800000000000004,null,23,42.6,true"
         };
 
     /*  Format result
                   linear,      linear, preUntil,   linear,       linear,      value
           7,        23.0,        11.0,       10,       23,         11.0,       true
          17, 41.67(null),  23.0(null), 10(null), 23(null),   23.5(null), true(null)
-         22,        51.0,  29.0(null), 10(null),       23,  29.75(null), true(null)
-         27,  88.5(null),        35.0, 10(null), 23(null),         36.0, true(null)
+         22,        51.0,        null, 10(null),       23,         null, true(null)
+         27,  88.5(null),        35.0,     null, 23(null),         36.0, true(null)
          32,       126.0,       43.36,       36,       22,         48.2,      false
          37, 129.0(null),        37.0, 36(null), 22(null),         38.2, true(null)
-         42, 132.0(null), 36.45(null),       45, 22(null), 38.775(null),      false
+         42, 132.0(null),        null,       45, 22(null),         null,      false
          47,       135.0,  35.9(null), 45(null),       22,  39.35(null), true(null)
-         52,       110.0, 35.35(null),       56,       13, 39.925(null),      false
-         57, 90.75(null),        34.8,     null, 18(null),         40.5, true(null)
-         62,  71.5(null),        null,     null, 23(null),         null, true(null)
-         72,        33.0,        null,     null,       33,         null,       null
+         52,       110.0,        null,       56,       13,         null,      false
+         57,        null,        34.8,     null, 18(null),         40.5, true(null)
+         62,  71.5(null),  38.8(null),     null, 23(null),   42.6(null), true(null)
+         72,        33.0,        46.8,       74,       33,         46.8,       true
     */
 
     try (Connection connection =
@@ -227,7 +227,7 @@ public class IoTDBGroupByFillMixPathsIT {
                   + "min_value(temperature), max_value(hardware), first_value(status) "
                   + "from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 65), 5ms) "
-                  + "FILL(double[linear, 12ms, 6ms], int32[linear, 5ms, 18ms], "
+                  + "FILL(double[linear, 12ms, 12ms], int32[linear, 12ms, 18ms], "
                   + "int64[previousUntilLast, 17ms], boolean[true])");
       assertTrue(hasResultSet);
       int cnt;
@@ -260,7 +260,7 @@ public class IoTDBGroupByFillMixPathsIT {
                   + "min_value(temperature), max_value(hardware), first_value(status) "
                   + "from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 65), 5ms) "
-                  + "FILL(double[linear, 12ms, 6ms], int32[linear, 5ms, 18ms], "
+                  + "FILL(double[linear, 12ms, 12ms], int32[linear, 12ms, 18ms], "
                   + "int64[previousUntilLast, 17ms], boolean[true]) "
                   + "order by time desc");
       assertTrue(hasResultSet);

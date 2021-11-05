@@ -208,30 +208,30 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
   /* Init extra path executors to query data outside the original group by query */
   private void initExtraExecutors(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws StorageEngineException, QueryProcessException {
-    long minBeforeRange = Long.MAX_VALUE;
-    long maxAfterRange = Long.MIN_VALUE;
+    long minQueryStartTime = Long.MAX_VALUE;
+    long maxQueryEndTime = Long.MIN_VALUE;
     this.fillTypes = groupByTimeFillPlan.getFillType();
     for (Map.Entry<TSDataType, IFill> IFillEntry : fillTypes.entrySet()) {
       IFill fill = IFillEntry.getValue();
       if (fill instanceof PreviousFill) {
-        ((PreviousFill) fill).convertRange(startTime);
-        minBeforeRange = Math.min(minBeforeRange, ((PreviousFill) fill).getBeforeRange());
+        fill.convertRange(startTime, endTime);
+        minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
       } else if (fill instanceof LinearFill) {
-        ((LinearFill) fill).convertRange(startTime, endTime);
-        minBeforeRange = Math.min(minBeforeRange, ((LinearFill) fill).getBeforeRange());
-        maxAfterRange = Math.max(maxAfterRange, ((LinearFill) fill).getAfterRange());
+        fill.convertRange(startTime, endTime);
+        minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+        maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
       }
     }
 
-    if (minBeforeRange < Long.MAX_VALUE) {
+    if (minQueryStartTime < Long.MAX_VALUE) {
       extraPreviousExecutors = new HashMap<>();
 
-      long queryRange = minBeforeRange - startTime;
+      long queryRange = minQueryStartTime - startTime;
       long extraStartTime, intervalNum;
       if (isSlidingStepByMonth) {
         intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep * MS_TO_MONTH));
         extraStartTime = calcIntervalByMonth(intervalNum * slidingStep);
-        while (extraStartTime < minBeforeRange) {
+        while (extraStartTime < minQueryStartTime) {
           intervalNum += 1;
           extraStartTime = calcIntervalByMonth(intervalNum * slidingStep);
         }
@@ -244,12 +244,12 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       getGroupByExecutors(extraPreviousExecutors, context, groupByTimeFillPlan, timeFilter, false);
     }
 
-    if (maxAfterRange > Long.MIN_VALUE) {
+    if (maxQueryEndTime > Long.MIN_VALUE) {
       extraNextExecutors = new HashMap<>();
       Pair<Long, Long> lastTimeRange = getLastTimeRange();
       lastTimeRange = getNextTimeRange(lastTimeRange.left, true, intervalTimes + 1, false);
       Filter timeFilter =
-          new GroupByFilter(interval, slidingStep, lastTimeRange.left, maxAfterRange);
+          new GroupByFilter(interval, slidingStep, lastTimeRange.left, maxQueryEndTime);
       getGroupByExecutors(extraNextExecutors, context, groupByTimeFillPlan, timeFilter, true);
     }
   }
@@ -269,16 +269,16 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
         continue;
       }
       if (fill instanceof PreviousFill && isExtraPrevious) {
-        if (((PreviousFill) fill).getBeforeRange() <= extraStartTime) {
+        if (fill.getQueryStartTime() <= extraStartTime) {
           return true;
         }
       } else if (fill instanceof LinearFill) {
         if (isExtraPrevious) {
-          if (((LinearFill) fill).getBeforeRange() <= extraStartTime) {
+          if (fill.getQueryStartTime() <= extraStartTime) {
             return true;
           }
         } else {
-          if (extraStartTime < ((LinearFill) fill).getAfterRange()) {
+          if (extraStartTime < fill.getQueryEndTime()) {
             return true;
           }
         }
@@ -468,11 +468,14 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
 
     IFill fill = fillTypes.get(resultDataType[resultId]);
     if (fill == null) {
+      record.addField(null);
       return;
     }
 
     if (fill instanceof PreviousFill) {
       if (beforePair.right != null
+          && (fill.getBeforeRange() == -1
+              || fill.insideBeforeRange(beforePair.left, record.getTimestamp()))
           && ((!((PreviousFill) fill).isUntilLast())
               || (afterPair.right != null && afterPair.left < endTime))) {
         record.addField(beforePair.right, resultDataType[resultId]);
@@ -481,7 +484,12 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       }
     } else if (fill instanceof LinearFill) {
       LinearFill linearFill = new LinearFill();
-      if (beforePair.right != null && afterPair.right != null) {
+      if (beforePair.right != null
+          && afterPair.right != null
+          && (fill.getBeforeRange() == -1
+              || fill.insideBeforeRange(beforePair.left, record.getTimestamp()))
+          && (fill.getAfterRange() == -1
+              || fill.insideAfterRange(afterPair.left, record.getTimestamp()))) {
         try {
           TimeValuePair filledPair =
               linearFill.averageWithTimeAndDataType(
@@ -519,12 +527,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
               + "in GroupByFillWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    RowRecord record;
-    if (leftCRightO) {
-      record = new RowRecord(curStartTime);
-    } else {
-      record = new RowRecord(curEndTime - 1);
-    }
+    RowRecord record = new RowRecord(curStartTime);
 
     boolean[] pathNeedSlide = new boolean[previousTimes.length];
     Arrays.fill(pathNeedSlide, false);
@@ -570,6 +573,9 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       }
     }
 
+    if (!leftCRightO) {
+      record.setTimestamp(curEndTime - 1);
+    }
     return record;
   }
 }

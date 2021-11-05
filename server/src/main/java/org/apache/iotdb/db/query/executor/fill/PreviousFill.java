@@ -22,10 +22,9 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -33,14 +32,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 import java.io.IOException;
-import java.util.Calendar;
 import java.util.Set;
 
 public class PreviousFill extends IFill {
 
   private PartialPath seriesPath;
   private QueryContext context;
-  private long beforeRange;
   private Set<String> allSensors;
   private Filter timeFilter;
 
@@ -54,9 +51,21 @@ public class PreviousFill extends IFill {
     this(beforeRange, false);
   }
 
+  public PreviousFill(String beforeStr) {
+    this(beforeStr, false);
+  }
+
   public PreviousFill(long beforeRange, boolean untilLast) {
     this.beforeRange = beforeRange;
     this.untilLast = untilLast;
+  }
+
+  public PreviousFill(String beforeStr, boolean untilLast) {
+    this.beforeRange = DatetimeUtils.convertDurationStrToLong(beforeStr);
+    this.untilLast = untilLast;
+    if (beforeStr.toLowerCase().contains("mo")) {
+      this.isBeforeByMonth = true;
+    }
   }
 
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange, boolean untilLast) {
@@ -67,7 +76,7 @@ public class PreviousFill extends IFill {
 
   @Override
   public IFill copy() {
-    return new PreviousFill(dataType, queryTime, beforeRange, untilLast);
+    return new PreviousFill(dataType, queryStartTime, beforeRange, untilLast);
   }
 
   @Override
@@ -75,25 +84,9 @@ public class PreviousFill extends IFill {
     Filter lowerBound =
         beforeRange == -1
             ? TimeFilter.gtEq(Long.MIN_VALUE)
-            : TimeFilter.gtEq(queryTime - beforeRange);
+            : TimeFilter.gtEq(queryStartTime - beforeRange);
     // time in [queryTime - beforeRange, queryTime]
-    timeFilter = FilterFactory.and(lowerBound, TimeFilter.ltEq(queryTime));
-  }
-
-  public void convertRange(long startTime) {
-    if (beforeRange % GroupByEngineDataSet.MS_TO_MONTH == 0) {
-      Calendar calendar = Calendar.getInstance();
-      calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
-      calendar.setTimeInMillis(startTime);
-      calendar.add(Calendar.MONTH, (int) (-beforeRange / GroupByEngineDataSet.MS_TO_MONTH));
-      beforeRange = calendar.getTimeInMillis();
-    } else {
-      beforeRange = startTime - beforeRange;
-    }
-  }
-
-  public long getBeforeRange() {
-    return beforeRange;
+    timeFilter = FilterFactory.and(lowerBound, TimeFilter.ltEq(queryStartTime));
   }
 
   @Override
@@ -106,7 +99,7 @@ public class PreviousFill extends IFill {
     this.seriesPath = path;
     this.dataType = dataType;
     this.context = context;
-    this.queryTime = queryTime;
+    this.queryStartTime = queryTime;
     this.allSensors = sensors;
     constructFilter();
   }
@@ -120,7 +113,7 @@ public class PreviousFill extends IFill {
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
     LastPointReader lastReader =
         new LastPointReader(
-            seriesPath, dataType, allSensors, context, dataSource, queryTime, timeFilter);
+            seriesPath, dataType, allSensors, context, dataSource, queryStartTime, timeFilter);
 
     return lastReader.readLastPoint();
   }

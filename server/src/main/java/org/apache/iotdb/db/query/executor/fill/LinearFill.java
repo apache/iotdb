@@ -24,13 +24,12 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -41,15 +40,12 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 
 public class LinearFill extends IFill {
 
   protected PartialPath seriesPath;
-  protected long beforeRange;
-  protected long afterRange;
   protected Filter beforeFilter;
   protected Filter afterFilter;
   protected QueryContext context;
@@ -61,6 +57,17 @@ public class LinearFill extends IFill {
     this.afterRange = afterRange;
   }
 
+  public LinearFill(String beforeStr, String afterStr) {
+    this.beforeRange = DatetimeUtils.convertDurationStrToLong(beforeStr);
+    this.afterRange = DatetimeUtils.convertDurationStrToLong(afterStr);
+    if (beforeStr.toLowerCase().contains("mo")) {
+      this.isBeforeByMonth = true;
+    }
+    if (afterStr.toLowerCase().contains("mo")) {
+      this.isAfterByMonth = true;
+    }
+  }
+
   /** Constructor of LinearFill. */
   public LinearFill(TSDataType dataType, long queryTime, long beforeRange, long afterRange) {
     super(dataType, queryTime);
@@ -70,47 +77,9 @@ public class LinearFill extends IFill {
 
   public LinearFill() {}
 
-  public void convertRange(long startTime, long endTime) {
-    if (beforeRange % GroupByEngineDataSet.MS_TO_MONTH == 0) {
-      Calendar calendar = Calendar.getInstance();
-      calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
-      calendar.setTimeInMillis(startTime);
-      calendar.add(Calendar.MONTH, (int) (-beforeRange / GroupByEngineDataSet.MS_TO_MONTH));
-      beforeRange = calendar.getTimeInMillis();
-    } else {
-      beforeRange = startTime - beforeRange;
-    }
-
-    if (afterRange % GroupByEngineDataSet.MS_TO_MONTH == 0) {
-      Calendar calendar = Calendar.getInstance();
-      calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
-      calendar.setTimeInMillis(endTime);
-      calendar.add(Calendar.MONTH, (int) (afterRange / GroupByEngineDataSet.MS_TO_MONTH));
-      afterRange = calendar.getTimeInMillis();
-    } else {
-      afterRange = endTime + afterRange;
-    }
-  }
-
-  public long getBeforeRange() {
-    return beforeRange;
-  }
-
-  public void setBeforeRange(long beforeRange) {
-    this.beforeRange = beforeRange;
-  }
-
-  public long getAfterRange() {
-    return afterRange;
-  }
-
-  public void setAfterRange(long afterRange) {
-    this.afterRange = afterRange;
-  }
-
   @Override
   public IFill copy() {
-    return new LinearFill(dataType, queryTime, beforeRange, afterRange);
+    return new LinearFill(dataType, queryStartTime, beforeRange, afterRange);
   }
 
   @Override
@@ -118,14 +87,14 @@ public class LinearFill extends IFill {
     Filter lowerBound =
         beforeRange == -1
             ? TimeFilter.gtEq(Long.MIN_VALUE)
-            : TimeFilter.gtEq(queryTime - beforeRange);
+            : TimeFilter.gtEq(queryStartTime - beforeRange);
     Filter upperBound =
         afterRange == -1
             ? TimeFilter.ltEq(Long.MAX_VALUE)
-            : TimeFilter.ltEq(queryTime + afterRange);
+            : TimeFilter.ltEq(queryStartTime + afterRange);
     // [queryTIme - beforeRange, queryTime + afterRange]
-    beforeFilter = FilterFactory.and(lowerBound, TimeFilter.ltEq(queryTime));
-    afterFilter = FilterFactory.and(TimeFilter.gtEq(queryTime), upperBound);
+    beforeFilter = FilterFactory.and(lowerBound, TimeFilter.ltEq(queryStartTime));
+    afterFilter = FilterFactory.and(TimeFilter.gtEq(queryStartTime), upperBound);
   }
 
   @Override
@@ -137,7 +106,7 @@ public class LinearFill extends IFill {
       QueryContext context) {
     this.seriesPath = path;
     this.dataType = dataType;
-    this.queryTime = queryTime;
+    this.queryStartTime = queryTime;
     this.context = context;
     this.deviceMeasurements = sensors;
     constructFilter();
@@ -151,16 +120,16 @@ public class LinearFill extends IFill {
     TimeValuePair afterPair = calculateSucceedingPoint();
 
     // no before data or has data on the query timestamp
-    if (beforePair.getValue() == null || beforePair.getTimestamp() == queryTime) {
-      beforePair.setTimestamp(queryTime);
+    if (beforePair.getValue() == null || beforePair.getTimestamp() == queryStartTime) {
+      beforePair.setTimestamp(queryStartTime);
       return beforePair;
     }
 
     // on after data or after data is out of range
     if (afterPair.getValue() == null
-        || afterPair.getTimestamp() < queryTime
-        || (afterRange != -1 && afterPair.getTimestamp() > queryTime + afterRange)) {
-      return new TimeValuePair(queryTime, null);
+        || afterPair.getTimestamp() < queryStartTime
+        || (afterRange != -1 && afterPair.getTimestamp() > queryStartTime + afterRange)) {
+      return new TimeValuePair(queryStartTime, null);
     }
 
     return average(beforePair, afterPair);
@@ -172,7 +141,13 @@ public class LinearFill extends IFill {
         QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, beforeFilter);
     LastPointReader lastReader =
         new LastPointReader(
-            seriesPath, dataType, deviceMeasurements, context, dataSource, queryTime, beforeFilter);
+            seriesPath,
+            dataType,
+            deviceMeasurements,
+            context,
+            dataSource,
+            queryStartTime,
+            beforeFilter);
 
     return lastReader.readLastPoint();
   }
@@ -216,7 +191,7 @@ public class LinearFill extends IFill {
   private TimeValuePair average(TimeValuePair beforePair, TimeValuePair afterPair)
       throws UnSupportedFillTypeException {
     double totalTimeLength = (double) afterPair.getTimestamp() - beforePair.getTimestamp();
-    double beforeTimeLength = (double) (queryTime - beforePair.getTimestamp());
+    double beforeTimeLength = (double) (queryStartTime - beforePair.getTimestamp());
     switch (dataType) {
       case INT32:
         int startIntValue = beforePair.getValue().getInt();
@@ -255,14 +230,14 @@ public class LinearFill extends IFill {
       default:
         throw new UnSupportedFillTypeException(dataType);
     }
-    beforePair.setTimestamp(queryTime);
+    beforePair.setTimestamp(queryStartTime);
     return beforePair;
   }
 
   public TimeValuePair averageWithTimeAndDataType(
       TimeValuePair beforePair, TimeValuePair afterPair, long queryTime, TSDataType tsDataType)
       throws UnSupportedFillTypeException {
-    this.queryTime = queryTime;
+    this.queryStartTime = queryTime;
     this.dataType = tsDataType;
     return average(beforePair, afterPair);
   }

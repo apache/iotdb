@@ -1202,22 +1202,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     if (ctx.linearClause() != null) { // linear
       if (ctx.linearClause().DURATION_LITERAL(0) != null) {
-        long beforeRange =
-            DatetimeUtils.convertDurationStrToLong(
-                ctx.linearClause().DURATION_LITERAL(0).getText());
-        long afterRange =
-            DatetimeUtils.convertDurationStrToLong(
-                ctx.linearClause().DURATION_LITERAL(1).getText());
-        fill = new LinearFill(beforeRange, afterRange);
+        String beforeStr = ctx.linearClause().DURATION_LITERAL(0).getText();
+        String afterStr = ctx.linearClause().DURATION_LITERAL(1).getText();
+        fill = new LinearFill(beforeStr, afterStr);
       } else {
         fill = new LinearFill(defaultFillInterval, defaultFillInterval);
       }
     } else if (ctx.previousClause() != null) { // previous
       if (ctx.previousClause().DURATION_LITERAL() != null) {
-        long preRange =
-            DatetimeUtils.convertDurationStrToLong(
-                ctx.previousClause().DURATION_LITERAL().getText());
-        fill = new PreviousFill(preRange);
+        String preRangeStr = ctx.previousClause().DURATION_LITERAL().getText();
+        fill = new PreviousFill(preRangeStr);
       } else {
         fill = new PreviousFill(defaultFillInterval);
       }
@@ -1236,7 +1230,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     for (TSDataType tsDataType : TSDataType.values()) {
       if (tsDataType == TSDataType.VECTOR) {
-        // ignore TSDataType VECTOR
+        // TODO: TSDataType VECTOR
         continue;
       }
       if (fill instanceof LinearFill
@@ -1266,22 +1260,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     if (ctx.linearClause() != null) { // linear
       if (ctx.linearClause().DURATION_LITERAL(0) != null) {
-        long beforeRange =
-            DatetimeUtils.convertDurationStrToLong(
-                ctx.linearClause().DURATION_LITERAL(0).getText());
-        long afterRange =
-            DatetimeUtils.convertDurationStrToLong(
-                ctx.linearClause().DURATION_LITERAL(1).getText());
-        fillTypes.put(dataType, new LinearFill(beforeRange, afterRange));
+        String beforeRangeStr = ctx.linearClause().DURATION_LITERAL(0).getText();
+        String afterRangeStr = ctx.linearClause().DURATION_LITERAL(1).getText();
+        LinearFill fill = new LinearFill(beforeRangeStr, afterRangeStr);
+        fillTypes.put(dataType, fill);
       } else {
         fillTypes.put(dataType, new LinearFill(defaultFillInterval, defaultFillInterval));
       }
     } else if (ctx.previousClause() != null) { // previous
       if (ctx.previousClause().DURATION_LITERAL() != null) {
-        long preRange =
-            DatetimeUtils.convertDurationStrToLong(
-                ctx.previousClause().DURATION_LITERAL().getText());
-        fillTypes.put(dataType, new PreviousFill(preRange));
+        String beforeStr = ctx.previousClause().DURATION_LITERAL().getText();
+        fillTypes.put(dataType, new PreviousFill(beforeStr));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }

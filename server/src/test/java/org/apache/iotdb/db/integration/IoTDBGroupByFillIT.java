@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.logical.crud.AggregationQueryOperator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -32,7 +31,6 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.*;
@@ -2158,30 +2156,6 @@ public class IoTDBGroupByFillIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test(expected = IoTDBSQLException.class)
-  public void linearFailTest1() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "select last_value(status) from "
-              + "root.ln.wf01.wt01 "
-              + "GROUP BY ([17, 55), 5ms) FILL(boolean[linear])");
-    }
-  }
-
-  @Test(expected = IoTDBSQLException.class)
-  public void linearFailTest2() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "select first_value(text) from "
-              + "root.ln.wf01.wt01 "
-              + "GROUP BY ([17, 55), 5ms) FILL(text[linear])");
     }
   }
 
