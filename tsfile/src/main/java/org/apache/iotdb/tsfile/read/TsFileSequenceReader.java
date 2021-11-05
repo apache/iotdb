@@ -1148,7 +1148,14 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     if (loadLastChunkMetadata && lastDeviceId != null) {
       // add last chunk group metadata list
-      chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
+      if (chunkMetadataList.size() > 0) {
+        chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
+        if (newSchema != null) {
+          for (MeasurementSchema tsSchema : measurementSchemaList) {
+            newSchema.putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+          }
+        }
+      }
     }
     // Despite the completeness of the data section, we will discard current FileMetadata
     // so that we can continue to write data into this tsfile.

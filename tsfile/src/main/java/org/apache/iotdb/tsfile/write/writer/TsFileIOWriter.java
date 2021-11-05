@@ -377,11 +377,11 @@ public class TsFileIOWriter {
     out.close();
   }
 
-  void writeSeparatorMaskForTest() throws IOException {
+  public void writeSeparatorMaskForTest() throws IOException {
     out.write(new byte[] {MetaMarker.SEPARATOR});
   }
 
-  void writeChunkGroupMarkerForTest() throws IOException {
+  public void writeChunkGroupMarkerForTest() throws IOException {
     out.write(new byte[] {MetaMarker.CHUNK_GROUP_HEADER});
   }
 

@@ -19,7 +19,8 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache</groupId>
@@ -31,7 +32,9 @@
     <version>0.12.4-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB Project Parent POM</name>
-    <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
+    <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration
+        libs.
+    </description>
     <licenses>
         <license>
             <name>The Apache License, Version 2.0</name>
@@ -147,7 +150,8 @@
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
         <sonar.java.checkstyle.reportPaths>target/checkstyle-report.xml</sonar.java.checkstyle.reportPaths>
-        <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml
+        </sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
         <gson.version>2.8.6</gson.version>
@@ -800,7 +804,8 @@
                                 </requireJavaVersion>
                                 <!-- Disabled for now as it breaks the ability to build single modules -->
                                 <!--reactorModuleConvergence/-->
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
+                                <banVulnerable
+                                        implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                             </rules>
                         </configuration>
                     </execution>
@@ -1008,7 +1013,9 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
+                <thrift.download-url>
+                    http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe
+                </thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
@@ -1025,7 +1032,7 @@
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
-                <thrift.download-url>https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-ubuntu</thrift.download-url>
+                <thrift.download-url>https://cloud.tsinghua.edu.cn/f/bb757414266040119b7d/?dl=1</thrift.download-url>
                 <thrift.executable>thrift_0.14.1_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -1041,7 +1048,9 @@
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
-                <thrift.download-url>https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-MacOS</thrift.download-url>
+                <thrift.download-url>
+                    https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-MacOS
+                </thrift.download-url>
                 <thrift.executable>thrift_0.14.1_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -1091,7 +1100,8 @@
                 </file>
             </activation>
             <properties>
-                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}
+                </thrift.exec.absolute.path>
             </properties>
             <build>
                 <plugins>
@@ -1160,7 +1170,8 @@
                                     <generator>py</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/generated-sources-python/
+                                    </outputDirectory>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1312,7 +1323,9 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>${project.build.directory}/${project.build.finalName}-jacoco-unit-tests.exec</destFile>
+                                    <destFile>
+                                        ${project.build.directory}/${project.build.finalName}-jacoco-unit-tests.exec
+                                    </destFile>
                                     <propertyName>surefire.jacoco.args</propertyName>
                                 </configuration>
                             </execution>
@@ -1325,7 +1338,9 @@
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/${project.build.finalName}-jacoco-unit-tests.exec</dataFile>
+                                    <dataFile>
+                                        ${project.build.directory}/${project.build.finalName}-jacoco-unit-tests.exec
+                                    </dataFile>
                                     <outputDirectory>${project.build.directory}/jacoco-unit-reports</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1337,7 +1352,9 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>${project.build.directory}/${project.build.finalName}-jacoco-integration-tests.exec</destFile>
+                                    <destFile>
+                                        ${project.build.directory}/${project.build.finalName}-jacoco-integration-tests.exec
+                                    </destFile>
                                     <propertyName>failsafe.jacoco.args</propertyName>
                                 </configuration>
                             </execution>
@@ -1349,8 +1366,11 @@
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/${project.build.finalName}-jacoco-integration-tests.exec</dataFile>
-                                    <outputDirectory>${project.build.directory}/jacoco-integration-reports</outputDirectory>
+                                    <dataFile>
+                                        ${project.build.directory}/${project.build.finalName}-jacoco-integration-tests.exec
+                                    </dataFile>
+                                    <outputDirectory>${project.build.directory}/jacoco-integration-reports
+                                    </outputDirectory>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1368,7 +1388,8 @@
                                             </includes>
                                         </fileSet>
                                     </fileSets>
-                                    <destFile>${project.build.directory}/${project.build.finalName}-merged.exec</destFile>
+                                    <destFile>${project.build.directory}/${project.build.finalName}-merged.exec
+                                    </destFile>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1379,7 +1400,8 @@
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/${project.build.finalName}-merged.exec</dataFile>
+                                    <dataFile>${project.build.directory}/${project.build.finalName}-merged.exec
+                                    </dataFile>
                                     <outputDirectory>${project.build.directory}/jacoco-merged-reports</outputDirectory>
                                 </configuration>
                             </execution>
