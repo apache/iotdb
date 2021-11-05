@@ -68,6 +68,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -152,6 +153,22 @@ public abstract class PhysicalPlan {
   }
 
   /**
+   * Calculate size after serialization.
+   *
+   * @return size
+   * @throws IOException
+   */
+  public int getSerializedSize() throws IOException {
+    try {
+      DataOutputStream dataOutputStream = new DataOutputStream(new EmptyOutputStream());
+      serialize(dataOutputStream);
+      return dataOutputStream.size();
+    } catch (UnsupportedOperationException e) {
+      throw e;
+    }
+  }
+
+  /**
    * Serialize the plan into the given buffer. All necessary fields will be serialized.
    *
    * @param stream
@@ -233,6 +250,11 @@ public abstract class PhysicalPlan {
     if (this instanceof AuthorPlan) {
       this.loginUserName = loginUserName;
     }
+  }
+
+  /** Used to check whether a user has the permission to execute the plan with these paths. */
+  public List<PartialPath> getAuthPaths() {
+    return getPaths();
   }
 
   public static class Factory {

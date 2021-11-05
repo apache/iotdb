@@ -16,32 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.utils;
 
-package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
-
-import org.apache.iotdb.tsfile.write.writer.LocalTsFileOutput;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
-public class LocalFSOutputFactory implements FileOutputFactory {
-
-  private static final Logger logger = LoggerFactory.getLogger(LocalFSOutputFactory.class);
+/** Empty OutputStream To count serialize size without serialization */
+public class EmptyOutputStream extends OutputStream {
 
   @Override
-  public TsFileOutput getTsFileOutput(String filePath, boolean append) {
-    try {
-      File file = new File(filePath);
-      file.getParentFile().mkdirs();
-      return new LocalTsFileOutput(new FileOutputStream(file, append));
-    } catch (IOException e) {
-      logger.error("Failed to get TsFile output of file: {}, ", filePath, e);
-      return null;
-    }
-  }
+  public void write(int b) throws IOException {}
+
+  @Override
+  public void write(byte b[], int off, int len) throws IOException {}
+
+  public void write(byte b[]) throws IOException {}
 }

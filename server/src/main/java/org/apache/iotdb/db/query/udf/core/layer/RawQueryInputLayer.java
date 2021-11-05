@@ -115,6 +115,11 @@ public class RawQueryInputLayer {
     }
 
     @Override
+    public boolean isConstantPointReader() {
+      return false;
+    }
+
+    @Override
     public boolean next() throws IOException, QueryProcessException {
       if (hasCachedRowRecord) {
         return true;
