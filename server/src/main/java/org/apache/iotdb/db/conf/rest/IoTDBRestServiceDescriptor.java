@@ -76,24 +76,24 @@ public class IoTDBRestServiceDescriptor {
       conf.setIdleTimeout(
           Integer.parseInt(
               properties.getProperty("idle_timeout", Integer.toString(conf.getIdleTimeout()))));
-      conf.setSessionExpire(
+      conf.setCacheExpire(
           Integer.parseInt(
-              properties.getProperty("session_expire", Integer.toString(conf.getSessionExpire()))));
-      conf.setSessionInitNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "session_init_num", Integer.toString(conf.getSessionInitNum()))));
-      conf.setSessionMaxNum(
+              properties.getProperty("cache_expire", Integer.toString(conf.getCacheExpire()))));
+      conf.setCacheInitNum(
           Integer.parseInt(
               properties.getProperty(
-                  "session_max_num", Integer.toString(conf.getSessionMaxNum()))));
+                  "cache_init_num", Integer.toString(conf.getCacheInitNum()))));
+      conf.setCacheMaxNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
 
     } catch (FileNotFoundException e) {
-      logger.warn("Fail to find config file {}", url, e);
+      logger.warn("REST service fail to find config file {}", url, e);
     } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration", e);
+      logger.warn("REST service cannot load config file, use default configuration", e);
     } catch (Exception e) {
-      logger.warn("Incorrect format in config file, use default configuration", e);
+      logger.warn("REST service Incorrect format in config file, use default configuration", e);
     }
   }
 

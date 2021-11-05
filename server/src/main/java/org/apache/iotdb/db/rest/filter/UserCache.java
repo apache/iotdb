@@ -32,9 +32,9 @@ public class UserCache {
   private UserCache() {
     cache =
         Caffeine.newBuilder()
-            .initialCapacity(config.getSessionInitNum())
-            .maximumSize(config.getSessionMaxNum())
-            .expireAfterWrite(config.getSessionExpire(), TimeUnit.SECONDS)
+            .initialCapacity(config.getCacheInitNum())
+            .maximumSize(config.getCacheMaxNum())
+            .expireAfterWrite(config.getCacheExpire(), TimeUnit.SECONDS)
             .build();
   }
 

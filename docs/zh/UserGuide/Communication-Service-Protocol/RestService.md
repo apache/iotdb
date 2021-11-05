@@ -74,14 +74,38 @@ ssl 超时时间单位为秒
 ```
 idle_timeout=5000
 ```
+缓存过期时间(单位s，默认是8个小时)
+
+```
+cache_expire=28800
+```
+缓存中存储的最大用户数量(默认是100) 
+
+```
+cache_max_num=100
+```
+
+缓存中初始化用户数量(默认是10)
+
+```
+cache_init_num=10
+```
 
 ## 检查iotdb服务是否在运行
 请求方式：get
 请求url：http://ip:port/ping
 示例中使用的用户名为：root，密码为：root
-```
+请求示例
+```shell
 $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 ```
+响应参数:
+
+|参数名称  |参数类型  |参数描述|
+| ------------ | ------------ | ------------|
+| code | integer |  状态码 |
+| message  |  string | 信息提示 |
+
 响应示例
 ```json
 {
@@ -97,6 +121,113 @@ $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 }
 ```
 
+###  SQL 查询接口
 
+请求方式：post
+请求头：application/json
+请求url：http://ip:port/rest/v1/query
+
+参数说明:
+
+|参数名称  |参数类型  |是否必填|参数描述|
+| ------------ | ------------ | ------------ |------------ |
+|  sql | string | 是  |   |
+
+请求示例:
+```shell
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root.sg25 limit 1"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应参数:
+
+|参数名称  |参数类型  |参数描述|
+| ------------ | ------------ | ------------|
+| dataValues | array |  值 |
+| measurements  |  string | 测点 |
+其中dataValues数组中第一个为测点的值,第二个为时间
+
+响应示例:
+```json
+[
+  {
+    "measurements": "root.sg25.s3",
+    "dataValues": [
+      [
+        22.1,
+        1635232143960
+      ]
+    ]
+  }
+]
+```
+
+###  SQL 非查询接口
+
+请求方式：post
+请求头：application/json
+请求url：http://ip:port/rest/v1/nonQuery
+
+参数说明:
+
+|参数名称  |参数类型  |是否必填|参数描述|
+| ------------ | ------------ | ------------ |------------ |
+|  sql | string | 是  |   |
+
+请求示例:
+```shell
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
+```
+
+响应参数:
+
+|参数名称  |参数类型  |参数描述|
+| ------------ | ------------ | ------------|
+| code | integer |  状态码 |
+| message  |  string | 信息提示 |
+
+响应示例：
+```json
+{
+"code": 200,
+"message": "SUCCESS_STATUS"
+}
+```
+
+###  写入接口
+请求方式：post
+请求头：application/json
+请求url：http://ip:port/rest/v1/insertTablet
+
+参数说明:
+
+|参数名称  |参数类型  |是否必填|参数描述|
+| ------------ | ------------ | ------------ |------------ |
+|  timestamps | array | 是 |  时间  |
+|  measurements | array | 是  | 测点  |
+|  dataType | array | 是  | 数据类型  |
+|  values | array | 是  | 值  |
+|  isAligned | boolean | 是  | 是否对齐  |
+|  deviceId | boolean | 是  | 设备  |
+|  rowSize | integer | 是  | 行数  |
+
+请求示例:
+```shell
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"dataType":["INT32","BOOLEAN"],"values":[[11,22],[false,true]],"isAligned":false,"deviceId":"root.sg27","rowSize":2}' http://127.0.0.1:18080/rest/v1/insertTablet
+```
+
+响应参数:
+
+|参数名称  |参数类型  |参数描述|
+| ------------ | ------------ | ------------|
+| code | integer |  状态码 |
+| message  |  string | 信息提示 |
+
+响应示例:
+```json
+{
+"code": 200,
+"message": "SUCCESS_STATUS"
+}
+```
 
 

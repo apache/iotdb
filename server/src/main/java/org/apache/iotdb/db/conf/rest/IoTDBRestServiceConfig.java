@@ -45,13 +45,13 @@ public class IoTDBRestServiceConfig {
   private int idleTimeout = 50000;
 
   /** Session expiration time */
-  private int sessionExpire = 28800;
+  private int cacheExpire = 28800;
 
-  /** max number of session storage */
-  private int sessionMaxNum = 100;
+  /** maximum number of users stored in cache */
+  private int cacheMaxNum = 100;
 
-  /** init number of session storage */
-  private int sessionInitNum = 10;
+  /** init number of users stored in cache */
+  private int cacheInitNum = 10;
 
   public String getTrustStorePwd() {
     return trustStorePwd;
@@ -117,27 +117,27 @@ public class IoTDBRestServiceConfig {
     this.enableRestService = enableRestService;
   }
 
-  public int getSessionExpire() {
-    return sessionExpire;
+  public int getCacheExpire() {
+    return cacheExpire;
   }
 
-  public void setSessionExpire(int sessionExpire) {
-    this.sessionExpire = sessionExpire;
+  public void setCacheExpire(int cacheExpire) {
+    this.cacheExpire = cacheExpire;
   }
 
-  public int getSessionMaxNum() {
-    return sessionMaxNum;
+  public int getCacheMaxNum() {
+    return cacheMaxNum;
   }
 
-  public void setSessionMaxNum(int sessionMaxNum) {
-    this.sessionMaxNum = sessionMaxNum;
+  public void setCacheMaxNum(int cacheMaxNum) {
+    this.cacheMaxNum = cacheMaxNum;
   }
 
-  public int getSessionInitNum() {
-    return sessionInitNum;
+  public int getCacheInitNum() {
+    return cacheInitNum;
   }
 
-  public void setSessionInitNum(int sessionInitNum) {
-    this.sessionInitNum = sessionInitNum;
+  public void setCacheInitNum(int cacheInitNum) {
+    this.cacheInitNum = cacheInitNum;
   }
 }
