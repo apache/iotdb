@@ -254,17 +254,9 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
-    //    if (logger.isDebugEnabled()) {
-    //      logger.debug(
-    //        "paths:"
-    //          + groupByFillPlan.getPaths()
-    //          + " level:"
-    //          + Arrays.toString(groupByFillPlan.getLevels()));
-    //    }
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
 
-    GroupByEngineDataSet dataSet = null;
+    GroupByEngineDataSet dataSet;
     IExpression optimizedExpression = getOptimizeExpression(groupByFillPlan);
     groupByFillPlan.setExpression(optimizedExpression);
 
