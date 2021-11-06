@@ -51,24 +51,32 @@ public class Schema implements Serializable {
 
   // public void registerAlignedTimeseries(Path )
 
-  public void registerTimeseries(Path path, IMeasurementSchema measurementSchema) { // Todo:
+  public void registerTimeseries(
+      Path devicePath, IMeasurementSchema measurementSchema, boolean isAligned) {
+    MeasurementGroup group =
+        registeredTimeseries.getOrDefault(devicePath, new MeasurementGroup(isAligned));
+    group.getMeasurementSchemaMap().put(measurementSchema.getMeasurementId(), measurementSchema);
+  }
+
+  public void registerTimeseries(Path timeSpath, IMeasurementSchema measurementSchema) { // Todo:
 
     /*if (this.registeredTimeseries.containsKey(devicePath)) {
-      if (measurementGroup.isAligned()) {
-        throw new WriteProcessException(
-            "given aligned device has existed and should not be expanded! " + devicePath);
-      } else {
-        for (String measurementId : measurementGroup.getMeasurementSchemaMap().keySet()) {
-          if (this.registeredTimeseries
-              .get(devicePath)
-              .getMeasurementSchemaMap()
-              .containsKey(measurementId)) {
-            throw new WriteProcessException(
-                "given nonAligned timeseries has existed! " + (devicePath + "." + measurementId));
-          }
-        }
-      }
-    }*/
+         if (measurementGroup.isAligned()) {
+           throw new WriteProcessException(
+               "given aligned device has existed and should not be expanded! " + devicePath);
+         } else {
+           for (String measurementId : measurementGroup.getMeasurementSchemaMap().keySet()) {
+             if (this.registeredTimeseries
+                 .get(devicePath)
+                 .getMeasurementSchemaMap()
+                 .containsKey(measurementId)) {
+               throw new WriteProcessException(
+                   "given nonAligned timeseries has existed! " + (devicePath + "." +
+    measurementId));
+             }
+           }
+         }
+       }*/
   }
 
   public void registerTimeseries(Path devicePath, MeasurementGroup measurementGroup) {
@@ -82,8 +90,13 @@ public class Schema implements Serializable {
     this.schemaTemplates.put(templateName, measurementGroup);
   }
 
-  public void extendTemplate(
-      String templateName, IMeasurementSchema descriptor) { // 若template不存在，则默认创建的是非对齐序列
+  /**
+   * If template does not exist, an nonAligned timeseries is created by default
+   *
+   * @param templateName
+   * @param descriptor
+   */
+  public void extendTemplate(String templateName, IMeasurementSchema descriptor) {
     if (schemaTemplates == null) {
       schemaTemplates = new HashMap<>();
     }

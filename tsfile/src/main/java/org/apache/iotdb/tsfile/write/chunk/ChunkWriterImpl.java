@@ -294,6 +294,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   private void writePageToPageBuffer() {
+    System.out.println("-----------------------seal page------------------------");
     try {
       if (numOfPages == 0) { // record the firstPageStatistics
         this.firstPageStatistics = pageWriter.getStatistics();
@@ -343,7 +344,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public long getSerializedChunkSize() {
-    if (pageBuffer.size() == 0) {
+    if (pageBuffer.size() == 0 || statistics.getCount() == 0) {
       return 0;
     }
     // return the serialized size of the chunk header + all pages
@@ -355,7 +356,6 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void sealCurrentPage() {
     if (pageWriter != null && pageWriter.getPointNumber() > 0) {
       writePageToPageBuffer();
-      logger.info("------------------Seal page----------------------------");
     }
   }
 
@@ -456,7 +456,6 @@ public class ChunkWriterImpl implements IChunkWriter {
         0);
 
     long dataOffset = writer.getPos();
-    logger.info("-------------------------------------first page offset:" + dataOffset);
 
     // write all pages of this column
     writer.writeBytesToStream(pageBuffer);

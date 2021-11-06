@@ -65,13 +65,13 @@ public class VectorChunkWriterImpl implements IChunkWriter {
   }
 
   public VectorChunkWriterImpl() {
-    String measurementId = "";
+    String timeMeasurementId = "";
     CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     TSEncoding tsEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     Encoder encoder = TSEncodingBuilder.getEncodingBuilder(tsEncoding).getEncoder(timeType);
-    timeChunkWriter = new TimeChunkWriter(measurementId, compressionType, tsEncoding, encoder);
+    timeChunkWriter = new TimeChunkWriter(timeMeasurementId, compressionType, tsEncoding, encoder);
     valueChunkWriterList = new ArrayList<>();
     this.valueIndex = 0;
   }
@@ -205,12 +205,9 @@ public class VectorChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
-    System.out.println("--pos is : " + tsfileWriter.getPos());
     timeChunkWriter.writeToFileWriter(tsfileWriter);
-    System.out.println("---pos is : " + tsfileWriter.getPos());
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.writeToFileWriter(tsfileWriter);
-      System.out.println("----pos is : " + tsfileWriter.getPos());
     }
   }
 

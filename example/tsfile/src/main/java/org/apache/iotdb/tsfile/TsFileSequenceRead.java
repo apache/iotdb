@@ -42,12 +42,13 @@ import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+/** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
 public class TsFileSequenceRead {
-  private static boolean printDetail =
-      false; // if you wanna print detailed datas in pages, then turn it true.
+  // if you wanna print detailed datas in pages, then turn it true.
+  private static boolean printDetail = false;
 
   public static void main(String[] args) throws IOException {
-    String filename = "Tablet.tsfile";
+    String filename = "alignedTablet.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -102,7 +103,8 @@ public class TsFileSequenceRead {
               PageHeader pageHeader =
                   reader.readPageHeader(
                       header.getDataType(),
-                      header.getChunkType()
+                      header.getChunkType() == (byte) MetaMarker.CHUNK_HEADER
+                          || header.getChunkType()
                               == (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK)
                           || header.getChunkType()
                               == (byte)
@@ -111,6 +113,8 @@ public class TsFileSequenceRead {
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               System.out.println(
                   "\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
+              System.out.println(
+                  "\t\tCompressed page data size: " + pageHeader.getCompressedSize());
               if ((header.getChunkType() & (byte) TsFileConstant.TIME_COLUMN_MASK)
                   == (byte) TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
                 TimePageReader timePageReader =
@@ -123,7 +127,6 @@ public class TsFileSequenceRead {
                     System.out.println("\t\t\ttime: " + timeBatch.get(timeBatchIndex)[i]);
                   }
                 }
-                timeBatchIndex++;
               } else if ((header.getChunkType() & (byte) TsFileConstant.VALUE_COLUMN_MASK)
                   == (byte) TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
                 ValuePageReader valuePageReader =
@@ -140,7 +143,6 @@ public class TsFileSequenceRead {
                     System.out.println("\t\t\tvalue: " + valueBatch[i]);
                   }
                 }
-                timeBatchIndex++;
               } else { // NonAligned Chunk
                 PageReader pageReader =
                     new PageReader(
@@ -162,6 +164,7 @@ public class TsFileSequenceRead {
                   }
                 }
               }
+              timeBatchIndex++;
               dataSize -= pageHeader.getSerializedPageSize();
             }
             break;

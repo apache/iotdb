@@ -41,9 +41,7 @@ public interface IChunkGroupWriter {
    * @throws WriteProcessException exception in write process
    * @throws IOException exception in IO
    */
-  void write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
-
-  void writeAligned(long time, List<DataPoint> data) throws WriteProcessException;
+  int write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
 
   /**
    * receive a tablet, write it to chunk writers
@@ -51,9 +49,7 @@ public interface IChunkGroupWriter {
    * @throws WriteProcessException exception in write process
    * @throws IOException exception in IO
    */
-  void write(Tablet tablet) throws WriteProcessException, IOException;
-
-  void writeAligned(Tablet tablet) throws WriteProcessException;
+  int write(Tablet tablet) throws WriteProcessException, IOException;
 
   /**
    * flushing method for serializing to local file system or HDFS. Implemented by
@@ -78,11 +74,10 @@ public interface IChunkGroupWriter {
    * ChunkGroupWriter.
    *
    * @param measurementSchema a measurement descriptor containing the message of the series
-   * @param pageSize the specified page size
    */
-  void tryToAddSeriesWriter(IMeasurementSchema measurementSchema, int pageSize);
+  void tryToAddSeriesWriter(IMeasurementSchema measurementSchema);
 
-  void tryToAddAlignedSeriesWriter(List<IMeasurementSchema> measurementSchemas, int pageSize);
+  void tryToAddSeriesWriter(List<IMeasurementSchema> measurementSchemas);
 
   /**
    * get the serialized size of current chunkGroup header + all chunks. Notice, the value does not
@@ -91,6 +86,4 @@ public interface IChunkGroupWriter {
    * @return the serialized size of current chunkGroup header + all chunk
    */
   long getCurrentChunkGroupSize();
-
-  int getSeriesNumber();
 }

@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.tsfile;
 
 import java.io.File;
@@ -18,61 +36,66 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TsFileWriteAlignedWithTablet {
-  private static final Logger logger =
-      LoggerFactory.getLogger(TsFileWriteVectorWithTabletOld.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteAlignedWithTablet.class);
   private static String deviceId = "root.sg.d1";
   private static long timestamp = 1;
 
   public static void main(String[] args) throws IOException {
-    File f = FSFactoryProducer.getFSFactory().getFile("vectorTablet.tsfile");
+    File f = FSFactoryProducer.getFSFactory().getFile("alignedTablet.tsfile");
     if (f.exists() && !f.delete()) {
       throw new RuntimeException("can not delete " + f.getAbsolutePath());
     }
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      // register align timeseries
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
       measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
       measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
       measurementSchemas.add(new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
+
+      // register align timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(deviceId), measurementSchemas);
 
-      // construct and write Tablet1
-      List<IMeasurementSchema> tmpSchemas = new ArrayList<>();
-      tmpSchemas.add(measurementSchemas.get(0));
-      writeAlignedWithTablet(tsFileWriter, tmpSchemas, 10);
+      List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example 1
+      writeMeasurementScheams.add(measurementSchemas.get(0));
+      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0);
 
-      // construct and write Tablet2
-      tmpSchemas = new ArrayList<>();
-      tmpSchemas.add(measurementSchemas.get(1));
-      writeAlignedWithTablet(tsFileWriter, tmpSchemas, 200000);
+      // example 2
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(measurementSchemas.get(0));
+      writeMeasurementScheams.add(measurementSchemas.get(1));
+      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 200000, 10, 0);
 
-      // construct and write Tablet2
-      tmpSchemas = new ArrayList<>();
-      tmpSchemas.add(measurementSchemas.get(2));
-      writeAlignedWithTablet(tsFileWriter, tmpSchemas, 20);
+      // example 3
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(measurementSchemas.get(2));
+      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0);
 
-      writeWithTablet(tsFileWriter);
+      writeWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {
       e.printStackTrace();
     }
   }
 
   private static void writeAlignedWithTablet(
-      TsFileWriter tsFileWriter, List<IMeasurementSchema> tmpSchemas, int rowNum)
+      TsFileWriter tsFileWriter,
+      String deviceId,
+      List<IMeasurementSchema> schemas,
+      long rowNum,
+      long startTime,
+      long startValue)
       throws IOException, WriteProcessException {
-    Tablet tablet = new Tablet(deviceId, tmpSchemas);
+    Tablet tablet = new Tablet(deviceId, schemas);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
-    int sensorNum = tmpSchemas.size();
+    long sensorNum = schemas.size();
 
-    long value = 100L;
-    for (int r = 0; r < rowNum; r++, value++) {
+    for (long r = 0; r < rowNum; r++, startValue++) {
       int row = tablet.rowSize++;
-      timestamps[row] = timestamp++;
+      timestamps[row] = startTime++;
       for (int i = 0; i < sensorNum; i++) {
         Binary[] textSensor = (Binary[]) values[i];
-        textSensor[row] = new Binary("aaaaaaaaaaaaaaaaauuuuuuuuuuuuuuuuaaaaaaaaaaaaaaaaaaaaaaa");
+        textSensor[row] = new Binary("testString.........");
       }
       // write
       if (tablet.rowSize == tablet.getMaxRowNumber()) {

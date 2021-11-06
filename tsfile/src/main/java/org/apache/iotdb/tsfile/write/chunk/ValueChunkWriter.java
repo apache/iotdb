@@ -158,11 +158,13 @@ public class ValueChunkWriter {
         this.firstPageStatistics = pageWriter.getStatistics();
         this.sizeWithoutStatistic = pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, true);
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
-        byte[] b = pageBuffer.toByteArray();
-        pageBuffer.reset();
-        pageBuffer.write(b, 0, this.sizeWithoutStatistic);
-        firstPageStatistics.serialize(pageBuffer);
-        pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        if (firstPageStatistics != null) { // Consider previous page is an empty page
+          byte[] b = pageBuffer.toByteArray();
+          pageBuffer.reset();
+          pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+          firstPageStatistics.serialize(pageBuffer);
+          pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        }
         pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, false);
         firstPageStatistics = null;
       } else {
@@ -199,7 +201,7 @@ public class ValueChunkWriter {
   }
 
   public long getCurrentChunkSize() {
-    if (pageBuffer.size() == 0) {
+    if (pageBuffer.size() == 0 || statistics.getCount() == 0) {
       return 0;
     }
     // return the serialized size of the chunk header + all pages
@@ -218,7 +220,7 @@ public class ValueChunkWriter {
       if (currentPageSize > pageSizeThreshold) { // memory size exceeds threshold
         // we will write the current page
         logger.debug(
-            "enough size, write page {}, pageSizeThreshold:{}, currentPateSize:{}, valueCountInOnePage:{}",
+            "enough size, write page {}, pageSizeThreshold:{}, currentPageSize:{}, valueCountInOnePage:{}",
             measurementId,
             pageSizeThreshold,
             currentPageSize,

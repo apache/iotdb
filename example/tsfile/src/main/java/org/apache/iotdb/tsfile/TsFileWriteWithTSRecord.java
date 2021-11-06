@@ -20,6 +20,10 @@
 package org.apache.iotdb.tsfile;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -28,6 +32,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 /**
@@ -43,38 +48,53 @@ public class TsFileWriteWithTSRecord {
       if (f.exists()) {
         f.delete();
       }
-      int rowSize = 100;
-      int value = 0;
+
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+        List<IMeasurementSchema> schemas = new ArrayList<>();
+        schemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+        schemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+        schemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+
         // register timeseries
-        tsFileWriter.registerTimeseries(
-            new Path("root.sg.d1"),
-            new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.registerTimeseries(
-            new Path("root.sg.d1"),
-            new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-        for (int time = 0; time < rowSize; time++) {
-          // construct TsRecord
-          TSRecord tsRecord = new TSRecord(time, "root.sg.d1");
-          DataPoint dPoint1 = new LongDataPoint("s1", value++);
-          DataPoint dPoint2 = new LongDataPoint("s2", value++);
-          tsRecord.addTuple(dPoint1);
-          tsRecord.addTuple(dPoint2);
-          // write
-          tsFileWriter.write(tsRecord);
-        }
-        for (int time = rowSize; time < rowSize + rowSize; time++) {
-          // construct TsRecord
-          TSRecord tsRecord = new TSRecord(time, "root.sg.d1");
-          DataPoint dPoint2 = new LongDataPoint("s2", value++);
-          tsRecord.addTuple(dPoint2);
-          // write
-          tsFileWriter.write(tsRecord);
-        }
+        tsFileWriter.registerTimeseries(new Path("root.sg.d1"), schemas.get(0));
+        tsFileWriter.registerTimeseries(new Path("root.sg.d1"), schemas.get(1));
+        tsFileWriter.registerTimeseries(new Path("root.sg.d1"), schemas.get(2));
+
+        List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+        // example1
+        writeMeasurementScheams.add(schemas.get(0));
+        writeMeasurementScheams.add(schemas.get(1));
+        write(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 10000, 0, 0);
+
+        // example2
+        writeMeasurementScheams.clear();
+        writeMeasurementScheams.add(schemas.get(2));
+        writeMeasurementScheams.add(schemas.get(0));
+        write(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 10000, 10000, 100);
       }
     } catch (Throwable e) {
       e.printStackTrace();
       System.out.println(e.getMessage());
+    }
+  }
+
+  private static void write(
+      TsFileWriter tsFileWriter,
+      String deviceId,
+      List<IMeasurementSchema> schemas,
+      long rowSize,
+      long startTime,
+      long startValue)
+      throws IOException, WriteProcessException {
+    for (long time = startTime; time < rowSize + startTime; time++) {
+      // construct TsRecord
+      TSRecord tsRecord = new TSRecord(time, deviceId);
+      for (IMeasurementSchema schema : schemas) {
+        DataPoint dPoint = new LongDataPoint(schema.getMeasurementId(), startValue++);
+        tsRecord.addTuple(dPoint);
+      }
+      // write
+      tsFileWriter.write(tsRecord);
     }
   }
 }
