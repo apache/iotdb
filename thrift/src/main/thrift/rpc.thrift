@@ -366,7 +366,39 @@ struct TSCreateSchemaTemplateReq {
   4: required list<list<string>> measurements
   5: required list<list<i32>> dataTypes
   6: required list<list<i32>> encodings
+  7: required list<list<i32>> compressors
+  8: optional binary serializedTemplate
+}
+
+struct TSAppendSchemaTemplateReq {
+  1: required i64 sessionId
+  2: required string name
+  3: required bool isAligned
+  4: required list<string> measurements
+  5: required list<i32> dataTypes
+  6: required list<i32> encodings
   7: required list<i32> compressors
+}
+
+struct TSPruneSchemaTemplateReq {
+  1: required i64 sessionId
+  2: required string name
+  3: required string path
+}
+
+struct TSQueryTemplateReq {
+  1: required i64 sessionId
+  2: required string name
+  3: required i32 queryType
+  4: optional string measurement
+}
+
+struct TSQueryTemplateResp {
+  1: required TSStatus status
+  2: required i32 queryType
+  3: optional bool result
+  4: optional i32 count
+  5: optional list<string> measurements
 }
 
 struct TSUnsetSchemaTemplateReq {
@@ -451,6 +483,12 @@ service TSIService {
   i64 requestStatementId(1:i64 sessionId);
 
   TSStatus createSchemaTemplate(1:TSCreateSchemaTemplateReq req);
+
+  TSStatus appendSchemaTemplate(1:TSAppendSchemaTemplateReq req);
+
+  TSStatus pruneSchemaTemplate(1:TSPruneSchemaTemplateReq req);
+
+  TSQueryTemplateResp querySchemaTemplate(1:TSQueryTemplateReq req);
 
   TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 

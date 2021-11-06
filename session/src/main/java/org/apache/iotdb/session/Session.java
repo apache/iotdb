@@ -22,6 +22,11 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
+import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -55,6 +60,8 @@ import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -1978,13 +1985,172 @@ public class Session {
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors)
+      List<List<CompressionType>> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
     TSCreateSchemaTemplateReq request =
         getTSCreateSchemaTemplateReq(
             name, schemaNames, measurements, dataTypes, encodings, compressors);
     defaultSessionConnection.createSchemaTemplate(request);
   }
+
+  /** New interface for no schemaNames */
+  public void createSchemaTemplate(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<List<CompressionType>> compressors)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> emptySchemaNames = new ArrayList<>();
+    TSCreateSchemaTemplateReq request =
+        getTSCreateSchemaTemplateReq(
+            name, emptySchemaNames, measurements, dataTypes, encodings, compressors);
+    defaultSessionConnection.createSchemaTemplate(request);
+  }
+
+  /**
+   * Construct Template at session and create it at server.
+   *
+   * @see Template
+   */
+  public void createSchemaTemplate(Template template)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    TSCreateSchemaTemplateReq req = getTSCreateSchemaTemplateReq();
+    req.setName(template.getName());
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    template.serialize(baos);
+    req.setSerializedTemplate(baos.toByteArray());
+    baos.close();
+    defaultSessionConnection.createSchemaTemplate(req);
+  }
+
+  public void addAlignedMeasurementsInTemplate(
+      String templateName,
+      List<String> measurementsPath,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    TSAppendSchemaTemplateReq req = new TSAppendSchemaTemplateReq();
+    req.setName(templateName);
+    req.setMeasurements(measurementsPath);
+    req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
+    req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
+    req.setCompressors(
+        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+    req.setIsAligned(true);
+    defaultSessionConnection.appendSchemaTemplate(req);
+  }
+
+  public void addAlignedMeasurementInTemplate(
+      String templateName,
+      String measurementPath,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    TSAppendSchemaTemplateReq req = new TSAppendSchemaTemplateReq();
+    req.setName(templateName);
+    req.setMeasurements(Collections.singletonList(measurementPath));
+    req.setDataTypes(Collections.singletonList(dataType.ordinal()));
+    req.setEncodings(Collections.singletonList(encoding.ordinal()));
+    req.setCompressors(Collections.singletonList(compressor.ordinal()));
+    req.setIsAligned(true);
+    defaultSessionConnection.appendSchemaTemplate(req);
+  }
+
+  public void addUnalignedMeasurementsInTemplate(
+      String templateName,
+      List<String> measurementsPath,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    TSAppendSchemaTemplateReq req = new TSAppendSchemaTemplateReq();
+    req.setName(templateName);
+    req.setMeasurements(measurementsPath);
+    req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
+    req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
+    req.setCompressors(
+        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+    req.setIsAligned(false);
+    defaultSessionConnection.appendSchemaTemplate(req);
+  }
+
+  public void addUnalignedMeasurementInTemplate(
+      String templateName,
+      String measurementPath,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    TSAppendSchemaTemplateReq req = new TSAppendSchemaTemplateReq();
+    req.setName(templateName);
+    req.setMeasurements(Collections.singletonList(measurementPath));
+    req.setDataTypes(Collections.singletonList(dataType.ordinal()));
+    req.setEncodings(Collections.singletonList(encoding.ordinal()));
+    req.setCompressors(Collections.singletonList(compressor.ordinal()));
+    req.setIsAligned(false);
+    defaultSessionConnection.appendSchemaTemplate(req);
+  }
+
+  public void deleteNodeInTemplate(String templateName, String path)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    TSPruneSchemaTemplateReq req = new TSPruneSchemaTemplateReq();
+    req.setName(templateName);
+    req.setPath(path);
+    defaultSessionConnection.pruneSchemaTemplate(req);
+  }
+
+  public int countMeasurementsInTemplate(String name)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(name);
+    req.setQueryType(Template.TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getCount();
+  }
+
+  public boolean isMeasurementInTemplate(String templateName, String path)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(templateName);
+    req.setQueryType(Template.TemplateQueryType.IS_MEASUREMENT.ordinal());
+    req.setMeasurement(path);
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.result;
+  }
+
+  public boolean isPathExistInTemplate(String templateName, String path)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(templateName);
+    req.setQueryType(Template.TemplateQueryType.IS_SERIES.ordinal());
+    req.setMeasurement(path);
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.result;
+  }
+
+  public List<String> showMeasurementsInTemplate(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(templateName);
+    req.setQueryType(Template.TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
+    req.setMeasurement("");
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getMeasurements();
+  }
+
+  public List<String> showMeasurementsInTemplate(String templateName, String pattern)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(templateName);
+    req.setQueryType(Template.TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
+    req.setMeasurement(pattern);
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getMeasurements();
+  }
+
 
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2005,7 +2171,7 @@ public class Session {
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors) {
+      List<List<CompressionType>> compressors) {
     TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
     request.setName(name);
     request.setSchemaNames(schemaNames);
@@ -2023,8 +2189,27 @@ public class Session {
           encodingList.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     }
     request.setEncodings(requestEncoding);
-    request.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+
+    List<List<Integer>> requestCompressor = new ArrayList<>();
+    for (List<CompressionType> compressorList : compressors) {
+      requestCompressor.add(
+          compressorList.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+    }
+    request.setCompressors(requestCompressor);
+    return request;
+  }
+
+  private TSCreateSchemaTemplateReq getTSCreateSchemaTemplateReq() {
+    // Return a empty Request to construct by serialized binary
+    TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
+    List<String> emptyList = new ArrayList<>();
+    List<List<String>> emptyStringList = new ArrayList<>();
+    List<List<Integer>> emptyIntegerList = new ArrayList<>();
+    request.setMeasurements(emptyStringList);
+    request.setSchemaNames(emptyList);
+    request.setDataTypes(emptyIntegerList);
+    request.setEncodings(emptyIntegerList);
+    request.setCompressors(emptyIntegerList);
     return request;
   }
 

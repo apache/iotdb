@@ -126,9 +126,9 @@ public class MLogParserTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    compressionTypes.add(CompressionType.SNAPPY);
-    compressionTypes.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");

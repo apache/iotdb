@@ -23,10 +23,14 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -60,14 +64,48 @@ public class TemplateManager {
     for (String schemaNames : plan.getSchemaNames()) {
       MetaFormatUtils.checkNodeName(schemaNames);
     }
-    for (List<String> measurements : plan.getMeasurements()) {
-      MetaFormatUtils.checkSchemaMeasurementNames(measurements);
-    }
 
     Template template = new Template(plan);
     if (templateMap.putIfAbsent(plan.getName(), template) != null) {
       // already have template
       throw new MetadataException("Duplicated template name: " + plan.getName());
+    }
+  }
+
+  public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
+    String templateName = plan.getName();
+    Template temp = templateMap.getOrDefault(templateName, null);
+    if (temp != null) {
+      String[] measurements = plan.getMeasurements().toArray(new String[0]);
+      TSDataType[] dataTypes = new TSDataType[measurements.length];
+      TSEncoding[] encodings = new TSEncoding[measurements.length];
+      CompressionType[] compressionTypes = new CompressionType[measurements.length];
+
+      for (int i = 0; i < measurements.length; i++) {
+        dataTypes[i] = plan.getDataTypes().get(i);
+        encodings[i] = plan.getEncodings().get(i);
+        compressionTypes[i] = plan.getCompressors().get(i);
+      }
+
+      if (plan.isAligned()) {
+        temp.addAlignedMeasurements(measurements, dataTypes, encodings, compressionTypes);
+      } else {
+        temp.addUnalignedMeasurements(measurements, dataTypes, encodings, compressionTypes);
+      }
+    } else {
+      throw new MetadataException("Template does not exists:" + plan.getName());
+    }
+  }
+
+  public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
+    String templateName = plan.getName();
+    Template temp = templateMap.getOrDefault(templateName, null);
+    if (temp != null) {
+      for (int i = 0; i < plan.getPrunedMeasurements().size(); i++) {
+        temp.deleteSeriesCascade(plan.getPrunedMeasurements().get(i));
+      }
+    } else {
+      throw new MetadataException("Template does not exists:" + plan.getName());
     }
   }
 

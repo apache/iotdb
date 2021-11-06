@@ -83,6 +83,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
@@ -350,7 +351,7 @@ public class MTree implements Serializable {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        if (cur.isUseTemplate() && upperTemplate.hasSchema(childName)) {
+        if (cur.isUseTemplate() && upperTemplate.isDirectNodeInTemplate(childName)) {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(childName).getFullPath());
         }
@@ -367,7 +368,7 @@ public class MTree implements Serializable {
       throw new PathAlreadyExistException(cur.getFullPath());
     }
 
-    if (upperTemplate != null && !upperTemplate.isCompatible(path)) {
+    if (upperTemplate != null && !upperTemplate.isDirectNodeInTemplate(nodeNames[nodeNames.length-1])) {
       throw new PathAlreadyExistException(
           path.getFullPath() + " ( which is incompatible with template )");
     }

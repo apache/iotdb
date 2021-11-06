@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -53,10 +54,12 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -2109,6 +2112,38 @@ public class MManager {
         logWriter.createSchemaTemplate(plan);
       }
     } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
+    try {
+      templateManager.appendSchemaTemplate(plan);
+      // write wal
+      if (!isRecovering) {
+        logWriter.appendSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
+    try {
+      templateManager.pruneSchemaTemplate(plan);
+      // write wal
+      if (!isRecovering) {
+        logWriter.pruneSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public Template getTemplate(String templateName) throws MetadataException {
+    try {
+      return templateManager.getTemplate(templateName);
+    } catch (UndefinedTemplateException e) {
       throw new MetadataException(e);
     }
   }

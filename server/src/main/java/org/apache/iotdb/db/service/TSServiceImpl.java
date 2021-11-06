@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import net.jpountz.util.ByteBufferUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -58,6 +61,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
@@ -95,6 +99,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -123,8 +128,11 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
@@ -152,6 +160,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -2063,37 +2072,48 @@ public class TSServiceImpl implements TSIService.Iface {
             req.getCompressors());
       }
 
-      List<List<TSDataType>> dataTypes = new ArrayList<>();
-      for (List<Integer> list : req.getDataTypes()) {
-        List<TSDataType> dataTypesList = new ArrayList<>();
-        for (int dataType : list) {
-          dataTypesList.add(TSDataType.values()[dataType]);
+      CreateTemplatePlan plan;
+      if (req.getMeasurements().size() == 0) {
+        // Construct plan from serialized request
+        ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
+        plan = CreateTemplatePlan.deserializeFromReq(buffer);
+      } else {
+        List<List<TSDataType>> dataTypes = new ArrayList<>();
+        for (List<Integer> list : req.getDataTypes()) {
+          List<TSDataType> dataTypesList = new ArrayList<>();
+          for (int dataType : list) {
+            dataTypesList.add(TSDataType.values()[dataType]);
+          }
+          dataTypes.add(dataTypesList);
         }
-        dataTypes.add(dataTypesList);
-      }
 
-      List<List<TSEncoding>> encodings = new ArrayList<>();
-      for (List<Integer> list : req.getEncodings()) {
-        List<TSEncoding> encodingsList = new ArrayList<>();
-        for (int encoding : list) {
-          encodingsList.add(TSEncoding.values()[encoding]);
+        List<List<TSEncoding>> encodings = new ArrayList<>();
+        for (List<Integer> list : req.getEncodings()) {
+          List<TSEncoding> encodingsList = new ArrayList<>();
+          for (int encoding : list) {
+            encodingsList.add(TSEncoding.values()[encoding]);
+          }
+          encodings.add(encodingsList);
         }
-        encodings.add(encodingsList);
-      }
 
-      List<CompressionType> compressionTypes = new ArrayList<>();
-      for (int compressType : req.getCompressors()) {
-        compressionTypes.add(CompressionType.values()[compressType]);
-      }
+        List<List<CompressionType>> compressionTypes = new ArrayList<>();
 
-      CreateTemplatePlan plan =
-          new CreateTemplatePlan(
-              req.getName(),
-              req.getSchemaNames(),
-              req.getMeasurements(),
-              dataTypes,
-              encodings,
-              compressionTypes);
+        for (List<Integer> list : req.getCompressors()) {
+          List<CompressionType> compressorList = new ArrayList<>();
+          for (int compressor : list) {
+            compressorList.add(CompressionType.values()[compressor]);
+          }
+          compressionTypes.add(compressorList);
+        }
+
+        plan = new CreateTemplatePlan(
+                req.getName(),
+                req.getSchemaNames(),
+                req.getMeasurements(),
+                dataTypes,
+                encodings,
+                compressionTypes);
+      }
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
@@ -2101,6 +2121,82 @@ public class TSServiceImpl implements TSIService.Iface {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_SCHEMA_TEMPLATE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
+  }
+
+  @Override
+  public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) throws TException {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressionTypes = new ArrayList<>();
+
+    for (int i = 0; i < req.getDataTypesSize(); i++) {
+      dataTypes.add(TSDataType.values()[req.getDataTypes().get(i)]);
+      encodings.add(TSEncoding.values()[req.getEncodings().get(i)]);
+      compressionTypes.add(CompressionType.values()[req.getCompressors().get(i)]);
+    }
+
+    AppendTemplatePlan plan =
+        new AppendTemplatePlan(
+            req.getName(),
+            req.isAligned,
+            req.getMeasurements(),
+            dataTypes,
+            encodings,
+            compressionTypes);
+
+    TSStatus status = checkAuthority(plan, req.getSessionId());
+    return status != null ? status : executeNonQueryPlan(plan);
+  }
+
+  @Override
+  public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) throws TException {
+    PruneTemplatePlan plan =
+        new PruneTemplatePlan(req.getName(), Collections.singletonList(req.getPath()));
+    TSStatus status = checkAuthority(plan, req.getSessionId());
+    return status != null ? status : executeNonQueryPlan(plan);
+  }
+
+  @Override
+  public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) throws TException {
+    try {
+      Template template = IoTDB.metaManager.getTemplate(req.name);
+
+      TSQueryTemplateResp resp = new TSQueryTemplateResp();
+      int count;
+      String path;
+      boolean flag;
+      switch (Template.TemplateQueryType.values()[req.getQueryType()]) {
+        case NULL:
+          break;
+        case COUNT_MEASUREMENTS:
+          count = template.getMeasurementsCount();
+          resp.setQueryType(Template.TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
+          resp.setCount(count);
+          break;
+        case IS_MEASUREMENT:
+          path = req.getMeasurement();
+          flag = template.isPathMeasurement(path);
+          resp.setQueryType(Template.TemplateQueryType.IS_MEASUREMENT.ordinal());
+          resp.setResult(flag);
+          break;
+        case IS_SERIES:
+          path = req.getMeasurement();
+          flag = template.isPathSeries(path);
+          resp.setQueryType(Template.TemplateQueryType.IS_SERIES.ordinal());
+          resp.setResult(flag);
+          break;
+        case SHOW_MEASUREMENTS:
+          path = req.getMeasurement();
+          resp.setQueryType(Template.TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
+          resp.setMeasurements(template.getMeasurementsUnderPath(path));
+          break;
+      }
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
+      return resp;
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    }
+    return null;
   }
 
   @Override
