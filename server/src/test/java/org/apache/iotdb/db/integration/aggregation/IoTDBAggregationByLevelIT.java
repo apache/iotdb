@@ -357,7 +357,7 @@ public class IoTDBAggregationByLevelIT {
   public void groupByLevelWithTimeIntervalTest() throws Exception {
     String[] retArray1 =
         new String[] {
-          "0.0", "88.24", "105.5", "0.0", "0.0", "125.5",
+          "null", "88.24", "105.5", "null", "null", "125.5",
         };
     String[] retArray2 =
         new String[] {
@@ -377,7 +377,7 @@ public class IoTDBAggregationByLevelIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TestConstant.sum("root.sg2.*.temperature"));
+          String ans = "" + resultSet.getString(TestConstant.sum("root.sg2.*.temperature"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -407,7 +407,7 @@ public class IoTDBAggregationByLevelIT {
   public void groupByMultiLevelWithTimeIntervalTest() throws Exception {
     String[] retArray1 =
         new String[] {
-          "0.0", "88.24", "105.5", "0.0", "0.0", "125.5",
+          "null", "88.24", "105.5", "null", "null", "125.5",
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -418,7 +418,7 @@ public class IoTDBAggregationByLevelIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TestConstant.sum("root.sg2.*.temperature"));
+          String ans = "" + resultSet.getString(TestConstant.sum("root.sg2.*.temperature"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }

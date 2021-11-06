@@ -201,6 +201,7 @@ public class IoTDBInfluxDBIT {
           assertEquals(expected[i], actual.toString());
         }
       }
+      sessionDataSet.closeOperationHandle();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }
@@ -219,6 +220,7 @@ public class IoTDBInfluxDBIT {
           assertEquals(expected[i], fields.get(i).toString());
         }
       }
+      sessionDataSet.closeOperationHandle();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }
@@ -237,6 +239,7 @@ public class IoTDBInfluxDBIT {
           assertEquals(expected[i], fields.get(i).toString());
         }
       }
+      sessionDataSet.closeOperationHandle();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }

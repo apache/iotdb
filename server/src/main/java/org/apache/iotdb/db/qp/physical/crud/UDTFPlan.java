@@ -100,6 +100,15 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
+  public List<PartialPath> getAuthPaths() {
+    Set<PartialPath> authPaths = new HashSet<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      authPaths.addAll(resultColumn.collectPaths());
+    }
+    return new ArrayList<>(authPaths);
+  }
+
+  @Override
   public void constructUdfExecutors(List<ResultColumn> resultColumns) {
     for (ResultColumn resultColumn : resultColumns) {
       resultColumn.getExpression().constructUdfExecutors(expressionName2Executor, zoneId);
@@ -127,9 +136,5 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   public int getReaderIndex(String pathName) {
     return pathNameToReaderIndex.get(pathName);
-  }
-
-  public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
-    this.pathNameToReaderIndex = pathNameToReaderIndex;
   }
 }

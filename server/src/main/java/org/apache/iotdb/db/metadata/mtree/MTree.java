@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -1344,6 +1345,21 @@ public class MTree implements Serializable {
         throw new MetadataException("Template already exists on " + child.getFullPath());
       }
       checkTemplateOnSubtree(child);
+    }
+  }
+
+  public void checkTemplateInUseOnLowerNode(IMNode node) throws TemplateIsInUseException {
+    if (node.isMeasurement()) {
+      return;
+    }
+    for (IMNode child : node.getChildren().values()) {
+      if (child.isMeasurement()) {
+        continue;
+      }
+      if (child.isUseTemplate()) {
+        throw new TemplateIsInUseException(child.getFullPath());
+      }
+      checkTemplateInUseOnLowerNode(child);
     }
   }
   // endregion

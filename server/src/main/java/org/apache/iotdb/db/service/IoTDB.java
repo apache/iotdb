@@ -52,7 +52,7 @@ public class IoTDB implements IoTDBMBean {
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
-  private RegisterManager registerManager = new RegisterManager();
+  private final RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
   private static boolean clusterMode = false;
 
@@ -144,7 +144,7 @@ public class IoTDB implements IoTDBMBean {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
-        logger.warn("IoTDB failed to set up for:" + e.getMessage());
+        logger.warn("IoTDB failed to set up.", e);
         Thread.currentThread().interrupt();
         return;
       }

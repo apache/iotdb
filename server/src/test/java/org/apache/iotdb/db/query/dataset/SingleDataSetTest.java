@@ -50,7 +50,7 @@ public class SingleDataSetTest {
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.\"s3.xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN"
+    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN"
   };
 
   public SingleDataSetTest() throws QueryProcessException {}

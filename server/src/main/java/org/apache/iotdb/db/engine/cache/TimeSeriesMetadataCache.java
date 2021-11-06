@@ -402,15 +402,18 @@ public class TimeSeriesMetadataCache {
     private final String filePath;
     private final String tsFilePrefixPath;
     private final long tsFileVersion;
+    // high 32 bit is compaction level, low 32 bit is merge count
+    private final long compactionVersion;
     private final String device;
     private final String measurement;
 
     public TimeSeriesMetadataCacheKey(String filePath, String device, String measurement) {
       this.filePath = filePath;
-      Pair<String, Long> tsFilePrefixPathAndTsFileVersionPair =
+      Pair<String, long[]> tsFilePrefixPathAndTsFileVersionPair =
           FilePathUtils.getTsFilePrefixPathAndTsFileVersionPair(filePath);
       this.tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
-      this.tsFileVersion = tsFilePrefixPathAndTsFileVersionPair.right;
+      this.tsFileVersion = tsFilePrefixPathAndTsFileVersionPair.right[0];
+      this.compactionVersion = tsFilePrefixPathAndTsFileVersionPair.right[1];
       this.device = device;
       this.measurement = measurement;
     }
@@ -427,12 +430,13 @@ public class TimeSeriesMetadataCache {
       return Objects.equals(measurement, that.measurement)
           && Objects.equals(device, that.device)
           && tsFileVersion == that.tsFileVersion
+          && compactionVersion == that.compactionVersion
           && tsFilePrefixPath.equals(that.tsFilePrefixPath);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(tsFilePrefixPath, tsFileVersion, device, measurement);
+      return Objects.hash(tsFilePrefixPath, tsFileVersion, compactionVersion, device, measurement);
     }
   }
 

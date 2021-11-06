@@ -237,6 +237,14 @@ void createSchemaTemplate(
 void setSchemaTemplate(String templateName, String prefixPath)
 ```
 
+``` 
+void unsetSchemaTemplate(String prefixPath, String templateName)
+```
+
+* 卸载'prefixPath'路径下的名为'templateName'的物理量模板。你需要保证给定的路径'prefixPath'下需要有名为'templateName'的物理量模板。
+
+注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。
+
 ### 测试接口说明
 
 * 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。
