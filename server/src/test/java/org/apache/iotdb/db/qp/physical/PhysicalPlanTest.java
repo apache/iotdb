@@ -469,23 +469,6 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill6() {
     String sqlStr =
-        "select count(s1)"
-            + "from root.vehicle.d1 "
-            + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
-    try {
-      processor.parseSQLToPhysicalPlan(sqlStr);
-      fail();
-    } catch (ParseCancellationException e) {
-      assertTrue(e.getMessage().contains("mismatched input 'fill'"));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  @Test
-  public void testGroupByFill7() {
-    String sqlStr =
         "select last_value(d1.s1), last_value(d2.s1)"
             + " from root.vehicle "
             + "group by([8,737), 3ms) fill(int32[previousuntillast,10ms], int64[previous,10ms])";
