@@ -51,10 +51,11 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -720,8 +721,8 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
   }
 
-  protected List<PartialPath> getPathsName(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getFlatMeasurementPaths(path);
+  protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getMeasurementPaths(path);
   }
 
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
@@ -1178,7 +1179,7 @@ public class PlanExecutor implements IPlanExecutor {
         PartialPath fullPath =
             new PartialPath(deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId());
         if (IoTDB.metaManager.isPathExist(fullPath)) {
-          TSDataType dataType = IoTDB.metaManager.getSeriesSchema(fullPath).getType();
+          TSDataType dataType = IoTDB.metaManager.getSeriesType(fullPath);
           if (dataType != metadata.getTSDataType()) {
             throw new QueryProcessException(
                 fullPath.getFullPath()
@@ -1217,8 +1218,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       for (PartialPath path :
-          IoTDB.metaManager.getFlatMeasurementPaths(
-              devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
+          IoTDB.metaManager.getMeasurementPaths(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
         existSeriesSet.add(path.getMeasurement());
         existSeriesSet.add(path.getMeasurementAlias());
       }
@@ -1361,10 +1361,6 @@ public class PlanExecutor implements IPlanExecutor {
         plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
         // check whether types are match
         getSeriesSchemas(plan);
-        // we do not need to infer data type for insertRowsOfOneDevicePlan
-        if (plan.isAligned()) {
-          plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
-        }
       }
       // ok, we can begin to write data into the engine..
       StorageEngine.getInstance().insert(insertRowsOfOneDevicePlan);
@@ -1449,10 +1445,6 @@ public class PlanExecutor implements IPlanExecutor {
       }
       // check whether types are match
       getSeriesSchemas(insertRowPlan);
-      if (insertRowPlan.isAligned()) {
-        insertRowPlan.setPrefixPathForAlignTimeSeries(
-            insertRowPlan.getPrefixPath().getDevicePath());
-      }
       insertRowPlan.transferType();
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
@@ -1502,10 +1494,6 @@ public class PlanExecutor implements IPlanExecutor {
       insertTabletPlan.setMeasurementMNodes(
           new IMeasurementMNode[insertTabletPlan.getMeasurements().length]);
       getSeriesSchemas(insertTabletPlan);
-      if (insertTabletPlan.isAligned()) {
-        insertTabletPlan.setPrefixPathForAlignTimeSeries(
-            insertTabletPlan.getPrefixPath().getDevicePath());
-      }
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertTabletPlan);

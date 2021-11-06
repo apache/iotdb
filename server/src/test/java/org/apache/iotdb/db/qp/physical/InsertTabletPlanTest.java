@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
@@ -200,8 +200,7 @@ public class InsertTabletPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
-    Assert.assertEquals(
-        "[vector, vector, vector]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    Assert.assertEquals("[s1, s2, s3]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
@@ -229,8 +228,7 @@ public class InsertTabletPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
-    Assert.assertEquals(
-        "[vector, vector, vector]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    Assert.assertEquals("[s1, s2, s3]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");

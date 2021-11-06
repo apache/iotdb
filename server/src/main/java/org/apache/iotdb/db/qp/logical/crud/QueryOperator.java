@@ -24,8 +24,8 @@ import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -250,14 +251,6 @@ public class QueryOperator extends Operator {
       PartialPath suffixPath = getSuffixPathFromExpression(suffixExpression);
       String aggregation = aggregationFuncs != null ? aggregationFuncs.get(i) : null;
 
-      // if const measurement
-      if (suffixPath.getMeasurement().startsWith("'")) {
-        String measurementName = suffixPath.getMeasurement();
-        measurements.add(measurementName);
-        measurementInfoMap.put(measurementName, new MeasurementInfo(MeasurementType.Constant));
-        continue;
-      }
-
       // to record measurements in the loop of a suffix path
       Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
       for (PartialPath device : devices) {
@@ -266,7 +259,7 @@ public class QueryOperator extends Operator {
           // remove stars in SELECT to get actual paths
           List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
           if (suffixPath.getNodes().length > 1
-              && (actualPaths.isEmpty() || !(actualPaths.get(0) instanceof VectorPartialPath))) {
+              && (actualPaths.isEmpty() || !(actualPaths.get(0) instanceof AlignedPath))) {
             throw new QueryProcessException(AlignByDevicePlan.MEASUREMENT_ERROR_MESSAGE);
           }
           if (resultColumn.hasAlias() && actualPaths.size() >= 2) {
@@ -393,8 +386,8 @@ public class QueryOperator extends Operator {
    */
   private String getMeasurementName(PartialPath path, String aggregation) {
     String initialMeasurement = path.getMeasurement();
-    if (path instanceof VectorPartialPath) {
-      String subMeasurement = ((VectorPartialPath) path).getSubSensor(0);
+    if (path instanceof AlignedPath) {
+      String subMeasurement = ((AlignedPath) path).getMeasurement(0);
       initialMeasurement += TsFileConstant.PATH_SEPARATOR + subMeasurement;
     }
     if (aggregation != null) {
@@ -501,7 +494,8 @@ public class QueryOperator extends Operator {
   }
 
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getFlatMeasurementPaths(path);
+    // todo eliminate this transform and use MeasurementPath directly
+    return new LinkedList<>(IoTDB.metaManager.getMeasurementPaths(path));
   }
 
   public boolean isEnableTracing() {

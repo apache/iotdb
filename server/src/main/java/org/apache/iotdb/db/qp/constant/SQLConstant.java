@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.Arrays;
 import java.util.HashMap;

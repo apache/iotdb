@@ -18,29 +18,28 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
-import java.util.ArrayList;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class Template {
   private String name;
 
   private Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
+
+  public Template() {}
 
   /**
    * build a template from a createTemplatePlan
@@ -52,37 +51,12 @@ public class Template {
 
     // put measurement into a map
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
-      IMeasurementSchema curSchema;
-      // vector
-      int size = plan.getMeasurements().get(i).size();
-      if (size > 1) {
-        String[] measurementsArray = new String[size];
-        TSDataType[] typeArray = new TSDataType[size];
-        TSEncoding[] encodingArray = new TSEncoding[size];
-
-        for (int j = 0; j < size; j++) {
-          measurementsArray[j] = plan.getMeasurements().get(i).get(j);
-          typeArray[j] = plan.getDataTypes().get(i).get(j);
-          encodingArray[j] = plan.getEncodings().get(i).get(j);
-        }
-
-        curSchema =
-            new VectorMeasurementSchema(
-                plan.getSchemaNames().get(i),
-                measurementsArray,
-                typeArray,
-                encodingArray,
-                plan.getCompressors().get(i));
-      }
-      // normal measurement
-      else {
-        curSchema =
-            new UnaryMeasurementSchema(
-                plan.getMeasurements().get(i).get(0),
-                plan.getDataTypes().get(i).get(0),
-                plan.getEncodings().get(i).get(0),
-                plan.getCompressors().get(i));
-      }
+      IMeasurementSchema curSchema =
+          new UnaryMeasurementSchema(
+              plan.getSchemaNames().get(i),
+              plan.getDataTypes().get(i).get(0),
+              plan.getEncodings().get(i).get(0),
+              plan.getCompressors().get(i));
 
       String path = plan.getSchemaNames().get(i);
       if (schemaMap.containsKey(path)) {
@@ -110,71 +84,46 @@ public class Template {
     this.schemaMap = schemaMap;
   }
 
-  /**
-   * check whether a timeseries path is compatible with this template
-   *
-   * @param path timeseries path
-   * @return whether we can create this new timeseries (whether it's compatible with this template)
-   */
-  public boolean isCompatible(PartialPath path) {
-    return !(schemaMap.containsKey(path.getMeasurement())
-        || schemaMap.containsKey(path.getDevicePath().getMeasurement()));
-  }
-
   public boolean hasSchema(String measurementId) {
     return schemaMap.containsKey(measurementId);
   }
 
-  public List<IMeasurementMNode> getMeasurementMNode() {
-    Set<IMeasurementSchema> deduplicateSchema = new HashSet<>();
-    List<IMeasurementMNode> res = new ArrayList<>();
-
-    for (IMeasurementSchema measurementSchema : schemaMap.values()) {
-      if (deduplicateSchema.add(measurementSchema)) {
-        IMeasurementMNode measurementMNode = null;
-        if (measurementSchema instanceof UnaryMeasurementSchema) {
-          measurementMNode =
-              MeasurementMNode.getMeasurementMNode(
-                  null, measurementSchema.getMeasurementId(), measurementSchema, null);
-
-        } else if (measurementSchema instanceof VectorMeasurementSchema) {
-          measurementMNode =
-              MeasurementMNode.getMeasurementMNode(
-                  null,
-                  getMeasurementNodeName(measurementSchema.getMeasurementId()),
-                  measurementSchema,
-                  null);
-        }
-
-        res.add(measurementMNode);
-      }
-    }
-
-    return res;
+  public IMeasurementSchema getSchema(String measurementId) {
+    return schemaMap.get(measurementId);
   }
 
-  public String getMeasurementNodeName(String measurementName) {
-    return schemaMap.get(measurementName).getMeasurementId();
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+    SerializeUtils.serialize(name, dataOutputStream);
+    try {
+      dataOutputStream.writeInt(schemaMap.size());
+      for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
+        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        entry.getValue().partialSerializeTo(dataOutputStream);
+      }
+    } catch (IOException e) {
+      // unreachable
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
-  /**
-   * get all path in this template (to support aligned by device query)
-   *
-   * @return a hash map looks like below {vector -> [s1, s2, s3] normal_timeseries -> []}
-   */
-  public HashMap<String, List<String>> getAllPath() {
-    HashMap<String, List<String>> res = new HashMap<>();
-    for (Map.Entry<String, IMeasurementSchema> schemaEntry : schemaMap.entrySet()) {
-      if (schemaEntry.getValue() instanceof VectorMeasurementSchema) {
-        VectorMeasurementSchema vectorMeasurementSchema =
-            (VectorMeasurementSchema) schemaEntry.getValue();
-        res.put(schemaEntry.getKey(), vectorMeasurementSchema.getSubMeasurementsList());
-      } else {
-        res.put(schemaEntry.getKey(), new ArrayList<>());
+  public void deserialize(ByteBuffer buffer) {
+    name = SerializeUtils.deserializeString(buffer);
+    int schemaSize = buffer.getInt();
+    schemaMap = new HashMap<>(schemaSize);
+    for (int i = 0; i < schemaSize; i++) {
+      String schemaName = SerializeUtils.deserializeString(buffer);
+      byte flag = ReadWriteIOUtils.readByte(buffer);
+      IMeasurementSchema measurementSchema = null;
+      if (flag == (byte) 0) {
+        measurementSchema = UnaryMeasurementSchema.partialDeserializeFrom(buffer);
+      } else if (flag == (byte) 1) {
+        measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }
+      schemaMap.put(schemaName, measurementSchema);
     }
-
-    return res;
   }
 
   @Override

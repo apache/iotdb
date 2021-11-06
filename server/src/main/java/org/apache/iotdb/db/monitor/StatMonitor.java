@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.monitor.MonitorConstants.StatMeasurementConstants;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -186,7 +186,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   private PartialPath getStorageGroupMonitorSeries(String storageGroupName) {
     String[] monitorSeries = Arrays.copyOf(MonitorConstants.STAT_STORAGE_GROUP_ARRAY, 4);
-    monitorSeries[2] = "\"" + storageGroupName + "\"";
+    monitorSeries[2] = "\"" + storageGroupName.replace('.', '#') + "\"";
     monitorSeries[3] = StatMeasurementConstants.TOTAL_POINTS.getMeasurement();
     return new PartialPath(monitorSeries);
   }

@@ -38,7 +38,5 @@ public interface ITimeSeriesMetadata {
 
   List<IChunkMetadata> loadChunkMetadataList() throws IOException;
 
-  List<IChunkMetadata> getChunkMetadataList();
-
   void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader);
 }

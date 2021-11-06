@@ -31,8 +31,8 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -191,10 +191,6 @@ public class LogReplayer {
     }
     // set measurementMNodes, WAL already serializes the real data type, so no need to infer type
     plan.setMeasurementMNodes(mNodes);
-
-    if (plan.isAligned()) {
-      plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
-    }
     // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
@@ -214,20 +210,11 @@ public class LogReplayer {
                 tPlan.getPrefixPath().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
-      } else if (!tPlan.isAligned() && mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
+      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
         tPlan.markFailedMeasurementInsertion(
             i,
             new DataTypeMismatchException(
                 mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
-      } else if (tPlan.isAligned()
-          && mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)
-              != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(
-            i,
-            new DataTypeMismatchException(
-                mNodes[i].getName() + "." + mNodes[i].getSchema().getSubMeasurementsList().get(i),
-                tPlan.getDataTypes()[i],
-                mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)));
       }
     }
   }

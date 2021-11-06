@@ -56,9 +56,8 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -83,7 +82,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -118,6 +116,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -533,6 +532,7 @@ public class StorageGroupProcessor {
   }
 
   private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
+    // search compaction log for SizeTieredCompaction
     List<String> dirs;
     if (isSequence) {
       dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
@@ -574,6 +574,26 @@ public class StorageGroupProcessor {
               .call();
         }
       }
+    }
+
+    // search compaction log for old LevelCompaction
+    File logFile =
+        FSFactoryProducer.getFSFactory()
+            .getFile(
+                storageGroupSysDir.getAbsolutePath(),
+                logicalStorageGroupName + COMPACTION_LOG_NAME);
+    if (logFile.exists()) {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getInnerCompactionStrategy()
+          .getCompactionRecoverTask(
+              tsFileManager.getStorageGroupName(),
+              tsFileManager.getVirtualStorageGroup(),
+              -1,
+              logFile,
+              logFile.getParent(),
+              isSequence)
+          .call();
     }
   }
 
@@ -744,7 +764,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
+  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) throws IOException {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -759,7 +779,7 @@ public class StorageGroupProcessor {
               isSeq,
               i == tsFiles.size() - 1);
 
-      RestorableTsFileIOWriter writer;
+      RestorableTsFileIOWriter writer = null;
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (TsFileResource.getInnerCompactionCount(tsFileResource.getTsFile().getName()) > 0) {
@@ -841,6 +861,10 @@ public class StorageGroupProcessor {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;
+      } finally {
+        if (writer != null) {
+          writer.close();
+        }
       }
     }
   }
@@ -1106,38 +1130,16 @@ public class StorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        if (plan.isAligned()) {
-          IoTDB.metaManager.updateLastCache(
-              new VectorPartialPath(plan.getPrefixPath(), plan.getMeasurements()[i]),
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        } else {
-          IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        }
+        IoTDB.metaManager.updateLastCache(
+            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+            plan.composeLastTimeValuePair(i),
+            true,
+            latestFlushedTime);
       } else {
-        if (plan.isAligned()) {
-          // vector lastCache update need subMeasurement
-          IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsMultiMeasurementMNode(),
-              plan.getMeasurements()[i],
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-
-        } else {
-          // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
-          // update last cache
-          IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsUnaryMeasurementMNode(),
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        }
+        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
+        // update last cache
+        IoTDB.metaManager.updateLastCache(
+            mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     }
   }
@@ -1185,37 +1187,16 @@ public class StorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        if (plan.isAligned()) {
-          IoTDB.metaManager.updateLastCache(
-              new VectorPartialPath(plan.getPrefixPath(), plan.getMeasurements()[i]),
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        } else {
-          IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        }
+        IoTDB.metaManager.updateLastCache(
+            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+            plan.composeTimeValuePair(i),
+            true,
+            latestFlushedTime);
       } else {
-        if (plan.isAligned()) {
-          // vector lastCache update need subSensor path
-          IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsMultiMeasurementMNode(),
-              plan.getMeasurements()[i],
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        } else {
-          // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
-          // update last cache
-          IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsUnaryMeasurementMNode(),
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        }
+        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
+        // update last cache
+        IoTDB.metaManager.updateLastCache(
+            mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     }
   }
@@ -1834,8 +1815,6 @@ public class StorageGroupProcessor {
           (timeFilter == null ? "null" : timeFilter));
     }
 
-    IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
-
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long ttlLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
@@ -1866,7 +1845,7 @@ public class StorageGroupProcessor {
         } else {
           tsFileResource
               .getUnsealedFileProcessor()
-              .query(deviceId, fullPath.getMeasurement(), schema, context, tsfileResourcesForQuery);
+              .query(fullPath, context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);

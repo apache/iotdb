@@ -23,8 +23,6 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,25 +30,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.junit.Test;
 
-public class VectorChunkWriterImplTest {
+public class AlignedChunkWriterImplTest {
 
   @Test
   public void testWrite1() {
     VectorMeasurementSchemaStub measurementSchema = new VectorMeasurementSchemaStub();
-    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
-    for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
-      measurementSchemaList.add(
-          new UnaryMeasurementSchema(
-              measurementSchema.getSubMeasurementsList().get(i),
-              measurementSchema.getSubMeasurementsTSDataTypeList().get(i),
-              measurementSchema.getSubMeasurementsTSEncodingList().get(i)));
-    }
-    VectorChunkWriterImpl chunkWriter = new VectorChunkWriterImpl(measurementSchemaList);
+    AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(measurementSchema);
 
     for (int time = 1; time <= 20; time++) {
       chunkWriter.write(time, (float) time, false);
@@ -117,15 +105,7 @@ public class VectorChunkWriterImplTest {
   @Test
   public void testWrite2() {
     VectorMeasurementSchemaStub measurementSchema = new VectorMeasurementSchemaStub();
-    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
-    for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
-      measurementSchemaList.add(
-          new UnaryMeasurementSchema(
-              measurementSchema.getSubMeasurementsList().get(i),
-              measurementSchema.getSubMeasurementsTSDataTypeList().get(i),
-              measurementSchema.getSubMeasurementsTSEncodingList().get(i)));
-    }
-    VectorChunkWriterImpl chunkWriter = new VectorChunkWriterImpl(measurementSchemaList);
+    AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(measurementSchema);
 
     for (int time = 1; time <= 20; time++) {
       chunkWriter.write(time, (float) time, false);

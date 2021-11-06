@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;

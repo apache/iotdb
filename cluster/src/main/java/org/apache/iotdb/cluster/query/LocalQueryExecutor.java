@@ -46,7 +46,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -749,8 +750,8 @@ public class LocalQueryExecutor {
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
-        List<PartialPath> path =
-            getCMManager().getFlatMeasurementPaths(new PartialPath(seriesPath));
+        List<MeasurementPath> path =
+            getCMManager().getMeasurementPaths(new PartialPath(seriesPath));
         if (path.size() != 1) {
           throw new MetadataException(
               String.format("Timeseries number of the name [%s] is not 1.", seriesPath));

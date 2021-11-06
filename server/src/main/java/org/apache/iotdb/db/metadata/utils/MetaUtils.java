@@ -21,12 +21,16 @@ package org.apache.iotdb.db.metadata.utils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -54,33 +58,10 @@ public class MetaUtils {
         if (startIndex == path.length()) {
           throw new IllegalPathException(path);
         }
-      } else if (path.charAt(i) == '"') {
-        int endIndex = path.indexOf('"', i + 1);
-        // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-          endIndex = path.indexOf('"', endIndex + 1);
-        }
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
-          String node = path.substring(startIndex, endIndex + 1);
-          if (node.isEmpty()) {
-            throw new IllegalPathException(path);
-          }
-          nodes.add(node);
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
-          throw new IllegalPathException(path);
-        }
-      } else if (path.charAt(i) == '\'') {
-        throw new IllegalPathException(path);
       }
     }
     if (startIndex <= path.length() - 1) {
-      String node = path.substring(startIndex);
-      if (node.isEmpty()) {
-        throw new IllegalPathException(path);
-      }
-      nodes.add(node);
+      nodes.add(path.substring(startIndex));
     }
     return nodes.toArray(new String[0]);
   }
@@ -102,6 +83,36 @@ public class MetaUtils {
     String[] storageGroupNodes = new String[level + 1];
     System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
     return new PartialPath(storageGroupNodes);
+  }
+
+  /**
+   * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
+   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
+   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   *
+   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
+   *     series.
+   * @return Size of partial path list could NOT equal to the input list size. For example, the
+   *     vector1 (s1,s2) would be returned once.
+   */
+  public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
+    List<PartialPath> result = new LinkedList<>();
+    Map<String, AlignedPath> alignedEntityToPath = new HashMap<>();
+    for (PartialPath path : fullPaths) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result.add(measurementPath);
+      } else {
+        String entity = measurementPath.getDevice();
+        if (!alignedEntityToPath.containsKey(entity)) {
+          alignedEntityToPath.put(entity, new AlignedPath(measurementPath));
+        } else {
+          alignedEntityToPath.get(entity).addMeasurement(measurementPath);
+        }
+      }
+    }
+    result.addAll(alignedEntityToPath.values());
+    return result;
   }
 
   @TestOnly

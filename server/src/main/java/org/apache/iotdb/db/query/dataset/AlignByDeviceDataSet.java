@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.dataset;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
@@ -264,7 +264,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         return fullPath;
       } else {
         String vectorPath = fullPath.getDevice();
-        return new VectorPartialPath(vectorPath, fullPath.getMeasurement());
+        return new AlignedPath(vectorPath, fullPath.getMeasurement());
       }
     } catch (MetadataException e) {
       throw new IOException("Cannot get node from " + device, e);

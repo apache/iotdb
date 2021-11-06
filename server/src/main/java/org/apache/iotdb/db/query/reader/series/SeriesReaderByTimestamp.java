@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,16 +48,8 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     UnaryFilter timeFilter =
         ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
     this.seriesReader =
-        new SeriesReader(
-            seriesPath,
-            allSensors,
-            dataType,
-            context,
-            dataSource,
-            timeFilter,
-            null,
-            fileFilter,
-            ascending);
+        seriesPath.createSeriesReader(
+            allSensors, dataType, context, dataSource, timeFilter, null, fileFilter, ascending);
     this.ascending = ascending;
   }
 

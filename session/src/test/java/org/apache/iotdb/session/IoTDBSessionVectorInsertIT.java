@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -265,11 +265,8 @@ public class IoTDBSessionVectorInsertIT {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
@@ -290,7 +287,7 @@ public class IoTDBSessionVectorInsertIT {
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
+      session.insertAlignedTablet(tablet);
       tablet.reset();
     }
   }

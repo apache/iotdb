@@ -23,9 +23,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -340,11 +340,7 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(DataOutputStream stream) throws IOException {
     stream.writeLong(time);
-    if (isAligned && originalPrefixPath != null) {
-      putString(stream, originalPrefixPath.getFullPath());
-    } else {
-      putString(stream, prefixPath.getFullPath());
-    }
+    putString(stream, prefixPath.getFullPath());
     serializeMeasurementsAndValues(stream);
   }
 
@@ -495,11 +491,7 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(ByteBuffer buffer) {
     buffer.putLong(time);
-    if (isAligned && originalPrefixPath != null) {
-      putString(buffer, originalPrefixPath.getFullPath());
-    } else {
-      putString(buffer, prefixPath.getFullPath());
-    }
+    putString(buffer, prefixPath.getFullPath());
     serializeMeasurementsAndValues(buffer);
   }
 

@@ -116,6 +116,10 @@ public class Tablet {
     this.prefixPath = prefixPath;
   }
 
+  public void setSchemas(List<IMeasurementSchema> schemas) {
+    this.schemas = schemas;
+  }
+
   public void addTimestamp(int rowIndex, long timestamp) {
     timestamps[rowIndex] = timestamp;
   }

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -136,7 +136,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
     ResultColumn resultColumn = resultColumns.get(pathIndex);
-    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getExactFullPath();
+    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getFullPath();
   }
 
   public String getColumnForDisplay(String columnForReader, int pathIndex) {

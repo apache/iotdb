@@ -29,16 +29,16 @@ set JMX_IP="127.0.0.1"
 
 if %JMX_LOCAL% == "false" (
   echo "setting remote JMX..."
-  #you may have no permission to run chmod. If so, contact your system administrator.
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.port=%JMX_PORT%"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.rmi.port=%JMX_PORT%"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Djava.rmi.server.randomIDs=true"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.ssl=false"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.authenticate=true"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.password.file=%IOTDB_CONF%\jmx.password"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.access.file=%IOTDB_CONF%\jmx.access"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Djava.rmi.server.hostname=%JMX_IP%"
+  @REM you may have no permission to run chmod. If so, contact your system administrator.
+  set IOTDB_JMX_OPTS=-Dcom.sun.management.jmxremote^
+  -Dcom.sun.management.jmxremote.port=%JMX_PORT%^
+  -Dcom.sun.management.jmxremote.rmi.port=%JMX_PORT%^
+  -Djava.rmi.server.randomIDs=true^
+  -Dcom.sun.management.jmxremote.ssl=false^
+  -Dcom.sun.management.jmxremote.authenticate=false^
+  -Dcom.sun.management.jmxremote.password.file=%IOTDB_CONF%\jmx.password^
+  -Dcom.sun.management.jmxremote.access.file=%IOTDB_CONF%\jmx.access^
+  -Djava.rmi.server.hostname=%JMX_IP%
 ) else (
   echo "setting local JMX..."
 )

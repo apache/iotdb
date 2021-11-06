@@ -20,8 +20,8 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -129,8 +129,8 @@ public class RawDataQueryPlan extends QueryPlan {
           Set<String> set =
               deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
           set.add(path.getMeasurement());
-          if (path instanceof VectorPartialPath) {
-            set.addAll(((VectorPartialPath) path).getSubSensorsList());
+          if (path instanceof AlignedPath) {
+            set.addAll(((AlignedPath) path).getMeasurementList());
           }
         });
     this.deduplicatedPaths = deduplicatedPaths;

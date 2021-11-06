@@ -23,7 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -33,6 +34,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 /** Removes wildcards (applying memory control and slimit/soffset control) */
@@ -58,8 +60,8 @@ public class WildcardsRemover {
 
   public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {
     try {
-      Pair<List<PartialPath>, Integer> pair =
-          IoTDB.metaManager.getFlatMeasurementPathsWithAlias(path, currentLimit, currentOffset);
+      Pair<List<MeasurementPath>, Integer> pair =
+          IoTDB.metaManager.getMeasurementPathsWithAlias(path, currentLimit, currentOffset);
 
       consumed += pair.right;
       if (currentOffset != 0) {
@@ -72,7 +74,8 @@ public class WildcardsRemover {
         currentLimit -= pair.right;
       }
 
-      return pair.left;
+      // todo eliminate this transform
+      return new LinkedList<>(pair.left);
     } catch (MetadataException e) {
       throw new LogicalOptimizeException("error occurred when removing star: " + e.getMessage());
     }

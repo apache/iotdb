@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -160,11 +160,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(DataOutputStream stream) throws IOException {
-    if (isAligned && originalPrefixPath != null) {
-      putString(stream, originalPrefixPath.getFullPath());
-    } else {
-      putString(stream, prefixPath.getFullPath());
-    }
+    putString(stream, prefixPath.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -258,11 +254,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(ByteBuffer buffer) {
-    if (isAligned && originalPrefixPath != null) {
-      putString(buffer, originalPrefixPath.getFullPath());
-    } else {
-      putString(buffer, prefixPath.getFullPath());
-    }
+    putString(buffer, prefixPath.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);

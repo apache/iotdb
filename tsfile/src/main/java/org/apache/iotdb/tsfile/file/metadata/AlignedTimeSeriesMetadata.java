@@ -25,14 +25,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
+public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
 
   // TimeSeriesMetadata for time column
   private final TimeseriesMetadata timeseriesMetadata;
   // TimeSeriesMetadata for all subSensors in the vector
   private final List<TimeseriesMetadata> valueTimeseriesMetadataList;
 
-  public VectorTimeSeriesMetadata(
+  public AlignedTimeSeriesMetadata(
       TimeseriesMetadata timeseriesMetadata, List<TimeseriesMetadata> valueTimeseriesMetadataList) {
     this.timeseriesMetadata = timeseriesMetadata;
     this.valueTimeseriesMetadataList = valueTimeseriesMetadataList;
@@ -95,25 +95,26 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
       List<IChunkMetadata> timeChunkMetadata = timeseriesMetadata.loadChunkMetadataList();
       List<List<IChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
       for (TimeseriesMetadata metadata : valueTimeseriesMetadataList) {
-        valueChunkMetadataList.add(metadata.loadChunkMetadataList());
+        valueChunkMetadataList.add(metadata == null ? null : metadata.loadChunkMetadataList());
       }
 
       List<IChunkMetadata> res = new ArrayList<>();
 
       for (int i = 0; i < timeChunkMetadata.size(); i++) {
         List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+        // only at least one sensor exits, we add the AlignedChunkMetadata to the list
+        boolean exits = false;
         for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-          chunkMetadataList.add(chunkMetadata.get(i));
+          IChunkMetadata v = chunkMetadata == null ? null : chunkMetadata.get(i);
+          exits = (exits || v != null);
+          chunkMetadataList.add(v);
         }
-        res.add(new VectorChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+        if (exits) {
+          res.add(new AlignedChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+        }
       }
       return res;
     }
-  }
-
-  @Override
-  public List<IChunkMetadata> getChunkMetadataList() {
-    return null;
   }
 
   @Override

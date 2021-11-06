@@ -29,14 +29,14 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VectorChunkMetadata implements IChunkMetadata {
+public class AlignedChunkMetadata implements IChunkMetadata {
 
   // ChunkMetadata for time column
   private final IChunkMetadata timeChunkMetadata;
   // ChunkMetadata for all subSensors in the vector
   private final List<IChunkMetadata> valueChunkMetadataList;
 
-  public VectorChunkMetadata(
+  public AlignedChunkMetadata(
       IChunkMetadata timeChunkMetadata, List<IChunkMetadata> valueChunkMetadataList) {
     this.timeChunkMetadata = timeChunkMetadata;
     this.valueChunkMetadataList = valueChunkMetadataList;
@@ -176,16 +176,6 @@ public class VectorChunkMetadata implements IChunkMetadata {
     return 0;
   }
 
-  @Override
-  public boolean isTimeColumn() {
-    return false;
-  }
-
-  @Override
-  public boolean isValueColumn() {
-    return false;
-  }
-
   public Chunk getTimeChunk() throws IOException {
     return timeChunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) timeChunkMetadata);
   }
@@ -193,7 +183,10 @@ public class VectorChunkMetadata implements IChunkMetadata {
   public List<Chunk> getValueChunkList() throws IOException {
     List<Chunk> valueChunkList = new ArrayList<>();
     for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      valueChunkList.add(chunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) chunkMetadata));
+      valueChunkList.add(
+          chunkMetadata == null
+              ? null
+              : chunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) chunkMetadata));
     }
     return valueChunkList;
   }

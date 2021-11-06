@@ -40,7 +40,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   private final String deviceId;
 
   /** Map(measurementID, ChunkWriterImpl). Aligned measurementId is empty. */
-  private Map<String, IChunkWriter> chunkWriters = new LinkedHashMap<>();
+  private Map<String, ChunkWriterImpl> chunkWriters = new LinkedHashMap<>();
 
   private Map<String, Long> lastTimeMap = new HashMap<>();
 
@@ -103,34 +103,22 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
         }
         switch (timeseries.get(column).getType()) {
           case INT32:
-            chunkWriters
-                .get(measurementId)
-                .write(time, ((int[]) tablet.values[column])[row], isNull);
+            chunkWriters.get(measurementId).write(time, ((int[]) tablet.values[column])[row]);
             break;
           case INT64:
-            chunkWriters
-                .get(measurementId)
-                .write(time, ((long[]) tablet.values[column])[row], isNull);
+            chunkWriters.get(measurementId).write(time, ((long[]) tablet.values[column])[row]);
             break;
           case FLOAT:
-            chunkWriters
-                .get(measurementId)
-                .write(time, ((float[]) tablet.values[column])[row], isNull);
+            chunkWriters.get(measurementId).write(time, ((float[]) tablet.values[column])[row]);
             break;
           case DOUBLE:
-            chunkWriters
-                .get(measurementId)
-                .write(time, ((double[]) tablet.values[column])[row], isNull);
+            chunkWriters.get(measurementId).write(time, ((double[]) tablet.values[column])[row]);
             break;
           case BOOLEAN:
-            chunkWriters
-                .get(measurementId)
-                .write(time, ((boolean[]) tablet.values[column])[row], isNull);
+            chunkWriters.get(measurementId).write(time, ((boolean[]) tablet.values[column])[row]);
             break;
           case TEXT:
-            chunkWriters
-                .get(measurementId)
-                .write(time, ((Binary[]) tablet.values[column])[row], isNull);
+            chunkWriters.get(measurementId).write(time, ((Binary[]) tablet.values[column])[row]);
             break;
           default:
             throw new UnSupportedDataTypeException(

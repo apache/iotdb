@@ -178,18 +178,18 @@ public class IoTDBAuthorizationIT {
     adminStmt.execute(
         "create timeseries root.ln.wf03.wt03.software with datatype=DOUBLE,encoding=PLAIN");
     adminStmt.execute(
-        "create trigger started-trigger before insert on root.ln.wf01.wt01.temperature as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+        "create trigger `started-trigger` before insert on root.ln.wf01.wt01.temperature as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     adminStmt.execute(
-        "create trigger stopped-trigger after insert on root.ln.wf02.wt02.hardware as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-    adminStmt.execute("stop trigger stopped-trigger");
+        "create trigger `stopped-trigger` after insert on root.ln.wf02.wt02.hardware as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+    adminStmt.execute("stop trigger `stopped-trigger`");
   }
 
   private static void executeTriggerRelatedPrivilegesTests(Statement userStmt) throws SQLException {
     String[] statements = {
       "create trigger magic before insert on root.ln.wf03.wt03.software as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'",
-      "stop trigger started-trigger",
-      "drop trigger started-trigger",
-      "start trigger stopped-trigger",
+      "stop trigger `started-trigger`",
+      "drop trigger `started-trigger`",
+      "start trigger `stopped-trigger`",
     };
     for (String statement : statements) {
       try {

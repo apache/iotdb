@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +80,7 @@ public class MetaFormatUtils {
 
   /** check whether the node name uses "." correctly */
   private static void checkNameFormat(String name) throws MetadataException {
-    if (name.contains(".") && !(name.startsWith("\"") && name.endsWith("\""))) {
+    if (name.contains(".")) {
       throw new MetadataException(String.format("%s is an illegal name.", name));
     }
   }

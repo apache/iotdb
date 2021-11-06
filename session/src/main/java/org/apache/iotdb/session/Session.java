@@ -1406,12 +1406,7 @@ public class Session {
    */
   public void insertTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
-    try {
-      getSessionConnection(tablet.prefixPath).insertTablet(request);
-    } catch (RedirectException e) {
-      handleRedirection(tablet.prefixPath, e.getEndPoint());
-    }
+    insertTablet(tablet, false);
   }
 
   /**
@@ -1430,6 +1425,34 @@ public class Session {
     }
   }
 
+  /**
+   * insert the aligned timeseries data of a device. For each timestamp, the number of measurements
+   * is the same.
+   *
+   * <p>a Tablet example: device1 time s1, s2, s3 1, 1, 1, 1 2, 2, 2, 2 3, 3, 3, 3
+   *
+   * <p>times in Tablet may be not in ascending order
+   *
+   * @param tablet data batch
+   */
+  public void insertAlignedTablet(Tablet tablet)
+      throws StatementExecutionException, IoTDBConnectionException {
+    tablet.setAligned(true);
+    insertTablet(tablet);
+  }
+
+  /**
+   * insert the aligned timeseries data of a device.
+   *
+   * @param tablet data batch
+   * @param sorted whether times in Tablet are in ascending order
+   */
+  public void insertAlignedTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
+    insertTablet(tablet, sorted);
+  }
+
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
       throws BatchExecutionException {
     if (sorted) {
@@ -1440,27 +1463,13 @@ public class Session {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    if (tablet.isAligned()) {
-      if (tablet.getSchemas().size() > 1) {
-        throw new BatchExecutionException("One tablet should only contain one aligned timeseries!");
-      }
-      request.setIsAligned(true);
-      IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
-      request.setPrefixPath(tablet.prefixPath);
-      int measurementsSize = measurementSchema.getSubMeasurementsList().size();
-      for (int i = 0; i < measurementsSize; i++) {
-        request.addToMeasurements(measurementSchema.getSubMeasurementsList().get(i));
-        request.addToTypes(measurementSchema.getSubMeasurementsTSDataTypeList().get(i).ordinal());
-      }
-      request.setIsAligned(true);
-    } else {
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.setPrefixPath(tablet.prefixPath);
-        request.addToMeasurements(measurementSchema.getMeasurementId());
-        request.addToTypes(measurementSchema.getType().ordinal());
-        request.setIsAligned(tablet.isAligned());
-      }
+    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
     }
+
+    request.setPrefixPath(tablet.prefixPath);
+    request.setIsAligned(tablet.isAligned());
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
     request.setSize(tablet.rowSize);
@@ -1499,6 +1508,37 @@ public class Session {
         // ignored
       }
     }
+  }
+
+  /**
+   * insert aligned data of several deivces. Given a deivce, for each timestamp, the number of
+   * measurements is the same.
+   *
+   * <p>Times in each Tablet may not be in ascending order
+   *
+   * @param tablets data batch in multiple device
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
+    insertTablets(tablets, false);
+  }
+
+  /**
+   * insert aligned data of several devices. Given a device, for each timestamp, the number of
+   * measurements is the same.
+   *
+   * @param tablets data batch in multiple device
+   * @param sorted whether times in each Tablet are in ascending order
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
+    insertTablets(tablets, sorted);
   }
 
   private void insertTabletsWithLeaderCache(Map<String, Tablet> tablets, boolean sorted)

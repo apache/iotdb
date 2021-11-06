@@ -554,8 +554,10 @@ public class ReadWriteIOUtils {
   /** string length's type is varInt */
   public static String readVarIntString(InputStream inputStream) throws IOException {
     int strLength = ReadWriteForEncodingUtils.readVarInt(inputStream);
-    if (strLength <= 0) {
+    if (strLength < 0) {
       return null;
+    } else if (strLength == 0) {
+      return "";
     }
     byte[] bytes = new byte[strLength];
     int readLen = inputStream.read(bytes, 0, strLength);
