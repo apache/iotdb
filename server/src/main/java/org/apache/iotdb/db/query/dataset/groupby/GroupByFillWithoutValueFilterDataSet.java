@@ -42,6 +42,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,6 +55,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFilterDataSet {
+
+  private static final Logger logger =
+      LoggerFactory.getLogger(GroupByFillWithoutValueFilterDataSet.class);
 
   private Map<TSDataType, IFill> fillTypes;
   private final List<PartialPath> deduplicatedPaths;

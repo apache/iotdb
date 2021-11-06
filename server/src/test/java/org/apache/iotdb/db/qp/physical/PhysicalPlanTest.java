@@ -73,7 +73,6 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

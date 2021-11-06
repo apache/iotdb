@@ -78,7 +78,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   protected Pair<Long, Long> getLastTimeRange() {
-    long retStartTime, retEndTime;
+    long retStartTime;
+    long retEndTime;
     long queryRange = endTime - startTime;
     long intervalNum;
 

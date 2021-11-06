@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
-  protected static final Logger logger =
+  private static final Logger logger =
       LoggerFactory.getLogger(GroupByWithoutValueFilterDataSet.class);
 
   protected Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
