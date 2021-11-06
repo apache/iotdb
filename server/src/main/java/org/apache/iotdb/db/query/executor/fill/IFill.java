@@ -95,9 +95,9 @@ public abstract class IFill {
 
   public boolean insideAfterRange(long next, long startTime) {
     if (isAfterByMonth) {
-      return next < slideMonth(startTime, (int) (afterRange / GroupByEngineDataSet.MS_TO_MONTH));
+      return next <= slideMonth(startTime, (int) (afterRange / GroupByEngineDataSet.MS_TO_MONTH));
     } else {
-      return next < startTime + afterRange;
+      return next <= startTime + afterRange;
     }
   }
 

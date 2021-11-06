@@ -87,7 +87,6 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
   // the next query time range of each path
   private long[] queryStartTimes;
   private long[] queryEndTimes;
-  private long[] queryIntervalTimes;
   private boolean[] hasCachedQueryInterval;
 
   public GroupByFillWithoutValueFilterDataSet(
@@ -135,12 +134,10 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
 
     queryStartTimes = new long[paths.size()];
     queryEndTimes = new long[paths.size()];
-    queryIntervalTimes = new long[paths.size()];
     hasCachedQueryInterval = new boolean[paths.size()];
     resultDataType = new TSDataType[aggregations.size()];
     Arrays.fill(queryStartTimes, curStartTime);
     Arrays.fill(queryEndTimes, curEndTime);
-    Arrays.fill(queryIntervalTimes, intervalTimes);
     Arrays.fill(hasCachedQueryInterval, true);
     for (PartialPath deduplicatedPath : deduplicatedPaths) {
       List<Integer> indexes = resultIndexes.get(deduplicatedPath);
@@ -230,10 +227,10 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       long extraStartTime, intervalNum;
       if (isSlidingStepByMonth) {
         intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep * MS_TO_MONTH));
-        extraStartTime = calcIntervalByMonth(intervalNum * slidingStep);
+        extraStartTime = calcIntervalByMonth(startTime, intervalNum * slidingStep);
         while (extraStartTime < minQueryStartTime) {
           intervalNum += 1;
-          extraStartTime = calcIntervalByMonth(intervalNum * slidingStep);
+          extraStartTime = calcIntervalByMonth(startTime, intervalNum * slidingStep);
         }
       } else {
         intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
@@ -247,7 +244,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
     if (maxQueryEndTime > Long.MIN_VALUE) {
       extraNextExecutors = new HashMap<>();
       Pair<Long, Long> lastTimeRange = getLastTimeRange();
-      lastTimeRange = getNextTimeRange(lastTimeRange.left, true, intervalTimes + 1, false);
+      lastTimeRange = getNextTimeRange(lastTimeRange.left, true, false);
       Filter timeFilter =
           new GroupByFilter(interval, slidingStep, lastTimeRange.left, maxQueryEndTime);
       getGroupByExecutors(extraNextExecutors, context, groupByTimeFillPlan, timeFilter, true);
@@ -298,7 +295,6 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       GroupByExecutor executor = extraExecutors.get(deduplicatedPaths.get(pathId));
       List<Integer> Indexes = resultIndexes.get(deduplicatedPaths.get(pathId));
 
-      long intervalNums = intervalTimes + (isExtraPrevious ? -1 : 1);
       Pair<Long, Long> extraTimeRange;
       if (isExtraPrevious) {
         extraTimeRange = getFirstTimeRange();
@@ -306,7 +302,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
         extraTimeRange = getLastTimeRange();
       }
 
-      extraTimeRange = getNextTimeRange(extraTimeRange.left, !isExtraPrevious, intervalNums, false);
+      extraTimeRange = getNextTimeRange(extraTimeRange.left, !isExtraPrevious, false);
       try {
         while (pathHasExtra(pathId, isExtraPrevious, extraTimeRange.left)) {
           List<AggregateResult> aggregations =
@@ -322,9 +318,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
             }
           }
 
-          intervalNums += isExtraPrevious ? -1 : 1;
-          extraTimeRange =
-              getNextTimeRange(extraTimeRange.left, !isExtraPrevious, intervalNums, false);
+          extraTimeRange = getNextTimeRange(extraTimeRange.left, !isExtraPrevious, false);
         }
       } catch (IOException e) {
         throw new QueryProcessException(e.getMessage());
@@ -338,12 +332,8 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       return true;
     }
 
-    // for group by natural months addition
-    queryIntervalTimes[pathId] += ascending ? 1 : -1;
-
     // find the next aggregation interval
-    Pair<Long, Long> nextTimeRange =
-        getNextTimeRange(queryStartTimes[pathId], ascending, queryIntervalTimes[pathId], true);
+    Pair<Long, Long> nextTimeRange = getNextTimeRange(queryStartTimes[pathId], ascending, true);
     if (nextTimeRange == null) {
       return false;
     }

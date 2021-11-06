@@ -75,11 +75,26 @@ public class LinearFill extends IFill {
     this.afterRange = afterRange;
   }
 
+  public LinearFill(
+      TSDataType dataType,
+      long queryTime,
+      long beforeRange,
+      long afterRange,
+      boolean isBeforeByMonth,
+      boolean isAfterByMonth) {
+    super(dataType, queryTime);
+    this.beforeRange = beforeRange;
+    this.afterRange = afterRange;
+    this.isBeforeByMonth = isBeforeByMonth;
+    this.isAfterByMonth = isAfterByMonth;
+  }
+
   public LinearFill() {}
 
   @Override
   public IFill copy() {
-    return new LinearFill(dataType, queryStartTime, beforeRange, afterRange);
+    return new LinearFill(
+        dataType, queryStartTime, beforeRange, afterRange, isBeforeByMonth, isAfterByMonth);
   }
 
   @Override

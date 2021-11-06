@@ -44,7 +44,7 @@ public class PreviousFill extends IFill {
   private boolean untilLast;
 
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
-    this(dataType, queryTime, beforeRange, false);
+    this(dataType, queryTime, beforeRange, false, false);
   }
 
   public PreviousFill(long beforeRange) {
@@ -68,15 +68,21 @@ public class PreviousFill extends IFill {
     }
   }
 
-  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange, boolean untilLast) {
-    super(dataType, queryTime);
+  public PreviousFill(
+      TSDataType dataType,
+      long queryStartTime,
+      long beforeRange,
+      boolean untilLast,
+      boolean isBeforeByMonth) {
+    super(dataType, queryStartTime);
     this.beforeRange = beforeRange;
     this.untilLast = untilLast;
+    this.isBeforeByMonth = isBeforeByMonth;
   }
 
   @Override
   public IFill copy() {
-    return new PreviousFill(dataType, queryStartTime, beforeRange, untilLast);
+    return new PreviousFill(dataType, queryStartTime, beforeRange, untilLast, isBeforeByMonth);
   }
 
   @Override
