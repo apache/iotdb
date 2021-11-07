@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
@@ -37,8 +31,16 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   private static final Logger LOG = LoggerFactory.getLogger(ChunkGroupWriterImpl.class);
@@ -103,9 +105,8 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
       return 0;
     }
     for (DataPoint point : data) {
-      // point.writeTo(time, vectorChunkWriter); // only write value to valuePage
       writenMeasurementSet.add(point.getMeasurementId());
-      boolean isNull = point.getValue() == null; // Todo:bug
+      boolean isNull = point.getValue() == null;
       ValueChunkWriter valueChunkWriter = valueChunkWriterMap.get(point.getMeasurementId());
       switch (point.getType()) {
         case BOOLEAN:
@@ -203,7 +204,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     // make sure all the pages have been compressed into buffers, so that we can get correct
     // groupWriter.getCurrentChunkGroupSize().
     sealAllChunks();
-    long currentChunkGroupSize = getCurrentChunkGroupSize(); // Todo:bug，若是乱序时间，则不应该计入
+    long currentChunkGroupSize = getCurrentChunkGroupSize();
     timeChunkWriter.writeToFileWriter(tsfileWriter);
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterMap.values()) {
       valueChunkWriter.writeToFileWriter(tsfileWriter);
@@ -223,26 +224,19 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   @Override
   public long getCurrentChunkGroupSize() {
     long size = timeChunkWriter.getCurrentChunkSize();
-    System.out.println("TimeChunk size is " + size);
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterMap.values()) {
-      System.out.println("ValueChunk size is " + valueChunkWriter.getCurrentChunkSize());
       size += valueChunkWriter.getCurrentChunkSize();
     }
     return size;
   }
 
   public void tryToAddEmptyPageAndData(ValueChunkWriter valueChunkWriter) {
-    System.out.println("----------page num is " + timeChunkWriter.getNumOfPages());
     // add empty page
     for (int i = 0; i < timeChunkWriter.getNumOfPages(); i++) {
       valueChunkWriter.writeEmptyPageToPageBuffer();
     }
-    System.out.println("--------pageBuffer size is " + valueChunkWriter.getPageBuffer().size());
 
     // add empty data of currentPage
-    System.out.println(
-        "----------current page point num is "
-            + timeChunkWriter.getPageWriter().getStatistics().getCount());
     for (long i = 0; i < timeChunkWriter.getPageWriter().getStatistics().getCount(); i++) {
       valueChunkWriter.write(0, 0, true);
     }

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.tsfile.write.schema;
 
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 
 /**
  * The schema of timeseries that exist in this file. The schemaTemplates is a simplified manner to
@@ -49,34 +49,12 @@ public class Schema implements Serializable {
     this.registeredTimeseries = knownSchema;
   }
 
-  // public void registerAlignedTimeseries(Path )
-
-  public void registerTimeseries(
-      Path devicePath, IMeasurementSchema measurementSchema, boolean isAligned) {
+  // This method can only register nonAligned timeseries.
+  public void registerTimeseries(Path devicePath, UnaryMeasurementSchema measurementSchema) {
     MeasurementGroup group =
-        registeredTimeseries.getOrDefault(devicePath, new MeasurementGroup(isAligned));
+        registeredTimeseries.getOrDefault(devicePath, new MeasurementGroup(false));
     group.getMeasurementSchemaMap().put(measurementSchema.getMeasurementId(), measurementSchema);
-  }
-
-  public void registerTimeseries(Path timeSpath, IMeasurementSchema measurementSchema) { // Todo:
-
-    /*if (this.registeredTimeseries.containsKey(devicePath)) {
-         if (measurementGroup.isAligned()) {
-           throw new WriteProcessException(
-               "given aligned device has existed and should not be expanded! " + devicePath);
-         } else {
-           for (String measurementId : measurementGroup.getMeasurementSchemaMap().keySet()) {
-             if (this.registeredTimeseries
-                 .get(devicePath)
-                 .getMeasurementSchemaMap()
-                 .containsKey(measurementId)) {
-               throw new WriteProcessException(
-                   "given nonAligned timeseries has existed! " + (devicePath + "." +
-    measurementId));
-             }
-           }
-         }
-       }*/
+    this.registeredTimeseries.put(devicePath, group);
   }
 
   public void registerTimeseries(Path devicePath, MeasurementGroup measurementGroup) {
@@ -96,13 +74,14 @@ public class Schema implements Serializable {
    * @param templateName
    * @param descriptor
    */
-  public void extendTemplate(String templateName, IMeasurementSchema descriptor) {
+  public void extendTemplate(String templateName, UnaryMeasurementSchema descriptor) {
     if (schemaTemplates == null) {
       schemaTemplates = new HashMap<>();
     }
     MeasurementGroup measurementGroup =
         this.schemaTemplates.getOrDefault(
-            templateName, new MeasurementGroup(false, new HashMap<String, IMeasurementSchema>()));
+            templateName,
+            new MeasurementGroup(false, new HashMap<String, UnaryMeasurementSchema>()));
     measurementGroup.getMeasurementSchemaMap().put(descriptor.getMeasurementId(), descriptor);
     this.schemaTemplates.put(templateName, measurementGroup);
   }
@@ -111,7 +90,7 @@ public class Schema implements Serializable {
     if (!schemaTemplates.containsKey(templateName)) {
       return;
     }
-    Map<String, IMeasurementSchema> template =
+    Map<String, UnaryMeasurementSchema> template =
         schemaTemplates.get(templateName).getMeasurementSchemaMap();
     boolean isAligned = schemaTemplates.get(templateName).isAligned();
     registerTimeseries(new Path(deviceId), new MeasurementGroup(isAligned, template));
@@ -119,18 +98,6 @@ public class Schema implements Serializable {
 
   public MeasurementGroup getSeriesSchema(Path devicePath) {
     return registeredTimeseries.get(devicePath);
-  }
-
-  public TSDataType getTimeseriesDataType(Path path) {
-    Path devicePath = new Path(path.getDevice());
-    if (!registeredTimeseries.containsKey(devicePath)) {
-      return null;
-    }
-    return registeredTimeseries
-        .get(devicePath)
-        .getMeasurementSchemaMap()
-        .get(path.getMeasurement())
-        .getType();
   }
 
   public Map<String, MeasurementGroup> getSchemaTemplates() {

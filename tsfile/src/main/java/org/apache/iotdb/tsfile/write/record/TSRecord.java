@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.tsfile.write.record;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * TSRecord is a kind of format that TsFile receives.TSRecord contains timestamp, deviceId and a

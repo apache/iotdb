@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * A chunk group in TsFile contains several series. A ChunkGroupWriter should implement write method
@@ -77,6 +78,12 @@ public interface IChunkGroupWriter {
    */
   void tryToAddSeriesWriter(IMeasurementSchema measurementSchema);
 
+  /**
+   * given a measurement descriptor list, create corresponding writers and put into this
+   * ChunkGroupWriter.
+   *
+   * @param measurementSchemas
+   */
   void tryToAddSeriesWriter(List<IMeasurementSchema> measurementSchemas);
 
   /**

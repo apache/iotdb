@@ -69,8 +69,9 @@ public class DeviceStringTest {
 
     schema = new Schema();
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor4")),
-        new UnaryMeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("root.sg.device99"),
+        new UnaryMeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN),
+        false);
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor4"),
         TSDataType.INT64,
@@ -78,8 +79,9 @@ public class DeviceStringTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor2")),
-        new UnaryMeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("root.sg.device99"),
+        new UnaryMeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN),
+        false);
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor2"),
         TSDataType.INT64,

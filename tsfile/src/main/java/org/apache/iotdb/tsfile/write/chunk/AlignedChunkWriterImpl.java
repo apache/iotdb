@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AlignedChunkWriterImpl implements IChunkWriter {
 
@@ -99,7 +100,15 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
    * to pageBuffer
    */
   private boolean checkPageSizeAndMayOpenANewPage() {
-    return timeChunkWriter.checkPageSizeAndMayOpenANewPage();
+    if (timeChunkWriter.checkPageSizeAndMayOpenANewPage()) {
+      return true;
+    }
+    for (ValueChunkWriter writer : valueChunkWriterList) {
+      if (writer.checkPageSizeAndMayOpenANewPage()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void writePageToPageBuffer() {
