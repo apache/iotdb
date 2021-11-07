@@ -35,12 +35,15 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class CreateTemplatePlan extends PhysicalPlan {
 
   String name;
+  Set<String> alignedPrefix;
   List<String> schemaNames;
   List<List<String>> measurements;
   List<List<TSDataType>> dataTypes;
@@ -61,6 +64,10 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public Set<String> getAlignedPrefix() {
+    return alignedPrefix;
   }
 
   public List<List<String>> getMeasurements() {
@@ -114,6 +121,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
     this.dataTypes = dataTypes;
     this.encodings = encodings;
     this.compressors = compressors;
+    this.alignedPrefix = new HashSet<>();
   }
 
   public CreateTemplatePlan(
@@ -132,6 +140,26 @@ public class CreateTemplatePlan extends PhysicalPlan {
     this.dataTypes = dataTypes;
     this.encodings = encodings;
     this.compressors = compressors;
+    this.alignedPrefix = new HashSet<>();
+  }
+
+  public CreateTemplatePlan(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<List<CompressionType>> compressors,
+      Set<String> alignedPrefix) {
+    // Only accessed by deserialization, which may cause ambiguity with align designation
+    super(false, OperatorType.CREATE_TEMPLATE);
+
+    this.name = name;
+    this.schemaNames = new ArrayList<>();
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.encodings = encodings;
+    this.compressors = compressors;
+    this.alignedPrefix = alignedPrefix;
   }
 
   public static CreateTemplatePlan deserializeFromReq(ByteBuffer buffer) throws MetadataException {
@@ -162,6 +190,10 @@ public class CreateTemplatePlan extends PhysicalPlan {
       TSEncoding encoding = TSEncoding.values()[ReadWriteIOUtils.readByte(buffer)];
       CompressionType compressionType = CompressionType.values()[ReadWriteIOUtils.readByte(buffer)];
 
+      if (alignedPrefix.containsKey(prefix) && !isAlign) {
+        throw new MetadataException("Align designation incorrect at: " + prefix);
+      }
+
       if (isAlign && !alignedPrefix.containsKey(prefix)) {
         alignedPrefix.put(prefix, new ArrayList<>());
         alignedDataTypes.put(prefix, new ArrayList<>());
@@ -175,8 +207,12 @@ public class CreateTemplatePlan extends PhysicalPlan {
         alignedEncodings.get(prefix).add(encoding);
         alignedCompressions.get(prefix).add(compressionType);
       } else {
-        measurements.add(
-            Collections.singletonList(prefix + TsFileConstant.PATH_SEPARATOR + measurementName));
+        if (prefix.equals("")) {
+          measurements.add(Collections.singletonList(measurementName));
+        } else {
+          measurements.add(
+              Collections.singletonList(prefix + TsFileConstant.PATH_SEPARATOR + measurementName));
+        }
         dataTypes.add(Collections.singletonList(dataType));
         encodings.add(Collections.singletonList(encoding));
         compressors.add(Collections.singletonList(compressionType));
@@ -207,7 +243,13 @@ public class CreateTemplatePlan extends PhysicalPlan {
       compressors.add(thisCompressors);
     }
 
-    return new CreateTemplatePlan(templateName, measurements, dataTypes, encodings, compressors);
+    return new CreateTemplatePlan(
+        templateName,
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        alignedPrefix.keySet());
   }
 
   @Override

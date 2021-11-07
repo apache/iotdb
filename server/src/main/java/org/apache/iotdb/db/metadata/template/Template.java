@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -81,16 +82,30 @@ public class Template {
    * @param plan createTemplatePlan
    */
   public Template(CreateTemplatePlan plan) throws IllegalPathException {
+    boolean isAlign;
+    schemaMap = new HashMap<>();
     name = plan.getName();
     alignedPrefix = new HashSet<>();
     templateRoot = new EntityMNode(null, name);
-    schemaMap = new HashMap<>();
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
-      // vector, aligned measurements
       int size = plan.getMeasurements().get(i).size();
       if (size > 1) {
+        isAlign = true;
+      } else {
+        // Patch for align designation ambiguity when creating from serialization
+        String[] thisMeasurement = MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
+        String thisPrefix = joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length-1));
+        if (plan.getAlignedPrefix().contains(thisPrefix)) {
+          isAlign = true;
+        } else {
+          isAlign = false;
+        }
+      }
+
+      // vector, aligned measurements
+      if (isAlign) {
         IMeasurementSchema[] curSchemas;
         String[] measurementsArray = new String[size];
         TSDataType[] typeArray = new TSDataType[size];
@@ -304,8 +319,10 @@ public class Template {
       TSEncoding[] encodings,
       CompressionType[] compressors) {
     UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[nodeNames.length];
-    schemas[0] =
-        new UnaryMeasurementSchema(nodeNames[0], dataTypes[0], encodings[0], compressors[0]);
+    for (int i = 0; i < nodeNames.length; i++) {
+      schemas[i] =
+          new UnaryMeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
+    }
     return schemas;
   }
   // endregion

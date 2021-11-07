@@ -308,7 +308,7 @@ public class SessionTest {
     assertEquals(false, session.isMeasurementInTemplate("treeTemplate", "turbine"));
     assertEquals(true, session.isPathExistInTemplate("treeTemplate", "turbine"));
     assertEquals(
-        "[vehicle.x, GPS.Y, GPS.X, GPS.x, x, turbine.temperature]",
+        "[turbine.temperature, x, GPS.x, vehicle.x, GPS.X, GPS.Y]",
         session.showMeasurementsInTemplate("treeTemplate").toString());
     assertEquals(
         "[GPS.Y, GPS.X, GPS.x]",
@@ -318,7 +318,7 @@ public class SessionTest {
     session.addAlignedMeasurementInTemplate(
         "treeTemplate", "GPSX", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
     assertEquals(
-        "[GPSX, vehicle.x, x, turbine.temperature]",
+        "[turbine.temperature, x, vehicle.x, GPSX]",
         session.showMeasurementsInTemplate("treeTemplate").toString());
   }
 

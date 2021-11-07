@@ -91,6 +91,9 @@ public class Template {
     Set<String> alignedPrefix = new HashSet<>();
     ReadWriteIOUtils.write(getName(), baos);
     ReadWriteIOUtils.write(isShareTime(), baos);
+    if (isShareTime()) {
+      alignedPrefix.add("");
+    }
 
     for (Node child : children.values()) {
       stack.push(new Pair<>("", child));
