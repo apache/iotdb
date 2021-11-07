@@ -20,6 +20,7 @@ package org.apache.iotdb.session.template;
 
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -30,7 +31,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import javafx.util.Pair;
 
 public class Template {
   private String name;
@@ -98,8 +98,8 @@ public class Template {
 
     while (stack.size() != 0) {
       Pair<String, Node> cur = stack.pop();
-      String prefix = cur.getKey();
-      Node curNode = cur.getValue();
+      String prefix = cur.left;
+      Node curNode = cur.right;
       StringBuilder fullPath = new StringBuilder(prefix);
 
       if (!curNode.isMeasurement()) {
