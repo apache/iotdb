@@ -342,8 +342,11 @@ public class MLogTxtWriter implements AutoCloseable {
   }
 
   public void createTemplate(CreateTemplatePlan plan) throws IOException {
-    // SchemaNames no longer plays a part in template measurement path
+    // CreateTemplatePlan txt Log be like:
+    // OperationType,templateName[,measurementPath,isAlign,dataType,encoding,compressor]
     StringBuilder buf = new StringBuilder();
+    buf.append(MetadataOperationType.CREATE_TEMPLATE);
+    buf.append(plan.getName());
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       for (int j = 0; j < plan.getMeasurements().get(i).size(); j++) {
         String measurement;
@@ -357,69 +360,53 @@ public class MLogTxtWriter implements AutoCloseable {
         }
         buf.append(
             String.format(
-                "%s,%s,%s,%s,%s,%s,%s",
-                MetadataOperationType.CREATE_TEMPLATE,
-                plan.getName(),
-                isAligned ? 1 : 0,
+                ",%s,%s,%s,%s,%s",
                 measurement,
+                isAligned ? 1 : 0,
                 plan.getDataTypes().get(i).get(j).serialize(),
                 plan.getEncodings().get(i).get(j).serialize(),
                 plan.getCompressors().get(i).get(j).serialize()));
-        buf.append(LINE_SEPARATOR);
-        lineNumber.incrementAndGet();
       }
     }
+    buf.append(LINE_SEPARATOR);
+    lineNumber.incrementAndGet();
     ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
     channel.write(buff);
   }
 
   public void appendTemplate(AppendTemplatePlan plan) throws IOException {
+    // AppendTemplatePlan txt Log be like:
+    // OperationType,templateName,isAlign[,measurementPath,dataType,encoding,compressor]
     StringBuilder buf = new StringBuilder();
+    buf.append(MetadataOperationType.APPEND_TEMPLATE);
+    buf.append(plan.getName());
+    buf.append(plan.isAligned());
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       buf.append(
           String.format(
-              "%s,%s,%s,%s,%s,%s,%s",
-              MetadataOperationType.APPEND_TEMPLATE,
-              plan.getName(),
-              plan.isAligned() ? 1 : 0,
+              ",%s,%s,%s,%s",
               plan.getMeasurements().get(i),
               plan.getDataTypes().get(i).serialize(),
               plan.getEncodings().get(i).serialize(),
               plan.getCompressors().get(i).serialize()));
-      buf.append(LINE_SEPARATOR);
-      lineNumber.incrementAndGet();
     }
+    buf.append(LINE_SEPARATOR);
+    lineNumber.incrementAndGet();
     ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
     channel.write(buff);
   }
 
   public void pruneTemplate(PruneTemplatePlan plan) throws IOException {
+    // PruneTemplatePlan txt Log be like:
+    // OperationType,templateName[,measurementPath]
     StringBuilder buf = new StringBuilder();
-
+    buf.append(MetadataOperationType.PRUNE_TEMPLATE);
+    buf.append(plan.getName());
     for (int i = 0; i < plan.getPrunedMeasurements().size(); i++) {
-      buf.append(
-          String.format(
-              "%s,%s,%s,%s",
-              MetadataOperationType.PRUNE_TEMPLATE,
-              plan.getName(),
-              plan.getPrunedMeasurements().get(i),
-              ""));
-      buf.append(LINE_SEPARATOR);
-      lineNumber.incrementAndGet();
+      buf.append(plan.getPrunedMeasurements().get(i));
     }
-
-    for (int i = 0; i < plan.getPrunedPrefix().size(); i++) {
-      buf.append(
-          String.format(
-              "%s,%s,%s,%s",
-              MetadataOperationType.PRUNE_TEMPLATE,
-              plan.getName(),
-              "",
-              plan.getPrunedPrefix().get(i)));
-      buf.append(LINE_SEPARATOR);
-      lineNumber.incrementAndGet();
-    }
-
+    buf.append(LINE_SEPARATOR);
+    lineNumber.incrementAndGet();
     ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
     channel.write(buff);
   }
