@@ -2159,36 +2159,29 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) throws TException {
     try {
-      Template template = IoTDB.metaManager.getTemplate(req.name);
-
       TSQueryTemplateResp resp = new TSQueryTemplateResp();
-      int count;
       String path;
-      boolean flag;
       switch (Template.TemplateQueryType.values()[req.getQueryType()]) {
         case NULL:
           break;
         case COUNT_MEASUREMENTS:
-          count = template.getMeasurementsCount();
           resp.setQueryType(Template.TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
-          resp.setCount(count);
+          resp.setCount(IoTDB.metaManager.countMeasurementsInTemplate(req.name));
           break;
         case IS_MEASUREMENT:
           path = req.getMeasurement();
-          flag = template.isPathMeasurement(path);
           resp.setQueryType(Template.TemplateQueryType.IS_MEASUREMENT.ordinal());
-          resp.setResult(flag);
+          resp.setResult(IoTDB.metaManager.isMeasurementInTemplate(req.name, path));
           break;
         case IS_SERIES:
           path = req.getMeasurement();
-          flag = template.isPathSeries(path);
           resp.setQueryType(Template.TemplateQueryType.IS_SERIES.ordinal());
-          resp.setResult(flag);
+          resp.setResult(IoTDB.metaManager.isPathExistsInTemplate(req.name, path));
           break;
         case SHOW_MEASUREMENTS:
           path = req.getMeasurement();
           resp.setQueryType(Template.TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
-          resp.setMeasurements(template.getMeasurementsUnderPath(path));
+          resp.setMeasurements(IoTDB.metaManager.getMeasurementsInTemplate(req.name, path));
           break;
       }
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));

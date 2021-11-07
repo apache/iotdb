@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
@@ -100,6 +101,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.sound.midi.MetaEventListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -2140,12 +2142,25 @@ public class MManager {
     }
   }
 
-  public Template getTemplate(String templateName) throws MetadataException {
+  public int countMeasurementsInTemplate(String templateName) throws MetadataException {
     try {
-      return templateManager.getTemplate(templateName);
+      return templateManager.getTemplate(templateName).getMeasurementsCount();
     } catch (UndefinedTemplateException e) {
-      throw new MetadataException(e);
+      e.printStackTrace();
     }
+    return -1;
+  }
+
+  public boolean isMeasurementInTemplate(String templateName, String path) throws MetadataException {
+    return templateManager.getTemplate(templateName).isPathMeasurement(path);
+  }
+
+  public boolean isPathExistsInTemplate(String templateName, String path) throws MetadataException {
+    return templateManager.getTemplate(templateName).isPathExistInTemplate(path);
+  }
+
+  public List<String> getMeasurementsInTemplate(String templateName, String path) throws MetadataException {
+    return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
   }
 
   public synchronized void setSchemaTemplate(SetSchemaTemplatePlan plan) throws MetadataException {
@@ -2265,6 +2280,15 @@ public class MManager {
   @TestOnly
   public void flushAllMlogForTest() throws IOException {
     logWriter.close();
+  }
+
+  @TestOnly
+  public Template getTemplate(String templateName) throws MetadataException {
+    try {
+      return templateManager.getTemplate(templateName);
+    } catch (UndefinedTemplateException e) {
+      throw new MetadataException(e);
+    }
   }
   // endregion
 }

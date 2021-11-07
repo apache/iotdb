@@ -426,17 +426,6 @@ public class Template {
     }
   }
 
-  public IMNode isPathExist(PartialPath partialPath) throws IllegalPathException {
-    String path = partialPath.toString();
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
-    IMNode cur = templateRoot;
-    for (String node : pathNodes) {
-      if (cur.hasChild(node)) cur = cur.getChild(node);
-      else return null;
-    }
-    return cur;
-  }
-
   public boolean isPathMeasurement(String path) throws IllegalPathException {
     String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
     IMNode cur = templateRoot;
