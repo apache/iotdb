@@ -95,7 +95,6 @@ public class CreateTemplatePlan extends PhysicalPlan {
     this.compressors = compressors;
   }
 
-
   public CreateTemplatePlan() {
     super(false, OperatorType.CREATE_TEMPLATE);
   }
@@ -155,7 +154,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
       alignedCompressions.put("", new ArrayList<>());
     }
 
-    while(buffer.position() != buffer.limit()) {
+    while (buffer.position() != buffer.limit()) {
       String prefix = ReadWriteIOUtils.readString(buffer);
       isAlign = ReadWriteIOUtils.readBool(buffer);
       String measurementName = ReadWriteIOUtils.readString(buffer);
@@ -176,7 +175,8 @@ public class CreateTemplatePlan extends PhysicalPlan {
         alignedEncodings.get(prefix).add(encoding);
         alignedCompressions.get(prefix).add(compressionType);
       } else {
-        measurements.add(Collections.singletonList(prefix + TsFileConstant.PATH_SEPARATOR + measurementName));
+        measurements.add(
+            Collections.singletonList(prefix + TsFileConstant.PATH_SEPARATOR + measurementName));
         dataTypes.add(Collections.singletonList(dataType));
         encodings.add(Collections.singletonList(encoding));
         compressors.add(Collections.singletonList(compressionType));
@@ -193,7 +193,8 @@ public class CreateTemplatePlan extends PhysicalPlan {
         if (prefix.equals("")) {
           thisMeasurements.add(alignedPrefix.get(prefix).get(i));
         } else {
-          thisMeasurements.add(prefix + TsFileConstant.PATH_SEPARATOR + alignedPrefix.get(prefix).get(i));
+          thisMeasurements.add(
+              prefix + TsFileConstant.PATH_SEPARATOR + alignedPrefix.get(prefix).get(i));
         }
         thisDataTypes.add(alignedDataTypes.get(prefix).get(i));
         thisEncodings.add(alignedEncodings.get(prefix).get(i));
@@ -206,16 +207,8 @@ public class CreateTemplatePlan extends PhysicalPlan {
       compressors.add(thisCompressors);
     }
 
-    return new CreateTemplatePlan(
-        templateName,
-        measurements,
-        dataTypes,
-        encodings,
-        compressors
-    );
+    return new CreateTemplatePlan(templateName, measurements, dataTypes, encodings, compressors);
   }
-
-
 
   @Override
   public void serialize(ByteBuffer buffer) {

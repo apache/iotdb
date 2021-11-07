@@ -83,7 +83,6 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
@@ -368,7 +367,8 @@ public class MTree implements Serializable {
       throw new PathAlreadyExistException(cur.getFullPath());
     }
 
-    if (upperTemplate != null && !upperTemplate.isDirectNodeInTemplate(nodeNames[nodeNames.length-1])) {
+    if (upperTemplate != null
+        && !upperTemplate.isDirectNodeInTemplate(nodeNames[nodeNames.length - 1])) {
       throw new PathAlreadyExistException(
           path.getFullPath() + " ( which is incompatible with template )");
     }

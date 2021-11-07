@@ -24,16 +24,17 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
 
 public class TemplateUT {
 
@@ -71,12 +72,10 @@ public class TemplateUT {
       template.addToTemplate(mNodeX);
       template.addToTemplate(mNodeY);
 
-
       template.serialize(stream);
       ByteBuffer buffer = ByteBuffer.wrap(stream.toByteArray());
 
       assertEquals("treeTemplate", ReadWriteIOUtils.readString(buffer));
-
 
     } catch (StatementExecutionException e) {
       e.printStackTrace();
@@ -84,5 +83,4 @@ public class TemplateUT {
       e.printStackTrace();
     }
   }
-
 }

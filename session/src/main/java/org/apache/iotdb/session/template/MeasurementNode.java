@@ -56,9 +56,7 @@ public class MeasurementNode extends Node {
     return compressionType;
   }
 
-  /**
-   * Serialization: nodeName[String] dataType[byte] encoding[byte] compressor[byte]
-   */
+  /** Serialization: nodeName[String] dataType[byte] encoding[byte] compressor[byte] */
   @Override
   public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(this.getName(), stream);

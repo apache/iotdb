@@ -940,9 +940,7 @@ public class MManagerBasicTest {
       try {
         template.deleteMeasurements("a.single");
       } catch (IllegalPathException e) {
-        assertEquals(
-            "a.single is not a legal path, because Path does not exist",
-            e.getMessage());
+        assertEquals("a.single is not a legal path, because Path does not exist", e.getMessage());
       }
       assertEquals(
           "[s2, d1.s1, to.be.prefix.s2, to.be.prefix.s1, GPS.y, GPS.x]",
@@ -950,9 +948,7 @@ public class MManagerBasicTest {
 
       template.deleteSeriesCascade("to");
 
-      assertEquals(
-          "[s2, d1.s1, GPS.y, GPS.x]",
-          template.getAllMeasurementsPaths().toString());
+      assertEquals("[s2, d1.s1, GPS.y, GPS.x]", template.getAllMeasurementsPaths().toString());
 
     } catch (MetadataException e) {
       e.printStackTrace();

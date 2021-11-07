@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
@@ -35,8 +34,8 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -101,7 +100,6 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sound.midi.MetaEventListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -2151,7 +2149,8 @@ public class MManager {
     return -1;
   }
 
-  public boolean isMeasurementInTemplate(String templateName, String path) throws MetadataException {
+  public boolean isMeasurementInTemplate(String templateName, String path)
+      throws MetadataException {
     return templateManager.getTemplate(templateName).isPathMeasurement(path);
   }
 
@@ -2159,7 +2158,8 @@ public class MManager {
     return templateManager.getTemplate(templateName).isPathExistInTemplate(path);
   }
 
-  public List<String> getMeasurementsInTemplate(String templateName, String path) throws MetadataException {
+  public List<String> getMeasurementsInTemplate(String templateName, String path)
+      throws MetadataException {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
   }
 

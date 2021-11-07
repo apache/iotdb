@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import net.jpountz.util.ByteBufferUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -2106,7 +2105,8 @@ public class TSServiceImpl implements TSIService.Iface {
           compressionTypes.add(compressorList);
         }
 
-        plan = new CreateTemplatePlan(
+        plan =
+            new CreateTemplatePlan(
                 req.getName(),
                 req.getSchemaNames(),
                 req.getMeasurements(),

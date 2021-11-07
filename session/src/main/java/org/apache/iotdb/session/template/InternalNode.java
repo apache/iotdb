@@ -19,10 +19,7 @@
 package org.apache.iotdb.session.template;
 
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 

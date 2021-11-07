@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.session.template;
 
-import javafx.util.Pair;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -31,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javafx.util.Pair;
 
 public class Template {
   private String name;
@@ -68,8 +68,6 @@ public class Template {
     this.shareTime = shareTime;
   }
 
-
-
   // region Interface to manipulate Template
 
   public void addToTemplate(Node child) throws StatementExecutionException {
@@ -82,12 +80,10 @@ public class Template {
   public void deleteFromTemplate(String name) throws StatementExecutionException {
     if (children.containsKey(name)) {
       children.remove(name);
-    }
-    else {
+    } else {
       throw new StatementExecutionException("It is not a direct child of the template: " + name);
     }
   }
-
 
   /** Serialize: templateName[string] isShareTime[boolean] */
   public void serialize(OutputStream baos) throws IOException {

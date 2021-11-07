@@ -235,7 +235,8 @@ public class SessionTest {
     template.addToTemplate(mNodeY);
 
     session.createSchemaTemplate(template);
-    assertEquals("[vehicle.GPS.y, x, vehicle.GPS.x, y, GPS.x, vehicle.x, GPS.y, vehicle.y]",
+    assertEquals(
+        "[vehicle.GPS.y, x, vehicle.GPS.x, y, GPS.x, vehicle.x, GPS.y, vehicle.y]",
         session.showMeasurementsInTemplate("treeTemplate").toString());
     assertEquals(8, session.countMeasurementsInTemplate("treeTemplate"));
   }

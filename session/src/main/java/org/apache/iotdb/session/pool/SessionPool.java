@@ -20,11 +20,6 @@ package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
@@ -37,17 +32,13 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 
 /**
  * SessionPool is a wrapper of a Session Set. Using SessionPool, the user do not need to consider
@@ -1324,12 +1315,7 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.createSchemaTemplate(
-            name,
-            schemaNames,
-            measurements,
-            dataTypes,
-            encodings,
-            compressors);
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -1354,12 +1340,7 @@ public class SessionPool {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.createSchemaTemplate(
-            name,
-            measurements,
-            dataTypes,
-            encodings,
-            compressors);
+        session.createSchemaTemplate(name, measurements, dataTypes, encodings, compressors);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -1408,11 +1389,7 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.addAlignedMeasurementsInTemplate(
-            templateName,
-            measurementsPath,
-            dataTypes,
-            encodings,
-            compressors);
+            templateName, measurementsPath, dataTypes, encodings, compressors);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -1437,11 +1414,7 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.addAlignedMeasurementInTemplate(
-            templateName,
-            measurementPath,
-            dataType,
-            encoding,
-            compressor);
+            templateName, measurementPath, dataType, encoding, compressor);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -1466,11 +1439,7 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.addUnalignedMeasurementsInTemplate(
-            templateName,
-            measurementsPath,
-            dataTypes,
-            encodings,
-            compressors);
+            templateName, measurementsPath, dataTypes, encodings, compressors);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -1495,11 +1464,7 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.addUnalignedMeasurementInTemplate(
-            templateName,
-            measurementPath,
-            dataType,
-            encoding,
-            compressor);
+            templateName, measurementPath, dataType, encoding, compressor);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -1631,7 +1596,6 @@ public class SessionPool {
     }
     return null;
   }
-
 
   /**
    * execure query sql users must call closeResultSet(SessionDataSetWrapper) if they do not use the

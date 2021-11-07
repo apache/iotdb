@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -41,6 +40,10 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,11 +54,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
 
 public class Template {
   private String name;
@@ -139,11 +137,9 @@ public class Template {
     this.schemaMap = schemaMap;
   }
 
-
   public boolean hasSchema(String measurementId) {
     return schemaMap.containsKey(measurementId);
   }
-
 
   public List<IMeasurementMNode> getMeasurementMNode() {
     Set<IMeasurementSchema> deduplicateSchema = new HashSet<>();
@@ -212,7 +208,7 @@ public class Template {
 
     // deduplicate
     Set<String> pathSet = new HashSet<>(Arrays.asList(alignedPaths));
-    if (pathSet.size() != alignedPaths.length){
+    if (pathSet.size() != alignedPaths.length) {
       throw new IllegalPathException("Duplication in paths.");
     }
 
@@ -222,15 +218,15 @@ public class Template {
 
       if (pathNodes.length == 1) {
         thisPrefix = "";
-      }
-      else {
+      } else {
         thisPrefix = joinBySeparator(Arrays.copyOf(pathNodes, pathNodes.length - 1));
       }
       if (prefix == null) {
         prefix = thisPrefix;
       }
       if (!prefix.equals(thisPrefix)) {
-        throw new IllegalPathException("Aligned measurements get different paths, " + alignedPaths[0]);
+        throw new IllegalPathException(
+            "Aligned measurements get different paths, " + alignedPaths[0]);
       }
       if (getPathNodeInTemplate(path) != null) {
         throw new IllegalPathException("Path duplicated: " + prefix);
@@ -354,7 +350,7 @@ public class Template {
   }
 
   public List<String> getAllMeasurementsPaths() {
-//    traverse();
+    //    traverse();
     return new ArrayList<>(schemaMap.keySet());
   }
 
@@ -388,7 +384,6 @@ public class Template {
   }
 
   public int getMeasurementsCount() {
-//    traverse();
     return measurementsCount;
   }
 
@@ -398,8 +393,7 @@ public class Template {
     for (String node : pathNodes) {
       if (cur.hasChild(node)) {
         cur = cur.getChild(node);
-      }
-      else return null;
+      } else return null;
     }
     return cur;
   }
@@ -417,9 +411,8 @@ public class Template {
     return true;
   }
 
-
   public boolean isDirectNodeInTemplate(String nodeName) {
-    if (templateRoot.hasChild(nodeName)){
+    if (templateRoot.hasChild(nodeName)) {
       return true;
     } else {
       return false;
@@ -432,13 +425,11 @@ public class Template {
     for (String node : pathNodes) {
       if (cur.hasChild(node)) {
         cur = cur.getChild(node);
-      }
-      else return false;
+      } else return false;
     }
     if (cur.isMeasurement()) {
       return true;
-    }
-    else return false;
+    } else return false;
   }
 
   public boolean isPathSeries(String path) throws IllegalPathException {
@@ -447,8 +438,7 @@ public class Template {
     for (String node : pathNodes) {
       if (cur.hasChild(node)) {
         cur = cur.getChild(node);
-      }
-      else return false;
+      } else return false;
     }
     return true;
   }
@@ -456,8 +446,7 @@ public class Template {
   public IMNode getDirectNode(String path) {
     if (!templateRoot.hasChild(path)) {
       return null;
-    }
-    else return templateRoot.getChild(path);
+    } else return templateRoot.getChild(path);
   }
 
   // endregion
@@ -539,7 +528,7 @@ public class Template {
     // Prefix equality will be checked in constructTemplateTree
     pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
-    if ((getPathNodeInTemplate(prefix) != null) && (!alignedPrefix.contains(prefix))){
+    if ((getPathNodeInTemplate(prefix) != null) && (!alignedPrefix.contains(prefix))) {
       throw new IllegalPathException(prefix, "path already exists but not aligned");
     }
 
@@ -637,7 +626,6 @@ public class Template {
     }
   }
   // endregion
-
 
   public ByteBuffer serialize() {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
