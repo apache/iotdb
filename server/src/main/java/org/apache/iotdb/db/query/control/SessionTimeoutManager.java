@@ -58,32 +58,32 @@ public class SessionTimeoutManager {
         TimeUnit.MILLISECONDS);
   }
 
-  public void register(long id) {
+  public void register(long sessionId) {
     if (SESSION_TIMEOUT == 0) {
       return;
     }
 
-    sessionIdToLastActiveTime.put(id, System.currentTimeMillis());
+    sessionIdToLastActiveTime.put(sessionId, System.currentTimeMillis());
   }
 
-  public boolean unregister(long id) {
+  public boolean unregister(long sessionId) {
     if (SESSION_TIMEOUT == 0) {
-      return SessionManager.getInstance().releaseSessionResource(id);
+      return SessionManager.getInstance().releaseSessionResource(sessionId);
     }
 
-    if (SessionManager.getInstance().releaseSessionResource(id)) {
-      return sessionIdToLastActiveTime.remove(id) != null;
+    if (SessionManager.getInstance().releaseSessionResource(sessionId)) {
+      return sessionIdToLastActiveTime.remove(sessionId) != null;
     }
 
     return false;
   }
 
-  public void refresh(long id) {
+  public void refresh(long sessionId) {
     if (SESSION_TIMEOUT == 0) {
       return;
     }
 
-    sessionIdToLastActiveTime.computeIfPresent(id, (k, v) -> System.currentTimeMillis());
+    sessionIdToLastActiveTime.computeIfPresent(sessionId, (k, v) -> System.currentTimeMillis());
   }
 
   private void cleanup() {
