@@ -39,7 +39,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
-import org.apache.commons.lang3.StringUtils;
 
 import java.io.*;
 import java.time.Instant;
@@ -341,8 +340,10 @@ public class ExportCsv extends AbstractCsvTool {
 
     while (sessionDataSet.hasNext()) {
       RowRecord rowRecord = sessionDataSet.next();
-      ArrayList<Object> record = new ArrayList<>();
-      record.add(timeTrans(rowRecord.getTimestamp()));
+      ArrayList<String> record = new ArrayList<>();
+      if (rowRecord.getTimestamp() != 0) {
+        record.add(timeTrans(rowRecord.getTimestamp()));
+      }
       rowRecord
           .getFields()
           .forEach(
@@ -358,7 +359,7 @@ public class ExportCsv extends AbstractCsvTool {
                   record.add("");
                 }
               });
-      printer.printRecord(StringUtils.join(record, ','));
+      printer.printRecord(record);
     }
 
     printer.flush();
