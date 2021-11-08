@@ -69,8 +69,20 @@ struct TSCloseSessionReq {
   1: required i64 sessionId
 }
 
+// WritePoints()
+// write points in influxdb
+struct TSWritePointsReq{
+  1: required string database,
+  2: required string retentionPolicy,
+  3: required string precision,
+  4: required string consistency,
+  5: required string lineProtocol,
+}
+
 service InfluxDBService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
   TSStatus closeSession(1:TSCloseSessionReq req);
+
+  TSStatus writePoints(1:TSWritePointsReq req);
 }

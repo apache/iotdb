@@ -16,6 +16,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.service.thriftImpl.TSServiceImpl;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
