@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
+import org.apache.iotdb.cluster.query.manage.ClusterSessionManager;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.ClusterRPCService;
 import org.apache.iotdb.cluster.server.ClusterTSServiceImpl;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.RegisterManager;
+import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.utils.TestOnly;
 
@@ -84,6 +86,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.UNKNOWN_CLIENT_IP;
+import static org.apache.iotdb.db.service.TSServiceImpl.sessionManager;
 
 /** we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB. */
 public class ClusterIoTDB implements ClusterIoTDBMBean {
@@ -384,6 +387,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl();
     clusterServiceImpl.setCoordinator(coordinator);
     clusterServiceImpl.setExecutor(metaGroupMember);
+    TSServiceImpl.setSessionManager(ClusterSessionManager.getInstance());
+    ((ClusterSessionManager) sessionManager).setCoordinator(coordinator);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());
   }

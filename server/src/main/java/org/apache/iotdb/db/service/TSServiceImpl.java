@@ -30,7 +30,11 @@ import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.QueryInBatchStatementException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -193,7 +197,7 @@ public class TSServiceImpl implements TSIService.Iface {
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
   private static final AtomicInteger queryCount = new AtomicInteger(0);
   private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-  private final SessionManager sessionManager = SessionManager.getInstance();
+  public static SessionManager sessionManager = SessionManager.getInstance();
   private final TracingManager tracingManager = TracingManager.getInstance();
 
   private long startTime = -1L;
@@ -297,6 +301,10 @@ public class TSServiceImpl implements TSIService.Iface {
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
+  public static void setSessionManager(SessionManager sessionManager) {
+    TSServiceImpl.sessionManager = sessionManager;
+  }
+
   @Override
   public TSStatus cancelOperation(TSCancelOperationReq req) {
     // TODO implement
@@ -332,11 +340,6 @@ public class TSServiceImpl implements TSIService.Iface {
       return onNPEOrUnexpectedException(
           e, OperationType.CLOSE_OPERATION, TSStatusCode.CLOSE_OPERATION_ERROR);
     }
-  }
-
-  /** release single operation resource */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
-    sessionManager.releaseQueryResource(queryId);
   }
 
   @Override
