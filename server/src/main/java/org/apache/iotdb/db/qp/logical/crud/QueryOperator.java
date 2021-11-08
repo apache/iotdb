@@ -42,6 +42,7 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -203,7 +204,7 @@ public class QueryOperator extends Operator {
         HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
         for (PartialPath filterPath : filterPaths) {
           rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
-          pathTSDataTypeHashMap.put(filterPath, filterPath.getSeriesType());
+          pathTSDataTypeHashMap.put(filterPath, SQLConstant.isReservedPath(filterPath) ? TSDataType.INT64 : filterPath.getSeriesType());
         }
         IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
         rawDataQueryPlan.setExpression(expression);

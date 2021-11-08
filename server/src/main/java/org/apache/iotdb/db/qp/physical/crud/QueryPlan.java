@@ -74,11 +74,14 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   @Override
   public void setPaths(List<PartialPath> paths) {
-    List<MeasurementPath> measurementPaths = new ArrayList<>();
-    for (PartialPath path : paths) {
-      measurementPaths.add((MeasurementPath) path);
+    if (paths == null) this.paths = null; // align by device
+    else {
+      List<MeasurementPath> measurementPaths = new ArrayList<>();
+      for (PartialPath path : paths) {
+        measurementPaths.add((MeasurementPath) path);
+      }
+      this.paths = measurementPaths;
     }
-    this.paths = measurementPaths;
   }
 
   public List<TSDataType> getDataTypes() throws MetadataException {

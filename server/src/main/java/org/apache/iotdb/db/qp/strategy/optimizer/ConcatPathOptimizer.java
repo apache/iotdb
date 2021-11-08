@@ -167,6 +167,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<PartialPath> concatPaths = new ArrayList<>();
     if (SQLConstant.isReservedPath(filterPath)) {
       // do nothing in the case of "where time > 5"
+      filterPaths.add(filterPath);
       return operator;
     } else if (filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
       // do nothing in the case of "where root.d1.s1 > 5"
