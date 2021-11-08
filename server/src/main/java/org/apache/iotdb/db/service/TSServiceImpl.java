@@ -2156,9 +2156,9 @@ public class TSServiceImpl implements TSIService.Iface {
           resp.setQueryType(TemplateQueryType.IS_MEASUREMENT.ordinal());
           resp.setResult(IoTDB.metaManager.isMeasurementInTemplate(req.name, path));
           break;
-        case IS_SERIES:
+        case PATH_EXIST:
           path = req.getMeasurement();
-          resp.setQueryType(TemplateQueryType.IS_SERIES.ordinal());
+          resp.setQueryType(TemplateQueryType.PATH_EXIST.ordinal());
           resp.setResult(IoTDB.metaManager.isPathExistsInTemplate(req.name, path));
           break;
         case SHOW_MEASUREMENTS:

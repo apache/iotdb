@@ -2124,7 +2124,7 @@ public class Session {
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
     req.setName(templateName);
-    req.setQueryType(TemplateQueryType.IS_SERIES.ordinal());
+    req.setQueryType(TemplateQueryType.PATH_EXIST.ordinal());
     req.setMeasurement(path);
     TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
     return resp.result;
