@@ -290,6 +290,7 @@ public class ExportCsv extends AbstractCsvTool {
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 10000);
       writeCsvFile(sessionDataSet, path);
+      sessionDataSet.closeOperationHandle();
       System.out.println("Export completely!");
     } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
