@@ -24,7 +24,6 @@ import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MultiMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.UnaryMeasurementMNode;
-import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.LinkedList;
 import java.util.List;
