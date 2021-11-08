@@ -278,7 +278,7 @@ public class TSServiceImpl implements TSIService.Iface {
     sessionManager.removeCurrSessionId();
 
     return new TSStatus(
-        !sessionManager.releaseSessionResource(sessionId)
+        !sessionManager.releaseSessionResource(this, sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -305,9 +305,9 @@ public class TSServiceImpl implements TSIService.Iface {
     try {
       if (req.isSetStatementId()) {
         if (req.isSetQueryId()) {
-          sessionManager.closeDataset(req.statementId, req.queryId);
+          sessionManager.closeDataset(this, req.statementId, req.queryId);
         } else {
-          sessionManager.closeStatement(req.sessionId, req.statementId);
+          sessionManager.closeStatement(this, req.sessionId, req.statementId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -321,8 +321,18 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   /** release single operation resource */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+  public void releaseQueryResource(long queryId) throws StorageEngineException {
     sessionManager.releaseQueryResource(queryId);
+  }
+
+  public void releaseQueryResourceNoExceptions(long queryId) {
+    if (queryId != -1) {
+      try {
+        releaseQueryResource(queryId);
+      } catch (Exception e) {
+        LOGGER.warn("Error occurred while releasing query resource: ", e);
+      }
+    }
   }
 
   @Override
@@ -802,7 +812,7 @@ public class TSServiceImpl implements TSIService.Iface {
       }
       return resp;
     } catch (Exception e) {
-      sessionManager.releaseQueryResourceNoExceptions(queryId);
+      releaseQueryResourceNoExceptions(queryId);
       throw e;
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
@@ -1006,7 +1016,7 @@ public class TSServiceImpl implements TSIService.Iface {
                 req.fetchSize, queryDataSet, sessionManager.getUsername(req.sessionId));
         boolean hasResultSet = result.bufferForTime().limit() != 0;
         if (!hasResultSet) {
-          sessionManager.releaseQueryResourceNoExceptions(req.queryId);
+          releaseQueryResourceNoExceptions(req.queryId);
         }
         TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
         resp.setHasResultSet(hasResultSet);
@@ -1044,7 +1054,7 @@ public class TSServiceImpl implements TSIService.Iface {
           onNPEOrUnexpectedException(
               e, "executing fetchResults", TSStatusCode.INTERNAL_SERVER_ERROR));
     } catch (Exception e) {
-      sessionManager.releaseQueryResourceNoExceptions(req.queryId);
+      releaseQueryResourceNoExceptions(req.queryId);
       return RpcUtils.getTSFetchResultsResp(
           onNPEOrUnexpectedException(
               e, "executing fetchResults", TSStatusCode.INTERNAL_SERVER_ERROR));
