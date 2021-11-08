@@ -70,7 +70,7 @@ public class TimePageReader {
       while (timeDecoder.hasNext(timeBuffer)) {
         timeList.add(timeDecoder.readLong(timeBuffer));
       }
-      return timeList.stream().mapToLong(t -> t.longValue()).toArray();
+      return timeList.stream().mapToLong(t -> t).toArray();
     }
   }
 

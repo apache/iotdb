@@ -167,7 +167,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   private boolean checkIsHistoryData(String measurementId, long time) {
-    if (time <= lastTimeMap.getOrDefault(measurementId, new Long(-1))) {
+    if (time <= lastTimeMap.getOrDefault(measurementId, -1L)) {
       LOG.warn(
           "not allowed to write out-of-order data, time should later than "
               + time
