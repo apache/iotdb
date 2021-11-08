@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
@@ -617,16 +618,18 @@ public class DataGroupMember extends RaftMember {
       return false;
     }
     CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
+    VotingLog votingLog;
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       logManager.append(log);
-
+      votingLog = buildVotingLog(log);
+      votingLogList.insert(votingLog);
       logger.info("Send the close file request of {} to other nodes", log);
     }
     try {
-      return appendLogInGroup(log);
+      return appendLogInGroup(votingLog);
     } catch (LogExecutionException e) {
       logger.error("Cannot close partition {}#{} seq:{}", storageGroupName, partitionId, isSeq, e);
     }

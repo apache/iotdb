@@ -32,6 +32,8 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ExprBench {
@@ -44,6 +46,7 @@ public class ExprBench {
   private SyncClientPool clientPool;
   private Node target;
   private int maxRequestNum;
+  private ExecutorService pool = Executors.newCachedThreadPool();
 
   public ExprBench(Node target) {
     this.target = target;
@@ -54,52 +57,51 @@ public class ExprBench {
   public void benchmark() {
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < threadNum; i++) {
-      new Thread(
-              () -> {
-                Client client = clientPool.getClient(target);
-                ExecutNonQueryReq request = new ExecutNonQueryReq();
-                DummyPlan plan = new DummyPlan();
-                plan.setWorkload(new byte[workloadSize]);
-                plan.setNeedForward(true);
-                ByteBuffer byteBuffer = ByteBuffer.allocate(workloadSize + 4096);
-                plan.serialize(byteBuffer);
-                byteBuffer.flip();
-                request.setPlanBytes(byteBuffer);
-                long currRequsetNum = -1;
-                while (true) {
+      pool.submit(
+          () -> {
+            Client client = clientPool.getClient(target);
+            ExecutNonQueryReq request = new ExecutNonQueryReq();
+            DummyPlan plan = new DummyPlan();
+            plan.setWorkload(new byte[workloadSize]);
+            plan.setNeedForward(true);
+            ByteBuffer byteBuffer = ByteBuffer.allocate(workloadSize + 4096);
+            plan.serialize(byteBuffer);
+            byteBuffer.flip();
+            request.setPlanBytes(byteBuffer);
+            long currRequsetNum = -1;
+            while (true) {
 
-                  long reqLatency = System.nanoTime();
-                  try {
-                    client.executeNonQueryPlan(request);
-                    currRequsetNum = requestCounter.incrementAndGet();
-                    if (currRequsetNum > threadNum * 10) {
-                      reqLatency = System.nanoTime() - reqLatency;
-                      maxLatency = Math.max(maxLatency, reqLatency);
-                      latencySum.addAndGet(reqLatency);
-                    }
-                  } catch (TException e) {
-                    e.printStackTrace();
-                  }
-
-                  if (currRequsetNum % 1000 == 0) {
-                    long elapsedTime = System.currentTimeMillis() - startTime;
-                    System.out.println(
-                        String.format(
-                            "%d %d %f(%f) %f %f",
-                            elapsedTime,
-                            currRequsetNum,
-                            (currRequsetNum + 0.0) / elapsedTime,
-                            currRequsetNum * workloadSize / (1024.0 * 1024.0) / elapsedTime,
-                            maxLatency / 1000.0,
-                            (latencySum.get() + 0.0) / currRequsetNum));
-                  }
-
-                  if (currRequsetNum >= maxRequestNum) {
-                    break;
-                  }
+              long reqLatency = System.nanoTime();
+              try {
+                client.executeNonQueryPlan(request);
+                currRequsetNum = requestCounter.incrementAndGet();
+                if (currRequsetNum > threadNum * 10) {
+                  reqLatency = System.nanoTime() - reqLatency;
+                  maxLatency = Math.max(maxLatency, reqLatency);
+                  latencySum.addAndGet(reqLatency);
                 }
-              })
-          .start();
+              } catch (TException e) {
+                e.printStackTrace();
+              }
+
+              if (currRequsetNum % 1000 == 0) {
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                System.out.println(
+                    String.format(
+                        "%d %d %f(%f) %f %f",
+                        elapsedTime,
+                        currRequsetNum,
+                        (currRequsetNum + 0.0) / elapsedTime,
+                        currRequsetNum * workloadSize / (1024.0 * 1024.0) / elapsedTime,
+                        maxLatency / 1000.0,
+                        (latencySum.get() + 0.0) / currRequsetNum));
+              }
+
+              if (currRequsetNum >= maxRequestNum) {
+                break;
+              }
+            }
+          });
     }
   }
 

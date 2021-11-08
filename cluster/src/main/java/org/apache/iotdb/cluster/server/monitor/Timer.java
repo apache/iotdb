@@ -170,6 +170,12 @@ public class Timer {
         TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER,
         RAFT_SENDER_COMMIT_LOG),
+    RAFT_SENDER_EXIT_LOG_MANAGER(
+        RAFT_MEMBER_SENDER,
+        "exiting log manager synchronizer",
+        TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER,
+        RAFT_SENDER_COMMIT_LOG),
     RAFT_SENDER_COMMIT_GET_LOGS(
         RAFT_MEMBER_SENDER,
         "get logs to be committed",
@@ -231,15 +237,41 @@ public class Timer {
         RAFT_MEMBER_RECEIVER, "append entrys", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_RECEIVER_INDEX_DIFF(RAFT_MEMBER_RECEIVER, "index diff", 1.0, true, ROOT),
     // log dispatcher
+    LOG_DISPATCHER_FROM_CREATE_TO_ENQUEUE(
+        LOG_DISPATCHER,
+        "from create to queue",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_LOG_ENQUEUE(
+        LOG_DISPATCHER,
+        "enqueue",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     LOG_DISPATCHER_LOG_IN_QUEUE(
         LOG_DISPATCHER,
         "in queue",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
-    LOG_DISPATCHER_FROM_CREATE_TO_END(
+    LOG_DISPATCHER_LOG_BATCH_SIZE(
+        LOG_DISPATCHER, "batch size", 1, true, META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_SENT(
         LOG_DISPATCHER,
-        "from create to end",
+        "from create to sent",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_OK(
+        LOG_DISPATCHER,
+        "from create to OK",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_TOTAL(
+        LOG_DISPATCHER,
+        "total process time",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),

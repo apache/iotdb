@@ -35,7 +35,7 @@ import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
-import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
@@ -230,7 +230,7 @@ public class MetaGroupMemberTest extends BaseMember {
           }
 
           @Override
-          protected AppendLogResult sendLogToFollowers(Log log) {
+          protected AppendLogResult sendLogToFollowers(VotingLog log) {
             return AppendLogResult.OK;
           }
 

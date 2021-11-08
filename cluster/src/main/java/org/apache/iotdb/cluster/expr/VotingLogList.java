@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VotingLogList {
+
   private static final Logger logger = LoggerFactory.getLogger(VotingLogList.class);
 
   private List<VotingLog> logList = new ArrayList<>();
@@ -74,6 +75,11 @@ public class VotingLogList {
           votingLog.getStronglyAcceptedNodeIds().add(acceptingNodeId);
           if (votingLog.getStronglyAcceptedNodeIds().size() >= quorumSize) {
             lastEntryIndexToCommit = i;
+          }
+          if (votingLog.getStronglyAcceptedNodeIds().size()
+                  + votingLog.getWeaklyAcceptedNodeIds().size()
+              >= quorumSize) {
+            votingLog.acceptedTime = System.nanoTime();
           }
         } else if (votingLog.getLog().getCurrLogIndex() > index) {
           break;

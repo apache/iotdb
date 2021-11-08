@@ -87,9 +87,9 @@ public class IndirectLogDispatcher extends LogDispatcher {
       }
     }
 
-    for (Node node : directToIndirectFollowerMap.keySet()) {
-      nodeLogQueues.add(createQueueAndBindingThread(node));
-    }
+    //    for (Node node : directToIndirectFollowerMap.keySet()) {
+    //      nodeLogQueues.add(createQueueAndBindingThread(node));
+    //    }
   }
 
   class DispatcherThread extends LogDispatcher.DispatcherThread {
@@ -110,7 +110,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
           logRequest.getAppendEntryRequest(),
           logRequest.getQuorumSize(),
           directToIndirectFollowerMap.get(receiver));
-      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
+      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENT.calOperationCostTimeFromStart(
           logRequest.getVotingLog().getLog().getCreateTime());
     }
   }

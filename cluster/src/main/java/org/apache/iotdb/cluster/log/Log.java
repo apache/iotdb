@@ -32,7 +32,8 @@ public abstract class Log implements Comparable<Log> {
   private static final Comparator<Log> COMPARATOR =
       Comparator.comparingLong(Log::getCurrLogIndex).thenComparing(Log::getCurrLogTerm);
 
-  protected static final int DEFAULT_BUFFER_SIZE = 4096;
+  // make this configurable or adaptive
+  public static int DEFAULT_BUFFER_SIZE = 16 * 1024;
   private long currLogIndex;
   private long currLogTerm;
 
@@ -50,6 +51,10 @@ public abstract class Log implements Comparable<Log> {
   public abstract ByteBuffer serialize();
 
   public abstract void deserialize(ByteBuffer buffer);
+
+  public void serialize(ByteBuffer buffer) {
+    buffer.put(serialize());
+  }
 
   public enum Types {
     // DO CHECK LogParser when you add a new type of log

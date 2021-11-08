@@ -1130,38 +1130,43 @@ public abstract class RaftMember {
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
 
     Log log;
-    // assign term and index to the new log and append it
-    synchronized (logManager) {
-      if (plan instanceof LogPlan) {
-        try {
-          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
-        } catch (UnknownLogTypeException e) {
-          logger.error("Can not parse LogPlan {}", plan, e);
-          return StatusUtils.PARSE_LOG_ERROR;
-        }
-      } else {
-        log = new PhysicalPlanLog();
-        ((PhysicalPlanLog) log).setPlan(plan);
-        plan.setIndex(logManager.getLastLogIndex() + 1);
+    if (plan instanceof LogPlan) {
+      try {
+        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+      } catch (UnknownLogTypeException e) {
+        logger.error("Can not parse LogPlan {}", plan, e);
+        return StatusUtils.PARSE_LOG_ERROR;
       }
+    } else {
+      log = new PhysicalPlanLog();
+      ((PhysicalPlanLog) log).setPlan(plan);
+      plan.setIndex(logManager.getLastLogIndex() + 1);
+    }
+    // if a single log exceeds the threshold
+    // we need to return error code to the client as in server mode
+    //    if (log.serialize().capacity() + Integer.BYTES
+    //        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+    //      logger.error(
+    //          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+    //              + "or reduce the size of requests you send.");
+    //      return StatusUtils.INTERNAL_ERROR;
+    //    }
+
+    // assign term and index to the new log and append it
+    VotingLog votingLog;
+    synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-      // if a single log exceeds the threshold
-      // we need to return error code to the client as in server mode
-      if (log.serialize().capacity() + Integer.BYTES
-          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
-        logger.error(
-            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
-                + "or reduce the size of requests you send.");
-        return StatusUtils.INTERNAL_ERROR;
-      }
       logManager.append(log);
+      votingLog = buildVotingLog(log);
+      votingLogList.insert(votingLog);
     }
+    log.setCreateTime(System.nanoTime());
+
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
 
     try {
-      if (appendLogInGroup(log)) {
+      if (appendLogInGroup(votingLog)) {
         return StatusUtils.OK;
       }
     } catch (LogExecutionException e) {
@@ -1171,6 +1176,7 @@ public abstract class RaftMember {
   }
 
   protected TSStatus processPlanLocallyV2(PhysicalPlan plan) {
+    long totalStartTime = System.nanoTime();
     logger.debug("{}: Processing plan {}", name, plan);
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
@@ -1190,13 +1196,13 @@ public abstract class RaftMember {
     }
 
     // just like processPlanLocally,we need to check the size of log
-    if (log.serialize().capacity() + Integer.BYTES
-        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
-      logger.error(
-          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
-              + "or reduce the size of requests you send.");
-      return StatusUtils.INTERNAL_ERROR;
-    }
+    //    if (log.serialize().capacity() + Integer.BYTES
+    //        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+    //      logger.error(
+    //          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+    //              + "or reduce the size of requests you send.");
+    //      return StatusUtils.INTERNAL_ERROR;
+    //    }
 
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest = logSequencer.sequence(log);
@@ -1215,12 +1221,18 @@ public abstract class RaftMember {
         case WEAK_ACCEPT:
           // TODO: change to weak
           Statistic.RAFT_WEAK_ACCEPT.add(1);
+          Statistic.LOG_DISPATCHER_FROM_CREATE_TO_OK.calOperationCostTimeFromStart(
+              log.getCreateTime());
+          Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
           return StatusUtils.OK;
         case OK:
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
           startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
           commitLog(log);
           Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
+          Statistic.LOG_DISPATCHER_FROM_CREATE_TO_OK.calOperationCostTimeFromStart(
+              log.getCreateTime());
+          Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
           return StatusUtils.OK;
         case TIME_OUT:
           logger.debug("{}: log {} timed out...", name, log);
@@ -1610,11 +1622,12 @@ public abstract class RaftMember {
       VotingLog log, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, int quorumSize) {
     // wait for the followers to vote
     long startTime = Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.getOperationStartTime();
-    long nextTimeToPrint = 3000;
+    long nextTimeToPrint = 15000;
 
     int stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
     int weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
     int totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
+
     synchronized (log) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
@@ -1644,7 +1657,7 @@ public abstract class RaftMember {
         totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
       }
 
-      if (alreadyWait > 3000) {
+      if (alreadyWait > 15000) {
         logger.info(
             "Slow entry {}, strongly accepted {}, weakly " + "accepted {}, waited time {}ms",
             log,
@@ -1683,9 +1696,9 @@ public abstract class RaftMember {
 
   @SuppressWarnings("java:S2445")
   protected void commitLog(Log log) throws LogExecutionException {
-    long startTime =
-        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
+    long startTime;
     if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
+      startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
       synchronized (logManager) {
         if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
           Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
@@ -1693,9 +1706,12 @@ public abstract class RaftMember {
 
           startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
           logManager.commitTo(log.getCurrLogIndex());
+          Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(startTime);
+
+          startTime = Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.getOperationStartTime();
         }
       }
-      Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(startTime);
+      Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.calOperationCostTimeFromStart(startTime);
     }
     if (ENABLE_COMMIT_RETURN) {
       return;
@@ -1752,9 +1768,11 @@ public abstract class RaftMember {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     if (serializeNow) {
+      long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
       ByteBuffer byteBuffer = log.serialize();
       log.setByteSize(byteBuffer.array().length);
-      request.setEntry(byteBuffer);
+      request.entry = byteBuffer;
+      Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
     }
     request.setLeader(getThisNode());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
@@ -1840,12 +1858,13 @@ public abstract class RaftMember {
    *
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
-  boolean appendLogInGroup(Log log) throws LogExecutionException {
+  boolean appendLogInGroup(VotingLog log) throws LogExecutionException {
+    long totalStartTime = Statistic.LOG_DISPATCHER_TOTAL.getOperationStartTime();
     if (allNodes.size() == 1) {
       // single node group, no followers
       long startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
       logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
-      commitLog(log);
+      commitLog(log.getLog());
       Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
       return true;
     }
@@ -1861,11 +1880,19 @@ public abstract class RaftMember {
       AppendLogResult result = sendLogToFollowers(log);
       Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.calOperationCostTimeFromStart(startTime);
       switch (result) {
+        case WEAK_ACCEPT:
+          // TODO: change to weak
+          Statistic.RAFT_WEAK_ACCEPT.add(1);
+          Statistic.LOG_DISPATCHER_FROM_CREATE_TO_OK.calOperationCostTimeFromStart(
+              log.getLog().getCreateTime());
+          Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
+          return true;
         case OK:
           startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
-          commitLog(log);
+          commitLog(log.getLog());
           Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
+          Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
@@ -1893,14 +1920,14 @@ public abstract class RaftMember {
    *
    * @return an AppendLogResult
    */
-  protected AppendLogResult sendLogToFollowers(Log log) {
+  protected AppendLogResult sendLogToFollowers(VotingLog log) {
     int requiredQuorum = allNodes.size() / 2;
     if (requiredQuorum <= 0) {
       // use half of the members' size as the quorum
-      return sendLogToFollowers(buildVotingLog(log), allNodes.size() / 2);
+      return sendLogToFollowers(log, allNodes.size() / 2);
     } else {
       // make sure quorum does not exceed the number of members - 1
-      return sendLogToFollowers(buildVotingLog(log), Math.min(requiredQuorum, allNodes.size() - 1));
+      return sendLogToFollowers(log, Math.min(requiredQuorum, allNodes.size() - 1));
     }
   }
 

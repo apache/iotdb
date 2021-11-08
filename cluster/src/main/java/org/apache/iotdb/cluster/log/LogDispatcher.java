@@ -31,10 +31,12 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -68,13 +70,14 @@ public class LogDispatcher {
   RaftMember member;
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   private boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
-  List<BlockingQueue<SendLogRequest>> nodeLogQueues = new ArrayList<>();
+  List<BlockingQueue<SendLogRequest>> nodesLogQueues = new ArrayList<>();
   ExecutorService executorService;
   private static ExecutorService serializationService =
       Executors.newFixedThreadPool(
-          Runtime.getRuntime().availableProcessors() * 2,
+          CommonUtils.getCpuCores() * 2,
           new ThreadFactoryBuilder().setDaemon(true).setNameFormat("DispatcherEncoder-%d").build());
   public static int bindingThreadNum = 1;
+  public static int maxBatchSize = 1;
 
   public LogDispatcher(RaftMember member) {
     this.member = member;
@@ -85,7 +88,7 @@ public class LogDispatcher {
   void createQueueAndBindingThreads() {
     for (Node node : member.getAllNodes()) {
       if (!ClusterUtils.isNodeEquals(node, member.getThisNode())) {
-        nodeLogQueues.add(createQueueAndBindingThread(node));
+        nodesLogQueues.add(createQueueAndBindingThread(node));
       }
     }
   }
@@ -96,20 +99,22 @@ public class LogDispatcher {
     executorService.awaitTermination(10, TimeUnit.SECONDS);
   }
 
+  private ByteBuffer serializeTask(SendLogRequest request) {
+    ByteBuffer byteBuffer = request.getVotingLog().getLog().serialize();
+    request.getVotingLog().getLog().setByteSize(byteBuffer.capacity());
+    return byteBuffer;
+  }
+
   public void offer(SendLogRequest request) {
     // do serialization here to avoid taking LogManager for too long
-    if (!nodeLogQueues.isEmpty()) {
-      request.serializedLogFuture =
-          serializationService.submit(
-              () -> {
-                ByteBuffer byteBuffer = request.getVotingLog().getLog().serialize();
-                request.getVotingLog().getLog().setByteSize(byteBuffer.array().length);
-                return byteBuffer;
-              });
+    if (!nodesLogQueues.isEmpty()) {
+      request.serializedLogFuture = serializationService.submit(() -> serializeTask(request));
     }
 
-    for (int i = 0; i < nodeLogQueues.size(); i++) {
-      BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);
+    long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
+    request.getVotingLog().getLog().setEnqueueTime(System.nanoTime());
+    for (int i = 0; i < nodesLogQueues.size(); i++) {
+      BlockingQueue<SendLogRequest> nodeLogQueue = nodesLogQueues.get(i);
       try {
         boolean addSucceeded;
         if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
@@ -135,10 +140,17 @@ public class LogDispatcher {
         Thread.currentThread().interrupt();
       }
     }
+    Statistic.LOG_DISPATCHER_LOG_ENQUEUE.calOperationCostTimeFromStart(startTime);
+
+    if (Timer.ENABLE_INSTRUMENTING) {
+      Statistic.LOG_DISPATCHER_FROM_CREATE_TO_ENQUEUE.calOperationCostTimeFromStart(
+          request.getVotingLog().getLog().getCreateTime());
+    }
   }
 
   BlockingQueue<SendLogRequest> createQueueAndBindingThread(Node node) {
-    BlockingQueue<SendLogRequest> logBlockingQueue =
+    BlockingQueue<SendLogRequest> logBlockingQueue;
+    logBlockingQueue =
         new ArrayBlockingQueue<>(
             ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     for (int i = 0; i < bindingThreadNum; i++) {
@@ -234,6 +246,7 @@ public class LogDispatcher {
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     private List<SendLogRequest> currBatch = new ArrayList<>();
     private Peer peer;
+    Client client;
 
     DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
       this.receiver = receiver;
@@ -242,6 +255,7 @@ public class LogDispatcher {
           member
               .getPeerMap()
               .computeIfAbsent(receiver, r -> new Peer(member.getLogManager().getLastLogIndex()));
+      client = member.getSyncClient(receiver);
     }
 
     @Override
@@ -252,15 +266,20 @@ public class LogDispatcher {
           synchronized (logBlockingDeque) {
             SendLogRequest poll = logBlockingDeque.take();
             currBatch.add(poll);
-            if (useBatchInLogCatchUp) {
-              logBlockingDeque.drainTo(currBatch);
+            if (maxBatchSize > 1) {
+              logBlockingDeque.drainTo(currBatch, maxBatchSize - 1);
             }
           }
           if (logger.isDebugEnabled()) {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
+          Statistic.LOG_DISPATCHER_LOG_BATCH_SIZE.add(currBatch.size());
           for (SendLogRequest request : currBatch) {
+            Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
+                request.getVotingLog().getLog().getEnqueueTime());
+            long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
             request.getAppendEntryRequest().entry = request.serializedLogFuture.get();
+            Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
           }
           sendBatchLogs(currBatch);
           currBatch.clear();
@@ -364,8 +383,6 @@ public class LogDispatcher {
             break;
           }
           logSize -= curSize;
-          Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
-              currBatch.get(logIndex).getVotingLog().getLog().getCreateTime());
           logList.add(currBatch.get(logIndex).getAppendEntryRequest().entry);
         }
 
@@ -376,7 +393,7 @@ public class LogDispatcher {
           appendEntriesSync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
         }
         for (; prevIndex < logIndex; prevIndex++) {
-          Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
+          Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENT.calOperationCostTimeFromStart(
               currBatch.get(prevIndex).getVotingLog().getLog().getCreateTime());
         }
       }
@@ -397,17 +414,27 @@ public class LogDispatcher {
     }
 
     void sendLog(SendLogRequest logRequest) {
-      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
-          logRequest.getVotingLog().getLog().getCreateTime());
-      member.sendLogToFollower(
-          logRequest.getVotingLog(),
-          receiver,
-          logRequest.getLeaderShipStale(),
-          logRequest.getNewLeaderTerm(),
-          logRequest.getAppendEntryRequest(),
-          logRequest.getQuorumSize());
-      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
-          logRequest.getVotingLog().getLog().getCreateTime());
+      AppendNodeEntryHandler handler =
+          member.getAppendNodeEntryHandler(
+              logRequest.getVotingLog(),
+              receiver,
+              logRequest.leaderShipStale,
+              logRequest.newLeaderTerm,
+              peer,
+              logRequest.quorumSize);
+      try {
+        long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
+        AppendEntryResult result = client.appendEntry(logRequest.appendEntryRequest);
+        Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(operationStartTime);
+        handler.onComplete(result);
+      } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
+        ClientUtils.putBackSyncClient(client);
+        client = member.getSyncClient(receiver);
+        handler.onError(e);
+      } catch (Exception e) {
+        handler.onError(e);
+      }
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<AppendEntryResult> {

@@ -22,11 +22,11 @@ package org.apache.iotdb.cluster.log.logtypes;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -48,7 +48,7 @@ public class PhysicalPlanLog extends Log {
 
   @Override
   public ByteBuffer serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
+    PublicBAOS byteArrayOutputStream = new PublicBAOS(DEFAULT_BUFFER_SIZE);
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) PHYSICAL_PLAN.ordinal());
 
@@ -60,7 +60,15 @@ public class PhysicalPlanLog extends Log {
       // unreachable
     }
 
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.put((byte) PHYSICAL_PLAN.ordinal());
+    buffer.putLong(getCurrLogIndex());
+    buffer.putLong(getCurrLogTerm());
+    plan.serialize(buffer);
   }
 
   @Override

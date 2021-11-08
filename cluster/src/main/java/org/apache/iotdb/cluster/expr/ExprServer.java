@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.expr;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -79,6 +80,8 @@ public class ExprServer extends MetaClusterServer {
     boolean useSW = Boolean.parseBoolean(args[5]);
     boolean enableWeakAcceptance = Boolean.parseBoolean(args[6]);
     boolean enableCommitReturn = Boolean.parseBoolean(args[7]);
+    int maxBatchSize = Integer.parseInt(args[8]);
+    int defaultLogBufferSize = Integer.parseInt(args[9]);
 
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(Arrays.asList(allNodeStr));
     ClusterDescriptor.getInstance().getConfig().setInternalMetaPort(port);
@@ -89,10 +92,12 @@ public class ExprServer extends MetaClusterServer {
     RaftMember.USE_LOG_DISPATCHER = true;
     RaftMember.USE_INDIRECT_LOG_DISPATCHER = useIndirectDispatcher;
     LogDispatcher.bindingThreadNum = dispatcherThreadNum;
+    LogDispatcher.maxBatchSize = maxBatchSize;
     ExprMember.bypassRaft = bypassRaft;
     ExprMember.useSlidingWindow = useSW;
     ExprMember.ENABLE_WEAK_ACCEPTANCE = enableWeakAcceptance;
     ExprMember.ENABLE_COMMIT_RETURN = enableCommitReturn;
+    Log.DEFAULT_BUFFER_SIZE = defaultLogBufferSize * 1024 + 512;
 
     ExprServer server = new ExprServer();
     server.start();

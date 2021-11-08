@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
@@ -938,6 +939,7 @@ public class MetaGroupMember extends RaftMember {
     }
 
     AddNodeLog addNodeLog = new AddNodeLog();
+    VotingLog votingLog = buildVotingLog(addNodeLog);
     // node adding is serialized to reduce potential concurrency problem
     synchronized (logManager) {
       // update partition table
@@ -954,6 +956,7 @@ public class MetaGroupMember extends RaftMember {
       addNodeLog.setNewNode(newNode);
 
       logManager.append(addNodeLog);
+      votingLogList.insert(votingLog);
     }
 
     int retryTime = 0;
@@ -963,7 +966,7 @@ public class MetaGroupMember extends RaftMember {
           name,
           newNode,
           retryTime);
-      AppendLogResult result = sendLogToFollowers(addNodeLog);
+      AppendLogResult result = sendLogToFollowers(votingLog);
       switch (result) {
         case OK:
           commitLog(addNodeLog);
@@ -1693,6 +1696,7 @@ public class MetaGroupMember extends RaftMember {
     }
 
     RemoveNodeLog removeNodeLog = new RemoveNodeLog();
+    VotingLog votingLog = buildVotingLog(removeNodeLog);
     // node removal must be serialized to reduce potential concurrency problem
     synchronized (logManager) {
       // update partition table
@@ -1708,6 +1712,7 @@ public class MetaGroupMember extends RaftMember {
       removeNodeLog.setRemovedNode(target);
 
       logManager.append(removeNodeLog);
+      votingLogList.insert(votingLog);
     }
 
     int retryTime = 0;
@@ -1717,7 +1722,7 @@ public class MetaGroupMember extends RaftMember {
           name,
           target,
           retryTime);
-      AppendLogResult result = sendLogToFollowers(removeNodeLog);
+      AppendLogResult result = sendLogToFollowers(votingLog);
       switch (result) {
         case OK:
           commitLog(removeNodeLog);
