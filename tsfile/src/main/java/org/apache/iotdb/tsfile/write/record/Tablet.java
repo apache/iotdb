@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -126,13 +125,7 @@ public class Tablet {
   public void addValue(String measurementId, int rowIndex, Object value) {
     int indexOfSchema = measurementIndex.get(measurementId);
     IMeasurementSchema measurementSchema = schemas.get(indexOfSchema);
-    if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
-      int indexInVector = measurementSchema.getSubMeasurementIndex(measurementId);
-      TSDataType dataType = measurementSchema.getSubMeasurementsTSDataTypeList().get(indexInVector);
-      addValueOfDataType(dataType, rowIndex, indexInVector, value);
-    } else {
-      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
-    }
+    addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
   }
 
   private void addValueOfDataType(
@@ -224,22 +217,9 @@ public class Tablet {
     int columnIndex = 0;
     for (IMeasurementSchema schema : schemas) {
       TSDataType dataType = schema.getType();
-      if (dataType.equals(TSDataType.VECTOR)) {
-        columnIndex = buildVectorColumns((VectorMeasurementSchema) schema, columnIndex);
-      } else {
-        values[columnIndex] = createValueColumnOfDataType(dataType);
-        columnIndex++;
-      }
+      values[columnIndex] = createValueColumnOfDataType(dataType);
+      columnIndex++;
     }
-  }
-
-  private int buildVectorColumns(VectorMeasurementSchema schema, int idx) {
-    for (int i = 0; i < schema.getSubMeasurementsList().size(); i++) {
-      TSDataType dataType = schema.getSubMeasurementsTSDataTypeList().get(i);
-      values[idx] = createValueColumnOfDataType(dataType);
-      idx++;
-    }
-    return idx;
   }
 
   private Object createValueColumnOfDataType(TSDataType dataType) {
