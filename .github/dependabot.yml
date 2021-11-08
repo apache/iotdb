@@ -21,8 +21,11 @@ updates:
   - package-ecosystem: maven
     directory: "/"
     schedule:
-      interval: daily
+      interval: monthly
     target-branch: "master"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     labels:
       - "master"
       - "dependencies"
@@ -31,8 +34,11 @@ updates:
   - package-ecosystem: maven
     directory: "/"
     schedule:
-      interval: daily
+      interval: monthly
     target-branch: "rel/0.12"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     labels:
       - "0.12"
       - "dependencies"
@@ -41,8 +47,11 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: daily
+      interval: monthly
     target-branch: "master"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     labels:
       - "master"
       - "dependencies"
@@ -51,8 +60,11 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: daily
+      interval: monthly
     target-branch: "rel/0.12"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
     labels:
       - "0.12"
       - "dependencies"

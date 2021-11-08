@@ -867,6 +867,16 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
+  public void getDeviceCount(
+      RaftNode header, List<String> pathsToQuery, AsyncMethodCallback<Integer> resultHandler)
+      throws TException {
+    DataAsyncService service = getDataAsyncService(header, resultHandler, "count device");
+    if (service != null) {
+      service.getDeviceCount(header, pathsToQuery, resultHandler);
+    }
+  }
+
+  @Override
   public void onSnapshotApplied(
       RaftNode header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, resultHandler, "Snapshot applied");
@@ -999,6 +1009,11 @@ public class DataClusterServer extends RaftServer
   @Override
   public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
     return getDataSyncService(header).getPathCount(header, pathsToQuery, level);
+  }
+
+  @Override
+  public int getDeviceCount(RaftNode header, List<String> pathsToQuery) throws TException {
+    return getDataSyncService(header).getDeviceCount(header, pathsToQuery);
   }
 
   @Override

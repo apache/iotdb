@@ -61,7 +61,7 @@ public class ClusterPreviousFill extends PreviousFill {
   private TimeValuePair fillResult;
 
   ClusterPreviousFill(PreviousFill fill, MetaGroupMember metaGroupMember) {
-    super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange());
+    super(fill.getDataType(), fill.getQueryStartTime(), fill.getBeforeRange());
     this.metaGroupMember = metaGroupMember;
   }
 

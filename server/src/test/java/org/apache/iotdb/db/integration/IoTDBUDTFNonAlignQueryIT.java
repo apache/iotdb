@@ -123,7 +123,7 @@ public class IoTDBUDTFNonAlignQueryIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -140,9 +140,9 @@ public class IoTDBUDTFNonAlignQueryIT {
   @Test
   public void queryWithoutValueFilter1() {
     String sqlStr =
-        "select udf(*, *, \"addend\"=\""
+        "select udf(*, *, 'addend'='"
             + ADDEND
-            + "\"), *, udf(*, *) from root.vehicle.d1 disable align";
+            + "'), *, udf(*, *) from root.vehicle.d1 disable align";
 
     Set<Integer> s1AndS2WithAddend = new HashSet<>(Arrays.asList(0, 1, 2, 3));
     Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(6, 7, 8, 9));

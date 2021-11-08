@@ -87,11 +87,6 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
   public abstract IMeasurementSchema getSchema();
 
   @Override
-  public int getMeasurementMNodeCount() {
-    return 1;
-  }
-
-  @Override
   public abstract int getMeasurementCount();
 
   /**

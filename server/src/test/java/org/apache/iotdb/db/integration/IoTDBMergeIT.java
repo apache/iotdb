@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -43,18 +43,12 @@ public class IoTDBMergeIT {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeIT.class);
   private long prevPartitionInterval;
-  private CompactionStrategy prevTsFileManagementStrategy;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    prevTsFileManagementStrategy =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -63,7 +57,6 @@ public class IoTDBMergeIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(prevTsFileManagementStrategy);
   }
 
   @Test
@@ -228,7 +221,7 @@ public class IoTDBMergeIT {
 
       statement.execute("MERGE");
       try {
-        Thread.sleep(500);
+        Thread.sleep(2000);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -299,7 +292,26 @@ public class IoTDBMergeIT {
       }
 
       statement.execute("MERGE");
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
 
+      }
+
+      long totalTime = 0;
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        // wait
+        try {
+          Thread.sleep(1000);
+          totalTime += 1000;
+          if (totalTime > 240_000) {
+            fail();
+            break;
+          }
+        } catch (InterruptedException e) {
+
+        }
+      }
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
         cnt = 0;
@@ -322,65 +334,6 @@ public class IoTDBMergeIT {
         }
       }
       assertEquals(10000, cnt);
-    }
-  }
-
-  @Test
-  public void testShowMergeStatus() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.mergeTest");
-      for (int i = 1; i <= 3; i++) {
-        try {
-          statement.execute(
-              "CREATE TIMESERIES root.mergeTest.s"
-                  + i
-                  + " WITH DATATYPE=INT64,"
-                  + "ENCODING=PLAIN");
-        } catch (SQLException e) {
-          // ignore
-        }
-      }
-
-      for (int j = 1; j <= 10; j++) {
-        statement.execute(
-            String.format(
-                "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                j, j + 1, j + 2, j + 3));
-      }
-      statement.execute("FLUSH");
-      for (int j = 1; j <= 10; j++) {
-        statement.execute(
-            String.format(
-                "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                j, j + 10, j + 20, j + 30));
-      }
-      statement.execute("FLUSH");
-      statement.execute("MERGE");
-      try {
-        Thread.sleep(10000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-
-      int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SHOW MERGE")) {
-        cnt = 0;
-        int colNum = resultSet.getMetaData().getColumnCount();
-        while (resultSet.next()) {
-          StringBuilder stringBuilder = new StringBuilder();
-          for (int i = 0; i < colNum; i++) {
-            stringBuilder.append(resultSet.getString(i + 1)).append(",");
-          }
-          System.out.println(stringBuilder);
-          cnt++;
-        }
-      }
-      // it is uncertain whether the sub tasks are created at this time point, and we are only
-      // sure that the main task is created
-      assertEquals(4, cnt);
     }
   }
 }

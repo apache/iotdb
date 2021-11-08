@@ -44,6 +44,11 @@ public abstract class UDFQueryTransformer extends Transformer {
   }
 
   @Override
+  public boolean isConstantPointReader() {
+    return udfOutput.isConstantPointReader();
+  }
+
+  @Override
   protected boolean cacheValue() throws QueryProcessException, IOException {
     while (!cacheValueFromUDFOutput()) {
       if (!executeUDFOnce() && !terminate()) {

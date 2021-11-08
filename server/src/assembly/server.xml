@@ -36,5 +36,9 @@
             <directory>src/assembly/resources</directory>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+        </fileSet>
     </fileSets>
 </assembly>

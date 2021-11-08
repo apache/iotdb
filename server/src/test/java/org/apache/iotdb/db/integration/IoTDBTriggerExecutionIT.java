@@ -48,11 +48,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@SuppressWarnings("squid:S2925") // enable to use Thread.sleep(long) without warnings
 public class IoTDBTriggerExecutionIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBTriggerExecutionIT.class);
 
+  private volatile long count = 0;
   private volatile Exception exception = null;
 
   private final Thread dataGenerator =
@@ -65,12 +65,11 @@ public class IoTDBTriggerExecutionIT {
                       Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
               Statement statement = connection.createStatement()) {
 
-            long count = 0;
             do {
               ++count;
               statement.execute(
                   String.format(
-                      "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6) values(%d,%d,%d,%d,%d,%s,\"%d\")",
+                      "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6) values(%d,%d,%d,%d,%d,%s,'%d')",
                       count, count, count, count, count, count % 2 == 0 ? "true" : "false", count));
             } while (!isInterrupted());
           } catch (Exception e) {
@@ -141,6 +140,13 @@ public class IoTDBTriggerExecutionIT {
     EnvironmentUtils.cleanEnv();
   }
 
+  private void waitCountIncreaseBy(final long increment) throws InterruptedException {
+    final long previous = count;
+    while (count - previous < increment) {
+      Thread.sleep(100);
+    }
+  }
+
   @Test
   public void checkFireTimes() throws InterruptedException {
     try (Connection connection =
@@ -148,17 +154,17 @@ public class IoTDBTriggerExecutionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       int[] counters1 = getCounters(6);
       LOGGER.info(Arrays.toString(counters1));
@@ -167,7 +173,7 @@ public class IoTDBTriggerExecutionIT {
       }
 
       startDataGenerator();
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
       stopDataGenerator();
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
@@ -196,16 +202,16 @@ public class IoTDBTriggerExecutionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -213,19 +219,18 @@ public class IoTDBTriggerExecutionIT {
         return;
       }
       int[] counters1 = getCounters(3);
-      LOGGER.info(Arrays.toString(counters1));
       for (int i = 0; i < 3; ++i) {
         assertTrue(Counter.BASE < counters1[i]);
       }
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -252,16 +257,16 @@ public class IoTDBTriggerExecutionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -274,30 +279,30 @@ public class IoTDBTriggerExecutionIT {
         assertTrue(Counter.BASE < counters1[i]);
       }
 
-      Thread.sleep(100);
-      statement.execute("drop trigger trigger-1");
-      statement.execute("drop trigger trigger-2");
-      statement.execute("drop trigger trigger-3");
-      Thread.sleep(100);
+      waitCountIncreaseBy(100);
+      statement.execute("drop trigger trigger_1");
+      statement.execute("drop trigger trigger_2");
+      statement.execute("drop trigger trigger_3");
+      waitCountIncreaseBy(100);
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
-      Thread.sleep(100);
-      statement.execute("drop trigger trigger-1");
-      statement.execute("drop trigger trigger-2");
-      statement.execute("drop trigger trigger-3");
-      Thread.sleep(100);
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      waitCountIncreaseBy(100);
+      statement.execute("drop trigger trigger_1");
+      statement.execute("drop trigger trigger_2");
+      statement.execute("drop trigger trigger_3");
+      waitCountIncreaseBy(100);
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -324,35 +329,35 @@ public class IoTDBTriggerExecutionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
-      statement.execute("stop trigger trigger-1");
-      statement.execute("stop trigger trigger-2");
-      statement.execute("stop trigger trigger-3");
+      statement.execute("stop trigger trigger_1");
+      statement.execute("stop trigger trigger_2");
+      statement.execute("stop trigger trigger_3");
 
       int[] counters1 = getCounters(6);
       LOGGER.info(Arrays.toString(counters1));
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
-      statement.execute("stop trigger trigger-4");
-      statement.execute("stop trigger trigger-5");
-      statement.execute("stop trigger trigger-6");
+      statement.execute("stop trigger trigger_4");
+      statement.execute("stop trigger trigger_5");
+      statement.execute("stop trigger trigger_6");
 
       int[] counters2 = getCounters(6);
       LOGGER.info(Arrays.toString(counters2));
@@ -369,11 +374,11 @@ public class IoTDBTriggerExecutionIT {
         assertTrue(counters1[i] < counters2[i]);
       }
 
-      statement.execute("start trigger trigger-1");
-      statement.execute("start trigger trigger-2");
-      statement.execute("start trigger trigger-3");
+      statement.execute("start trigger trigger_1");
+      statement.execute("start trigger trigger_2");
+      statement.execute("start trigger trigger_3");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -389,11 +394,11 @@ public class IoTDBTriggerExecutionIT {
         assertEquals(counters2[i], counters3[i]);
       }
 
-      statement.execute("start trigger trigger-4");
-      statement.execute("start trigger trigger-5");
-      statement.execute("start trigger trigger-6");
+      statement.execute("start trigger trigger_4");
+      statement.execute("start trigger trigger_5");
+      statement.execute("start trigger trigger_6");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -406,16 +411,16 @@ public class IoTDBTriggerExecutionIT {
         assertTrue(counters3[i] < counters4[i]);
       }
 
-      statement.execute("stop trigger trigger-1");
-      statement.execute("stop trigger trigger-2");
-      statement.execute("stop trigger trigger-3");
-      statement.execute("stop trigger trigger-4");
-      statement.execute("stop trigger trigger-5");
-      statement.execute("stop trigger trigger-6");
+      statement.execute("stop trigger trigger_1");
+      statement.execute("stop trigger trigger_2");
+      statement.execute("stop trigger trigger_3");
+      statement.execute("stop trigger trigger_4");
+      statement.execute("stop trigger trigger_5");
+      statement.execute("stop trigger trigger_6");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
       int[] counters5 = getCounters(6);
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
       int[] counters6 = getCounters(6);
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -434,7 +439,7 @@ public class IoTDBTriggerExecutionIT {
     int[] counters = new int[limit];
     for (int i = 1; i <= limit; ++i) {
       counters[i - 1] =
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-" + i))
+          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_" + i))
               .getCounter();
     }
     return counters;
@@ -448,22 +453,22 @@ public class IoTDBTriggerExecutionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       // IOTDB-1825: if the background data generator's connection is closed, the following checks
       // will be meaningless, in which case we ignore the checks
@@ -487,7 +492,7 @@ public class IoTDBTriggerExecutionIT {
 
       for (int i = 0; i < 6; ++i) {
         try {
-          TriggerRegistrationService.getInstance().getTriggerInstance("trigger-" + i);
+          TriggerRegistrationService.getInstance().getTriggerInstance("trigger_" + i);
           fail();
         } catch (TriggerManagementException e) {
           assertTrue(e.getMessage().contains("does not exist"));
@@ -498,7 +503,7 @@ public class IoTDBTriggerExecutionIT {
 
       for (int i = 0; i < 6; ++i) {
         try {
-          TriggerRegistrationService.getInstance().getTriggerInstance("trigger-" + i);
+          TriggerRegistrationService.getInstance().getTriggerInstance("trigger_" + i);
           fail();
         } catch (TriggerManagementException e) {
           assertTrue(e.getMessage().contains("does not exist"));
@@ -506,17 +511,17 @@ public class IoTDBTriggerExecutionIT {
       }
 
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       Thread.sleep(500);
 
@@ -541,19 +546,19 @@ public class IoTDBTriggerExecutionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
-      Thread.sleep(500);
+      waitCountIncreaseBy(500);
 
       stopDataGenerator();
 
@@ -562,7 +567,7 @@ public class IoTDBTriggerExecutionIT {
 
       for (int i = 0; i < 6; ++i) {
         try {
-          TriggerRegistrationService.getInstance().getTriggerInstance("trigger-" + i);
+          TriggerRegistrationService.getInstance().getTriggerInstance("trigger_" + i);
           fail();
         } catch (TriggerManagementException e) {
           assertTrue(e.getMessage().contains("does not exist"));
@@ -573,7 +578,7 @@ public class IoTDBTriggerExecutionIT {
 
       for (int i = 0; i < 6; ++i) {
         try {
-          TriggerRegistrationService.getInstance().getTriggerInstance("trigger-" + i);
+          TriggerRegistrationService.getInstance().getTriggerInstance("trigger_" + i);
           fail();
         } catch (TriggerManagementException e) {
           assertTrue(e.getMessage().contains("does not exist"));
@@ -581,17 +586,17 @@ public class IoTDBTriggerExecutionIT {
       }
 
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_5 before insert on root.vehicle.d1.s5 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+          "create trigger trigger_6 after insert on root.vehicle.d1.s6 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       Thread.sleep(500);
 

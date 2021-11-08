@@ -36,7 +36,9 @@ public class LocalFSOutputFactory implements FileOutputFactory {
   @Override
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     try {
-      return new LocalTsFileOutput(new FileOutputStream(new File(filePath), append));
+      File file = new File(filePath);
+      file.getParentFile().mkdirs();
+      return new LocalTsFileOutput(new FileOutputStream(file, append));
     } catch (IOException e) {
       logger.error("Failed to get TsFile output of file: {}, ", filePath, e);
       return null;

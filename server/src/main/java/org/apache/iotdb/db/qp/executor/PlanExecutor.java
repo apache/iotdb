@@ -31,9 +31,9 @@ import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
@@ -82,6 +82,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
@@ -321,8 +322,6 @@ public class PlanExecutor implements IPlanExecutor {
       case FULL_MERGE:
         operateMerge((MergePlan) plan);
         return true;
-      case TRACING:
-        throw new QueryProcessException("TRACING ON/OFF hasn't been supported yet");
       case SET_SYSTEM_MODE:
         operateSetSystemMode((SetSystemModePlan) plan);
         return true;
@@ -354,10 +353,6 @@ public class PlanExecutor implements IPlanExecutor {
         return operateStartTrigger((StartTriggerPlan) plan);
       case STOP_TRIGGER:
         return operateStopTrigger((StopTriggerPlan) plan);
-      case CREATE_INDEX:
-        throw new QueryProcessException("Create index hasn't been supported yet");
-      case DROP_INDEX:
-        throw new QueryProcessException("Drop index hasn't been supported yet");
       case KILL:
         try {
           operateKillQuery((KillQueryPlan) plan);
@@ -369,6 +364,8 @@ public class PlanExecutor implements IPlanExecutor {
         return createSchemaTemplate((CreateTemplatePlan) plan);
       case SET_SCHEMA_TEMPLATE:
         return setSchemaTemplate((SetSchemaTemplatePlan) plan);
+      case UNSET_SCHEMA_TEMPLATE:
+        return unsetSchemaTemplate((UnsetSchemaTemplatePlan) plan);
       case CREATE_CONTINUOUS_QUERY:
         return operateCreateContinuousQuery((CreateContinuousQueryPlan) plan);
       case DROP_CONTINUOUS_QUERY:
@@ -396,6 +393,16 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.setSchemaTemplate(setSchemaTemplatePlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean unsetSchemaTemplate(UnsetSchemaTemplatePlan unsetSchemaTemplatePlan)
+      throws QueryProcessException {
+    try {
+      IoTDB.metaManager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -697,7 +704,7 @@ public class PlanExecutor implements IPlanExecutor {
     return singleDataSet;
   }
 
-  private int getDevicesNum(PartialPath path) throws MetadataException {
+  protected int getDevicesNum(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getDevicesNum(path);
   }
 
@@ -714,7 +721,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<PartialPath> getPathsName(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+    return IoTDB.metaManager.getFlatMeasurementPaths(path);
   }
 
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
@@ -1151,6 +1158,7 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance().loadNewTsFile(resource);
       }
     } catch (Exception e) {
+      logger.error("fail to load file {}", file.getName(), e);
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
     }
@@ -1209,7 +1217,8 @@ public class PlanExecutor implements IPlanExecutor {
         }
       }
       for (PartialPath path :
-          IoTDB.metaManager.getAllTimeseriesPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
+          IoTDB.metaManager.getFlatMeasurementPaths(
+              devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
         existSeriesSet.add(path.getMeasurement());
         existSeriesSet.add(path.getMeasurementAlias());
       }
@@ -1953,10 +1962,6 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     return dataSet;
-  }
-
-  protected String deleteTimeSeries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.deleteTimeseries(path);
   }
 
   @SuppressWarnings("unused") // for the distributed version

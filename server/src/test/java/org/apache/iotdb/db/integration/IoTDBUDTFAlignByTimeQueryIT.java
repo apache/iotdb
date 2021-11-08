@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -158,14 +159,14 @@ public class IoTDBUDTFAlignByTimeQueryIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute(
-          "create function multiplier as \"org.apache.iotdb.db.query.udf.example.Multiplier\"");
-      statement.execute("create function max as \"org.apache.iotdb.db.query.udf.example.Max\"");
+          "create function multiplier as 'org.apache.iotdb.db.query.udf.example.Multiplier'");
+      statement.execute("create function max as 'org.apache.iotdb.db.query.udf.example.Max'");
       statement.execute(
-          "create function terminate as \"org.apache.iotdb.db.query.udf.example.TerminateTester\"");
+          "create function terminate as 'org.apache.iotdb.db.query.udf.example.TerminateTester'");
       statement.execute(
-          "create function validate as \"org.apache.iotdb.db.query.udf.example.ValidateTester\"");
+          "create function validate as 'org.apache.iotdb.db.query.udf.example.ValidateTester'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -287,7 +288,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   @Test
   public void queryWithoutValueFilter4() {
     String sqlStr =
-        "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d1";
+        "select udf(*, *, 'addend'='" + ADDEND + "'), *, udf(*, *) from root.vehicle.d1";
 
     Set<Integer> s1AndS2WithAddend = new HashSet<>(Arrays.asList(0, 1, 2, 3));
     Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(6, 7, 8, 9));
@@ -325,7 +326,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @Test
   public void queryWithoutValueFilter5() {
-    String sqlStr = "select multiplier(s2, \"a\"=\"2\", \"b\"=\"5\") from root.vehicle.d1";
+    String sqlStr = "select multiplier(s2, 'a'='2', 'b'='5') from root.vehicle.d1";
 
     try (Connection connection =
             DriverManager.getConnection(
@@ -516,9 +517,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   @Test
   public void queryWithValueFilter2() {
     String sqlStr =
-        "select udf(*, *, \"addend\"=\""
+        "select udf(*, *, 'addend'='"
             + ADDEND
-            + "\"), *, udf(*, *) from root.vehicle.d2"
+            + "'), *, udf(*, *) from root.vehicle.d2"
             + String.format(
                 " where s1 >= %d and s2 < %d",
                 (int) (0.25 * ITERATION_TIMES), (int) (0.75 * ITERATION_TIMES));
@@ -862,6 +863,47 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       assertEquals("Time", resultSet.getMetaData().getColumnName(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testRowByRowUDFWithConstants() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String query = "SELECT udf(s1, 1) FROM root.vehicle.d2";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 0; i < ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i + 1.0D, rs.getLong(2), 0.001);
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      query = "SELECT udf(s1, (1 + 4) * 2 / 10) FROM root.vehicle.d2";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 0; i < ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i + 1.0D, rs.getLong(2), 0.001);
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      query = "SELECT udf(s1 + 1, 0) FROM root.vehicle.d2";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 0; i < ITERATION_TIMES; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i + 1.0D, rs.getLong(2), 0.001);
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }

@@ -36,7 +36,7 @@ In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` 
 The sample code for single column data insertion is as follows:
 ```
 IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
 ```
 
 The above example code inserts the long integer timestamp and the value "true" into the timeseries `root.ln.wf02.wt02.status` and inserts the long integer timestamp and the value "v1" into the timeseries `root.ln.wf02.wt02.hardware`. When the execution is successful, cost time is shown to indicate that the data insertion has been completed.
@@ -341,7 +341,7 @@ Currently, IoTDB supports the following string processing functions:
 Example：
 
 ```   sql
-select s1, string_contains(s1, "s"="warn"), string_matches(s1, "regex"="[^\\s]+37229") from root.sg1.d4;
+select s1, string_contains(s1, 's'='warn'), string_matches(s1, 'regex'='[^\\s]+37229') from root.sg1.d4;
 ```
 
 Result：
@@ -370,7 +370,7 @@ Currently, IoTDB supports the following selector functions:
 Example：
 
 ```   sql
-select s1, top_k(s1, "k"="2"), bottom_k(s1, "k"="2") from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
+select s1, top_k(s1, 'k'='2'), bottom_k(s1, 'k'='2') from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
 ```
 
 Result：
@@ -459,7 +459,50 @@ select s1, s2, const(s1, 'value'='1024', 'type'='INT64'), pi(s2), e(s1, s2) from
 Total line number = 5
 It costs 0.005s
 ```
+#### Data Type Conversion Function
+The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE, BOOLEAN, TEXT. When we query or evaluate data, we may need to convert data types, such as TEXT to INT32, or improve the accuracy of the data, such as FLOAT to DOUBLE. Therefore, IoTDB supports the use of cast functions to convert data types.
 
+| Function Name | Required Attributes                                          | Output Series Data Type                      | Series Data Type  Description                               |
+| ------------- | ------------------------------------------------------------ | -------------------------------------------- | ----------------------------------------------------------- |
+| CAST          | `type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Converts data to the type specified by the `type` argument. |
+
+
+
+##### Notes
+1. The value of type BOOLEAN is `true`, when data is converted to BOOLEAN if INT32 and INT64 are not 0, FLOAT and DOUBLE are not 0.0, TEXT is not empty string or "false", otherwise `false`.    
+2. The value of type INT32, INT64, FLOAT, DOUBLE are 1 or 1.0 and TEXT is "true", when BOOLEAN data is true, otherwise 0, 0.0 or "false".  
+3. When TEXT is converted to INT32, INT64, or FLOAT, the TEXT is first converted to DOUBLE and then to the corresponding type, which may cause loss of precision. It will skip directly if the data can not be converted.
+
+##### Syntax
+Example data:
+```
+IoTDB> select text from root.test;
++-----------------------------+--------------+
+|                         Time|root.test.text|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|           1.1|
+|1970-01-01T08:00:00.002+08:00|             1|
+|1970-01-01T08:00:00.003+08:00|   hello world|
+|1970-01-01T08:00:00.004+08:00|         false|
++-----------------------------+--------------+
+```
+SQL:
+```sql
+select cast(text, 'type'='BOOLEAN'), cast(text, 'type'='INT32'), cast(text, 'type'='INT64'), cast(text, 'type'='FLOAT'), cast(text, 'type'='DOUBLE') from root.test;
+```
+Result:
+```
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+|                         Time|cast(root.test.text, "type"="BOOLEAN")|cast(root.test.text, "type"="INT32")|cast(root.test.text, "type"="INT64")|cast(root.test.text, "type"="FLOAT")|cast(root.test.text, "type"="DOUBLE")|
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                  true|                                   1|                                   1|                                 1.1|                                  1.1|
+|1970-01-01T08:00:00.002+08:00|                                  true|                                   1|                                   1|                                 1.0|                                  1.0|
+|1970-01-01T08:00:00.003+08:00|                                  true|                                null|                                null|                                null|                                 null|
+|1970-01-01T08:00:00.004+08:00|                                 false|                                null|                                null|                                null|                                 null|
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+Total line number = 4
+It costs 0.078s
+```
 #### User Defined Timeseries Generating Functions
 
 Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
@@ -470,7 +513,7 @@ Known Implementation UDF Libraries:
 
 ### Nested Expressions
 
-IoTDB supports the execution of arbitrary nested expressions consisting of **time series, arithmetic expressions, and time series generating functions (including user-defined functions)** in the `select` clause.
+IoTDB supports the execution of arbitrary nested expressions consisting of **numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions)** in the `select` clause.
 
 #### Syntax
 
@@ -492,41 +535,35 @@ expression
     | expression ('+' | '-') expression
     | functionName '(' expression (',' expression)* functionAttribute* ')'
     | timeSeriesSuffixPath
+    | number
     ;
 ```
 
 #### Example
 
-SQL: 
+SQL:
 
 ```sql
-select 
-  a, 
-  b, 
-  sin(a + sin(a + sin(b))), 
-  -(a + b) * (sin(a + b) * sin(a + b) + cos(a + b) * cos(a + b)) 
+select a,
+       b,
+       ((a + 1) * 2 - 1) % 2 + 1.5,
+       sin(a + sin(a + sin(b))),
+       -(a + b) * (sin(a + b) * sin(a + b) + cos(a + b) * cos(a + b))
 from root.sg1.d1;
 ```
 
 Result:
 
 ```
-+-----------------------------+-------------+-------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|                         Time|root.sg1.d1.a|root.sg1.d1.b|sin(root.sg1.d1.a + sin(root.sg1.d1.a + sin(root.sg1.d1.b)))|-root.sg1.d1.a + root.sg1.d1.b * sin(root.sg1.d1.a + root.sg1.d1.b) * sin(root.sg1.d1.a + root.sg1.d1.b) + cos(root.sg1.d1.a + root.sg1.d1.b) * cos(root.sg1.d1.a + root.sg1.d1.b)|
-+-----------------------------+-------------+-------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|1970-01-01T08:00:00.000+08:00|            0|            0|                                                         0.0|                                                                                                                                                                              -0.0|
-|1970-01-01T08:00:00.001+08:00|            1|            1|                                          0.9238430524420609|                                                                                                                                                                              -2.0|
-|1970-01-01T08:00:00.002+08:00|            2|            2|                                          0.7903505371876317|                                                                                                                                                                              -4.0|
-|1970-01-01T08:00:00.003+08:00|            3|            3|                                         0.14065207680386618|                                                                                                                                                                -5.999999999999999|
-|1970-01-01T08:00:00.004+08:00|            4|            4|                                         -0.6867272852305377|                                                                                                                                                                              -8.0|
-|1970-01-01T08:00:00.005+08:00|            5|            5|                                         -0.8797812615294988|                                                                                                                                                                             -10.0|
-|1970-01-01T08:00:00.006+08:00|            6|            6|                                         -0.7288037411970917|                                                                                                                                                                             -12.0|
-|1970-01-01T08:00:00.007+08:00|            7|            7|                                          0.9919871278709939|                                                                                                                                                                             -14.0|
-|1970-01-01T08:00:00.008+08:00|            8|            8|                                          0.8430810955779515|                                                                                                                                                                             -16.0|
-|1970-01-01T08:00:00.009+08:00|            9|            9|                                          0.4005516488102476|                                                                                                                                                                             -18.0|
-+-----------------------------+-------------+-------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-Total line number = 10
-It costs 0.029s
++-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                         Time|root.sg1.d1.a|root.sg1.d1.b|((((root.sg1.d1.a + 1) * 2) - 1) % 2) + 1.5|sin(root.sg1.d1.a + sin(root.sg1.d1.a + sin(root.sg1.d1.b)))|-root.sg1.d1.a + root.sg1.d1.b * ((sin(root.sg1.d1.a + root.sg1.d1.b) * sin(root.sg1.d1.a + root.sg1.d1.b)) + (cos(root.sg1.d1.a + root.sg1.d1.b) * cos(root.sg1.d1.a + root.sg1.d1.b)))|
++-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|1970-01-01T08:00:00.000+08:00|            0|            0|                                        2.5|                                                         0.0|                                                                                                                                                                                    -0.0|
+|1970-01-01T08:00:00.001+08:00|            1|            1|                                        2.5|                                          0.9238430524420609|                                                                                                                                                                                    -2.0|
+|1970-01-01T08:00:00.002+08:00|            2|            2|                                        2.5|                                          0.7903505371876317|                                                                                                                                                                                    -4.0|
++-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+Total line number = 3
+It costs 0.170s
 ```
 
 ### Aggregate Query
@@ -1449,7 +1486,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, SLIMIT, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, ';'}
 ```
 
 #### Column Control over Query Results
@@ -1641,7 +1678,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, SLIMIT, OFFSET, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, ';'}
 ```
 
 If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
@@ -1809,7 +1846,7 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 It should be noted that when the deleted path does not exist, IoTDB will not prompt that the path does not exist, but that the execution is successful, because SQL is a declarative programming method. Unless it is a syntax error, insufficient permissions and so on, it is not considered an error, as shown below:
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: The statement is executed successfully.
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
 ### Delete Time Partition (experimental)
