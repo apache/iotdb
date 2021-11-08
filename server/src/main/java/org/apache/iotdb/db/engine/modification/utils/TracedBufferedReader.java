@@ -31,7 +31,8 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Copied from {@link java.io.BufferedReader}, trace the position by modifying the fill() method.
+ * Copied from {@link java.io.BufferedReader}, trace the read position by modifying the fill()
+ * method.
  */
 public class TracedBufferedReader extends Reader {
   private Reader in;
@@ -53,7 +54,8 @@ public class TracedBufferedReader extends Reader {
   private static int defaultCharBufferSize = 8192;
   private static int defaultExpectedLineLength = 80;
 
-  private long position = 0;
+  /** the total bytes number already filled into cb */
+  private long totalFilledBytesNum = 0;
 
   /**
    * Creates a buffering character-input stream that uses an input buffer of the specified size.
@@ -123,7 +125,7 @@ public class TracedBufferedReader extends Reader {
     if (n > 0) {
       nChars = dst + n;
       nextChar = dst;
-      position = position + n;
+      totalFilledBytesNum = totalFilledBytesNum + n;
     }
   }
 
@@ -407,6 +409,8 @@ public class TracedBufferedReader extends Reader {
    *     the beginning of the file to the current position
    */
   public long position() {
-    return position - nChars + nextChar;
+    // position = totalFilledBytesNum - lastFilledBytesNum + readOffsetInLastFilledBytes
+    // lastFilledBytesNum = nChars - dst, readOffsetInLastFilledBytes = nextChar - dst
+    return totalFilledBytesNum - nChars + nextChar;
   }
 }
