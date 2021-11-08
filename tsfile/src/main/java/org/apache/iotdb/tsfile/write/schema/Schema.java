@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.tsfile.write.schema;
 
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.MeasurementGroup;
-
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 
 /**
  * The schema of timeseries that exist in this file. The schemaTemplates is a simplified manner to
@@ -33,8 +32,8 @@ import java.util.Map;
 public class Schema implements Serializable {
 
   /**
-   * Path (devicePath + DeviceInfo) -> measurementSchema By default, use the LinkedHashMap to store
-   * the order of insertion
+   * Path (devicePath) -> measurementSchema By default, use the LinkedHashMap to store the order of
+   * insertion
    */
   private Map<Path, MeasurementGroup> registeredTimeseries;
 

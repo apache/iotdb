@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.tsfile.file.header;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -27,11 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public class ChunkHeader {
 
@@ -74,9 +73,7 @@ public class ChunkHeader {
       int mask) {
     this(
         (byte)
-            ((numOfPages <= 1
-                    ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER
-                    : MetaMarker.CHUNK_HEADER) // Todo:what if timeChunk
+            ((numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER)
                 | (byte) mask),
         measurementID,
         dataSize,

@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class TimePageReader {
 
@@ -55,12 +54,8 @@ public class TimePageReader {
 
   public long[] nexTimeBatch() throws IOException {
     List<Long> timeList = new ArrayList<>();
-    // long[] timeBatch = new long[(int) pageHeader.getStatistics().getCount()]; //
-    // Todo:bug.当TimePage有多页，statistics就会为null
-    // int index = 0;
     while (timeDecoder.hasNext(timeBuffer)) {
       timeList.add(timeDecoder.readLong(timeBuffer));
-      // timeBatch[index++] = timeDecoder.readLong(timeBuffer);
     }
     return timeList.stream().mapToLong(t -> t.longValue()).toArray();
   }

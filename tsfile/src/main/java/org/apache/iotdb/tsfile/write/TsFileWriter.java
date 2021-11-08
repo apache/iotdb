@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -33,19 +39,12 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * TsFileWriter is the entrance for writing processing. It receives a record and send it to
@@ -139,8 +138,39 @@ public class TsFileWriter implements AutoCloseable {
     this.fileWriter = fileWriter;
 
     if (fileWriter instanceof RestorableTsFileIOWriter) {
-      this.schema = null;
-      // this.schema = new Schema(((RestorableTsFileIOWriter) fileWriter).getKnownSchema()); #Todo
+      Map<Path, IMeasurementSchema> schemaMap =
+          ((RestorableTsFileIOWriter) fileWriter).getKnownSchema();
+      Map<Path, MeasurementGroup> measurementGroupMap = new HashMap<>();
+      for (Map.Entry<Path, IMeasurementSchema> entry : schemaMap.entrySet()) {
+        IMeasurementSchema measurementSchema = entry.getValue();
+        if (measurementSchema instanceof VectorMeasurementSchema) {
+          MeasurementGroup group =
+              measurementGroupMap.getOrDefault(
+                  new Path(entry.getKey().getDevice()), new MeasurementGroup(true));
+          List<String> measurementList = measurementSchema.getSubMeasurementsList();
+          for (int i = 0; i < measurementList.size(); i++) {
+            group
+                .getMeasurementSchemaMap()
+                .put(
+                    measurementList.get(i),
+                    new UnaryMeasurementSchema(
+                        measurementList.get(i),
+                        measurementSchema.getSubMeasurementsTSDataTypeList().get(i),
+                        measurementSchema.getSubMeasurementsTSEncodingList().get(i)));
+          }
+          measurementGroupMap.put(new Path(entry.getKey().getDevice()), group);
+        } else {
+          MeasurementGroup group =
+              measurementGroupMap.getOrDefault(
+                  new Path(entry.getKey().getDevice()), new MeasurementGroup(false));
+          group
+              .getMeasurementSchemaMap()
+              .put(
+                  measurementSchema.getMeasurementId(), (UnaryMeasurementSchema) measurementSchema);
+          measurementGroupMap.put(new Path(entry.getKey().getDevice()), group);
+        }
+      }
+      this.schema = new Schema(measurementGroupMap);
     } else {
       this.schema = schema;
     }

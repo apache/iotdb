@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.tsfile;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -37,17 +42,15 @@ import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 /** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
   private static boolean printDetail = false;
 
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S106"
+  }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
     String filename = "alignedTablet.tsfile";
     if (args.length >= 1) {
