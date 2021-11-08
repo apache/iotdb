@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 public class MeasurementGroup {
   private boolean isAligned;

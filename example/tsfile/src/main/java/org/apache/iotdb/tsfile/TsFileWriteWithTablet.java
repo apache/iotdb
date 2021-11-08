@@ -63,13 +63,8 @@ public class TsFileWriteWithTablet {
         // example 1
         writeMeasurementScheams.add(measurementSchemas.get(0));
         writeMeasurementScheams.add(measurementSchemas.get(1));
-        writeWithTablet(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 1000, 0, 0);
-
-        // example 2
-        writeMeasurementScheams.clear();
         writeMeasurementScheams.add(measurementSchemas.get(2));
-        writeMeasurementScheams.add(measurementSchemas.get(1));
-        writeWithTablet(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 10000, 2000, 0);
+        writeWithTablet(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 10000, 0, 0);
       }
     } catch (Exception e) {
       logger.error("meet error in TsFileWrite with tablet", e);

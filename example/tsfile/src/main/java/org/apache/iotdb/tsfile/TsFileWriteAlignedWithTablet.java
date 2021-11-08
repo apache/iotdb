@@ -51,7 +51,6 @@ public class TsFileWriteAlignedWithTablet {
       measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
       measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
       measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
 
       // register align timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(deviceId), measurementSchemas);
@@ -59,20 +58,11 @@ public class TsFileWriteAlignedWithTablet {
       List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example 1
       writeMeasurementScheams.add(measurementSchemas.get(0));
-      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0);
-
-      // example 2
-      writeMeasurementScheams.clear();
-      writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 200000, 10, 0);
-
-      // example 3
-      writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0);
+      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 20000, 0, 0);
 
-      writeWithTablet(tsFileWriter); // write nonAligned timeseries
+      writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {
       e.printStackTrace();
     }
@@ -111,7 +101,7 @@ public class TsFileWriteAlignedWithTablet {
     }
   }
 
-  private static void writeWithTablet(TsFileWriter tsFileWriter)
+  private static void writeNonAlignedWithTablet(TsFileWriter tsFileWriter)
       throws WriteProcessException, IOException {
     // register nonAlign timeseries
     tsFileWriter.registerTimeseries(

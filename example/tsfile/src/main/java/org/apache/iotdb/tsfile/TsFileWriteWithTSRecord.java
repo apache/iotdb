@@ -41,6 +41,7 @@ import java.util.List;
  * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
+  private static String deviceId = "root.sg.d1";
 
   public static void main(String[] args) {
     try {
@@ -57,21 +58,14 @@ public class TsFileWriteWithTSRecord {
         schemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
         // register timeseries
-        tsFileWriter.registerTimeseries(new Path("root.sg.d1"), schemas.get(0));
-        tsFileWriter.registerTimeseries(new Path("root.sg.d1"), schemas.get(1));
-        tsFileWriter.registerTimeseries(new Path("root.sg.d1"), schemas.get(2));
+        tsFileWriter.registerTimeseries(new Path(deviceId), schemas);
 
         List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
         // example1
         writeMeasurementScheams.add(schemas.get(0));
         writeMeasurementScheams.add(schemas.get(1));
-        write(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 10000, 0, 0);
-
-        // example2
-        writeMeasurementScheams.clear();
         writeMeasurementScheams.add(schemas.get(2));
-        writeMeasurementScheams.add(schemas.get(0));
-        write(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 10000, 10000, 100);
+        write(tsFileWriter, deviceId, writeMeasurementScheams, 10000, 0, 0);
       }
     } catch (Throwable e) {
       e.printStackTrace();
