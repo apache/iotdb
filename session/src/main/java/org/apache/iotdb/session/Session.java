@@ -2024,12 +2024,12 @@ public class Session {
   }
 
   /**
-   * @param templateName template to add aligned measurements.
-   * @param measurementsPath if measurements get different prefix, or the prefix already exists in
+   * @param templateName Template to add aligned measurements.
+   * @param measurementsPath If measurements get different prefix, or the prefix already exists in
    *     template but not aligned, throw exception.
-   * @param dataTypes data type of these measurements.
-   * @param encodings encoding of these measurements.
-   * @param compressors compressionType of these measurements.
+   * @param dataTypes Data type of these measurements.
+   * @param encodings Encoding of these measurements.
+   * @param compressors CompressionType of these measurements.
    */
   public void addAlignedMeasurementsInTemplate(
       String templateName,
@@ -2050,8 +2050,8 @@ public class Session {
   }
 
   /**
-   * @param templateName template to add a single aligned measurement.
-   * @param measurementPath if prefix of the path exists in template and not aligned, throw
+   * @param templateName Template to add a single aligned measurement.
+   * @param measurementPath If prefix of the path exists in template and not aligned, throw
    *     exception.
    */
   public void addAlignedMeasurementInTemplate(
@@ -2072,8 +2072,8 @@ public class Session {
   }
 
   /**
-   * @param templateName template to add unaligned measurements.
-   * @param measurementsPath if prefix of any path exist in template but aligned, throw exception.
+   * @param templateName Template to add unaligned measurements.
+   * @param measurementsPath If prefix of any path exist in template but aligned, throw exception.
    */
   public void addUnalignedMeasurementsInTemplate(
       String templateName,
@@ -2094,8 +2094,8 @@ public class Session {
   }
 
   /**
-   * @param templateName template to add a single unaligned measurement.
-   * @param measurementPath if prefix of path exists in template but aligned, throw exception.
+   * @param templateName Template to add a single unaligned measurement.
+   * @param measurementPath If prefix of path exists in template but aligned, throw exception.
    */
   public void addUnalignedMeasurementInTemplate(
       String templateName,
@@ -2115,8 +2115,8 @@ public class Session {
   }
 
   /**
-   * @param templateName template to prune.
-   * @param path remove node from template specified by the path, including its children nodes.
+   * @param templateName Template to prune.
+   * @param path Remove node from template specified by the path, including its children nodes.
    */
   public void deleteNodeInTemplate(String templateName, String path)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
@@ -2126,7 +2126,7 @@ public class Session {
     defaultSessionConnection.pruneSchemaTemplate(req);
   }
 
-  /** @return amount of measurements in the template */
+  /** @return Amount of measurements in the template */
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2136,7 +2136,7 @@ public class Session {
     return resp.getCount();
   }
 
-  /** @return if the node specified by the path is a measurement. */
+  /** @return If the node specified by the path is a measurement. */
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2158,7 +2158,7 @@ public class Session {
     return resp.result;
   }
 
-  /** @return all paths of measurements in the template. */
+  /** @return All paths of measurements in the template. */
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2169,7 +2169,7 @@ public class Session {
     return resp.getMeasurements();
   }
 
-  /** @return all paths of measurements under the pattern in the template. */
+  /** @return All paths of measurements under the pattern in the template. */
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
