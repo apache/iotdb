@@ -29,10 +29,7 @@ import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.IoTDBException;
-import org.apache.iotdb.db.exception.QueryInBatchStatementException;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -2221,7 +2218,7 @@ public class TSServiceImpl implements TSIService.Iface {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, e);
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(e));
-    } else if (e instanceof IoTDBException) {
+    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
     }
@@ -2244,7 +2241,7 @@ public class TSServiceImpl implements TSIService.Iface {
     if (e instanceof BatchProcessException) {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
-    } else if (e instanceof IoTDBException) {
+    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
       if (((IoTDBException) e).isUserException()) {
         LOGGER.warn(message + e.getMessage());
       } else {
