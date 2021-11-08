@@ -27,10 +27,12 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -43,6 +45,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -67,9 +70,14 @@ public class TsFileIOWriterTest {
     VectorMeasurementSchema vectorMeasurementSchema =
         new VectorMeasurementSchema(
             "", new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT64});
+    List<UnaryMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    MeasurementGroup group = new MeasurementGroup(true, schemas);
+
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(DEVICE_1, SENSOR_1), measurementSchema);
-    schema.registerTimeseries(new Path(DEVICE_2, ""), vectorMeasurementSchema);
+    schema.registerTimeseries(new Path(DEVICE_1), measurementSchema);
+    schema.registerMeasurementGroup(new Path(DEVICE_2), group);
 
     writeChunkGroup(writer, measurementSchema);
     writeVectorChunkGroup(writer, vectorMeasurementSchema);

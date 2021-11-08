@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TimePageReader {
@@ -59,6 +60,18 @@ public class TimePageReader {
       timeBatch[index++] = timeDecoder.readLong(timeBuffer);
     }
     return timeBatch;
+  }
+
+  public long[] getNextTimeBatch() throws IOException {
+    if (pageHeader.getStatistics() != null) {
+      return nexTimeBatch();
+    } else {
+      List<Long> timeList = new ArrayList<>();
+      while (timeDecoder.hasNext(timeBuffer)) {
+        timeList.add(timeDecoder.readLong(timeBuffer));
+      }
+      return timeList.stream().mapToLong(t -> t).toArray();
+    }
   }
 
   public TimeStatistics getStatistics() {

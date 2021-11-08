@@ -100,7 +100,15 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
    * to pageBuffer
    */
   private boolean checkPageSizeAndMayOpenANewPage() {
-    return timeChunkWriter.checkPageSizeAndMayOpenANewPage();
+    if (timeChunkWriter.checkPageSizeAndMayOpenANewPage()) {
+      return true;
+    }
+    for (ValueChunkWriter writer : valueChunkWriterList) {
+      if (writer.checkPageSizeAndMayOpenANewPage()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void writePageToPageBuffer() {

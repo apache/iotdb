@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 
 /**
  * This is a abstract class representing a data point. DataPoint consists of a measurement id and a
@@ -142,9 +141,5 @@ public abstract class DataPoint {
 
   public void setString(Binary value) {
     throw new UnsupportedOperationException("set String not support in DataPoint");
-  }
-
-  public void setBigDecimal(BigDecimal value) {
-    throw new UnsupportedOperationException("set BigDecimal not support in DataPoint");
   }
 }

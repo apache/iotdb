@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -36,44 +35,34 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * An example of writing data with TSRecord to TsFile It uses the interface: public void
- * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
- */
-public class TsFileWriteWithTSRecord {
-  private static String deviceId = "root.sg.d1";
+public class TsFileWriteAlignedWithTSRecord {
 
-  public static void main(String[] args) {
-    try {
-      String path = "Record.tsfile";
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
-      if (f.exists()) {
-        f.delete();
-      }
+  public static void main(String[] args) throws IOException {
+    File f = FSFactoryProducer.getFSFactory().getFile("alignedRecord.tsfile");
+    if (f.exists() && !f.delete()) {
+      throw new RuntimeException("can not delete " + f.getAbsolutePath());
+    }
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-      try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-        List<UnaryMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-        schemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-        schemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+      // register timeseries
+      tsFileWriter.registerAlignedTimeseries(new Path("root.sg.d1"), measurementSchemas);
 
-        // register timeseries
-        tsFileWriter.registerTimeseries(new Path(deviceId), schemas);
-
-        List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
-        // example1
-        writeMeasurementScheams.add(schemas.get(0));
-        writeMeasurementScheams.add(schemas.get(1));
-        writeMeasurementScheams.add(schemas.get(2));
-        write(tsFileWriter, deviceId, writeMeasurementScheams, 10000, 0, 0);
-      }
-    } catch (Throwable e) {
+      List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example1
+      writeMeasurementScheams.add(measurementSchemas.get(0));
+      writeMeasurementScheams.add(measurementSchemas.get(1));
+      writeMeasurementScheams.add(measurementSchemas.get(2));
+      writeAligned(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 1000000, 0, 0);
+    } catch (WriteProcessException e) {
       e.printStackTrace();
-      System.out.println(e.getMessage());
     }
   }
 
-  private static void write(
+  private static void writeAligned(
       TsFileWriter tsFileWriter,
       String deviceId,
       List<IMeasurementSchema> schemas,
@@ -89,7 +78,7 @@ public class TsFileWriteWithTSRecord {
         tsRecord.addTuple(dPoint);
       }
       // write
-      tsFileWriter.write(tsRecord);
+      tsFileWriter.writeAligned(tsRecord);
     }
   }
 }

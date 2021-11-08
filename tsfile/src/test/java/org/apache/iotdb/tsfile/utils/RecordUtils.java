@@ -69,7 +69,7 @@ public class RecordUtils {
       // get measurementId and value
       measurementId = items[i].trim();
       IMeasurementSchema measurementSchema =
-          schema.getSeriesSchema(new Path(deviceId, measurementId));
+          schema.getSeriesSchema(new Path(deviceId)).getMeasurementSchemaMap().get(measurementId);
       if (measurementSchema == null) {
         LOG.warn("measurementId:{},type not found, pass", measurementId);
         continue;
