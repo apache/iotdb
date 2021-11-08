@@ -30,12 +30,12 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 public class NotifyFlushMemTable extends AbstractMemTable {
 
   @Override
-  protected IWritableMemChunk genMemSeries(IMeasurementSchema schema) {
+  protected IWritableMemChunkGroup genMemChunkGroup(IMeasurementSchema schema) {
     return null;
   }
 
   @Override
-  protected IWritableMemChunk genAlignedMemSeries(IMeasurementSchema schema) {
+  protected IWritableMemChunkGroup genAlignedMemChunkGroup(IMeasurementSchema schema) {
     return null;
   }
 

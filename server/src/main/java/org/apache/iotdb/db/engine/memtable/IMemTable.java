@@ -42,7 +42,7 @@ import java.util.Map;
  */
 public interface IMemTable {
 
-  Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
+  Map<String, IWritableMemChunkGroup> getMemTableMap();
 
   void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
 
@@ -145,7 +145,7 @@ public interface IMemTable {
   boolean checkIfChunkDoesNotExist(String deviceId, String measurement);
 
   /** only used when mem control enabled */
-  int getCurrentChunkPointNum(String deviceId, String measurement);
+  long getCurrentChunkPointNum(String deviceId, String measurement);
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);

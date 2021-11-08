@@ -528,7 +528,7 @@ public class TsFileProcessor {
               * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
     } else {
       int currentChunkPointNum =
-          workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          (int) workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)

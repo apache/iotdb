@@ -204,14 +204,14 @@ public class MeasurementPath extends PartialPath {
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      Map<String, IWritableMemChunkGroup> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
     // check If Memtable Contains this path
     if (!memTableMap.containsKey(getDevice())
-        || !memTableMap.get(getDevice()).containsKey(getMeasurement())) {
+        || !memTableMap.get(getDevice()).contains(getMeasurement())) {
       return null;
     }
-    IWritableMemChunk memChunk = memTableMap.get(getDevice()).get(getMeasurement());
+    IWritableMemChunk memChunk = memTableMap.get(getDevice()).getMemChunk(getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     int curSize = chunkCopy.size();
