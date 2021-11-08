@@ -277,22 +277,22 @@ public class AlignedTVList extends TVList {
     for (int i = 0; i < timestamps.size(); i++) {
       switch (dataType) {
         case TEXT:
-          columnValue.add(new Binary[ARRAY_SIZE]);
+          columnValue.add(getPrimitiveArraysByType(TSDataType.TEXT));
           break;
         case FLOAT:
-          columnValue.add(new float[ARRAY_SIZE]);
+          columnValue.add(getPrimitiveArraysByType(TSDataType.FLOAT));
           break;
         case INT32:
-          columnValue.add(new int[ARRAY_SIZE]);
+          columnValue.add(getPrimitiveArraysByType(TSDataType.INT32));
           break;
         case INT64:
-          columnValue.add(new long[ARRAY_SIZE]);
+          columnValue.add(getPrimitiveArraysByType(TSDataType.INT64));
           break;
         case DOUBLE:
-          columnValue.add(new double[ARRAY_SIZE]);
+          columnValue.add(getPrimitiveArraysByType(TSDataType.DOUBLE));
           break;
         case BOOLEAN:
-          columnValue.add(new boolean[ARRAY_SIZE]);
+          columnValue.add(getPrimitiveArraysByType(TSDataType.BOOLEAN));
           break;
         default:
           break;
