@@ -21,7 +21,6 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -177,7 +176,7 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithoutFilterTest()
-          throws IOException, StorageEngineException, QueryProcessException, MetadataException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
 
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
@@ -218,7 +217,7 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithTimeFilterTest()
-          throws IOException, StorageEngineException, QueryProcessException, MetadataException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -252,7 +251,7 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithValueFilterTest()
-          throws IOException, StorageEngineException, QueryProcessException, MetadataException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     // select * from root.** where root.vehicle.d0.s0 >=14
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
@@ -299,7 +298,7 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readIncorrectTimeFilterTest()
-          throws MetadataException, QueryProcessException, StorageEngineException, IOException {
+      throws MetadataException, QueryProcessException, StorageEngineException, IOException {
 
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();

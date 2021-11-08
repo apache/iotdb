@@ -144,7 +144,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
   }
 
   private void doInsert(QueryDataSet result, GroupByTimePlan queryPlan)
-          throws QueryProcessException, IOException, MetadataException {
+      throws QueryProcessException, IOException, MetadataException {
 
     int columnSize = result.getDataTypes().size();
     TSDataType dataType =

@@ -69,7 +69,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     IExpression expression = queryPlan.getExpression();
     List<PartialPath> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
 
@@ -229,19 +229,19 @@ public class QueryRouter implements IQueryRouter {
 
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
       QueryContext context, GroupByTimePlan plan)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     return new GroupByWithoutValueFilterDataSet(context, plan);
   }
 
   protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(
       QueryContext context, GroupByTimePlan plan)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, IOException, MetadataException {
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException {
     FillQueryExecutor fillQueryExecutor = getFillExecutor(fillQueryPlan);
     return fillQueryExecutor.execute(context);
   }
@@ -267,18 +267,20 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, IOException, MetadataException {
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException {
     LastQueryExecutor lastQueryExecutor = getLastQueryExecutor(lastQueryPlan);
     return lastQueryExecutor.execute(context, lastQueryPlan);
   }
 
-  protected LastQueryExecutor getLastQueryExecutor(LastQueryPlan lastQueryPlan) throws MetadataException {
+  protected LastQueryExecutor getLastQueryExecutor(LastQueryPlan lastQueryPlan)
+      throws MetadataException {
     return new LastQueryExecutor(lastQueryPlan);
   }
 
   @Override
   public QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, IOException, InterruptedException, MetadataException {
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException,
+          MetadataException {
     IExpression expression = udtfPlan.getExpression();
     IExpression optimizedExpression;
     try {

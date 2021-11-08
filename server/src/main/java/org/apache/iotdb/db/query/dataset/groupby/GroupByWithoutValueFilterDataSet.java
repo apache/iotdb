@@ -72,7 +72,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   /** constructor. */
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     super(context, groupByTimePlan);
 
     initGroupBy(context, groupByTimePlan);

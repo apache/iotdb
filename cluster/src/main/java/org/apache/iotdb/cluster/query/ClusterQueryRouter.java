@@ -74,7 +74,7 @@ public class ClusterQueryRouter extends QueryRouter {
   @Override
   protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(
       QueryContext context, GroupByTimePlan plan)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     return new ClusterGroupByVFilterDataSet(context, plan, metaGroupMember);
   }
 
@@ -96,7 +96,8 @@ public class ClusterQueryRouter extends QueryRouter {
 
   @Override
   public QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, IOException, InterruptedException, MetadataException {
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException,
+          MetadataException {
     IExpression expression = udtfPlan.getExpression();
     IExpression optimizedExpression;
     try {

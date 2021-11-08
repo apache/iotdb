@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.modification;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -86,7 +85,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteCache()
-          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -128,7 +127,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteFile()
-          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -169,7 +168,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInOverflowCache()
-          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -221,7 +220,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInOverflowFile()
-          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -273,7 +272,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testSuccessiveDeletion()
-          throws StorageEngineException, IOException, QueryProcessException, MetadataException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {

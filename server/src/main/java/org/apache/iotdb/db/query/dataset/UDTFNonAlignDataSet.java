@@ -58,7 +58,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
       List<Boolean> cached)
-          throws IOException, QueryProcessException, MetadataException {
+      throws IOException, QueryProcessException, MetadataException {
     super(
         context,
         udtfPlan,
@@ -73,7 +73,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
   /** execute without value filter */
   public UDTFNonAlignDataSet(
       QueryContext context, UDTFPlan udtfPlan, List<ManagedSeriesReader> readersOfSelectedSeries)
-          throws QueryProcessException, IOException, InterruptedException, MetadataException {
+      throws QueryProcessException, IOException, InterruptedException, MetadataException {
     super(
         context,
         udtfPlan,

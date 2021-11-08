@@ -38,7 +38,7 @@ public interface IQueryRouter {
 
   /** Execute physical plan. */
   QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, MetadataException;
+      throws StorageEngineException, QueryProcessException, MetadataException;
 
   /** Execute aggregation query. */
   QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
@@ -52,7 +52,7 @@ public interface IQueryRouter {
 
   /** Execute fill query. */
   QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, IOException, MetadataException;
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException;
 
   /** Execute group by fill query */
   QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
@@ -61,9 +61,10 @@ public interface IQueryRouter {
 
   /** Execute last query */
   QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, IOException, MetadataException;
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException;
 
   /** Execute UDTF query */
   QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, IOException, InterruptedException, MetadataException;
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException,
+          MetadataException;
 }

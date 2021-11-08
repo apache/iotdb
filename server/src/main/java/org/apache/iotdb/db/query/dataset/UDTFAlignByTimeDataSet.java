@@ -53,7 +53,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
       List<Boolean> cached)
-          throws IOException, QueryProcessException, MetadataException {
+      throws IOException, QueryProcessException, MetadataException {
     super(
         context,
         udtfPlan,
@@ -68,7 +68,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
   /** execute without value filter */
   public UDTFAlignByTimeDataSet(
       QueryContext context, UDTFPlan udtfPlan, List<ManagedSeriesReader> readersOfSelectedSeries)
-          throws QueryProcessException, IOException, InterruptedException, MetadataException {
+      throws QueryProcessException, IOException, InterruptedException, MetadataException {
     super(
         context,
         udtfPlan,

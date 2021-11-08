@@ -46,7 +46,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
 
   public ClusterGroupByVFilterDataSet(
       QueryContext context, GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     initQueryDataSetFields(
         new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
         groupByPlan.getDeduplicatedDataTypes(),

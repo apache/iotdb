@@ -65,14 +65,15 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   /** constructor. */
   public GroupByWithValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     super(context, groupByTimePlan);
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     initGroupBy(context, groupByTimePlan);
   }
 
   @TestOnly
-  public GroupByWithValueFilterDataSet(long queryId, GroupByTimePlan groupByTimePlan) throws MetadataException {
+  public GroupByWithValueFilterDataSet(long queryId, GroupByTimePlan groupByTimePlan)
+      throws MetadataException {
     super(new QueryContext(queryId), groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
@@ -134,15 +135,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       curAggregateResults = new AggregateResult[paths.size()];
       for (int i = 0; i < paths.size(); i++) {
         curAggregateResults[i] =
-                AggregateResultFactory.getAggrResultByName(
-                        groupByTimePlan.getDeduplicatedAggregations().get(i),
-                        groupByTimePlan.getDeduplicatedDataTypes().get(i),
-                        ascending);
+            AggregateResultFactory.getAggrResultByName(
+                groupByTimePlan.getDeduplicatedAggregations().get(i),
+                groupByTimePlan.getDeduplicatedDataTypes().get(i),
+                ascending);
       }
     } catch (MetadataException e) {
       e.printStackTrace();
     }
-
 
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
@@ -203,10 +203,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     AggregateResult aggrResultByName = null;
     try {
       aggrResultByName =
-              AggregateResultFactory.getAggrResultByName(
-                      groupByTimePlan.getDeduplicatedAggregations().get(i),
-                      groupByTimePlan.getDeduplicatedDataTypes().get(i),
-                      ascending);
+          AggregateResultFactory.getAggrResultByName(
+              groupByTimePlan.getDeduplicatedAggregations().get(i),
+              groupByTimePlan.getDeduplicatedDataTypes().get(i),
+              ascending);
     } catch (MetadataException e) {
       e.printStackTrace();
     }

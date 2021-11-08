@@ -57,7 +57,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   public GroupByEngineDataSet() {}
 
   /** groupBy query. */
-  public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) throws MetadataException {
+  public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
+      throws MetadataException {
     super(
         new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
         groupByTimePlan.getDeduplicatedDataTypes(),

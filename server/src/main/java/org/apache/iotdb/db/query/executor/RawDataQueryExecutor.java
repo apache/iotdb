@@ -60,7 +60,7 @@ public class RawDataQueryExecutor {
 
   /** without filter or with global time filter. */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     QueryDataSet dataSet = needRedirect(context, false);
     if (dataSet != null) {
       return dataSet;
@@ -85,7 +85,7 @@ public class RawDataQueryExecutor {
   }
 
   public final QueryDataSet executeNonAlign(QueryContext context)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     QueryDataSet dataSet = needRedirect(context, false);
     if (dataSet != null) {
       return dataSet;
@@ -99,7 +99,7 @@ public class RawDataQueryExecutor {
   }
 
   protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     Filter timeFilter = null;
     if (queryPlan.getExpression() != null) {
       timeFilter = ((GlobalTimeExpression) queryPlan.getExpression()).getFilter();
@@ -143,7 +143,7 @@ public class RawDataQueryExecutor {
    * @throws StorageEngineException StorageEngineException
    */
   public final QueryDataSet executeWithValueFilter(QueryContext context)
-          throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException, MetadataException {
     QueryDataSet dataSet = needRedirect(context, true);
     if (dataSet != null) {
       return dataSet;

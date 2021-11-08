@@ -43,7 +43,7 @@ public class GroupByLevelDataSet extends QueryDataSet {
   private int index = 0;
 
   public GroupByLevelDataSet(GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-          throws IOException, MetadataException {
+      throws IOException, MetadataException {
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
 

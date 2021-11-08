@@ -21,7 +21,6 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -275,7 +274,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void selectAllTest()
-          throws IOException, StorageEngineException, QueryProcessException, MetadataException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -318,7 +317,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void selectOneSeriesWithValueFilterTest()
-          throws IOException, StorageEngineException, QueryProcessException, MetadataException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -344,7 +343,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void seriesTimeDigestReadTest()
-          throws IOException, StorageEngineException, QueryProcessException, MetadataException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
     PartialPath path =
         new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
@@ -366,7 +365,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void crossSeriesReadUpdateTest()
-          throws IOException, StorageEngineException, QueryProcessException, MetadataException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
     PartialPath path1 =
         new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
