@@ -1994,6 +1994,7 @@ public class Session {
     defaultSessionConnection.createSchemaTemplate(request);
   }
 
+  /** Create schema template without schemaNames. */
   public void createSchemaTemplate(
       String name,
       List<List<String>> measurements,
@@ -2001,7 +2002,6 @@ public class Session {
       List<List<TSEncoding>> encodings,
       List<List<CompressionType>> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> emptySchemaNames = new ArrayList<>();
     TSCreateSchemaTemplateReq request =
         getTSCreateSchemaTemplateReq(name, null, measurements, dataTypes, encodings, compressors);
     defaultSessionConnection.createSchemaTemplate(request);
@@ -2023,6 +2023,14 @@ public class Session {
     defaultSessionConnection.createSchemaTemplate(req);
   }
 
+  /**
+   * @param templateName template to add aligned measurements.
+   * @param measurementsPath if measurements get different prefix, or the prefix already exists in
+   *     template but not aligned, throw exception.
+   * @param dataTypes data type of these measurements.
+   * @param encodings encoding of these measurements.
+   * @param compressors compressionType of these measurements.
+   */
   public void addAlignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,
@@ -2041,6 +2049,11 @@ public class Session {
     defaultSessionConnection.appendSchemaTemplate(req);
   }
 
+  /**
+   * @param templateName template to add a single aligned measurement.
+   * @param measurementPath if prefix of the path exists in template and not aligned, throw
+   *     exception.
+   */
   public void addAlignedMeasurementInTemplate(
       String templateName,
       String measurementPath,
@@ -2058,6 +2071,10 @@ public class Session {
     defaultSessionConnection.appendSchemaTemplate(req);
   }
 
+  /**
+   * @param templateName template to add unaligned measurements.
+   * @param measurementsPath if prefix of any path exist in template but aligned, throw exception.
+   */
   public void addUnalignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,
@@ -2076,6 +2093,10 @@ public class Session {
     defaultSessionConnection.appendSchemaTemplate(req);
   }
 
+  /**
+   * @param templateName template to add a single unaligned measurement.
+   * @param measurementPath if prefix of path exists in template but aligned, throw exception.
+   */
   public void addUnalignedMeasurementInTemplate(
       String templateName,
       String measurementPath,
@@ -2093,6 +2114,10 @@ public class Session {
     defaultSessionConnection.appendSchemaTemplate(req);
   }
 
+  /**
+   * @param templateName template to prune.
+   * @param path remove node from template specified by the path, including its children nodes.
+   */
   public void deleteNodeInTemplate(String templateName, String path)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     TSPruneSchemaTemplateReq req = new TSPruneSchemaTemplateReq();
@@ -2101,6 +2126,7 @@ public class Session {
     defaultSessionConnection.pruneSchemaTemplate(req);
   }
 
+  /** @return amount of measurements in the template */
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2110,6 +2136,7 @@ public class Session {
     return resp.getCount();
   }
 
+  /** @return if the node specified by the path is a measurement. */
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2120,6 +2147,7 @@ public class Session {
     return resp.result;
   }
 
+  /** @return if there is a node correspond to the path in the template. */
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2130,6 +2158,7 @@ public class Session {
     return resp.result;
   }
 
+  /** @return all paths of measurements in the template. */
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2140,6 +2169,7 @@ public class Session {
     return resp.getMeasurements();
   }
 
+  /** @return all paths of measurements under the pattern in the template. */
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();

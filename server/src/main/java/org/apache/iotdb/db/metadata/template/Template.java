@@ -351,7 +351,6 @@ public class Template {
   }
 
   public List<String> getAllMeasurementsPaths() {
-    //    traverse();
     return new ArrayList<>(schemaMap.keySet());
   }
 
