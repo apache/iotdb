@@ -30,65 +30,17 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class AppendTemplatePlan extends PhysicalPlan {
 
   String name;
   boolean isAligned;
-  List<String> measurements;
-  List<TSDataType> dataTypes;
-  List<TSEncoding> encodings;
-  List<CompressionType> compressors;
-
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public boolean isAligned() {
-    return isAligned;
-  }
-
-  public void setAligned(boolean aligned) {
-    isAligned = aligned;
-  }
-
-  public List<String> getMeasurements() {
-    return measurements;
-  }
-
-  public void setMeasurements(List<String> measurements) {
-    this.measurements = measurements;
-  }
-
-  public List<TSDataType> getDataTypes() {
-    return dataTypes;
-  }
-
-  public void setDataTypes(List<TSDataType> dataTypes) {
-    this.dataTypes = dataTypes;
-  }
-
-  public List<TSEncoding> getEncodings() {
-    return encodings;
-  }
-
-  public void setEncodings(List<TSEncoding> encodings) {
-    this.encodings = encodings;
-  }
-
-  public List<CompressionType> getCompressors() {
-    return compressors;
-  }
-
-  public void setCompressors(List<CompressionType> compressors) {
-    this.compressors = compressors;
-  }
+  String[] measurements;
+  TSDataType[] dataTypes;
+  TSEncoding[] encodings;
+  CompressionType[] compressors;
 
   public AppendTemplatePlan() {
     super(false, OperatorType.APPEND_TEMPLATE);
@@ -104,10 +56,54 @@ public class AppendTemplatePlan extends PhysicalPlan {
     super(false, OperatorType.APPEND_TEMPLATE);
     this.name = name;
     this.isAligned = isAligned;
+    this.measurements = measurements.toArray(new String[0]);
+    this.dataTypes = dataTypes.toArray(new TSDataType[0]);
+    this.encodings = encodings.toArray(new TSEncoding[0]);
+    this.compressors = compressors.toArray(new CompressionType[0]);
+  }
+
+  public AppendTemplatePlan(
+      String name,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      TSEncoding[] encodings,
+      CompressionType[] compressors) {
+    super(false, OperatorType.APPEND_TEMPLATE);
+    this.name = name;
+    this.isAligned = isAligned;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.encodings = encodings;
     this.compressors = compressors;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public List<String> getMeasurements() {
+    return Arrays.asList(measurements);
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return Arrays.asList(dataTypes);
+  }
+
+  public List<TSEncoding> getEncodings() {
+    return Arrays.asList(encodings);
+  }
+
+  public List<CompressionType> getCompressors() {
+    return Arrays.asList(compressors);
   }
 
   @Override
@@ -118,25 +114,25 @@ public class AppendTemplatePlan extends PhysicalPlan {
     ReadWriteIOUtils.write(isAligned, buffer);
 
     // measurements
-    ReadWriteIOUtils.write(measurements.size(), buffer);
+    ReadWriteIOUtils.write(measurements.length, buffer);
     for (String measurement : measurements) {
       ReadWriteIOUtils.write(measurement, buffer);
     }
 
     // datatypes
-    ReadWriteIOUtils.write(dataTypes.size(), buffer);
+    ReadWriteIOUtils.write(dataTypes.length, buffer);
     for (TSDataType dataType : dataTypes) {
       ReadWriteIOUtils.write(dataType.ordinal(), buffer);
     }
 
     // encoding
-    ReadWriteIOUtils.write(encodings.size(), buffer);
+    ReadWriteIOUtils.write(encodings.length, buffer);
     for (TSEncoding encoding : encodings) {
       ReadWriteIOUtils.write(encoding.ordinal(), buffer);
     }
 
     // compressor
-    ReadWriteIOUtils.write(compressors.size(), buffer);
+    ReadWriteIOUtils.write(compressors.length, buffer);
     for (CompressionType type : compressors) {
       ReadWriteIOUtils.write(type.ordinal(), buffer);
     }
@@ -152,30 +148,30 @@ public class AppendTemplatePlan extends PhysicalPlan {
 
     // measurements
     int size = ReadWriteIOUtils.readInt(buffer);
-    measurements = new ArrayList<>(size);
+    measurements = new String[size];
     for (int i = 0; i < size; i++) {
-      measurements.add(ReadWriteIOUtils.readString(buffer));
+      measurements[i] = ReadWriteIOUtils.readString(buffer);
     }
 
     // datatypes
     size = ReadWriteIOUtils.readInt(buffer);
-    dataTypes = new ArrayList<>(size);
+    dataTypes = new TSDataType[size];
     for (int i = 0; i < size; i++) {
-      dataTypes.add(TSDataType.values()[ReadWriteIOUtils.readInt(buffer)]);
+      dataTypes[i] = TSDataType.values()[ReadWriteIOUtils.readInt(buffer)];
     }
 
     // encodings
     size = ReadWriteIOUtils.readInt(buffer);
-    encodings = new ArrayList<>(size);
+    encodings = new TSEncoding[size];
     for (int i = 0; i < size; i++) {
-      encodings.add(TSEncoding.values()[ReadWriteIOUtils.readInt(buffer)]);
+      encodings[i] = TSEncoding.values()[ReadWriteIOUtils.readInt(buffer)];
     }
 
     // compressor
     size = ReadWriteIOUtils.readInt(buffer);
-    compressors = new ArrayList<>(size);
+    compressors = new CompressionType[size];
     for (int i = 0; i < size; i++) {
-      compressors.add(CompressionType.values()[ReadWriteIOUtils.readInt(buffer)]);
+      compressors[i] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
     }
 
     this.index = buffer.getLong();
@@ -189,25 +185,25 @@ public class AppendTemplatePlan extends PhysicalPlan {
     ReadWriteIOUtils.write(isAligned, stream);
 
     // measurements
-    ReadWriteIOUtils.write(measurements.size(), stream);
+    ReadWriteIOUtils.write(measurements.length, stream);
     for (String measurement : measurements) {
       ReadWriteIOUtils.write(measurement, stream);
     }
 
     // datatype
-    ReadWriteIOUtils.write(dataTypes.size(), stream);
+    ReadWriteIOUtils.write(dataTypes.length, stream);
     for (TSDataType dataType : dataTypes) {
       ReadWriteIOUtils.write(dataType.ordinal(), stream);
     }
 
     // encoding
-    ReadWriteIOUtils.write(encodings.size(), stream);
+    ReadWriteIOUtils.write(encodings.length, stream);
     for (TSEncoding encoding : encodings) {
       ReadWriteIOUtils.write(encoding.ordinal(), stream);
     }
 
     // compressor
-    ReadWriteIOUtils.write(compressors.size(), stream);
+    ReadWriteIOUtils.write(compressors.length, stream);
     for (CompressionType type : compressors) {
       ReadWriteIOUtils.write(type.ordinal(), stream);
     }

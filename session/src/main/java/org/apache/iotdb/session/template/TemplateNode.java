@@ -24,10 +24,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 
-public abstract class Node {
+public abstract class TemplateNode {
   private String name;
 
-  public Node(String name) {
+  public TemplateNode(String name) {
     this.name = name;
   }
 
@@ -35,13 +35,13 @@ public abstract class Node {
     return this.name;
   }
 
-  public Map<String, Node> getChildren() {
+  public Map<String, TemplateNode> getChildren() {
     return null;
   }
 
-  public void addChild(Node node) throws StatementExecutionException {}
+  public void addChild(TemplateNode node) throws StatementExecutionException {}
 
-  public void deleteChild(Node node) {}
+  public void deleteChild(TemplateNode node) {}
 
   public boolean isMeasurement() {
     return false;

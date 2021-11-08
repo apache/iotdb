@@ -52,7 +52,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -377,8 +376,7 @@ public class MTree implements Serializable {
     }
 
     // Quick patch for tree structure template
-    if (upperTemplate != null
-        && upperTemplate.isDirectNodeInTemplate(cur.getName())) {
+    if (upperTemplate != null && upperTemplate.isDirectNodeInTemplate(cur.getName())) {
       throw new PathAlreadyExistException(
           path.getFullPath() + " ( which is incompatible with template )");
     }
@@ -1202,8 +1200,8 @@ public class MTree implements Serializable {
 
         String realName = nodes[i];
         // Quick patch for tree structured template
-        if (nodes.length-1 != i) {
-          String[] realNameNodes =  Arrays.copyOfRange(nodes, i, nodes.length);
+        if (nodes.length - 1 != i) {
+          String[] realNameNodes = Arrays.copyOfRange(nodes, i, nodes.length);
           StringBuilder builder = new StringBuilder(realNameNodes[0]);
           for (int concatIndex = 1; concatIndex < realNameNodes.length; concatIndex++) {
             builder.append(TsFileConstant.PATH_SEPARATOR);

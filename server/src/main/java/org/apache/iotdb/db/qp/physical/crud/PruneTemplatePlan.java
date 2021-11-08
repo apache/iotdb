@@ -27,13 +27,24 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class PruneTemplatePlan extends PhysicalPlan {
 
   String name;
-  List<String> prunedMeasurements;
+  String[] prunedMeasurements;
+
+  public PruneTemplatePlan() {
+    super(false, OperatorType.PRUNE_TEMPLATE);
+  }
+
+  public PruneTemplatePlan(String name, List<String> prunedMeasurements) {
+    super(false, OperatorType.PRUNE_TEMPLATE);
+
+    this.name = name;
+    this.prunedMeasurements = prunedMeasurements.toArray(new String[0]);
+  }
 
   public String getName() {
     return name;
@@ -44,22 +55,7 @@ public class PruneTemplatePlan extends PhysicalPlan {
   }
 
   public List<String> getPrunedMeasurements() {
-    return prunedMeasurements;
-  }
-
-  public void setPrunedMeasurements(List<String> prunedMeasurements) {
-    this.prunedMeasurements = prunedMeasurements;
-  }
-
-  public PruneTemplatePlan() {
-    super(false, OperatorType.PRUNE_TEMPLATE);
-  }
-
-  public PruneTemplatePlan(String name, List<String> prunedMeasurements) {
-    super(false, OperatorType.PRUNE_TEMPLATE);
-
-    this.name = name;
-    this.prunedMeasurements = prunedMeasurements;
+    return Arrays.asList(prunedMeasurements);
   }
 
   @Override
@@ -69,7 +65,7 @@ public class PruneTemplatePlan extends PhysicalPlan {
     ReadWriteIOUtils.write(name, buffer);
 
     // measurements
-    ReadWriteIOUtils.write(prunedMeasurements.size(), buffer);
+    ReadWriteIOUtils.write(prunedMeasurements.length, buffer);
     for (String measurement : prunedMeasurements) {
       ReadWriteIOUtils.write(measurement, buffer);
     }
@@ -82,9 +78,9 @@ public class PruneTemplatePlan extends PhysicalPlan {
     name = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
-    prunedMeasurements = new ArrayList<>(size);
+    prunedMeasurements = new String[size];
     for (int i = 0; i < size; i++) {
-      prunedMeasurements.add(ReadWriteIOUtils.readString(buffer));
+      prunedMeasurements[i] = ReadWriteIOUtils.readString(buffer);
     }
 
     this.index = buffer.getLong();
@@ -96,7 +92,7 @@ public class PruneTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, stream);
 
-    ReadWriteIOUtils.write(prunedMeasurements.size(), stream);
+    ReadWriteIOUtils.write(prunedMeasurements.length, stream);
     for (String measurement : prunedMeasurements) {
       ReadWriteIOUtils.write(measurement, stream);
     }

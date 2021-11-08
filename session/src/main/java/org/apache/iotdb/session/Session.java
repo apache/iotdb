@@ -43,6 +43,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -1993,7 +1994,6 @@ public class Session {
     defaultSessionConnection.createSchemaTemplate(request);
   }
 
-  /** New interface for no schemaNames */
   public void createSchemaTemplate(
       String name,
       List<List<String>> measurements,
@@ -2003,8 +2003,7 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> emptySchemaNames = new ArrayList<>();
     TSCreateSchemaTemplateReq request =
-        getTSCreateSchemaTemplateReq(
-            name, emptySchemaNames, measurements, dataTypes, encodings, compressors);
+        getTSCreateSchemaTemplateReq(name, null, measurements, dataTypes, encodings, compressors);
     defaultSessionConnection.createSchemaTemplate(request);
   }
 
@@ -2106,7 +2105,7 @@ public class Session {
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
     req.setName(name);
-    req.setQueryType(Template.TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
+    req.setQueryType(TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
     TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
     return resp.getCount();
   }
@@ -2115,7 +2114,7 @@ public class Session {
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
     req.setName(templateName);
-    req.setQueryType(Template.TemplateQueryType.IS_MEASUREMENT.ordinal());
+    req.setQueryType(TemplateQueryType.IS_MEASUREMENT.ordinal());
     req.setMeasurement(path);
     TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
     return resp.result;
@@ -2125,7 +2124,7 @@ public class Session {
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
     req.setName(templateName);
-    req.setQueryType(Template.TemplateQueryType.IS_SERIES.ordinal());
+    req.setQueryType(TemplateQueryType.IS_SERIES.ordinal());
     req.setMeasurement(path);
     TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
     return resp.result;
@@ -2135,7 +2134,7 @@ public class Session {
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
     req.setName(templateName);
-    req.setQueryType(Template.TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
+    req.setQueryType(TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
     req.setMeasurement("");
     TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
     return resp.getMeasurements();
@@ -2145,7 +2144,7 @@ public class Session {
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
     req.setName(templateName);
-    req.setQueryType(Template.TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
+    req.setQueryType(TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
     req.setMeasurement(pattern);
     TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
     return resp.getMeasurements();
@@ -2173,7 +2172,9 @@ public class Session {
       List<List<CompressionType>> compressors) {
     TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
     request.setName(name);
-    request.setSchemaNames(schemaNames);
+    if (schemaNames != null) {
+      request.setSchemaNames(schemaNames);
+    }
     request.setMeasurements(measurements);
 
     List<List<Integer>> requestType = new ArrayList<>();

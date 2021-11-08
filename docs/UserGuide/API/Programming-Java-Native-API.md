@@ -489,7 +489,7 @@ public void addAlignedMeasurementsInTemplate(String templateName,
                               TSEncoding[] encodings,
                               CompressionType[] compressors);
 
-// Add one alinged measurement to a template
+// Add one aligned measurement to a template
 public void addAlignedMeasurementInTemplate(String templateName,
                                 String measurementPath,
                                 TSDataType dataType,

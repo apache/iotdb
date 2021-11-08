@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -61,18 +60,8 @@ public class Template {
 
   private IMNode templateRoot;
   private Set<String> alignedPrefix;
-  private List<String> mountedPath;
   private int measurementsCount;
   private Map<String, IMeasurementSchema> schemaMap;
-
-  // sync with session.Template
-  public enum TemplateQueryType {
-    NULL,
-    COUNT_MEASUREMENTS,
-    IS_MEASUREMENT,
-    IS_SERIES,
-    SHOW_MEASUREMENTS
-  }
 
   public Template() {}
 
@@ -95,9 +84,11 @@ public class Template {
         isAlign = true;
       } else {
         // Patch for align designation ambiguity when creating from serialization
-        String[] thisMeasurement = MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
-        String thisPrefix = joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length-1));
-        if (plan.getAlignedPrefix().contains(thisPrefix)) {
+        String[] thisMeasurement =
+            MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
+        String thisPrefix =
+            joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length - 1));
+        if (plan.getAlignedPrefix() != null && plan.getAlignedPrefix().contains(thisPrefix)) {
           isAlign = true;
         } else {
           isAlign = false;
@@ -214,10 +205,8 @@ public class Template {
       throws IllegalPathException {
     // Only for aligned Paths, with common direct prefix
     String[] pathNodes;
-    IMNode cur;
     IEntityMNode commonPar;
     String prefix = null;
-    String thisPrefix = null;
     List<String> measurementNames = new ArrayList<>();
     IMeasurementMNode leafNode;
 
@@ -227,40 +216,35 @@ public class Template {
       throw new IllegalPathException("Duplication in paths.");
     }
 
+    Set<String> checkSet = new HashSet<>();
     for (String path : alignedPaths) {
       // check aligned whether legal, and records measurements name
+      if (getPathNodeInTemplate(path) != null) {
+        throw new IllegalPathException("Path duplicated: " + prefix);
+      }
       pathNodes = MetaUtils.splitPathToDetachedPath(path);
 
       if (pathNodes.length == 1) {
-        thisPrefix = "";
+        prefix = "";
       } else {
-        thisPrefix = joinBySeparator(Arrays.copyOf(pathNodes, pathNodes.length - 1));
+        prefix = joinBySeparator(Arrays.copyOf(pathNodes, pathNodes.length - 1));
       }
-      if (prefix == null) {
-        prefix = thisPrefix;
+
+      if (checkSet.size() == 0) {
+        checkSet.add(prefix);
       }
-      if (!prefix.equals(thisPrefix)) {
+      if (!checkSet.contains(prefix)) {
         throw new IllegalPathException(
             "Aligned measurements get different paths, " + alignedPaths[0]);
-      }
-      if (getPathNodeInTemplate(path) != null) {
-        throw new IllegalPathException("Path duplicated: " + prefix);
       }
 
       measurementNames.add(pathNodes[pathNodes.length - 1]);
     }
+    // find and assign common parent node of aligned measurements to commonPar
     if (prefix.equals("")) {
-      commonPar = convertInternalToEntity(templateRoot);
-      templateRoot = commonPar;
+      commonPar = (IEntityMNode) templateRoot;
     } else {
-      cur = getPathNodeInTemplate(prefix);
-      if (cur == null) {
-        cur = constructEntityPath(alignedPaths[0]);
-      }
-      if (cur.isMeasurement()) {
-        throw new IllegalPathException(prefix, "Measurement node amid path.");
-      }
-      commonPar = convertInternalToEntity(cur);
+      commonPar = (IEntityMNode) constructEntityPath(alignedPaths[0]);
     }
 
     synchronized (this) {
@@ -488,11 +472,11 @@ public class Template {
     String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
     IMNode cur = templateRoot;
     for (int i = 0; i <= pathNodes.length - 2; i++) {
-      if (!cur.hasChild(pathNodes[i])) {
-        cur.addChild(pathNodes[i], new EntityMNode(cur, pathNodes[i]));
-      }
       if (cur.isMeasurement()) {
         throw new IllegalPathException(path, "there is measurement in path.");
+      }
+      if (!cur.hasChild(pathNodes[i])) {
+        cur.addChild(pathNodes[i], new EntityMNode(cur, pathNodes[i]));
       }
       cur = cur.getChild(pathNodes[i]);
     }

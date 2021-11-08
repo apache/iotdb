@@ -898,7 +898,8 @@ public class MManagerBasicTest {
     assertNotNull(mNode);
     assertEquals(mNode.getSchema(), s11);
     assertNotNull(mNode2);
-    assertEquals(mNode2.getSchema(), manager.getTemplate("template1").getSchemaMap().get("vector.s2"));
+    assertEquals(
+        mNode2.getSchema(), manager.getTemplate("template1").getSchemaMap().get("vector.s2"));
 
     try {
       manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
@@ -939,6 +940,7 @@ public class MManagerBasicTest {
 
       try {
         template.deleteMeasurements("a.single");
+        fail();
       } catch (IllegalPathException e) {
         assertEquals("a.single is not a legal path, because Path does not exist", e.getMessage());
       }
@@ -1375,126 +1377,6 @@ public class MManagerBasicTest {
               new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
           manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    } catch (MetadataException e) {
-      assertEquals(
-          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
-          e.getMessage());
-    }
-  }
-
-  @Test
-  public void testShowTimeseriesWithTemplate() {
-    // #TODO: Test after adapt tree structured template
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s0"));
-    List<String> measurements = new ArrayList<>();
-    for (int i = 1; i <= 3; i++) {
-      measurements.add("s" + i);
-    }
-    measurementList.add(measurements);
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32);
-    dataTypes.add(TSDataType.FLOAT);
-    dataTypes.add(TSDataType.INT32);
-    dataTypeList.add(dataTypes);
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (int i = 1; i <= 3; i++) {
-      encodings.add(TSEncoding.RLE);
-    }
-    encodingList.add(encodings);
-
-    List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
-    List<CompressionType> compressorList = new ArrayList<>();
-    for (int i = 0; i <= 2; i++) {
-      compressorList.add(compressionType);
-    }
-    compressionTypes.add(compressorList);
-
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s0");
-    schemaNames.add("vector");
-
-    CreateTemplatePlan plan =
-        new CreateTemplatePlan(
-            "template1",
-            schemaNames,
-            measurementList,
-            dataTypeList,
-            encodingList,
-            compressionTypes);
-    CreateTemplatePlan treePlan = getTreeTemplatePlan();
-    MManager manager = IoTDB.metaManager;
-    try {
-      manager.createSchemaTemplate(plan);
-      manager.createSchemaTemplate(treePlan);
-
-      // set device template
-      SetSchemaTemplatePlan setSchemaTemplatePlan =
-          new SetSchemaTemplatePlan("template1", "root.laptop.d1");
-      SetSchemaTemplatePlan setSchemaTemplatePlan1 =
-          new SetSchemaTemplatePlan("treeTemplate", "root.tree.d0");
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
-      manager.setSchemaTemplate(setSchemaTemplatePlan1);
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
-
-      // show timeseries root.tree.d0
-      ShowTimeSeriesPlan showTreeTSPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root.tree.d0"), false, null, null, 0, 0, false);
-      List<ShowTimeSeriesResult> treeShowResult =
-          manager.showTimeseries(showTreeTSPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-      // show timeseries root.laptop.d1.s0
-      ShowTimeSeriesPlan showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
-      List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      // assertEquals(1, result.size());
-      // assertEquals("root.laptop.d1.s0", result.get(0).getName());
-
-      // show timeseries root.laptop.d1.vector.s1
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(1, result.size());
-      assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
-
-      // show timeseries root.laptop.d1.(s1,s2,s3)
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root.**"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(4, result.size());
-      Set<String> set = new HashSet<>();
-      for (int i = 1; i < result.size(); i++) {
-        set.add("root.laptop.d1.vector.s" + i);
-      }
-      set.add("root.laptop.d1.s0");
-
-      for (int i = 0; i < result.size(); i++) {
-        set.remove(result.get(i).getName());
-      }
-
-      assertTrue(set.isEmpty());
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    // show timeseries root.laptop.d1.(s0,s1)
-    try {
-      ShowTimeSeriesPlan showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     } catch (MetadataException e) {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",

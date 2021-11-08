@@ -24,8 +24,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.template.InternalNode;
 import org.apache.iotdb.session.template.MeasurementNode;
-import org.apache.iotdb.session.template.Node;
 import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.template.TemplateNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -217,11 +217,11 @@ public class SessionTest {
     session.open();
 
     Template template = new Template("treeTemplate", true);
-    Node iNodeGPS = new InternalNode("GPS", false);
-    Node iNodeV = new InternalNode("vehicle", true);
-    Node mNodeX =
+    TemplateNode iNodeGPS = new InternalNode("GPS", false);
+    TemplateNode iNodeV = new InternalNode("vehicle", true);
+    TemplateNode mNodeX =
         new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-    Node mNodeY =
+    TemplateNode mNodeY =
         new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 
     template.addToTemplate(mNodeX);
@@ -239,6 +239,32 @@ public class SessionTest {
         "[vehicle.GPS.y, x, vehicle.GPS.x, y, GPS.x, vehicle.x, GPS.y, vehicle.y]",
         session.showMeasurementsInTemplate("treeTemplate").toString());
     assertEquals(8, session.countMeasurementsInTemplate("treeTemplate"));
+
+    session.deleteNodeInTemplate("treeTemplate", "vehicle.GPS");
+    assertEquals(6, session.countMeasurementsInTemplate("treeTemplate"));
+
+    session.addAlignedMeasurementInTemplate(
+        "treeTemplate",
+        "vehicle.speed",
+        TSDataType.FLOAT,
+        TSEncoding.GORILLA,
+        CompressionType.SNAPPY);
+    assertEquals(
+        "[vehicle.speed, x, y, GPS.x, vehicle.x, GPS.y, vehicle.y]",
+        session.showMeasurementsInTemplate("treeTemplate").toString());
+
+    session.deleteNodeInTemplate("treeTemplate", "vehicle");
+    assertEquals(4, session.countMeasurementsInTemplate("treeTemplate"));
+
+    session.addUnalignedMeasurementInTemplate(
+        "treeTemplate",
+        "vehicle.speed",
+        TSDataType.FLOAT,
+        TSEncoding.GORILLA,
+        CompressionType.SNAPPY);
+    assertEquals(
+        "[vehicle.speed, x, y, GPS.x, GPS.y]",
+        session.showMeasurementsInTemplate("treeTemplate").toString());
   }
 
   @Test
@@ -248,9 +274,9 @@ public class SessionTest {
     session.open();
 
     Template template = new Template("treeTemplate", true);
-    Node iNodeGPS = new InternalNode("GPS", false);
-    Node iNodeV = new InternalNode("vehicle", true);
-    Node mNodeX =
+    TemplateNode iNodeGPS = new InternalNode("GPS", false);
+    TemplateNode iNodeV = new InternalNode("vehicle", true);
+    TemplateNode mNodeX =
         new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 
     iNodeGPS.addChild(mNodeX);

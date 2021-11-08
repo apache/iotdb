@@ -33,6 +33,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,18 +45,108 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
   String name;
   Set<String> alignedPrefix;
-  List<String> schemaNames;
-  List<List<String>> measurements;
-  List<List<TSDataType>> dataTypes;
-  List<List<TSEncoding>> encodings;
-  List<List<CompressionType>> compressors;
+  String[] schemaNames;
+  String[][] measurements;
+  TSDataType[][] dataTypes;
+  TSEncoding[][] encodings;
+  CompressionType[][] compressors;
 
-  public List<String> getSchemaNames() {
-    return schemaNames;
+  public CreateTemplatePlan() {
+    super(false, OperatorType.CREATE_TEMPLATE);
   }
 
-  public void setSchemaNames(List<String> schemaNames) {
-    this.schemaNames = schemaNames;
+  public CreateTemplatePlan(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<List<CompressionType>> compressors) {
+    // New constructor for tree-structured template where aligned measurements get individual
+    // compressors
+    super(false, OperatorType.CREATE_TEMPLATE);
+
+    this.name = name;
+    schemaNames = null;
+    this.measurements = new String[measurements.size()][];
+    for (int i = 0; i < measurements.size(); i++) {
+      this.measurements[i] = new String[measurements.get(i).size()];
+      for (int j = 0; j < measurements.get(i).size(); j++) {
+        this.measurements[i][j] = measurements.get(i).get(j);
+      }
+    }
+
+    this.dataTypes = new TSDataType[dataTypes.size()][];
+    for (int i = 0; i < dataTypes.size(); i++) {
+      this.dataTypes[i] = new TSDataType[dataTypes.get(i).size()];
+      for (int j = 0; j < dataTypes.get(i).size(); j++) {
+        this.dataTypes[i][j] = dataTypes.get(i).get(j);
+      }
+    }
+
+    this.encodings = new TSEncoding[dataTypes.size()][];
+    for (int i = 0; i < encodings.size(); i++) {
+      this.encodings[i] = new TSEncoding[dataTypes.get(i).size()];
+      for (int j = 0; j < encodings.get(i).size(); j++) {
+        this.encodings[i][j] = encodings.get(i).get(j);
+      }
+    }
+
+    this.compressors = new CompressionType[dataTypes.size()][];
+    for (int i = 0; i < compressors.size(); i++) {
+      this.compressors[i] = new CompressionType[compressors.get(i).size()];
+      for (int j = 0; j < compressors.get(i).size(); j++) {
+        this.compressors[i][j] = compressors.get(i).get(j);
+      }
+    }
+    this.alignedPrefix = new HashSet<>();
+  }
+
+  public CreateTemplatePlan(
+      String name,
+      List<String> schemaNames,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<List<CompressionType>> compressors) {
+    // original constructor
+    this(name, measurements, dataTypes, encodings, compressors);
+    this.schemaNames = schemaNames.toArray(new String[0]);
+  }
+
+  private CreateTemplatePlan(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<List<CompressionType>> compressors,
+      Set<String> alignedPrefix) {
+    // Only accessed by deserialization, which may cause ambiguity with align designation
+    this(name, measurements, dataTypes, encodings, compressors);
+    this.alignedPrefix = alignedPrefix;
+  }
+
+  public CreateTemplatePlan(
+      String name,
+      String[][] measurements,
+      TSDataType[][] dataTypes,
+      TSEncoding[][] encodings,
+      CompressionType[][] compressors) {
+    super(false, OperatorType.CREATE_TEMPLATE);
+    this.name = name;
+    this.schemaNames = null;
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.encodings = encodings;
+    this.compressors = compressors;
+    this.alignedPrefix = alignedPrefix;
+  }
+
+  public List<String> getSchemaNames() {
+    if (schemaNames != null) {
+      return Arrays.asList(schemaNames);
+    } else {
+      return null;
+    }
   }
 
   public String getName() {
@@ -71,95 +162,35 @@ public class CreateTemplatePlan extends PhysicalPlan {
   }
 
   public List<List<String>> getMeasurements() {
-    return measurements;
-  }
-
-  public void setMeasurements(List<List<String>> measurements) {
-    this.measurements = measurements;
+    List<List<String>> ret = new ArrayList<>();
+    for (int i = 0; i < measurements.length; i++) {
+      ret.add(Arrays.asList(measurements[i]));
+    }
+    return ret;
   }
 
   public List<List<TSDataType>> getDataTypes() {
-    return dataTypes;
-  }
-
-  public void setDataTypes(List<List<TSDataType>> dataTypes) {
-    this.dataTypes = dataTypes;
+    List<List<TSDataType>> ret = new ArrayList<>();
+    for (TSDataType[] alignedDataTypes : dataTypes) {
+      ret.add(Arrays.asList(alignedDataTypes));
+    }
+    return ret;
   }
 
   public List<List<TSEncoding>> getEncodings() {
-    return encodings;
-  }
-
-  public void setEncodings(List<List<TSEncoding>> encodings) {
-    this.encodings = encodings;
+    List<List<TSEncoding>> ret = new ArrayList<>();
+    for (TSEncoding[] alignedEncodings : encodings) {
+      ret.add(Arrays.asList(alignedEncodings));
+    }
+    return ret;
   }
 
   public List<List<CompressionType>> getCompressors() {
-    return compressors;
-  }
-
-  public void setCompressors(List<List<CompressionType>> compressors) {
-    this.compressors = compressors;
-  }
-
-  public CreateTemplatePlan() {
-    super(false, OperatorType.CREATE_TEMPLATE);
-  }
-
-  public CreateTemplatePlan(
-      String name,
-      List<String> schemaNames,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors) {
-    // original constructor
-    super(false, OperatorType.CREATE_TEMPLATE);
-    this.name = name;
-    this.schemaNames = schemaNames;
-    this.measurements = measurements;
-    this.dataTypes = dataTypes;
-    this.encodings = encodings;
-    this.compressors = compressors;
-    this.alignedPrefix = new HashSet<>();
-  }
-
-  public CreateTemplatePlan(
-      String name,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors) {
-    // New constructor for tree-structured template where aligned measurements get individual
-    // compressors
-    super(false, OperatorType.CREATE_TEMPLATE);
-
-    this.name = name;
-    this.schemaNames = new ArrayList<>();
-    this.measurements = measurements;
-    this.dataTypes = dataTypes;
-    this.encodings = encodings;
-    this.compressors = compressors;
-    this.alignedPrefix = new HashSet<>();
-  }
-
-  public CreateTemplatePlan(
-      String name,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors,
-      Set<String> alignedPrefix) {
-    // Only accessed by deserialization, which may cause ambiguity with align designation
-    super(false, OperatorType.CREATE_TEMPLATE);
-
-    this.name = name;
-    this.schemaNames = new ArrayList<>();
-    this.measurements = measurements;
-    this.dataTypes = dataTypes;
-    this.encodings = encodings;
-    this.compressors = compressors;
-    this.alignedPrefix = alignedPrefix;
+    List<List<CompressionType>> ret = new ArrayList<>();
+    for (CompressionType[] alignedCompressor : compressors) {
+      ret.add(Arrays.asList(alignedCompressor));
+    }
+    return ret;
   }
 
   public static CreateTemplatePlan deserializeFromReq(ByteBuffer buffer) throws MetadataException {
@@ -244,12 +275,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
     }
 
     return new CreateTemplatePlan(
-        templateName,
-        measurements,
-        dataTypes,
-        encodings,
-        compressors,
-        alignedPrefix.keySet());
+        templateName, measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
   }
 
   @Override
@@ -259,36 +285,36 @@ public class CreateTemplatePlan extends PhysicalPlan {
     ReadWriteIOUtils.write(name, buffer);
 
     // measurements
-    ReadWriteIOUtils.write(measurements.size(), buffer);
-    for (List<String> measurementList : measurements) {
-      ReadWriteIOUtils.write(measurementList.size(), buffer);
+    ReadWriteIOUtils.write(measurements.length, buffer);
+    for (String[] measurementList : measurements) {
+      ReadWriteIOUtils.write(measurementList.length, buffer);
       for (String measurement : measurementList) {
         ReadWriteIOUtils.write(measurement, buffer);
       }
     }
 
     // datatype
-    ReadWriteIOUtils.write(dataTypes.size(), buffer);
-    for (List<TSDataType> dataTypesList : dataTypes) {
-      ReadWriteIOUtils.write(dataTypesList.size(), buffer);
+    ReadWriteIOUtils.write(dataTypes.length, buffer);
+    for (TSDataType[] dataTypesList : dataTypes) {
+      ReadWriteIOUtils.write(dataTypesList.length, buffer);
       for (TSDataType dataType : dataTypesList) {
         ReadWriteIOUtils.write(dataType.ordinal(), buffer);
       }
     }
 
     // encoding
-    ReadWriteIOUtils.write(encodings.size(), buffer);
-    for (List<TSEncoding> encodingList : encodings) {
-      ReadWriteIOUtils.write(encodingList.size(), buffer);
+    ReadWriteIOUtils.write(encodings.length, buffer);
+    for (TSEncoding[] encodingList : encodings) {
+      ReadWriteIOUtils.write(encodingList.length, buffer);
       for (TSEncoding encoding : encodingList) {
         ReadWriteIOUtils.write(encoding.ordinal(), buffer);
       }
     }
 
     // compressors
-    ReadWriteIOUtils.write(compressors.size(), buffer);
-    for (List<CompressionType> compressorList : compressors) {
-      ReadWriteIOUtils.write(compressorList.size(), buffer);
+    ReadWriteIOUtils.write(compressors.length, buffer);
+    for (CompressionType[] compressorList : compressors) {
+      ReadWriteIOUtils.write(compressorList.length, buffer);
       for (CompressionType compressionType : compressorList) {
         ReadWriteIOUtils.write(compressionType.ordinal(), buffer);
       }
@@ -302,59 +328,48 @@ public class CreateTemplatePlan extends PhysicalPlan {
   public void deserialize(ByteBuffer buffer) {
     name = ReadWriteIOUtils.readString(buffer);
 
-    // schema names
-    int size = ReadWriteIOUtils.readInt(buffer);
-    schemaNames = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      schemaNames.add(ReadWriteIOUtils.readString(buffer));
-    }
-
     // measurements
-    size = ReadWriteIOUtils.readInt(buffer);
-    measurements = new ArrayList<>(size);
+    int size = ReadWriteIOUtils.readInt(buffer);
+    measurements = new String[size][];
     for (int i = 0; i < size; i++) {
       int listSize = ReadWriteIOUtils.readInt(buffer);
-      List<String> measurementsList = new ArrayList<>(listSize);
+      measurements[i] = new String[listSize];
       for (int j = 0; j < listSize; j++) {
-        measurementsList.add(ReadWriteIOUtils.readString(buffer));
+        measurements[i][j] = ReadWriteIOUtils.readString(buffer);
       }
-      measurements.add(measurementsList);
     }
 
     // datatypes
     size = ReadWriteIOUtils.readInt(buffer);
-    dataTypes = new ArrayList<>(size);
+    dataTypes = new TSDataType[size][];
     for (int i = 0; i < size; i++) {
       int listSize = ReadWriteIOUtils.readInt(buffer);
-      List<TSDataType> dataTypesList = new ArrayList<>(listSize);
+      dataTypes[i] = new TSDataType[listSize];
       for (int j = 0; j < listSize; j++) {
-        dataTypesList.add(TSDataType.values()[ReadWriteIOUtils.readInt(buffer)]);
+        dataTypes[i][j] = TSDataType.values()[ReadWriteIOUtils.readInt(buffer)];
       }
-      dataTypes.add(dataTypesList);
     }
 
     // encodings
     size = ReadWriteIOUtils.readInt(buffer);
-    encodings = new ArrayList<>(size);
+    encodings = new TSEncoding[size][];
     for (int i = 0; i < size; i++) {
       int listSize = ReadWriteIOUtils.readInt(buffer);
-      List<TSEncoding> encodingsList = new ArrayList<>(listSize);
+      encodings[i] = new TSEncoding[listSize];
       for (int j = 0; j < listSize; j++) {
-        encodingsList.add(TSEncoding.values()[ReadWriteIOUtils.readInt(buffer)]);
+        encodings[i][j] = TSEncoding.values()[ReadWriteIOUtils.readInt(buffer)];
       }
-      encodings.add(encodingsList);
     }
 
     // compressor
     size = ReadWriteIOUtils.readInt(buffer);
-    compressors = new ArrayList<>(size);
+    compressors = new CompressionType[size][];
     for (int i = 0; i < size; i++) {
       int listSize = ReadWriteIOUtils.readInt(buffer);
-      List<CompressionType> compressionTypeList = new ArrayList<>(listSize);
+      compressors[i] = new CompressionType[listSize];
       for (int j = 0; j < listSize; j++) {
-        compressionTypeList.add(CompressionType.values()[ReadWriteIOUtils.readInt(buffer)]);
+        compressors[i][j] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
       }
-      compressors.add(compressionTypeList);
     }
 
     this.index = buffer.getLong();
@@ -366,44 +381,38 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, stream);
 
-    // schema names
-    ReadWriteIOUtils.write(schemaNames.size(), stream);
-    for (String schemaName : schemaNames) {
-      ReadWriteIOUtils.write(schemaName, stream);
-    }
-
     // measurements
-    ReadWriteIOUtils.write(measurements.size(), stream);
-    for (List<String> measurementList : measurements) {
-      ReadWriteIOUtils.write(measurementList.size(), stream);
+    ReadWriteIOUtils.write(measurements.length, stream);
+    for (String[] measurementList : measurements) {
+      ReadWriteIOUtils.write(measurementList.length, stream);
       for (String measurement : measurementList) {
         ReadWriteIOUtils.write(measurement, stream);
       }
     }
 
     // datatype
-    ReadWriteIOUtils.write(dataTypes.size(), stream);
-    for (List<TSDataType> dataTypesList : dataTypes) {
-      ReadWriteIOUtils.write(dataTypesList.size(), stream);
+    ReadWriteIOUtils.write(dataTypes.length, stream);
+    for (TSDataType[] dataTypesList : dataTypes) {
+      ReadWriteIOUtils.write(dataTypesList.length, stream);
       for (TSDataType dataType : dataTypesList) {
         ReadWriteIOUtils.write(dataType.ordinal(), stream);
       }
     }
 
     // encoding
-    ReadWriteIOUtils.write(encodings.size(), stream);
-    for (List<TSEncoding> encodingList : encodings) {
-      ReadWriteIOUtils.write(encodingList.size(), stream);
+    ReadWriteIOUtils.write(encodings.length, stream);
+    for (TSEncoding[] encodingList : encodings) {
+      ReadWriteIOUtils.write(encodingList.length, stream);
       for (TSEncoding encoding : encodingList) {
         ReadWriteIOUtils.write(encoding.ordinal(), stream);
       }
     }
 
-    // compressor
-    ReadWriteIOUtils.write(compressors.size(), stream);
-    for (List<CompressionType> compressionTypeList : compressors) {
-      ReadWriteIOUtils.write(compressionTypeList.size(), stream);
-      for (CompressionType compressionType : compressionTypeList) {
+    // compressors
+    ReadWriteIOUtils.write(compressors.length, stream);
+    for (CompressionType[] compressorList : compressors) {
+      ReadWriteIOUtils.write(compressorList.length, stream);
+      for (CompressionType compressionType : compressorList) {
         ReadWriteIOUtils.write(compressionType.ordinal(), stream);
       }
     }

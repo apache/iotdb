@@ -362,7 +362,7 @@ struct TSSetSchemaTemplateReq {
 struct TSCreateSchemaTemplateReq {
   1: required i64 sessionId
   2: required string name
-  3: required list<string> schemaNames
+  3: optional list<string> schemaNames
   4: required list<list<string>> measurements
   5: required list<list<i32>> dataTypes
   6: required list<list<i32>> encodings

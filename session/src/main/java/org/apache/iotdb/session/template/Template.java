@@ -34,17 +34,8 @@ import java.util.Set;
 
 public class Template {
   private String name;
-  private Map<String, Node> children;
+  private Map<String, TemplateNode> children;
   private boolean shareTime;
-
-  // sync with metadata.Template
-  public enum TemplateQueryType {
-    NULL,
-    COUNT_MEASUREMENTS,
-    IS_MEASUREMENT,
-    IS_SERIES,
-    SHOW_MEASUREMENTS
-  }
 
   public Template(String name, boolean isShareTime) {
     this.name = name;
@@ -70,7 +61,7 @@ public class Template {
 
   // region Interface to manipulate Template
 
-  public void addToTemplate(Node child) throws StatementExecutionException {
+  public void addToTemplate(TemplateNode child) throws StatementExecutionException {
     if (children.containsKey(child.getName())) {
       throw new StatementExecutionException("Duplicated child of node in template.");
     }
@@ -87,7 +78,7 @@ public class Template {
 
   /** Serialize: templateName[string] isShareTime[boolean] */
   public void serialize(OutputStream baos) throws IOException {
-    Deque<Pair<String, Node>> stack = new ArrayDeque<>();
+    Deque<Pair<String, TemplateNode>> stack = new ArrayDeque<>();
     Set<String> alignedPrefix = new HashSet<>();
     ReadWriteIOUtils.write(getName(), baos);
     ReadWriteIOUtils.write(isShareTime(), baos);
@@ -95,14 +86,14 @@ public class Template {
       alignedPrefix.add("");
     }
 
-    for (Node child : children.values()) {
+    for (TemplateNode child : children.values()) {
       stack.push(new Pair<>("", child));
     }
 
     while (stack.size() != 0) {
-      Pair<String, Node> cur = stack.pop();
+      Pair<String, TemplateNode> cur = stack.pop();
       String prefix = cur.left;
-      Node curNode = cur.right;
+      TemplateNode curNode = cur.right;
       StringBuilder fullPath = new StringBuilder(prefix);
 
       if (!curNode.isMeasurement()) {
@@ -114,7 +105,7 @@ public class Template {
           alignedPrefix.add(fullPath.toString());
         }
 
-        for (Node child : curNode.getChildren().values()) {
+        for (TemplateNode child : curNode.getChildren().values()) {
           stack.push(new Pair<>(fullPath.toString(), child));
         }
       } else {

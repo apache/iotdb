@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class MeasurementNode extends Node {
+public class MeasurementNode extends TemplateNode {
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressionType;

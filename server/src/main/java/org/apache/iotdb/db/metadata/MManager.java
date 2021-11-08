@@ -2149,6 +2149,12 @@ public class MManager {
     return -1;
   }
 
+  /**
+   * @param templateName name of template to check
+   * @param path full path to check
+   * @return if path correspond to a measurement in template
+   * @throws MetadataException
+   */
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws MetadataException {
     return templateManager.getTemplate(templateName).isPathMeasurement(path);

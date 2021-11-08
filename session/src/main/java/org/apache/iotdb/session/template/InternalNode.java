@@ -23,8 +23,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class InternalNode extends Node {
-  private Map<String, Node> children;
+public class InternalNode extends TemplateNode {
+  private Map<String, TemplateNode> children;
   private boolean shareTime;
 
   public InternalNode(String name, boolean shareTime) {
@@ -34,18 +34,18 @@ public class InternalNode extends Node {
   }
 
   @Override
-  public void addChild(Node node) throws StatementExecutionException {
+  public void addChild(TemplateNode node) throws StatementExecutionException {
     if (children.containsKey(node.getName()))
       throw new StatementExecutionException("Duplicated child of node in template.");
     this.children.put(node.getName(), node);
   }
 
   @Override
-  public void deleteChild(Node node) {
+  public void deleteChild(TemplateNode node) {
     if (children.containsKey(node.getName())) children.remove(node.getName());
   }
 
-  public Map<String, Node> getChildren() {
+  public Map<String, TemplateNode> getChildren() {
     return children;
   }
 

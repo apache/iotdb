@@ -19,12 +19,13 @@
 package org.apache.iotdb.session.template;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,12 +53,12 @@ public class TemplateUT {
 
   @Test
   public void testTemplateTree() {
-    Template template = new Template("treeTemplate", true);
-    Node iNodeGPS = new InternalNode("GPS", false);
-    Node iNodeV = new InternalNode("vehicle", true);
-    Node mNodeX =
+    Template sessionTemplate = new Template("treeTemplate", true);
+    TemplateNode iNodeGPS = new InternalNode("GPS", false);
+    TemplateNode iNodeV = new InternalNode("vehicle", true);
+    TemplateNode mNodeX =
         new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-    Node mNodeY =
+    TemplateNode mNodeY =
         new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
@@ -67,19 +68,25 @@ public class TemplateUT {
       iNodeV.addChild(mNodeX);
       iNodeV.addChild(mNodeY);
       iNodeV.addChild(iNodeGPS);
-      template.addToTemplate(iNodeGPS);
-      template.addToTemplate(iNodeV);
-      template.addToTemplate(mNodeX);
-      template.addToTemplate(mNodeY);
+      sessionTemplate.addToTemplate(iNodeGPS);
+      sessionTemplate.addToTemplate(iNodeV);
+      sessionTemplate.addToTemplate(mNodeX);
+      sessionTemplate.addToTemplate(mNodeY);
 
-      template.serialize(stream);
+      sessionTemplate.serialize(stream);
       ByteBuffer buffer = ByteBuffer.wrap(stream.toByteArray());
 
-      assertEquals("treeTemplate", ReadWriteIOUtils.readString(buffer));
+      CreateTemplatePlan plan = CreateTemplatePlan.deserializeFromReq(buffer);
+      assertEquals("treeTemplate", plan.getName());
+      assertEquals(
+          "[[vehicle.GPS.y], [vehicle.GPS.x], [GPS.y], [GPS.x], [y, x], [vehicle.y, vehicle.x]]",
+          plan.getMeasurements().toString());
 
     } catch (StatementExecutionException e) {
       e.printStackTrace();
     } catch (IOException e) {
+      e.printStackTrace();
+    } catch (MetadataException e) {
       e.printStackTrace();
     }
   }

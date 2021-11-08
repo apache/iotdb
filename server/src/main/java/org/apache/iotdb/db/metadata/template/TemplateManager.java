@@ -64,12 +64,14 @@ public class TemplateManager {
 
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     // check schema and measurement name before create template
-    for (String schemaNames : plan.getSchemaNames()) {
-      MetaFormatUtils.checkNodeName(schemaNames);
+    if (plan.getSchemaNames() != null) {
+      for (String schemaNames : plan.getSchemaNames()) {
+        MetaFormatUtils.checkNodeName(schemaNames);
+      }
     }
 
     for (List<String> measurements : plan.getMeasurements()) {
-      for (String measurement: measurements)
+      for (String measurement : measurements)
         MetaFormatUtils.checkTimeseries(new PartialPath(measurement));
     }
 
