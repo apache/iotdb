@@ -63,7 +63,7 @@ public class ChunkMetadata {
 
   private boolean isFromOldTsFile = false;
 
-  private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 80;
+  private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 84;
 
   // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
   private boolean isSeq = true;
@@ -254,6 +254,7 @@ public class ChunkMetadata {
 
   public long calculateRamSize() {
     return CHUNK_METADATA_FIXED_RAM_SIZE
+        + RamUsageEstimator.sizeOf(tsFilePrefixPath)
         + RamUsageEstimator.sizeOf(measurementUid)
         + statistics.calculateRamSize();
   }
