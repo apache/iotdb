@@ -272,7 +272,7 @@ public class FileGenerator {
     schemaList.add(new UnaryMeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
     schemaList.add(new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
     MeasurementGroup measurementGroup = new MeasurementGroup(false, schemaList);
-    schema.registerTimeseries(new Path("d1"), measurementGroup);
+    schema.registerMeasurementGroup(new Path("d1"), measurementGroup);
 
     schemaList.clear();
     schemaList.add(
@@ -286,7 +286,7 @@ public class FileGenerator {
             "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
     schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     measurementGroup = new MeasurementGroup(false, schemaList);
-    schema.registerTimeseries(new Path("d2"), measurementGroup);
+    schema.registerMeasurementGroup(new Path("d2"), measurementGroup);
   }
 
   private static void generateTestSchema(int deviceNum, int measurementNum) {

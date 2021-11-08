@@ -328,7 +328,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public long getSerializedChunkSize() {
-    if (pageBuffer.size() == 0 || statistics.getCount() == 0) {
+    if (pageBuffer.size() == 0) {
       return 0;
     }
     // return the serialized size of the chunk header + all pages

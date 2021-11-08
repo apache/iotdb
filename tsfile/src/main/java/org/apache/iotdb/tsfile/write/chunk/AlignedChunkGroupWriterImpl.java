@@ -43,7 +43,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
-  private static final Logger LOG = LoggerFactory.getLogger(ChunkGroupWriterImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AlignedChunkGroupWriterImpl.class);
 
   private final String deviceId;
 
@@ -156,7 +156,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         // check isNull by bitMap in tablet
         if (tablet.bitMaps != null
             && tablet.bitMaps[columnIndex] != null
-            && tablet.bitMaps[columnIndex].isMarked(row)) {
+            && !tablet.bitMaps[columnIndex].isMarked(row)) {
           isNull = true;
         }
         ValueChunkWriter valueChunkWriter =

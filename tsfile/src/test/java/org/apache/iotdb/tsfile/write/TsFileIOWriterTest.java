@@ -77,7 +77,7 @@ public class TsFileIOWriterTest {
 
     Schema schema = new Schema();
     schema.registerTimeseries(new Path(DEVICE_1), measurementSchema);
-    schema.registerTimeseries(new Path(DEVICE_2), group);
+    schema.registerMeasurementGroup(new Path(DEVICE_2), group);
 
     writeChunkGroup(writer, measurementSchema);
     writeVectorChunkGroup(writer, vectorMeasurementSchema);

@@ -53,7 +53,7 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "Record.tsfile";
+    String filename = "alignedTablet.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -72,7 +72,7 @@ public class TsFileSequenceRead {
       System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());
       List<long[]> timeBatch = new ArrayList<>();
-      int timeBatchIndex = 0;
+      int pageIndex = 0;
       byte marker;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -94,26 +94,18 @@ public class TsFileSequenceRead {
             Decoder valueDecoder =
                 Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
             int dataSize = header.getDataSize();
-            timeBatchIndex = 0;
+            pageIndex = 0;
             if (header.getDataType() == TSDataType.VECTOR) {
-              timeBatch = new ArrayList<>();
+              timeBatch.clear();
             }
             while (dataSize > 0) {
               valueDecoder.reset();
               System.out.println(
-                  "\t\t[Page"
-                      + timeBatchIndex
-                      + "]\n \t\tPage head position: "
-                      + reader.position());
+                  "\t\t[Page" + pageIndex + "]\n \t\tPage head position: " + reader.position());
               PageHeader pageHeader =
                   reader.readPageHeader(
                       header.getDataType(),
-                      header.getChunkType() == (byte) MetaMarker.CHUNK_HEADER
-                          || header.getChunkType()
-                              == (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK)
-                          || header.getChunkType()
-                              == (byte)
-                                  (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK));
+                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
               System.out.println("\t\tPage data position: " + reader.position());
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               System.out.println(
@@ -124,12 +116,11 @@ public class TsFileSequenceRead {
                   == (byte) TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
                 TimePageReader timePageReader =
                     new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
-                timeBatch.add((timePageReader.nexTimeBatch()));
-                System.out.println(
-                    "\t\tpoints in the page: " + timeBatch.get(timeBatchIndex).length);
+                timeBatch.add(timePageReader.getNextTimeBatch());
+                System.out.println("\t\tpoints in the page: " + timeBatch.get(pageIndex).length);
                 if (printDetail) {
-                  for (int i = 0; i < timeBatch.get(timeBatchIndex).length; i++) {
-                    System.out.println("\t\t\ttime: " + timeBatch.get(timeBatchIndex)[i]);
+                  for (int i = 0; i < timeBatch.get(pageIndex).length; i++) {
+                    System.out.println("\t\t\ttime: " + timeBatch.get(pageIndex)[i]);
                   }
                 }
               } else if ((header.getChunkType() & (byte) TsFileConstant.VALUE_COLUMN_MASK)
@@ -137,7 +128,7 @@ public class TsFileSequenceRead {
                 ValuePageReader valuePageReader =
                     new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
                 TsPrimitiveType[] valueBatch =
-                    valuePageReader.nextValueBatch(timeBatch.get(timeBatchIndex));
+                    valuePageReader.nextValueBatch(timeBatch.get(pageIndex));
                 if (valueBatch.length == 0) {
                   System.out.println("\t\t-- Empty Page ");
                 } else {
@@ -169,7 +160,7 @@ public class TsFileSequenceRead {
                   }
                 }
               }
-              timeBatchIndex++;
+              pageIndex++;
               dataSize -= pageHeader.getSerializedPageSize();
             }
             break;

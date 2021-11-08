@@ -432,7 +432,7 @@ public class MetadataIndexConstructorTest {
             tabletSchema.add(schema1);
           }
           MeasurementGroup group = new MeasurementGroup(true, schemas);
-          schema.registerTimeseries(new Path(device), group);
+          schema.registerMeasurementGroup(new Path(device), group);
           // add measurements into TSFileWriter
           // construct the tablet
           Tablet tablet = new Tablet(device, tabletSchema);

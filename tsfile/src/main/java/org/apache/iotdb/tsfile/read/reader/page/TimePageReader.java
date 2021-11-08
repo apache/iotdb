@@ -54,11 +54,24 @@ public class TimePageReader {
   }
 
   public long[] nexTimeBatch() throws IOException {
-    List<Long> timeList = new ArrayList<>();
+    long[] timeBatch = new long[(int) pageHeader.getStatistics().getCount()];
+    int index = 0;
     while (timeDecoder.hasNext(timeBuffer)) {
-      timeList.add(timeDecoder.readLong(timeBuffer));
+      timeBatch[index++] = timeDecoder.readLong(timeBuffer);
     }
-    return timeList.stream().mapToLong(t -> t.longValue()).toArray();
+    return timeBatch;
+  }
+
+  public long[] getNextTimeBatch() throws IOException {
+    if (pageHeader.getStatistics() != null) {
+      return nexTimeBatch();
+    } else {
+      List<Long> timeList = new ArrayList<>();
+      while (timeDecoder.hasNext(timeBuffer)) {
+        timeList.add(timeDecoder.readLong(timeBuffer));
+      }
+      return timeList.stream().mapToLong(t -> t.longValue()).toArray();
+    }
   }
 
   public TimeStatistics getStatistics() {

@@ -35,9 +35,9 @@ import java.util.List;
 import java.util.Map;
 
 /** a implementation of IChunkGroupWriter. */
-public class ChunkGroupWriterImpl implements IChunkGroupWriter {
+public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ChunkGroupWriterImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(NonAlignedChunkGroupWriterImpl.class);
 
   private final String deviceId;
 
@@ -46,7 +46,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   private Map<String, Long> lastTimeMap = new HashMap<>();
 
-  public ChunkGroupWriterImpl(String deviceId) {
+  public NonAlignedChunkGroupWriterImpl(String deviceId) {
     this.deviceId = deviceId;
   }
 
@@ -96,13 +96,6 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
           continue;
         }
         hasOneColumnWritten = true;
-        boolean isNull = false;
-        // check isNull by bitMap in tablet
-        if (tablet.bitMaps != null
-            && tablet.bitMaps[column] != null
-            && tablet.bitMaps[column].isMarked(row)) {
-          isNull = true;
-        }
         switch (timeseries.get(column).getType()) {
           case INT32:
             chunkWriters.get(measurementId).write(time, ((int[]) tablet.values[column])[row]);

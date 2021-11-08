@@ -153,8 +153,6 @@ public class ChunkHeader {
       throws IOException {
     // read measurementID
     String measurementID = ReadWriteIOUtils.readVarIntString(inputStream);
-    measurementID =
-        measurementID == null ? "" : measurementID; // measurementID in TimeChunk header is null
     int dataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     TSDataType dataType = ReadWriteIOUtils.readDataType(inputStream);
     CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);

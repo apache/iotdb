@@ -203,9 +203,14 @@ public class ValueChunkWriter {
   }
 
   public long getCurrentChunkSize() {
+    /**
+     * It may happen if pageBuffer stores empty bits and subsequent write operations are all out of
+     * order, then count of statistics in this chunk will be 0 and this chunk will not be flushed.
+     */
     if (pageBuffer.size() == 0 || statistics.getCount() == 0) {
       return 0;
     }
+
     // return the serialized size of the chunk header + all pages
     return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size())
         + (long) pageBuffer.size();

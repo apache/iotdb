@@ -57,7 +57,7 @@ public class Schema implements Serializable {
     this.registeredTimeseries.put(devicePath, group);
   }
 
-  public void registerTimeseries(Path devicePath, MeasurementGroup measurementGroup) {
+  public void registerMeasurementGroup(Path devicePath, MeasurementGroup measurementGroup) {
     this.registeredTimeseries.put(devicePath, measurementGroup);
   }
 
@@ -93,7 +93,7 @@ public class Schema implements Serializable {
     Map<String, UnaryMeasurementSchema> template =
         schemaTemplates.get(templateName).getMeasurementSchemaMap();
     boolean isAligned = schemaTemplates.get(templateName).isAligned();
-    registerTimeseries(new Path(deviceId), new MeasurementGroup(isAligned, template));
+    registerMeasurementGroup(new Path(deviceId), new MeasurementGroup(isAligned, template));
   }
 
   public MeasurementGroup getSeriesSchema(Path devicePath) {
@@ -105,7 +105,7 @@ public class Schema implements Serializable {
   }
 
   /** check if this schema contains a measurement named measurementId. */
-  public boolean containsTimeseries(Path devicePath) {
+  public boolean containsDevice(Path devicePath) {
     return registeredTimeseries.containsKey(devicePath);
   }
 

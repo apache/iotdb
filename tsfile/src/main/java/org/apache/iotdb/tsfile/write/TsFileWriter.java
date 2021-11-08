@@ -25,8 +25,8 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkGroupWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
+import org.apache.iotdb.tsfile.write.chunk.NonAlignedChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -193,6 +193,14 @@ public class TsFileWriter implements AutoCloseable {
     schema.registerSchemaTemplate(templateName, new MeasurementGroup(isAligned, template));
   }
 
+  /**
+   * This method is used to register all timeseries in the specified template under the specified
+   * device.
+   *
+   * @param deviceId
+   * @param templateName
+   * @throws WriteProcessException
+   */
   public void registerDevice(String deviceId, String templateName) throws WriteProcessException {
     if (!schema.getSchemaTemplates().containsKey(templateName)) {
       throw new WriteProcessException("given template is not existed! " + templateName);
@@ -206,20 +214,17 @@ public class TsFileWriter implements AutoCloseable {
     schema.registerDevice(deviceId, templateName);
   }
 
-  public void registerTimeseries(Path devicePath, List<UnaryMeasurementSchema> measurementSchemas) {
-    for (UnaryMeasurementSchema schema : measurementSchemas) {
-      try {
-        registerTimeseries(devicePath, schema);
-      } catch (WriteProcessException e) {
-        LOG.error(e.getMessage());
-      }
-    }
-  }
-
+  /**
+   * Register nonAligned timeseries by single.
+   *
+   * @param devicePath
+   * @param measurementSchema
+   * @throws WriteProcessException
+   */
   public void registerTimeseries(Path devicePath, UnaryMeasurementSchema measurementSchema)
       throws WriteProcessException {
     MeasurementGroup measurementGroup;
-    if (schema.containsTimeseries(devicePath)) {
+    if (schema.containsDevice(devicePath)) {
       measurementGroup = schema.getSeriesSchema(devicePath);
       if (measurementGroup.isAligned()) {
         throw new WriteProcessException(
@@ -238,13 +243,37 @@ public class TsFileWriter implements AutoCloseable {
     measurementGroup
         .getMeasurementSchemaMap()
         .put(measurementSchema.getMeasurementId(), measurementSchema);
-    schema.registerTimeseries(devicePath, measurementGroup);
+    schema.registerMeasurementGroup(devicePath, measurementGroup);
   }
 
+  /**
+   * Register nonAligned timeseries by groups.
+   *
+   * @param devicePath
+   * @param measurementSchemas
+   */
+  public void registerTimeseries(Path devicePath, List<UnaryMeasurementSchema> measurementSchemas) {
+    for (UnaryMeasurementSchema schema : measurementSchemas) {
+      try {
+        registerTimeseries(devicePath, schema);
+      } catch (WriteProcessException e) {
+        LOG.warn(e.getMessage());
+      }
+    }
+  }
+
+  /**
+   * Register aligned timeseries. Once the device is registered for aligned timeseries, it cannot be
+   * expanded.
+   *
+   * @param devicePath
+   * @param measurementSchemas
+   * @throws WriteProcessException
+   */
   public void registerAlignedTimeseries(
       Path devicePath, List<UnaryMeasurementSchema> measurementSchemas)
       throws WriteProcessException {
-    if (schema.containsTimeseries(devicePath)) {
+    if (schema.containsDevice(devicePath)) {
       if (schema.getSeriesSchema(devicePath).isAligned()) {
         throw new WriteProcessException(
             "given device "
@@ -262,7 +291,7 @@ public class TsFileWriter implements AutoCloseable {
               .getMeasurementSchemaMap()
               .put(measurementSchema.getMeasurementId(), measurementSchema);
         });
-    schema.registerTimeseries(devicePath, measurementGroup);
+    schema.registerMeasurementGroup(devicePath, measurementGroup);
   }
 
   private boolean checkIsTimeseriesExist(TSRecord record, boolean isAligned)
@@ -273,7 +302,7 @@ public class TsFileWriter implements AutoCloseable {
     // initial all SeriesWriters of measurements in this TSRecord
     Path devicePath = new Path(record.deviceId);
     List<IMeasurementSchema> measurementSchemas;
-    if (schema.containsTimeseries(devicePath)) {
+    if (schema.containsDevice(devicePath)) {
       measurementSchemas =
           checkIsAllMeasurementsInGroup(
               record.dataPointList, schema.getSeriesSchema(devicePath), isAligned);
@@ -297,7 +326,7 @@ public class TsFileWriter implements AutoCloseable {
 
     Path devicePath = new Path(tablet.prefixPath);
     List<IMeasurementSchema> schemas = tablet.getSchemas();
-    if (schema.containsTimeseries(devicePath)) {
+    if (schema.containsDevice(devicePath)) {
       checkIsAllMeasurementsInGroup(schema.getSeriesSchema(devicePath), schemas, isAligned);
       groupWriter.tryToAddSeriesWriter(schemas);
     } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
@@ -346,6 +375,15 @@ public class TsFileWriter implements AutoCloseable {
     }
   }
 
+  /**
+   * Check whether all measurements of dataPoints list are in the measurementGroup.
+   *
+   * @param dataPoints
+   * @param measurementGroup
+   * @param isAligned
+   * @return
+   * @throws NoMeasurementException
+   */
   private List<IMeasurementSchema> checkIsAllMeasurementsInGroup(
       List<DataPoint> dataPoints, MeasurementGroup measurementGroup, boolean isAligned)
       throws NoMeasurementException {
@@ -381,7 +419,7 @@ public class TsFileWriter implements AutoCloseable {
       if (isAligned) {
         groupWriter = new AlignedChunkGroupWriterImpl(deviceId);
       } else {
-        groupWriter = new ChunkGroupWriterImpl(deviceId);
+        groupWriter = new NonAlignedChunkGroupWriterImpl(deviceId);
       }
       groupWriters.put(deviceId, groupWriter);
     } else {
