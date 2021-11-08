@@ -17,8 +17,8 @@
 package org.apache.iotdb.db.rest.filter;
 
 public class User {
-  String username;
-  String password;
+  private String username;
+  private String password;
 
   public String getPassword() {
     return password;

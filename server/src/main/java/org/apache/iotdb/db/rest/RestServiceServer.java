@@ -132,7 +132,7 @@ public class RestServiceServer implements IService {
   }
 
   public int getIdleTimeout() {
-    return IoTDBRestServiceDescriptor.getInstance().getConfig().getIdleTimeout();
+    return IoTDBRestServiceDescriptor.getInstance().getConfig().getIdleTimeoutInSeconds();
   }
 
   @Override

@@ -25,16 +25,16 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.concurrent.TimeUnit;
 
 public class UserCache {
-  private final Cache<String, User> cache;
-  private static final IoTDBRestServiceConfig config =
+  private static final IoTDBRestServiceConfig CONFIG =
       IoTDBRestServiceDescriptor.getInstance().getConfig();
+  private final Cache<String, User> cache;
 
   private UserCache() {
     cache =
         Caffeine.newBuilder()
-            .initialCapacity(config.getCacheInitNum())
-            .maximumSize(config.getCacheMaxNum())
-            .expireAfterWrite(config.getCacheExpire(), TimeUnit.SECONDS)
+            .initialCapacity(CONFIG.getCacheInitNum())
+            .maximumSize(CONFIG.getCacheMaxNum())
+            .expireAfterWrite(CONFIG.getCacheExpireInSeconds(), TimeUnit.SECONDS)
             .build();
   }
 

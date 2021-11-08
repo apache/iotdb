@@ -73,12 +73,14 @@ public class IoTDBRestServiceDescriptor {
       conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
       conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getTrustStorePath()));
       conf.setTrustStorePwd(properties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
-      conf.setIdleTimeout(
+      conf.setIdleTimeoutInSeconds(
           Integer.parseInt(
-              properties.getProperty("idle_timeout", Integer.toString(conf.getIdleTimeout()))));
-      conf.setCacheExpire(
+              properties.getProperty(
+                  "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
+      conf.setCacheExpireInSeconds(
           Integer.parseInt(
-              properties.getProperty("cache_expire", Integer.toString(conf.getCacheExpire()))));
+              properties.getProperty(
+                  "cache_expire_in_seconds", Integer.toString(conf.getCacheExpireInSeconds()))));
       conf.setCacheInitNum(
           Integer.parseInt(
               properties.getProperty("cache_init_num", Integer.toString(conf.getCacheInitNum()))));

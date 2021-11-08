@@ -42,10 +42,10 @@ public class IoTDBRestServiceConfig {
   private String trustStorePwd = "";
 
   /** ssl timeout */
-  private int idleTimeout = 50000;
+  private int idleTimeoutInSeconds = 50000;
 
   /** Session expiration time */
-  private int cacheExpire = 28800;
+  private int cacheExpireInSeconds = 28800;
 
   /** maximum number of users stored in cache */
   private int cacheMaxNum = 100;
@@ -61,12 +61,12 @@ public class IoTDBRestServiceConfig {
     this.trustStorePwd = trustStorePwd;
   }
 
-  public int getIdleTimeout() {
-    return idleTimeout;
+  public int getIdleTimeoutInSeconds() {
+    return idleTimeoutInSeconds;
   }
 
-  public void setIdleTimeout(int idleTimeout) {
-    this.idleTimeout = idleTimeout;
+  public void setIdleTimeoutInSeconds(int idleTimeoutInSeconds) {
+    this.idleTimeoutInSeconds = idleTimeoutInSeconds;
   }
 
   public String getKeyStorePath() {
@@ -117,12 +117,12 @@ public class IoTDBRestServiceConfig {
     this.enableRestService = enableRestService;
   }
 
-  public int getCacheExpire() {
-    return cacheExpire;
+  public int getCacheExpireInSeconds() {
+    return cacheExpireInSeconds;
   }
 
-  public void setCacheExpire(int cacheExpire) {
-    this.cacheExpire = cacheExpire;
+  public void setCacheExpireInSeconds(int cacheExpireInSeconds) {
+    this.cacheExpireInSeconds = cacheExpireInSeconds;
   }
 
   public int getCacheMaxNum() {
