@@ -357,7 +357,7 @@ public class ExportCsv extends AbstractCsvTool {
                   record.add("");
                 }
               });
-      printer.printRecord(record);
+      printer.printRecord(record.toString());
     }
 
     printer.flush();
