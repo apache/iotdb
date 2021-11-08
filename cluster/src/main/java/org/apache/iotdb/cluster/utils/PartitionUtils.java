@@ -23,9 +23,11 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
@@ -94,6 +96,8 @@ public class PartitionUtils {
         // DataAuthPlan is global because all nodes must have all user info
         || plan instanceof DataAuthPlan
         || plan instanceof CreateTemplatePlan
+        || plan instanceof AppendTemplatePlan
+        || plan instanceof PruneTemplatePlan
         || plan instanceof CreateFunctionPlan
         || plan instanceof DropFunctionPlan
         || plan instanceof CreateSnapshotPlan
