@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -59,7 +58,6 @@ public class DataSourceInfo {
   private TSDataType dataType;
   private SingleSeriesQueryRequest request;
   private RemoteQueryContext context;
-  private MetaGroupMember metaGroupMember;
   private List<Node> nodes;
   private int curPos;
   private boolean isNoData = false;
@@ -70,14 +68,12 @@ public class DataSourceInfo {
       TSDataType dataType,
       SingleSeriesQueryRequest request,
       RemoteQueryContext context,
-      MetaGroupMember metaGroupMember,
       List<Node> nodes) {
     this.readerId = -1;
     this.partitionGroup = group;
     this.dataType = dataType;
     this.request = request;
     this.context = context;
-    this.metaGroupMember = metaGroupMember;
     this.nodes = nodes;
     // set to the last node so after nextDataClient() is called it will scan from the first node
     this.curPos = nodes.size() - 1;

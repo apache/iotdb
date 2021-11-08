@@ -101,7 +101,7 @@ public class DatasourceInfoTest {
 
     try {
       DataSourceInfo sourceInfo =
-          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, metaGroupMember, group);
+          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, group);
       boolean hasClient = sourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
 
       assertFalse(hasClient);

@@ -162,7 +162,7 @@ public class RemoteSeriesReaderByTimestampTest {
 
     try {
       DataSourceInfo sourceInfo =
-          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, metaGroupMember, group);
+          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, group);
       sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
 
       RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
@@ -195,7 +195,7 @@ public class RemoteSeriesReaderByTimestampTest {
 
     try {
       DataSourceInfo sourceInfo =
-          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, metaGroupMember, group);
+          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, group);
       long startTime = System.currentTimeMillis();
       sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
       RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);

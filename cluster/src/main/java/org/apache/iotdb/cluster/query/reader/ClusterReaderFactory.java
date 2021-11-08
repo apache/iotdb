@@ -213,12 +213,7 @@ public class ClusterReaderFactory {
     List<Node> reorderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     DataSourceInfo dataSourceInfo =
         new DataSourceInfo(
-            partitionGroup,
-            dataType,
-            request,
-            (RemoteQueryContext) context,
-            metaGroupMember,
-            reorderedNodes);
+            partitionGroup, dataType, request, (RemoteQueryContext) context, reorderedNodes);
 
     // try building a reader from one of the nodes
     boolean hasClient = dataSourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
@@ -667,12 +662,7 @@ public class ClusterReaderFactory {
 
     DataSourceInfo dataSourceInfo =
         new DataSourceInfo(
-            partitionGroup,
-            dataType,
-            request,
-            (RemoteQueryContext) context,
-            metaGroupMember,
-            orderedNodes);
+            partitionGroup, dataType, request, (RemoteQueryContext) context, orderedNodes);
 
     boolean hasClient = dataSourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
     if (hasClient) {
@@ -899,8 +889,7 @@ public class ClusterReaderFactory {
               node);
           // create a remote executor with the return id
           RemoteGroupByExecutor remoteGroupByExecutor =
-              new RemoteGroupByExecutor(
-                  executorId, metaGroupMember, node, partitionGroup.getHeader());
+              new RemoteGroupByExecutor(executorId, node, partitionGroup.getHeader());
           for (Integer aggregationType : aggregationTypes) {
             remoteGroupByExecutor.addAggregateResult(
                 AggregateResultFactory.getAggrResultByType(

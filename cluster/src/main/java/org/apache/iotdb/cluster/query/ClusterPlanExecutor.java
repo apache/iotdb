@@ -214,34 +214,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    Integer count;
     for (Node node : coordinatedNodes) {
       try {
-        Integer count;
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client =
-              ClusterIoTDB.getInstance()
-                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-          client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-          count =
-              SyncClientAdaptor.getDeviceCount(client, partitionGroup.getHeader(), pathsToCount);
-        } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                ClusterIoTDB.getInstance()
-                    .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-            syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-            count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
-            throw e;
-          } finally {
-            if (syncDataClient != null) {
-              syncDataClient.returnSelf();
-            }
-          }
-        }
+        count = getRemoteDeviceCountForOneNode(node, partitionGroup, pathsToCount);
         logger.debug(
             "{}: get device count of {} from {}, result {}",
             metaGroupMember.getName(),
@@ -260,6 +236,37 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     logger.warn("Cannot get devices of {} from {}", pathsToCount, partitionGroup);
     return 0;
+  }
+
+  private Integer getRemoteDeviceCountForOneNode(
+      Node node, PartitionGroup partitionGroup, List<String> pathsToCount)
+      throws IOException, TException, InterruptedException {
+    Integer count;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
+      count = SyncClientAdaptor.getDeviceCount(client, partitionGroup.getHeader(), pathsToCount);
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
+        count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
+      }
+    }
+    return count;
   }
 
   @Override
@@ -484,31 +491,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<String> paths = null;
     for (Node node : group) {
       try {
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client =
-              ClusterIoTDB.getInstance()
-                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-          paths =
-              SyncClientAdaptor.getNodeList(
-                  client, group.getHeader(), schemaPattern.getFullPath(), level);
-        } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                ClusterIoTDB.getInstance()
-                    .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-            paths =
-                syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
-            throw e;
-          } finally {
-            if (syncDataClient != null) {
-              syncDataClient.returnSelf();
-            }
-          }
-        }
+        paths = getRemoteNodesListForOneNode(node, group, schemaPattern, level);
         if (paths != null) {
           break;
         }
@@ -522,6 +505,37 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }
     }
     return PartialPath.fromStringList(paths);
+  }
+
+  private List<String> getRemoteNodesListForOneNode(
+      Node node, PartitionGroup group, PartialPath schemaPattern, int level)
+      throws TException, InterruptedException, IOException {
+    List<String> paths;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      paths =
+          SyncClientAdaptor.getNodeList(
+              client, group.getHeader(), schemaPattern.getFullPath(), level);
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
+      }
+    }
+    return paths;
   }
 
   @Override
@@ -579,31 +593,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     Set<String> nextChildrenNodes = null;
     for (Node node : group) {
       try {
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client =
-              ClusterIoTDB.getInstance()
-                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-          nextChildrenNodes =
-              SyncClientAdaptor.getChildNodeInNextLevel(
-                  client, group.getHeader(), path.getFullPath());
-        } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                ClusterIoTDB.getInstance()
-                    .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-            nextChildrenNodes =
-                syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
-            throw e;
-          } finally {
-            if (syncDataClient != null) {
-              syncDataClient.returnSelf();
-            }
-          }
-        }
+        nextChildrenNodes = getRemoteChildNodeInNextLevelForOneNode(node, group, path);
         if (nextChildrenNodes != null) {
           break;
         }
@@ -614,6 +604,37 @@ public class ClusterPlanExecutor extends PlanExecutor {
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting node lists in node {}.", node, e);
         Thread.currentThread().interrupt();
+      }
+    }
+    return nextChildrenNodes;
+  }
+
+  private Set<String> getRemoteChildNodeInNextLevelForOneNode(
+      Node node, PartitionGroup group, PartialPath path)
+      throws TException, InterruptedException, IOException {
+    Set<String> nextChildrenNodes;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      nextChildrenNodes =
+          SyncClientAdaptor.getChildNodeInNextLevel(client, group.getHeader(), path.getFullPath());
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        nextChildrenNodes =
+            syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
+      } catch (TException | IOException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
       }
     }
     return nextChildrenNodes;
@@ -697,30 +718,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     Set<String> nextChildren = null;
     for (Node node : group) {
       try {
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client =
-              ClusterIoTDB.getInstance()
-                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-          nextChildren =
-              SyncClientAdaptor.getNextChildren(client, group.getHeader(), path.getFullPath());
-        } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                ClusterIoTDB.getInstance()
-                    .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-            nextChildren =
-                syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
-            throw e;
-          } finally {
-            if (syncDataClient != null) {
-              syncDataClient.returnSelf();
-            }
-          }
-        }
+        nextChildren = getRemoteNextChildrenForOneNode(node, group, path);
         if (nextChildren != null) {
           break;
         }
@@ -731,6 +729,37 @@ public class ClusterPlanExecutor extends PlanExecutor {
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting node lists in node {}.", node, e);
         Thread.currentThread().interrupt();
+      }
+    }
+    return nextChildren;
+  }
+
+  private Set<String> getRemoteNextChildrenForOneNode(
+      Node node, PartitionGroup group, PartialPath path)
+      throws TException, InterruptedException, IOException {
+    Set<String> nextChildren;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      nextChildren =
+          SyncClientAdaptor.getNextChildren(client, group.getHeader(), path.getFullPath());
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        nextChildren =
+            syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
       }
     }
     return nextChildren;

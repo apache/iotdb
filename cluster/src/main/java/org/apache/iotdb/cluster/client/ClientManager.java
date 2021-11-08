@@ -44,7 +44,7 @@ public class ClientManager implements IClientManager {
 
   private Map<ClientCategory, KeyedObjectPool<Node, RaftService.AsyncClient>> asyncClientPoolMap;
   private Map<ClientCategory, KeyedObjectPool<Node, RaftService.Client>> syncClientPoolMap;
-  private ClientPoolFactory clientPoolFactory;
+  private final ClientPoolFactory clientPoolFactory;
 
   /**
    * {@link ClientManager.Type#RequestForwardClient} represents the clients used to forward external
@@ -77,10 +77,6 @@ public class ClientManager implements IClientManager {
   private void constructAsyncClientMap(Type type) {
     switch (type) {
       case RequestForwardClient:
-        /*
-         request from external clients are forward via data group port, so it's type is {@link
-        * ClientCategory.DATA} *
-        */
         asyncClientPoolMap.put(
             ClientCategory.DATA, clientPoolFactory.createAsyncDataPool(ClientCategory.DATA));
         break;
@@ -110,10 +106,6 @@ public class ClientManager implements IClientManager {
   private void constructSyncClientMap(Type type) {
     switch (type) {
       case RequestForwardClient:
-        /*
-         request from external clients are forward via data group port, so it's type is {@link
-        * ClientCategory.DATA} *
-        */
         syncClientPoolMap.put(
             ClientCategory.DATA, clientPoolFactory.createSyncDataPool(ClientCategory.DATA));
         break;

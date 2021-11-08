@@ -27,7 +27,6 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -46,17 +45,14 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteGroupByExecutor.class);
 
-  private long executorId;
-  private MetaGroupMember metaGroupMember;
-  private Node source;
-  private RaftNode header;
+  private final long executorId;
+  private final Node source;
+  private final RaftNode header;
 
-  private List<AggregateResult> results = new ArrayList<>();
+  private final List<AggregateResult> results = new ArrayList<>();
 
-  public RemoteGroupByExecutor(
-      long executorId, MetaGroupMember metaGroupMember, Node source, RaftNode header) {
+  public RemoteGroupByExecutor(long executorId, Node source, RaftNode header) {
     this.executorId = executorId;
-    this.metaGroupMember = metaGroupMember;
     this.source = source;
     this.header = header;
   }

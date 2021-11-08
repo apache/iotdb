@@ -94,7 +94,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
           "%s:%s=%s", "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "ClusterIoTDB");
 
   // TODO: better to throw exception if the client can not be get. Then we can remove this field.
-  private static boolean printClientConnectionErrorStack = false;
+  private boolean printClientConnectionErrorStack = false;
 
   // establish the cluster as a seed
   private static final String MODE_START = "-s";
@@ -361,7 +361,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     // start RPC service
     logger.info("start Meta Heartbeat RPC service... ");
     registerManager.register(MetaRaftHeartBeatService.getInstance());
-    /* TODO: better to start the Meta RPC service until the heartbeatService has elected the leader and quorum of followers have caught up. */
+    /* TODO: better to start the Meta RPC service until the heartbeatService has elected the leader
+    and quorum of followers have caught up. */
     logger.info("start Meta RPC service... ");
     registerManager.register(MetaRaftService.getInstance());
   }
@@ -467,7 +468,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       if (node == null) {
         continue;
       }
-      AsyncMetaClient client = new AsyncMetaClient(factory, new TAsyncClientManager(), node, null);
+      AsyncMetaClient client =
+          new AsyncMetaClient(factory, new TAsyncClientManager(), node, ClientCategory.META);
       Long response = null;
       long startTime = System.currentTimeMillis();
       try {
@@ -654,7 +656,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     printClientConnectionErrorStack = false;
   }
 
-  public static boolean shouldPrintClientConnectionErrorStack() {
+  public boolean shouldPrintClientConnectionErrorStack() {
     return printClientConnectionErrorStack;
   }
 

@@ -903,31 +903,7 @@ public class CMManager extends MManager {
     for (Node node : partitionGroup) {
       List<String> result = null;
       try {
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client =
-              ClusterIoTDB.getInstance()
-                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-          result =
-              SyncClientAdaptor.getUnregisteredMeasurements(
-                  client, partitionGroup.getHeader(), seriesList);
-        } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                ClusterIoTDB.getInstance()
-                    .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-            result =
-                syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
-            throw e;
-          } finally {
-            if (syncDataClient != null) {
-              syncDataClient.returnSelf();
-            }
-          }
-        }
+        result = getUnregisteredSeriesListRemotelyForOneNode(node, seriesList, partitionGroup);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error(
@@ -951,6 +927,37 @@ public class CMManager extends MManager {
       }
     }
     return Collections.emptyList();
+  }
+
+  private List<String> getUnregisteredSeriesListRemotelyForOneNode(
+      Node node, List<String> seriesList, PartitionGroup partitionGroup)
+      throws IOException, TException, InterruptedException {
+    List<String> result;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      result =
+          SyncClientAdaptor.getUnregisteredMeasurements(
+              client, partitionGroup.getHeader(), seriesList);
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        result = syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
+      }
+    }
+    return result;
   }
 
   /**
