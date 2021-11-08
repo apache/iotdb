@@ -22,18 +22,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Properties;
 
 public class IoTDBRestServiceCheck {
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBRestServiceCheck.class);
-  private final Properties properties = new Properties();
-  private static final IoTDBRestServiceConfig config =
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBRestServiceCheck.class);
+  private static final IoTDBRestServiceConfig CONFIG =
       IoTDBRestServiceDescriptor.getInstance().getConfig();
 
-  private static final String ENABLE_REST_SERVICE_VALUE =
-      String.valueOf(config.isEnableRestService());
-
-  private static final String REST_SERVICE_VALUE = String.valueOf(config.getRestServicePort());
 
   public static IoTDBRestServiceCheck getInstance() {
     return IoTDBRestServiceConfigCheckHolder.INSTANCE;
@@ -45,20 +39,14 @@ public class IoTDBRestServiceCheck {
   }
 
   public void checkConfig() throws IOException {
-    try {
-      Integer.parseInt(REST_SERVICE_VALUE);
-    } catch (NumberFormatException e) {
-      printErrorLogAndExit(REST_SERVICE_VALUE);
-    }
-    try {
-      Boolean.parseBoolean(ENABLE_REST_SERVICE_VALUE);
-    } catch (NumberFormatException e) {
-      printErrorLogAndExit(ENABLE_REST_SERVICE_VALUE);
-    }
+   if(CONFIG.getRestServicePort()>65535||CONFIG.getRestServicePort()<1024){
+     printErrorLogAndExit("rest_service_port");
+   }
+   //todo
   }
 
   private void printErrorLogAndExit(String property) {
-    logger.error("Wrong {}, please set as: {} !", property, properties.getProperty(property));
+    LOGGER.error("Wrong config {}, please check!", property);
     System.exit(-1);
   }
 }
