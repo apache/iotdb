@@ -1716,8 +1716,8 @@ public class MManager {
       String prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
     try {
       collectTimeseriesSchema(getNodeByPath(new PartialPath(prefixPath)), timeseriesSchemas);
-    }catch (MetadataException e){
-      //ignore
+    } catch (MetadataException e) {
+      // do nothing
     }
   }
 
