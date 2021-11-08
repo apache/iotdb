@@ -32,30 +32,26 @@ public class BasicSecurityContext implements SecurityContext {
 
   @Override
   public Principal getUserPrincipal() {
-    return new Principal() {
-      @Override
-      public String getName() {
-        return user.getUsername();
-      }
-    };
+    return user::getUsername;
   }
 
   public User getUser() {
     return user;
   }
 
+  /** todo */
   @Override
-  public boolean isUserInRole(String s) {
-    return false;
+  public boolean isUserInRole(String role) {
+    return true;
   }
 
   @Override
   public boolean isSecure() {
-    return false;
+    return secure;
   }
 
   @Override
   public String getAuthenticationScheme() {
-    return null;
+    return BASIC_AUTH;
   }
 }

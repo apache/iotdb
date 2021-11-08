@@ -19,6 +19,7 @@ package org.apache.iotdb.db.rest.filter;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.rest.model.ResponseResult;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -67,7 +68,8 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     }
 
     BasicSecurityContext basicSecurityContext =
-        new BasicSecurityContext(user, containerRequestContext.getSecurityContext().isSecure());
+        new BasicSecurityContext(
+            user, IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableHttps());
     containerRequestContext.setSecurityContext(basicSecurityContext);
   }
 
