@@ -302,10 +302,10 @@ public class Template {
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
       CompressionType[] compressors) {
-    UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[nodeNames.length];
+    VectorMeasurementSchema[] schemas = new VectorMeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
-      schemas[i] =
-          new UnaryMeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
+      // #TODO: Attention, vectorMeasurementSchema is deprecated, need refactor after new_vector
+      schemas[i] = new VectorMeasurementSchema(nodeNames[i], nodeNames, dataTypes, encodings);
     }
     return schemas;
   }

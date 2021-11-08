@@ -86,6 +86,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -2055,7 +2056,9 @@ public class MManager {
     if (curTemplate != null) {
       Map<String, IMeasurementSchema> curTemplateMap = curTemplate.getSchemaMap();
 
-      String schemaName = vectorId != null ? vectorId : measurement;
+      // Modified for tree structure template, need refactor after new_vector
+      String schemaName =
+          vectorId != null ? vectorId + TsFileConstant.PATH_SEPARATOR + measurement : measurement;
       IMeasurementSchema schema = curTemplateMap.get(schemaName);
       if (!deviceMNode.isUseTemplate()) {
         deviceMNode = setUsingSchemaTemplate(deviceMNode);
