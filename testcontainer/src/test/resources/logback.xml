@@ -46,7 +46,7 @@
     <logger name="org.testcontainers.containers.output.Slf4jLogConsumer" level="INFO">
         <appender-ref ref="Container"/>
     </logger>
-    <root level="INFO">
+    <root level="DEBUG">
         <appender-ref ref="stdout"/>
     </root>
 </configuration>
