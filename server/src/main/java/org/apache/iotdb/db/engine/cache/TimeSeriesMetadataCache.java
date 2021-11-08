@@ -118,7 +118,8 @@ public class TimeSeriesMetadataCache {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      BloomFilter bloomFilter = reader.readBloomFilter();
+      //      BloomFilter bloomFilter = reader.readBloomFilter();
+      BloomFilter bloomFilter = BloomFilterCache.getInstance().get(key.filePath);
       if (bloomFilter != null
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return null;
@@ -143,7 +144,8 @@ public class TimeSeriesMetadataCache {
           Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-          BloomFilter bloomFilter = reader.readBloomFilter();
+          //          BloomFilter bloomFilter = reader.readBloomFilter();
+          BloomFilter bloomFilter = BloomFilterCache.getInstance().get(key.filePath);
           if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
             if (debug) {
               DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
@@ -210,7 +212,8 @@ public class TimeSeriesMetadataCache {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      BloomFilter bloomFilter = reader.readBloomFilter();
+      //      BloomFilter bloomFilter = reader.readBloomFilter();
+      BloomFilter bloomFilter = BloomFilterCache.getInstance().get(key.filePath);
       if (bloomFilter != null
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return Collections.emptyList();
@@ -239,7 +242,8 @@ public class TimeSeriesMetadataCache {
           Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-          BloomFilter bloomFilter = reader.readBloomFilter();
+          //          BloomFilter bloomFilter = reader.readBloomFilter();
+          BloomFilter bloomFilter = BloomFilterCache.getInstance().get(key.filePath);
           if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
             if (debug) {
               DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
