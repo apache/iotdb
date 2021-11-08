@@ -526,7 +526,8 @@ public class StorageEngine implements IService {
         } else {
           // not finished recover, refuse the request
           throw new StorageGroupNotReadyException(
-              storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+              storageGroupMNode.getFullPath(),
+              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
     }
