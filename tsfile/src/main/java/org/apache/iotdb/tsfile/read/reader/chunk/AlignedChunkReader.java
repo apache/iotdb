@@ -79,10 +79,10 @@ public class AlignedChunkReader implements IChunkReader {
     List<Statistics> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
         chunk -> {
-          this.valueChunkHeaderList.add(chunk.getHeader());
-          this.valueChunkDataBufferList.add(chunk.getData());
-          valueChunkStatisticsList.add(chunk.getChunkStatistic());
-          valueDeleteIntervalList.add(chunk.getDeleteIntervalList());
+          valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
+          valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
+          valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
+          valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
     initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
   }
@@ -96,27 +96,42 @@ public class AlignedChunkReader implements IChunkReader {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader timePageHeader;
       List<PageHeader> valuePageHeaderList = new ArrayList<>();
-      // mask the two highest bit
+
+      boolean exits = false;
       // this chunk has only one page
       if ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
         for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
-          valuePageHeaderList.add(
-              PageHeader.deserializeFrom(
-                  valueChunkDataBufferList.get(i), valueChunkStatisticsList.get(i)));
+          if (valueChunkDataBufferList.get(i) != null) {
+            exits = true;
+            valuePageHeaderList.add(
+                PageHeader.deserializeFrom(
+                    valueChunkDataBufferList.get(i), valueChunkStatisticsList.get(i)));
+          } else {
+            valuePageHeaderList.add(null);
+          }
         }
       } else { // this chunk has more than one page
         timePageHeader =
             PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
         for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
-          valuePageHeaderList.add(
-              PageHeader.deserializeFrom(
-                  valueChunkDataBufferList.get(i), valueChunkHeaderList.get(i).getDataType()));
+          if (valueChunkDataBufferList.get(i) != null) {
+            exits = true;
+            valuePageHeaderList.add(
+                PageHeader.deserializeFrom(
+                    valueChunkDataBufferList.get(i), valueChunkHeaderList.get(i).getDataType()));
+          } else {
+            valuePageHeaderList.add(null);
+          }
         }
       }
       // if the current page satisfies
-      if (pageSatisfied(timePageHeader)) {
-        pageReaderList.add(constructPageReaderForNextPage(timePageHeader, valuePageHeaderList));
+      if (exits && pageSatisfied(timePageHeader)) {
+        AlignedPageReader alignedPageReader =
+            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
+        if (alignedPageReader != null) {
+          pageReaderList.add(alignedPageReader);
+        }
       } else {
         skipBytesInStreamByLength(timePageHeader, valuePageHeaderList);
       }
@@ -151,9 +166,16 @@ public class AlignedChunkReader implements IChunkReader {
     List<ByteBuffer> valuePageDataList = new ArrayList<>();
     List<TSDataType> valueDataTypeList = new ArrayList<>();
     List<Decoder> valueDecoderList = new ArrayList<>();
+    boolean exist = false;
     for (int i = 0; i < valuePageHeader.size(); i++) {
-      // if the page is satisfied, deserialize it
-      if (pageSatisfied(valuePageHeader.get(i), valueDeleteIntervalList.get(i))) {
+      if (valuePageHeader.get(i) == null) {
+        valuePageHeaderList.add(null);
+        valuePageDataList.add(null);
+        valueDataTypeList.add(null);
+        valueDecoderList.add(null);
+      } else if (pageSatisfied(
+          valuePageHeader.get(i),
+          valueDeleteIntervalList.get(i))) { // if the page is satisfied, deserialize it
         getPageInfo(
             valuePageHeader.get(i),
             valueChunkDataBufferList.get(i),
@@ -163,6 +185,7 @@ public class AlignedChunkReader implements IChunkReader {
         valuePageDataList.add(valuePageInfo.pageData);
         valueDataTypeList.add(valuePageInfo.dataType);
         valueDecoderList.add(valuePageInfo.decoder);
+        exist = true;
       } else { // if the page is not satisfied, just skip it
         valueChunkDataBufferList
             .get(i)
@@ -174,6 +197,9 @@ public class AlignedChunkReader implements IChunkReader {
         valueDataTypeList.add(null);
         valueDecoderList.add(null);
       }
+    }
+    if (!exist) {
+      return null;
     }
     AlignedPageReader alignedPageReader =
         new AlignedPageReader(
@@ -247,11 +273,13 @@ public class AlignedChunkReader implements IChunkReader {
     timeChunkDataBuffer.position(
         timeChunkDataBuffer.position() + timePageHeader.getCompressedSize());
     for (int i = 0; i < valuePageHeader.size(); i++) {
-      valueChunkDataBufferList
-          .get(i)
-          .position(
-              valueChunkDataBufferList.get(i).position()
-                  + valuePageHeader.get(i).getCompressedSize());
+      if (valuePageHeader.get(i) != null) {
+        valueChunkDataBufferList
+            .get(i)
+            .position(
+                valueChunkDataBufferList.get(i).position()
+                    + valuePageHeader.get(i).getCompressedSize());
+      }
     }
   }
 

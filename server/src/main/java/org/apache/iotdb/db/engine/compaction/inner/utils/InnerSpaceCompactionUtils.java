@@ -46,7 +46,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -202,7 +201,7 @@ public class InnerSpaceCompactionUtils {
     if (isChunkMetadataEmpty) {
       return;
     }
-    IChunkWriter chunkWriter;
+    ChunkWriterImpl chunkWriter;
     try {
       chunkWriter =
           new ChunkWriterImpl(

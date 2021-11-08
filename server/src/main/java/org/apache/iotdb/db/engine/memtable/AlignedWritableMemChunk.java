@@ -5,6 +5,7 @@ import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -16,29 +17,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
 
-  private IMeasurementSchema schema;
+  private VectorMeasurementSchema schema;
   private AlignedTVList list;
-  private Map<String, Integer> alignedMeasurementIndexMap;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
 
   public AlignedWritableMemChunk(VectorMeasurementSchema schema) {
     this.schema = schema;
-    alignedMeasurementIndexMap = new HashMap<>();
-    for (int i = 0; i < schema.getSubMeasurementsCount(); i++) {
-      alignedMeasurementIndexMap.put(schema.getSubMeasurementsList().get(i), i);
-    }
     this.list = TVListAllocator.getInstance().allocate(schema.getSubMeasurementsTSDataTypeList());
   }
 
   public boolean containsMeasurement(String measurementId) {
-    return alignedMeasurementIndexMap.containsKey(measurementId);
+    return schema.containsSubMeasurement(measurementId);
   }
 
   @Override
@@ -72,8 +66,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putAlignedValue(long t, Object[] v, int[] columnOrder) {
-    list.putAlignedValue(t, v, columnOrder);
+  public void putAlignedValue(long t, Object[] v, int[] columnIndexArray) {
+    list.putAlignedValue(t, v, columnIndexArray);
   }
 
   @Override
@@ -108,8 +102,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void putAlignedValues(
-      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndex, int start, int end) {
-    list.putAlignedValues(t, v, bitMaps, columnIndex, start, end);
+      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
+    list.putAlignedValues(t, v, bitMaps, columnIndexArray, start, end);
   }
 
   @Override
@@ -119,7 +113,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void writeAlignedValue(long insertTime, Object[] objectValue, IMeasurementSchema schema) {
-    int[] columnIndexArray = checkColumnOrder(schema);
+    int[] columnIndexArray = checkColumnsInInsertPlan(schema);
     putAlignedValue(insertTime, objectValue, columnIndexArray);
   }
 
@@ -137,13 +131,24 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       IMeasurementSchema schema,
       int start,
       int end) {
-    int[] columnIndexArray = checkColumnOrder(schema);
+    int[] columnIndexArray = checkColumnsInInsertPlan(schema);
     putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
-  private int[] checkColumnOrder(IMeasurementSchema schema) {
+  private int[] checkColumnsInInsertPlan(IMeasurementSchema schema) {
     VectorMeasurementSchema vectorSchema = (VectorMeasurementSchema) schema;
     List<String> measurementIdsInInsertPlan = vectorSchema.getSubMeasurementsList();
+    List<TSDataType> dataTypesInInsertPlan = vectorSchema.getSubMeasurementsTSDataTypeList();
+    List<TSEncoding> encodingsInInsertPlan = vectorSchema.getSubMeasurementsTSEncodingList();
+    for (int i = 0; i < measurementIdsInInsertPlan.size(); i++) {
+      if (!containsMeasurement(measurementIdsInInsertPlan.get(i))) {
+        this.schema.addSubMeasurement(
+            measurementIdsInInsertPlan.get(i),
+            dataTypesInInsertPlan.get(i),
+            encodingsInInsertPlan.get(i));
+        this.list.extendColumn(dataTypesInInsertPlan.get(i));
+      }
+    }
     List<String> measurementIdsInTVList =
         ((VectorMeasurementSchema) this.schema).getSubMeasurementsList();
     int[] columnIndexArray = new int[measurementIdsInTVList.size()];
@@ -160,7 +165,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
-    return list.size() * alignedMeasurementIndexMap.size();
+    return list.size() * schema.getSubMeasurementsCount();
+  }
+
+  public long alignedListSize() {
+    return list.size();
   }
 
   @Override
@@ -182,13 +191,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     // increase reference count
     list.increaseReferenceCount();
     List<Integer> columnIndexList = new ArrayList<>();
-    List<TSDataType> dataTypeList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaList) {
-      columnIndexList.add(
-          alignedMeasurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
-      dataTypeList.add(measurementSchema.getType());
+      columnIndexList.add(schema.getSubMeasurementIndex(measurementSchema.getMeasurementId()));
     }
-    return list.getTvListByColumnIndex(columnIndexList, dataTypeList);
+    return list.getTvListByColumnIndex(columnIndexList);
   }
 
   private void sortTVList() {
@@ -225,7 +231,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void encode(IChunkWriter chunkWriter) {
-
+    AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
     List<Integer> timeDuplicateAlignedRowIndexList = null;
     for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
@@ -253,24 +259,27 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         boolean isNull = list.isValueMarked(originRowIndex, columnIndex);
         switch (dataTypes.get(columnIndex)) {
           case BOOLEAN:
-            chunkWriter.write(
+            alignedChunkWriter.write(
                 time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case INT32:
-            chunkWriter.write(time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
+            alignedChunkWriter.write(
+                time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case INT64:
-            chunkWriter.write(time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
+            alignedChunkWriter.write(
+                time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case FLOAT:
-            chunkWriter.write(time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
+            alignedChunkWriter.write(
+                time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case DOUBLE:
-            chunkWriter.write(
+            alignedChunkWriter.write(
                 time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case TEXT:
-            chunkWriter.write(
+            alignedChunkWriter.write(
                 time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           default:
@@ -280,7 +289,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
             break;
         }
       }
-      chunkWriter.write(time);
+      alignedChunkWriter.write(time);
       timeDuplicateAlignedRowIndexList = null;
     }
   }

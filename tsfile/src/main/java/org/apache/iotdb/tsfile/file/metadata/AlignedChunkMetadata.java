@@ -183,7 +183,10 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   public List<Chunk> getValueChunkList() throws IOException {
     List<Chunk> valueChunkList = new ArrayList<>();
     for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      valueChunkList.add(chunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) chunkMetadata));
+      valueChunkList.add(
+          chunkMetadata == null
+              ? null
+              : chunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) chunkMetadata));
     }
     return valueChunkList;
   }

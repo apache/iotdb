@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -54,7 +55,9 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata) {
-    List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+
+    List<IChunkMetadata> chunkMetadataList =
+        ((TimeseriesMetadata) timeseriesMetadata).getChunkMetadataList();
 
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
 

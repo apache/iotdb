@@ -63,74 +63,36 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     this.valueIndex = 0;
   }
 
-  @Override
   public void write(long time, int value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, long value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, boolean value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, float value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, double value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, Binary value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time) {
     valueIndex = 0;
     timeChunkWriter.write(time);
     if (checkPageSizeAndMayOpenANewPage()) {
       writePageToPageBuffer();
     }
-  }
-
-  // TODO tsfile write interface
-  @Override
-  public void write(long[] timestamps, int[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, long[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, boolean[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, float[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, double[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, Binary[] values, int batchSize) {
-    throw new UnsupportedOperationException();
   }
 
   /**
@@ -187,15 +149,5 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.clearPageWriter();
     }
-  }
-
-  @Override
-  public int getNumOfPages() {
-    return timeChunkWriter.getNumOfPages();
-  }
-
-  @Override
-  public TSDataType getDataType() {
-    return TSDataType.VECTOR;
   }
 }

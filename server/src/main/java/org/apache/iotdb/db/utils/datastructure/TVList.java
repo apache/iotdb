@@ -199,11 +199,15 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public Object getVector(int index) {
+  public Object getAlignedValue(int index) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public TVList getTvListByColumnIndex(List<Integer> columnIndexList, List<TSDataType> dataTypes) {
+  public Object getAlignedValue(int index, Integer floatPrecision, TSEncoding encoding) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public TVList getTvListByColumnIndex(List<Integer> columnIndexList) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -526,7 +530,7 @@ public abstract class TVList {
     protected boolean hasCachedPair;
     protected int cur;
     protected Integer floatPrecision;
-    protected TSEncoding encoding;
+    private TSEncoding encoding;
     private int deleteCursor = 0;
     /**
      * because TV list may be share with different query, each iterator has to record it's own size

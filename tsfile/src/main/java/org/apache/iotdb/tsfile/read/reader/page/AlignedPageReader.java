@@ -55,14 +55,18 @@ public class AlignedPageReader implements IPageReader {
     isModified = timePageReader.isModified();
     valuePageReaderList = new ArrayList<>(valuePageHeaderList.size());
     for (int i = 0; i < valuePageHeaderList.size(); i++) {
-      ValuePageReader valuePageReader =
-          new ValuePageReader(
-              valuePageHeaderList.get(i),
-              valuePageDataList.get(i),
-              valueDataTypeList.get(i),
-              valueDecoderList.get(i));
-      valuePageReaderList.add(valuePageReader);
-      isModified = isModified && valuePageReader.isModified();
+      if (valuePageHeaderList.get(i) != null) {
+        ValuePageReader valuePageReader =
+            new ValuePageReader(
+                valuePageHeaderList.get(i),
+                valuePageDataList.get(i),
+                valueDataTypeList.get(i),
+                valueDecoderList.get(i));
+        valuePageReaderList.add(valuePageReader);
+        isModified = isModified && valuePageReader.isModified();
+      } else {
+        valuePageReaderList.add(null);
+      }
     }
     this.filter = filter;
     this.valueCount = valuePageReaderList.size();
@@ -71,16 +75,12 @@ public class AlignedPageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     long[] timeBatch = timePageReader.nexTimeBatch();
-    // if the vector contains only one sub sensor, just return a common BatchData whose DataType is
-    // same as the only one sub sensor.
-    if (valuePageReaderList.size() == 1) {
-      return valuePageReaderList.get(0).nextBatch(timeBatch, ascending, filter);
-    }
 
     // if the vector contains more than on sub sensor, the BatchData's DataType is Vector
     List<TsPrimitiveType[]> valueBatchList = new ArrayList<>(valueCount);
     for (ValuePageReader valuePageReader : valuePageReaderList) {
-      valueBatchList.add(valuePageReader.nextValueBatch(timeBatch));
+      valueBatchList.add(
+          valuePageReader == null ? null : valuePageReader.nextValueBatch(timeBatch));
     }
     BatchData pageData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
     boolean isNull;
@@ -89,7 +89,7 @@ public class AlignedPageReader implements IPageReader {
       isNull = true;
       TsPrimitiveType[] v = new TsPrimitiveType[valueCount];
       for (int j = 0; j < v.length; j++) {
-        v[j] = valueBatchList.get(j)[i];
+        v[j] = valueBatchList.get(j) == null ? null : valueBatchList.get(j)[i];
         if (v[j] != null) {
           isNull = false;
         }
