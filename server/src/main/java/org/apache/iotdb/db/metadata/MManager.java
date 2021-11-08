@@ -2147,9 +2147,8 @@ public class MManager {
     try {
       return templateManager.getTemplate(templateName).getMeasurementsCount();
     } catch (UndefinedTemplateException e) {
-      e.printStackTrace();
+      throw new MetadataException(e);
     }
-    return -1;
   }
 
   /**
