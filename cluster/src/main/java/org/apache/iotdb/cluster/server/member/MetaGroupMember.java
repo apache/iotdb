@@ -757,32 +757,35 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         // no need to shake hands with yourself
         continue;
       }
+      sendHandshakeForOneNode(node);
+    }
+  }
 
-      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-        AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
-        if (asyncClient != null) {
-          try {
-            asyncClient.handshake(thisNode, new GenericHandler<>(node, null));
-          } catch (TException e) {
-            logger.error("failed send handshake to node: {}", node, e);
-          }
-        } else {
-          logger.error("send handshake fail as get empty async client");
+  private void sendHandshakeForOneNode(Node node) {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
+      if (asyncClient != null) {
+        try {
+          asyncClient.handshake(thisNode, new GenericHandler<>(node, null));
+        } catch (TException e) {
+          logger.error("failed send handshake to node: {}", node, e);
         }
       } else {
-        SyncMetaClient syncClient = (SyncMetaClient) getSyncClient(node);
-        if (syncClient != null) {
-          try {
-            syncClient.handshake(thisNode);
-          } catch (TException e) {
-            syncClient.close();
-            logger.error("failed send handshake to node: {}", node, e);
-          } finally {
-            syncClient.returnSelf();
-          }
-        } else {
-          logger.error("send handshake fail as get empty sync client");
+        logger.error("send handshake fail as get empty async client");
+      }
+    } else {
+      SyncMetaClient syncClient = (SyncMetaClient) getSyncClient(node);
+      if (syncClient != null) {
+        try {
+          syncClient.handshake(thisNode);
+        } catch (TException e) {
+          syncClient.close();
+          logger.error("failed send handshake to node: {}", node, e);
+        } finally {
+          syncClient.returnSelf();
         }
+      } else {
+        logger.error("send handshake fail as get empty sync client");
       }
     }
   }

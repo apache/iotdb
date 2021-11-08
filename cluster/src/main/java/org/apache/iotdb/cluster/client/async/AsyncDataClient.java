@@ -193,9 +193,7 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
     }
 
     @Override
-    public void activateObject(Node node, PooledObject<AsyncDataClient> pooledObject) {
-      // will not be used;
-    }
+    public void activateObject(Node node, PooledObject<AsyncDataClient> pooledObject) {}
 
     @Override
     public void destroyObject(Node node, PooledObject<AsyncDataClient> pooledObject) {
@@ -210,9 +208,7 @@ public class AsyncDataClient extends TSDataService.AsyncClient {
     }
 
     @Override
-    public void passivateObject(Node node, PooledObject<AsyncDataClient> pooledObject) {
-      // will not be used;
-    }
+    public void passivateObject(Node node, PooledObject<AsyncDataClient> pooledObject) {}
 
     @Override
     public boolean validateObject(Node node, PooledObject<AsyncDataClient> pooledObject) {

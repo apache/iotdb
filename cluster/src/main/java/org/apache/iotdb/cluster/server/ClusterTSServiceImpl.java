@@ -131,38 +131,40 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
       for (Entry<RaftNode, Set<Node>> headerEntry : context.getQueriedNodesMap().entrySet()) {
         RaftNode header = headerEntry.getKey();
         Set<Node> queriedNodes = headerEntry.getValue();
-
         for (Node queriedNode : queriedNodes) {
-          GenericHandler<Void> handler = new GenericHandler<>(queriedNode, new AtomicReference<>());
-          try {
-            if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-              AsyncDataClient client =
-                  ClusterIoTDB.getInstance()
-                      .getAsyncDataClient(queriedNode, ClusterConstant.getReadOperationTimeoutMS());
-              client.endQuery(header, coordinator.getThisNode(), queryId, handler);
-            } else {
-              SyncDataClient syncDataClient = null;
-              try {
-                syncDataClient =
-                    ClusterIoTDB.getInstance()
-                        .getSyncDataClient(
-                            queriedNode, ClusterConstant.getReadOperationTimeoutMS());
-                syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
-              } catch (IOException | TException e) {
-                // the connection may be broken, close it to avoid it being reused
-                if (syncDataClient != null) {
-                  syncDataClient.close();
-                }
-                throw e;
-              } finally {
-                if (syncDataClient != null) {
-                  syncDataClient.returnSelf();
-                }
-              }
-            }
-          } catch (Exception e) {
-            logger.error("Cannot end query {} in {}", queryId, queriedNode);
-          }
+          releaseQueryResourceForOneNode(queryId, header, queriedNode);
+        }
+      }
+    }
+  }
+
+  protected void releaseQueryResourceForOneNode(long queryId, RaftNode header, Node queriedNode) {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      GenericHandler<Void> handler = new GenericHandler<>(queriedNode, new AtomicReference<>());
+      try {
+        AsyncDataClient client =
+            ClusterIoTDB.getInstance()
+                .getAsyncDataClient(queriedNode, ClusterConstant.getReadOperationTimeoutMS());
+        client.endQuery(header, coordinator.getThisNode(), queryId, handler);
+      } catch (IOException | TException e) {
+        logger.error("Cannot end query {} in {}", queryId, queriedNode);
+      }
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(queriedNode, ClusterConstant.getReadOperationTimeoutMS());
+        syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
+      } catch (IOException | TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        if (syncDataClient != null) {
+          syncDataClient.close();
+        }
+        logger.error("Cannot end query {} in {}", queryId, queriedNode);
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }

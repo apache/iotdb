@@ -601,13 +601,7 @@ public class ClusterReaderFactory {
 
     MultDataSourceInfo dataSourceInfo =
         new MultDataSourceInfo(
-            partitionGroup,
-            paths,
-            dataType,
-            request,
-            (RemoteQueryContext) context,
-            metaGroupMember,
-            orderedNodes);
+            partitionGroup, paths, dataType, request, (RemoteQueryContext) context, orderedNodes);
 
     boolean hasClient = dataSourceInfo.hasNextDataClient(Long.MIN_VALUE);
     if (hasClient) {

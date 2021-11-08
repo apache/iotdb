@@ -127,7 +127,7 @@ public class RemoteMultSeriesReaderTest {
 
     try {
       MultDataSourceInfo sourceInfo =
-          new MultDataSourceInfo(group, paths, dataTypes, request, context, metaGroupMember, group);
+          new MultDataSourceInfo(group, paths, dataTypes, request, context, group);
       sourceInfo.hasNextDataClient(Long.MIN_VALUE);
 
       reader = new RemoteMultSeriesReader(sourceInfo);
@@ -159,7 +159,7 @@ public class RemoteMultSeriesReaderTest {
 
     try {
       MultDataSourceInfo sourceInfo =
-          new MultDataSourceInfo(group, paths, dataTypes, request, context, metaGroupMember, group);
+          new MultDataSourceInfo(group, paths, dataTypes, request, context, group);
       sourceInfo.hasNextDataClient(Long.MIN_VALUE);
 
       reader = new RemoteMultSeriesReader(sourceInfo);

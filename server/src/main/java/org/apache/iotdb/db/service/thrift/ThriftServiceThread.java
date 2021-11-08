@@ -126,6 +126,8 @@ public class ThriftServiceThread extends Thread {
                   processor, threadsName, maxWorkerThreads, timeoutSecond, maxReadBufferBytes);
           poolServer = new THsHaServer(poolArgs1);
           break;
+        default:
+          logger.error("Unexpected serverType {}", serverType);
       }
       poolServer.setServerEventHandler(serverEventHandler);
     } catch (TTransportException e) {
@@ -133,19 +135,7 @@ public class ThriftServiceThread extends Thread {
     }
   }
 
-  /**
-   * for synced ThriftServiceThread
-   *
-   * @param processor
-   * @param serviceName
-   * @param threadsName
-   * @param bindAddress
-   * @param port
-   * @param maxWorkerThreads
-   * @param timeoutSecond
-   * @param serverEventHandler
-   * @param compress
-   */
+  /** for synced ThriftServiceThread */
   @SuppressWarnings("squid:S107")
   public ThriftServiceThread(
       TProcessor processor,

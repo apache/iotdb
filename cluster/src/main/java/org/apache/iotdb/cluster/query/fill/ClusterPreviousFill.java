@@ -60,7 +60,7 @@ public class ClusterPreviousFill extends PreviousFill {
   private static final Logger logger = LoggerFactory.getLogger(ClusterPreviousFill.class);
   private MetaGroupMember metaGroupMember;
   private TimeValuePair fillResult;
-  private static final String previousFillExceptionLoggerFormat =
+  private static final String PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT =
       "{}: Cannot perform previous fill of {} to {}";
 
   ClusterPreviousFill(PreviousFill fill, MetaGroupMember metaGroupMember) {
@@ -228,7 +228,7 @@ public class ClusterPreviousFill extends PreviousFill {
       logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
     } catch (Exception e) {
       logger.error(
-          previousFillExceptionLoggerFormat, metaGroupMember, arguments.getPath(), node, e);
+          PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT, metaGroupMember, arguments.getPath(), node, e);
     }
     return byteBuffer;
   }
@@ -247,14 +247,14 @@ public class ClusterPreviousFill extends PreviousFill {
       // the connection may be broken, close it to avoid it being reused
       syncDataClient.close();
       logger.error(
-          previousFillExceptionLoggerFormat,
+          PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT,
           metaGroupMember.getName(),
           arguments.getPath(),
           node,
           e);
     } catch (Exception e) {
       logger.error(
-          previousFillExceptionLoggerFormat,
+          PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT,
           metaGroupMember.getName(),
           arguments.getPath(),
           node,

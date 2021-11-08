@@ -152,9 +152,7 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
     }
 
     @Override
-    public void activateObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {
-      pooledObject.getObject().setTimeout(ClusterConstant.getConnectionTimeoutInMS());
-    }
+    public void activateObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {}
 
     @Override
     public void destroyObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {
@@ -170,8 +168,7 @@ public class AsyncMetaClient extends TSMetaService.AsyncClient {
     }
 
     @Override
-    public void passivateObject(Node node, PooledObject<AsyncMetaClient> pooledObject)
-        throws Exception {}
+    public void passivateObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {}
 
     @Override
     public boolean validateObject(Node node, PooledObject<AsyncMetaClient> pooledObject) {

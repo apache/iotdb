@@ -79,7 +79,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ClusterPlanExecutor extends PlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPlanExecutor.class);
-  private MetaGroupMember metaGroupMember;
+  private final MetaGroupMember metaGroupMember;
 
   public static final int THREAD_POOL_SIZE = 6;
   public static final String LOG_FAIL_CONNECT = "Failed to connect to node: {}";
@@ -382,35 +382,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    Integer count;
     for (Node node : coordinatedNodes) {
       try {
-        Integer count;
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client =
-              ClusterIoTDB.getInstance()
-                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-          client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-          count =
-              SyncClientAdaptor.getPathCount(
-                  client, partitionGroup.getHeader(), pathsToQuery, level);
-        } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                ClusterIoTDB.getInstance()
-                    .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-            syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-            count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.close();
-            throw e;
-          } finally {
-            if (syncDataClient != null) {
-              syncDataClient.returnSelf();
-            }
-          }
-        }
+        count = getRemotePathCountForOneNode(node, partitionGroup, pathsToQuery, level);
         logger.debug(
             "{}: get path count of {} from {}, result {}",
             metaGroupMember.getName(),
@@ -429,6 +404,38 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     logger.warn("Cannot get paths of {} from {}", pathsToQuery, partitionGroup);
     return 0;
+  }
+
+  private Integer getRemotePathCountForOneNode(
+      Node node, PartitionGroup partitionGroup, List<String> pathsToQuery, int level)
+      throws IOException, TException, InterruptedException {
+    Integer count;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
+      count =
+          SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(), pathsToQuery, level);
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
+        count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
+      }
+    }
+    return count;
   }
 
   @Override
@@ -627,7 +634,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         nextChildrenNodes =
             syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
-      } catch (TException | IOException e) {
+      } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
         throw e;
