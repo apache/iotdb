@@ -163,7 +163,7 @@ public class RestServiceServer implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.OPEN_API_SERVICE;
+    return ServiceType.REST_SERVICE;
   }
 
   private static class RestServerHolder {

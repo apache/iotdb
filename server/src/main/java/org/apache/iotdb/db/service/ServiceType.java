@@ -56,7 +56,7 @@ public enum ServiceType {
   SYSTEMINFO_SERVICE("MemTable Monitor Service", "MemTable, Monitor"),
   CONTINUOUS_QUERY_SERVICE("Continuous Query Service", "Continuous Query Service"),
   CLUSTER_INFO_SERVICE("Cluster Monitor Service (thrift-based)", "Cluster Monitor-Thrift"),
-  OPEN_API_SERVICE("Open Api Service", "Open Api Service");
+  REST_SERVICE("REST Service", "REST Service");
 
   private final String name;
   private final String jmxName;
