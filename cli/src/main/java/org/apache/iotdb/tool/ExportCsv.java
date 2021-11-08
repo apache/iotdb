@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -357,7 +358,7 @@ public class ExportCsv extends AbstractCsvTool {
                   record.add("");
                 }
               });
-      printer.printRecord(record.toString());
+      printer.printRecord(StringUtils.join(record, ','));
     }
 
     printer.flush();
