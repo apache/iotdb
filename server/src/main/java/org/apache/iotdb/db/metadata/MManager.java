@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -111,7 +112,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -244,8 +244,7 @@ public class MManager {
 
     if (config.isEnableMTreeSnapshot()) {
       timedCreateMTreeSnapshotThread =
-          Executors.newSingleThreadScheduledExecutor(
-              r -> new Thread(r, "timedCreateMTreeSnapshotThread"));
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedCreateMTreeSnapshot");
       timedCreateMTreeSnapshotThread.scheduleAtFixedRate(
           this::checkMTreeModified,
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
