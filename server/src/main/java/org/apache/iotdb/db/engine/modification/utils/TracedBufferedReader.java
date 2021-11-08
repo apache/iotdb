@@ -253,6 +253,9 @@ public class TracedBufferedReader extends Reader {
           nextChar++;
           if (c == '\r') {
             skipLF = true;
+            if (read() != -1) {
+              nextChar--;
+            }
           }
           return str;
         }
