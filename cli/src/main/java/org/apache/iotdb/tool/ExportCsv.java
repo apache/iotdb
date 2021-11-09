@@ -36,11 +36,11 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.QuoteMode;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -286,47 +286,62 @@ public class ExportCsv extends AbstractCsvTool {
    * @param index use to create dump file name
    */
   private static void dumpResult(String sql, int index) {
-
     final String path = targetDirectory + targetFile + index + ".csv";
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
-      List<List<Object>> records = loadDataFromDataSet(sessionDataSet);
-      writeCsvFile(null, records, path);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 10000);
+      writeCsvFile(sessionDataSet, path);
+      sessionDataSet.closeOperationHandle();
       System.out.println("Export completely!");
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
+    } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
     }
   }
 
-  /**
-   * Load data from the result of query command.
-   *
-   * @param sessionDataSet
-   * @return
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
-   */
-  public static List<List<Object>> loadDataFromDataSet(SessionDataSet sessionDataSet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<List<Object>> records = new ArrayList<>();
+  public static String timeTrans(Long time) {
+    String timestampPrecision = "ms";
+    switch (timeFormat) {
+      case "default":
+        return RpcUtils.parseLongToDateWithPrecision(
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId, timestampPrecision);
+      case "timestamp":
+      case "long":
+      case "number":
+        return String.valueOf(time);
+      default:
+        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(time), zoneId)
+            .format(DateTimeFormatter.ofPattern(timeFormat));
+    }
+  }
+
+  public static Boolean writeCsvFile(SessionDataSet sessionDataSet, String filePath)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    CSVPrinter printer =
+        CSVFormat.DEFAULT
+            .withFirstRecordAsHeader()
+            .withEscape('\\')
+            .withQuoteMode(QuoteMode.NONE)
+            .print(new PrintWriter(filePath));
+
     List<Object> headers = new ArrayList<>();
     List<String> names = sessionDataSet.getColumnNames();
     List<String> types = sessionDataSet.getColumnTypes();
 
-    if (needDataTypePrinted == true) {
+    if (needDataTypePrinted) {
       for (int i = 0; i < names.size(); i++) {
-        if (!names.get(i).equals("Time") && !names.get(i).equals("Device"))
+        if (!names.get(i).equals("Time") && !names.get(i).equals("Device")) {
           headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
-        else headers.add(names.get(i));
+        } else {
+          headers.add(names.get(i));
+        }
       }
     } else {
       names.forEach(name -> headers.add(name));
     }
-    records.add(headers);
+    printer.printRecord(headers);
 
     while (sessionDataSet.hasNext()) {
       RowRecord rowRecord = sessionDataSet.next();
-      ArrayList<Object> record = new ArrayList<>();
+      ArrayList<String> record = new ArrayList<>();
       if (rowRecord.getTimestamp() != 0) {
         record.add(timeTrans(rowRecord.getTimestamp()));
       }
@@ -345,24 +360,11 @@ public class ExportCsv extends AbstractCsvTool {
                   record.add("");
                 }
               });
-      records.add(record);
+      printer.printRecord(record);
     }
-    return records;
-  }
 
-  public static String timeTrans(Long time) {
-    String timestampPrecision = "ms";
-    switch (timeFormat) {
-      case "default":
-        return RpcUtils.parseLongToDateWithPrecision(
-            DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId, timestampPrecision);
-      case "timestamp":
-      case "long":
-      case "number":
-        return String.valueOf(time);
-      default:
-        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(time), zoneId)
-            .format(DateTimeFormatter.ofPattern(timeFormat));
-    }
+    printer.flush();
+    printer.close();
+    return true;
   }
 }

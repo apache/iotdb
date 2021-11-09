@@ -125,7 +125,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   public RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException(
-          "need to call hasNext() before calling next()" + " in GroupByWithoutValueFilterDataSet.");
+          "need to call hasNext() before calling next()" + " in GroupByWithValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
     curAggregateResults = new AggregateResult[paths.size()];

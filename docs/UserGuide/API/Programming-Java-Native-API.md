@@ -391,7 +391,6 @@ public Session(String host, int rpcPort, String username, String password,
 Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.
 
 ```
-
 * name: template name
 * measurements: List of measurements, if it is a single measurement, just put it's name
 *     into a list and add to measurements if it is a vector measurement, put all measurements of
@@ -402,36 +401,152 @@ Open a session and specifies whether the Leader cache is enabled. Note that this
 * encodings: List of encodings, if it is a single measurement, just put it's encoding into
 *     a list and add to encodings if it is a vector measurement, put all encodings of the
 *     vector into a list and add to encodings
-* compressors: List of compressors                            
+* compressors: List of compressors, if it is a single measurement, just put it's 
+*     compressor into a list and add to encodings if it is a vector measurement, put all 
+*     encodings of the vector into a list and add to encodings
 void createSchemaTemplate(
       String templateName,
-      List<String> schemaName,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
 ```
 
-Create a measurement template, the param description at above
+Create a measurement template, the param description as above. As measurement templates could be tree-structured, parameter 'measurement' in above method could be a path to the measurement, be like: 'vehicle.GPS.x' . 
+
+You can also create instances of Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it.
+
+```java
+public void createSchemaTemplate(Template template);
+
+Class Template {
+    private String name;
+    private boolean directShareTime;
+    Map<String, Node> children;
+    public Template(String name, boolean isShareTime);
+    
+    public void addToTemplate(Node node);
+    public void deleteFromTemplate(String name);
+    public void setShareTime(boolean shareTime);
+}
+
+Abstract Class Node {
+    private String name;
+    public void addChild(Node node);
+    public void deleteChild(Node node);
+}
+
+Class InternalNode extends Node {
+    boolean shareTime;
+    Map<String, Node> children;
+    public void setShareTime(boolean shareTime);
+    public InternalNode(String name, boolean isShareTime);
+}
+
+Class MeasurementNode extends Node {
+    TSDataType dataType;
+    TSEncoding encoding;
+    CompressionType compressor;
+    public MeasurementNode(String name, 
+                           TSDataType dataType, 
+                           TSEncoding encoding,
+                          CompressionType compressor);
+}
+```
+
+A snippet of using above Method and Class：
+
+```java
+MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+
+InternalNode internalGPS = new InternalNode("GPS", true);
+InternalNode internalVehicle = new InternalNode("vehicle", false);
+
+internalGPS.addChild(nodeX);
+internalGPS.addChild(nodeY);
+internalVehicle.addChild(GPS);
+internalVehicle.addChild(nodeSpeed);
+
+Template template = new Template("treeTemplateExample");
+template.addToTemplate(internalGPS);
+template.addToTemplate(internalVehicle);
+template.addToTemplate(nodeSpeed);
+
+createSchemaTemplate(template);
+```
+
+After measurement template created, you can edit the template with belowed APIs.
+
+**Attention: templates had been set could not be pruned.**
+
+```java
+// Add aligned measurements to a template
+public void addAlignedMeasurementsInTemplate(String templateName,
+    						  String[] measurementsPath,
+                              TSDataType[] dataTypes,
+                              TSEncoding[] encodings,
+                              CompressionType[] compressors);
+
+// Add one aligned measurement to a template
+public void addAlignedMeasurementInTemplate(String templateName,
+                                String measurementPath,
+                                TSDataType dataType,
+                                TSEncoding encoding,
+                                CompressionType compressor);
+
+
+// Add unaligned measurements to a template
+public void addUnalignedMeasurementInTemplate(String templateName,
+                                String measurementPath,
+                                TSDataType dataType,
+                                TSEncoding encoding,
+                                CompressionType compressor);
+                                
+// Add one unaligned measurement to a template
+public void addUnalignedMeasurementsIntemplate(String templateName,
+                                String[] measurementPaths,
+                                TSDataType[] dataTypes,
+                                TSEncoding[] encodings,
+                                CompressionType[] compressors);
+
+// Delete a node in template and its children
+public void deleteNodeInTemplate(String templateName, String path);
+```
+
+You can query measurement templates with these APIS:
+
+```java
+// Return the amount of measurements inside a template
+public int countMeasurementsInTemplate(String templateName);
+
+// Return true if path points to a measurement, otherwise returne false
+public boolean isMeasurementInTemplate(String templateName, String path);
+
+// Return true if path exists in template, otherwise return false
+public boolean isPathExistInTemplate(String templateName, String path);
+
+// Return all measurements paths inside template
+public List<String> showMeasurementsInTemplate(String templateName);
+
+// Return all measurements paths under the designated patter inside template
+public List<String> showMeasurementsInTemplate(String templateName, String pattern);
+```
+
+Set the measurement template named 'templateName' at path 'prefixPath'. 
 
 ``` 
-
 void setSchemaTemplate(String templateName, String prefixPath)
-
 ```
 
-Set the measurement template named 'templateName' at path 'prefixPath'. You should firstly create the template using
+Before setting template, you should firstly create the template using
 
-```
-
+```java
 void createSchemaTemplate
-
 ```
-
-``` 
-
+```java
 void unsetSchemaTemplate(String prefixPath, String templateName)
-
 ```
 
 Unset the measurement template named 'templateName' from path 'prefixPath'. You should ensure that there is a template named 'templateName' set at the path 'prefixPath'.
