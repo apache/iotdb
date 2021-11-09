@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -82,8 +83,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private int pathsNum = 0;
 
   public AlignByDeviceDataSet(
-      AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter)
-      throws MetadataException {
+      AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter) {
     super(null, alignByDevicePlan.getDataTypes());
 
     this.measurements = alignByDevicePlan.getMeasurements();
@@ -259,7 +259,9 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       PartialPath fullPath = new PartialPath(device.getFullPath(), measurement);
       IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
       if (schema instanceof UnaryMeasurementSchema) {
-        return fullPath;
+        MeasurementPath measurementFullPath = new MeasurementPath(fullPath);
+        measurementFullPath.setMeasurementSchema(schema);
+        return measurementFullPath;
       } else {
         String vectorPath = fullPath.getDevice();
         return new AlignedPath(vectorPath, fullPath.getMeasurement());
