@@ -84,6 +84,8 @@ public class TimeSeriesMetadataCache {
                             (RamUsageEstimator.shallowSizeOf(key)
                                 + RamUsageEstimator.sizeOf(key.device)
                                 + RamUsageEstimator.sizeOf(key.measurement)
+                                + RamUsageEstimator.sizeOf(key.tsFilePrefixPath)
+                                + RamUsageEstimator.sizeOf(key.tsFileVersion)
                                 + RamUsageEstimator.shallowSizeOf(value)
                                 + RamUsageEstimator.sizeOf(value.getMeasurementId())
                                 + RamUsageEstimator.shallowSizeOf(value.getStatistics())
@@ -216,8 +218,6 @@ public class TimeSeriesMetadataCache {
     private final long tsFileVersion;
     private final String device;
     private final String measurement;
-
-    private long ramSize;
 
     public TimeSeriesMetadataCacheKey(String filePath, String device, String measurement) {
       this.filePath = filePath;
