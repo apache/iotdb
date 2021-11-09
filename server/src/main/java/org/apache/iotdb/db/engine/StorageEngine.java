@@ -33,14 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.ShutdownException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -530,6 +523,11 @@ public class StorageEngine implements IService {
         if (virtualStorageGroupManager == null) {
           virtualStorageGroupManager = new VirtualStorageGroupManager();
           processorMap.put(storageGroupMNode.getPartialPath(), virtualStorageGroupManager);
+        } else {
+          // not finished recover, refuse the request
+          throw new StorageGroupNotReadyException(
+              storageGroupMNode.getFullPath(),
+              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
     }
