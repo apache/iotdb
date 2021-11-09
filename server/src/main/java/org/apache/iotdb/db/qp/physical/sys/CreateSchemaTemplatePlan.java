@@ -193,7 +193,8 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
     return ret;
   }
 
-  public static CreateSchemaTemplatePlan deserializeFromReq(ByteBuffer buffer) throws MetadataException {
+  public static CreateSchemaTemplatePlan deserializeFromReq(ByteBuffer buffer)
+      throws MetadataException {
     Map<String, List<String>> alignedPrefix = new HashMap<>();
     Map<String, List<TSDataType>> alignedDataTypes = new HashMap<>();
     Map<String, List<TSEncoding>> alignedEncodings = new HashMap<>();
