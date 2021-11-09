@@ -21,8 +21,11 @@ package org.apache.iotdb.db.engine.cache;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -32,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Objects;
 
 /** This class is used to cache <code>BloomFilter</code> in IoTDB. The caching strategy is LRU. */
 public class BloomFilterCache {
@@ -43,7 +47,7 @@ public class BloomFilterCache {
       config.getAllocateMemoryForBloomFilterCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
-  private final LoadingCache<String, BloomFilter> lruCache;
+  private final LoadingCache<BloomFilterCacheKey, BloomFilter> lruCache;
 
   private BloomFilterCache() {
     if (CACHE_ENABLE) {
@@ -53,22 +57,23 @@ public class BloomFilterCache {
         Caffeine.newBuilder()
             .maximumWeight(MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE)
             .weigher(
-                (Weigher<String, BloomFilter>)
-                    (filePath, bloomFilter) ->
+                (Weigher<BloomFilterCacheKey, BloomFilter>)
+                    (key, bloomFilter) ->
                         (int)
-                            (RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                                + RamUsageEstimator.sizeOf(bloomFilter))) // TODO: how to calculate?
+                            (RamUsageEstimator.shallowSizeOf(key)
+                                + RamUsageEstimator.sizeOf(key.tsFilePrefixPath)
+                                + RamUsageEstimator.sizeOf(bloomFilter)))
             .recordStats()
             .build(
-                filePath -> {
+                key -> {
                   try {
                     TsFileSequenceReader reader =
-                        FileReaderManager.getInstance().get(filePath, true);
+                        FileReaderManager.getInstance().get(key.filePath, true);
                     return reader.readBloomFilter();
                   } catch (IOException e) {
                     logger.error(
                         "Something wrong happened in reading bloom filter in tsfile {}",
-                        filePath,
+                        key.filePath,
                         e);
                     throw e;
                   }
@@ -79,20 +84,20 @@ public class BloomFilterCache {
     return BloomFilterCacheHolder.INSTANCE;
   }
 
-  public BloomFilter get(String filePath) throws IOException {
-    return get(filePath, false);
+  public BloomFilter get(BloomFilterCacheKey key) throws IOException {
+    return get(key, false);
   }
 
-  public BloomFilter get(String filePath, boolean debug) throws IOException {
+  public BloomFilter get(BloomFilterCacheKey key, boolean debug) throws IOException {
     if (!CACHE_ENABLE) {
-      TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+      TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
       return reader.readBloomFilter();
     }
 
-    BloomFilter bloomFilter = lruCache.get(filePath);
+    BloomFilter bloomFilter = lruCache.get(key);
 
     if (debug) {
-      DEBUG_LOGGER.info("get bloomFilter from cache where filePath is: " + filePath);
+      DEBUG_LOGGER.info("get bloomFilter from cache where filePath is: " + key.filePath);
     }
 
     return bloomFilter;
@@ -120,8 +125,55 @@ public class BloomFilterCache {
     lruCache.cleanUp();
   }
 
-  public void remove(String filePath) {
-    lruCache.invalidate(filePath);
+  public void remove(BloomFilterCacheKey key) {
+    lruCache.invalidate(key);
+  }
+
+  @TestOnly
+  public BloomFilter getIfPresent(BloomFilterCacheKey key) {
+    return lruCache.getIfPresent(key);
+  }
+
+  @TestOnly
+  public void clearUp() {
+    lruCache.cleanUp();
+  }
+
+  public static class BloomFilterCacheKey {
+
+    private final String filePath;
+    private final String tsFilePrefixPath;
+    private final long tsFileVersion;
+    // high 32 bit is compaction level, low 32 bit is merge count
+    private final long compactionVersion;
+
+    public BloomFilterCacheKey(String filePath) {
+      this.filePath = filePath;
+      Pair<String, long[]> tsFilePrefixPathAndTsFileVersionPair =
+          FilePathUtils.getTsFilePrefixPathAndTsFileVersionPair(filePath);
+      this.tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
+      this.tsFileVersion = tsFilePrefixPathAndTsFileVersionPair.right[0];
+      this.compactionVersion = tsFilePrefixPathAndTsFileVersionPair.right[1];
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      BloomFilterCache.BloomFilterCacheKey that = (BloomFilterCache.BloomFilterCacheKey) o;
+      return tsFileVersion == that.tsFileVersion
+          && compactionVersion == that.compactionVersion
+          && tsFilePrefixPath.equals(that.tsFilePrefixPath);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tsFilePrefixPath, tsFileVersion, compactionVersion);
+    }
   }
 
   /** singleton pattern. */
