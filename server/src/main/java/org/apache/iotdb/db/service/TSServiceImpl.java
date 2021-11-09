@@ -40,10 +40,7 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
-import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -78,15 +75,14 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingConstant;
-import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.basic.dto.OpenSessionResp;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -124,7 +120,6 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
@@ -169,7 +164,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** Thrift RPC implementation at server side. */
-public class TSServiceImpl implements TSIService.Iface {
+public class TSServiceImpl extends BasicServiceProvider implements TSIService.Iface {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW_SQL");
@@ -189,9 +184,6 @@ public class TSServiceImpl implements TSIService.Iface {
   private static final String INFO_INTERRUPT_ERROR =
       "Current Thread interrupted when dealing with request {}";
 
-  public static final TSProtocolVersion CURRENT_RPC_VERSION =
-      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
@@ -200,18 +192,11 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
   private static final AtomicInteger queryCount = new AtomicInteger(0);
-  private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-  private final SessionManager sessionManager = SessionManager.getInstance();
-  private final TracingManager tracingManager = TracingManager.getInstance();
 
   private long startTime = -1L;
 
-  protected Planner processor;
-  protected IPlanExecutor executor;
-
   public TSServiceImpl() throws QueryProcessException {
-    processor = new Planner();
-    executor = new PlanExecutor();
+    super();
 
     ScheduledExecutorService timedQuerySqlCountThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedQuerySqlCount");
@@ -233,74 +218,18 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
-    boolean status;
-    IAuthorizer authorizer;
-    try {
-      authorizer = BasicAuthorizer.getInstance();
-    } catch (AuthException e) {
-      throw new TException(e);
-    }
-    String loginMessage = null;
-    try {
-      status = authorizer.login(req.getUsername(), req.getPassword());
-    } catch (AuthException e) {
-      LOGGER.info("meet error while logging in.", e);
-      status = false;
-      loginMessage = e.getMessage();
-    }
-
-    TSStatus tsStatus;
-    long sessionId = -1;
-    if (status) {
-      // check the version compatibility
-      boolean compatible = checkCompatibility(req.getClient_protocol());
-      if (!compatible) {
-        tsStatus =
-            RpcUtils.getStatus(
-                TSStatusCode.INCOMPATIBLE_VERSION,
-                "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
-        resp.setSessionId(sessionId);
-        return resp;
-      }
-
-      tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
-
-      sessionId = sessionManager.requestSessionId(req.getUsername(), req.getZoneId());
-      AUDIT_LOGGER.info("User {} opens Session-{}", req.getUsername(), sessionId);
-      LOGGER.info(
-          "{}: Login status: {}. User : {}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          tsStatus.message,
-          req.getUsername());
-    } else {
-      tsStatus =
-          RpcUtils.getStatus(
-              TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR,
-              loginMessage != null ? loginMessage : "Authentication failed.");
-      AUDIT_LOGGER.info(
-          "User {} opens Session failed with an incorrect password", req.getUsername());
-    }
-
-    SessionTimeoutManager.getInstance().register(sessionId);
-
+    OpenSessionResp openSessionResp =
+        openSession(req.username, req.password, req.zoneId, req.client_protocol);
+    TSStatus tsStatus =
+        RpcUtils.getStatus(openSessionResp.getTsStatusCode(), openSessionResp.getLoginMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
-    return resp.setSessionId(sessionId);
-  }
-
-  private boolean checkCompatibility(TSProtocolVersion version) {
-    return version.equals(CURRENT_RPC_VERSION);
+    return resp.setSessionId(openSessionResp.getSessionId());
   }
 
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
-    long sessionId = req.getSessionId();
-    AUDIT_LOGGER.info("Session-{} is closing", sessionId);
-
-    sessionManager.removeCurrSessionId();
-
     return new TSStatus(
-        !SessionTimeoutManager.getInstance().unregister(sessionId)
+        !closeSession(req.sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
