@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.db.service.basic.dto.BasicResp;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -145,6 +146,10 @@ public class RpcUtils {
     TSStatus status = new TSStatus(tsStatusCode.getStatusCode());
     status.setMessage(message);
     return status;
+  }
+
+  public static TSStatus getStatus(BasicResp basicResp){
+    return getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
   }
 
   public static TSStatus getStatus(int code, String message) {

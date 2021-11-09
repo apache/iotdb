@@ -75,13 +75,13 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingConstant;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.basic.dto.BasicResp;
 import org.apache.iotdb.db.service.basic.dto.OpenSessionResp;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -174,7 +174,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   private static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
 
-  private static final String INFO_NOT_LOGIN = "{}: Not login. ";
   private static final String INFO_PARSING_SQL_ERROR =
       "Error occurred while parsing SQL to physical plan: ";
   private static final String INFO_CHECK_METADATA_ERROR = "Check metadata error: ";
@@ -221,7 +220,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     OpenSessionResp openSessionResp =
         openSession(req.username, req.password, req.zoneId, req.client_protocol);
     TSStatus tsStatus =
-        RpcUtils.getStatus(openSessionResp.getTsStatusCode(), openSessionResp.getLoginMessage());
+        RpcUtils.getStatus(openSessionResp.getTsStatusCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
   }
@@ -242,33 +241,14 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    if (!checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
-    }
-
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "{}: receive close operation from Session {}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          sessionManager.getCurrSessionId());
-    }
-
-    try {
-      if (req.isSetStatementId()) {
-        if (req.isSetQueryId()) {
-          sessionManager.closeDataset(req.statementId, req.queryId);
-        } else {
-          sessionManager.closeStatement(req.sessionId, req.statementId);
-        }
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } else {
-        return RpcUtils.getStatus(
-            TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
-      }
-    } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CLOSE_OPERATION, TSStatusCode.CLOSE_OPERATION_ERROR);
-    }
+    BasicResp basicResp =
+        closeOperation(
+            req.sessionId,
+            req.queryId,
+            req.statementId,
+            req.isSetStatementId(),
+            req.isSetQueryId());
+    return RpcUtils.getStatus(basicResp);
   }
 
   /** release single operation resource */
@@ -1234,21 +1214,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         ? new TSExecuteStatementResp(status)
         : RpcUtils.getTSExecuteStatementResp(executeNonQueryPlan(plan))
             .setQueryId(sessionManager.requestQueryId(false));
-  }
-
-  /**
-   * Check whether current user has logged in.
-   *
-   * @return true: If logged in; false: If not logged in
-   */
-  private boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
-    if (!isLoggedIn) {
-      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-    } else {
-      SessionTimeoutManager.getInstance().refresh(sessionId);
-    }
-    return isLoggedIn;
   }
 
   private boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
