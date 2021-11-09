@@ -22,10 +22,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 
 import java.sql.*;
 
@@ -55,6 +52,7 @@ public class IoTDBSchemaTemplateIT {
   }
 
   @Test
+  @Ignore
   public void testCreateAndSetUsingSchemaTemplate() throws SQLException {
     statement.execute("CREATE STORAGE GROUP root.sg1");
 
@@ -116,6 +114,7 @@ public class IoTDBSchemaTemplateIT {
   }
 
   @Test
+  @Ignore
   public void testCreateAndSetSchemaTemplate() throws SQLException {
     statement.execute("CREATE STORAGE GROUP root.sg1");
 
