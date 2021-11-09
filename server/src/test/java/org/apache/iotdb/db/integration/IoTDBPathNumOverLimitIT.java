@@ -59,8 +59,6 @@ public class IoTDBPathNumOverLimitIT {
 
       statement.execute("insert into root.sg.d1(time, s1, s2, s3) values(1, 1, 1, 1)");
 
-      // success
-      statement.execute("select * from root slimit 2");
       // fail
       statement.execute("select * from root");
       fail();
