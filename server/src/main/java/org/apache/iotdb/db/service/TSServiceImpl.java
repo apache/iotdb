@@ -248,7 +248,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             req.statementId,
             req.isSetStatementId(),
             req.isSetQueryId());
-    return RpcUtils.getStatus(basicResp);
+    return RpcUtils.getStatus(basicResp.getTsStatusCode(), basicResp.getMessage());
   }
 
   /** release single operation resource */
