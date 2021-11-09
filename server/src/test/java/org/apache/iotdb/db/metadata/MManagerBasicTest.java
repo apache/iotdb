@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -881,7 +882,6 @@ public class MManagerBasicTest {
     UnaryMeasurementSchema s11 =
         new UnaryMeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     assertNotNull(node.getSchemaTemplate());
-    assertEquals(node.getSchemaTemplate().getSchemaMap().get("s11"), s11);
 
     Set<IMeasurementSchema> allSchema =
         new HashSet<>(node.getSchemaTemplate().getSchemaMap().values());
@@ -893,8 +893,13 @@ public class MManagerBasicTest {
     assertTrue(allSchema.isEmpty());
 
     IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
+    IMeasurementMNode mNode2 =
+        manager.getMeasurementMNode(new PartialPath("root.sg1.d1.vector.s2"));
     assertNotNull(mNode);
     assertEquals(mNode.getSchema(), s11);
+    assertNotNull(mNode2);
+    assertEquals(
+        mNode2.getSchema(), manager.getTemplate("template1").getSchemaMap().get("vector.s2"));
 
     try {
       manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
@@ -904,12 +909,92 @@ public class MManagerBasicTest {
     }
   }
 
+  @Test
+  public void testTemplateInnerTree() {
+    CreateSchemaTemplatePlan plan = getTreeTemplatePlan();
+    Template template;
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.createSchemaTemplate(plan);
+      template = manager.getTemplate("treeTemplate");
+      assertEquals(4, template.getMeasurementsCount());
+      assertEquals("d1", template.getPathNodeInTemplate("d1").getName());
+      assertEquals(null, template.getPathNodeInTemplate("notExists"));
+      assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
+
+      String[] alignedMeasurements = {"to.be.prefix.s1", "to.be.prefix.s2"};
+      TSDataType[] dataTypes = {TSDataType.INT32, TSDataType.INT32};
+      TSEncoding[] encodings = {TSEncoding.RLE, TSEncoding.RLE};
+      CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
+      template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
+
+      assertEquals("[GPS, to.be.prefix]", template.getAllAlignedPrefix().toString());
+      assertEquals("[s1, s2]", template.getAlignedMeasurements("to.be.prefix").toString());
+
+      template.deleteAlignedPrefix("to.be.prefix");
+
+      assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
+      assertEquals(null, template.getDirectNode("prefix"));
+      assertEquals("to", template.getDirectNode("to").getName());
+
+      try {
+        template.deleteMeasurements("a.single");
+        fail();
+      } catch (IllegalPathException e) {
+        assertEquals("a.single is not a legal path, because Path does not exist", e.getMessage());
+      }
+      assertEquals(
+              "[d1.s1, GPS.x, to.be.prefix.s2, GPS.y, to.be.prefix.s1, s2]",
+              template.getAllMeasurementsPaths().toString());
+
+      template.deleteSeriesCascade("to");
+
+      assertEquals("[d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
+
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private CreateSchemaTemplatePlan getTreeTemplatePlan() {
+    /**
+     * Construct a template like: create schema template treeTemplate ( (d1.s1 INT32 GORILLA
+     * SNAPPY), (s2 INT32 GORILLA SNAPPY), (GPS.x FLOAT RLE SNAPPY), (GPS.y FLOAT RLE SNAPPY), )with
+     * aligned (GPS)
+     *
+     * <p>Check aligned path whether with same prefix? Construct tree
+     */
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("d1.s1"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Arrays.asList("GPS.x", "GPS.y"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
+    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
+    encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
+
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+
+    return new CreateSchemaTemplatePlan(
+            "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
+  }
+
   private CreateSchemaTemplatePlan getCreateSchemaTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     List<String> measurements = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      measurements.add("s" + i);
+      measurements.add("vector.s" + i);
     }
     measurementList.add(measurements);
 
@@ -929,13 +1014,16 @@ public class MManagerBasicTest {
     }
     encodingList.add(encodings);
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 11; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    List<CompressionType> compressorList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      compressorList.add(CompressionType.SNAPPY);
     }
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(compressorList);
 
     List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s11");
+    schemaNames.add("s21");
     schemaNames.add("vector");
 
     return new CreateSchemaTemplatePlan(
@@ -960,9 +1048,9 @@ public class MManagerBasicTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+      compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     }
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s1");
@@ -1136,10 +1224,13 @@ public class MManagerBasicTest {
     }
     encodingList.add(encodings);
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 11; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    List<CompressionType> compressionTypeList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      compressionTypeList.add(CompressionType.SNAPPY);
     }
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(compressionTypeList);
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");
@@ -1148,17 +1239,17 @@ public class MManagerBasicTest {
     CreateSchemaTemplatePlan plan1 =
         new CreateSchemaTemplatePlan(
             "template1",
-            new ArrayList<>(schemaNames),
-            new ArrayList<>(measurementList),
-            new ArrayList<>(dataTypeList),
-            new ArrayList<>(encodingList),
-            new ArrayList<>(compressionTypes));
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
 
     measurementList.add(Collections.singletonList("s12"));
     schemaNames.add("s12");
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
 
     CreateSchemaTemplatePlan plan2 =
         new CreateSchemaTemplatePlan(
@@ -1172,6 +1263,7 @@ public class MManagerBasicTest {
     measurementList.get(1).add("s13");
     dataTypeList.get(1).add(TSDataType.INT64);
     encodingList.get(1).add(TSEncoding.RLE);
+    compressionTypes.get(1).add(CompressionType.SNAPPY);
 
     SetSchemaTemplatePlan setPlan1 = new SetSchemaTemplatePlan("template1", "root.sg1");
     SetSchemaTemplatePlan setPlan2 = new SetSchemaTemplatePlan("template2", "root.sg2.d1");
@@ -1410,9 +1502,9 @@ public class MManagerBasicTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      compressionTypes.add(compressionType);
+      compressionTypes.add(Collections.singletonList(compressionType));
     }
 
     List<String> schemaNames = new ArrayList<>();
@@ -1476,9 +1568,9 @@ public class MManagerBasicTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      compressionTypes.add(compressionType);
+      compressionTypes.add(Collections.singletonList(compressionType));
     }
 
     List<String> schemaNames = new ArrayList<>();
@@ -1941,8 +2033,8 @@ public class MManagerBasicTest {
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    compressionTypes.add(compressionType);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(compressionType));
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add(schemaName);

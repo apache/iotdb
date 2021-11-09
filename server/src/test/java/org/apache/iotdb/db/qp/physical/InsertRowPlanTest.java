@@ -29,14 +29,9 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -47,10 +42,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public class InsertRowPlanTest {
 
@@ -121,85 +113,6 @@ public class InsertRowPlanTest {
 
     Assert.assertEquals(
         "[vector, vector, vector]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
-
-    QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
-    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(1, dataSet.getPaths().size());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals(3, record.getFields().size());
-    }
-  }
-
-  @Test
-  public void testInsertRowPlanWithSchemaTemplate()
-      throws QueryProcessException, MetadataException, InterruptedException,
-          QueryFilterOptimizationException, StorageEngineException, IOException {
-    List<List<String>> measurementList = new ArrayList<>();
-    List<String> v1 = new ArrayList<>();
-    v1.add("s1");
-    v1.add("s2");
-    v1.add("s3");
-    measurementList.add(v1);
-    List<String> v2 = new ArrayList<>();
-    v2.add("s4");
-    v2.add("s5");
-    measurementList.add(v2);
-    measurementList.add(Collections.singletonList("s6"));
-
-    List<List<TSDataType>> dataTypesList = new ArrayList<>();
-    List<TSDataType> d1 = new ArrayList<>();
-    d1.add(TSDataType.DOUBLE);
-    d1.add(TSDataType.FLOAT);
-    d1.add(TSDataType.INT64);
-    dataTypesList.add(d1);
-    List<TSDataType> d2 = new ArrayList<>();
-    d2.add(TSDataType.INT32);
-    d2.add(TSDataType.BOOLEAN);
-    dataTypesList.add(d2);
-    dataTypesList.add(Collections.singletonList(TSDataType.TEXT));
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    List<TSEncoding> e1 = new ArrayList<>();
-    e1.add(TSEncoding.PLAIN);
-    e1.add(TSEncoding.PLAIN);
-    e1.add(TSEncoding.PLAIN);
-    encodingList.add(e1);
-    List<TSEncoding> e2 = new ArrayList<>();
-    e2.add(TSEncoding.PLAIN);
-    e2.add(TSEncoding.PLAIN);
-    encodingList.add(e2);
-    encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
-
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
-    }
-
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("vector");
-    schemaNames.add("vector2");
-    schemaNames.add("s6");
-
-    CreateSchemaTemplatePlan plan =
-        new CreateSchemaTemplatePlan(
-            "template1",
-            schemaNames,
-            measurementList,
-            dataTypesList,
-            encodingList,
-            compressionTypes);
-
-    IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
-
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
-
-    InsertRowPlan rowPlan = getInsertVectorRowPlan();
-
-    PlanExecutor executor = new PlanExecutor();
-    executor.insert(rowPlan);
 
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");

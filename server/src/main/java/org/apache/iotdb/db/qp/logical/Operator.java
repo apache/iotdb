@@ -175,6 +175,8 @@ public abstract class Operator {
 
     SETTLE,
 
-    UNSET_SCHEMA_TEMPLATE
+    UNSET_SCHEMA_TEMPLATE,
+    PRUNE_TEMPLATE,
+    APPEND_TEMPLATE
   }
 }

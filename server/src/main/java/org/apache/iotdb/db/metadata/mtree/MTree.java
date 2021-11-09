@@ -61,6 +61,7 @@ import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -83,6 +84,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
@@ -350,7 +352,7 @@ public class MTree implements Serializable {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        if (cur.isUseTemplate() && upperTemplate.hasSchema(childName)) {
+        if (cur.isUseTemplate() && upperTemplate.isDirectNodeInTemplate(childName)) {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(childName).getFullPath());
         }
@@ -367,7 +369,14 @@ public class MTree implements Serializable {
       throw new PathAlreadyExistException(cur.getFullPath());
     }
 
-    if (upperTemplate != null && !upperTemplate.isCompatible(path)) {
+    if (upperTemplate != null
+        && upperTemplate.isDirectNodeInTemplate(nodeNames[nodeNames.length - 1])) {
+      throw new PathAlreadyExistException(
+          path.getFullPath() + " ( which is incompatible with template )");
+    }
+
+    // Quick patch for tree structure template
+    if (upperTemplate != null && upperTemplate.isDirectNodeInTemplate(cur.getName())) {
       throw new PathAlreadyExistException(
           path.getFullPath() + " ( which is incompatible with template )");
     }
@@ -1190,6 +1199,16 @@ public class MTree implements Serializable {
         }
 
         String realName = nodes[i];
+        // Quick patch for tree structured template
+        if (nodes.length - 1 != i) {
+          String[] realNameNodes = Arrays.copyOfRange(nodes, i, nodes.length);
+          StringBuilder builder = new StringBuilder(realNameNodes[0]);
+          for (int concatIndex = 1; concatIndex < realNameNodes.length; concatIndex++) {
+            builder.append(TsFileConstant.PATH_SEPARATOR);
+            builder.append(realNameNodes[concatIndex]);
+          }
+          realName = builder.toString();
+        }
         IMeasurementSchema schema = upperTemplate.getSchemaMap().get(realName);
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);

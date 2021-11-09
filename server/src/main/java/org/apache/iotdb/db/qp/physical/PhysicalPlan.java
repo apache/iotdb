@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -404,6 +405,12 @@ public abstract class PhysicalPlan {
         case CREATE_SCHEMA_TEMPLATE:
           plan = new CreateSchemaTemplatePlan();
           break;
+        case APPEND_TEMPLATE:
+          plan = new AppendTemplatePlan();
+          break;
+        case PRUNE_TEMPLATE:
+          plan = new PruneTemplatePlan();
+          break;
         case SET_SCHEMA_TEMPLATE:
           plan = new SetSchemaTemplatePlan();
           break;
@@ -507,7 +514,9 @@ public abstract class PhysicalPlan {
     DROP_FUNCTION,
     SELECT_INTO,
     SET_SYSTEM_MODE,
-    UNSET_SCHEMA_TEMPLATE
+    UNSET_SCHEMA_TEMPLATE,
+    APPEND_TEMPLATE,
+    PRUNE_TEMPLATE
   }
 
   public long getIndex() {

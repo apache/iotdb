@@ -68,7 +68,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     metaGroupMember =
         new TestMetaGroupMember() {
           @Override
-          protected void startSubServers() {
+          protected void rebuildDataGroups() {
             subServerInitialized = true;
           }
         };

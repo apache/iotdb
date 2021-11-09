@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -52,7 +53,7 @@ public class IoTDB implements IoTDBMBean {
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
-  private RegisterManager registerManager = new RegisterManager();
+  private final RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
   private static boolean clusterMode = false;
 
@@ -63,8 +64,9 @@ public class IoTDB implements IoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
-    } catch (IOException e) {
+    } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
+      System.exit(1);
     }
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
@@ -144,7 +146,7 @@ public class IoTDB implements IoTDBMBean {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
-        logger.warn("IoTDB failed to set up for:" + e.getMessage());
+        logger.warn("IoTDB failed to set up.", e);
         Thread.currentThread().interrupt();
         return;
       }
@@ -184,6 +186,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public void shutdown() throws Exception {
+    // TODO shutdown is not equal to stop()
     logger.info("Deactivating IoTDB...");
     registerManager.shutdownAll();
     PrimitiveArrayManager.close();

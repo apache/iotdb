@@ -22,6 +22,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -217,6 +219,11 @@ public class MLogParser {
           case CREATE_SCHEMA_TEMPLATE:
             mLogTxtWriter.createSchemaTemplate((CreateSchemaTemplatePlan) plan);
             break;
+          case APPEND_TEMPLATE:
+            mLogTxtWriter.appendTemplate((AppendTemplatePlan) plan);
+            break;
+          case PRUNE_TEMPLATE:
+            mLogTxtWriter.pruneTemplate((PruneTemplatePlan) plan);
           case SET_SCHEMA_TEMPLATE:
             mLogTxtWriter.setTemplate((SetSchemaTemplatePlan) plan);
             break;

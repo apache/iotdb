@@ -360,7 +360,7 @@ groupByTimeClause
     ;
 
 groupByFillClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL  RR_BRACKET
+    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
      FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
     ;
 
