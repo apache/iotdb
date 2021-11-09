@@ -40,7 +40,8 @@ public class WildcardsRemover {
 
   private int soffset = 0;
   private int currentOffset = 0;
-  private int currentLimit = Integer.MAX_VALUE;
+  private int currentLimit =
+      IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
 
   /** Records the path number that the MManager totally returned. */
   private int consumed = 0;
@@ -50,7 +51,7 @@ public class WildcardsRemover {
       soffset = queryOperator.getSpecialClauseComponent().getSeriesOffset();
       currentOffset = soffset;
       final int slimit = queryOperator.getSpecialClauseComponent().getSeriesLimit();
-      currentLimit = slimit == 0 ? currentLimit : slimit;
+      currentLimit = slimit == 0 ? currentLimit : Math.min(slimit, currentLimit);
     }
   }
 
