@@ -36,6 +36,8 @@ public class SyncConstant {
 
   public static final String SYNC_DIR_NAME_SEPARATOR = "_";
 
+  public static final String SYNC_FILE_DIR_SEPARATOR = "\\";
+
   /** Split data file, block size at each transmission */
   public static final int DATA_CHUNK_SIZE =
       Math.min(64 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);

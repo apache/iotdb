@@ -797,9 +797,9 @@ public class SyncClient implements ISyncClient {
 
   private String getFileInfoWithVgAndTimePartition(File file) {
     return file.getParentFile().getParentFile().getName()
-        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
+        + SyncConstant.SYNC_FILE_DIR_SEPARATOR
         + file.getParentFile().getName()
-        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
+        + SyncConstant.SYNC_FILE_DIR_SEPARATOR
         + file.getName();
   }
 }
