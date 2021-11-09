@@ -437,7 +437,7 @@ public class QueryOperator extends Operator {
       FilterOperator newOperator = operator.copy();
       try {
         concatFilterPath(device, newOperator, filterPaths);
-      } catch (MetadataException e) {
+      } catch (MetadataException | LogicalOptimizeException e) {
         deviceIterator.remove();
         continue;
       }
