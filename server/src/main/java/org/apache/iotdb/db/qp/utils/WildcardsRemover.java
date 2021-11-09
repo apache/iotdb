@@ -122,15 +122,11 @@ public class WildcardsRemover {
   /** @return should break the loop or not */
   public boolean checkIfPathNumberIsOverLimit(List<ResultColumn> resultColumns)
       throws PathNumOverLimitException {
-    int maxQueryDeduplicatedPathNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
-    if (currentLimit == 0) {
-      if (maxQueryDeduplicatedPathNum < resultColumns.size()) {
-        throw new PathNumOverLimitException(maxQueryDeduplicatedPathNum);
-      }
-      return true;
+    if (resultColumns.size()
+        > IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()) {
+      throw new PathNumOverLimitException();
     }
-    return false;
+    return currentLimit == 0;
   }
 
   public void checkIfSoffsetIsExceeded(List<ResultColumn> resultColumns)
