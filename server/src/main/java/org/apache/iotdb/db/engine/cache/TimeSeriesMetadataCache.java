@@ -118,7 +118,6 @@ public class TimeSeriesMetadataCache {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      //      BloomFilter bloomFilter = reader.readBloomFilter();
       BloomFilter bloomFilter =
           BloomFilterCache.getInstance()
               .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath));
@@ -146,7 +145,6 @@ public class TimeSeriesMetadataCache {
           Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-          //          BloomFilter bloomFilter = reader.readBloomFilter();
           BloomFilter bloomFilter =
               BloomFilterCache.getInstance()
                   .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath));
@@ -216,7 +214,6 @@ public class TimeSeriesMetadataCache {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      //      BloomFilter bloomFilter = reader.readBloomFilter();
       BloomFilter bloomFilter =
           BloomFilterCache.getInstance()
               .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath));
@@ -248,7 +245,6 @@ public class TimeSeriesMetadataCache {
           Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-          //          BloomFilter bloomFilter = reader.readBloomFilter();
           BloomFilter bloomFilter =
               BloomFilterCache.getInstance()
                   .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath));
