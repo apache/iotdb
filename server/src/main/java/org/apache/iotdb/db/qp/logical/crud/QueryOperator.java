@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -438,7 +437,7 @@ public class QueryOperator extends Operator {
       FilterOperator newOperator = operator.copy();
       try {
         concatFilterPath(device, newOperator, filterPaths);
-      } catch (PathNotExistException e) {
+      } catch (MetadataException e) {
         deviceIterator.remove();
         continue;
       }
@@ -466,7 +465,7 @@ public class QueryOperator extends Operator {
 
   private void concatFilterPath(
       PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths)
-      throws PathNotExistException {
+      throws MetadataException, LogicalOptimizeException {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child, filterPaths);
@@ -493,12 +492,14 @@ public class QueryOperator extends Operator {
     }
 
     PartialPath concatPath = prefix.concatPath(filterPath);
-    if (IoTDB.metaManager.isPathExist(concatPath)) {
-      filterPaths.add(concatPath);
-      basicOperator.setSinglePath(concatPath);
-    } else {
-      throw new PathNotExistException(concatPath.getFullPath());
+    List<MeasurementPath> concatMeasurementPaths =
+        IoTDB.metaManager.getMeasurementPaths(concatPath);
+    if (concatMeasurementPaths.isEmpty()) {
+      throw new LogicalOptimizeException(
+          String.format("Unknown time series %s in `where clause`", concatPath));
     }
+    filterPaths.add(concatMeasurementPaths.get(0));
+    basicOperator.setSinglePath(concatMeasurementPaths.get(0));
   }
 
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
