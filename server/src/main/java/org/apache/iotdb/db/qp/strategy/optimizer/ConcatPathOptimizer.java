@@ -445,14 +445,14 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           }
         }
 
+        if (newSuffixPathList.size()
+            > IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()) {
+          throw new PathNumOverLimitException();
+        }
         if (limit == 0) {
-          int maxDeduplicatedPathNum =
-              IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
-          if (maxDeduplicatedPathNum < newSuffixPathList.size()) {
-            throw new PathNumOverLimitException(maxDeduplicatedPathNum);
-          }
           break;
         }
+
       } catch (MetadataException e) {
         throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
       }
