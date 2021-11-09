@@ -30,8 +30,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -242,35 +240,6 @@ public class InsertTabletPlanTest {
     }
   }
 
-  @Test
-  public void testInsertTabletPlanWithSchemaTemplate()
-      throws QueryProcessException, MetadataException, InterruptedException,
-          QueryFilterOptimizationException, StorageEngineException, IOException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
-
-    IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp"));
-
-    InsertTabletPlan tabletPlan = getVectorInsertTabletPlan();
-
-    PlanExecutor executor = new PlanExecutor();
-
-    // nothing can be found when we not insert data
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
-    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(0, dataSet.getPaths().size());
-
-    executor.insertTablet(tabletPlan);
-
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
-    }
-  }
-
   private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     List<String> v1 = new ArrayList<>();
@@ -308,9 +277,13 @@ public class InsertTabletPlanTest {
     encodingList.add(e2);
     encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+      List<CompressionType> compressorList = new ArrayList<>();
+      for (int j = 0; j < 3; j++) {
+        compressorList.add(CompressionType.SNAPPY);
+      }
+      compressionTypes.add(compressorList);
     }
 
     List<String> schemaNames = new ArrayList<>();
@@ -320,49 +293,6 @@ public class InsertTabletPlanTest {
 
     return new CreateTemplatePlan(
         "template1", schemaNames, measurementList, dataTypesList, encodingList, compressionTypes);
-  }
-
-  @Test
-  public void testInsertTabletPlanWithSchemaTemplateAndAutoCreateSchema()
-      throws QueryProcessException, MetadataException, InterruptedException,
-          QueryFilterOptimizationException, StorageEngineException, IOException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
-
-    IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp"));
-    InsertTabletPlan tabletPlan = getVectorInsertTabletPlan();
-
-    PlanExecutor executor = new PlanExecutor();
-    executor.insertTablet(tabletPlan);
-
-    QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
-    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
-    }
-
-    // test recover
-    EnvironmentUtils.stopDaemon();
-    IoTDB.metaManager.clear();
-    // wait for close
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      Thread.currentThread().interrupt();
-    }
-    EnvironmentUtils.activeDaemon();
-
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
-    }
   }
 
   @Test
