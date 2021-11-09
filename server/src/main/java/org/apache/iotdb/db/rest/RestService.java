@@ -16,6 +16,7 @@
  */
 package org.apache.iotdb.db.rest;
 
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.rest.filter.ApiOriginFilter;
@@ -40,23 +41,51 @@ import javax.servlet.DispatcherType;
 
 import java.util.EnumSet;
 
-public class RestServiceServer implements IService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(RestServiceServer.class);
+public class RestService implements IService {
 
-  public static RestServiceServer getInstance() {
-    return RestServerHolder.INSTANCE;
-  }
+  private static final Logger LOGGER = LoggerFactory.getLogger(RestService.class);
 
-  Server server;
+  private static Server server;
 
-  private void start(int port) {
-    server = new Server(port);
-    ServletContextHandler context = getServletContextHandler();
-    server.setHandler(context);
+  private void startSSL(
+      int port,
+      String keyStorePath,
+      String trustStorePath,
+      String keyStorePwd,
+      String trustStorePwd,
+      int idleTime) {
+    server = new Server();
+
+    HttpConfiguration httpsConfig = new HttpConfiguration();
+    httpsConfig.setSecurePort(port);
+    httpsConfig.addCustomizer(new SecureRequestCustomizer());
+
+    SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
+    sslContextFactory.setKeyStorePath(keyStorePath);
+    sslContextFactory.setKeyStorePassword(keyStorePwd);
+    sslContextFactory.setTrustStorePath(trustStorePath);
+    sslContextFactory.setTrustStorePassword(trustStorePwd);
+
+    ServerConnector httpsConnector =
+        new ServerConnector(
+            server,
+            new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+            new HttpConnectionFactory(httpsConfig));
+    httpsConnector.setPort(port);
+    httpsConnector.setIdleTimeout(idleTime);
+    server.addConnector(httpsConnector);
+
+    server.setHandler(constructServletContextHandler());
     serverStart();
   }
 
-  private ServletContextHandler getServletContextHandler() {
+  private void startNonSSL(int port) {
+    server = new Server(port);
+    server.setHandler(constructServletContextHandler());
+    serverStart();
+  }
+
+  private ServletContextHandler constructServletContextHandler() {
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
     context.addFilter(
         ApiOriginFilter.class, "/*", EnumSet.of(DispatcherType.INCLUDE, DispatcherType.REQUEST));
@@ -73,80 +102,28 @@ public class RestServiceServer implements IService {
     return context;
   }
 
-  private void startSSL(
-      int port,
-      String keyStorePath,
-      String trustStorePath,
-      String keyStorePwd,
-      String trustStorePwd,
-      int idleTime) {
-    server = new Server();
-    HttpConfiguration https_config = new HttpConfiguration();
-    https_config.setSecurePort(port);
-    https_config.addCustomizer(new SecureRequestCustomizer());
-    SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
-    sslContextFactory.setKeyStorePath(keyStorePath);
-    sslContextFactory.setKeyStorePassword(keyStorePwd);
-    sslContextFactory.setTrustStorePath(trustStorePath);
-    sslContextFactory.setTrustStorePassword(trustStorePwd);
-    ServerConnector httpsConnector =
-        new ServerConnector(
-            server,
-            new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
-            new HttpConnectionFactory(https_config));
-    httpsConnector.setPort(port);
-    httpsConnector.setIdleTimeout(idleTime);
-    server.addConnector(httpsConnector);
-    ServletContextHandler context = getServletContextHandler();
-    server.setHandler(context);
-    serverStart();
-  }
-
   private void serverStart() {
     try {
       server.start();
     } catch (Exception e) {
-      LOGGER.warn("RestServiceServer start failed: {}", e.getMessage());
+      LOGGER.warn("RestService failed to start: {}", e.getMessage());
       server.destroy();
     }
   }
 
-  private int getRestServicePort() {
-    return IoTDBRestServiceDescriptor.getInstance().getConfig().getRestServicePort();
-  }
-
-  private String getKeyStorePath() {
-    return IoTDBRestServiceDescriptor.getInstance().getConfig().getKeyStorePath();
-  }
-
-  private String getTrustStorePath() {
-    return IoTDBRestServiceDescriptor.getInstance().getConfig().getTrustStorePath();
-  }
-
-  private String getKeyStorePwd() {
-    return IoTDBRestServiceDescriptor.getInstance().getConfig().getKeyStorePwd();
-  }
-
-  private String getTrustStorePwd() {
-    return IoTDBRestServiceDescriptor.getInstance().getConfig().getTrustStorePwd();
-  }
-
-  public int getIdleTimeout() {
-    return IoTDBRestServiceDescriptor.getInstance().getConfig().getIdleTimeoutInSeconds();
-  }
-
   @Override
   public void start() throws StartupException {
+    IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableHttps()) {
       startSSL(
-          getRestServicePort(),
-          getKeyStorePath(),
-          getTrustStorePath(),
-          getKeyStorePwd(),
-          getTrustStorePwd(),
-          getIdleTimeout());
+          config.getRestServicePort(),
+          config.getKeyStorePath(),
+          config.getTrustStorePath(),
+          config.getKeyStorePwd(),
+          config.getTrustStorePwd(),
+          config.getIdleTimeoutInSeconds());
     } else {
-      start(getRestServicePort());
+      startNonSSL(config.getRestServicePort());
     }
   }
 
@@ -155,7 +132,7 @@ public class RestServiceServer implements IService {
     try {
       server.stop();
     } catch (Exception e) {
-      LOGGER.warn("RestServiceServer stop failed: {}", e.getMessage());
+      LOGGER.warn("RestService failed to stop: {}", e.getMessage());
     } finally {
       server.destroy();
     }
@@ -166,10 +143,14 @@ public class RestServiceServer implements IService {
     return ServiceType.REST_SERVICE;
   }
 
-  private static class RestServerHolder {
+  public static RestService getInstance() {
+    return RestServiceHolder.INSTANCE;
+  }
 
-    private static final RestServiceServer INSTANCE = new RestServiceServer();
+  private static class RestServiceHolder {
 
-    private RestServerHolder() {}
+    private static final RestService INSTANCE = new RestService();
+
+    private RestServiceHolder() {}
   }
 }

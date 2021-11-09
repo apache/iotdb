@@ -20,7 +20,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
-import org.apache.iotdb.db.rest.model.ResponseResult;
+import org.apache.iotdb.db.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.glassfish.jersey.internal.util.Base64;
@@ -73,13 +73,6 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     containerRequestContext.setSecurityContext(basicSecurityContext);
   }
 
-  private ResponseResult getResponseResult(int code, String message) {
-    ResponseResult responseResult = new ResponseResult();
-    responseResult.setCode(code);
-    responseResult.setMessage(message);
-    return responseResult;
-  }
-
   private User checkLogin(
       ContainerRequestContext containerRequestContext, String authorizationHeader) {
 
@@ -91,9 +84,9 @@ public class AuthorizationFilter implements ContainerRequestFilter {
           Response.status(Status.BAD_REQUEST)
               .type(MediaType.APPLICATION_JSON)
               .entity(
-                  getResponseResult(
-                      TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode(),
-                      TSStatusCode.SYSTEM_CHECK_ERROR.name()))
+                  new ExecutionStatus()
+                      .code(TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode())
+                      .message(TSStatusCode.SYSTEM_CHECK_ERROR.name()))
               .build();
       containerRequestContext.abortWith(resp);
       return null;
@@ -103,14 +96,15 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     user.setUsername(split[0]);
     user.setPassword(split[1]);
     try {
+
       if (!authorizer.login(split[0], split[1])) {
         Response resp =
             Response.status(Status.OK)
                 .type(MediaType.APPLICATION_JSON)
                 .entity(
-                    getResponseResult(
-                        TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode(),
-                        TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.name()))
+                    new ExecutionStatus()
+                        .code(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode())
+                        .message(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.name()))
                 .build();
         containerRequestContext.abortWith(resp);
       }
@@ -120,8 +114,9 @@ public class AuthorizationFilter implements ContainerRequestFilter {
           Response.status(Status.INTERNAL_SERVER_ERROR)
               .type(MediaType.APPLICATION_JSON)
               .entity(
-                  getResponseResult(
-                      TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), e.getMessage()))
+                  new ExecutionStatus()
+                      .code(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                      .message(e.getMessage()))
               .build();
       containerRequestContext.abortWith(resp);
     }

@@ -28,7 +28,6 @@ public class IoTDBRestServiceCheck {
   private static final IoTDBRestServiceConfig CONFIG =
       IoTDBRestServiceDescriptor.getInstance().getConfig();
 
-
   public static IoTDBRestServiceCheck getInstance() {
     return IoTDBRestServiceConfigCheckHolder.INSTANCE;
   }
@@ -39,10 +38,10 @@ public class IoTDBRestServiceCheck {
   }
 
   public void checkConfig() throws IOException {
-   if(CONFIG.getRestServicePort()>65535||CONFIG.getRestServicePort()<1024){
-     printErrorLogAndExit("rest_service_port");
-   }
-   //todo
+    if (CONFIG.getRestServicePort() > 65535 || CONFIG.getRestServicePort() < 1024) {
+      printErrorLogAndExit("rest_service_port");
+    }
+    // todo
   }
 
   private void printErrorLogAndExit(String property) {

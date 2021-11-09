@@ -147,16 +147,17 @@ $ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" 
 其中dataValues数组中第一个为测点的值,第二个为时间
 
 响应示例:
+
 ```json
 [
   {
-    "measurements": "root.sg25.s3",
-    "dataValues": [
-      [
-        22.1,
-        1635232143960
-      ]
-    ]
+    "expressions": [
+      "root.sg27.s3",
+      "root.sg27.s4",
+      "root.sg27.s3 + 1"
+    ],
+    "timestamps": [t1,t2],
+    "values": [[11,12],[false,true],[12.0,23.0]]
   }
 ]
 ```

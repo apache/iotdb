@@ -32,136 +32,80 @@ security:
 paths:
   /ping:
     get:
-      summary: Your GET endpoint
-      tags: []
-      security:
-        - basic: []
       responses:
-        '200':
-          description: OK
+        "200":
+          description: ExecutionStatus
           content:
             application/json:
               schema:
-                type: string
-              examples:
-                example-1:
-                  value: OK
+                $ref: '#/components/schemas/ExecutionStatus'
       operationId: tryPing
-      description: Just for checking whether the server works
+
   /rest/v1/insertTablet:
     post:
-      summary: Serve for writing data by OpenApi
-      description:
+      summary: insertTablet
+      description: insertTablet
       operationId: insertTablet
-      parameters: [ ]
       requestBody:
-        description: Insert Plan
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InsertRow'
-            examples: { }
+              $ref: '#/components/schemas/InsertTabletRequest'
       responses:
         "200":
-          description: Return data status
+          description: ExecutionStatus
           content:
             application/json:
               schema:
-                type: string
-                description: "reason: \nnot login\nno permission"
-              examples:
-                example-1:
-                  value: success;
-        "401":
-          description: Example response
-          content:
-            application/json:
-              schema:
-                type: string
-                description: "reason: \nnot login\nno permission"
-              examples:
-                example-1:
-                  value: passowrd is incorrect;
+                $ref: '#/components/schemas/ExecutionStatus'
+
   /rest/v1/nonQuery:
     post:
-      summary: Serve for non query by OpenApi
-      description:
+      summary: executeNonQueryStatement
+      description: executeNonQueryStatement
       operationId: executeNonQueryStatement
-      parameters: [ ]
       requestBody:
-        description: non query Plan
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/QueryData'
-            examples: { }
+              $ref: '#/components/schemas/SQL'
       responses:
         "200":
-          description: return executed status
+          description: ExecutionStatus
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/response_result'
-              examples:
-                example-1:
-                  value:
-                    code: string
-                    message: string
-        "401":
-          description: Example response
-          content:
-            application/json:
-              schema:
-                type: string
-                description: "reason: \nnot login\nno permission"
-              examples:
-                example-1:
-                  value: passowrd is incorrect;
+                $ref: '#/components/schemas/ExecutionStatus'
+
   /rest/v1/query:
     post:
-      summary: Serve for query data by OpenApi
-      description:
+      summary: executeQueryStatement
+      description: executeQueryStatement
       operationId: executeQueryStatement
-      parameters: []
       requestBody:
-        description: query Plan
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/QueryData'
-            examples: {}
+              $ref: '#/components/schemas/SQL'
       responses:
         "200":
-          description: return data in wide table format
+          description: QueryDataSet
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DataJson'
-              examples: {}
-        "401":
-          description: Example response
-          content:
-            application/json:
-              schema:
-                type: string
-                description: "reason: \nnot login\nno permission"
-              examples:
-                example-1:
-                  value: passowrd is incorrect;
+                $ref: '#/components/schemas/QueryDataSet'
+
 components:
   schemas:
-    QueryData:
-      title: sql str
+    SQL:
+      title: SQL
       type: object
       properties:
         sql:
           type: string
-      description: query data in IoTDB
-      x-examples:
-        example-1:
-          sql: string
-    InsertRow:
-      title: InsertRow
+
+    InsertTabletRequest:
+      title: InsertTabletRequest
       type: object
       properties:
         timestamps:
@@ -172,7 +116,7 @@ components:
           type: array
           items:
             type: string
-        dataType:
+        dataTypes:
           type: array
           items:
             type: string
@@ -181,76 +125,38 @@ components:
           items:
             type: array
             items:
-              type: string
+              type: object
         isAligned:
           type: boolean
-        rowSize:
-          type: integer
         deviceId:
           type: string
-    DataJson:
-      minItems: 1
-      uniqueItems: true
-      type: array
-      items:
-        $ref: '#/components/schemas/DataJson_inner'
-      x-examples:
-        example-1:
-        - name: test
-          fields:
-          - name: Time
-            type: INT64
-            values:
-            - 1610111000
-            - 1610111100
-            - 1610112000
-          - name: root.sg.d1.s1
-            type: INT32
-            values:
-            - 1
-            - 2
-            - 3
-          - name: root.sg.d1.s2
-            type: INT32
-            values:
-            - 1
-            - null
-            - 3
-          - name: root.sg.d1.s3
-            type: FieldType.boolean
-            values:
-            - 0
-            - 0
-            - 1
-    response_result:
+
+    ExecutionStatus:
       type: object
       properties:
         code:
           type: integer
         message:
           type: string
-    DataJson_inner:
+
+    QueryDataSet:
       type: object
       properties:
-        measurements:
-          type: string
-          description: time series name
-        dataValues:
+        expressions:
           type: array
-          description: value(null if no value), timestamp
           items:
-            type: object
-  responses:
-    Unauthorized401:
-      description: Example response
-      content:
-        application/json:
-          schema:
             type: string
-            description: "reason: \nnot login\nno permission"
-          examples:
-            example-1:
-              value: passowrd is incorrect;
+        timestamps:
+          type: array
+          items:
+            type: long
+        values:
+          type: array
+          items:
+            type: array
+            items:
+              type: object
+
   securitySchemes:
     basic:
       type: http

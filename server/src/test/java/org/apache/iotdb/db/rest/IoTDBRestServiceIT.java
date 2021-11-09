@@ -82,6 +82,7 @@ public class IoTDBRestServiceIT {
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
       e.printStackTrace();
+      fail(e.getMessage());
     } finally {
       try {
         if (httpClient != null) {

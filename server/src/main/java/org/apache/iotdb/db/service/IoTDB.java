@@ -42,7 +42,7 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TVListAllocator;
-import org.apache.iotdb.db.rest.RestServiceServer;
+import org.apache.iotdb.db.rest.RestService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 
@@ -144,7 +144,7 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(MQTTService.getInstance());
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(RestServiceServer.getInstance());
+      registerManager.register(RestService.getInstance());
     }
     logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
 

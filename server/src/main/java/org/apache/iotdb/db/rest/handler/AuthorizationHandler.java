@@ -15,23 +15,38 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.rest.impl;
+package org.apache.iotdb.db.rest.handler;
 
-import org.apache.iotdb.db.rest.PingApiService;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
-public class PingApiServiceImpl extends PingApiService {
-  @Override
-  public Response tryPing(SecurityContext securityContext) {
-    return Response.ok()
-        .entity(
-            new ExecutionStatus()
-                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                .message(TSStatusCode.SUCCESS_STATUS.name()))
-        .build();
+public class AuthorizationHandler {
+  private AuthorizationHandler() {}
+
+  public static Response checkAuthority(
+      SecurityContext securityContext, PhysicalPlan physicalPlan) {
+    try {
+      if (!AuthorityChecker.check(
+          securityContext.getUserPrincipal().getName(),
+          physicalPlan.getAuthPaths(),
+          physicalPlan.getOperatorType(),
+          null)) {
+        return Response.ok()
+            .entity(
+                new ExecutionStatus()
+                    .code(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode())
+                    .message(TSStatusCode.NO_PERMISSION_ERROR.name()))
+            .build();
+      }
+    } catch (AuthException e) {
+      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    }
+    return null;
   }
 }

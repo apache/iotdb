@@ -39,7 +39,6 @@ public class BasicSecurityContext implements SecurityContext {
     return user;
   }
 
-  /** todo */
   @Override
   public boolean isUserInRole(String role) {
     return true;
