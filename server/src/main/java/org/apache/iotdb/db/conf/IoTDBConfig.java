@@ -412,7 +412,7 @@ public class IoTDBConfig {
   private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 15;
 
   /** Memory allocated for timeSeriesMetaData cache in read process */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 3/ 15;
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 3 / 15;
 
   /** Memory allocated for chunk cache in read process */
   private long allocateMemoryForChunkCache = allocateMemoryForRead * 2 / 15;

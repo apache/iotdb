@@ -76,7 +76,8 @@ public class BloomFilterCacheTest {
     }
     // estimate weight and set allocated memory for bloom filter for test
     int estimateWeight = estimateWeight(pathList);
-    allocateMemoryForBloomFilterCache =IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForBloomFilterCache();
+    allocateMemoryForBloomFilterCache =
+        IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForBloomFilterCache();
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setAllocateMemoryForBloomFilterCache(estimateWeight - 1);
@@ -90,8 +91,8 @@ public class BloomFilterCacheTest {
         FileUtils.forceDelete(new File(filePath));
       }
       IoTDBDescriptor.getInstance()
-                .getConfig()
-                .setAllocateMemoryForBloomFilterCache(allocateMemoryForBloomFilterCache);
+          .getConfig()
+          .setAllocateMemoryForBloomFilterCache(allocateMemoryForBloomFilterCache);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
@@ -120,7 +121,7 @@ public class BloomFilterCacheTest {
       Assert.assertNotEquals(null, bloomFilter);
       bloomFilterCache.remove(key);
       bloomFilter = bloomFilterCache.getIfPresent(key);
-        Assert.assertNull(bloomFilter);
+      Assert.assertNull(bloomFilter);
     } catch (IOException e) {
       Assert.fail();
       e.printStackTrace();
@@ -139,7 +140,7 @@ public class BloomFilterCacheTest {
       for (String path : pathList) {
         BloomFilterCache.BloomFilterCacheKey key = new BloomFilterCache.BloomFilterCacheKey(path);
         BloomFilter bloomFilter = bloomFilterCache.getIfPresent(key);
-          Assert.assertNull(bloomFilter);
+        Assert.assertNull(bloomFilter);
       }
     } catch (IOException e) {
       Assert.fail();
@@ -159,7 +160,7 @@ public class BloomFilterCacheTest {
       bloomFilterCache.clearUp();
       BloomFilterCache.BloomFilterCacheKey key =
           new BloomFilterCache.BloomFilterCacheKey(pathList.get(0));
-        Assert.assertNull(bloomFilterCache.getIfPresent(key));
+      Assert.assertNull(bloomFilterCache.getIfPresent(key));
       for (int i = 1; i < pathList.size(); i++) {
         key = new BloomFilterCache.BloomFilterCacheKey(pathList.get(i));
         Assert.assertNotEquals(null, bloomFilterCache.getIfPresent(key));
@@ -170,11 +171,12 @@ public class BloomFilterCacheTest {
     }
   }
 
-    /**
-     * estimate weight according to tsFile path
-     * @param pathList tsFile path list
-     * @return estimate weight
-     */
+  /**
+   * estimate weight according to tsFile path
+   *
+   * @param pathList tsFile path list
+   * @return estimate weight
+   */
   private int estimateWeight(List<String> pathList) throws IOException {
     int res = 0;
     for (String path : pathList) {
@@ -192,11 +194,12 @@ public class BloomFilterCacheTest {
     return res;
   }
 
-    /**
-     * construct tsFile for test
-     * @param path tsFile path
-     * @param device device in tsFile
-     */
+  /**
+   * construct tsFile for test
+   *
+   * @param path tsFile path
+   * @param device device in tsFile
+   */
   private void createTsFile(String path, String device) throws Exception {
     try {
       File f = FSFactoryProducer.getFSFactory().getFile(path);
