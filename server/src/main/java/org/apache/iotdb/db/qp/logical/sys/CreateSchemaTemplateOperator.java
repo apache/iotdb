@@ -38,7 +38,7 @@ public class CreateSchemaTemplateOperator extends Operator {
   List<List<String>> measurements = new ArrayList<>();
   List<List<TSDataType>> dataTypes = new ArrayList<>();
   List<List<TSEncoding>> encodings = new ArrayList<>();
-  List<CompressionType> compressors = new ArrayList<>();
+  List<List<CompressionType>> compressors = new ArrayList<>();
 
   public CreateSchemaTemplateOperator(int tokenIntType) {
     super(tokenIntType);
@@ -101,15 +101,15 @@ public class CreateSchemaTemplateOperator extends Operator {
     this.encodings.add(encodings);
   }
 
-  public List<CompressionType> getCompressors() {
+  public List<List<CompressionType>> getCompressors() {
     return compressors;
   }
 
-  public void setCompressors(List<CompressionType> compressors) {
+  public void setCompressors(List<List<CompressionType>> compressors) {
     this.compressors = compressors;
   }
 
-  public void addCompressor(CompressionType compressor) {
+  public void addCompressor(List<CompressionType> compressor) {
     this.compressors.add(compressor);
   }
 

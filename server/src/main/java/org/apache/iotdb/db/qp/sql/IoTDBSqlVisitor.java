@@ -131,15 +131,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.File;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -399,7 +391,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     createSchemaTemplateOperator.addMeasurements(measurements);
     createSchemaTemplateOperator.addDataTypes(dataTypes);
     createSchemaTemplateOperator.addEncodings(encodings);
-    createSchemaTemplateOperator.addCompressor(compressor);
+    createSchemaTemplateOperator.addCompressor(new ArrayList<>(Collections.singleton(compressor)));
   }
 
   void parseAttributeClause(

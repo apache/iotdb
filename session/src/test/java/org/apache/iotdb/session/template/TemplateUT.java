@@ -20,7 +20,7 @@ package org.apache.iotdb.session.template;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -76,7 +76,7 @@ public class TemplateUT {
       sessionTemplate.serialize(stream);
       ByteBuffer buffer = ByteBuffer.wrap(stream.toByteArray());
 
-      CreateTemplatePlan plan = CreateTemplatePlan.deserializeFromReq(buffer);
+      CreateSchemaTemplatePlan plan = CreateSchemaTemplatePlan.deserializeFromReq(buffer);
       assertEquals("treeTemplate", plan.getName());
       assertEquals(
           "[[vehicle.GPS.y], [vehicle.GPS.x], [GPS.y], [GPS.x], [y, x], [vehicle.y, vehicle.x]]",
