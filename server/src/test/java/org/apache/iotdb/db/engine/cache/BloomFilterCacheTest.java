@@ -18,17 +18,11 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -47,7 +41,6 @@ public class BloomFilterCacheTest {
   private List<String> pathList;
   private int pathSize = 3;
   private BloomFilterCache bloomFilterCache;
-  private long allocateMemoryForBloomFilterCache;
 
   @Before
   public void setUp() throws Exception {
@@ -74,13 +67,6 @@ public class BloomFilterCacheTest {
       pathList.add(path);
       createTsFile(path, device);
     }
-    // estimate weight and set allocated memory for bloom filter for test
-    int estimateWeight = estimateWeight(pathList);
-    allocateMemoryForBloomFilterCache =
-        IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForBloomFilterCache();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setAllocateMemoryForBloomFilterCache(estimateWeight - 1);
     bloomFilterCache = BloomFilterCache.getInstance();
   }
 
@@ -90,9 +76,6 @@ public class BloomFilterCacheTest {
       for (String filePath : pathList) {
         FileUtils.forceDelete(new File(filePath));
       }
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setAllocateMemoryForBloomFilterCache(allocateMemoryForBloomFilterCache);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
@@ -146,52 +129,6 @@ public class BloomFilterCacheTest {
       Assert.fail();
       e.printStackTrace();
     }
-  }
-
-  @Test
-  public void testEvict() {
-    try {
-      bloomFilterCache.clear();
-      for (String path : pathList) {
-        BloomFilterCache.BloomFilterCacheKey key = new BloomFilterCache.BloomFilterCacheKey(path);
-        BloomFilter bloomFilter = bloomFilterCache.get(key);
-        Assert.assertNotEquals(null, bloomFilter);
-      }
-      bloomFilterCache.clearUp();
-      BloomFilterCache.BloomFilterCacheKey key =
-          new BloomFilterCache.BloomFilterCacheKey(pathList.get(0));
-      Assert.assertNull(bloomFilterCache.getIfPresent(key));
-      for (int i = 1; i < pathList.size(); i++) {
-        key = new BloomFilterCache.BloomFilterCacheKey(pathList.get(i));
-        Assert.assertNotEquals(null, bloomFilterCache.getIfPresent(key));
-      }
-    } catch (IOException e) {
-      Assert.fail();
-      e.printStackTrace();
-    }
-  }
-
-  /**
-   * estimate weight according to tsFile path
-   *
-   * @param pathList tsFile path list
-   * @return estimate weight
-   */
-  private int estimateWeight(List<String> pathList) throws IOException {
-    int res = 0;
-    for (String path : pathList) {
-      TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
-      BloomFilterCache.BloomFilterCacheKey key = new BloomFilterCache.BloomFilterCacheKey(path);
-      Pair<String, long[]> tsFilePrefixPathAndTsFileVersionPair =
-          FilePathUtils.getTsFilePrefixPathAndTsFileVersionPair(path);
-      String tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
-      res +=
-          (int)
-              (RamUsageEstimator.shallowSizeOf(key)
-                  + RamUsageEstimator.sizeOf(tsFilePrefixPath)
-                  + RamUsageEstimator.sizeOf(reader.readBloomFilter()));
-    }
-    return res;
   }
 
   /**
