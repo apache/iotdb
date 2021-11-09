@@ -218,11 +218,18 @@ class IoTDBRpcDataSet(object):
                 self.__query_data_set.valueList[location] = None
 
                 if len(data_array) < total_length:
-                    if data_array.dtype == np.int32 or data_array.dtype == np.int64:
-                        tmp_array = np.zeros(total_length, data_array.dtype)
-                    elif data_array.dtype == np.float or data_array.dtype == np.double:
+                    if data_type == TSDataType.INT32 or data_type == TSDataType.INT64:
+                        tmp_array = np.full(total_length, np.nan, np.float32)
+                        if data_array.dtype == np.int32:
+                            tmp_array = pd.Series(tmp_array).astype('Int32')
+                        else:
+                            tmp_array = pd.Series(tmp_array).astype('Int64')
+                    elif data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE:
                         tmp_array = np.full(total_length, np.nan, data_array.dtype)
-                    else:
+                    elif data_type == TSDataType.BOOLEAN:
+                        tmp_array = np.full(total_length, np.nan, np.float32)
+                        tmp_array = pd.Series(tmp_array).astype('boolean')
+                    elif data_type == TSDataType.TEXT:
                         tmp_array = np.full(total_length, None, dtype=data_array.dtype)
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
                     bitmap_str = self._to_bitstring(bitmap_buffer)
