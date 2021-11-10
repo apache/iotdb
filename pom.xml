@@ -162,6 +162,9 @@
         <spotless.version>2.4.2</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
         <httpcore.version>4.4.13</httpcore.version>
+        <swagger.core.version>1.5.18</swagger.core.version>
+        <servlet.api.version>2.5</servlet.api.version>
+        <openapi.generator.version>5.0.0</openapi.generator.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim

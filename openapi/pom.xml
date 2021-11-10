@@ -36,11 +36,6 @@
                     <family>unix</family>
                 </os>
             </activation>
-            <properties>
-                <swagger-core-version>1.5.18</swagger-core-version>
-                <servlet-api-version>2.5</servlet-api-version>
-                <openapi-generator-version>5.0.0</openapi-generator-version>
-            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -69,12 +64,12 @@
                     <groupId>io.swagger</groupId>
                     <artifactId>swagger-jersey2-jaxrs</artifactId>
                     <scope>compile</scope>
-                    <version>${swagger-core-version}</version>
+                    <version>${swagger.core.version}</version>
                 </dependency>
                 <dependency>
                     <groupId>javax.servlet</groupId>
                     <artifactId>servlet-api</artifactId>
-                    <version>${servlet-api-version}</version>
+                    <version>${servlet.api.version}</version>
                 </dependency>
                 <dependency>
                     <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -100,7 +95,7 @@
                     <plugin>
                         <groupId>org.openapitools</groupId>
                         <artifactId>openapi-generator-maven-plugin</artifactId>
-                        <version>${openapi-generator-version}</version>
+                        <version>${openapi.generator.version}</version>
                         <executions>
                             <execution>
                                 <id>generate-java-rest-codes</id>
