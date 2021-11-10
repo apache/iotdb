@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -249,8 +250,12 @@ public class AlignedTimeseriesSessionExample {
     }
     encodingList.add(vectorEncoding);
 
-    List<CompressionType> compressionTypeList = new ArrayList<>();
-    compressionTypeList.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypeList = new ArrayList<>();
+    List<CompressionType> vectorCompressions = new ArrayList<>();
+    vectorCompressions.add(CompressionType.SNAPPY);
+    vectorCompressions.add(CompressionType.SNAPPY);
+    compressionTypeList.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypeList.add(vectorCompressions);
 
     List<String> schemaList = new ArrayList<>();
     schemaList.add("vector");
