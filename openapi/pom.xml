@@ -38,7 +38,6 @@
             </activation>
             <properties>
                 <swagger-core-version>1.5.18</swagger-core-version>
-                <jackson-version>${jackson.version}</jackson-version>
                 <servlet-api-version>2.5</servlet-api-version>
                 <openapi-generator-version>5.0.0</openapi-generator-version>
             </properties>
@@ -80,12 +79,12 @@
                 <dependency>
                     <groupId>com.fasterxml.jackson.datatype</groupId>
                     <artifactId>jackson-datatype-jsr310</artifactId>
-                    <version>${jackson-version}</version>
+                    <version>${jackson.version}</version>
                 </dependency>
                 <dependency>
                     <groupId>com.fasterxml.jackson.jaxrs</groupId>
                     <artifactId>jackson-jaxrs-json-provider</artifactId>
-                    <version>${jackson-version}</version>
+                    <version>${jackson.version}</version>
                 </dependency>
             </dependencies>
         </profile>
