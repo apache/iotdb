@@ -258,7 +258,7 @@ public class QueryRouter implements IQueryRouter {
         (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
     return new GroupByFillDataSet(
         groupByFillPlan.getDeduplicatedPaths(),
-        SchemaUtils.getSeriesTypesByPaths(groupByFillPlan.getPaths()),
+        SchemaUtils.getSeriesTypesByPaths(groupByFillPlan.getDeduplicatedPaths()),
         groupByEngineDataSet,
         groupByFillPlan.getFillType(),
         context,
