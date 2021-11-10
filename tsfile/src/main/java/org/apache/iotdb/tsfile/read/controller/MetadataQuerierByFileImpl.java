@@ -18,17 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +29,17 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.iotdb.tsfile.common.cache.LRUCache;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
@@ -48,7 +48,8 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   private TsFileMetadata fileMetaData;
 
-  private LRUCache<Path, List<ChunkMetadata>> chunkMetaDataCache;
+  private LRUCache<Path, List<ChunkMetadata>>
+      chunkMetaDataCache; // Todo:what if alignedChunkMetadata
 
   private TsFileSequenceReader tsFileReader;
 
@@ -99,7 +100,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
     }
 
-    Map<Path, List<ChunkMetadata>> tempChunkMetaDatas = new HashMap<>();
+    Map<Path, List<IChunkMetadata>> tempChunkMetaDatas = new HashMap<>();
 
     int count = 0;
     boolean enough = false;
@@ -117,7 +118,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         continue;
       }
 
-      List<TimeseriesMetadata> timeseriesMetaDataList =
+      List<ITimeSeriesMetadata> timeseriesMetaDataList =
           tsFileReader.readTimeseriesMetadata(selectedDevice, selectedMeasurements);
       List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
