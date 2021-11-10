@@ -57,6 +57,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private static final String WARNING_NO_PREFIX_PATHS =
       "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
+  private final int MAX_QUERY_PATH_NUM =
+      IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public Operator transform(Operator operator)
@@ -372,7 +375,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       int finalOffset)
       throws LogicalOptimizeException, PathNumOverLimitException {
     int offset = finalOffset;
-    int limit = finalLimit == 0 ? Integer.MAX_VALUE : finalLimit;
+    int limit =
+        finalLimit == 0 ? MAX_QUERY_PATH_NUM + 1 : Math.min(finalLimit, MAX_QUERY_PATH_NUM + 1);
     int consumed = 0;
 
     List<PartialPath> newSuffixPathList = new ArrayList<>();
@@ -445,14 +449,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           }
         }
 
+        if (newSuffixPathList.size() > MAX_QUERY_PATH_NUM) {
+          throw new PathNumOverLimitException();
+        }
         if (limit == 0) {
-          int maxDeduplicatedPathNum =
-              IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
-          if (maxDeduplicatedPathNum < newSuffixPathList.size()) {
-            throw new PathNumOverLimitException(maxDeduplicatedPathNum);
-          }
           break;
         }
+
       } catch (MetadataException e) {
         throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
       }
