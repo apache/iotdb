@@ -16,44 +16,52 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-/** To read one chunk from disk, and only used in iotdb server module */
-public class DiskChunkLoader implements IChunkLoader {
+public class DiskAlignedChunkLoader implements IChunkLoader {
 
   private final boolean debug;
 
-  public DiskChunkLoader(boolean debug) {
+  public DiskAlignedChunkLoader(boolean debug) {
     this.debug = debug;
   }
 
   @Override
-  public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
-    return ChunkCache.getInstance().get(chunkMetaData, debug);
+  public Chunk loadChunk(ChunkMetadata chunkMetaData) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public void close() {
-    // do nothing
-  }
+  public void close() throws IOException {}
 
   @Override
   public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
       throws IOException {
-    Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetaData, debug);
-    chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
-    return new ChunkReader(chunk, timeFilter);
+    AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
+    Chunk timeChunk =
+        ChunkCache.getInstance()
+            .get((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata(), debug);
+    List<Chunk> valueChunkList = new ArrayList<>();
+    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      valueChunkList.add(
+          valueChunkMetadata == null
+              ? null
+              : ChunkCache.getInstance().get((ChunkMetadata) valueChunkMetadata, debug));
+    }
+    return new AlignedChunkReader(timeChunk, valueChunkList, timeFilter);
   }
 }

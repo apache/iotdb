@@ -36,6 +36,7 @@ public interface ITimeSeriesMetadata {
 
   void setSeq(boolean seq);
 
+  /** @return the result has already been filtered by modification files */
   List<IChunkMetadata> loadChunkMetadataList() throws IOException;
 
   void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader);

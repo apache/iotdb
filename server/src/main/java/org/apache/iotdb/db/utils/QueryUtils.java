@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
@@ -83,6 +84,74 @@ public class QueryUtils {
             }
           }
           return false;
+        });
+  }
+
+  public static void modifyAlignedChunkMetaData(
+      List<AlignedChunkMetadata> chunkMetaData, List<List<Modification>> modifications) {
+    for (AlignedChunkMetadata metaData : chunkMetaData) {
+      List<IChunkMetadata> valueChunkMetadataList = metaData.getValueChunkMetadataList();
+      // deal with each sub sensor
+      for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+        IChunkMetadata v = valueChunkMetadataList.get(i);
+        if (v != null) {
+          List<Modification> modificationList = modifications.get(i);
+          for (Modification modification : modificationList) {
+            // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
+            // is not supposed to exist as getFileOffset() is offset containing full chunk,
+            // while getOffsetOfChunkHeader() returns the chunk header offset
+            if (modification.getFileOffset() > v.getOffsetOfChunkHeader()) {
+              doModifyChunkMetaData(modification, v);
+            }
+          }
+        }
+      }
+    }
+    // if all sub sensors' chunk metadata are deleted, then remove the aligned chunk metadata
+    // otherwise, set the deleted chunk metadata of some sensors to null
+    chunkMetaData.removeIf(
+        alignedChunkMetadata -> {
+          // the whole aligned path need to be removed, only set to be true if all the sub sensors
+          // are deleted
+          boolean removed = true;
+          // the whole aligned path is modified, set to be true if any sub sensor is modified
+          boolean modified = false;
+          List<IChunkMetadata> valueChunkMetadataList =
+              alignedChunkMetadata.getValueChunkMetadataList();
+          for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+            IChunkMetadata valueChunkMetadata = valueChunkMetadataList.get(i);
+            if (valueChunkMetadata == null) {
+              continue;
+            }
+            // current sub sensor's chunk metadata is completely removed
+            boolean currentRemoved = false;
+            if (valueChunkMetadata.getDeleteIntervalList() != null) {
+              for (TimeRange range : valueChunkMetadata.getDeleteIntervalList()) {
+                if (range.contains(
+                    valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime())) {
+                  valueChunkMetadataList.set(i, null);
+                  currentRemoved = true;
+                  break;
+                } else {
+                  if (!valueChunkMetadata.isModified()
+                      && range.overlaps(
+                          new TimeRange(
+                              valueChunkMetadata.getStartTime(),
+                              valueChunkMetadata.getEndTime()))) {
+                    valueChunkMetadata.setModified(true);
+                    modified = true;
+                  }
+                }
+              }
+            }
+            // current sub sensor's chunk metadata is not completely removed,
+            // so the whole aligned path don't need to be removed from list
+            if (!currentRemoved) {
+              removed = false;
+            }
+          }
+          alignedChunkMetadata.setModified(modified);
+          return removed;
         });
   }
 

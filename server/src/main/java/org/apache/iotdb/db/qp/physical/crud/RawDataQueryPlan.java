@@ -136,10 +136,6 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedPaths = deduplicatedPaths;
   }
 
-  public void setDeduplicatedPaths(List<PartialPath> deduplicatedPaths) {
-    this.deduplicatedPaths = deduplicatedPaths;
-  }
-
   public List<TSDataType> getDeduplicatedDataTypes() {
     return deduplicatedDataTypes;
   }
@@ -181,16 +177,8 @@ public class RawDataQueryPlan extends QueryPlan {
     setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
   }
 
-  public List<PartialPath> getDeduplicatedVectorPaths() {
-    return deduplicatedVectorPaths;
-  }
-
   public void setDeduplicatedVectorPaths(List<PartialPath> deduplicatedVectorPaths) {
     this.deduplicatedVectorPaths = deduplicatedVectorPaths;
-  }
-
-  public List<TSDataType> getDeduplicatedVectorDataTypes() {
-    return deduplicatedVectorDataTypes;
   }
 
   public void setDeduplicatedVectorDataTypes(List<TSDataType> deduplicatedVectorDataTypes) {

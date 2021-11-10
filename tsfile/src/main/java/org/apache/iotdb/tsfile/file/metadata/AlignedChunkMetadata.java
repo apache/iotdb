@@ -20,13 +20,10 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
-import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.List;
 
 public class AlignedChunkMetadata implements IChunkMetadata {
@@ -36,6 +33,9 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   // ChunkMetadata for all subSensors in the vector
   private final List<IChunkMetadata> valueChunkMetadataList;
 
+  /** ChunkLoader of metadata, used to create IChunkReader */
+  private IChunkLoader chunkLoader;
+
   public AlignedChunkMetadata(
       IChunkMetadata timeChunkMetadata, List<IChunkMetadata> valueChunkMetadataList) {
     this.timeChunkMetadata = timeChunkMetadata;
@@ -44,13 +44,14 @@ public class AlignedChunkMetadata implements IChunkMetadata {
 
   @Override
   public Statistics getStatistics() {
-    return valueChunkMetadataList.size() == 1
+    return valueChunkMetadataList.size() == 1 && valueChunkMetadataList.get(0) != null
         ? valueChunkMetadataList.get(0).getStatistics()
         : timeChunkMetadata.getStatistics();
   }
 
   public Statistics getStatistics(int index) {
-    return valueChunkMetadataList.get(index).getStatistics();
+    IChunkMetadata v = valueChunkMetadataList.get(index);
+    return v == null ? null : v.getStatistics();
   }
 
   @Override
@@ -61,6 +62,11 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   @Override
   public void setModified(boolean modified) {
     timeChunkMetadata.setModified(modified);
+    for (IChunkMetadata v : valueChunkMetadataList) {
+      if (v != null) {
+        v.setModified(modified);
+      }
+    }
   }
 
   @Override
@@ -71,6 +77,11 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   @Override
   public void setSeq(boolean seq) {
     timeChunkMetadata.setSeq(seq);
+    for (IChunkMetadata v : valueChunkMetadataList) {
+      if (v != null) {
+        v.setSeq(seq);
+      }
+    }
   }
 
   @Override
@@ -81,6 +92,11 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   @Override
   public void setVersion(long version) {
     timeChunkMetadata.setVersion(version);
+    for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
+      if (valueChunkMetadata != null) {
+        valueChunkMetadata.setVersion(version);
+      }
+    }
   }
 
   @Override
@@ -110,31 +126,21 @@ public class AlignedChunkMetadata implements IChunkMetadata {
 
   @Override
   public boolean needSetChunkLoader() {
-    if (timeChunkMetadata.needSetChunkLoader()) {
-      return true;
-    } else {
-      for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-        if (chunkMetadata.needSetChunkLoader()) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return chunkLoader == null;
   }
 
   @Override
   public void setChunkLoader(IChunkLoader chunkLoader) {
-    timeChunkMetadata.setChunkLoader(chunkLoader);
-    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      chunkMetadata.setChunkLoader(chunkLoader);
-    }
+    this.chunkLoader = chunkLoader;
   }
 
   @Override
   public void setFilePath(String filePath) {
     timeChunkMetadata.setFilePath(filePath);
     for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      chunkMetadata.setFilePath(filePath);
+      if (chunkMetadata != null) {
+        chunkMetadata.setFilePath(filePath);
+      }
     }
   }
 
@@ -142,7 +148,9 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   public void setClosed(boolean closed) {
     timeChunkMetadata.setClosed(closed);
     for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      chunkMetadata.setClosed(closed);
+      if (chunkMetadata != null) {
+        chunkMetadata.setClosed(closed);
+      }
     }
   }
 
@@ -158,12 +166,12 @@ public class AlignedChunkMetadata implements IChunkMetadata {
 
   @Override
   public void insertIntoSortedDeletions(long startTime, long endTime) {
-    timeChunkMetadata.insertIntoSortedDeletions(startTime, endTime);
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public List<TimeRange> getDeleteIntervalList() {
-    return timeChunkMetadata.getDeleteIntervalList();
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -174,21 +182,6 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   @Override
   public byte getMask() {
     return 0;
-  }
-
-  public Chunk getTimeChunk() throws IOException {
-    return timeChunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) timeChunkMetadata);
-  }
-
-  public List<Chunk> getValueChunkList() throws IOException {
-    List<Chunk> valueChunkList = new ArrayList<>();
-    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      valueChunkList.add(
-          chunkMetadata == null
-              ? null
-              : chunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) chunkMetadata));
-    }
-    return valueChunkList;
   }
 
   public IChunkMetadata getTimeChunkMetadata() {

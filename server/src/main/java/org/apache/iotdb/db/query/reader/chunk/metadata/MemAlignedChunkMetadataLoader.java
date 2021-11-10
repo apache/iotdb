@@ -30,14 +30,14 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MemChunkMetadataLoader implements IChunkMetadataLoader {
+public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
   private final PartialPath seriesPath;
   private final QueryContext context;
   private final Filter timeFilter;
 
-  public MemChunkMetadataLoader(
+  public MemAlignedChunkMetadataLoader(
       TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
@@ -45,10 +45,13 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
     this.timeFilter = timeFilter;
   }
 
+  // TODO current implementation is same as MemChunkMetadataLoader, I think we need to move the
+  // processing of modification for ReadOnlyMemChunk from TSP to this class
+  // There is no need to set IChunkLoader for it, because the MemChunkLoader has already been set
+  // while creating ReadOnlyMemChunk
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
     List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
-
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {
       for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {

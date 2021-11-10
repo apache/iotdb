@@ -32,6 +32,8 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
   // TimeSeriesMetadata for all subSensors in the vector
   private final List<TimeseriesMetadata> valueTimeseriesMetadataList;
 
+  private IChunkMetadataLoader chunkMetadataLoader;
+
   public AlignedTimeSeriesMetadata(
       TimeseriesMetadata timeseriesMetadata, List<TimeseriesMetadata> valueTimeseriesMetadataList) {
     this.timeseriesMetadata = timeseriesMetadata;
@@ -44,13 +46,14 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
    */
   @Override
   public Statistics getStatistics() {
-    return valueTimeseriesMetadataList.size() == 1
+    return valueTimeseriesMetadataList.size() == 1 && valueTimeseriesMetadataList.get(0) != null
         ? valueTimeseriesMetadataList.get(0).getStatistics()
         : timeseriesMetadata.getStatistics();
   }
 
   public Statistics getStatistics(int index) {
-    return valueTimeseriesMetadataList.get(index).getStatistics();
+    TimeseriesMetadata v = valueTimeseriesMetadataList.get(index);
+    return v == null ? null : v.getStatistics();
   }
 
   @Override
@@ -62,7 +65,9 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
   public void setModified(boolean modified) {
     timeseriesMetadata.setModified(modified);
     for (TimeseriesMetadata subSensor : valueTimeseriesMetadataList) {
-      subSensor.setModified(modified);
+      if (subSensor != null) {
+        subSensor.setModified(modified);
+      }
     }
   }
 
@@ -75,7 +80,9 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
   public void setSeq(boolean seq) {
     timeseriesMetadata.setSeq(seq);
     for (TimeseriesMetadata subSensor : valueTimeseriesMetadataList) {
-      subSensor.setSeq(seq);
+      if (subSensor != null) {
+        subSensor.setSeq(seq);
+      }
     }
   }
 
@@ -89,37 +96,36 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
    */
   @Override
   public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
-    if (timeseriesMetadata.getChunkMetadataLoader().isMemChunkMetadataLoader()) {
-      return timeseriesMetadata.loadChunkMetadataList();
-    } else {
-      List<IChunkMetadata> timeChunkMetadata = timeseriesMetadata.loadChunkMetadataList();
-      List<List<IChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-      for (TimeseriesMetadata metadata : valueTimeseriesMetadataList) {
-        valueChunkMetadataList.add(metadata == null ? null : metadata.loadChunkMetadataList());
-      }
+    return chunkMetadataLoader.loadChunkMetadataList(this);
+  }
 
-      List<IChunkMetadata> res = new ArrayList<>();
-
-      for (int i = 0; i < timeChunkMetadata.size(); i++) {
-        List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
-        // only at least one sensor exits, we add the AlignedChunkMetadata to the list
-        boolean exits = false;
-        for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-          IChunkMetadata v = chunkMetadata == null ? null : chunkMetadata.get(i);
-          exits = (exits || v != null);
-          chunkMetadataList.add(v);
-        }
-        if (exits) {
-          res.add(new AlignedChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
-        }
-      }
-      return res;
+  public List<AlignedChunkMetadata> getChunkMetadataList() {
+    List<IChunkMetadata> timeChunkMetadata = timeseriesMetadata.getChunkMetadataList();
+    List<List<IChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
+    for (TimeseriesMetadata metadata : valueTimeseriesMetadataList) {
+      valueChunkMetadataList.add(metadata == null ? null : metadata.getChunkMetadataList());
     }
+
+    List<AlignedChunkMetadata> res = new ArrayList<>();
+    for (int i = 0; i < timeChunkMetadata.size(); i++) {
+      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+      // only at least one sensor exits, we add the AlignedChunkMetadata to the list
+      boolean exits = false;
+      for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+        IChunkMetadata v = chunkMetadata == null ? null : chunkMetadata.get(i);
+        exits = (exits || v != null);
+        chunkMetadataList.add(v);
+      }
+      if (exits) {
+        res.add(new AlignedChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+      }
+    }
+    return res;
   }
 
   @Override
   public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {
-    timeseriesMetadata.setChunkMetadataLoader(chunkMetadataLoader);
+    this.chunkMetadataLoader = chunkMetadataLoader;
   }
 
   public List<TimeseriesMetadata> getValueTimeseriesMetadataList() {

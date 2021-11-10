@@ -54,7 +54,7 @@ public class RecordUtils {
     String deviceId = items[0].trim();
     long timestamp;
     try {
-      timestamp = Long.valueOf(items[1].trim());
+      timestamp = Long.parseLong(items[1].trim());
     } catch (NumberFormatException e) {
       LOG.warn("given timestamp is illegal:{}", str);
       // return a TSRecord without any data points
@@ -82,19 +82,19 @@ public class RecordUtils {
         try {
           switch (type) {
             case INT32:
-              ret.addTuple(new IntDataPoint(measurementId, Integer.valueOf(value)));
+              ret.addTuple(new IntDataPoint(measurementId, Integer.parseInt(value)));
               break;
             case INT64:
-              ret.addTuple(new LongDataPoint(measurementId, Long.valueOf(value)));
+              ret.addTuple(new LongDataPoint(measurementId, Long.parseLong(value)));
               break;
             case FLOAT:
-              ret.addTuple(new FloatDataPoint(measurementId, Float.valueOf(value)));
+              ret.addTuple(new FloatDataPoint(measurementId, Float.parseFloat(value)));
               break;
             case DOUBLE:
-              ret.addTuple(new DoubleDataPoint(measurementId, Double.valueOf(value)));
+              ret.addTuple(new DoubleDataPoint(measurementId, Double.parseDouble(value)));
               break;
             case BOOLEAN:
-              ret.addTuple(new BooleanDataPoint(measurementId, Boolean.valueOf(value)));
+              ret.addTuple(new BooleanDataPoint(measurementId, Boolean.parseBoolean(value)));
               break;
             case TEXT:
               ret.addTuple(new StringDataPoint(measurementId, Binary.valueOf(items[i + 1])));
