@@ -78,7 +78,7 @@ import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
-import org.apache.iotdb.db.service.basic.dto.OpenSessionResp;
+import org.apache.iotdb.db.service.basic.dto.BasicOpenSessionResp;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.DataTypeUtils;
@@ -214,7 +214,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
-    OpenSessionResp openSessionResp =
+    BasicOpenSessionResp openSessionResp =
         openSession(req.username, req.password, req.zoneId, req.client_protocol);
     TSStatus tsStatus =
         RpcUtils.getStatus(openSessionResp.getTsStatusCode(), openSessionResp.getMessage());
@@ -667,6 +667,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     final long queryStartTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
     QueryContext context =
+        // TODO
         genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
 
     if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
@@ -695,6 +696,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         ((QueryPlan) plan).setEnableRedirect(enableRedirect);
       }
       // create and cache dataset
+      // TODO
       QueryDataSet newDataSet = createQueryDataSet(context, plan, fetchSize);
       if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
         tracingManager.registerActivity(
@@ -2097,16 +2099,13 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    boolean isSuccessful;
     try {
-      isSuccessful = executeNonQuery(plan);
+      return executeNonQuery(plan)
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
+          : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } catch (Exception e) {
       return onNonQueryException(e, OperationType.EXECUTE_NON_QUERY_PLAN);
     }
-
-    return isSuccessful
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
-        : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {

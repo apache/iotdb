@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.service.basic.dto;
 
-public class OpenSessionResp extends BasicResp {
+public class BasicOpenSessionResp extends BasicResp {
   private long sessionId;
 
   public long getSessionId() {
     return sessionId;
   }
 
-  public void setSessionId(long sessionId) {
+  public BasicOpenSessionResp sessionId(long sessionId) {
     this.sessionId = sessionId;
+    return this;
   }
 }

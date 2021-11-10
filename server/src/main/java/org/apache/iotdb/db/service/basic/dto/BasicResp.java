@@ -44,15 +44,17 @@ public class BasicResp {
     return message;
   }
 
-  public void setMessage(String message) {
+  public BasicResp message(String message) {
     this.message = message;
+    return this;
   }
 
   public TSStatusCode getTsStatusCode() {
     return tsStatusCode;
   }
 
-  public void setTsStatusCode(TSStatusCode tsStatusCode) {
+  public BasicResp tsStatusCode(TSStatusCode tsStatusCode) {
     this.tsStatusCode = tsStatusCode;
+    return this;
   }
 }

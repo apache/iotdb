@@ -40,8 +40,8 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
+import org.apache.iotdb.db.service.basic.dto.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.dto.BasicResp;
-import org.apache.iotdb.db.service.basic.dto.OpenSessionResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
@@ -73,10 +73,10 @@ public class BasicServiceProvider {
     executor = new PlanExecutor();
   }
 
-  protected OpenSessionResp openSession(
+  protected BasicOpenSessionResp openSession(
       String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
       throws TException {
-    OpenSessionResp openSessionResp = new OpenSessionResp();
+    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
     boolean status;
     IAuthorizer authorizer;
@@ -99,15 +99,14 @@ public class BasicServiceProvider {
       // check the version compatibility
       boolean compatible = checkCompatibility(tsProtocolVersion);
       if (!compatible) {
-        openSessionResp.setTsStatusCode(TSStatusCode.INCOMPATIBLE_VERSION);
-        openSessionResp.setMessage(
-            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        openSessionResp.setSessionId(sessionId);
+        openSessionResp
+            .sessionId(sessionId)
+            .message("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION)
+            .tsStatusCode(TSStatusCode.INCOMPATIBLE_VERSION);
         return openSessionResp;
       }
 
-      openSessionResp.setMessage("Login successfully");
-      openSessionResp.setTsStatusCode(TSStatusCode.SUCCESS_STATUS);
+      openSessionResp.message("Login successfully").tsStatusCode(TSStatusCode.SUCCESS_STATUS);
 
       sessionId = sessionManager.requestSessionId(username, zoneId);
       AUDIT_LOGGER.info("User {} opens Session-{}", username, sessionId);
@@ -118,16 +117,16 @@ public class BasicServiceProvider {
           username);
     } else {
 
-      openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
-      openSessionResp.setTsStatusCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
+      openSessionResp
+          .message(loginMessage != null ? loginMessage : "Authentication failed.")
+          .tsStatusCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
 
       sessionId = sessionManager.requestSessionId(username, zoneId);
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
     }
 
     SessionTimeoutManager.getInstance().register(sessionId);
-    openSessionResp.setSessionId(sessionId);
-    return openSessionResp;
+    return openSessionResp.sessionId(sessionId);
   }
 
   protected boolean closeSession(long sessionId) {
