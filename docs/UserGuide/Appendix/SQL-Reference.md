@@ -163,10 +163,10 @@ SET SCHEMA TEMPLATE <TemplateName> TO <STORAGE_GROUP_NAME>
 Eg: SET SCHEMA TEMPLATE temp1 TO root.beijing
 ```
 
-* Set Using Schema Template Statement
+* Create Timeseries Of Schema Template Statement
 ```
-SET USING SCHEMA TEMPLATE ON <STORAGE_GROUP_NAME>
-Eg: SET USING SCHEMA TEMPLATE ON root.beijing
+CREATE TIMESERIES OF SCHEMA TEMPLATE ON <STORAGE_GROUP_NAME>
+Eg: CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.beijing
 ```
 
 * Unset Schema Template Statement

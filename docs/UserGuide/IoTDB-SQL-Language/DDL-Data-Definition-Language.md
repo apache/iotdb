@@ -552,7 +552,7 @@ After setting the schema template, you can insert data into the timeseries. For 
 **Attention**: Before inserting data, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries before inserting data:
 
 ```
-IoTDB> set using schema template on root.ln.wf01
+IoTDB> create timeseries of schema template on root.ln.wf01
 ```
 
 ### Uset Schema Template

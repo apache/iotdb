@@ -560,7 +560,7 @@ IoTDB> set schema template temp1 to root.ln.wf01
 **注意**：在插入数据之前，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列：
 
 ```
-IoTDB> set using schema template on root.ln.wf01
+IoTDB> create timeseries of schema template on root.ln.wf01
 ```
 
 ### 卸载物理量模板
