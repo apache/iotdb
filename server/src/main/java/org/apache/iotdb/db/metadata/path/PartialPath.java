@@ -31,7 +31,6 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -309,8 +308,8 @@ public class PartialPath extends Path implements Comparable<Path> {
     throw new MetadataException("This path doesn't represent a measurement");
   }
 
-  public TSDataType getSeriesType() throws MetadataException {
-    throw new MetadataException("This path doesn't represent a measurement");
+  public TSDataType getSeriesType() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("This path doesn't represent a measurement");
   }
 
   @Override
@@ -398,9 +397,7 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   public TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
+      List<ReadOnlyMemChunk> readOnlyMemChunk, TsFileResource originTsFileResource)
       throws IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }

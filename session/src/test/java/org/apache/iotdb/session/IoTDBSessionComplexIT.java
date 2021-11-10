@@ -147,7 +147,7 @@ public class IoTDBSessionComplexIT {
     insertTablet("root.sg1.d1");
 
     SessionDataSet sessionDataSet =
-        session.executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
+        session.executeQueryStatement("select s1 from root.sg1.d1 align by device");
     sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
@@ -157,7 +157,7 @@ public class IoTDBSessionComplexIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,'11',0,'11',", sb.toString());
+      Assert.assertEquals("root.sg1.d1,0,", sb.toString());
     }
     Assert.assertEquals(100, count);
     sessionDataSet.closeOperationHandle();
@@ -417,13 +417,13 @@ public class IoTDBSessionComplexIT {
     session.createTimeseries(
         "root.sg1.d1.1_2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.1+2+3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.1+2+4", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.1_2"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1.2.3\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1.2.4\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1_2\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+3\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+4\""));
 
     session.setStorageGroup("root.1");
     session.createTimeseries(

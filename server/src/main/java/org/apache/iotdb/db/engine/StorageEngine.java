@@ -64,7 +64,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -764,15 +764,11 @@ public class StorageEngine implements IService {
 
   /** query data. */
   public QueryDataSource query(
-      SingleSeriesExpression seriesExpression,
-      QueryContext context,
-      QueryFileManager filePathsManager)
+      PartialPath fullPath, Filter filter, QueryContext context, QueryFileManager filePathsManager)
       throws StorageEngineException, QueryProcessException {
-    PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
     PartialPath deviceId = fullPath.getDevicePath();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(
-        fullPath, context, filePathsManager, seriesExpression.getFilter());
+    return storageGroupProcessor.query(fullPath, context, filePathsManager, filter);
   }
 
   /**

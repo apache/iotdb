@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -37,7 +36,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   private int valueIndex;
 
   /** @param schema schema of this measurement */
-  public AlignedChunkWriterImpl(IMeasurementSchema schema) {
+  public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {
     timeChunkWriter =
         new TimeChunkWriter(
             schema.getMeasurementId(),
@@ -54,9 +53,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     for (int i = 0; i < valueMeasurementIdList.size(); i++) {
       valueChunkWriterList.add(
           new ValueChunkWriter(
-              schema.getMeasurementId()
-                  + TsFileConstant.PATH_SEPARATOR
-                  + valueMeasurementIdList.get(i),
+              valueMeasurementIdList.get(i),
               schema.getCompressor(),
               valueTSDataTypeList.get(i),
               valueTSEncodingList.get(i),
@@ -66,37 +63,30 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     this.valueIndex = 0;
   }
 
-  @Override
   public void write(long time, int value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, long value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, boolean value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, float value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, double value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time, Binary value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  @Override
   public void write(long time) {
     valueIndex = 0;
     timeChunkWriter.write(time);
@@ -105,43 +95,20 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
-  // TODO tsfile write interface
-  @Override
-  public void write(long[] timestamps, int[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, long[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, boolean[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, float[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, double[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void write(long[] timestamps, Binary[] values, int batchSize) {
-    throw new UnsupportedOperationException();
-  }
-
   /**
    * check occupied memory size, if it exceeds the PageSize threshold, construct a page and put it
    * to pageBuffer
    */
   private boolean checkPageSizeAndMayOpenANewPage() {
-    return timeChunkWriter.checkPageSizeAndMayOpenANewPage();
+    if (timeChunkWriter.checkPageSizeAndMayOpenANewPage()) {
+      return true;
+    }
+    for (ValueChunkWriter writer : valueChunkWriterList) {
+      if (writer.checkPageSizeAndMayOpenANewPage()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void writePageToPageBuffer() {
@@ -190,15 +157,5 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.clearPageWriter();
     }
-  }
-
-  @Override
-  public int getNumOfPages() {
-    return timeChunkWriter.getNumOfPages();
-  }
-
-  @Override
-  public TSDataType getDataType() {
-    return TSDataType.VECTOR;
   }
 }

@@ -48,7 +48,7 @@ public class InfluxDBExample {
     Map<String, Object> fields = new HashMap<>();
     tags.put("name", "xie");
     tags.put("sex", "m");
-    fields.put("score", 87);
+    fields.put("score", 87.0);
     fields.put("tel", "110");
     fields.put("country", "china");
     builder.tag(tags);

@@ -460,6 +460,10 @@ public class AggregationExecutor {
       int remainingToCalculate,
       Statistics statistics)
       throws QueryProcessException {
+    // some aligned paths' statistics may be null
+    if (statistics == null) {
+      return remainingToCalculate;
+    }
     int newRemainingToCalculate = remainingToCalculate;
     for (int i = 0; i < aggregateResultList.size(); i++) {
       if (!isCalculatedArray[i]) {
