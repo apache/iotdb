@@ -214,8 +214,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     schema.registerTimeseries(
         new Path("d1"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1"),
-        new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+        new Path("d1"), new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema.registerTimeseries(
         new Path("d1"), new UnaryMeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
     schema.registerTimeseries(
