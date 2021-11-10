@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -27,14 +31,8 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class TsFileHelper {
 
@@ -68,17 +66,15 @@ public class TsFileHelper {
         UnaryMeasurementSchema measurementSchema =
             new UnaryMeasurementSchema(
                 Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
-        schema.registerTimeseries(
-            new Path(Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path(Constant.DEVICE_1), measurementSchema);
         schemaList.add(measurementSchema);
       }
 
       for (int i = 2; i < sensorNum; i++) {
-        IMeasurementSchema measurementSchema =
+        UnaryMeasurementSchema measurementSchema =
             new UnaryMeasurementSchema(
                 Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF);
-        schema.registerTimeseries(
-            new Path(Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path(Constant.DEVICE_1), measurementSchema);
         schemaList.add(measurementSchema);
       }
 

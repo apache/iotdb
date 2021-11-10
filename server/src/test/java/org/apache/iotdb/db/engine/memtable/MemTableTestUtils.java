@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -31,9 +33,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class MemTableTestUtils {
 
   public static String deviceId0 = "d0";
@@ -45,7 +44,7 @@ public class MemTableTestUtils {
 
   static {
     schema.registerTimeseries(
-        new Path(deviceId0, measurementId0),
+        new Path(deviceId0),
         new UnaryMeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 

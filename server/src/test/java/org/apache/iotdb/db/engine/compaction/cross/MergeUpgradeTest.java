@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
@@ -36,18 +43,9 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
 
 public class MergeUpgradeTest {
 
@@ -170,8 +168,7 @@ public class MergeUpgradeTest {
       long valueOffset)
       throws WriteProcessException, IOException {
     for (UnaryMeasurementSchema MeasurementSchema : measurementSchemas) {
-      fileWriter.registerTimeseries(
-          new Path(deviceName, MeasurementSchema.getMeasurementId()), MeasurementSchema);
+      fileWriter.registerTimeseries(new Path(deviceName), MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       TSRecord record = new TSRecord(i, deviceName);

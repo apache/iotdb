@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.integration;
 
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -37,20 +45,10 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Arrays;
 
 public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
@@ -124,7 +122,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
       for (String deviceId : devices) {
         for (String measurement : measurements) {
           tsFileWriter.registerTimeseries(
-              new Path(STORAGE_GROUP + DOT + deviceId, measurement),
+              new Path(STORAGE_GROUP + DOT + deviceId),
               new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
         }
       }

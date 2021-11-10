@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.util.Collections;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -47,20 +56,9 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.util.Collections;
-
-import static org.junit.Assert.assertEquals;
 
 public class RecoverResourceFromReaderTest {
 
@@ -98,7 +96,7 @@ public class RecoverResourceFromReaderTest {
             new PartialPath("root.sg.device" + i + IoTDBConstant.PATH_SEPARATOR + "sensor" + j);
         UnaryMeasurementSchema measurementSchema =
             new UnaryMeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN);
-        schema.registerTimeseries(path.toTSFilePath(), measurementSchema);
+        schema.registerTimeseries(new Path(path.toTSFilePath().getDevice()), measurementSchema);
         IoTDB.metaManager.createTimeseries(
             path,
             measurementSchema.getType(),
@@ -108,7 +106,7 @@ public class RecoverResourceFromReaderTest {
       }
     }
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor4")),
+        new Path(("root.sg.device99")),
         new UnaryMeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor4"),
@@ -117,7 +115,7 @@ public class RecoverResourceFromReaderTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor2")),
+        new Path("root.sg.device99"),
         new UnaryMeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor2"),
@@ -126,7 +124,7 @@ public class RecoverResourceFromReaderTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor1")),
+        new Path(("root.sg.device99")),
         new UnaryMeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor1"),

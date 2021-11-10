@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.tsfile.write.schema.converter;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -27,15 +33,7 @@ import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
 
 public class SchemaBuilderTest {
 
@@ -46,11 +44,11 @@ public class SchemaBuilderTest {
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
     schema.registerTimeseries(
-        new Path("d1", "s4"),
+        new Path("d1"),
         new UnaryMeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     schema.registerTimeseries(
-        new Path("d1", "s5"),
+        new Path("d1"),
         new UnaryMeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 

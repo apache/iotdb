@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.cluster.common;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
@@ -58,13 +64,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public class TestUtils {
 
@@ -400,8 +399,8 @@ public class TestUtils {
       file.getParentFile().mkdirs();
       try (TsFileWriter writer = new TsFileWriter(file)) {
         for (int k = 0; k < seriesNum; k++) {
-          IMeasurementSchema schema = getTestMeasurementSchema(k);
-          writer.registerTimeseries(new Path(getTestSg(sgNum), schema.getMeasurementId()), schema);
+          UnaryMeasurementSchema schema = (UnaryMeasurementSchema) getTestMeasurementSchema(k);
+          writer.registerTimeseries(new Path(getTestSg(sgNum)), schema);
         }
 
         for (int j = 0; j < ptNum; j++) {

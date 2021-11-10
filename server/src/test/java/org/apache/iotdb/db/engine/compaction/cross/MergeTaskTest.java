@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -40,19 +47,10 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
 
 public class MergeTaskTest extends MergeTest {
 
@@ -547,9 +545,7 @@ public class MergeTaskTest extends MergeTest {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (int i = 0; i < deviceIds.length - 1; i++) {
       for (int j = 0; j < measurementSchemas.length - 1; j++) {
-        fileWriter.registerTimeseries(
-            new Path(deviceIds[i], measurementSchemas[j].getMeasurementId()),
-            measurementSchemas[j]);
+        fileWriter.registerTimeseries(new Path(deviceIds[i]), measurementSchemas[j]);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
