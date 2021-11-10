@@ -19,12 +19,10 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
@@ -253,8 +251,7 @@ public class Template {
         // find the parent and add nodes to template
         if (prefix.equals("")) {
           leafNode =
-              MeasurementMNode.getMeasurementMNode(
-                  null, measurementNames.get(i), schemas[i], "");
+              MeasurementMNode.getMeasurementMNode(null, measurementNames.get(i), schemas[i], "");
           directNodes.put(leafNode.getName(), leafNode);
         } else {
           commonPar = (IEntityMNode) constructEntityPath(alignedPaths[0]);
@@ -308,7 +305,8 @@ public class Template {
     // VectorMeasurementSchema[] schemas = new VectorMeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
       // #FIXME: Construct unary schema array and insert may occur error
-      schemas[i] = new UnaryMeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
+      schemas[i] =
+          new UnaryMeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
       // schemas[i] = new VectorMeasurementSchema(nodeNames[i], nodeNames, dataTypes, encodings);
     }
     return schemas;
@@ -443,7 +441,6 @@ public class Template {
     return cur.isMeasurement();
   }
 
-
   public IMNode getDirectNode(String nodeName) {
     return directNodes.getOrDefault(nodeName, null);
   }
@@ -472,7 +469,7 @@ public class Template {
   /**
    * @param path complete path to measurement.
    * @return null if need to add direct node, will never return a measurement.
-   **/
+   */
   private IMNode constructEntityPath(String path) throws IllegalPathException {
     String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
     if (pathNodes.length == 1) {
@@ -489,7 +486,7 @@ public class Template {
       throw new IllegalPathException(path, "there is measurement in path.");
     }
 
-    for (int i = 1; i <= pathNodes.length -2; i++) {
+    for (int i = 1; i <= pathNodes.length - 2; i++) {
       if (!cur.hasChild(pathNodes[i])) {
         cur.addChild(pathNodes[i], new EntityMNode(cur, pathNodes[i]));
       }
@@ -501,7 +498,6 @@ public class Template {
     }
     return cur;
   }
-  
 
   private static String joinBySeparator(String[] pathNodes) {
     if ((pathNodes == null) || (pathNodes.length == 0)) {
