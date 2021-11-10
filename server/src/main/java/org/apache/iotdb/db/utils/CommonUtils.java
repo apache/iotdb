@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.service.basic.dto.BasicResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -34,6 +37,8 @@ import io.airlift.airline.ParseCommandUnrecognizedException;
 import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,6 +55,8 @@ public class CommonUtils {
 
   /** Default executor pool maximum size. */
   public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(CommonUtils.class);
 
   private CommonUtils() {}
 
@@ -211,5 +218,21 @@ public class CommonUtils {
     System.err.println("error: " + e.getMessage());
     System.err.println("-- StackTrace --");
     System.err.println(Throwables.getStackTraceAsString(e));
+  }
+
+  public static BasicResp onNPEOrUnexpectedException(
+      Exception e, String operation, TSStatusCode statusCode) {
+    String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
+    if (e instanceof NullPointerException) {
+      LOGGER.error("Status code: {}, operation: {} failed", statusCode, operation, e);
+    } else {
+      LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
+    }
+    return new BasicResp(statusCode, message + e.getMessage());
+  }
+
+  public static BasicResp onNPEOrUnexpectedException(
+      Exception e, OperationType operation, TSStatusCode statusCode) {
+    return onNPEOrUnexpectedException(e, operation.getName(), statusCode);
   }
 }

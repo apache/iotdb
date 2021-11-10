@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
@@ -160,6 +159,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.utils.CommonUtils.onNPEOrUnexpectedException;
+
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl extends BasicServiceProvider implements TSIService.Iface {
 
@@ -288,8 +289,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       status = RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
     } catch (Exception e) {
       status =
-          onNPEOrUnexpectedException(
-              e, OperationType.FETCH_METADATA, TSStatusCode.INTERNAL_SERVER_ERROR);
+          DataTypeUtils.BasicRespToTSStatus(
+              onNPEOrUnexpectedException(
+                  e, OperationType.FETCH_METADATA, TSStatusCode.INTERNAL_SERVER_ERROR));
     }
     return resp.setStatus(status);
   }
@@ -489,10 +491,11 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           isAllSuccessful = false;
         } else {
           result.add(
-              onNPEOrUnexpectedException(
-                  e,
-                  "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT,
-                  TSStatusCode.INTERNAL_SERVER_ERROR));
+              DataTypeUtils.BasicRespToTSStatus(
+                  onNPEOrUnexpectedException(
+                      e,
+                      "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT,
+                      TSStatusCode.INTERNAL_SERVER_ERROR)));
         }
       }
     }
@@ -667,7 +670,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     final long queryStartTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
     QueryContext context =
-        // TODO
         genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
 
     if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
@@ -696,7 +698,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         ((QueryPlan) plan).setEnableRedirect(enableRedirect);
       }
       // create and cache dataset
-      // TODO
       QueryDataSet newDataSet = createQueryDataSet(context, plan, fetchSize);
       if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
         tracingManager.registerActivity(
@@ -1089,13 +1090,15 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
       return RpcUtils.getTSFetchResultsResp(
-          onNPEOrUnexpectedException(
-              e, OperationType.FETCH_RESULTS, TSStatusCode.INTERNAL_SERVER_ERROR));
+          DataTypeUtils.BasicRespToTSStatus(
+              onNPEOrUnexpectedException(
+                  e, OperationType.FETCH_RESULTS, TSStatusCode.INTERNAL_SERVER_ERROR)));
     } catch (Exception e) {
       sessionManager.releaseQueryResourceNoExceptions(req.queryId);
       return RpcUtils.getTSFetchResultsResp(
-          onNPEOrUnexpectedException(
-              e, OperationType.FETCH_RESULTS, TSStatusCode.INTERNAL_SERVER_ERROR));
+          DataTypeUtils.BasicRespToTSStatus(
+              onNPEOrUnexpectedException(
+                  e, OperationType.FETCH_RESULTS, TSStatusCode.INTERNAL_SERVER_ERROR)));
     }
   }
 
@@ -1138,23 +1141,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       }
     }
     return encoder;
-  }
-
-  /** create QueryDataSet and buffer it for fetchResults */
-  private QueryDataSet createQueryDataSet(
-      QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
-          IOException, MetadataException, SQLException, TException, InterruptedException {
-
-    QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
-    queryDataSet.setFetchSize(fetchSize);
-    sessionManager.setDataset(context.getQueryId(), queryDataSet);
-    return queryDataSet;
-  }
-
-  protected QueryContext genQueryContext(
-      long queryId, boolean debug, long startTime, String statement, long timeout) {
-    return new QueryContext(queryId, debug, startTime, statement, timeout);
   }
 
   /** update statement can be: 1. select-into statement 2. non-query statement */
@@ -1213,15 +1199,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             .setQueryId(sessionManager.requestQueryId(false));
   }
 
-  private boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
-      throws AuthException {
-    String targetUser = null;
-    if (plan instanceof AuthorPlan) {
-      targetUser = ((AuthorPlan) plan).getUserName();
-    }
-    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
-  }
-
   protected void handleClientExit() {
     Long sessionId = sessionManager.getCurrSessionId();
     if (sessionId != null) {
@@ -1239,8 +1216,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           zoneId != null ? zoneId.toString() : "Unknown time zone");
     } catch (Exception e) {
       return new TSGetTimeZoneResp(
-          onNPEOrUnexpectedException(
-              e, OperationType.GET_TIME_ZONE, TSStatusCode.GENERATE_TIME_ZONE_ERROR),
+          DataTypeUtils.BasicRespToTSStatus(
+              onNPEOrUnexpectedException(
+                  e, OperationType.GET_TIME_ZONE, TSStatusCode.GENERATE_TIME_ZONE_ERROR)),
           "Unknown time zone");
     }
   }
@@ -1251,8 +1229,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       sessionManager.setTimezone(req.sessionId, req.timeZone);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.SET_TIME_ZONE, TSStatusCode.SET_TIME_ZONE_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.SET_TIME_ZONE, TSStatusCode.SET_TIME_ZONE_ERROR));
     }
   }
 
@@ -1324,8 +1303,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             .getResults()
             .put(
                 i,
-                onNPEOrUnexpectedException(
-                    e, OperationType.INSERT_RECORDS, TSStatusCode.INTERNAL_SERVER_ERROR));
+                DataTypeUtils.BasicRespToTSStatus(
+                    onNPEOrUnexpectedException(
+                        e, OperationType.INSERT_RECORDS, TSStatusCode.INTERNAL_SERVER_ERROR)));
       }
     }
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
@@ -1385,8 +1365,11 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           onIoTDBException(e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, e.getErrorCode()));
     } catch (Exception e) {
       statusList.add(
-          onNPEOrUnexpectedException(
-              e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.INTERNAL_SERVER_ERROR));
+          DataTypeUtils.BasicRespToTSStatus(
+              onNPEOrUnexpectedException(
+                  e,
+                  OperationType.INSERT_RECORDS_OF_ONE_DEVICE,
+                  TSStatusCode.INTERNAL_SERVER_ERROR)));
     }
 
     TSStatus resp = RpcUtils.getStatus(statusList);
@@ -1444,8 +1427,11 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             .getResults()
             .put(
                 i,
-                onNPEOrUnexpectedException(
-                    e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.INTERNAL_SERVER_ERROR));
+                DataTypeUtils.BasicRespToTSStatus(
+                    onNPEOrUnexpectedException(
+                        e,
+                        OperationType.INSERT_STRING_RECORDS,
+                        TSStatusCode.INTERNAL_SERVER_ERROR)));
         allCheckSuccess = false;
       }
     }
@@ -1540,8 +1526,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1571,8 +1558,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1597,8 +1585,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_DATA, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.DELETE_DATA, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.DELETE_DATA, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1628,8 +1617,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -1650,8 +1640,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       LOGGER.error("{}: error occurs when insertTablets", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -1711,8 +1702,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.SET_STORAGE_GROUP, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.SET_STORAGE_GROUP, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.SET_STORAGE_GROUP, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1733,8 +1725,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_STORAGE_GROUPS, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.DELETE_STORAGE_GROUPS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.DELETE_STORAGE_GROUPS, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1765,8 +1758,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_TIMESERIES, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1818,8 +1812,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_ALIGNED_TIMESERIES, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_ALIGNED_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.CREATE_ALIGNED_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1907,8 +1902,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       return onIoTDBException(e, OperationType.CREATE_MULTI_TIMESERIES, e.getErrorCode());
     } catch (Exception e) {
       LOGGER.error("creating multi timeseries fails", e);
-      return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_MULTI_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.CREATE_MULTI_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1929,8 +1925,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_TIMESERIES, e.getErrorCode());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.DELETE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.DELETE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -1991,8 +1988,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_SCHEMA_TEMPLATE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return DataTypeUtils.BasicRespToTSStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.CREATE_SCHEMA_TEMPLATE, TSStatusCode.EXECUTE_STATEMENT_ERROR));
     }
   }
 
@@ -2116,7 +2114,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     TSStatus status = tryCatchQueryException(e);
     return status != null
         ? status
-        : onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+        : DataTypeUtils.BasicRespToTSStatus(
+            onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR));
   }
 
   private TSStatus onQueryException(Exception e, OperationType operation) {
@@ -2154,7 +2153,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     TSStatus status = tryCatchNonQueryException(e);
     return status != null
         ? status
-        : onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+        : DataTypeUtils.BasicRespToTSStatus(
+            onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR));
   }
 
   private TSStatus onNonQueryException(Exception e, OperationType operation) {
@@ -2175,22 +2175,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
     }
     return null;
-  }
-
-  private TSStatus onNPEOrUnexpectedException(
-      Exception e, String operation, TSStatusCode statusCode) {
-    String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
-    if (e instanceof NullPointerException) {
-      LOGGER.error("Status code: {}, operation: {} failed", statusCode, operation, e);
-    } else {
-      LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
-    }
-    return RpcUtils.getStatus(statusCode, message + e.getMessage());
-  }
-
-  private TSStatus onNPEOrUnexpectedException(
-      Exception e, OperationType operation, TSStatusCode statusCode) {
-    return onNPEOrUnexpectedException(e, operation.getName(), statusCode);
   }
 
   private TSStatus onIoTDBException(Exception e, String operation, int errorCode) {

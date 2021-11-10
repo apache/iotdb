@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
@@ -44,12 +46,18 @@ import org.apache.iotdb.db.service.basic.dto.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.dto.BasicResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
+
+import static org.apache.iotdb.db.utils.CommonUtils.onNPEOrUnexpectedException;
 
 public class BasicServiceProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicServiceProvider.class);
@@ -206,13 +214,21 @@ public class BasicServiceProvider {
     return null;
   }
 
-  private boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
-      throws AuthException {
-    String targetUser = null;
-    if (plan instanceof AuthorPlan) {
-      targetUser = ((AuthorPlan) plan).getUserName();
-    }
-    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+  protected QueryContext genQueryContext(
+      long queryId, boolean debug, long startTime, String statement, long timeout) {
+    return new QueryContext(queryId, debug, startTime, statement, timeout);
+  }
+
+  /** create QueryDataSet and buffer it for fetchResults */
+  protected QueryDataSet createQueryDataSet(
+      QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
+          IOException, MetadataException, SQLException, TException, InterruptedException {
+
+    QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
+    queryDataSet.setFetchSize(fetchSize);
+    sessionManager.setDataset(context.getQueryId(), queryDataSet);
+    return queryDataSet;
   }
 
   protected boolean executeNonQuery(PhysicalPlan plan)
@@ -227,23 +243,16 @@ public class BasicServiceProvider {
     return executor.processNonQuery(plan);
   }
 
+  protected boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
+      throws AuthException {
+    String targetUser = null;
+    if (plan instanceof AuthorPlan) {
+      targetUser = ((AuthorPlan) plan).getUserName();
+    }
+    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+  }
+
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);
-  }
-
-  private BasicResp onNPEOrUnexpectedException(
-      Exception e, String operation, TSStatusCode statusCode) {
-    String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
-    if (e instanceof NullPointerException) {
-      LOGGER.error("Status code: {}, operation: {} failed", statusCode, operation, e);
-    } else {
-      LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
-    }
-    return new BasicResp(statusCode, message + e.getMessage());
-  }
-
-  private BasicResp onNPEOrUnexpectedException(
-      Exception e, OperationType operation, TSStatusCode statusCode) {
-    return onNPEOrUnexpectedException(e, operation.getName(), statusCode);
   }
 }
