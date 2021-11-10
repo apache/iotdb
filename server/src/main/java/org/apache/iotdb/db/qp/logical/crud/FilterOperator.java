@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
@@ -104,9 +105,8 @@ public class FilterOperator implements Comparable<FilterOperator> {
     this.singlePath = singlePath;
   }
 
-  public boolean addChildOperator(FilterOperator op) {
+  public void addChildOperator(FilterOperator op) {
     childOperators.add(op);
-    return true;
   }
 
   public void setPathSet(Set<PartialPath> pathSet) {
@@ -281,12 +281,20 @@ public class FilterOperator implements Comparable<FilterOperator> {
     return sc.toString();
   }
 
-  public FilterOperator copy() {
+  public FilterOperator copy() throws MetadataException {
     FilterOperator ret = new FilterOperator(this.filterType);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     if (singlePath != null) {
-      ret.singlePath = new PartialPath(singlePath.getNodes().clone());
+      if (singlePath instanceof MeasurementPath) {
+        ret.singlePath =
+            new MeasurementPath(
+                singlePath.getDevice(),
+                singlePath.getMeasurement(),
+                singlePath.getMeasurementSchema());
+      } else {
+        ret.singlePath = new PartialPath(singlePath.getNodes().clone());
+      }
     }
     for (FilterOperator filterOperator : this.childOperators) {
       ret.addChildOperator(filterOperator.copy());

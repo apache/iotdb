@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
@@ -35,7 +36,8 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
    * @throws LogicalOptimizeException exception in DNF optimize
    */
   @Override
-  public FilterOperator optimize(FilterOperator filter) throws LogicalOptimizeException {
+  public FilterOperator optimize(FilterOperator filter)
+      throws LogicalOptimizeException, MetadataException {
     return getDnf(filter);
   }
 
@@ -43,7 +45,7 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
       List<FilterOperator> leftAndChildren,
       List<FilterOperator> rightAndChildren,
       List<FilterOperator> newChildrenList)
-      throws LogicalOptimizeException {
+      throws LogicalOptimizeException, MetadataException {
     for (FilterOperator leftAndChild : leftAndChildren) {
       for (FilterOperator rightAndChild : rightAndChildren) {
         FilterOperator r = mergeToConjunction(leftAndChild.copy(), rightAndChild.copy());
@@ -52,7 +54,8 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
     }
   }
 
-  private FilterOperator getDnf(FilterOperator filter) throws LogicalOptimizeException {
+  private FilterOperator getDnf(FilterOperator filter)
+      throws LogicalOptimizeException, MetadataException {
     if (filter.isLeaf()) {
       return filter;
     }

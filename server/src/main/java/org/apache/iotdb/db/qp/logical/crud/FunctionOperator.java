@@ -42,8 +42,7 @@ public class FunctionOperator extends FilterOperator {
   }
 
   @Override
-  public boolean addChildOperator(FilterOperator op) {
+  public void addChildOperator(FilterOperator op) {
     logger.error("cannot add child to leaf FilterOperator, now it's FunctionOperator");
-    return false;
   }
 }

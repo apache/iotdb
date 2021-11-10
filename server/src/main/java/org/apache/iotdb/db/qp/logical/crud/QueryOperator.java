@@ -337,7 +337,7 @@ public class QueryOperator extends Operator {
 
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
-          concatFilterByDevice(generator, devices, whereComponent.getFilterOperator()));
+          concatFilterByDevice(devices, whereComponent.getFilterOperator()));
     }
 
     return alignByDevicePlan;
@@ -427,15 +427,15 @@ public class QueryOperator extends Operator {
   // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
   //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
   private Map<String, IExpression> concatFilterByDevice(
-      PhysicalGenerator generator, List<PartialPath> devices, FilterOperator operator)
-      throws QueryProcessException {
+      List<PartialPath> devices, FilterOperator operator) throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
     Set<PartialPath> filterPaths = new HashSet<>();
     Iterator<PartialPath> deviceIterator = devices.iterator();
     while (deviceIterator.hasNext()) {
       PartialPath device = deviceIterator.next();
-      FilterOperator newOperator = operator.copy();
+      FilterOperator newOperator;
       try {
+        newOperator = operator.copy();
         concatFilterPath(device, newOperator, filterPaths);
       } catch (MetadataException | LogicalOptimizeException e) {
         deviceIterator.remove();

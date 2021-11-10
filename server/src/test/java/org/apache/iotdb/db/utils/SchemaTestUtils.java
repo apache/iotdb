@@ -16,15 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.strategy.optimizer;
+package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 
-/** provide a filter operator, optimize it. */
-@FunctionalInterface
-public interface IFilterOptimizer {
+import java.util.List;
 
-  FilterOperator optimize(FilterOperator filter) throws QueryProcessException, MetadataException;
+import static org.junit.Assert.assertFalse;
+
+public class SchemaTestUtils {
+
+  public static MeasurementPath getMeasurementPath(String pathPatternString)
+      throws MetadataException {
+    PartialPath pathPattern = new PartialPath(pathPatternString);
+    List<MeasurementPath> measurementPaths = IoTDB.metaManager.getMeasurementPaths(pathPattern);
+    assertFalse(measurementPaths.isEmpty());
+    return measurementPaths.get(0);
+  }
 }

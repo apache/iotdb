@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -217,13 +219,16 @@ public class TTLTest {
   @Test
   public void testTTLRead()
       throws IOException, WriteProcessException, StorageEngineException, QueryProcessException,
-          IllegalPathException {
+          MetadataException {
     prepareData();
 
     // files before ttl
     QueryDataSource dataSource =
         storageGroupProcessor.query(
-            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+            SchemaTestUtils.getMeasurementPath(sg1 + "." + s1),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
+            null);
     List<TsFileResource> seqResource = dataSource.getSeqResources();
     List<TsFileResource> unseqResource = dataSource.getUnseqResources();
     assertEquals(4, seqResource.size());
@@ -239,7 +244,8 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
-    PartialPath path = new PartialPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1);
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1);
     Set<String> allSensors = new HashSet<>();
     allSensors.add(s1);
     IBatchReader reader =

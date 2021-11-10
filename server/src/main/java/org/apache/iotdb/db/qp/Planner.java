@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
@@ -134,11 +135,14 @@ public class Planner {
       return root;
     }
     FilterOperator filter = whereComponent.getFilterOperator();
-    filter = new RemoveNotOptimizer().optimize(filter);
-    filter = new DnfFilterOptimizer().optimize(filter);
-    filter = new MergeSingleFilterOptimizer().optimize(filter);
+    try {
+      filter = new RemoveNotOptimizer().optimize(filter);
+      filter = new DnfFilterOptimizer().optimize(filter);
+      filter = new MergeSingleFilterOptimizer().optimize(filter);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    }
     whereComponent.setFilterOperator(filter);
-
     return root;
   }
 

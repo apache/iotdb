@@ -27,7 +27,6 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
@@ -98,7 +97,7 @@ public class ServerTimeGenerator extends TimeGenerator {
     TSDataType dataType;
     QueryDataSource queryDataSource;
     try {
-      dataType = IoTDB.metaManager.getSeriesType(path);
+      dataType = path.getSeriesType();
       queryDataSource =
           QueryResourceManager.getInstance().getQueryDataSource(path, context, valueFilter);
       // update valueFilter by TTL

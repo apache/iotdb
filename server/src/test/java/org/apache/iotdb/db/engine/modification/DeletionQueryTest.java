@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -105,13 +106,15 @@ public class DeletionQueryTest {
         .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
@@ -145,14 +148,15 @@ public class DeletionQueryTest {
         .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
@@ -198,13 +202,15 @@ public class DeletionQueryTest {
         .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
@@ -249,14 +255,15 @@ public class DeletionQueryTest {
         .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
@@ -331,13 +338,15 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().syncCloseAllProcessor();
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
