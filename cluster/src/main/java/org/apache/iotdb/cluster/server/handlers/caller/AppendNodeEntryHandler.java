@@ -88,6 +88,14 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     long resp = response.status;
 
     if (resp == RESPONSE_STRONG_ACCEPT) {
+      synchronized (log) {
+        if (log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size()
+            >= quorumSize) {
+          log.acceptedTime = System.nanoTime();
+        }
+        log.getStronglyAcceptedNodeIds().add(receiver.nodeIdentifier);
+        log.notifyAll();
+      }
       member
           .getVotingLogList()
           .onStronglyAccept(

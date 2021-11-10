@@ -104,4 +104,8 @@ public class VotingLogList {
   public synchronized void clear() {
     logList.clear();
   }
+
+  public int size() {
+    return logList.size();
+  }
 }

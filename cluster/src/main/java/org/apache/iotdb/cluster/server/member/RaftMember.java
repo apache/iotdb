@@ -1632,7 +1632,9 @@ public abstract class RaftMember {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
       while (stronglyAcceptedNodeNum < quorumSize
-          && (!ENABLE_WEAK_ACCEPTANCE || (totalAccepted < quorumSize))
+          && (!ENABLE_WEAK_ACCEPTANCE
+              || (totalAccepted < allNodes.size() - 1)
+              || votingLogList.size() > config.getMaxNumOfLogsInMem())
           && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
           && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
         try {

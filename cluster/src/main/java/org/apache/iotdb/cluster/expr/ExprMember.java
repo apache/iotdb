@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.expr;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher;
@@ -59,7 +60,8 @@ public class ExprMember extends MetaGroupMember {
   public static boolean bypassRaft = false;
   public static boolean useSlidingWindow = false;
 
-  private int windowCapacity = 10000;
+  private int windowCapacity =
+      ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem() * 2;
   private int windowLength = 0;
   private Log[] logWindow = new Log[windowCapacity];
   private long firstPosPrevIndex = 0;
@@ -282,6 +284,7 @@ public class ExprMember extends MetaGroupMember {
 
         Statistic.RAFT_WINDOW_LENGTH.add(windowLength);
       } else {
+        Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
         result.setStatus(Response.RESPONSE_LOG_MISMATCH);
         result.setHeader(getHeader());
         return result;
