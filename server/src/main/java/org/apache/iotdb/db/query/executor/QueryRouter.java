@@ -37,7 +37,6 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -258,7 +257,7 @@ public class QueryRouter implements IQueryRouter {
         (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
     return new GroupByFillDataSet(
         groupByFillPlan.getDeduplicatedPaths(),
-        SchemaUtils.getSeriesTypesByPaths(groupByFillPlan.getDeduplicatedPaths()),
+        groupByFillPlan.getDeduplicatedDataTypes(),
         groupByEngineDataSet,
         groupByFillPlan.getFillType(),
         context,

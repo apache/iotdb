@@ -492,8 +492,7 @@ public class QueryOperator extends Operator {
     }
 
     PartialPath concatPath = prefix.concatPath(filterPath);
-    List<MeasurementPath> concatMeasurementPaths =
-        IoTDB.metaManager.getMeasurementPaths(concatPath);
+    List<MeasurementPath> concatMeasurementPaths = getMatchedTimeseries(concatPath);
     if (concatMeasurementPaths.isEmpty()) {
       throw new LogicalOptimizeException(
           String.format("Unknown time series %s in `where clause`", concatPath));

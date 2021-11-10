@@ -259,9 +259,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       PartialPath fullPath = new PartialPath(device.getFullPath(), measurement);
       IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
       if (schema instanceof UnaryMeasurementSchema) {
-        MeasurementPath measurementFullPath = new MeasurementPath(fullPath);
-        measurementFullPath.setMeasurementSchema(schema);
-        return measurementFullPath;
+        return new MeasurementPath(device.getFullPath(), measurement, schema);
       } else {
         String vectorPath = fullPath.getDevice();
         return new AlignedPath(vectorPath, fullPath.getMeasurement());
