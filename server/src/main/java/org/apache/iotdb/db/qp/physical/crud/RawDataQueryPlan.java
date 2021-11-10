@@ -137,7 +137,7 @@ public class RawDataQueryPlan extends QueryPlan {
         });
     this.deduplicatedPaths = deduplicatedPaths;
   }
-  
+
   public void setDeduplicatedPaths(List<PartialPath> deduplicatedPaths) {
     this.deduplicatedPaths = deduplicatedPaths;
   }
@@ -170,7 +170,7 @@ public class RawDataQueryPlan extends QueryPlan {
   public void setDeduplicatedVectorPaths(List<PartialPath> deduplicatedVectorPaths) {
     this.deduplicatedVectorPaths = deduplicatedVectorPaths;
   }
-  
+
   /**
    * RawQueryWithoutValueFilter should call this method to use grouped vector partial path to
    * replace the previous deduplicatedPaths

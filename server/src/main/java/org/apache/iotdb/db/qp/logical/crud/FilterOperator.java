@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.logical.crud;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
@@ -281,20 +280,12 @@ public class FilterOperator implements Comparable<FilterOperator> {
     return sc.toString();
   }
 
-  public FilterOperator copy() throws MetadataException {
+  public FilterOperator copy() {
     FilterOperator ret = new FilterOperator(this.filterType);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     if (singlePath != null) {
-      if (singlePath instanceof MeasurementPath) {
-        ret.singlePath =
-            new MeasurementPath(
-                singlePath.getDevice(),
-                singlePath.getMeasurement(),
-                singlePath.getMeasurementSchema());
-      } else {
-        ret.singlePath = new PartialPath(singlePath.getNodes().clone());
-      }
+      ret.singlePath = singlePath.clone();
     }
     for (FilterOperator filterOperator : this.childOperators) {
       ret.addChildOperator(filterOperator.copy());

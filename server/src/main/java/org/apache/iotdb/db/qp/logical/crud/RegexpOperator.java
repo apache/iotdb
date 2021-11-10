@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -95,18 +94,8 @@ public class RegexpOperator extends FunctionOperator {
   }
 
   @Override
-  public RegexpOperator copy() throws MetadataException {
-    PartialPath newSinglePath;
-    if (singlePath instanceof MeasurementPath) {
-      newSinglePath =
-          new MeasurementPath(
-              singlePath.getDevice(),
-              singlePath.getMeasurement(),
-              singlePath.getMeasurementSchema());
-    } else {
-      newSinglePath = new PartialPath(singlePath.getNodes().clone());
-    }
-    RegexpOperator ret = new RegexpOperator(this.filterType, newSinglePath, value);
+  public RegexpOperator copy() {
+    RegexpOperator ret = new RegexpOperator(this.filterType, singlePath.clone(), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;

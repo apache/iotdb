@@ -56,7 +56,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
  * module
  */
-public class PartialPath extends Path implements Comparable<Path> {
+public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
 
@@ -410,5 +410,10 @@ public class PartialPath extends Path implements Comparable<Path> {
       Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  @Override
+  public PartialPath clone() {
+    return new PartialPath(this.getNodes().clone());
   }
 }

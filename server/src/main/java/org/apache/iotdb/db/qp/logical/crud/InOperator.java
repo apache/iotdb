@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -155,18 +154,9 @@ public class InOperator extends FunctionOperator {
   }
 
   @Override
-  public InOperator copy() throws MetadataException {
-    PartialPath newSinglePath;
-    if (singlePath instanceof MeasurementPath) {
-      newSinglePath =
-          new MeasurementPath(
-              singlePath.getDevice(),
-              singlePath.getMeasurement(),
-              singlePath.getMeasurementSchema());
-    } else {
-      newSinglePath = new PartialPath(singlePath.getNodes().clone());
-    }
-    InOperator ret = new InOperator(this.filterType, newSinglePath, not, new HashSet<>(values));
+  public InOperator copy() {
+    InOperator ret =
+        new InOperator(this.filterType, singlePath.clone(), not, new HashSet<>(values));
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;

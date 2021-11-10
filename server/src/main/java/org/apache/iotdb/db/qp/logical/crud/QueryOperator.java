@@ -198,21 +198,17 @@ public class QueryOperator extends Operator {
     if (whereComponent != null) {
       FilterOperator filterOperator = whereComponent.getFilterOperator();
       List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
-      try {
-        HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-        for (PartialPath filterPath : filterPaths) {
-          rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
-          pathTSDataTypeHashMap.put(
-              filterPath,
-              SQLConstant.isReservedPath(filterPath)
-                  ? TSDataType.INT64
-                  : filterPath.getSeriesType());
-        }
-        IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
-        rawDataQueryPlan.setExpression(expression);
-      } catch (MetadataException e) {
-        throw new LogicalOptimizeException(e.getMessage());
+      HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+      for (PartialPath filterPath : filterPaths) {
+        rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
+        pathTSDataTypeHashMap.put(
+            filterPath,
+            SQLConstant.isReservedPath(filterPath)
+                ? TSDataType.INT64
+                : filterPath.getSeriesType());
       }
+      IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
+      rawDataQueryPlan.setExpression(expression);
     }
 
     if (queryPlan instanceof QueryIndexPlan) {
@@ -435,21 +431,17 @@ public class QueryOperator extends Operator {
       }
       // transform to a list so it can be indexed
       List<PartialPath> filterPathList = new ArrayList<>(filterPaths);
-      try {
-        Map<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-        for (PartialPath filterPath : filterPathList) {
-          pathTSDataTypeHashMap.put(
-              filterPath,
-              SQLConstant.isReservedPath(filterPath)
-                  ? TSDataType.INT64
-                  : filterPath.getSeriesType());
-        }
-        deviceToFilterMap.put(
-            device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
-        filterPaths.clear();
-      } catch (MetadataException e) {
-        throw new QueryProcessException(e);
+      Map<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+      for (PartialPath filterPath : filterPathList) {
+        pathTSDataTypeHashMap.put(
+            filterPath,
+            SQLConstant.isReservedPath(filterPath)
+                ? TSDataType.INT64
+                : filterPath.getSeriesType());
       }
+      deviceToFilterMap.put(
+          device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
+      filterPaths.clear();
     }
 
     return deviceToFilterMap;

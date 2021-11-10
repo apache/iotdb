@@ -135,13 +135,9 @@ public class Planner {
       return root;
     }
     FilterOperator filter = whereComponent.getFilterOperator();
-    try {
-      filter = new RemoveNotOptimizer().optimize(filter);
-      filter = new DnfFilterOptimizer().optimize(filter);
-      filter = new MergeSingleFilterOptimizer().optimize(filter);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-    }
+    filter = new RemoveNotOptimizer().optimize(filter);
+    filter = new DnfFilterOptimizer().optimize(filter);
+    filter = new MergeSingleFilterOptimizer().optimize(filter);
     whereComponent.setFilterOperator(filter);
     return root;
   }

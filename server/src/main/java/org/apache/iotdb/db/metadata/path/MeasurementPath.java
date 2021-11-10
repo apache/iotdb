@@ -222,4 +222,16 @@ public class MeasurementPath extends PartialPath {
         curSize,
         deletionList);
   }
+
+  @Override
+  public MeasurementPath clone() {
+    MeasurementPath newMeasurementPath = null;
+    try {
+      newMeasurementPath =
+          new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
+    return newMeasurementPath;
+  }
 }
