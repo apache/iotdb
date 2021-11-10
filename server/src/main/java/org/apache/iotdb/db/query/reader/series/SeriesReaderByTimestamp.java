@@ -33,9 +33,9 @@ import java.util.Set;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
-  private SeriesReader seriesReader;
+  private final SeriesReader seriesReader;
   private BatchData batchData;
-  private boolean ascending;
+  private final boolean ascending;
 
   public SeriesReaderByTimestamp(
       PartialPath seriesPath,

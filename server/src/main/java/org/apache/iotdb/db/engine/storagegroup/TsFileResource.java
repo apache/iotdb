@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -52,7 +51,6 @@ import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,12 +108,6 @@ public class TsFileResource {
 
   private boolean isSeq;
 
-  /**
-   * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
-   * process.
-   */
-  private List<IChunkMetadata> chunkMetadataList;
-
   /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
   private List<ReadOnlyMemChunk> readOnlyMemChunk;
 
@@ -163,7 +155,6 @@ public class TsFileResource {
     this.closed = other.closed;
     this.deleted = other.deleted;
     this.isMerging = other.isMerging;
-    this.chunkMetadataList = other.chunkMetadataList;
     this.readOnlyMemChunk = other.readOnlyMemChunk;
     this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
@@ -191,14 +182,11 @@ public class TsFileResource {
 
   /** unsealed TsFile, for query */
   public TsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
+      List<ReadOnlyMemChunk> readOnlyMemChunk, TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
     this.timeIndex = originTsFileResource.timeIndex;
     this.timeIndexType = originTsFileResource.timeIndexType;
-    this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
     this.version = originTsFileResource.version;
@@ -317,10 +305,6 @@ public class TsFileResource {
     return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
-  public List<IChunkMetadata> getChunkMetadataList() {
-    return new ArrayList<>(chunkMetadataList);
-  }
-
   public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
     return readOnlyMemChunk;
   }
@@ -391,7 +375,6 @@ public class TsFileResource {
       modFile = null;
     }
     processor = null;
-    chunkMetadataList = null;
     timeIndex.close();
   }
 

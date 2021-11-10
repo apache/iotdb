@@ -34,7 +34,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -177,7 +176,7 @@ public class AlignedPath extends PartialPath {
   }
 
   public TSDataType getSeriesType() {
-    return getMeasurementSchema().getType();
+    return TSDataType.VECTOR;
   }
 
   @Override
@@ -257,14 +256,10 @@ public class AlignedPath extends PartialPath {
 
   @Override
   public TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
+      List<ReadOnlyMemChunk> readOnlyMemChunk, TsFileResource originTsFileResource)
       throws IOException {
-    TsFileResource tsFileResource =
-        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
-    tsFileResource.setTimeSeriesMetadata(
-        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+    TsFileResource tsFileResource = new TsFileResource(readOnlyMemChunk, originTsFileResource);
+    tsFileResource.setTimeSeriesMetadata(generateTimeSeriesMetadata(readOnlyMemChunk));
     return tsFileResource;
   }
 
@@ -273,8 +268,7 @@ public class AlignedPath extends PartialPath {
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
   private AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
-      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
-      throws IOException {
+      List<ReadOnlyMemChunk> readOnlyMemChunk) throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
     timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
@@ -294,18 +288,6 @@ public class AlignedPath extends PartialPath {
       valueMetadata.setTSDataType(valueChunkMetadata.getType());
       valueMetadata.setStatistics(Statistics.getStatsByType(valueChunkMetadata.getType()));
       valueTimeSeriesMetadataList.add(valueMetadata);
-    }
-
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
-      timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
-      for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-        valueTimeSeriesMetadataList
-            .get(i)
-            .getStatistics()
-            .mergeStatistics(
-                alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
-      }
     }
 
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {

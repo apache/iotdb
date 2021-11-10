@@ -20,33 +20,35 @@ package org.apache.iotdb.db.query.reader.chunk.metadata;
 
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
+import org.apache.iotdb.db.query.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
+public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
-  private final PartialPath seriesPath;
+  private final AlignedPath seriesPath;
   private final QueryContext context;
   // time filter or value filter, only used to check time range
   private final Filter filter;
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
-  public DiskChunkMetadataLoader(
-      TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter filter) {
+  public DiskAlignedChunkMetadataLoader(
+      TsFileResource resource, AlignedPath seriesPath, QueryContext context, Filter filter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
@@ -55,11 +57,11 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
+    List<AlignedChunkMetadata> alignedChunkMetadataList =
+        ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getChunkMetadataList();
 
-    List<IChunkMetadata> chunkMetadataList =
-        ((TimeseriesMetadata) timeSeriesMetadata).getChunkMetadataList();
-
-    List<Modification> pathModifications =
+    // get all sub sensors' modifications
+    List<List<Modification>> pathModifications =
         context.getPathModifications(resource.getModFile(), seriesPath);
 
     if (context.isDebug()) {
@@ -70,49 +72,39 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
       pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
     }
 
-    if (!pathModifications.isEmpty()) {
-      QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
-    }
+    // remove ChunkMetadata that have been deleted
+    QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, pathModifications);
 
     if (context.isDebug()) {
       DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
-      chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+      alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
     }
+
+    // remove not satisfied ChunkMetaData
+    alignedChunkMetadataList.removeIf(
+        alignedChunkMetaData ->
+            (filter != null
+                    && !filter.satisfyStartEndTime(
+                        alignedChunkMetaData.getStartTime(), alignedChunkMetaData.getEndTime()))
+                || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
 
     // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
     // very cheap.
-    chunkMetadataList.forEach(
+    alignedChunkMetadataList.forEach(
         chunkMetadata -> {
           if (chunkMetadata.needSetChunkLoader()) {
             chunkMetadata.setFilePath(resource.getTsFilePath());
             chunkMetadata.setClosed(resource.isClosed());
-            chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
+            chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context.isDebug()));
           }
         });
 
-    /*
-     * remove not satisfied ChunkMetaData
-     */
-    chunkMetadataList.removeIf(
-        chunkMetaData ->
-            (filter != null
-                    && !filter.satisfyStartEndTime(
-                        chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-                || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-
-    // For chunkMetadata from old TsFile, do not set version
-    for (IChunkMetadata metadata : chunkMetadataList) {
-      if (!metadata.isFromOldTsFile()) {
-        metadata.setVersion(resource.getVersion());
-      }
-    }
-
     if (context.isDebug()) {
       DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
-      chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+      alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
     }
 
-    return chunkMetadataList;
+    return new ArrayList<>(alignedChunkMetadataList);
   }
 
   @Override

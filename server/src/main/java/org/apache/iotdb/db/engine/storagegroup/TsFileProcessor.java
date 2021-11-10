@@ -32,7 +32,6 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -49,7 +48,6 @@ import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
@@ -59,7 +57,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -1301,21 +1298,10 @@ public class TsFileProcessor {
         }
       }
 
-      ModificationFile modificationFile = tsFileResource.getModFile();
-      List<Modification> modifications = context.getPathModifications(modificationFile, fullPath);
-
-      List<IChunkMetadata> chunkMetadataList =
-          fullPath
-              .getMeasurementSchema()
-              .getVisibleMetadataListFromWriter(writer, fullPath.getDevice());
-
-      QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
-      chunkMetadataList.removeIf(context::chunkNotSatisfy);
-
       // get in memory data
-      if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
+      if (!readOnlyMemChunks.isEmpty()) {
         tsfileResourcesForQuery.add(
-            fullPath.createTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
+            fullPath.createTsFileResource(readOnlyMemChunks, tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error(

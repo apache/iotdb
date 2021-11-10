@@ -62,6 +62,9 @@ public class TimePageReader {
     return timeBatch;
   }
 
+  /**
+   * In case that we use sequence read, and the page doesn't have statistics, so we won't know time array's length at first
+   */
   public long[] getNextTimeBatch() throws IOException {
     if (pageHeader.getStatistics() != null) {
       return nexTimeBatch();
