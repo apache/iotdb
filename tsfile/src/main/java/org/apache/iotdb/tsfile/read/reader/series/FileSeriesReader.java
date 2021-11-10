@@ -42,9 +42,8 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
 
   @Override
   protected void initChunkReader(IChunkMetadata chunkMetaData) throws IOException {
-    Chunk chunk;
     if (chunkMetaData instanceof ChunkMetadata) {
-      chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
+      Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
       this.chunkReader = new ChunkReader(chunk, filter);
     } else {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;

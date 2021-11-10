@@ -50,6 +50,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -420,7 +421,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   public List<ITimeSeriesMetadata> readTimeseriesMetadata(
-      String device, Set<String> measurements) // Todo:AlignedTimeseriesMetadata
+      String device, Set<String> measurements)
       throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
@@ -429,7 +430,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }
-    List<ITimeSeriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
+    List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
     List<String> measurementList = new ArrayList<>(measurements);
     Set<String> measurementsHadFound = new HashSet<>();
     // the content of next Layer MeasurementNode of the specific device's DeviceNode
@@ -437,28 +438,25 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<MetadataIndexEntry, Long> measurementMetadataIndexPair = metadataIndexPair; // Todo:这么移动正确吗
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
 
+    // next layer MeasurementNode of the specific DeviceNode
+    MetadataIndexNode measurementMetadataIndexNode;
+    try {
+      measurementMetadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+    } catch (BufferOverflowException e) {
+      logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
+      throw e;
+    }
+    // 获取到DeviceNode下的第一个传感器节点(可能中间或者叶子)后，就要读取其下的第一个TimeseriesMetadata
+    TimeseriesMetadata firstTimeseriesMetadata=getFirstTimeseriesMetadata(measurementMetadataIndexNode);
+
     for (int i = 0; i < measurementList.size(); i++) {
       if (measurementsHadFound.contains(measurementList.get(i))) {
         continue;
       }
       timeseriesMetadataList.clear();
-      // first Node of ZeSong Tree, it must be a DeviceNode
-      MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
-      // Todo:需要加这个判断吗？因为metadataIndexNode是泽嵩树的第一个节点，他一定是个设备节点（叶子或者中间）
-      if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
-        try {
-          // next layer MeasurementNode of the specific DeviceNode
-          metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
-        } catch (BufferOverflowException e) {
-          logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
-          throw e;
-        }
+      measurementMetadataIndexPair =
+            getMetadataAndEndOffset(measurementMetadataIndexNode, measurementList.get(i), false, false);
 
-        // 获取到DeviceNode下的第一个传感器节点(可能中间或者叶子)后，就要读取其下的第一个TimeseriesMetadata
-
-        measurementMetadataIndexPair =
-            getMetadataAndEndOffset(metadataIndexNode, measurementList.get(i), false, false);
-      }
       if (measurementMetadataIndexPair == null) {
         return Collections.emptyList();
       }
@@ -466,10 +464,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       buffer =
           readData(
               measurementMetadataIndexPair.left.getOffset(), measurementMetadataIndexPair.right);
-
-      // Get first timeseriesMetadata to check whether is TimeChunk
-      TimeseriesMetadata firstTimeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer, true);
-      timeseriesMetadataList.add(firstTimeseriesMetadata);
       while (buffer.hasRemaining()) {
         try {
           timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
@@ -479,16 +473,6 @@ public class TsFileSequenceReader implements AutoCloseable {
           throw e;
         }
       }
-      if (firstTimeseriesMetadata.getMeasurementId().equals("")) {
-        resultTimeseriesMetadataList.addAll(timeseriesMetadataList);
-        timeseriesMetadataList.forEach(
-            metadata -> {
-              measurementsHadFound.add(metadata.getMeasurementId());
-            });
-      } else {
-
-      }
-
       for (int j = i; j < measurementList.size(); j++) {
         String current = measurementList.get(j);
         if (!measurementsHadFound.contains(current)) {
@@ -499,11 +483,25 @@ public class TsFileSequenceReader implements AutoCloseable {
           }
         }
         if (measurementsHadFound.size() == measurements.size()) {
-          return resultTimeseriesMetadataList;
+          List<ITimeSeriesMetadata> timeSeriesMetadataList=new ArrayList<>();
+          if(firstTimeseriesMetadata.getMeasurementId().equals("")){
+            timeSeriesMetadataList.add(new AlignedTimeSeriesMetadata(firstTimeseriesMetadata,resultTimeseriesMetadataList));
+            return timeSeriesMetadataList;
+          }else{
+            timeSeriesMetadataList.addAll(resultTimeseriesMetadataList);
+            return timeSeriesMetadataList;
+          }
         }
       }
     }
-    return resultTimeseriesMetadataList;
+    List<ITimeSeriesMetadata> timeSeriesMetadataList=new ArrayList<>();
+    if(firstTimeseriesMetadata.getMeasurementId().equals("")){
+      timeSeriesMetadataList.add(new AlignedTimeSeriesMetadata(firstTimeseriesMetadata,resultTimeseriesMetadataList));
+      return timeSeriesMetadataList;
+    }else{
+      timeSeriesMetadataList.addAll(resultTimeseriesMetadataList);
+      return timeSeriesMetadataList;
+    }
   }
 
   protected int binarySearchInTimeseriesMetadataList(
@@ -610,14 +608,42 @@ public class TsFileSequenceReader implements AutoCloseable {
     return paths;
   }
 
-  /** @param metadataIndexNode */
-  private void getFirstTimeseriesMetadata(MetadataIndexNode metadataIndexNode) throws IOException {
-    if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
-      ByteBuffer buffer = readData(metadataIndexNode.getChildren().get(0).getOffset(), metadataIndexNode.getEndOffset());
-      TimeseriesMetadata.deserializeFrom(buffer,false);
-      return
-    } else if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) {
+  private TimeseriesMetadata getFirstTimeseriesMetadata(MetadataIndexNode measurementNode) throws IOException {
+    if(measurementNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)){
+      ByteBuffer buffer;
+      if(measurementNode.getChildren().size()>1){
+        buffer=readData(measurementNode.getChildren().get(0).getOffset(),measurementNode.getChildren().get(1).getOffset());
+      }else{
+        buffer=readData(measurementNode.getChildren().get(0).getOffset(),measurementNode.getEndOffset());
+      }
+      TimeseriesMetadata firstTimeseriesMetadata=TimeseriesMetadata.deserializeFrom(buffer,false);
+      return firstTimeseriesMetadata;
+    }else if(measurementNode.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)){
+      ByteBuffer buffer=readData(measurementNode.getChildren().get(0).getOffset(),measurementNode.getChildren().get(1).getOffset());
+      MetadataIndexNode metadataIndexNode= MetadataIndexNode.deserializeFrom(buffer);
+      getFirstTimeseriesMetadata(metadataIndexNode);
+    }
+    return null;
+  }
 
+  /**
+   *
+   * @param buffer
+   * @param type
+   * @return
+   * @throws IOException
+   */
+  private boolean getFirstTimeseriesMetadata(ByteBuffer buffer,MetadataIndexNodeType type) throws IOException {
+    if (type.equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {//若是叶子节点，则buffer存放的是TimeseriesMetadata节点内容
+     // ByteBuffer buffer = readData(metadataIndexNode.getChildren().get(0).getOffset(), metadataIndexNode.getEndOffset());
+      TimeseriesMetadata firstTimeseriesMetadata= TimeseriesMetadata.deserializeFrom(buffer,false);
+      return firstTimeseriesMetadata.getMeasurementId().equals("");
+    } else if (type.equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) { //若是中间传感器节点，则buffer里存放的是该节点里指向下一层传感器节点
+      MetadataIndexNode leafMeasurementNode = MetadataIndexNode.deserializeFrom(buffer);
+      long endOffset = leafMeasurementNode.getEndOffset();
+      if (i != metadataIndexListSize - 1) {
+        endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+      }
     }
   }
 
