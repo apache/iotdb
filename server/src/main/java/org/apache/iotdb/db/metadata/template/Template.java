@@ -391,7 +391,10 @@ public class Template {
 
   public IMNode getPathNodeInTemplate(String path) throws IllegalPathException {
     String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
-    IMNode cur = directNodes.get(pathNodes[0]);
+    if (pathNodes.length == 0) {
+      return null;
+    }
+    IMNode cur = directNodes.getOrDefault(pathNodes[0], null);
     if (cur == null || cur.isMeasurement()) {
       return cur;
     }
