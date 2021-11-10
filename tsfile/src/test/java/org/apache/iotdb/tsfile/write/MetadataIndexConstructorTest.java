@@ -163,9 +163,9 @@ public class MetadataIndexConstructorTest {
 
   /** Example 5: 1 entities with 1 vector containing 9 measurements */
   @Test
-  public void vectorIndexTest1() {
+  public void vectorIndexTest() {
     String[] devices = {"d0"};
-    int[][] vectorMeasurement = {{9, 9}};
+    int[][] vectorMeasurement = {{9}};
     test(devices, vectorMeasurement, null);
   }
 
