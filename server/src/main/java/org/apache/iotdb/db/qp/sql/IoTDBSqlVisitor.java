@@ -427,6 +427,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
+  // Create Timeseries Of Schema Template
+
+  @Override
+  public Operator visitCreateTimeseriesOfSchemaTemplate(
+      IoTDBSqlParser.CreateTimeseriesOfSchemaTemplateContext ctx) {
+    SetUsingSchemaTemplateOperator operator =
+        new SetUsingSchemaTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SET_USING);
+    operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
+    return operator;
+  }
+
   // Create Function
 
   @Override
@@ -769,15 +780,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new SetSchemaTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SET);
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
     operator.setTemplateName(ctx.templateName.getText());
-    return operator;
-  }
-
-  // Set Using Schema Template
-  @Override
-  public Operator visitSetUsingSchemaTemplate(IoTDBSqlParser.SetUsingSchemaTemplateContext ctx) {
-    SetUsingSchemaTemplateOperator operator =
-        new SetUsingSchemaTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SET_USING);
-    operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
     return operator;
   }
 

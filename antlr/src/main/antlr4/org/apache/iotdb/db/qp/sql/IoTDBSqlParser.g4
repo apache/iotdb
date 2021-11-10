@@ -35,11 +35,12 @@ statement
     ;
 
 ddlStatement
-    : setStorageGroup | createStorageGroup | createTimeseries | createSchemaTemplate
+    : setStorageGroup | createStorageGroup | createTimeseries
+    | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery | createSnapshot
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
     | dropFunction | dropTrigger | dropContinuousQuery | setTTL | unsetTTL
-    | setSchemaTemplate | setUsingSchemaTemplate | unsetSchemaTemplate | startTrigger | stopTrigger
+    | setSchemaTemplate | unsetSchemaTemplate | startTrigger | stopTrigger
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -97,6 +98,11 @@ templateMeasurementClause
     | alignedDevice=nodeNameWithoutWildcard
     LR_BRACKET nodeNameWithoutWildcard attributeClauses (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
     globalCompressorClause? #alignedTemplateMeasurement
+    ;
+
+// Create Timeseries Of Schema Template
+createTimeseriesOfSchemaTemplate
+    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
     ;
 
 // Create Function
@@ -204,11 +210,6 @@ unsetTTL
 // Set Schema Template
 setSchemaTemplate
     : SET SCHEMA TEMPLATE templateName=ID TO prefixPath
-    ;
-
-// Set Using Schema Template
-setUsingSchemaTemplate
-    : SET USING SCHEMA TEMPLATE ON prefixPath
     ;
 
 // Unset Schema Template
