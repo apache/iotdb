@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Random;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -33,22 +42,11 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Random;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /** test writing processing correction combining writing process and reading process. */
 public class WriteTest {
@@ -241,6 +239,9 @@ public class WriteTest {
       strings = getNextRecord(lineCount, stageState);
       for (String str : strings) {
         TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
+        if (record.dataPointList.isEmpty()) {
+          continue;
+        }
         tsFileWriter.write(record);
       }
       lineCount++;
