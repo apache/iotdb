@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -46,9 +39,18 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 
 public class DeviceStringTest {
 

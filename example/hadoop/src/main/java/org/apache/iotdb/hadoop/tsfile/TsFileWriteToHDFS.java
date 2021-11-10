@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.hadoop.tsfile;
 
-import java.io.File;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,8 +31,11 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
 
 public class TsFileWriteToHDFS {
 

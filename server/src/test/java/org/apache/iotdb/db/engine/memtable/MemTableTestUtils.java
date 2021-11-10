@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -32,6 +30,9 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MemTableTestUtils {
 

@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.tsfile;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -31,8 +28,13 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 
 public class TsFileForceAppendWrite {
 

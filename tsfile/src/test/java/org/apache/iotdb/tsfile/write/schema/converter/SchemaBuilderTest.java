@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.schema.converter;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,7 +27,15 @@ import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
 
 public class SchemaBuilderTest {
 
