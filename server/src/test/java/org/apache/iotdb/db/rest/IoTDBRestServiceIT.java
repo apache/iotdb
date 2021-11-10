@@ -21,8 +21,10 @@ package org.apache.iotdb.db.rest;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -39,12 +41,11 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -112,7 +113,7 @@ public class IoTDBRestServiceIT {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/insertTablet");
       String json =
-          "{\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232161960,1635232162960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\"],\"dataType\":[\"TEXT\",\"INT32\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[\"11\",2],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":false,\"deviceId\":\"root.sg25\",\"rowSize\":2}";
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\"],\"dataTypes\":[\"TEXT\",\"DOUBLE\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -156,28 +157,66 @@ public class IoTDBRestServiceIT {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
-      Gson json = new Gson();
-      List<Map> list = json.fromJson(message, List.class);
-      Assert.assertTrue(list.size() > 0);
-      Assert.assertEquals("root.sg25.s3", list.get(0).get("measurements"));
-      Assert.assertEquals("root.sg25.s4", list.get(1).get("measurements"));
-      Assert.assertEquals("root.sg25.s5", list.get(2).get("measurements"));
-      Assert.assertEquals("root.sg25.s6", list.get(3).get("measurements"));
-      Assert.assertEquals("root.sg25.s7", list.get(4).get("measurements"));
-      Assert.assertEquals("2aa", ((List<List>) list.get(0).get("dataValues")).get(0).get(0));
-      Assert.assertEquals(
-          1635232143960L,
-          new BigDecimal(((List<List>) list.get(0).get("dataValues")).get(0).get(1).toString())
-              .longValue());
-      Assert.assertEquals(
-          11,
-          new BigDecimal(((List<List>) list.get(1).get("dataValues")).get(0).get(0).toString())
-              .intValue());
-      Assert.assertEquals(1.41, ((List<List>) list.get(2).get("dataValues")).get(0).get(0));
-      Assert.assertNull(((List<List>) list.get(2).get("dataValues")).get(1).get(0));
-      Assert.assertFalse(
-          Boolean.parseBoolean(
-              ((List<List>) list.get(3).get("dataValues")).get(1).get(0).toString()));
+      Gson json = new GsonBuilder().create();
+      JsonObject jsonObject = json.fromJson(message, JsonObject.class);
+      List<Long> timestampsResult =
+          json.fromJson(jsonObject.get("timestamps"), new TypeToken<List<Long>>() {}.getType());
+      List<String> expressionsResult =
+          json.fromJson(jsonObject.get("expressions"), new TypeToken<List<String>>() {}.getType());
+      List<List<Object>> valuesResult =
+          json.fromJson(jsonObject.get("values"), new TypeToken<List<List<Object>>>() {}.getType());
+      Assert.assertTrue(jsonObject.size() > 0);
+      List<String> expressions =
+          new ArrayList<String>() {
+            {
+              add("root.sg25.s3");
+              add("root.sg25.s4");
+              add("root.sg25.s5");
+              add("root.sg25.s6");
+            }
+          };
+      List<Long> timestamps =
+          new ArrayList<Long>() {
+            {
+              add(1635232143960l);
+              add(1635232153960l);
+            }
+          };
+      List<String> values1 =
+          new ArrayList<String>() {
+            {
+              add("2aa");
+              add("");
+            }
+          };
+      List<Double> values2 =
+          new ArrayList<Double>() {
+            {
+              add(1.41);
+              add(null);
+            }
+          };
+      List<Boolean> values3 =
+          new ArrayList<Boolean>() {
+            {
+              add(null);
+              add(false);
+            }
+          };
+      List<Double> values4 =
+          new ArrayList<Double>() {
+            {
+              add(null);
+              add(3.5555);
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+      Assert.assertEquals(values3, valuesResult.get(2));
+      Assert.assertEquals(values4, valuesResult.get(3));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

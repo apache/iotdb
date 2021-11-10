@@ -44,7 +44,7 @@ public class PhysicalPlanConstructionHandler {
     int columnSize = rawDataType.size();
 
     Object[] columns = new Object[columnSize];
-    BitMap[] bitMaps = new BitMap[rowSize];
+    BitMap[] bitMaps = new BitMap[columnSize];
     TSDataType[] dataTypes = new TSDataType[columnSize];
 
     for (int i = 0; i < columnSize; i++) {
@@ -93,7 +93,8 @@ public class PhysicalPlanConstructionHandler {
             if (rawData.get(columnIndex).get(rowIndex) == null) {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
-              floatValues[rowIndex] = (Float) rawData.get(columnIndex).get(rowIndex);
+              floatValues[rowIndex] =
+                  ((Double) rawData.get(columnIndex).get(rowIndex)).floatValue();
             }
           }
           columns[columnIndex] = floatValues;
