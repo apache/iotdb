@@ -27,7 +27,6 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,8 +56,6 @@ import java.util.Set;
 
 public class Template {
   private String name;
-
-  // private IMNode templateRoot;
   private Map<String, IMNode> directNodes;
   private Set<String> alignedPrefix;
   private int measurementsCount;
@@ -180,26 +177,6 @@ public class Template {
     return schemaMap.get(measurementName).getMeasurementId();
   }
 
-  /**
-   * get all path in this template (to support aligned by device query)
-   *
-   * @return a hash map looks like below {vector -> [s1, s2, s3] normal_timeseries -> []}
-   */
-  public HashMap<String, List<String>> getAllPath() {
-    HashMap<String, List<String>> res = new HashMap<>();
-    for (Map.Entry<String, IMeasurementSchema> schemaEntry : schemaMap.entrySet()) {
-      if (schemaEntry.getValue() instanceof VectorMeasurementSchema) {
-        VectorMeasurementSchema vectorMeasurementSchema =
-            (VectorMeasurementSchema) schemaEntry.getValue();
-        res.put(schemaEntry.getKey(), vectorMeasurementSchema.getSubMeasurementsList());
-      } else {
-        res.put(schemaEntry.getKey(), new ArrayList<>());
-      }
-    }
-
-    return res;
-  }
-
   // region construct template tree
   /** Construct aligned measurements, checks prefix equality, path duplication and conflict */
   private void constructTemplateTree(String[] alignedPaths, IMeasurementSchema[] schemas)
@@ -269,7 +246,6 @@ public class Template {
   /** Construct single measurement, only check path conflict and duplication */
   private IMeasurementMNode constructTemplateTree(String path, IMeasurementSchema schema)
       throws IllegalPathException {
-    IEntityMNode entityMNode;
     if (getPathNodeInTemplate(path) != null) {
       throw new IllegalPathException("Path duplicated: " + path);
     }
@@ -302,27 +278,11 @@ public class Template {
       TSEncoding[] encodings,
       CompressionType[] compressors) {
     UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[nodeNames.length];
-    // VectorMeasurementSchema[] schemas = new VectorMeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
-      // #FIXME: Construct unary schema array and insert may occur error
       schemas[i] =
           new UnaryMeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
-      // schemas[i] = new VectorMeasurementSchema(nodeNames[i], nodeNames, dataTypes, encodings);
     }
     return schemas;
-  }
-  // endregion
-
-  // region test methods
-  @TestOnly
-  public IMeasurementSchema getVirtualSchema(String nodeName) {
-    return constructSchema(nodeName, TSDataType.INT32, TSEncoding.GORILLA, CompressionType.SNAPPY);
-  }
-
-  @TestOnly
-  public void constructVirtualSchemaMeasurement(String path) throws IllegalPathException {
-    String[] pathNode = MetaUtils.splitPathToDetachedPath(path);
-    constructTemplateTree(path, getVirtualSchema(pathNode[pathNode.length - 1]));
   }
   // endregion
 
