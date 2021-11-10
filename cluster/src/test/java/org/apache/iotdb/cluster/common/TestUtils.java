@@ -400,8 +400,8 @@ public class TestUtils {
       file.getParentFile().mkdirs();
       try (TsFileWriter writer = new TsFileWriter(file)) {
         for (int k = 0; k < seriesNum; k++) {
-          IMeasurementSchema schema = getTestMeasurementSchema(k);
-          writer.registerTimeseries(new Path(getTestSg(sgNum), schema.getMeasurementId()), schema);
+          UnaryMeasurementSchema schema = (UnaryMeasurementSchema) getTestMeasurementSchema(k);
+          writer.registerTimeseries(new Path(getTestSg(sgNum)), schema);
         }
 
         for (int j = 0; j < ptNum; j++) {
