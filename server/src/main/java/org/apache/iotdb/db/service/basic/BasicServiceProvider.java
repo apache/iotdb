@@ -19,26 +19,35 @@
 package org.apache.iotdb.db.service.basic;
 
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.service.basic.dto.BasicResp;
 import org.apache.iotdb.db.service.basic.dto.OpenSessionResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class BasicServiceProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicServiceProvider.class);
@@ -177,6 +186,33 @@ public class BasicServiceProvider {
     }
     return isLoggedIn;
   }
+
+  protected BasicResp checkAuthority(PhysicalPlan plan, long sessionId) {
+    List<PartialPath> paths = plan.getPaths();
+    try {
+      if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
+        return new BasicResp(TSStatusCode.NO_PERMISSION_ERROR,
+                "No permissions for this operation " + plan.getOperatorType());
+      }
+    } catch (AuthException e) {
+      LOGGER.warn("meet error while checking authorization.", e);
+      return new BasicResp(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+              e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+    return null;
+  }
+
+  private boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
+          throws AuthException {
+    String targetUser = null;
+    if (plan instanceof AuthorPlan) {
+      targetUser = ((AuthorPlan) plan).getUserName();
+    }
+    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+  }
+
 
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);
