@@ -37,12 +37,9 @@ import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.service.basic.dto.BasicResp;
 import org.apache.iotdb.db.service.basic.dto.OpenSessionResp;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -191,28 +188,28 @@ public class BasicServiceProvider {
     List<PartialPath> paths = plan.getPaths();
     try {
       if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
-        return new BasicResp(TSStatusCode.NO_PERMISSION_ERROR,
-                "No permissions for this operation " + plan.getOperatorType());
+        return new BasicResp(
+            TSStatusCode.NO_PERMISSION_ERROR,
+            "No permissions for this operation " + plan.getOperatorType());
       }
     } catch (AuthException e) {
       LOGGER.warn("meet error while checking authorization.", e);
       return new BasicResp(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-              e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
     return null;
   }
 
   private boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
-          throws AuthException {
+      throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();
     }
     return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
   }
-
 
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);

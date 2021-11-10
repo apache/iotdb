@@ -81,10 +81,10 @@ import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
-import org.apache.iotdb.db.service.basic.dto.BasicResp;
 import org.apache.iotdb.db.service.basic.dto.OpenSessionResp;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RedirectException;
@@ -241,14 +241,13 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    BasicResp basicResp =
+    return DataTypeUtils.BasicRespToTSStatus(
         closeOperation(
             req.sessionId,
             req.queryId,
             req.statementId,
             req.isSetStatementId(),
-            req.isSetQueryId());
-    return RpcUtils.getStatus(basicResp.getTsStatusCode(), basicResp.getMessage());
+            req.isSetQueryId()));
   }
 
   /** release single operation resource */
@@ -429,8 +428,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             index = 0;
           }
 
-          BasicResp basicResp=checkAuthority(physicalPlan, req.getSessionId());
-          TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+          TSStatus status =
+              DataTypeUtils.BasicRespToTSStatus(checkAuthority(physicalPlan, req.getSessionId()));
           if (status != null) {
             insertRowsPlan.getResults().put(index, status);
             isAllSuccessful = false;
@@ -452,9 +451,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             multiPlan = new CreateMultiTimeSeriesPlan();
             executeList.add(multiPlan);
           }
-
-          BasicResp basicResp=checkAuthority(physicalPlan, req.getSessionId());
-          TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+          TSStatus status =
+              DataTypeUtils.BasicRespToTSStatus(checkAuthority(physicalPlan, req.getSessionId()));
           if (status != null) {
             multiPlan.getResults().put(i, status);
             isAllSuccessful = false;
@@ -970,8 +968,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       long sessionId)
       throws IoTDBException, TException, SQLException, IOException, InterruptedException,
           QueryFilterOptimizationException {
-    BasicResp basicResp=checkAuthority(physicalPlan, sessionId);
-    TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+    TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(physicalPlan, sessionId));
     if (status != null) {
       return new TSExecuteStatementResp(status);
     }
@@ -1023,8 +1020,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
     for (int i = 0; i < insertTabletPlans.size(); i++) {
       InsertTabletPlan insertTabletPlan = insertTabletPlans.get(i);
-      BasicResp basicResp=checkAuthority(insertTabletPlan, sessionId);
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status =
+          DataTypeUtils.BasicRespToTSStatus(checkAuthority(insertTabletPlan, sessionId));
 
       if (status != null) {
         // not authorized
@@ -1210,8 +1207,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   }
 
   private TSExecuteStatementResp executeNonQueryStatement(PhysicalPlan plan, long sessionId) {
-    BasicResp basicResp=checkAuthority(plan, sessionId);
-    TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+    TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, sessionId));
     return status != null
         ? new TSExecuteStatementResp(status)
         : RpcUtils.getTSExecuteStatementResp(executeNonQueryPlan(plan))
@@ -1311,8 +1307,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
                 req.getMeasurementsList().get(i).toArray(new String[0]),
                 req.valuesList.get(i),
                 req.isAligned);
-        BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-        TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+        TSStatus status =
+            DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
           allCheckSuccess = false;
@@ -1383,9 +1379,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.getMeasurementsList(),
               req.getValuesList().toArray(new ByteBuffer[0]),
               req.isAligned);
-      BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
-
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
       statusList.add(
@@ -1433,8 +1427,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setNeedInferType(true);
         plan.setAligned(req.isAligned);
-        BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-        TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+        TSStatus status =
+            DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
 
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
@@ -1542,9 +1536,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.getMeasurements().toArray(new String[0]),
               req.values,
               req.isAligned);
-      BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
-
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
@@ -1575,8 +1567,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       plan.setValues(req.getValues().toArray(new Object[0]));
       plan.setNeedInferType(true);
       plan.setAligned(req.isAligned);
-      BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
@@ -1601,8 +1592,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         paths.add(new PartialPath(path));
       }
       plan.addPaths(paths);
-      BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
 
       return status != null ? new TSStatus(status) : new TSStatus(executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
@@ -1632,8 +1622,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       insertTabletPlan.setRowCount(req.size);
       insertTabletPlan.setDataTypes(req.types);
       insertTabletPlan.setAligned(req.isAligned);
-      BasicResp basicResp=checkAuthority(insertTabletPlan , req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status =
+          DataTypeUtils.BasicRespToTSStatus(checkAuthority(insertTabletPlan, req.getSessionId()));
 
       return status != null ? status : executeNonQueryPlan(insertTabletPlan);
     } catch (IoTDBException e) {
@@ -1695,8 +1685,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletPlan insertTabletPlan = constructInsertTabletPlan(req, i);
-      BasicResp basicResp=checkAuthority(insertTabletPlan, req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status =
+          DataTypeUtils.BasicRespToTSStatus(checkAuthority(insertTabletPlan, req.getSessionId()));
       if (status != null) {
         // not authorized
         insertMultiTabletPlan.getResults().put(i, status);
@@ -1716,8 +1706,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       }
 
       SetStorageGroupPlan plan = new SetStorageGroupPlan(new PartialPath(storageGroup));
-      BasicResp basicResp=checkAuthority(plan, sessionId);
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, sessionId));
 
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
@@ -1740,8 +1729,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         storageGroupList.add(new PartialPath(storageGroup));
       }
       DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
-      BasicResp basicResp=checkAuthority(plan, sessionId);
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, sessionId));
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_STORAGE_GROUPS, e.getErrorCode());
@@ -1773,8 +1761,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.tags,
               req.attributes,
               req.measurementAlias);
-      BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_TIMESERIES, e.getErrorCode());
@@ -1827,8 +1814,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               encodings,
               CompressionType.values()[req.compressor],
               req.measurementAlias);
-      BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_ALIGNED_TIMESERIES, e.getErrorCode());
@@ -1880,8 +1866,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
       for (int i = 0; i < req.paths.size(); i++) {
         plan.setPath(new PartialPath(req.paths.get(i)));
-        BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-        TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+        TSStatus status =
+            DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
         if (status != null) {
           // not authorized
           multiPlan.getResults().put(i, status);
@@ -1939,8 +1925,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         pathList.add(new PartialPath(path));
       }
       DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
-      BasicResp basicResp=checkAuthority(plan, sessionId);
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, sessionId));
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_TIMESERIES, e.getErrorCode());
@@ -2004,8 +1989,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             new CreateTemplatePlan(
                 req.getName(), measurements, dataTypes, encodings, compressionTypes);
       }
-      BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-      TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+      TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
@@ -2031,8 +2015,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     AppendTemplatePlan plan =
         new AppendTemplatePlan(
             req.getName(), req.isAligned, measurements, dataTypes, encodings, compressionTypes);
-    BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-    TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+    TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
@@ -2040,8 +2023,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) throws TException {
     PruneTemplatePlan plan =
         new PruneTemplatePlan(req.getName(), Collections.singletonList(req.getPath()));
-    BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-    TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+    TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
@@ -2094,8 +2076,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     }
 
     SetSchemaTemplatePlan plan = new SetSchemaTemplatePlan(req.templateName, req.prefixPath);
-    BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-    TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+    TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
@@ -2114,28 +2095,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     }
 
     UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(req.prefixPath, req.templateName);
-    BasicResp basicResp=checkAuthority(plan, req.getSessionId());
-    TSStatus status = RpcUtils.getStatus(basicResp.getTsStatusCode(),basicResp.getMessage());
+    TSStatus status = DataTypeUtils.BasicRespToTSStatus(checkAuthority(plan, req.getSessionId()));
     return status != null ? status : executeNonQueryPlan(plan);
   }
-
-//  private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
-//    List<PartialPath> paths = plan.getPaths();
-//    try {
-//      if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
-//        return RpcUtils.getStatus(
-//            TSStatusCode.NO_PERMISSION_ERROR,
-//            "No permissions for this operation " + plan.getOperatorType());
-//      }
-//    } catch (AuthException e) {
-//      LOGGER.warn("meet error while checking authorization.", e);
-//      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
-//    } catch (Exception e) {
-//      return onNPEOrUnexpectedException(
-//          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
-//    }
-//    return null;
-//  }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     boolean isSuccessful;
