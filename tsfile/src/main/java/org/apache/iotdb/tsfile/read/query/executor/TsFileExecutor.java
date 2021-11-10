@@ -176,7 +176,7 @@ public class TsFileExecutor implements QueryExecutor {
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
-      List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);
+      List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);//Todo:alignedChunkMetadata
       AbstractFileSeriesReader seriesReader;
       if (chunkMetadataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();

@@ -18,17 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +29,19 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.iotdb.tsfile.common.cache.LRUCache;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
@@ -49,6 +51,9 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   private TsFileMetadata fileMetaData;
 
   private LRUCache<Path, List<ChunkMetadata>> chunkMetaDataCache;
+
+  //DevicePath -> AlignedChunkMetadata
+  private LRUCache<Path,List<AlignedChunkMetadata>> alignedChunkMetadataCache;
 
   private TsFileSequenceReader tsFileReader;
 
@@ -117,35 +122,47 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         continue;
       }
 
-      List<TimeseriesMetadata> timeseriesMetaDataList =
+      List<ITimeSeriesMetadata> timeseriesMetaDataList =
           tsFileReader.readTimeseriesMetadata(selectedDevice, selectedMeasurements);
       List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
-        chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(timeseriesMetadata));
-      }
-      // d1
-      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
-        String currentMeasurement = chunkMetaData.getMeasurementUid();
+      List<AlignedChunkMetadata> alignedChunkMetadataList=new ArrayList<>();
+      if(timeseriesMetaDataList.get(0) instanceof AlignedChunkMetadata){
+        AlignedTimeSeriesMetadata alignedTimeSeriesMetadata=(AlignedTimeSeriesMetadata) timeseriesMetaDataList.get(0);
+        List<IChunkMetadata> timeChunkMetadataList=alignedTimeSeriesMetadata.getTimeseriesMetadata().getChunkMetadataList();
+        int index=0;
+        for(TimeseriesMetadata valueTimeseriesMetadata:alignedTimeSeriesMetadata.getValueTimeseriesMetadataList()){
+          List<IChunkMetadata> valueChunkMetadataList=valueTimeseriesMetadata.getChunkMetadataList();
+          alignedChunkMetadataList.add(new AlignedChunkMetadata(timeChunkMetadataList.get(index++),valueChunkMetadataList));
+        }
+        this.alignedChunkMetadataCache.put(new Path(selectedDevice),alignedChunkMetadataList);
+      }else{
+        // d1
+        for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+          String currentMeasurement = chunkMetaData.getMeasurementUid();
 
-        // s1
-        if (selectedMeasurements.contains(currentMeasurement)) {
+          // s1
+          if (selectedMeasurements.contains(currentMeasurement)) {
 
-          // d1.s1
-          Path path = new Path(selectedDevice, currentMeasurement);
+            // d1.s1
+            Path path = new Path(selectedDevice, currentMeasurement);
 
-          // add into tempChunkMetaDatas
-          if (!tempChunkMetaDatas.containsKey(path)) {
-            tempChunkMetaDatas.put(path, new ArrayList<>());
-          }
-          tempChunkMetaDatas.get(path).add(chunkMetaData);
+            // add into tempChunkMetaDatas
+            if (!tempChunkMetaDatas.containsKey(path)) {
+              tempChunkMetaDatas.put(path, new ArrayList<>());
+            }
+            tempChunkMetaDatas.get(path).add(chunkMetaData);
 
-          // check cache size, stop when reading enough
-          count++;
-          if (count == CACHED_ENTRY_NUMBER) {
-            enough = true;
-            break;
+            // check cache size, stop when reading enough
+            count++;
+            if (count == CACHED_ENTRY_NUMBER) {
+              enough = true;
+              break;
+            }
           }
         }
+      }
+      for (ITimeSeriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
+        chunkMetadataList.addAll(((TimeseriesMetadata)timeseriesMetadata).getChunkMetadataList());
       }
     }
 
