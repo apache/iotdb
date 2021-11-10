@@ -41,7 +41,21 @@ public class IoTDBRestServiceCheck {
     if (CONFIG.getRestServicePort() > 65535 || CONFIG.getRestServicePort() < 1024) {
       printErrorLogAndExit("rest_service_port");
     }
-    // todo
+    if (CONFIG.getIdleTimeoutInSeconds() <= 0) {
+      printErrorLogAndExit("idle_timeout_in_seconds");
+    }
+    if (CONFIG.getCacheExpireInSeconds() <= 0) {
+      printErrorLogAndExit("cache_expire_in_seconds");
+    }
+    if (CONFIG.getCacheMaxNum() <= 0) {
+      printErrorLogAndExit("cache_max_num");
+    }
+    if (CONFIG.getCacheInitNum() <= 0) {
+      printErrorLogAndExit("cache_init_num");
+    }
+    if (CONFIG.getCacheInitNum() > CONFIG.getCacheMaxNum()) {
+      printErrorLogAndExit("cache_init_num");
+    }
   }
 
   private void printErrorLogAndExit(String property) {
