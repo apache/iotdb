@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadataV2;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadataV2;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -270,6 +271,15 @@ public class TsFileSequenceReader implements AutoCloseable {
     return tsFileMetaData;
   }
 
+  public TsFileMetadataV2 readFileMetadataV2() throws IOException {
+    try {
+      return TsFileMetadataV2.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+    } catch (BufferOverflowException e) {
+      logger.error("Something error happened while reading file metadata of file {}", file);
+      throw e;
+    }
+  }
+
   /**
    * this function does not modify the position of the file reader.
    *
@@ -412,6 +422,27 @@ public class TsFileSequenceReader implements AutoCloseable {
     // return null if path does not exist in the TsFile
     int searchResult =
         binarySearchInTimeseriesMetadataV2List(timeseriesMetadataList, path.getMeasurement());
+    return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
+  }
+
+  public TimeseriesMetadata readTimeseriesMetadataV3(Path path, boolean ignoreNotExists)
+      throws IOException {
+    readFileMetadataV2();
+
+    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+    ByteBuffer buffer = readData(position(), fileMetadataPos);
+    while (buffer.hasRemaining()) {
+      try {
+        timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
+      } catch (BufferOverflowException e) {
+        logger.error(
+            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+        throw e;
+      }
+    }
+    // return null if path does not exist in the TsFile
+    int searchResult =
+        binarySearchInTimeseriesMetadataList(timeseriesMetadataList, path.getMeasurement());
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
   }
 
@@ -1348,6 +1379,15 @@ public class TsFileSequenceReader implements AutoCloseable {
       return Collections.emptyList();
     }
     List<ChunkMetadata> chunkMetadataList = readChunkMetaDataListV2(timeseriesMetaData);
+    chunkMetadataList.sort(Comparator.comparingLong(IChunkMetadata::getStartTime));
+    return chunkMetadataList;
+  }
+
+  public List<ChunkMetadata> getChunkMetadataListV3(Path path, boolean ignoreNotExists)
+      throws IOException {
+    TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadataV3(path, ignoreNotExists);
+
+    List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
     chunkMetadataList.sort(Comparator.comparingLong(IChunkMetadata::getStartTime));
     return chunkMetadataList;
   }

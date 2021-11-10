@@ -44,11 +44,14 @@ public class MetadataIndexConstructor {
    * Construct metadata index tree
    *
    * @param deviceTimeseriesMetadataMap device => TimeseriesMetadata list
-   * @param out tsfile output
+   * @param tsFileOutput tsfile output
+   * @param metadataIndexOutput metadataIndex output
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static MetadataIndexNode constructMetadataIndex(
-      Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap, TsFileOutput out)
+      Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap,
+      TsFileOutput tsFileOutput,
+      TsFileOutput metadataIndexOutput)
       throws IOException {
 
     Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
@@ -68,21 +71,25 @@ public class MetadataIndexConstructor {
         if (serializedTimeseriesMetadataNum == 0
             || serializedTimeseriesMetadataNum >= config.getMaxDegreeOfIndexNode()) {
           if (currentIndexNode.isFull()) {
-            addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
+            addCurrentIndexNodeToQueue(
+                currentIndexNode, measurementMetadataIndexQueue, tsFileOutput);
             currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
           }
           currentIndexNode.addEntry(
-              new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
+              new MetadataIndexEntry(
+                  timeseriesMetadata.getMeasurementId(), tsFileOutput.getPosition()));
           serializedTimeseriesMetadataNum = 0;
         }
-        timeseriesMetadata.serializeTo(out.wrapAsStream());
+        timeseriesMetadata.serializeTo(tsFileOutput.wrapAsStream());
         serializedTimeseriesMetadataNum++;
       }
-      addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
+      addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, tsFileOutput);
       deviceMetadataIndexMap.put(
           entry.getKey(),
           generateRootNode(
-              measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
+              measurementMetadataIndexQueue,
+              metadataIndexOutput,
+              MetadataIndexNodeType.INTERNAL_MEASUREMENT));
     }
 
     // if not exceed the max child nodes num, ignore the device index and directly point to the
@@ -91,10 +98,11 @@ public class MetadataIndexConstructor {
       MetadataIndexNode metadataIndexNode =
           new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
       for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-        metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-        entry.getValue().serializeTo(out.wrapAsStream());
+        metadataIndexNode.addEntry(
+            new MetadataIndexEntry(entry.getKey(), metadataIndexOutput.getPosition()));
+        entry.getValue().serializeTo(metadataIndexOutput.wrapAsStream());
       }
-      metadataIndexNode.setEndOffset(out.getPosition());
+      metadataIndexNode.setEndOffset(metadataIndexOutput.getPosition());
       return metadataIndexNode;
     }
 
@@ -105,16 +113,18 @@ public class MetadataIndexConstructor {
     for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
       // when constructing from internal node, each node is related to an entry
       if (currentIndexNode.isFull()) {
-        addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
+        addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, metadataIndexOutput);
         currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
       }
-      currentIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-      entry.getValue().serializeTo(out.wrapAsStream());
+      currentIndexNode.addEntry(
+          new MetadataIndexEntry(entry.getKey(), metadataIndexOutput.getPosition()));
+      entry.getValue().serializeTo(metadataIndexOutput.wrapAsStream());
     }
-    addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
+    addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, metadataIndexOutput);
     MetadataIndexNode deviceMetadataIndexNode =
-        generateRootNode(deviceMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_DEVICE);
-    deviceMetadataIndexNode.setEndOffset(out.getPosition());
+        generateRootNode(
+            deviceMetadataIndexQueue, metadataIndexOutput, MetadataIndexNodeType.INTERNAL_DEVICE);
+    deviceMetadataIndexNode.setEndOffset(metadataIndexOutput.getPosition());
     return deviceMetadataIndexNode;
   }
 

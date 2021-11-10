@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.test1832;
+package org.apache.iotdb.tsfile.test1835;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -56,10 +56,8 @@ public class TsFileSketchTool {
   private String splitStr; // for split different part of TsFile
 
   public static void main(String[] args) throws IOException {
-    Pair<String, String> fileNames = checkArgs(args);
-    String filename =
-        "/Users/samperson1997/git/iotdb/data/data/sequence/root.sg/0/1832/test5.tsfile";
-    String outFile = "/Users/samperson1997/git/iotdb/data/data/sequence/root.sg/0/1832/1.txt";
+    String filename = "/Users/samperson1997/git/iotdb/data/data/sequence/root.sg/1/1/test1.tsfile";
+    String outFile = "/Users/samperson1997/git/iotdb/data/data/sequence/root.sg/1/1/test1.txt";
     new TsFileSketchTool(filename, outFile).run();
   }
 
