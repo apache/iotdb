@@ -48,7 +48,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
   protected Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
-  protected List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
+  private final List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
 
   public UDTFPlan(ZoneId zoneId) {
     super();
