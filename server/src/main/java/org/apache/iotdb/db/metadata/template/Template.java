@@ -501,22 +501,7 @@ public class Template {
     }
     return cur;
   }
-
-  private static IEntityMNode convertInternalToEntity(IMNode internalNode) {
-    if (internalNode instanceof EntityMNode) {
-      return (EntityMNode) internalNode;
-    }
-    IEntityMNode eMNode = MNodeUtils.setToEntity(internalNode);
-    if (internalNode.getChildren().size() == 0) {
-      eMNode.setChildren(null);
-    } else {
-      for (IMNode child : internalNode.getChildren().values()) {
-        child.setParent(eMNode);
-      }
-      eMNode.setChildren(internalNode.getChildren());
-    }
-    return eMNode;
-  }
+  
 
   private static String joinBySeparator(String[] pathNodes) {
     if ((pathNodes == null) || (pathNodes.length == 0)) {
