@@ -23,7 +23,10 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
@@ -31,6 +34,8 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
@@ -209,6 +214,17 @@ public class BasicServiceProvider {
       targetUser = ((AuthorPlan) plan).getUserName();
     }
     return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+  }
+
+  protected boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+    plan.checkIntegrity();
+    if (!(plan instanceof SetSystemModePlan)
+        && !(plan instanceof FlushPlan)
+        && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new QueryProcessException(
+          "Current system mode is read-only, does not support non-query operation");
+    }
+    return executor.processNonQuery(plan);
   }
 
   private boolean checkCompatibility(TSProtocolVersion version) {
