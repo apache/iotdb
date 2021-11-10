@@ -216,7 +216,8 @@ public class BasicServiceProvider {
     return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
   }
 
-  protected boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+  protected boolean executeNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     plan.checkIntegrity();
     if (!(plan instanceof SetSystemModePlan)
         && !(plan instanceof FlushPlan)
