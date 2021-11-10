@@ -27,14 +27,15 @@ import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MemChunkMetadataLoader implements IChunkMetadataLoader {
 
-  private TsFileResource resource;
-  private PartialPath seriesPath;
-  private QueryContext context;
-  private Filter timeFilter;
+  private final TsFileResource resource;
+  private final PartialPath seriesPath;
+  private final QueryContext context;
+  private final Filter timeFilter;
 
   public MemChunkMetadataLoader(
       TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
@@ -45,10 +46,8 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   @Override
-  public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata) {
-    List<IChunkMetadata> chunkMetadataList = resource.getChunkMetadataList();
-
-    DiskChunkMetadataLoader.setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
+  public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
+    List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
 
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {

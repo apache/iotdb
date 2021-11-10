@@ -34,6 +34,11 @@ public class ArithmeticNegationTransformer extends Transformer {
   }
 
   @Override
+  public boolean isConstantPointReader() {
+    return layerPointReader.isConstantPointReader();
+  }
+
+  @Override
   protected boolean cacheValue() throws QueryProcessException, IOException {
     if (!layerPointReader.next()) {
       return false;

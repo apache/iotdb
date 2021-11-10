@@ -46,7 +46,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -202,7 +201,7 @@ public class InnerSpaceCompactionUtils {
     if (isChunkMetadataEmpty) {
       return;
     }
-    IChunkWriter chunkWriter;
+    ChunkWriterImpl chunkWriter;
     try {
       chunkWriter =
           new ChunkWriterImpl(
@@ -551,7 +550,7 @@ public class InnerSpaceCompactionUtils {
 
   public static void deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
+    logger.info("{} [compaction] merge starts to delete real file ", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteTsFile(mergeTsFile);
       logger.info(

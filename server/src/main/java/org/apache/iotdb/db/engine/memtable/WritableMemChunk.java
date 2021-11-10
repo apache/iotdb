@@ -110,7 +110,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void writeVector(
+  public void writeAlignedValues(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
@@ -302,6 +302,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void encode(IChunkWriter chunkWriter) {
 
+    ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+
     for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
@@ -312,27 +314,27 @@ public class WritableMemChunk implements IWritableMemChunk {
 
       // store last point for SDT
       if (sortedRowIndex + 1 == list.size()) {
-        ((ChunkWriterImpl) chunkWriter).setLastPoint(true);
+        ((ChunkWriterImpl) chunkWriterImpl).setLastPoint(true);
       }
 
       switch (schema.getType()) {
         case BOOLEAN:
-          chunkWriter.write(time, list.getBoolean(sortedRowIndex), false);
+          chunkWriterImpl.write(time, list.getBoolean(sortedRowIndex));
           break;
         case INT32:
-          chunkWriter.write(time, list.getInt(sortedRowIndex), false);
+          chunkWriterImpl.write(time, list.getInt(sortedRowIndex));
           break;
         case INT64:
-          chunkWriter.write(time, list.getLong(sortedRowIndex), false);
+          chunkWriterImpl.write(time, list.getLong(sortedRowIndex));
           break;
         case FLOAT:
-          chunkWriter.write(time, list.getFloat(sortedRowIndex), false);
+          chunkWriterImpl.write(time, list.getFloat(sortedRowIndex));
           break;
         case DOUBLE:
-          chunkWriter.write(time, list.getDouble(sortedRowIndex), false);
+          chunkWriterImpl.write(time, list.getDouble(sortedRowIndex));
           break;
         case TEXT:
-          chunkWriter.write(time, list.getBinary(sortedRowIndex), false);
+          chunkWriterImpl.write(time, list.getBinary(sortedRowIndex));
           break;
         default:
           LOGGER.error("WritableMemChunk does not support data type: {}", schema.getType());

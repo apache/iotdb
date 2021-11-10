@@ -21,8 +21,11 @@ package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 
 /** To read one chunk from memory, and only used in iotdb server module */
 public class MemChunkLoader implements IChunkLoader {
@@ -43,7 +46,8 @@ public class MemChunkLoader implements IChunkLoader {
     // no resources need to close
   }
 
-  public ReadOnlyMemChunk getChunk() {
-    return chunk;
+  @Override
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter) {
+    return new MemChunkReader(chunk, timeFilter);
   }
 }

@@ -371,7 +371,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void sumWithoutFilterTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"0,22610.0,0.0"};
+    String[] retArray = new String[] {"0,22610.0,null"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =

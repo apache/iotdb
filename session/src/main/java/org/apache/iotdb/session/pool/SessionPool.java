@@ -238,8 +238,7 @@ public class SessionPool {
             }
           }
         } catch (InterruptedException e) {
-          logger.error("the SessionPool is damaged", e);
-          Thread.currentThread().interrupt();
+          // wake up from this.wait(1000) by this.notify()
         }
 
         session = queue.poll();
@@ -457,6 +456,33 @@ public class SessionPool {
   }
 
   /**
+   * insert the data of a device. For each timestamp, the number of measurements is the same.
+   *
+   * <p>Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
+   *
+   * @param tablet a tablet data of one device
+   */
+  public void insertAlignedTablet(Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
+    insertTablet(tablet, false);
+  }
+
+  /**
+   * insert the data of a device. For each timestamp, the number of measurements is the same.
+   *
+   * <p>Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
+   *
+   * @param tablet a tablet data of one device
+   * @param sorted whether times in Tablet are in ascending order
+   */
+  public void insertAlignedTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
+    insertTablet(tablet, sorted);
+  }
+
+  /**
    * use batch interface to insert data
    *
    * @param tablets multiple batch
@@ -468,6 +494,19 @@ public class SessionPool {
 
   /**
    * use batch interface to insert data
+   *
+   * @param tablets multiple batch
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
+    insertTablets(tablets, false);
+  }
+
+  /**
+   * use batch interface to insert aligned data
    *
    * @param tablets multiple batch
    */
@@ -488,6 +527,19 @@ public class SessionPool {
         throw e;
       }
     }
+  }
+
+  /**
+   * use batch interface to insert aligned data
+   *
+   * @param tablets multiple batch
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
+    insertTablets(tablets, sorted);
   }
 
   /**
