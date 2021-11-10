@@ -46,11 +46,11 @@ public class SchemaBuilderTest {
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
     schema.registerTimeseries(
-        new Path("d1", "s4"),
+        new Path("d1"),
         new UnaryMeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     schema.registerTimeseries(
-        new Path("d1", "s5"),
+        new Path("d1"),
         new UnaryMeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 

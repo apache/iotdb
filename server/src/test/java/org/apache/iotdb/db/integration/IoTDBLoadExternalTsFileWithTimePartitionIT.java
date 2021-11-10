@@ -124,7 +124,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
       for (String deviceId : devices) {
         for (String measurement : measurements) {
           tsFileWriter.registerTimeseries(
-              new Path(STORAGE_GROUP + DOT + deviceId, measurement),
+              new Path(STORAGE_GROUP + DOT + deviceId),
               new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
         }
       }

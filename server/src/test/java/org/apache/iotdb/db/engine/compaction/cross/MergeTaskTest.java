@@ -547,9 +547,7 @@ public class MergeTaskTest extends MergeTest {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (int i = 0; i < deviceIds.length - 1; i++) {
       for (int j = 0; j < measurementSchemas.length - 1; j++) {
-        fileWriter.registerTimeseries(
-            new Path(deviceIds[i], measurementSchemas[j].getMeasurementId()),
-            measurementSchemas[j]);
+        fileWriter.registerTimeseries(new Path(deviceIds[i]), measurementSchemas[j]);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
