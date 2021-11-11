@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -73,10 +75,12 @@ public class BloomFilterCacheTest {
   @After
   public void tearDown() {
     try {
+      // clear opened file streams
+      FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
       for (String filePath : pathList) {
         FileUtils.forceDelete(new File(filePath));
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
   }
