@@ -51,7 +51,8 @@ public class CreateTemplatePlan extends PhysicalPlan {
   TSDataType[][] dataTypes;
   TSEncoding[][] encodings;
   CompressionType[][] compressors;
-  private final int NEW_PLAN = -1;
+  // constant to help resolve serialized sequence
+  private static final int NEW_PLAN = -1;
 
   public CreateTemplatePlan() {
     super(false, OperatorType.CREATE_TEMPLATE);

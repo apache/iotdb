@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -228,13 +230,13 @@ public class Template {
         // find the parent and add nodes to template
         if (prefix.equals("")) {
           leafNode =
-              MeasurementMNode.getMeasurementMNode(null, measurementNames.get(i), schemas[i], "");
+              MeasurementMNode.getMeasurementMNode(null, measurementNames.get(i), schemas[i], null);
           directNodes.put(leafNode.getName(), leafNode);
         } else {
           commonPar = (IEntityMNode) constructEntityPath(alignedPaths[0]);
           leafNode =
               MeasurementMNode.getMeasurementMNode(
-                  commonPar, measurementNames.get(i), schemas[i], "");
+                  commonPar, measurementNames.get(i), schemas[i], null);
           commonPar.addChild(leafNode);
         }
         schemaMap.put(getFullPathWithoutTemplateName(leafNode), schemas[i]);
@@ -255,7 +257,7 @@ public class Template {
     synchronized (this) {
       IMeasurementMNode leafNode =
           MeasurementMNode.getMeasurementMNode(
-              (IEntityMNode) cur, pathNode[pathNode.length - 1], schema, "");
+              (IEntityMNode) cur, pathNode[pathNode.length - 1], schema, null);
       if (cur == null) {
         directNodes.put(leafNode.getName(), leafNode);
       } else {
@@ -324,7 +326,7 @@ public class Template {
     try {
       IMNode cur = getPathNodeInTemplate(path);
       if (cur == null) {
-        throw new IllegalPathException(path, "Path not exists.");
+        throw new PathNotExistException(path);
       }
       if (cur.isMeasurement()) {
         return Collections.singletonList(getFullPathWithoutTemplateName(cur));
@@ -339,7 +341,7 @@ public class Template {
           for (IMNode child : cur.getChildren().values()) stack.push(child);
         }
       }
-    } catch (IllegalPathException e) {
+    } catch (MetadataException e) {
       e.printStackTrace();
     }
     return res;
@@ -388,17 +390,17 @@ public class Template {
     return directNodes.containsKey(nodeName);
   }
 
-  public boolean isPathMeasurement(String path) throws IllegalPathException {
+  public boolean isPathMeasurement(String path) throws MetadataException {
     String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
     if (!directNodes.containsKey(pathNodes[0])) {
-      throw new IllegalPathException(path, "Path does not exist.");
+      throw new PathNotExistException(path);
     }
     IMNode cur = directNodes.get(pathNodes[0]);
     for (int i = 1; i < pathNodes.length; i++) {
       if (cur.hasChild(pathNodes[i])) {
         cur = cur.getChild(pathNodes[i]);
       } else {
-        throw new IllegalPathException(path, "Path does not exist.");
+        throw new PathNotExistException(path);
       }
     }
     return cur.isMeasurement();
@@ -539,10 +541,10 @@ public class Template {
 
   // region deduction of template
 
-  public void deleteMeasurements(String path) throws IllegalPathException {
+  public void deleteMeasurements(String path) throws MetadataException {
     IMNode cur = getPathNodeInTemplate(path);
     if (cur == null) {
-      throw new IllegalPathException(path, "Path does not exist");
+      throw new PathNotExistException(path);
     }
     if (!cur.isMeasurement()) {
       throw new IllegalPathException(path, "Path is not pointed to a measurement node.");
@@ -558,12 +560,12 @@ public class Template {
     measurementsCount--;
   }
 
-  public void deleteSeriesCascade(String path) throws IllegalPathException {
+  public void deleteSeriesCascade(String path) throws MetadataException {
     IMNode cur = getPathNodeInTemplate(path);
     IMNode par;
 
     if (cur == null) {
-      throw new IllegalPathException(path, "Path not exists.");
+      throw new PathNotExistException(path);
     }
     par = cur.getParent();
     if (par == null) {
