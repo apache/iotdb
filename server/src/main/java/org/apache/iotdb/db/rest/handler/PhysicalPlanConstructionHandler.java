@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.db.rest.handler;
 
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -32,7 +33,7 @@ public class PhysicalPlanConstructionHandler {
   private PhysicalPlanConstructionHandler() {}
 
   public static InsertTabletPlan constructInsertTabletPlan(InsertTabletRequest insertTabletRequest)
-      throws IllegalPathException {
+      throws IllegalPathException, WriteProcessRejectException {
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(
             new PartialPath(insertTabletRequest.getDeviceId()),
@@ -68,10 +69,14 @@ public class PhysicalPlanConstructionHandler {
         case INT32:
           int[] intValues = new int[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            if (rawData.get(columnIndex).get(rowIndex) == null) {
+            Object object = rawData.get(columnIndex).get(rowIndex);
+            if (object == null) {
               bitMaps[columnIndex].mark(rowIndex);
+            } else if (object instanceof Integer) {
+              intValues[rowIndex] = (int) object;
             } else {
-              intValues[rowIndex] = (Integer) rawData.get(columnIndex).get(rowIndex);
+              throw new WriteProcessRejectException(
+                  "unsupported data type: " + object.getClass().toString());
             }
           }
           columns[columnIndex] = intValues;
@@ -79,10 +84,16 @@ public class PhysicalPlanConstructionHandler {
         case INT64:
           long[] longValues = new long[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            if (rawData.get(columnIndex).get(rowIndex) == null) {
+            Object object = rawData.get(columnIndex).get(rowIndex);
+            if (object == null) {
               bitMaps[columnIndex].mark(rowIndex);
+            } else if (object instanceof Integer) {
+              longValues[rowIndex] = (int) object;
+            } else if (object instanceof Long) {
+              longValues[rowIndex] = (long) object;
             } else {
-              longValues[rowIndex] = (Long) rawData.get(columnIndex).get(rowIndex);
+              throw new WriteProcessRejectException(
+                  "unsupported data type: " + object.getClass().toString());
             }
           }
           columns[columnIndex] = longValues;
@@ -105,7 +116,7 @@ public class PhysicalPlanConstructionHandler {
             if (rawData.get(columnIndex).get(rowIndex) == null) {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
-              doubleValues[rowIndex] = (Double) rawData.get(columnIndex).get(rowIndex);
+              doubleValues[rowIndex] = (double) rawData.get(columnIndex).get(rowIndex);
             }
           }
           columns[columnIndex] = doubleValues;

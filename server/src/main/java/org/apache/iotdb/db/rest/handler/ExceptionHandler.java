@@ -18,6 +18,7 @@
 package org.apache.iotdb.db.rest.handler;
 
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -55,6 +56,9 @@ public class ExceptionHandler {
     } else if (e instanceof MetadataException) {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(((MetadataException) e).getErrorCode());
+    } else if (e instanceof IoTDBException) {
+      responseResult.setMessage(e.getMessage());
+      responseResult.setCode(((IoTDBException) e).getErrorCode());
     } else {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(Status.INTERNAL_SERVER_ERROR.getStatusCode());

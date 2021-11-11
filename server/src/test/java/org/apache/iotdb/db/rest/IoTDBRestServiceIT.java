@@ -20,11 +20,9 @@ package org.apache.iotdb.db.rest;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.reflect.TypeToken;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -46,6 +44,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -108,12 +107,12 @@ public class IoTDBRestServiceIT {
     return httpPost;
   }
 
-  public void insertTablet(CloseableHttpClient httpClient) {
+  public void rightInsertTablet(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/insertTablet");
       String json =
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\"],\"dataTypes\":[\"TEXT\",\"DOUBLE\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -136,9 +135,38 @@ public class IoTDBRestServiceIT {
   }
 
   @Test
+  public void errorInsertTablet() {
+    CloseableHttpResponse response = null;
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/insertTablet");
+      String json =
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
+      httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(413, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
   public void insertAndQuery() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    insertTablet(httpClient);
+    rightInsertTablet(httpClient);
     query(httpClient);
     try {
       httpClient.close();
@@ -152,59 +180,75 @@ public class IoTDBRestServiceIT {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
-      String sql = "{\"sql\":\"select * from root.sg25\"}";
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
-      Gson json = new GsonBuilder().create();
-      JsonObject jsonObject = json.fromJson(message, JsonObject.class);
-      List<Long> timestampsResult =
-          json.fromJson(jsonObject.get("timestamps"), new TypeToken<List<Long>>() {}.getType());
-      List<String> expressionsResult =
-          json.fromJson(jsonObject.get("expressions"), new TypeToken<List<String>>() {}.getType());
-      List<List<Object>> valuesResult =
-          json.fromJson(jsonObject.get("values"), new TypeToken<List<List<Object>>>() {}.getType());
-      Assert.assertTrue(jsonObject.size() > 0);
-      List<String> expressions =
-          new ArrayList<String>() {
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
             {
               add("root.sg25.s3");
               add("root.sg25.s4");
               add("root.sg25.s5");
               add("root.sg25.s6");
+              add("root.sg25.s7");
+              add("root.sg25.s8");
+              add("root.sg25.s4 + 1");
+              add("root.sg25.s4 + 1");
             }
           };
-      List<Long> timestamps =
-          new ArrayList<Long>() {
+      List<Object> timestamps =
+          new ArrayList<Object>() {
             {
               add(1635232143960l);
               add(1635232153960l);
             }
           };
-      List<String> values1 =
-          new ArrayList<String>() {
+      List<Object> values1 =
+          new ArrayList<Object>() {
             {
               add("2aa");
               add("");
             }
           };
-      List<Double> values2 =
-          new ArrayList<Double>() {
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add(11);
+              add(2);
+            }
+          };
+      List<Object> values3 =
+          new ArrayList<Object>() {
+            {
+              add(1635000012345555l);
+              add(1635000012345556l);
+            }
+          };
+
+      List<Object> values4 =
+          new ArrayList<Object>() {
             {
               add(1.41);
               add(null);
             }
           };
-      List<Boolean> values3 =
-          new ArrayList<Boolean>() {
+      List<Object> values5 =
+          new ArrayList<Object>() {
             {
               add(null);
               add(false);
             }
           };
-      List<Double> values4 =
-          new ArrayList<Double>() {
+      List<Object> values6 =
+          new ArrayList<Object>() {
             {
               add(null);
               add(3.5555);
@@ -217,6 +261,8 @@ public class IoTDBRestServiceIT {
       Assert.assertEquals(values2, valuesResult.get(1));
       Assert.assertEquals(values3, valuesResult.get(2));
       Assert.assertEquals(values4, valuesResult.get(3));
+      Assert.assertEquals(values5, valuesResult.get(4));
+      Assert.assertEquals(values6, valuesResult.get(5));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

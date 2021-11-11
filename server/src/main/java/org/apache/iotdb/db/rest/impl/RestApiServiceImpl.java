@@ -19,7 +19,6 @@ package org.apache.iotdb.db.rest.impl;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
@@ -30,8 +29,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.rest.RestApiService;
 import org.apache.iotdb.db.rest.handler.AuthorizationHandler;
 import org.apache.iotdb.db.rest.handler.ExceptionHandler;
@@ -42,16 +39,9 @@ import org.apache.iotdb.db.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.rest.model.SQL;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import org.apache.thrift.TException;
-
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
-import java.io.IOException;
-import java.sql.SQLException;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -85,15 +75,6 @@ public class RestApiServiceImpl extends RestApiService {
     }
   }
 
-  private QueryDataSet getDataBySelect(PhysicalPlan physicalPlan)
-      throws TException, StorageEngineException, QueryFilterOptimizationException,
-          MetadataException, IOException, InterruptedException, SQLException,
-          QueryProcessException {
-    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
-    QueryContext context = new QueryContext(queryId);
-    return executor.processQuery(physicalPlan, context);
-  }
-
   @Override
   public Response executeQueryStatement(SQL sql, SecurityContext securityContext) {
     try {
@@ -114,7 +95,7 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
       return QueryDataSetHandler.fillDateSet(
-          getDataBySelect(physicalPlan), (QueryPlan) physicalPlan);
+          QueryDataSetHandler.constructQueryDataSet(executor,physicalPlan), (QueryPlan) physicalPlan);
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }

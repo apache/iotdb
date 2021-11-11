@@ -1380,7 +1380,6 @@ var config = {
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
 							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
-							['Communication-Service-Protocol/RestService','REST'],
 						]
 					},
 					{
@@ -1526,6 +1525,7 @@ var config = {
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
 							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
+							['Communication-Service-Protocol/RestService','REST'],
 						]
 					},
 					{

@@ -50,7 +50,6 @@ public class AuthorizationFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
-    // todo
     if ("OPTIONS".equals(containerRequestContext.getMethod())
         || containerRequestContext.getUriInfo().getPath().equals("swagger.json")) {
       return;
@@ -96,7 +95,6 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     user.setUsername(split[0]);
     user.setPassword(split[1]);
     try {
-
       if (!authorizer.login(split[0], split[1])) {
         Response resp =
             Response.status(Status.OK)

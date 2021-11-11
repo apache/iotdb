@@ -17,8 +17,17 @@
 
 package org.apache.iotdb.db.rest.handler;
 
+import java.sql.SQLException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -29,6 +38,8 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.apache.thrift.TException;
 
 public class QueryDataSetHandler {
 
@@ -38,18 +49,23 @@ public class QueryDataSetHandler {
 
     try {
       List<ResultColumn> resultColumns = queryPlan.getResultColumns();
-      for (ResultColumn resultColumn : resultColumns) {
+      int[] dataSetIndexes = new int[resultColumns.size()];
+      Map<String, Integer> sourcePathToQueryDataSetIndex = queryPlan.getPathToIndex();
+      for (int i = 0; i < resultColumns.size(); i++) {
+        ResultColumn resultColumn = resultColumns.get(i);
         queryDataSet.addExpressionsItem(resultColumn.getResultColumnName());
         queryDataSet.addValuesItem(new ArrayList<>());
+        dataSetIndexes[i] = sourcePathToQueryDataSetIndex.get(resultColumn.getResultColumnName());
       }
+
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         List<Field> fields = rowRecord.getFields();
 
         queryDataSet.addTimestampsItem(rowRecord.getTimestamp());
-        for (int i = 0; i < fields.size(); i++) {
+        for (int i = 0; i < resultColumns.size(); i++) {
           List<Object> values = queryDataSet.getValues().get(i);
-          Field field = fields.get(i);
+          Field field = fields.get(dataSetIndexes[i]);
           if (field == null || field.getDataType() == null) {
             values.add(null);
           } else {
@@ -64,5 +80,13 @@ public class QueryDataSetHandler {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
     return Response.ok().entity(queryDataSet).build();
+  }
+  public static QueryDataSet constructQueryDataSet(IPlanExecutor executor,PhysicalPlan physicalPlan)
+      throws TException, StorageEngineException, QueryFilterOptimizationException,
+      MetadataException, IOException, InterruptedException, SQLException,
+      QueryProcessException {
+    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+    QueryContext context = new QueryContext(queryId);
+    return executor.processQuery(physicalPlan, context);
   }
 }
