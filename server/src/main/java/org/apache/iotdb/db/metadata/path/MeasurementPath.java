@@ -262,7 +262,7 @@ public class MeasurementPath extends PartialPath {
     }
     return newMeasurementPath;
   }
-  
+
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
