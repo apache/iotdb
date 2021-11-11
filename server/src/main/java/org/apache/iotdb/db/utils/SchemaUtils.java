@@ -126,8 +126,7 @@ public class SchemaUtils {
     IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
   }
 
-  public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths)
-      throws MetadataException {
+  public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
       dataTypes.add(path == null ? null : path.getSeriesType());

@@ -24,7 +24,6 @@ import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -95,8 +94,6 @@ public class ClusterGroupByVFilterDataSetTest extends BaseQueryTest {
         checkDoubleDataset(dataSet, answer);
       }
       assertFalse(dataSet.hasNext());
-    } catch (MetadataException e) {
-      e.printStackTrace();
     } finally {
       QueryResourceManager.getInstance().endQuery(queryContext.getQueryId());
     }

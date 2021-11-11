@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -90,8 +89,6 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     try {
       QueryDataSet dataSet = queryExecutor.executeWithValueFilter(context);
       checkSequentialDataset(dataSet, 5, 15);
-    } catch (MetadataException e) {
-      e.printStackTrace();
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
@@ -129,8 +126,6 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     try {
       QueryDataSet dataSet = queryExecutor.executeWithValueFilter(context);
       assertNull(dataSet.getEndPoint());
-    } catch (MetadataException e) {
-      e.printStackTrace();
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }

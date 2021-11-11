@@ -116,7 +116,7 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedPaths.add(path);
   }
 
-  public List<TSDataType> getDeduplicatedDataTypes() throws MetadataException {
+  public List<TSDataType> getDeduplicatedDataTypes() {
     return SchemaUtils.getSeriesTypesByPaths(deduplicatedPaths);
   }
 

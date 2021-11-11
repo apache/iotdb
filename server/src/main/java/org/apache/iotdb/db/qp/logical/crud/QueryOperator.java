@@ -203,9 +203,7 @@ public class QueryOperator extends Operator {
         rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
         pathTSDataTypeHashMap.put(
             filterPath,
-            SQLConstant.isReservedPath(filterPath)
-                ? TSDataType.INT64
-                : filterPath.getSeriesType());
+            SQLConstant.isReservedPath(filterPath) ? TSDataType.INT64 : filterPath.getSeriesType());
       }
       IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
       rawDataQueryPlan.setExpression(expression);
@@ -435,9 +433,7 @@ public class QueryOperator extends Operator {
       for (PartialPath filterPath : filterPathList) {
         pathTSDataTypeHashMap.put(
             filterPath,
-            SQLConstant.isReservedPath(filterPath)
-                ? TSDataType.INT64
-                : filterPath.getSeriesType());
+            SQLConstant.isReservedPath(filterPath) ? TSDataType.INT64 : filterPath.getSeriesType());
       }
       deviceToFilterMap.put(
           device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));

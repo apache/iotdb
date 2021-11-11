@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -58,7 +57,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
       List<Boolean> cached)
-      throws IOException, QueryProcessException, MetadataException {
+      throws IOException, QueryProcessException {
     super(
         context,
         udtfPlan,
@@ -73,7 +72,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
   /** execute without value filter */
   public UDTFNonAlignDataSet(
       QueryContext context, UDTFPlan udtfPlan, List<ManagedSeriesReader> readersOfSelectedSeries)
-      throws QueryProcessException, IOException, InterruptedException, MetadataException {
+      throws QueryProcessException, IOException, InterruptedException {
     super(
         context,
         udtfPlan,

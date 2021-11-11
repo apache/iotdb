@@ -84,7 +84,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     }
   }
 
-  public List<TSDataType> getDataTypes() throws MetadataException {
+  public List<TSDataType> getDataTypes() {
     return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 

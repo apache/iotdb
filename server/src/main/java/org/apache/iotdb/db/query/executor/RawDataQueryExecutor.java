@@ -22,7 +22,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -60,7 +59,7 @@ public class RawDataQueryExecutor {
 
   /** without filter or with global time filter. */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException {
     QueryDataSet dataSet = needRedirect(context, false);
     if (dataSet != null) {
       return dataSet;
@@ -79,13 +78,11 @@ public class RawDataQueryExecutor {
       throw new StorageEngineException(e.getMessage());
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
-    } catch (MetadataException e) {
-      throw new MetadataException(e.getMessage());
     }
   }
 
   public final QueryDataSet executeNonAlign(QueryContext context)
-      throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException {
     QueryDataSet dataSet = needRedirect(context, false);
     if (dataSet != null) {
       return dataSet;
@@ -99,7 +96,7 @@ public class RawDataQueryExecutor {
   }
 
   protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
-      throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException {
     Filter timeFilter = null;
     if (queryPlan.getExpression() != null) {
       timeFilter = ((GlobalTimeExpression) queryPlan.getExpression()).getFilter();
@@ -143,7 +140,7 @@ public class RawDataQueryExecutor {
    * @throws StorageEngineException StorageEngineException
    */
   public final QueryDataSet executeWithValueFilter(QueryContext context)
-      throws StorageEngineException, QueryProcessException, MetadataException {
+      throws StorageEngineException, QueryProcessException {
     QueryDataSet dataSet = needRedirect(context, true);
     if (dataSet != null) {
       return dataSet;
@@ -187,8 +184,6 @@ public class RawDataQueryExecutor {
                 context);
         readersOfSelectedSeries.add(seriesReaderByTimestamp);
       }
-    } catch (MetadataException e) {
-      e.printStackTrace();
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }

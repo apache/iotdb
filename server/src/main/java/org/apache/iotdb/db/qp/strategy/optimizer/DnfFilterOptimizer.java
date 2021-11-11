@@ -35,8 +35,7 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
    * @throws LogicalOptimizeException exception in DNF optimize
    */
   @Override
-  public FilterOperator optimize(FilterOperator filter)
-      throws LogicalOptimizeException {
+  public FilterOperator optimize(FilterOperator filter) throws LogicalOptimizeException {
     return getDnf(filter);
   }
 
@@ -53,8 +52,7 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
     }
   }
 
-  private FilterOperator getDnf(FilterOperator filter)
-      throws LogicalOptimizeException {
+  private FilterOperator getDnf(FilterOperator filter) throws LogicalOptimizeException {
     if (filter.isLeaf()) {
       return filter;
     }

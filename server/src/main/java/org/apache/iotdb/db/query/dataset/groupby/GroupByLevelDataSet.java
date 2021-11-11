@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -43,7 +42,7 @@ public class GroupByLevelDataSet extends QueryDataSet {
   private int index = 0;
 
   public GroupByLevelDataSet(GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-      throws IOException, MetadataException {
+      throws IOException {
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
 

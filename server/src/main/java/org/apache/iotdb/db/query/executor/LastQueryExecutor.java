@@ -71,7 +71,7 @@ public class LastQueryExecutor {
       IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
-  public LastQueryExecutor(LastQueryPlan lastQueryPlan) throws MetadataException {
+  public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
     this.expression = lastQueryPlan.getExpression();
