@@ -20,6 +20,8 @@ package org.apache.iotdb.hive;
 
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.apache.iotdb.hive.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.MapWritable;
@@ -32,16 +34,34 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TSFHiveInputFormatTest {
 
   private TSFInputSplit inputSplit;
   private TSFHiveInputFormat inputFormat;
   private JobConf job;
-  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
+  private FSType beforeFSType;
+  private final String filePath =
+      TestConstant.BASE_OUTPUT_PATH
+          .concat("data")
+          .concat(File.separator)
+          .concat("data")
+          .concat(File.separator)
+          .concat("sequence")
+          .concat(File.separator)
+          .concat("root.sg1")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("1-0-0-0.tsfile");
 
   @Before
   public void setUp() {
@@ -54,11 +74,14 @@ public class TSFHiveInputFormatTest {
     Path path = new Path(jobPath);
     String[] hosts = {"127.0.0.1"};
     inputSplit = new TSFInputSplit(path, hosts, 0, 3727688L);
+    beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
   }
 
   @After
   public void tearDown() {
     TsFileTestHelper.deleteTsFile(filePath);
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(beforeFSType);
   }
 
   @Test

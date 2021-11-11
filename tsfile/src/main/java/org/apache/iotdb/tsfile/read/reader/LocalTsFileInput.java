@@ -148,4 +148,9 @@ public class LocalTsFileInput implements TsFileInput {
     strBuffer.get(bytes, 0, strLength);
     return new String(bytes, 0, strLength);
   }
+
+  @Override
+  public String getFilePath() {
+    return filePath;
+  }
 }

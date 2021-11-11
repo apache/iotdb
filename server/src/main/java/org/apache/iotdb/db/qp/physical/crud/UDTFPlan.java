@@ -48,6 +48,8 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
   protected Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
+  private final Map<PartialPath, Integer> resultColumnNameToQueryDataSetIndex = new HashMap<>();
+
   public UDTFPlan(ZoneId zoneId) {
     super();
     this.zoneId = zoneId;
@@ -61,6 +63,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     for (int i = 0; i < resultColumns.size(); i++) {
       for (PartialPath path : resultColumns.get(i).collectPaths()) {
         indexedPaths.add(new Pair<>(path, i));
+        resultColumnNameToQueryDataSetIndex.put(path, i);
       }
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
@@ -100,6 +103,15 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
+  public List<PartialPath> getAuthPaths() {
+    Set<PartialPath> authPaths = new HashSet<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      authPaths.addAll(resultColumn.collectPaths());
+    }
+    return new ArrayList<>(authPaths);
+  }
+
+  @Override
   public void constructUdfExecutors(List<ResultColumn> resultColumns) {
     for (ResultColumn resultColumn : resultColumns) {
       resultColumn.getExpression().constructUdfExecutors(expressionName2Executor, zoneId);
@@ -125,11 +137,9 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     return expressionName2Executor.get(functionExpression.getExpressionString());
   }
 
-  public int getReaderIndex(String pathName) {
-    return pathNameToReaderIndex.get(pathName);
-  }
-
-  public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
-    this.pathNameToReaderIndex = pathNameToReaderIndex;
+  public int getReaderIndex(PartialPath partialPath) {
+    return pathNameToReaderIndex.get(
+        getColumnForReaderFromPath(
+            partialPath, resultColumnNameToQueryDataSetIndex.get(partialPath)));
   }
 }

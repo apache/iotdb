@@ -260,7 +260,7 @@ public class MetaSimpleSnapshot extends Snapshot {
         TemplateManager.getInstance().setTemplateMap(snapshot.templateMap);
 
         // 5. accept partition table
-        metaGroupMember.acceptPartitionTable(snapshot.getPartitionTableBuffer(), true);
+        metaGroupMember.acceptVerifiedPartitionTable(snapshot.getPartitionTableBuffer(), true);
 
         synchronized (metaGroupMember.getLogManager()) {
           metaGroupMember.getLogManager().applySnapshot(snapshot);

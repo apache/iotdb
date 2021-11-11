@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -109,12 +110,22 @@ public class LastCacheManager {
         if (lastCacheContainer.isEmpty()) {
           lastCacheContainer.init(schema.getSubMeasurementsCount());
         }
-        lastCacheContainer.updateCachedLast(
-            schema.getSubMeasurementIndex(
-                ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)),
-            timeValuePair,
-            highPriorityUpdate,
-            latestFlushedTime);
+        // #TODO: Quick patch for tree template, need refactor after new_vector
+        if (!schema.getMeasurementId().contains(TsFileConstant.PATH_SEPARATOR)) {
+          lastCacheContainer.updateCachedLast(
+              schema.getSubMeasurementIndex(
+                  ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)),
+              timeValuePair,
+              highPriorityUpdate,
+              latestFlushedTime);
+        } else {
+          // vector in tree template
+          lastCacheContainer.updateCachedLast(
+              schema.getSubMeasurementIndex(schema.getMeasurementId()),
+              timeValuePair,
+              highPriorityUpdate,
+              latestFlushedTime);
+        }
       }
     } else {
       lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
