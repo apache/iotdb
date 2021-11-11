@@ -57,6 +57,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -1298,10 +1299,13 @@ public class TsFileProcessor {
         }
       }
 
+      List<IChunkMetadata> chunkMetadataList =
+          fullPath.getVisibleMetadataListFromWriter(writer, tsFileResource, context);
+
       // get in memory data
-      if (!readOnlyMemChunks.isEmpty()) {
+      if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
         tsfileResourcesForQuery.add(
-            fullPath.createTsFileResource(readOnlyMemChunks, tsFileResource));
+            fullPath.createTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error(

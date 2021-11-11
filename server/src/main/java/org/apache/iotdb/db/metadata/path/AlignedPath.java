@@ -21,6 +21,8 @@ package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -31,10 +33,13 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,6 +48,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -269,10 +275,14 @@ public class AlignedPath extends PartialPath {
 
   @Override
   public TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk, TsFileResource originTsFileResource)
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList,
+      TsFileResource originTsFileResource)
       throws IOException {
-    TsFileResource tsFileResource = new TsFileResource(readOnlyMemChunk, originTsFileResource);
-    tsFileResource.setTimeSeriesMetadata(generateTimeSeriesMetadata(readOnlyMemChunk));
+    TsFileResource tsFileResource =
+        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+    tsFileResource.setTimeSeriesMetadata(
+        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
     return tsFileResource;
   }
 
@@ -281,7 +291,8 @@ public class AlignedPath extends PartialPath {
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
   private AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
-      List<ReadOnlyMemChunk> readOnlyMemChunk) throws IOException {
+      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
+      throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
     timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
@@ -301,6 +312,18 @@ public class AlignedPath extends PartialPath {
       valueMetadata.setTSDataType(valueChunkMetadata.getType());
       valueMetadata.setStatistics(Statistics.getStatsByType(valueChunkMetadata.getType()));
       valueTimeSeriesMetadataList.add(valueMetadata);
+    }
+
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
+      timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
+      for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+        valueTimeSeriesMetadataList
+            .get(i)
+            .getStatistics()
+            .mergeStatistics(
+                alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+      }
     }
 
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
@@ -347,5 +370,35 @@ public class AlignedPath extends PartialPath {
     int curSize = alignedTvListCopy.size();
     return new AlignedReadOnlyMemChunk(
         getMeasurementSchema(), alignedTvListCopy, curSize, deletionList);
+  }
+
+  @Override
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+    ModificationFile modificationFile = tsFileResource.getModFile();
+    List<List<Modification>> modifications = context.getPathModifications(modificationFile, this);
+
+    List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
+    List<ChunkMetadata> timeChunkMetadataList =
+        writer.getVisibleMetadataList(getDevice(), "", getSeriesType());
+    List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
+    for (int i = 0; i < measurementList.size(); i++) {
+      valueChunkMetadataList.add(
+          writer.getVisibleMetadataList(
+              getDevice(), measurementList.get(i), schemaList.get(i).getType()));
+    }
+
+    for (int i = 0; i < timeChunkMetadataList.size(); i++) {
+      List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
+      for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+        valueChunkMetadata.add(chunkMetadata.get(i));
+      }
+      chunkMetadataList.add(
+          new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+    }
+
+    QueryUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
+    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    return new ArrayList<>(chunkMetadataList);
   }
 }

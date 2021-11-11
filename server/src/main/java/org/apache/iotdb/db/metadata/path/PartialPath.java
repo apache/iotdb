@@ -32,11 +32,13 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -408,10 +410,13 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   public TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk, TsFileResource originTsFileResource)
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList,
+      TsFileResource originTsFileResource)
       throws IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
+
   /**
    * get the ReadOnlyMemChunk from the given MemTable.
    *
@@ -420,6 +425,11 @@ public class PartialPath extends Path implements Comparable<Path> {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
 }

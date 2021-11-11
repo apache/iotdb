@@ -75,9 +75,4 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
     }
     return chunkMetadataList;
   }
-
-  @Override
-  public boolean isMemChunkMetadataLoader() {
-    return true;
-  }
 }

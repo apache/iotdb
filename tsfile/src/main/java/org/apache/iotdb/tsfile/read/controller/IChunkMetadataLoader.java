@@ -29,6 +29,4 @@ public interface IChunkMetadataLoader {
   /** read all chunk metadata of one time series in one file. */
   List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata)
       throws IOException;
-
-  boolean isMemChunkMetadataLoader();
 }
