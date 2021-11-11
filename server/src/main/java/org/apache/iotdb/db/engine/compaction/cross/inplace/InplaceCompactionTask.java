@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
@@ -146,11 +144,6 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     try {
       for (TsFileResource unSeqFileMerged : selectedUnSeqTsFileResourceList) {
         unSeqTsFileResourceList.remove(unSeqFileMerged);
-      }
-      // clean cache
-      if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
-        ChunkCache.getInstance().clear();
-        TimeSeriesMetadataCache.getInstance().clear();
       }
     } finally {
       unSeqTsFileResourceList.writeUnlock();
