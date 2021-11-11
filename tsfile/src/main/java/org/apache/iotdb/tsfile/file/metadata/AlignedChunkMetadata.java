@@ -121,7 +121,7 @@ public class AlignedChunkMetadata implements IChunkMetadata {
 
   @Override
   public IChunkLoader getChunkLoader() {
-    return timeChunkMetadata.getChunkLoader();
+    return chunkLoader;
   }
 
   @Override
