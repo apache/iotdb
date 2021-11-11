@@ -209,7 +209,7 @@ public class PrimitiveMemTableTest {
 
   private void writeVector(IMemTable memTable)
       throws IOException, QueryProcessException, MetadataException {
-    memTable.write(genInsertTablePlan(), 0, 100);
+    memTable.writeAlignedTablet(genInsertTablePlan(), 0, 100);
 
     AlignedPath fullPath =
         new AlignedPath(
@@ -227,7 +227,7 @@ public class PrimitiveMemTableTest {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
       Assert.assertEquals(i, next.getTimestamp());
-      Assert.assertEquals(i, next.getValue().getLong());
+      Assert.assertEquals(i, next.getValue().getVector()[0].getLong());
     }
 
     fullPath =
@@ -343,7 +343,7 @@ public class PrimitiveMemTableTest {
     encodings[0] = TSEncoding.PLAIN;
     encodings[1] = TSEncoding.GORILLA;
 
-    String deviceId = "root.sg.vectorDevice5";
+    String deviceId = "root.sg.device5";
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
     IMeasurementSchema schema0 =
