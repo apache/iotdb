@@ -119,7 +119,7 @@ public class IoTDBConfig {
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /** Memory allocated for the read process besides cache */
-  private long allocateMemoryForReadWithoutCache = allocateMemoryForRead * 4 / 15;
+  private long allocateMemoryForReadWithoutCache = allocateMemoryForRead * 300 / 15;
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
@@ -409,13 +409,13 @@ public class IoTDBConfig {
   private boolean metaDataCacheEnable = true;
 
   /** Memory allocated for bloomFilter cache in read process */
-  private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 15;
+  private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
 
   /** Memory allocated for timeSeriesMetaData cache in read process */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 3 / 15;
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
 
   /** Memory allocated for chunk cache in read process */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead * 2 / 15;
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
 
   /** Whether to enable Last cache */
   private boolean lastCacheEnable = true;
