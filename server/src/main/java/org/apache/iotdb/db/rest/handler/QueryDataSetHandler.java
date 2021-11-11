@@ -17,7 +17,6 @@
 
 package org.apache.iotdb.db.rest.handler;
 
-import java.sql.SQLException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -33,13 +32,15 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.apache.thrift.TException;
+
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.thrift.TException;
 
 public class QueryDataSetHandler {
 
@@ -81,10 +82,12 @@ public class QueryDataSetHandler {
     }
     return Response.ok().entity(queryDataSet).build();
   }
-  public static QueryDataSet constructQueryDataSet(IPlanExecutor executor,PhysicalPlan physicalPlan)
+
+  public static QueryDataSet constructQueryDataSet(
+      IPlanExecutor executor, PhysicalPlan physicalPlan)
       throws TException, StorageEngineException, QueryFilterOptimizationException,
-      MetadataException, IOException, InterruptedException, SQLException,
-      QueryProcessException {
+          MetadataException, IOException, InterruptedException, SQLException,
+          QueryProcessException {
     long queryId = QueryResourceManager.getInstance().assignQueryId(true);
     QueryContext context = new QueryContext(queryId);
     return executor.processQuery(physicalPlan, context);

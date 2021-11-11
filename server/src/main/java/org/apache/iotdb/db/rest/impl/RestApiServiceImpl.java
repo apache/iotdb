@@ -39,9 +39,9 @@ import org.apache.iotdb.db.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.rest.model.SQL;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
-
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -95,7 +95,8 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
       return QueryDataSetHandler.fillDateSet(
-          QueryDataSetHandler.constructQueryDataSet(executor,physicalPlan), (QueryPlan) physicalPlan);
+          QueryDataSetHandler.constructQueryDataSet(executor, physicalPlan),
+          (QueryPlan) physicalPlan);
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
