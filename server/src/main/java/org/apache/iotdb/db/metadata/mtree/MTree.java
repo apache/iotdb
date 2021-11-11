@@ -410,7 +410,9 @@ public class MTree implements Serializable {
         }
       }
 
-      if (cur.isEntity() && !cur.getAsEntityMNode().isAligned()) {
+      if (cur.isEntity()
+          && !cur.getAsEntityMNode().isAligned()
+          && (!cur.getChildren().isEmpty() || cur.isUseTemplate())) {
         throw new AlignedTimeseriesException(
             "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
       }
