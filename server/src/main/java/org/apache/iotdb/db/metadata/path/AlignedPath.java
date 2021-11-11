@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -207,6 +208,18 @@ public class AlignedPath extends PartialPath {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), measurementList);
+  }
+
+  @Override
+  public AlignedLastPointReader createLastPointReader(
+      TSDataType dataType,
+      Set<String> deviceMeasurements,
+      QueryContext context,
+      QueryDataSource dataSource,
+      long queryTime,
+      Filter timeFilter) {
+    return new AlignedLastPointReader(
+        this, dataType, deviceMeasurements, context, dataSource, queryTime, timeFilter);
   }
 
   @Override
