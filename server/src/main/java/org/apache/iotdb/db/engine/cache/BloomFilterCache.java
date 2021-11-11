@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to cache <code>BloomFilter</code> in IoTDB. The caching strategy is LRU. */
 public class BloomFilterCache {
@@ -46,6 +47,7 @@ public class BloomFilterCache {
   private static final long MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE =
       config.getAllocateMemoryForBloomFilterCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
+  private final AtomicLong entryAverageSize = new AtomicLong(0);
 
   private final LoadingCache<BloomFilterCacheKey, BloomFilter> lruCache;
 
@@ -119,12 +121,17 @@ public class BloomFilterCache {
     return lruCache.stats().averageLoadPenalty();
   }
 
+  public long getAverageSize() {
+    return entryAverageSize.get();
+  }
+
   /** clear LRUCache. */
   public void clear() {
     lruCache.invalidateAll();
     lruCache.cleanUp();
   }
 
+  @TestOnly
   public void remove(BloomFilterCacheKey key) {
     lruCache.invalidate(key);
   }
@@ -134,13 +141,11 @@ public class BloomFilterCache {
     return lruCache.getIfPresent(key);
   }
 
-  @TestOnly
-  public void clearUp() {
-    lruCache.cleanUp();
-  }
-
   public static class BloomFilterCacheKey {
 
+    // There is no need to add this field size while calculating the size of BloomFilterCacheKey,
+    // because filePath is get from TsFileResource, different BloomFilterCacheKey of the same file
+    // share this String.
     private final String filePath;
     private final String tsFilePrefixPath;
     private final long tsFileVersion;
