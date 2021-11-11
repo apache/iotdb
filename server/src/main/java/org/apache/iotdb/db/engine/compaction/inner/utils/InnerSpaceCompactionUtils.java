@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
@@ -562,8 +560,6 @@ public class InnerSpaceCompactionUtils {
   public static void deleteTsFile(TsFileResource seqFile) {
     seqFile.writeLock();
     try {
-      ChunkCache.getInstance().clear();
-      TimeSeriesMetadataCache.getInstance().clear();
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
       seqFile.delete();
