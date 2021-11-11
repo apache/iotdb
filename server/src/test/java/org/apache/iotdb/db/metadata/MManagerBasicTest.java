@@ -872,7 +872,7 @@ public class MManagerBasicTest {
     Set<IMeasurementSchema> allSchema =
         new HashSet<>(node.getSchemaTemplate().getSchemaMap().values());
     for (MeasurementPath measurementPath :
-        manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1"))) {
+        manager.getMeasurementPaths(new PartialPath("root.sg1.d1.*"))) {
       allSchema.remove(measurementPath.getMeasurementSchema());
     }
 
