@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.service.basic.dto;
 
-public class BasicOpenSessionResp extends BasicResp {
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+public class BasicOpenSessionResp extends TSStatus {
   private long sessionId;
 
   public long getSessionId() {

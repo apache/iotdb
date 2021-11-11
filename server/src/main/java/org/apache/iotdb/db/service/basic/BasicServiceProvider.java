@@ -43,9 +43,10 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.service.basic.dto.BasicOpenSessionResp;
-import org.apache.iotdb.db.service.basic.dto.BasicResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -57,7 +58,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-import static org.apache.iotdb.db.utils.CommonUtils.onNPEOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
 public class BasicServiceProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicServiceProvider.class);
@@ -107,14 +108,14 @@ public class BasicServiceProvider {
       // check the version compatibility
       boolean compatible = checkCompatibility(tsProtocolVersion);
       if (!compatible) {
-        openSessionResp
-            .sessionId(sessionId)
-            .message("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION)
-            .tsStatusCode(TSStatusCode.INCOMPATIBLE_VERSION);
-        return openSessionResp;
+        openSessionResp.setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
+        openSessionResp.setMessage(
+            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        return openSessionResp.sessionId(sessionId);
       }
 
-      openSessionResp.message("Login successfully").tsStatusCode(TSStatusCode.SUCCESS_STATUS);
+      openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      openSessionResp.setMessage("Login successfully");
 
       sessionId = sessionManager.requestSessionId(username, zoneId);
       AUDIT_LOGGER.info("User {} opens Session-{}", username, sessionId);
@@ -125,9 +126,8 @@ public class BasicServiceProvider {
           username);
     } else {
 
-      openSessionResp
-          .message(loginMessage != null ? loginMessage : "Authentication failed.")
-          .tsStatusCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
+      openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
+      openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
 
       sessionId = sessionManager.requestSessionId(username, zoneId);
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
@@ -145,14 +145,14 @@ public class BasicServiceProvider {
     return SessionTimeoutManager.getInstance().unregister(sessionId);
   }
 
-  protected BasicResp closeOperation(
+  protected TSStatus closeOperation(
       long sessionId,
       long queryId,
       long statementId,
       boolean haveStatementId,
       boolean haveSetQueryId) {
     if (!checkLogin(sessionId)) {
-      return new BasicResp(
+      return RpcUtils.getStatus(
           TSStatusCode.NOT_LOGIN_ERROR,
           "Log in failed. Either you are not authorized or the session has timed out.");
     }
@@ -171,9 +171,10 @@ public class BasicServiceProvider {
         } else {
           sessionManager.closeStatement(sessionId, statementId);
         }
-        return new BasicResp(TSStatusCode.SUCCESS_STATUS);
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        return new BasicResp(TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
+        return RpcUtils.getStatus(
+            TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
       }
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
@@ -196,17 +197,17 @@ public class BasicServiceProvider {
     return isLoggedIn;
   }
 
-  protected BasicResp checkAuthority(PhysicalPlan plan, long sessionId) {
+  protected TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     List<PartialPath> paths = plan.getPaths();
     try {
       if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
-        return new BasicResp(
+        return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
             "No permissions for this operation " + plan.getOperatorType());
       }
     } catch (AuthException e) {
       LOGGER.warn("meet error while checking authorization.", e);
-      return new BasicResp(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
