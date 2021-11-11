@@ -179,7 +179,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     return getSuccessResult();
   }
 
-  private String getFilePathByFileInfo(String fileInfo) { // for different os
+  public String getFilePathByFileInfo(String fileInfo) { // for different os
     String filePath = "";
     String[] fileInfos = fileInfo.split(SyncConstant.SYNC_FILE_DIR_SEPARATOR);
     for (int i = 0; i < fileInfos.length - 1; i++) {
