@@ -202,8 +202,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         }
       } catch (QueryProcessException
           | QueryFilterOptimizationException
-          | StorageEngineException
-          | MetadataException e) {
+          | StorageEngineException e) {
         throw new IOException(e);
       }
 

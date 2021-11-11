@@ -423,7 +423,7 @@ public class QueryOperator extends Operator {
       try {
         newOperator = operator.copy();
         concatFilterPath(device, newOperator, filterPaths);
-      } catch (MetadataException | LogicalOptimizeException e) {
+      } catch (LogicalOptimizeException | MetadataException e) {
         deviceIterator.remove();
         continue;
       }
@@ -445,7 +445,7 @@ public class QueryOperator extends Operator {
 
   private void concatFilterPath(
       PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths)
-      throws MetadataException, LogicalOptimizeException {
+      throws LogicalOptimizeException, MetadataException {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child, filterPaths);

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
@@ -26,5 +25,5 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 @FunctionalInterface
 public interface IFilterOptimizer {
 
-  FilterOperator optimize(FilterOperator filter) throws QueryProcessException, MetadataException;
+  FilterOperator optimize(FilterOperator filter) throws QueryProcessException;
 }

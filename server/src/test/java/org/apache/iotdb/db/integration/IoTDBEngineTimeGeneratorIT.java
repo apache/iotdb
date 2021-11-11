@@ -52,7 +52,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -89,9 +91,9 @@ public class IoTDBEngineTimeGeneratorIT {
     insertData();
   }
 
+  // recovery value
   @AfterClass
   public static void tearDown() throws Exception {
-    // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);

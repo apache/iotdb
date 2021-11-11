@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -37,7 +36,7 @@ public class GroupByEngineDataSetTest {
 
   /** Sliding step > unit && last time interval = unit */
   @Test
-  public void calNextTimePartitionTest1() throws IOException, MetadataException {
+  public void calNextTimePartitionTest1() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 5;
@@ -67,7 +66,7 @@ public class GroupByEngineDataSetTest {
 
   /** Sliding step = unit && last time interval = unit */
   @Test
-  public void calNextTimePartitionTest2() throws IOException, MetadataException {
+  public void calNextTimePartitionTest2() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -96,7 +95,7 @@ public class GroupByEngineDataSetTest {
 
   /** Sliding step = unit && last time interval < unit */
   @Test
-  public void calNextTimePartitionTest3() throws IOException, MetadataException {
+  public void calNextTimePartitionTest3() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -125,7 +124,7 @@ public class GroupByEngineDataSetTest {
 
   /** Desc query && sliding step > unit && last time interval = unit */
   @Test
-  public void calNextTimePartitionDescTest1() throws IOException, MetadataException {
+  public void calNextTimePartitionDescTest1() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 5;
@@ -156,7 +155,7 @@ public class GroupByEngineDataSetTest {
 
   /** Desc query && Sliding step = unit && last time interval = unit */
   @Test
-  public void calNextTimePartitionDescTest2() throws IOException, MetadataException {
+  public void calNextTimePartitionDescTest2() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -186,7 +185,7 @@ public class GroupByEngineDataSetTest {
 
   /** Desc query && Sliding step = unit && last time interval < unit */
   @Test
-  public void calNextTimePartitionDescTest3() throws IOException, MetadataException {
+  public void calNextTimePartitionDescTest3() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -219,7 +218,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void testGroupByMonth1() throws IOException, MetadataException {
+  public void testGroupByMonth1() throws IOException {
     long queryId = 1000L;
     // interval = 1mo
     long unit = 1 * 30 * 86400_000L;
@@ -259,7 +258,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void testGroupByMonth2() throws IOException, MetadataException {
+  public void testGroupByMonth2() throws IOException {
     long queryId = 1000L;
     // interval = 1mo
     long unit = 1 * 30 * 86400_000L;
@@ -314,7 +313,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void testGroupByMonth3() throws IOException, MetadataException {
+  public void testGroupByMonth3() throws IOException {
     long queryId = 1000L;
     // interval = 2mo
     long unit = 2 * 30 * 86400_000L;
@@ -354,7 +353,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void testGroupByMonth4() throws IOException, MetadataException {
+  public void testGroupByMonth4() throws IOException {
     long queryId = 1000L;
     // interval = 10days
     long unit = 10 * 86400_000L;
@@ -409,7 +408,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void testGroupByMonthDescending1() throws IOException, MetadataException {
+  public void testGroupByMonthDescending1() throws IOException {
     long queryId = 1000L;
     // interval = 1mo
     long unit = 1 * 30 * 86400_000L;
@@ -464,7 +463,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void testGroupByMonthDescending2() throws IOException, MetadataException {
+  public void testGroupByMonthDescending2() throws IOException {
     long queryId = 1000L;
     // interval = 1mo
     long unit = 1 * 30 * 86400_000L;

@@ -225,7 +225,7 @@ public class TTLTest {
     // files before ttl
     QueryDataSource dataSource =
         storageGroupProcessor.query(
-            SchemaTestUtils.getMeasurementPath(sg1 + "." + s1),
+            SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);

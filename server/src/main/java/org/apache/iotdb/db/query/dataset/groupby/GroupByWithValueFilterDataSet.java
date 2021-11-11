@@ -128,7 +128,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           "need to call hasNext() before calling next()" + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-
     curAggregateResults = new AggregateResult[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       curAggregateResults[i] =
