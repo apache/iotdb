@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.encoding.huffmanForByte;
 
-
-
 /** Base unit of huffman Tree*/
 public class huffmanNode{
     int frequency;

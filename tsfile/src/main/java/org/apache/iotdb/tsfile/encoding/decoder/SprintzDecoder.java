@@ -135,7 +135,6 @@ public class SprintzDecoder extends Decoder {
         }
     }
 
-
     /**
      * Check whether there is number left for reading.
      *

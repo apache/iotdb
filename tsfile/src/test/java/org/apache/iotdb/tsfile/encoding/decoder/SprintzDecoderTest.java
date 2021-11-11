@@ -130,7 +130,6 @@ public class SprintzDecoderTest {
 
         SprintzDecoder decoder = new SprintzDecoder(4,3);
         decoder.readInt(ByteBuffer.wrap(encodedBuffer));
-
     }
 
 

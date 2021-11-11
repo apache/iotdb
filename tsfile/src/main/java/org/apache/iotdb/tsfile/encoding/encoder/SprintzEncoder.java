@@ -225,7 +225,6 @@ public class SprintzEncoder extends Encoder{
     }
 
 
-
     /**
      * bit-pack each column of error together,
      * the number of bits required for each element in a column is the same, which is nbits

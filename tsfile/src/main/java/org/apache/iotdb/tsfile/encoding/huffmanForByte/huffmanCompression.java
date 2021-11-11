@@ -39,7 +39,6 @@ public class huffmanCompression {
 
     public huffmanNode getRoot(){return root;}
 
-
     /** build huffmanTree from bytesBuffer*/
     public void buildHuffmanTree(List<byte[]> bytesBuffer){
         List<Byte> uniqueByte = getUniqueBytes(bytesBuffer);
