@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,7 +26,14 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
+
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class AlignedChunkWriterImplTest {
 
@@ -48,8 +50,10 @@ public class AlignedChunkWriterImplTest {
     }
 
     chunkWriter.sealCurrentPage();
-    // time chunk: 7(ChunkHeader Size) + 4(PageHeader Size: uncompressedSize + compressedSize) + 160(dataSize);
-    // value chunk 1: 8(ChunkHeader Size) + 2(PageHeader Size: uncompressedSize + compressedSize) + 4(bitmap length) + 3(bitmap data) + 80(data size);
+    // time chunk: 7(ChunkHeader Size) + 4(PageHeader Size: uncompressedSize + compressedSize) +
+    // 160(dataSize);
+    // value chunk 1: 8(ChunkHeader Size) + 2(PageHeader Size: uncompressedSize + compressedSize) +
+    // 4(bitmap length) + 3(bitmap data) + 80(data size);
     // value chunk 2: 8 + 2 + 4 + 3 + 20;
     // value chunk 3: 9 + 4 + 4 + 3 + 20 * 8;
     assertEquals(485, chunkWriter.getSerializedChunkSize());

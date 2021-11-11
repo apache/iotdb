@@ -18,18 +18,18 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 public class VectorMeasurementSchemaStub extends VectorMeasurementSchema {
 
@@ -109,12 +109,6 @@ public class VectorMeasurementSchemaStub extends VectorMeasurementSchema {
   @Override
   public int serializeTo(OutputStream outputStream) {
     return 0;
-  }
-
-  @Override
-  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, String deviceId) {
-    return null;
   }
 
   @Override

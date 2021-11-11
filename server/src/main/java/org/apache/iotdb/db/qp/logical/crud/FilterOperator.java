@@ -104,9 +104,8 @@ public class FilterOperator implements Comparable<FilterOperator> {
     this.singlePath = singlePath;
   }
 
-  public boolean addChildOperator(FilterOperator op) {
+  public void addChildOperator(FilterOperator op) {
     childOperators.add(op);
-    return true;
   }
 
   public void setPathSet(Set<PartialPath> pathSet) {
@@ -286,7 +285,7 @@ public class FilterOperator implements Comparable<FilterOperator> {
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     if (singlePath != null) {
-      ret.singlePath = new PartialPath(singlePath.getNodes().clone());
+      ret.singlePath = singlePath.clone();
     }
     for (FilterOperator filterOperator : this.childOperators) {
       ret.addChildOperator(filterOperator.copy());

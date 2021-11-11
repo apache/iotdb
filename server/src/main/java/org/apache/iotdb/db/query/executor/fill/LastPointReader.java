@@ -43,23 +43,23 @@ import java.util.Set;
 
 public class LastPointReader {
 
-  private PartialPath seriesPath;
+  // if it is a common path, it will be MeasurementPath
+  // if it is a sub sensor of an aligned device, it will be AlignedPath with only one sub sensor
+  private final PartialPath seriesPath;
   long queryTime;
   TSDataType dataType;
-  private QueryContext context;
+  private final QueryContext context;
 
   // measurements of the same device as "seriesPath"
-  private Set<String> deviceMeasurements;
+  private final Set<String> deviceMeasurements;
 
-  private Filter timeFilter;
+  private final Filter timeFilter;
 
-  private QueryDataSource dataSource;
+  private final QueryDataSource dataSource;
 
   private IChunkMetadata cachedLastChunk;
 
-  private List<ITimeSeriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();
-
-  public LastPointReader() {}
+  private final List<ITimeSeriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();
 
   public LastPointReader(
       PartialPath seriesPath,
@@ -107,8 +107,7 @@ public class LastPointReader {
       TsFileResource resource = seqFileResource.get(index);
       ITimeSeriesMetadata timeseriesMetadata;
       timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(
-              resource, seriesPath, context, timeFilter, deviceMeasurements);
+          loadTimeSeriesMetadata(resource, seriesPath, context, timeFilter, deviceMeasurements);
       if (timeseriesMetadata != null) {
         if (!timeseriesMetadata.isModified()
             && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
@@ -132,7 +131,18 @@ public class LastPointReader {
     return lastPoint;
   }
 
-  /** find the last TimeseriesMetadata in unseq files and unpack all overlapped unseq files */
+  protected ITimeSeriesMetadata loadTimeSeriesMetadata(
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter filter,
+      Set<String> allSensors)
+      throws IOException {
+    return FileLoaderUtils.loadTimeSeriesMetadata(
+        resource, seriesPath, context, filter, allSensors);
+  }
+
+  /** find the last TimeeriesMetadata in unseq files and unpack all overlapped unseq files */
   private void UnpackOverlappedUnseqFiles(long lBoundTime) throws IOException {
     PriorityQueue<TsFileResource> unseqFileResource =
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
@@ -140,7 +150,7 @@ public class LastPointReader {
     while (!unseqFileResource.isEmpty()
         && (lBoundTime <= unseqFileResource.peek().getEndTime(seriesPath.getDevice()))) {
       ITimeSeriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(
+          loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
 
       if (timeseriesMetadata == null
@@ -161,7 +171,7 @@ public class LastPointReader {
 
   private TimeValuePair getChunkLastPoint(IChunkMetadata chunkMetaData) throws IOException {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
-    if (chunkMetaData == null) {
+    if (chunkMetaData == null || chunkMetaData.getStatistics() == null) {
       return lastPoint;
     }
     Statistics chunkStatistics = chunkMetaData.getStatistics();
@@ -181,7 +191,9 @@ public class LastPointReader {
     while (it.hasNext()) {
       IPageReader pageReader = (IPageReader) it.next();
       Statistics pageStatistics = pageReader.getStatistics();
-      if (!pageReader.isModified() && endtimeContainedByTimeFilter(pageStatistics)) {
+      if (pageStatistics != null
+          && !pageReader.isModified()
+          && endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint =
             constructLastPair(pageStatistics.getEndTime(), pageStatistics.getLastValue(), dataType);
       } else {
@@ -206,8 +218,8 @@ public class LastPointReader {
     PriorityQueue<TsFileResource> unseqTsFilesSet =
         new PriorityQueue<>(
             (o1, o2) -> {
-              Long maxTimeOfO1 = o1.getEndTime(seriesPath.getDevice());
-              Long maxTimeOfO2 = o2.getEndTime(seriesPath.getDevice());
+              long maxTimeOfO1 = o1.getEndTime(seriesPath.getDevice());
+              long maxTimeOfO2 = o2.getEndTime(seriesPath.getDevice());
               return Long.compare(maxTimeOfO2, maxTimeOfO1);
             });
     unseqTsFilesSet.addAll(tsFileResources);

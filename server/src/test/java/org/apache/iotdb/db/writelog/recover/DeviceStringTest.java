@@ -87,7 +87,7 @@ public class DeviceStringTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor1")),
+        new Path(("root.sg.device99")),
         new UnaryMeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor1"),

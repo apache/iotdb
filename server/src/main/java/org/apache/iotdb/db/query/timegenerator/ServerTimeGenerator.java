@@ -90,10 +90,10 @@ public class ServerTimeGenerator extends TimeGenerator {
     if (expression.getType() == ExpressionType.SERIES) {
       SingleSeriesExpression seriesExpression = (SingleSeriesExpression) expression;
       MeasurementPath measurementPath = (MeasurementPath) seriesExpression.getSeriesPath();
-      pathList.add(measurementPath.getDevicePath());
       // change the MeasurementPath to AlignedPath if the MeasurementPath's isUnderAlignedEntity ==
       // true
       seriesExpression.setSeriesPath(measurementPath.transformToExactPath());
+      pathList.add((PartialPath) seriesExpression.getSeriesPath());
     } else {
       getAndTransformPartialPathFromExpression(
           ((IBinaryExpression) expression).getLeft(), pathList);

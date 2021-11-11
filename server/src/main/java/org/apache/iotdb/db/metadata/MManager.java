@@ -1189,17 +1189,6 @@ public class MManager {
     if (fullPath.equals(SQLConstant.TIME_PATH)) {
       return TSDataType.INT64;
     }
-
-    // todo eliminate this after Query interaction refactor
-    try {
-      IMeasurementSchema schema = fullPath.getMeasurementSchema();
-      if (schema != null) {
-        return schema.getType();
-      }
-    } catch (MetadataException ignored) {
-
-    }
-
     return getSeriesSchema(fullPath).getType();
   }
 

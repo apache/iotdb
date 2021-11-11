@@ -29,11 +29,11 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -98,8 +98,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -196,7 +196,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             CompactionTaskManager.currentTaskNum)
         .call();
     path =
-        new PartialPath(
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -229,8 +229,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -301,7 +301,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             CompactionTaskManager.currentTaskNum)
         .call();
     path =
-        new PartialPath(
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -333,8 +333,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -409,7 +409,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             CompactionTaskManager.currentTaskNum)
         .call();
     path =
-        new PartialPath(
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -442,8 +442,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -520,7 +520,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
             CompactionTaskManager.currentTaskNum)
         .call();
     path =
-        new PartialPath(
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -550,7 +550,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
   /** compaction recover merge start just log source file */
   @Test
   public void testCompactionMergeRecoverMergeStartSourceLog()
-      throws IOException, IllegalPathException {
+      throws IOException, MetadataException {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
@@ -559,8 +559,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     sizeTieredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
     sizeTieredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     sizeTieredCompactionLogger.close();
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -589,7 +589,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
   /** compaction recover merge start just log source file and sequence flag */
   @Test
   public void testCompactionMergeRecoverMergeStartSequenceLog()
-      throws IOException, IllegalPathException {
+      throws IOException, MetadataException {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
@@ -599,8 +599,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     sizeTieredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     sizeTieredCompactionLogger.logSequence(true);
     sizeTieredCompactionLogger.close();
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -628,7 +628,7 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
 
   /** compaction recover merge start target file logged */
   @Test
-  public void testCompactionMergeRecoverMergeStart() throws IOException, IllegalPathException {
+  public void testCompactionMergeRecoverMergeStart() throws IOException, MetadataException {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
@@ -653,8 +653,8 @@ public class SizeTieredCompactionRecoverTest extends InnerCompactionTest {
     sizeTieredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     tsFileManager.addForRecover(targetTsFileResource, true);
     sizeTieredCompactionLogger.close();
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());

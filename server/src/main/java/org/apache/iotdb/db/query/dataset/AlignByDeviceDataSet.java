@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -177,7 +178,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         switch (dataSetType) {
           case GROUPBYTIME:
             groupByTimePlan.setDeduplicatedPathsAndUpdate(executePaths);
-            groupByTimePlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
             groupByTimePlan.setExpression(expression);
             currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
@@ -185,18 +185,15 @@ public class AlignByDeviceDataSet extends QueryDataSet {
           case AGGREGATE:
             aggregationPlan.setDeduplicatedPathsAndUpdate(executePaths);
             aggregationPlan.setDeduplicatedAggregations(executeAggregations);
-            aggregationPlan.setDeduplicatedDataTypes(tsDataTypes);
             aggregationPlan.setExpression(expression);
             currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;
           case FILL:
-            fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             fillQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
             currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
             rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
-            rawDataQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
             break;
@@ -261,7 +258,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       PartialPath fullPath = new PartialPath(device.getFullPath(), measurement);
       IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
       if (schema instanceof UnaryMeasurementSchema) {
-        return fullPath;
+        return new MeasurementPath(device.getFullPath(), measurement, schema);
       } else {
         String vectorPath = fullPath.getDevice();
         return new AlignedPath(vectorPath, fullPath.getMeasurement());

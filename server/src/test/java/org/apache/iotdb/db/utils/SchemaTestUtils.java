@@ -16,17 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.controller;
+package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 
-import java.io.IOException;
 import java.util.List;
 
-public interface IChunkMetadataLoader {
+import static org.junit.Assert.assertFalse;
 
-  /** read all chunk metadata of one time series in one file. */
-  List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata)
-      throws IOException;
+public class SchemaTestUtils {
+
+  public static MeasurementPath getMeasurementPath(String pathPatternString)
+      throws MetadataException {
+    PartialPath pathPattern = new PartialPath(pathPatternString);
+    List<MeasurementPath> measurementPaths = IoTDB.metaManager.getMeasurementPaths(pathPattern);
+    assertFalse(measurementPaths.isEmpty());
+    return measurementPaths.get(0);
+  }
 }
