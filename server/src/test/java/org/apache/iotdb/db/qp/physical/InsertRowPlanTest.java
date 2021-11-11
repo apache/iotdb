@@ -114,7 +114,7 @@ public class InsertRowPlanTest {
   public void testInsertRowPlanWithAlignedTimeseries()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    InsertRowPlan vectorRowPlan = getInsertVectorRowPlan();
+    InsertRowPlan vectorRowPlan = getInsertAlignedRowPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insert(vectorRowPlan);
@@ -195,7 +195,7 @@ public class InsertRowPlanTest {
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
-    InsertRowPlan rowPlan = getInsertVectorRowPlan();
+    InsertRowPlan rowPlan = getInsertAlignedRowPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insert(rowPlan);
@@ -212,7 +212,7 @@ public class InsertRowPlanTest {
 
   @Test
   public void testInsertRowSerialization() throws IllegalPathException, QueryProcessException {
-    InsertRowPlan plan1 = getInsertVectorRowPlan();
+    InsertRowPlan plan1 = getInsertAlignedRowPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insert(plan1);
@@ -230,7 +230,7 @@ public class InsertRowPlanTest {
     Assert.assertEquals(plan1, plan2);
   }
 
-  private InsertRowPlan getInsertVectorRowPlan() throws IllegalPathException {
+  private InsertRowPlan getInsertAlignedRowPlan() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
         new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64};

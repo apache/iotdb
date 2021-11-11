@@ -195,7 +195,7 @@ public class InsertTabletPlanTest {
   public void testInsertTabletPlanWithAlignedTimeseries()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    InsertTabletPlan tabletPlan = getVectorInsertTabletPlan();
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
@@ -216,7 +216,7 @@ public class InsertTabletPlanTest {
   public void testInsertNullableTabletPlanWithAlignedTimeseries()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    InsertTabletPlan tabletPlan = getVectorInsertTabletPlan();
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
     tabletPlan.setBitMaps(new BitMap[3]);
     BitMap[] bitMaps = tabletPlan.getBitMaps();
     for (int i = 0; i < 3; i++) {
@@ -249,7 +249,7 @@ public class InsertTabletPlanTest {
     IoTDB.metaManager.createSchemaTemplate(plan);
     IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp"));
 
-    InsertTabletPlan tabletPlan = getVectorInsertTabletPlan();
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
 
@@ -328,7 +328,7 @@ public class InsertTabletPlanTest {
 
     IoTDB.metaManager.createSchemaTemplate(plan);
     IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp"));
-    InsertTabletPlan tabletPlan = getVectorInsertTabletPlan();
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
@@ -365,7 +365,7 @@ public class InsertTabletPlanTest {
 
   @Test
   public void testInsertTabletSerialization() throws IllegalPathException, QueryProcessException {
-    InsertTabletPlan plan1 = getVectorInsertTabletPlan();
+    InsertTabletPlan plan1 = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(plan1);
@@ -386,7 +386,7 @@ public class InsertTabletPlanTest {
   @Test
   public void testInsertTabletWithBitMapsSerialization()
       throws IllegalPathException, QueryProcessException {
-    InsertTabletPlan plan1 = getVectorInsertTabletPlan();
+    InsertTabletPlan plan1 = getAlignedInsertTabletPlan();
     plan1.setBitMaps(new BitMap[3]);
     BitMap[] bitMaps = plan1.getBitMaps();
     for (int i = 0; i < 3; i++) {
@@ -411,7 +411,7 @@ public class InsertTabletPlanTest {
     Assert.assertEquals(plan1, plan2);
   }
 
-  private InsertTabletPlan getVectorInsertTabletPlan() throws IllegalPathException {
+  private InsertTabletPlan getAlignedInsertTabletPlan() throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
