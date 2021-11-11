@@ -112,13 +112,14 @@ public class AlignedPageReader implements IPageReader {
 
   @Override
   public Statistics getStatistics() {
-    return valuePageReaderList.size() == 1
+    return valuePageReaderList.size() == 1 && valuePageReaderList.get(0) != null
         ? valuePageReaderList.get(0).getStatistics()
         : timePageReader.getStatistics();
   }
 
   public Statistics getStatistics(int index) {
-    return valuePageReaderList.get(index).getStatistics();
+    ValuePageReader valuePageReader = valuePageReaderList.get(index);
+    return valuePageReader == null ? null : valuePageReader.getStatistics();
   }
 
   @Override

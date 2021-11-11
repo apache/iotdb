@@ -106,9 +106,4 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
     return new ArrayList<>(alignedChunkMetadataList);
   }
-
-  @Override
-  public boolean isMemChunkMetadataLoader() {
-    return false;
-  }
 }

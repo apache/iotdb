@@ -22,15 +22,11 @@ package org.apache.iotdb.tsfile.write.schema;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -280,32 +276,6 @@ public class VectorMeasurementSchema
     byteLen += ReadWriteIOUtils.write(compressor, outputStream);
 
     return byteLen;
-  }
-
-  @Override
-  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, String deviceId) {
-    List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
-    List<ChunkMetadata> timeChunkMetadataList =
-        writer.getVisibleMetadataList(deviceId, "", getType());
-    List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-    List<String> valueMeasurementIdList = getSubMeasurementsList();
-    List<TSDataType> valueDataTypeList = getSubMeasurementsTSDataTypeList();
-    for (int i = 0; i < valueMeasurementIdList.size(); i++) {
-      valueChunkMetadataList.add(
-          writer.getVisibleMetadataList(
-              deviceId, valueMeasurementIdList.get(i), valueDataTypeList.get(i)));
-    }
-
-    for (int i = 0; i < timeChunkMetadataList.size(); i++) {
-      List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
-      for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-        valueChunkMetadata.add(chunkMetadata.get(i));
-      }
-      chunkMetadataList.add(
-          new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
-    }
-    return chunkMetadataList;
   }
 
   @Override

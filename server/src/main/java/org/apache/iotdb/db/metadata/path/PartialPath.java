@@ -27,15 +27,18 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -371,6 +374,16 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return ret;
   }
 
+  public LastPointReader createLastPointReader(
+      TSDataType dataType,
+      Set<String> deviceMeasurements,
+      QueryContext context,
+      QueryDataSource dataSource,
+      long queryTime,
+      Filter timeFilter) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
   public SeriesReader createSeriesReader(
       Set<String> allSensors,
       TSDataType dataType,
@@ -397,10 +410,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk, TsFileResource originTsFileResource)
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList,
+      TsFileResource originTsFileResource)
       throws IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
+
   /**
    * get the ReadOnlyMemChunk from the given MemTable.
    *
@@ -415,5 +431,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   @Override
   public PartialPath clone() {
     return new PartialPath(this.getNodes().clone());
+  }
+  
+  @Override
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
   }
 }
