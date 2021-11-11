@@ -48,7 +48,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
   protected Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
-  private final List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
+  private final Map<PartialPath, Integer> resultColumnNameToQueryDataSetIndex = new HashMap<>();
 
   public UDTFPlan(ZoneId zoneId) {
     super();
@@ -59,9 +59,11 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
     // sort paths by device, to accelerate the metadata read process
+    List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
     for (int i = 0; i < resultColumns.size(); i++) {
       for (PartialPath path : resultColumns.get(i).collectPaths()) {
         indexedPaths.add(new Pair<>(path, i));
+        resultColumnNameToQueryDataSetIndex.put(path, i);
       }
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
@@ -136,13 +138,8 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   public int getReaderIndex(PartialPath partialPath) {
-    int indexed = 0;
-    for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
-      if (indexedPath.left.getFullPath().equals(partialPath.getFullPath())) {
-        indexed = indexedPath.right;
-        break;
-      }
-    }
-    return pathNameToReaderIndex.get(getColumnForReaderFromPath(partialPath, indexed));
+    return pathNameToReaderIndex.get(
+        getColumnForReaderFromPath(
+            partialPath, resultColumnNameToQueryDataSetIndex.get(partialPath)));
   }
 }

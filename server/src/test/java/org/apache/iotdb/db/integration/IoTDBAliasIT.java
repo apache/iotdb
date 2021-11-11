@@ -345,10 +345,15 @@ public class IoTDBAliasIT {
   @Test
   public void UDFAliasTest() throws ClassNotFoundException {
 
-    String expect = "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,";
+    String[] expect = {
+      "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
+      "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
+      "Time,-root.sg1.d1.s1,-root.sg1.d1.s1,a,sin(cos(tan(root.sg1.d1.s1))),cos(root.sg1.d1.s2),b,cos(root.sg1.d1.s2),"
+    };
     String[] sqls = {
-      "select -s1, sin(cos(tan(s1))) as a , cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1 WHERE time >= 1509466140000",
-      "select -s1, sin(cos(tan(s1))) as a , cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1"
+      "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1 WHERE time >= 1509466140000",
+      "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1",
+      "select -s1, -s1, sin(cos(tan(s1))) as a, sin(cos(tan(s1))), cos(s2), top_k(s1 + s1, 'k'='1') as b, cos(s2) from root.sg1.d1"
     };
     int count = 2;
 
@@ -369,7 +374,7 @@ public class IoTDBAliasIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             header.append(resultSetMetaData.getColumnName(i)).append(",");
           }
-          Assert.assertEquals(expect, header.toString());
+          Assert.assertEquals(expect[index], header.toString());
         }
       }
 
