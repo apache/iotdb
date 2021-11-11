@@ -65,8 +65,9 @@ public class MeasurementPath extends PartialPath {
     super(measurementPath);
   }
 
-  public MeasurementPath(PartialPath measurementPath) {
+  public MeasurementPath(PartialPath measurementPath, IMeasurementSchema measurementSchema) {
     super(measurementPath.getNodes());
+    this.measurementSchema = measurementSchema;
   }
 
   public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)

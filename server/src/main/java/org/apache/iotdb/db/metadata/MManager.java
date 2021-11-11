@@ -1203,23 +1203,29 @@ public class MManager {
   }
 
   // attention: this path must be a device node
-  public List<IMeasurementSchema> getAllMeasurementByDevicePath(PartialPath devicePath)
+  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException {
-    Set<IMeasurementSchema> res = new HashSet<>();
+    List<MeasurementPath> res = new LinkedList<>();
     try {
       IMNode node = mNodeCache.get(devicePath);
-      Template template = node.getUpperTemplate();
 
       for (IMNode child : node.getChildren().values()) {
         if (child.isMeasurement()) {
           IMeasurementMNode measurementMNode = child.getAsMeasurementMNode();
-          res.add(measurementMNode.getSchema());
+          res.add(measurementMNode.getMeasurementPath());
         }
       }
 
       // template
+      Template template = node.getUpperTemplate();
       if (node.isUseTemplate() && template != null) {
-        res.addAll(template.getSchemaMap().values());
+        MeasurementPath measurementPath;
+        for (IMeasurementSchema schema : template.getSchemaMap().values()) {
+          measurementPath =
+              new MeasurementPath(devicePath.concatNode(schema.getMeasurementId()), schema);
+          measurementPath.setUnderAlignedEntity(node.getAsEntityMNode().isAligned());
+          res.add(measurementPath);
+        }
       }
     } catch (CacheException e) {
       throw new PathNotExistException(devicePath.getFullPath());

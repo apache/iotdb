@@ -35,7 +35,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.RedirectException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -45,7 +44,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -231,16 +229,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     try {
       Set<String> res = new HashSet<>();
       // TODO: Implement this method in Cluster MManager
-      List<IMeasurementSchema> measurementSchemas =
+      List<MeasurementPath> measurementPaths =
           IoTDB.metaManager.getAllMeasurementByDevicePath(device);
-      for (IMeasurementSchema schema : measurementSchemas) {
-        if (schema instanceof VectorMeasurementSchema) {
-          for (String subMeasurement : schema.getSubMeasurementsList()) {
-            res.add(schema.getMeasurementId() + TsFileConstant.PATH_SEPARATOR + subMeasurement);
-          }
-        } else {
-          res.add(schema.getMeasurementId());
-        }
+      for (MeasurementPath measurementPath : measurementPaths) {
+        res.add(measurementPath.getMeasurement());
       }
 
       return res;

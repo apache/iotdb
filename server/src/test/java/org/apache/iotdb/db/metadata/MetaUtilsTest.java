@@ -120,15 +120,15 @@ public class MetaUtilsTest {
   public void testGroupAlignedPath() throws MetadataException {
     List<PartialPath> pathList = new ArrayList<>();
 
-    MeasurementPath path1 = new MeasurementPath(new PartialPath("root.sg.device.s1"));
+    MeasurementPath path1 = new MeasurementPath(new PartialPath("root.sg.device.s1"), null);
     pathList.add(path1);
-    MeasurementPath path2 = new MeasurementPath(new PartialPath("root.sg.device.s2"));
+    MeasurementPath path2 = new MeasurementPath(new PartialPath("root.sg.device.s2"), null);
     pathList.add(path2);
 
-    MeasurementPath path3 = new MeasurementPath(new PartialPath("root.sg.aligned_device.s1"));
+    MeasurementPath path3 = new MeasurementPath(new PartialPath("root.sg.aligned_device.s1"), null);
     path3.setUnderAlignedEntity(true);
     pathList.add(path3);
-    MeasurementPath path4 = new MeasurementPath(new PartialPath("root.sg.aligned_device.s2"));
+    MeasurementPath path4 = new MeasurementPath(new PartialPath("root.sg.aligned_device.s2"), null);
     path4.setUnderAlignedEntity(true);
     pathList.add(path4);
 
