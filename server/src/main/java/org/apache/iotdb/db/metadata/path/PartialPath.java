@@ -432,8 +432,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath clone() {
     return new PartialPath(this.getNodes().clone());
   }
-  
-  @Override
+
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
     throw new UnsupportedOperationException("Should call exact sub class!");
