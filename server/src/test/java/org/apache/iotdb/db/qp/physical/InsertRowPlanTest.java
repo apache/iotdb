@@ -71,32 +71,7 @@ public class InsertRowPlanTest {
   public void testInsertRowPlan()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    long time = 110L;
-    TSDataType[] dataTypes =
-        new TSDataType[] {
-          TSDataType.DOUBLE,
-          TSDataType.FLOAT,
-          TSDataType.INT64,
-          TSDataType.INT32,
-          TSDataType.BOOLEAN,
-          TSDataType.TEXT
-        };
-
-    String[] columns = new String[6];
-    columns[0] = 1.0 + "";
-    columns[1] = 2 + "";
-    columns[2] = 10000 + "";
-    columns[3] = 100 + "";
-    columns[4] = false + "";
-    columns[5] = "hh" + 0;
-
-    InsertRowPlan rowPlan =
-        new InsertRowPlan(
-            new PartialPath("root.isp.d1"),
-            time,
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes,
-            columns);
+    InsertRowPlan rowPlan = getInsertRowPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insert(rowPlan);
@@ -136,50 +111,32 @@ public class InsertRowPlanTest {
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
     List<List<String>> measurementList = new ArrayList<>();
-    List<String> v1 = new ArrayList<>();
-    v1.add("s1");
-    v1.add("s2");
-    v1.add("s3");
-    measurementList.add(v1);
-    List<String> v2 = new ArrayList<>();
-    v2.add("s4");
-    v2.add("s5");
-    measurementList.add(v2);
-    measurementList.add(Collections.singletonList("s6"));
+    for (int i = 1; i <= 6; i++) {
+      measurementList.add(Collections.singletonList("s" + i));
+    }
 
     List<List<TSDataType>> dataTypesList = new ArrayList<>();
-    List<TSDataType> d1 = new ArrayList<>();
-    d1.add(TSDataType.DOUBLE);
-    d1.add(TSDataType.FLOAT);
-    d1.add(TSDataType.INT64);
-    dataTypesList.add(d1);
-    List<TSDataType> d2 = new ArrayList<>();
-    d2.add(TSDataType.INT32);
-    d2.add(TSDataType.BOOLEAN);
-    dataTypesList.add(d2);
+    dataTypesList.add(Collections.singletonList(TSDataType.DOUBLE));
+    dataTypesList.add(Collections.singletonList(TSDataType.FLOAT));
+    dataTypesList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypesList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypesList.add(Collections.singletonList(TSDataType.BOOLEAN));
     dataTypesList.add(Collections.singletonList(TSDataType.TEXT));
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
-    List<TSEncoding> e1 = new ArrayList<>();
-    e1.add(TSEncoding.PLAIN);
-    e1.add(TSEncoding.PLAIN);
-    e1.add(TSEncoding.PLAIN);
-    encodingList.add(e1);
-    List<TSEncoding> e2 = new ArrayList<>();
-    e2.add(TSEncoding.PLAIN);
-    e2.add(TSEncoding.PLAIN);
-    encodingList.add(e2);
-    encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
+    for (int i = 1; i <= 6; i++) {
+      encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
+    }
 
     List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
+    for (int i = 1; i <= 6; i++) {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
     List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("vector");
-    schemaNames.add("vector2");
-    schemaNames.add("s6");
+    for (int i = 1; i <= 6; i++) {
+      schemaNames.add("s" + i);
+    }
 
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
@@ -195,18 +152,17 @@ public class InsertRowPlanTest {
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
-    InsertRowPlan rowPlan = getInsertAlignedRowPlan();
+    InsertRowPlan rowPlan = getInsertRowPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insert(rowPlan);
 
-    QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(1, dataSet.getPaths().size());
+    Assert.assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(3, record.getFields().size());
+      Assert.assertEquals(6, record.getFields().size());
     }
   }
 
@@ -228,6 +184,34 @@ public class InsertRowPlanTest {
 
     executor.insert(plan2);
     Assert.assertEquals(plan1, plan2);
+  }
+
+  private InsertRowPlan getInsertRowPlan() throws IllegalPathException {
+    long time = 110L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
+
+    String[] columns = new String[6];
+    columns[0] = 1.0 + "";
+    columns[1] = 2 + "";
+    columns[2] = 10000 + "";
+    columns[3] = 100 + "";
+    columns[4] = false + "";
+    columns[5] = "hh" + 0;
+
+    return new InsertRowPlan(
+        new PartialPath("root.isp.d1"),
+        time,
+        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+        dataTypes,
+        columns);
   }
 
   private InsertRowPlan getInsertAlignedRowPlan() throws IllegalPathException {

@@ -262,7 +262,7 @@ public class InsertTabletPlanTest {
 
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       Assert.assertEquals(6, record.getFields().size());
@@ -271,50 +271,32 @@ public class InsertTabletPlanTest {
 
   private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
-    List<String> v1 = new ArrayList<>();
-    v1.add("s1");
-    v1.add("s2");
-    v1.add("s3");
-    measurementList.add(v1);
-    List<String> v2 = new ArrayList<>();
-    v2.add("s4");
-    v2.add("s5");
-    measurementList.add(v2);
-    measurementList.add(Collections.singletonList("s6"));
+    for (int i = 1; i <= 6; i++) {
+      measurementList.add(Collections.singletonList("s" + i));
+    }
 
     List<List<TSDataType>> dataTypesList = new ArrayList<>();
-    List<TSDataType> d1 = new ArrayList<>();
-    d1.add(TSDataType.DOUBLE);
-    d1.add(TSDataType.FLOAT);
-    d1.add(TSDataType.INT64);
-    dataTypesList.add(d1);
-    List<TSDataType> d2 = new ArrayList<>();
-    d2.add(TSDataType.INT32);
-    d2.add(TSDataType.BOOLEAN);
-    dataTypesList.add(d2);
+    dataTypesList.add(Collections.singletonList(TSDataType.DOUBLE));
+    dataTypesList.add(Collections.singletonList(TSDataType.FLOAT));
+    dataTypesList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypesList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypesList.add(Collections.singletonList(TSDataType.BOOLEAN));
     dataTypesList.add(Collections.singletonList(TSDataType.TEXT));
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
-    List<TSEncoding> e1 = new ArrayList<>();
-    e1.add(TSEncoding.PLAIN);
-    e1.add(TSEncoding.PLAIN);
-    e1.add(TSEncoding.PLAIN);
-    encodingList.add(e1);
-    List<TSEncoding> e2 = new ArrayList<>();
-    e2.add(TSEncoding.PLAIN);
-    e2.add(TSEncoding.PLAIN);
-    encodingList.add(e2);
-    encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
+    for (int i = 1; i <= 6; i++) {
+      encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
+    }
 
     List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 6; i++) {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
     List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("vector");
-    schemaNames.add("vector2");
-    schemaNames.add("s6");
+    for (int i = 1; i <= 6; i++) {
+      schemaNames.add("s" + i);
+    }
 
     return new CreateTemplatePlan(
         "template1", schemaNames, measurementList, dataTypesList, encodingList, compressionTypes);
@@ -336,7 +318,7 @@ public class InsertTabletPlanTest {
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       Assert.assertEquals(6, record.getFields().size());
@@ -356,7 +338,7 @@ public class InsertTabletPlanTest {
 
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       Assert.assertEquals(6, record.getFields().size());
