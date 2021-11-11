@@ -211,7 +211,7 @@ public class SprintzEncoder extends Encoder{
         writePayload(columnBits);
 
         /*huffman encode*/
-        /*need fix
+        /*
         huffmanCompression hc= new huffmanCompression();
         hc.buildHuffmanTree(bytesBuffer);
         byte[] huffmanBuffer = hc.huffmanCompress(bytesBuffer);
