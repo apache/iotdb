@@ -137,4 +137,24 @@ public class CompactionFileInfo {
     }
     return null;
   }
+
+  public String getFilename() {
+    return filename;
+  }
+
+  public String getLogicalStorageGroupName() {
+    return logicalStorageGroupName;
+  }
+
+  public String getVirtualStorageGroupId() {
+    return virtualStorageGroupId;
+  }
+
+  public String getTimePartitionId() {
+    return timePartitionId;
+  }
+
+  public boolean isSequence() {
+    return sequence;
+  }
 }
