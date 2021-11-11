@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 import java.io.File;
 
 /**
@@ -32,6 +34,7 @@ public class CompactionFileInfo {
   private final String timePartitionId;
   private final boolean sequence;
   private final String filename;
+  public static final String INFO_SEPARATOR = " ";
 
   private CompactionFileInfo(
       String logicalStorageGroupName,
@@ -59,7 +62,79 @@ public class CompactionFileInfo {
       // "\" Should be escaped as "\\"
       splitter = "\\\\";
     }
-    String[] splittedPath;
+    String[] splittedPath = filepath.split(splitter);
+    int length = splittedPath.length;
+    if (length < 5) {
+      // if the path contains the required information
+      // after splitting result should contain more than 5 objects
+      throw new RuntimeException(
+          String.format("Path %s cannot be parsed into file info", filepath));
+    }
+
+    return new CompactionFileInfo(
+        splittedPath[length - 4],
+        splittedPath[length - 3],
+        splittedPath[length - 2],
+        splittedPath[length - 5].equals("sequence"),
+        splittedPath[length - 1]);
+  }
+
+  /**
+   * This function generates an instance of CompactionFileInfo by parsing the info string of a
+   * tsfile(usually recorded in a compaction.log), such as “root.test.sg 0 0 true 1-1-0-0.tsfile"
+   */
+  public static CompactionFileInfo getFileInfoFromInfoString(String infoString) {
+    String[] splittedFileInfo = infoString.split(INFO_SEPARATOR);
+    int length = splittedFileInfo.length;
+    if (length != 5) {
+      throw new RuntimeException(
+          String.format("String %s is not a legal file info string", infoString));
+    }
+    return new CompactionFileInfo(
+        splittedFileInfo[0],
+        splittedFileInfo[1],
+        splittedFileInfo[2],
+        Boolean.parseBoolean(splittedFileInfo[3]),
+        splittedFileInfo[4]);
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "%s%s%s%s%s%s%s%s%s",
+        logicalStorageGroupName,
+        INFO_SEPARATOR,
+        virtualStorageGroupId,
+        INFO_SEPARATOR,
+        timePartitionId,
+        INFO_SEPARATOR,
+        sequence,
+        INFO_SEPARATOR,
+        filename);
+  }
+
+  /**
+   * This method find the File object of current file by searching it in every data directory. If
+   * the file is not found, it will return null.
+   */
+  public File getFileFromDataDirs() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String partialFileString =
+        (sequence ? "sequence" : "unsequence")
+            + File.separator
+            + logicalStorageGroupName
+            + File.separator
+            + virtualStorageGroupId
+            + File.separator
+            + timePartitionId
+            + File.separator
+            + filename;
+    for (String dataDir : dataDirs) {
+      File file = new File(dataDir, partialFileString);
+      if (file.exists()) {
+        return file;
+      }
+    }
     return null;
   }
 }
