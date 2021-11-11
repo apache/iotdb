@@ -1219,8 +1219,12 @@ public class MManager {
       // template
       Template template = node.getUpperTemplate();
       if (node.isUseTemplate() && template != null) {
+        MeasurementPath measurementPath;
         for (IMeasurementSchema schema : template.getSchemaMap().values()) {
-          res.add(new MeasurementPath(devicePath.concatNode(schema.getMeasurementId()), schema));
+          measurementPath =
+              new MeasurementPath(devicePath.concatNode(schema.getMeasurementId()), schema);
+          measurementPath.setUnderAlignedEntity(node.getAsEntityMNode().isAligned());
+          res.add(measurementPath);
         }
       }
     } catch (CacheException e) {
