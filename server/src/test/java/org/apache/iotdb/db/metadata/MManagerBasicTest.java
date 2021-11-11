@@ -963,7 +963,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testSerializationAdaptation() throws IOException {
+  public void testCreateSchemaTemplateSerializationAdaptation() throws IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(baos);
@@ -980,6 +980,26 @@ public class MManagerBasicTest {
     assertEquals(
         plan.getMeasurements().get(0).get(0), deserializedPlan.getMeasurements().get(0).get(0));
     assertEquals(plan.getDataTypes().size(), deserializedPlan.getDataTypes().size());
+  }
+
+  @Test
+  public void testCreateSchemaTemplateSerialization() throws IOException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream dos = new DataOutputStream(baos);
+    plan.serialize(dos);
+    byte[] byteArray = baos.toByteArray();
+    ByteBuffer buffer = ByteBuffer.wrap(byteArray);
+
+    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_TEMPLATE.ordinal(), buffer.get());
+
+    CreateTemplatePlan deserializedPlan = new CreateTemplatePlan();
+    deserializedPlan.deserialize(buffer);
+
+    assertEquals(
+        plan.getCompressors().get(0).get(0), deserializedPlan.getCompressors().get(0).get(0));
+    assertEquals(plan.getMeasurements().size(), deserializedPlan.getMeasurements().size());
+    assertEquals(plan.getName(), deserializedPlan.getName());
   }
 
   private CreateTemplatePlan getTreeTemplatePlan() {

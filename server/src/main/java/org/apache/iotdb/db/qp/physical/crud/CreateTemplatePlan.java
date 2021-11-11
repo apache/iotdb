@@ -51,6 +51,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
   TSDataType[][] dataTypes;
   TSEncoding[][] encodings;
   CompressionType[][] compressors;
+  private final int NEW_PLAN = -1;
 
   public CreateTemplatePlan() {
     super(false, OperatorType.CREATE_TEMPLATE);
@@ -285,8 +286,9 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, buffer);
 
-    // write -1 as flag to note that there is no schemaNames and new nested list for compressors
-    ReadWriteIOUtils.write(-1, buffer);
+    // write NEW_PLAN as flag to note that there is no schemaNames and new nested list for
+    // compressors
+    ReadWriteIOUtils.write(NEW_PLAN, buffer);
 
     // measurements
     ReadWriteIOUtils.write(measurements.length, buffer);
@@ -335,7 +337,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    if (size == -1) {
+    if (size == NEW_PLAN) {
       isFormerSerialized = false;
     } else {
       // deserialize schemaNames
@@ -414,8 +416,9 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, stream);
 
-    // write -1 as flag to note that there is no schemaNames and new nested list for compressors
-    ReadWriteIOUtils.write(-1, stream);
+    // write NEW_PLAN as flag to note that there is no schemaNames and new nested list for
+    // compressors
+    ReadWriteIOUtils.write(NEW_PLAN, stream);
 
     // measurements
     ReadWriteIOUtils.write(measurements.length, stream);
