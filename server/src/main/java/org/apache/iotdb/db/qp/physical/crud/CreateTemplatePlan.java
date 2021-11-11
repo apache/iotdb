@@ -312,6 +312,8 @@ public class CreateTemplatePlan extends PhysicalPlan {
     }
 
     // compressors
+    // write -1 as flag to note that there is a nested List
+    ReadWriteIOUtils.write(-1, buffer);
     ReadWriteIOUtils.write(compressors.length, buffer);
     for (CompressionType[] compressorList : compressors) {
       ReadWriteIOUtils.write(compressorList.length, buffer);
@@ -363,12 +365,27 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     // compressor
     size = ReadWriteIOUtils.readInt(buffer);
-    compressors = new CompressionType[size][];
-    for (int i = 0; i < size; i++) {
-      int listSize = ReadWriteIOUtils.readInt(buffer);
-      compressors[i] = new CompressionType[listSize];
-      for (int j = 0; j < listSize; j++) {
-        compressors[i][j] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
+    if (size == -1) {
+      // -1 is a flag notes there is a nested list, where each measurement may has different
+      // compressor
+      size = ReadWriteIOUtils.readInt(buffer);
+      compressors = new CompressionType[size][];
+      for (int i = 0; i < size; i++) {
+        int listSize = ReadWriteIOUtils.readInt(buffer);
+        compressors[i] = new CompressionType[listSize];
+        for (int j = 0; j < listSize; j++) {
+          compressors[i][j] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
+        }
+      }
+    } else {
+      // a flat list where aligned measurements have same compressor, serialize as a nested list
+      compressors = new CompressionType[size][];
+      for (int i = 0; i < size; i++) {
+        int listSize = measurements[i].length;
+        compressors[i] = new CompressionType[listSize];
+        for (int j = 0; j < listSize; j++) {
+          compressors[i][j] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
+        }
       }
     }
 
@@ -409,6 +426,8 @@ public class CreateTemplatePlan extends PhysicalPlan {
     }
 
     // compressors
+    // write -1 as flag to note there is a nested list
+    ReadWriteIOUtils.write(-1, stream);
     ReadWriteIOUtils.write(compressors.length, stream);
     for (CompressionType[] compressorList : compressors) {
       ReadWriteIOUtils.write(compressorList.length, stream);
