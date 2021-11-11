@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 
 /** Removes wildcards (applying memory control and slimit/soffset control) */
@@ -58,7 +57,8 @@ public class WildcardsRemover {
 
   public WildcardsRemover() {}
 
-  public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {
+  public List<MeasurementPath> removeWildcardFrom(PartialPath path)
+      throws LogicalOptimizeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
           IoTDB.metaManager.getMeasurementPathsWithAlias(path, currentLimit, currentOffset);
@@ -74,8 +74,7 @@ public class WildcardsRemover {
         currentLimit -= pair.right;
       }
 
-      // todo eliminate this transform
-      return new LinkedList<>(pair.left);
+      return pair.left;
     } catch (MetadataException e) {
       throw new LogicalOptimizeException("error occurred when removing star: " + e.getMessage());
     }

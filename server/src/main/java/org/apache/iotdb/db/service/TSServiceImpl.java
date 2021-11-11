@@ -63,7 +63,6 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -391,6 +390,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getMeasurementPaths(path);
+  }
+
+  protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getSeriesType(path);
   }
 
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
@@ -951,7 +954,7 @@ public class TSServiceImpl implements TSIService.Iface {
       BitSet aliasList)
       throws TException, MetadataException {
     List<ResultColumn> resultColumns = plan.getResultColumns();
-    List<PartialPath> paths = plan.getPaths();
+    List<MeasurementPath> paths = plan.getPaths();
     List<TSDataType> seriesTypes = new ArrayList<>();
     switch (plan.getOperatorType()) {
       case QUERY:
@@ -971,7 +974,7 @@ public class TSServiceImpl implements TSIService.Iface {
           } else {
             respColumns.add(resultColumns.get(i).getResultColumnName());
           }
-          seriesTypes.add(getSeriesTypeByPath(paths.get(i)));
+          seriesTypes.add(paths.get(i).getSeriesType());
         }
         break;
       case AGGREGATION:
@@ -990,7 +993,6 @@ public class TSServiceImpl implements TSIService.Iface {
         break;
       case UDTF:
         seriesTypes = new ArrayList<>();
-        UDTFPlan udtfPlan = (UDTFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(resultColumns.get(i).getResultColumnName());
           seriesTypes.add(resultColumns.get(i).getDataType());
@@ -1318,8 +1320,8 @@ public class TSServiceImpl implements TSIService.Iface {
     return isLoggedIn;
   }
 
-  private boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
-      throws AuthException {
+  private boolean checkAuthorization(
+      List<? extends PartialPath> paths, PhysicalPlan plan, String username) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();
@@ -2145,7 +2147,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
-    List<PartialPath> paths = plan.getPaths();
+    List<? extends PartialPath> paths = plan.getPaths();
     try {
       if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
         return RpcUtils.getStatus(
@@ -2185,10 +2187,6 @@ public class TSServiceImpl implements TSIService.Iface {
           "Current system mode is read-only, does not support non-query operation");
     }
     return executor.processNonQuery(plan);
-  }
-
-  protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return SchemaUtils.getSeriesTypeByPath(path);
   }
 
   private TSStatus onQueryException(Exception e, String operation) {

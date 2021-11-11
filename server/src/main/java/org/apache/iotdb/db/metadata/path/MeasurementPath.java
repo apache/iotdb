@@ -252,6 +252,18 @@ public class MeasurementPath extends PartialPath {
   }
 
   @Override
+  public MeasurementPath clone() {
+    MeasurementPath newMeasurementPath = null;
+    try {
+      newMeasurementPath =
+          new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
+    return newMeasurementPath;
+  }
+  
+  @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
     ModificationFile modificationFile = tsFileResource.getModFile();

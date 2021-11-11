@@ -49,7 +49,10 @@ public class AuthorityChecker {
    * @throws AuthException Authentication Exception
    */
   public static boolean check(
-      String username, List<PartialPath> paths, Operator.OperatorType type, String targetUser)
+      String username,
+      List<? extends PartialPath> paths,
+      Operator.OperatorType type,
+      String targetUser)
       throws AuthException {
     if (SUPER_USER.equals(username)) {
       return true;

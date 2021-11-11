@@ -95,8 +95,7 @@ public class RegexpOperator extends FunctionOperator {
 
   @Override
   public RegexpOperator copy() {
-    RegexpOperator ret =
-        new RegexpOperator(this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
+    RegexpOperator ret = new RegexpOperator(this.filterType, singlePath.clone(), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;

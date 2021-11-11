@@ -156,11 +156,7 @@ public class InOperator extends FunctionOperator {
   @Override
   public InOperator copy() {
     InOperator ret =
-        new InOperator(
-            this.filterType,
-            new PartialPath(singlePath.getNodes().clone()),
-            not,
-            new HashSet<>(values));
+        new InOperator(this.filterType, singlePath.clone(), not, new HashSet<>(values));
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
