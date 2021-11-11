@@ -346,6 +346,11 @@ public class IoTDBAliasIT {
   public void UDFAliasTest() throws ClassNotFoundException {
 
     String expect = "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,";
+    String[] sqls = {
+      "select -s1, sin(cos(tan(s1))) as a , cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1 WHERE time >= 1509466140000",
+      "select -s1, sin(cos(tan(s1))) as a , cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1"
+    };
+    int count = 2;
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -353,19 +358,21 @@ public class IoTDBAliasIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResult =
-          statement.execute(
-              "select -s1, sin(cos(tan(s1))) as a , cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1");
-      assertTrue(hasResult);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      for (int index = 0; index < count; index++) {
 
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        boolean hasResult = statement.execute(sqls[index]);
+        assertTrue(hasResult);
+        try (ResultSet resultSet = statement.getResultSet()) {
+
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          StringBuilder header = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            header.append(resultSetMetaData.getColumnName(i)).append(",");
+          }
+          Assert.assertEquals(expect, header.toString());
         }
-        Assert.assertEquals(expect, header.toString());
       }
+
     } catch (Exception e) {
       fail(e.getMessage());
     }
