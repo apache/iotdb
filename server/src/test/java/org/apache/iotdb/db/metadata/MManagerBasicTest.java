@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -49,6 +50,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -955,6 +960,26 @@ public class MManagerBasicTest {
     } catch (MetadataException e) {
       e.printStackTrace();
     }
+  }
+
+  @Test
+  public void testSerializationAdaptation() throws IOException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream dos = new DataOutputStream(baos);
+    plan.formerSerialize(dos);
+    byte[] byteArray = baos.toByteArray();
+    ByteBuffer buffer = ByteBuffer.wrap(byteArray);
+
+    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_TEMPLATE.ordinal(), buffer.get());
+
+    CreateTemplatePlan deserializedPlan = new CreateTemplatePlan();
+    deserializedPlan.deserialize(buffer);
+
+    assertEquals(plan.getCompressors().size(), deserializedPlan.getCompressors().size());
+    assertEquals(
+        plan.getMeasurements().get(0).get(0), deserializedPlan.getMeasurements().get(0).get(0));
+    assertEquals(plan.getDataTypes().size(), deserializedPlan.getDataTypes().size());
   }
 
   private CreateTemplatePlan getTreeTemplatePlan() {
