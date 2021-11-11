@@ -107,6 +107,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
                         .message(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.name()))
                 .build();
         containerRequestContext.abortWith(resp);
+        return null;
       }
     } catch (AuthException e) {
       LOGGER.warn(e.getMessage(), e);
@@ -119,6 +120,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
                       .message(e.getMessage()))
               .build();
       containerRequestContext.abortWith(resp);
+      return null;
     }
     return user;
   }
