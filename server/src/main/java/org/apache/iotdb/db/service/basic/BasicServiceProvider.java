@@ -22,6 +22,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
+import org.apache.iotdb.db.service.basic.count.QueryFrequency;
 import org.apache.iotdb.db.service.basic.dto.BasicOpenSessionResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -61,9 +63,13 @@ import java.util.List;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
 public class BasicServiceProvider {
+  // main logger
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicServiceProvider.class);
-  private static final Logger AUDIT_LOGGER =
+  // Used to record user operation information
+  protected static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
+  // Used for SQL execution
+  protected static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW_SQL");
 
   private static final String INFO_NOT_LOGIN = "{}: Not login. ";
 
@@ -71,8 +77,12 @@ public class BasicServiceProvider {
   protected final SessionManager sessionManager = SessionManager.getInstance();
   protected final TracingManager tracingManager = TracingManager.getInstance();
 
+  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   protected Planner processor;
   protected IPlanExecutor executor;
+
+  protected QueryFrequency queryFrequency;
 
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -80,6 +90,7 @@ public class BasicServiceProvider {
   public BasicServiceProvider() throws QueryProcessException {
     processor = new Planner();
     executor = new PlanExecutor();
+    queryFrequency = new QueryFrequency(config);
   }
 
   protected BasicOpenSessionResp openSession(

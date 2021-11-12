@@ -21,7 +21,6 @@ package org.apache.iotdb.db.service;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -150,9 +149,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.*;
@@ -160,41 +156,21 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.*;
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl extends BasicServiceProvider implements TSIService.Iface {
 
+  // main logger
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
-  private static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW_SQL");
-  private static final Logger QUERY_FREQUENCY_LOGGER = LoggerFactory.getLogger("QUERY_FREQUENCY");
-  private static final Logger AUDIT_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
 
   private static final String INFO_INTERRUPT_ERROR =
       "Current Thread interrupted when dealing with request {}";
 
-  private static final int MAX_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
+  private static final int MAX_SIZE = config.getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
-  private static final AtomicInteger queryCount = new AtomicInteger(0);
 
   private long startTime = -1L;
 
   public TSServiceImpl() throws QueryProcessException {
     super();
-
-    ScheduledExecutorService timedQuerySqlCountThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedQuerySqlCount");
-    timedQuerySqlCountThread.scheduleAtFixedRate(
-        () -> {
-          if (queryCount.get() != 0) {
-            QUERY_FREQUENCY_LOGGER.info(
-                "Query count in current 1 minute {} ", queryCount.getAndSet(0));
-          }
-        },
-        config.getFrequencyIntervalInMinute(),
-        config.getFrequencyIntervalInMinute(),
-        TimeUnit.MINUTES);
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
@@ -641,7 +617,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       throws QueryProcessException, SQLException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           TException, AuthException {
-    queryCount.incrementAndGet();
+    queryFrequency.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
 
@@ -958,7 +934,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
     final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
 
-    queryCount.incrementAndGet();
+    queryFrequency.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute select into: {}", sessionManager.getCurrSessionId(), statement);
     if (physicalPlan instanceof QueryPlan && ((QueryPlan) physicalPlan).isEnableTracing()) {
