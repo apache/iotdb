@@ -73,20 +73,16 @@ set max_sensible_yg_per_core_in_mb=100
 set /a max_sensible_yg_in_mb=%max_sensible_yg_per_core_in_mb%*%system_cpu_cores%
 set /a desired_yg_in_mb=%max_heap_size_in_mb%/4
 
-if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
-	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
-) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
-
 @REM Maximum heap size
 @REM set MAX_HEAP_SIZE="2G"
-@REM Minimum heap size
-@REM set HEAP_NEWSIZE="2G"
+@REM Maximum direct memory size,suggest: MAX_HEAP_SIZE / 3
+set MAX_DIRECT_MEMORY_SIZE="2G"
 
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 	rem detect Java 8 or 11
 	IF "%JAVA_VERSION%" == "8" (
 		java -d64 -version >nul 2>&1
-		set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
+		set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%MAX_HEAP_SIZE% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
 		goto end_config_setting
 	) ELSE (
 		goto detect_jdk11_bit_version
@@ -101,14 +97,7 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 	set BIT_VERSION=%%l
 )
 
-@REM maximum direct memory size
-set /a MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%/3
-
-set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"..\gc.log"
-set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
-
-@REM You can put your env variable here
-@REM set JAVA_HOME=%JAVA_HOME%
+set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%MAX_HEAP_SIZE% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE% -Xlog:gc:"..\gc.log"
 
 :end_config_setting
 @REM set gc log.
@@ -118,10 +107,10 @@ IF "%1" equ "printgc" (
 		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails  -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
 	) ELSE (
 		md %IOTDB_HOME%\logs
-		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS%  -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
+		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE% -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
 	)
 )
 
 
-echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
+echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %MAX_HEAP_SIZE%, initial Maximum direct memory = %MAX_DIRECT_MEMORY_SIZE%.
 echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).

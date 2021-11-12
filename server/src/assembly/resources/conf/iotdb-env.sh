@@ -114,19 +114,6 @@ calculate_heap_sizes()
         max_heap_size_in_mb="$quarter_system_memory_in_mb"
     fi
     MAX_HEAP_SIZE="${max_heap_size_in_mb}M"
-
-    # Young gen: min(max_sensible_per_modern_cpu_core * num_cores, 1/4 * heap size)
-    max_sensible_yg_per_core_in_mb="100"
-    max_sensible_yg_in_mb=`expr $max_sensible_yg_per_core_in_mb "*" $system_cpu_cores`
-
-    desired_yg_in_mb=`expr $max_heap_size_in_mb / 4`
-
-    if [ "$desired_yg_in_mb" -gt "$max_sensible_yg_in_mb" ]
-    then
-        HEAP_NEWSIZE="${max_sensible_yg_in_mb}M"
-    else
-        HEAP_NEWSIZE="${desired_yg_in_mb}M"
-    fi
 }
 
 
@@ -197,16 +184,12 @@ calculate_heap_sizes
 
 ## Set heap size by percentage of total memory
 #max_percentage=90
-#min_percentage=50
 #MAX_HEAP_SIZE="`expr $system_memory_in_mb \* $max_percentage / 100`M"
-#HEAP_NEWSIZE="`expr $system_memory_in_mb \* $min_percentage / 100`M"
 
 # Maximum heap size
 #MAX_HEAP_SIZE="2G"
-# Minimum heap size
-#HEAP_NEWSIZE="2G"
-# maximum direct memory size
-MAX_DIRECT_MEMORY_SIZE=`expr ${MAX_HEAP_SIZE} / 3`
+# Maximum direct memory size,suggest: MAX_HEAP_SIZE / 3
+MAX_DIRECT_MEMORY_SIZE="2G"
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
@@ -237,10 +220,10 @@ else
 fi
 
 
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${HEAP_NEWSIZE}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${MAX_HEAP_SIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${MAX_DIRECT_MEMORY_SIZE}"
 
-echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}B, initial memory allocation pool = ${HEAP_NEWSIZE}B"
+echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}B, initial memory allocation pool = ${MAX_HEAP_SIZE}B, initial Maximum direct memory = ${MAX_DIRECT_MEMORY_SIZE}B."
 echo "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat)."
 
