@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class QueryFileManager {
 
-  /** Map<queryId, Set<filePaths>> */
+  /** Map<queryId, Map<filePath,filePath>> */
   private Map<Long, Map<TsFileResource, TsFileResource>> sealedFilePathsMap;
 
   private Map<Long, Map<TsFileResource, TsFileResource>> unsealedFilePathsMap;
