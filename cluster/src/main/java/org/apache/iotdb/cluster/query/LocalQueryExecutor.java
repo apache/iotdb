@@ -707,33 +707,30 @@ public class LocalQueryExecutor {
 
     ClusterQueryUtils.checkPathExistence(path);
     List<AggregateResult> results = new ArrayList<>();
+    List<AggregateResult> ascResults = new ArrayList<>();
+    List<AggregateResult> descResults = new ArrayList<>();
     for (String aggregation : aggregations) {
-      results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType, ascending));
+      AggregateResult ar =
+          AggregateResultFactory.getAggrResultByName(aggregation, dataType, ascending);
+      if (ar.isAscending()) {
+        ascResults.add(ar);
+      } else {
+        descResults.add(ar);
+      }
+      results.add(ar);
     }
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
             .getNodeSlots(dataGroupMember.getHeader());
-    if (ascending) {
-      AggregationExecutor.aggregateOneSeries(
-          path,
-          allSensors,
-          context,
-          timeFilter,
-          dataType,
-          results,
-          null,
-          new SlotTsFileFilter(nodeSlots));
-    } else {
-      AggregationExecutor.aggregateOneSeries(
-          path,
-          allSensors,
-          context,
-          timeFilter,
-          dataType,
-          null,
-          results,
-          new SlotTsFileFilter(nodeSlots));
-    }
+    AggregationExecutor.aggregateOneSeries(
+        path,
+        allSensors,
+        context,
+        timeFilter,
+        dataType,
+        ascResults,
+        descResults,
+        new SlotTsFileFilter(nodeSlots));
     return results;
   }
 
