@@ -27,6 +27,7 @@
 * [IOTDB-1738] Cache paths list in batched insert plan
 * [IOTDB-1792] remove tomcat-embed dependency and make all transitive dependencies versions consistent
 * [ISSUE-4072] Parallel insert records in Session
+* Print the file path while meeting error in case of reading chunk
 
 ## Bug Fixes
 
@@ -48,6 +49,7 @@
 * [IOTDB-1690] Fix align by device type cast error
 * [IOTDB-1693] fix IoTDB restart does not truncate broken ChunkGroup bug
 * [IOTDB-1703] Fix MManager slow recover with tag
+* [IOTDB-1714] fix Could not find or load main class when start with jmx on win 
 * [IOTDB-1723] Fix concurrency issue in compaction selection
 * [IOTDB-1726] Wrong hashCode() and equals() method in ChunkMetadata
 * [IOTDB-1727] Fix Slow creation of timeseries with tag
@@ -59,13 +61,28 @@
 * [IOTDB-1837] Fix tagIndex rebuild failure after upgrade mlog from mlog.txt to mlog.bin
 * [IOTDB-1838] The compacting status in SGP is always false
 * [IOTDB-1846] Fix the error when count the total number of devices in cluster mode
+* [IoTDB-1847] Not throw excpetion when pulling non--existent time series
 * [IOTDB-1850] Fix deserialize page merge rate limiter
-* [IOTDB-1879] Fix some Unsequence files never be merged to higher level or Sequence folder
-* [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
+* [IoTDB-1865] Compaction is blocking when removing old files in Cluster
+* [IOTDB-1868] Use RwLock to reduce the lock time for nodeRing
 * [IOTDB-1872] Fix data increases abnormally after IoTDB restarts
+* [IOTDB-1877] Fix Sync recovery and reconnection bugs in both sender and receiver
+* [IOTDB-1879] Fix some Unsequence files never be merged to higher level or Sequence folder
+* [IOTDB-1887] Fix importing csv data containing null throws exception
+* [IOTDB-1893] Fix Can not release file lock in sync verify singleton 
+* [IOTDB-1895] Cache leader optimization for batch write interfaces on multiple devices
+* [IOTDB-1903] Fix IndexOutOfRangeException when starting IoTDB
+* [IoTDB-1913] Fix When exporting a amount of data from csv, it will report network error or OOM
+* [IOTDB-1925] Fix the modification of max_select_unseq_file_num_in_each_compaction parameter does not take effect
+* [IOTDB-1958] Add storage group not ready exception
+* [IOTDB-1961] Cluster query memory leak
 * [IOTDB-1975] OOM caused by that MaxQueryDeduplicatedPathNum doesn't take effect
 * [IOTDB-1983] Fix DescReadWriteBatchData serializing bug
 * [IOTDB-1990] Fix unchecked null result by calling IReaderByTimestamp.getValuesInTimestamps()
+* [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
+* [ISSUE-4288] Fix CI issue caused by the invalid pentaho download url
+* [ISSUE-4293] SessionPool: InterruptedException is not properly handled in synchronized wait()
+* [ISSUE-4308] READ_TIMESERIES privilege granted to users and roles can not take effect when quering by UDFs
 * fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
 * init dummyIndex after restart cluster
