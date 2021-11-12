@@ -677,8 +677,10 @@ public class AggregationExecutor {
                 timeArray, timeArrayLength, entry.getKey());
           } else {
             Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
-            for (Integer i : entry.getValue()) {
-              aggregateResultList[i].updateResultUsingValues(timeArray, timeArrayLength, values);
+            if (values != null) {
+              for (Integer i : entry.getValue()) {
+                aggregateResultList[i].updateResultUsingValues(timeArray, timeArrayLength, values);
+              }
             }
           }
         }
