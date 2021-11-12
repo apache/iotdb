@@ -987,9 +987,19 @@ public class MManagerBasicTest {
 
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
     List<CompressionType> compressorList = new ArrayList<>();
