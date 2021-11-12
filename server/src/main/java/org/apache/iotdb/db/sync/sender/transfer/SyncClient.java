@@ -35,6 +35,7 @@ import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogger;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
@@ -797,9 +798,27 @@ public class SyncClient implements ISyncClient {
 
   private String getFileInfoWithVgAndTimePartition(File file) {
     return file.getParentFile().getParentFile().getName()
-        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
+        + SyncConstant.SYNC_FILE_DIR_SEPARATOR
         + file.getParentFile().getName()
-        + SyncConstant.SYNC_DIR_NAME_SEPARATOR
+        + SyncConstant.SYNC_FILE_DIR_SEPARATOR
         + file.getName();
+  }
+
+  @TestOnly
+  public void setContent(
+      SyncService.Client serviceClient,
+      boolean isSyncConnect,
+      Map<String, Map<Long, Set<Long>>> allSG,
+      Map<String, Map<Long, Map<Long, Set<File>>>> toBeSyncedFilesMap,
+      Map<String, Map<Long, Map<Long, Set<File>>>> deletedFilesMap,
+      Map<String, Map<Long, Map<Long, Set<File>>>> lastLocalFilesMap,
+      ISyncSenderLogger syncLog) {
+    this.serviceClient = serviceClient;
+    this.isSyncConnect = isSyncConnect;
+    this.allSG = allSG;
+    this.toBeSyncedFilesMap = toBeSyncedFilesMap;
+    this.deletedFilesMap = deletedFilesMap;
+    this.lastLocalFilesMap = lastLocalFilesMap;
+    this.syncLog = syncLog;
   }
 }
