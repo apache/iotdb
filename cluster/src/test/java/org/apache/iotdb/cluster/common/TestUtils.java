@@ -70,7 +70,14 @@ public class TestUtils {
 
   public static long TEST_TIME_OUT_MS = 200;
 
-  public static ByteBuffer seralizePartitionTable = getPartitionTable(3).serialize();
+  private static ByteBuffer seralizePartitionTable = getPartitionTable(3).serialize();
+
+  // we need to reset the bytebuffer's position because it may be changed. e.g., in
+  // MetaLogApplierTest.testApplyAddNode()
+  public static ByteBuffer getSeralizePartitionTable() {
+    seralizePartitionTable.rewind();
+    return seralizePartitionTable;
+  }
 
   private TestUtils() {
     // util class
@@ -96,7 +103,7 @@ public class TestUtils {
     for (int i = 0; i < logNum; i++) {
       AddNodeLog log = new AddNodeLog();
       log.setNewNode(getNode(i));
-      log.setPartitionTable(seralizePartitionTable);
+      log.setPartitionTable(getSeralizePartitionTable());
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
       logList.add(log);

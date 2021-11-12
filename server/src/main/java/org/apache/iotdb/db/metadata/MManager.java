@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -53,10 +55,12 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -108,7 +112,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -241,8 +244,7 @@ public class MManager {
 
     if (config.isEnableMTreeSnapshot()) {
       timedCreateMTreeSnapshotThread =
-          Executors.newSingleThreadScheduledExecutor(
-              r -> new Thread(r, "timedCreateMTreeSnapshotThread"));
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedCreateMTreeSnapshot");
       timedCreateMTreeSnapshotThread.scheduleAtFixedRate(
           this::checkMTreeModified,
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
@@ -1930,6 +1932,58 @@ public class MManager {
     }
   }
 
+  public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
+    try {
+      templateManager.appendSchemaTemplate(plan);
+      // write wal
+      if (!isRecovering) {
+        logWriter.appendSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
+    try {
+      templateManager.pruneSchemaTemplate(plan);
+      // write wal
+      if (!isRecovering) {
+        logWriter.pruneSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public int countMeasurementsInTemplate(String templateName) throws MetadataException {
+    try {
+      return templateManager.getTemplate(templateName).getMeasurementsCount();
+    } catch (UndefinedTemplateException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  /**
+   * @param templateName name of template to check
+   * @param path full path to check
+   * @return if path correspond to a measurement in template
+   * @throws MetadataException
+   */
+  public boolean isMeasurementInTemplate(String templateName, String path)
+      throws MetadataException {
+    return templateManager.getTemplate(templateName).isPathMeasurement(path);
+  }
+
+  public boolean isPathExistsInTemplate(String templateName, String path) throws MetadataException {
+    return templateManager.getTemplate(templateName).isPathExistInTemplate(path);
+  }
+
+  public List<String> getMeasurementsInTemplate(String templateName, String path)
+      throws MetadataException {
+    return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
+  }
+
   public synchronized void setSchemaTemplate(SetSchemaTemplatePlan plan) throws MetadataException {
     // get mnode and update template should be atomic
     Template template = templateManager.getTemplate(plan.getTemplateName());
@@ -2047,6 +2101,15 @@ public class MManager {
   @TestOnly
   public void flushAllMlogForTest() throws IOException {
     logWriter.close();
+  }
+
+  @TestOnly
+  public Template getTemplate(String templateName) throws MetadataException {
+    try {
+      return templateManager.getTemplate(templateName);
+    } catch (UndefinedTemplateException e) {
+      throw new MetadataException(e);
+    }
   }
   // endregion
 }

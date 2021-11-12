@@ -128,9 +128,9 @@ public class InsertRowPlanTest {
       encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
     }
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 1; i <= 6; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+      compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     }
 
     List<String> schemaNames = new ArrayList<>();

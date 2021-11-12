@@ -41,7 +41,8 @@ public class WildcardsRemover {
 
   private int soffset = 0;
   private int currentOffset = 0;
-  private int currentLimit = Integer.MAX_VALUE;
+  private int currentLimit =
+      IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
 
   /** Records the path number that the MManager totally returned. */
   private int consumed = 0;
@@ -51,7 +52,7 @@ public class WildcardsRemover {
       soffset = queryOperator.getSpecialClauseComponent().getSeriesOffset();
       currentOffset = soffset;
       final int slimit = queryOperator.getSpecialClauseComponent().getSeriesLimit();
-      currentLimit = slimit == 0 ? currentLimit : slimit;
+      currentLimit = slimit == 0 ? currentLimit : Math.min(slimit, currentLimit);
     }
   }
 
@@ -124,15 +125,11 @@ public class WildcardsRemover {
   /** @return should break the loop or not */
   public boolean checkIfPathNumberIsOverLimit(List<ResultColumn> resultColumns)
       throws PathNumOverLimitException {
-    int maxQueryDeduplicatedPathNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
-    if (currentLimit == 0) {
-      if (maxQueryDeduplicatedPathNum < resultColumns.size()) {
-        throw new PathNumOverLimitException(maxQueryDeduplicatedPathNum);
-      }
-      return true;
+    if (resultColumns.size()
+        > IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()) {
+      throw new PathNumOverLimitException();
     }
-    return false;
+    return currentLimit == 0;
   }
 
   public void checkIfSoffsetIsExceeded(List<ResultColumn> resultColumns)

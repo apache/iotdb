@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.cluster.query.reader.mult;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,7 +61,6 @@ public class MultDataSourceInfo {
   private List<TSDataType> dataTypes;
   private MultSeriesQueryRequest request;
   private RemoteQueryContext context;
-  private MetaGroupMember metaGroupMember;
   private List<Node> nodes;
   private int curPos;
   private boolean isNoData = false;
@@ -73,7 +72,6 @@ public class MultDataSourceInfo {
       List<TSDataType> dataTypes,
       MultSeriesQueryRequest request,
       RemoteQueryContext context,
-      MetaGroupMember metaGroupMember,
       List<Node> nodes) {
     this.readerId = -1;
     this.partitionGroup = group;
@@ -81,7 +79,6 @@ public class MultDataSourceInfo {
     this.dataTypes = dataTypes;
     this.request = request;
     this.context = context;
-    this.metaGroupMember = metaGroupMember;
     this.nodes = nodes;
     // set to the last node so after nextDataClient() is called it will scan from the first node
     this.curPos = nodes.size() - 1;
@@ -117,10 +114,10 @@ public class MultDataSourceInfo {
             return false;
           }
         }
-      } catch (TException | IOException e) {
-        logger.error("Cannot query {} from {}", this.request.path, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        logger.error("Cannot query {} from {}", this.request.path, node, e);
+      } catch (Exception e) {
         logger.error("Cannot query {} from {}", this.request.path, node, e);
       }
       nextNodePos = (nextNodePos + 1) % this.nodes.size();
@@ -148,11 +145,10 @@ public class MultDataSourceInfo {
   }
 
   private Long applyForReaderIdAsync(Node node, long timestamp)
-      throws TException, InterruptedException, IOException {
+      throws IOException, TException, InterruptedException {
     AsyncDataClient client =
-        this.metaGroupMember
-            .getClientProvider()
-            .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        ClusterIoTDB.getInstance()
+            .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
     Filter newFilter;
@@ -167,20 +163,20 @@ public class MultDataSourceInfo {
     client.queryMultSeries(request, handler);
     synchronized (result) {
       if (result.get() == null && handler.getException() == null) {
-        result.wait(RaftServer.getReadOperationTimeoutMS());
+        result.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return result.get();
   }
 
-  private Long applyForReaderIdSync(Node node, long timestamp) throws TException {
+  private Long applyForReaderIdSync(Node node, long timestamp) throws IOException, TException {
 
-    Long newReaderId;
-    try (SyncDataClient client =
-        this.metaGroupMember
-            .getClientProvider()
-            .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
+    long newReaderId;
+    SyncDataClient client = null;
+    try {
+      client =
+          ClusterIoTDB.getInstance()
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       Filter newFilter;
       // add timestamp to as a timeFilter to skip the data which has been read
       if (request.isSetTimeFilterBytes()) {
@@ -190,14 +186,16 @@ public class MultDataSourceInfo {
         newFilter = TimeFilter.gt(timestamp);
       }
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
-      try {
-        newReaderId = client.queryMultSeries(request);
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        client.getInputProtocol().getTransport().close();
-        throw e;
-      }
+      newReaderId = client.queryMultSeries(request);
       return newReaderId;
+    } catch (TException e) {
+      // the connection may be broken, close it to avoid it being reused
+      client.close();
+      throw e;
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
     }
   }
 
@@ -216,13 +214,13 @@ public class MultDataSourceInfo {
   AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
-        : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getAsyncDataClient(this.curSource, timeout);
   }
 
-  SyncDataClient getCurSyncClient(int timeout) throws TException {
+  SyncDataClient getCurSyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
-        : metaGroupMember.getClientProvider().getSyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {

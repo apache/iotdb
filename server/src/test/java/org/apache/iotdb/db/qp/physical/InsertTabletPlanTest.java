@@ -288,9 +288,13 @@ public class InsertTabletPlanTest {
       encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
     }
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 6; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      List<CompressionType> compressorList = new ArrayList<>();
+      for (int j = 0; j < 3; j++) {
+        compressorList.add(CompressionType.SNAPPY);
+      }
+      compressionTypes.add(compressorList);
     }
 
     List<String> schemaNames = new ArrayList<>();
