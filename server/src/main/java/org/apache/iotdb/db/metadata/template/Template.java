@@ -318,31 +318,27 @@ public class Template {
     return new ArrayList<>(schemaMap.keySet());
   }
 
-  public List<String> getMeasurementsUnderPath(String path) {
+  public List<String> getMeasurementsUnderPath(String path) throws MetadataException {
     if (path.equals("")) {
       return getAllMeasurementsPaths();
     }
     List<String> res = new ArrayList<>();
-    try {
-      IMNode cur = getPathNodeInTemplate(path);
-      if (cur == null) {
-        throw new PathNotExistException(path);
-      }
+    IMNode cur = getPathNodeInTemplate(path);
+    if (cur == null) {
+      throw new PathNotExistException(path);
+    }
+    if (cur.isMeasurement()) {
+      return Collections.singletonList(getFullPathWithoutTemplateName(cur));
+    }
+    Deque<IMNode> stack = new ArrayDeque<>();
+    stack.push(cur);
+    while (stack.size() != 0) {
+      cur = stack.pop();
       if (cur.isMeasurement()) {
-        return Collections.singletonList(getFullPathWithoutTemplateName(cur));
+        res.add(getFullPathWithoutTemplateName(cur));
+      } else {
+        for (IMNode child : cur.getChildren().values()) stack.push(child);
       }
-      Deque<IMNode> stack = new ArrayDeque<>();
-      stack.push(cur);
-      while (stack.size() != 0) {
-        cur = stack.pop();
-        if (cur.isMeasurement()) {
-          res.add(getFullPathWithoutTemplateName(cur));
-        } else {
-          for (IMNode child : cur.getChildren().values()) stack.push(child);
-        }
-      }
-    } catch (MetadataException e) {
-      e.printStackTrace();
     }
     return res;
   }
