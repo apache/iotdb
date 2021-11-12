@@ -206,7 +206,7 @@ calculate_heap_sizes
 # Minimum heap size
 #HEAP_NEWSIZE="2G"
 # maximum direct memory size
-MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
+MAX_DIRECT_MEMORY_SIZE=`expr ${MAX_HEAP_SIZE} / 3`
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
