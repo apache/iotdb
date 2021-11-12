@@ -65,6 +65,7 @@
 * [IOTDB-1872] Fix data increases abnormally after IoTDB restarts
 * [IOTDB-1975] OOM caused by that MaxQueryDeduplicatedPathNum doesn't take effect
 * [IOTDB-1983] Fix DescReadWriteBatchData serializing bug
+* [IOTDB-1990] Fix unchecked null result by calling IReaderByTimestamp.getValuesInTimestamps()
 * fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
 * init dummyIndex after restart cluster
