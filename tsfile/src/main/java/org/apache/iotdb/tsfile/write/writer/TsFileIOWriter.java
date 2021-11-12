@@ -459,34 +459,38 @@ public class TsFileIOWriter {
     // NOTICE: update here, TsFileMetadataV2 does not have MetadataIndexTree
     // ====================== //
     TsFileMetadataV2 tsFileMetaData = new TsFileMetadataV2();
-    tsFileMetaData.setMetaOffset(metaOffset);
-
     TsFileOutput metadataIndexOutput =
         new LocalTsFileOutput(new FileOutputStream(new File(file.getAbsolutePath() + ".index")));
     MetadataIndexNode metadataIndex =
         flushMetadataIndex(chunkMetadataListMap, vectorToPathsMap, metadataIndexOutput);
-    int lastNodeSize = metadataIndex.serializeTo(metadataIndexOutput.wrapAsStream());
+    tsFileMetaData.setMetadataIndex(metadataIndex);
 
-    // write the size of last MetadataIndexNode
-    ReadWriteIOUtils.write(lastNodeSize, metadataIndexOutput.wrapAsStream());
-    metadataIndexOutput.close();
-    // ====================== //
-
+    long rootNodeOffset = metadataIndexOutput.getPosition();
     // write TsFileMetaData
-    int size = tsFileMetaData.serializeTo(out.wrapAsStream());
+    int size = tsFileMetaData.serializeTo(metadataIndexOutput.wrapAsStream());
     if (logger.isDebugEnabled()) {
-      logger.debug("finish flushing the footer {}, file pos:{}", tsFileMetaData, out.getPosition());
+      logger.debug(
+          "finish flushing the footer {}, file pos:{}",
+          tsFileMetaData,
+          metadataIndexOutput.getPosition());
     }
 
     // write bloom filter
-    size += tsFileMetaData.serializeBloomFilter(out.wrapAsStream(), chunkMetadataListMap.keySet());
+    size +=
+        tsFileMetaData.serializeBloomFilter(
+            metadataIndexOutput.wrapAsStream(), chunkMetadataListMap.keySet());
     if (logger.isDebugEnabled()) {
-      logger.debug("finish flushing the bloom filter file pos:{}", out.getPosition());
+      logger.debug(
+          "finish flushing the bloom filter file pos:{}", metadataIndexOutput.getPosition());
     }
 
     // write TsFileMetaData size
-    ReadWriteIOUtils.write(size, out.wrapAsStream()); // write the size of the file metadata.
+    ReadWriteIOUtils.write(
+        size, metadataIndexOutput.wrapAsStream()); // write the size of the file metadata.
+    ReadWriteIOUtils.write(rootNodeOffset, metadataIndexOutput.wrapAsStream());
 
+    metadataIndexOutput.close();
+    ReadWriteIOUtils.write(metaOffset, out.wrapAsStream());
     // write magic string
     out.write(MAGIC_STRING_BYTES);
 

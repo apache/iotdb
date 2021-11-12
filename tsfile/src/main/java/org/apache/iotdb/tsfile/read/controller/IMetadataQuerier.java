@@ -47,6 +47,8 @@ public interface IMetadataQuerier {
 
   void loadChunkMetaDatasV2(List<Path> paths) throws IOException;
 
+  void loadChunkMetaDatasV3(List<Path> paths) throws IOException;
+
   /**
    * @return the corresponding data type.
    * @throws NoMeasurementException if the measurement not exists.

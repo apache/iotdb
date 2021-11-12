@@ -31,13 +31,13 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 
 /** TSFileMetaData collects all metadata info and saves in its data structure. */
-public class TsFileMetadataV2 {
+public class TsFileMetadataV2 extends TsFileMetadata {
 
   // bloom filter
   private BloomFilter bloomFilter;
 
-  // offset of MetaMarker.SEPARATOR
-  private long metaOffset;
+  // List of <name, offset, childMetadataIndexType>
+  private MetadataIndexNode metadataIndex;
 
   /**
    * deserialize data from the buffer.
@@ -45,12 +45,11 @@ public class TsFileMetadataV2 {
    * @param buffer -buffer use to deserialize
    * @return -a instance of TsFileMetaData
    */
-  public static TsFileMetadataV2 deserializeFrom(ByteBuffer buffer) {
+  public static TsFileMetadata deserializeFrom(ByteBuffer buffer) {
     TsFileMetadataV2 fileMetaData = new TsFileMetadataV2();
 
-    // metaOffset
-    long metaOffset = ReadWriteIOUtils.readLong(buffer);
-    fileMetaData.setMetaOffset(metaOffset);
+    // metadataIndex
+    fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
 
     // read bloom filter
     if (buffer.hasRemaining()) {
@@ -78,7 +77,16 @@ public class TsFileMetadataV2 {
    * @return -byte length
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
-    return ReadWriteIOUtils.write(metaOffset, outputStream);
+    int byteLen = 0;
+
+    // metadataIndex
+    if (metadataIndex != null) {
+      byteLen += metadataIndex.serializeTo(outputStream);
+    } else {
+      byteLen += ReadWriteIOUtils.write(0, outputStream);
+    }
+
+    return byteLen;
   }
 
   /**
@@ -116,11 +124,11 @@ public class TsFileMetadataV2 {
     return filter;
   }
 
-  public long getMetaOffset() {
-    return metaOffset;
+  public MetadataIndexNode getMetadataIndex() {
+    return metadataIndex;
   }
 
-  public void setMetaOffset(long metaOffset) {
-    this.metaOffset = metaOffset;
+  public void setMetadataIndex(MetadataIndexNode metadataIndex) {
+    this.metadataIndex = metadataIndex;
   }
 }
