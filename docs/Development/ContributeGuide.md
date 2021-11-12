@@ -31,7 +31,7 @@ Code library for go language: https://github.com/apache/iotdb-client-go
 
 Library for resources (project's documents, compiler, etc): https://github.com/apache/iotdb-bin-resources
 
-Get started quickly：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
+Get started quickly：http://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html
 
 Jira Task Management：https://issues.apache.org/jira/projects/IOTDB/issues
 
