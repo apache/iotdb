@@ -444,8 +444,10 @@ public class AggregationExecutor {
                 .updateResultUsingTimestamps(timeArray, timeArrayLength, entry.getKey());
           } else {
             Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
-            for (Integer i : entry.getValue()) {
-              aggregateResults.get(i).updateResultUsingValues(timeArray, timeArrayLength, values);
+            if (values != null) {
+              for (Integer i : entry.getValue()) {
+                aggregateResults.get(i).updateResultUsingValues(timeArray, timeArrayLength, values);
+              }
             }
           }
         }
