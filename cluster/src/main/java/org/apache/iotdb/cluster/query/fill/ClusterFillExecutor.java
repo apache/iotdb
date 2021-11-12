@@ -90,7 +90,7 @@ public class ClusterFillExecutor extends FillQueryExecutor {
               plan.isAscending());
 
       Object[] results = reader.getValuesInTimestamps(new long[] {queryTime}, 1);
-      if (results[0] != null) {
+      if (results != null && results[0] != null) {
         ret.add(new TimeValuePair(queryTime, TsPrimitiveType.getByType(dataType, results[0])));
       } else {
         ret.add(null);
