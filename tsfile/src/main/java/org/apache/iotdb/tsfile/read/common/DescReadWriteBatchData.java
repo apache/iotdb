@@ -22,6 +22,8 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.LinkedList;
 
 /**
@@ -359,6 +361,50 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public boolean getBooleanByIndex(int idx) {
     return booleanRet
         .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
+  }
+
+  @Override
+  public void serializeData(DataOutputStream outputStream) throws IOException {
+    switch (dataType) {
+      case BOOLEAN:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeBoolean(getBooleanByIndex(i));
+        }
+        break;
+      case DOUBLE:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeDouble(getDoubleByIndex(i));
+        }
+        break;
+      case FLOAT:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeFloat(getFloatByIndex(i));
+        }
+        break;
+      case TEXT:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          Binary binary = getBinaryByIndex(i);
+          outputStream.writeInt(binary.getLength());
+          outputStream.write(binary.getValues());
+        }
+        break;
+      case INT64:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeLong(getLongByIndex(i));
+        }
+        break;
+      case INT32:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeInt(getIntByIndex(i));
+        }
+        break;
+    }
   }
 
   /**

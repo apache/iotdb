@@ -1,4 +1,3 @@
-
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -23,12 +22,14 @@
 # Apache IoTDB 0.12.3
 
 ## Improvements
+
 * [IOTDB-842] Better Export/Import-CSV Tool
 * [IOTDB-1738] Cache paths list in batched insert plan
 * [IOTDB-1792] remove tomcat-embed dependency and make all transitive dependencies versions consistent
-* [ISSUE-4072] Parallel insert records in Session 
+* [ISSUE-4072] Parallel insert records in Session
 
 ## Bug Fixes
+
 * [IOTDB-1275] Fix backgroup exec for cli -e function causes an infinite loop
 * [IOTDB-1287] Fix C++ class Session has 2 useless sort()
 * [IOTDB-1289] fix CPP mem-leak in SessionExample.cpp insertRecords()
@@ -49,28 +50,29 @@
 * [IOTDB-1703] Fix MManager slow recover with tag
 * [IOTDB-1723] Fix concurrency issue in compaction selection
 * [IOTDB-1726] Wrong hashCode() and equals() method in ChunkMetadata
-* [IOTDB-1727] Fix Slow creation of timeseries with tag 
-* [IOTDB-1731] Fix sync error between different os 
+* [IOTDB-1727] Fix Slow creation of timeseries with tag
+* [IOTDB-1731] Fix sync error between different os
 * [IOTDB-1733] Fix dropping built-in function
 * [IOTDB-1741] Avoid double close in level compaction execution
 * [IOTDB-1785] Fix Illegal String ending with . being parsed to PartialPath
-* [IOTDB-1836] Fix Query Exception Bug after deleting all sgs 
+* [IOTDB-1836] Fix Query Exception Bug after deleting all sgs
 * [IOTDB-1837] Fix tagIndex rebuild failure after upgrade mlog from mlog.txt to mlog.bin
 * [IOTDB-1838] The compacting status in SGP is always false
-* [IOTDB-1846]Fix the error when count the total number of devices in cluster mode
+* [IOTDB-1846] Fix the error when count the total number of devices in cluster mode
 * [IOTDB-1850] Fix deserialize page merge rate limiter
 * [IOTDB-1879] Fix some Unsequence files never be merged to higher level or Sequence folder
 * [ISSUE-3945] Fix Fuzzy query not support multiDevices and alignByDevice Dataset
 * [IOTDB-1872] Fix data increases abnormally after IoTDB restarts
 * [IOTDB-1975] OOM caused by that MaxQueryDeduplicatedPathNum doesn't take effect
+* [IOTDB-1983] Fix DescReadWriteBatchData serializing bug
 * fix merge ClassCastException: MeasurementMNode
 * change sync version check to major version
 * init dummyIndex after restart cluster
 
-
 # Apache IoTDB 0.12.2
 
 ## New Features
+
 * [IOTDB-959] Add create storage group Grammar
 * [IOTDB-1399] Add a session interface to connect multiple nodes
 * [IOTDB-1466] Support device template
@@ -80,22 +82,23 @@
 * [IOTDB-1561] Support fill by specific value
 * [IOTDB-1565] Add sql: set system to readonly/writable
 * [IOTDB-1569] Timed close TsFileProcessor
-* [IOTDB-1586] Support mysql-style Like clause 
+* [IOTDB-1586] Support mysql-style Like clause
 * [ISSUE-3811] Provide a data type column for the last query dataset
 * TTL can be set to the prefix path of storage group
-* add JMX monitor to all ThreadPools in the server module 
+* add JMX monitor to all ThreadPools in the server module
 
 ## Improvements
+
 * [IOTDB-1566] Do not restrict concurrent write partitions
 * [IOTDB-1585] ModificationFile‘s write interface blocking
 * [IOTDB-1587] SessionPool optimization: a more aggressive Session creation strategy
-* Use StringCachedPool in TsFileResource to reduce the memory size 
+* Use StringCachedPool in TsFileResource to reduce the memory size
 * write performance optimization when replicaNum == 1
 * Optimize Primitive Array Manager
 * Function Improvement: add overlapped page rate in Tracing
 
-
 ## Bug Fixes
+
 * [IOTDB-1282] fix C++ class SessionDataSet mem-leak
 * [IOTDB-1407] fix Filtering time series based on tags query fails Occasionally
 * [IOTDB-1437] Fix the TsFileSketchTool NPE
@@ -139,54 +142,58 @@
 * [ISSUE-3690] Memory leaks on the server when cpp client invokes checkTimeseriesExists
 * [ISSUE-3805] OOM caused by Chunk cache
 * [ISSUE-3865] Meaningless connection reset issues caused by low default value for SOMAXCONN
-* Fix DataMigrationExample OOM if migrate too many timeseries 
-* Handle false positive cases which may cause NPE of tsfile bloom filter 
+* Fix DataMigrationExample OOM if migrate too many timeseries
+* Handle false positive cases which may cause NPE of tsfile bloom filter
 * Fix Windows shell error on JDK11 & fix iotdb-env.bat not working
-* Fix cluster auto create schema bug when retry locally 
+* Fix cluster auto create schema bug when retry locally
 * Fix thrift out of sequence in cluster module
 * Skip non exist measurement in where clause in align by device
 * fix blocking query when selecting TsFile in compaction
 * Fix redundant data in compaction recover
-* Fix load tsfile with time partition enable 
+* Fix load tsfile with time partition enable
 
 ## Incompatible changes
+
 * [IOTDB-1485] Replace tsfile_size_threshold by unseq_tsfile_size/seq_tsfile_size
 
 ## Miscellaneous changes
+
 * [IOTDB-1499] Remove unused exception throwing notation in IoTDBSink
 * [IOTDB-1500] Remove current dynamic query memory control
 * [ISSUE-3674] Disable thrift code generation for Javascript
-* enable cacheLeader by default 
-* add audit log when execute delete and set sg for tracing 
-* modify nodeTool user to root 
+* enable cacheLeader by default
+* add audit log when execute delete and set sg for tracing
+* modify nodeTool user to root
 
 # Apache IoTDB 0.12.1
 
 ## Bug Fixes
+
 * [GITHUB-3373] Remove the broken cached leader connection & optimize the insertRecords method in session
 * [IOTDB-1433] Fix bug in getMetadataAndEndOffset when querying non-exist device
 * [IOTDB-1432] fix level compaction loss data
-* [IOTDB-1427] Fix compaction lock with query  
+* [IOTDB-1427] Fix compaction lock with query
 * [IOTDB-1420] Fix compaction ttl bug
-* [IOTDB-1419] Remove redundant clearCompactionStatus, fix continuous compaction doesn't take effect when enablePartition
+* [IOTDB-1419] Remove redundant clearCompactionStatus, fix continuous compaction doesn't take effect when
+  enablePartition
 * [IOTDB-1415] Fix OOM caused by ChunkCache
-* [IOTDB-1414] NPE occurred when call getStorageGroupNodeByPath() method using not exist path  
+* [IOTDB-1414] NPE occurred when call getStorageGroupNodeByPath() method using not exist path
 * [IOTDB-1412] Unclear exception message thrown when executing empty InsertTabletPlan
-* [IOTDB-1411] Fix thriftMaxFrameSize and thriftDefaultBufferSize does not in effect  
+* [IOTDB-1411] Fix thriftMaxFrameSize and thriftDefaultBufferSize does not in effect
 * [IOTDB-1398] Do not select unseq files when there are uncompacted old unseq files
 * [IOTDB-1390] Fix unseq compaction loss data bug
-* [IOTDB-1384] Fix group by bug  
-* [ISSUE-3378] Fix NPE when clear upgrade folder; Fix some upgraded pageHeader missing statistics  
+* [IOTDB-1384] Fix group by bug
+* [ISSUE-3378] Fix NPE when clear upgrade folder; Fix some upgraded pageHeader missing statistics
 * [GITHUB-3339] Try to fix sg dead lock
-* [GITHUB-3329] Fix upgrade NPE and DeadLock  
-* [GITHUB-3319] Fix upgrade tool cannot close file reader  
-* [IOTDB-1212] Fix The given error message is not right when executing select sin(non_existence) from root.sg1.d1 
+* [GITHUB-3329] Fix upgrade NPE and DeadLock
+* [GITHUB-3319] Fix upgrade tool cannot close file reader
+* [IOTDB-1212] Fix The given error message is not right when executing select sin(non_existence) from root.sg1.d1
 * [IOTDB-1219] Fix a potential NPE issue in UDF module
 * [IOTDB-1286] Fix 4 C++ mem-leak points
 * [IOTDB-1294] Fix delete operation become invalid after compaction
 * [IOTDB-1313] Fix lossing time precision when import csv with unsupported timestamp format
-* [IOTDB-1316] The importCsv tool should continue inserting if a part of insertion failed 
-* [IOTDB-1317] Fix log CatchUp always failed due to not check the follower's match index 
+* [IOTDB-1316] The importCsv tool should continue inserting if a part of insertion failed
+* [IOTDB-1317] Fix log CatchUp always failed due to not check the follower's match index
 * [IOTDB-1323] Fix return a success message when encounter RuntimeException during the insertion process
 * [IOTDB-1325] Fix StackOverflow Exception in group by natural month query
 * [IOTDB-1330] Fix the load tsfile bug when the cross multi partition's tsfile only have one page
@@ -198,13 +205,15 @@
 * Fix the plan index is always zero when using insertRecords interface to run the cluster
 * Add authority check for users create timeseries using executeBatch interface without the privilege
 * Fix versionInfo NPE when query upgrading 0.11 tsfile
-* Fix upgrade tool cannot load old tsfile if time partition enabled in 0.11 
+* Fix upgrade tool cannot load old tsfile if time partition enabled in 0.11
 * Fix import csv throw ArrayOutOfIndexError when the last value in a line is null
 * Fix upgrade tool cannot close file reader
 
 ## Improvements
+
 * [GITHUB-3399] Change the default primitive array size to 32
-* [IOTDB-1387] Support Without Null ALL in align by device clause, Filter RowRecord automatically if any column in it is null or all columns are null
+* [IOTDB-1387] Support Without Null ALL in align by device clause, Filter RowRecord automatically if any column in it is
+  null or all columns are null
 * [IOTDB-1385] Extract the super user to the configuration
 * [IOTDB-1315] ExportCsvTool should support timestamp `yyyy-MM-dd'T'HH:mm:ss.SSSZ`
 * [IOTDB-1339] optimize TimeoutChangeableTSnappyFramedTransport
@@ -214,6 +223,7 @@
 * Optimize sync leader for meta
 
 ## New Features
+
 * [GITHUB-3389] TTL can be set to any path
 * [GITHUB-3387] Add parameter compaction_interval=10000ms
 * [IOTDB-1190] Fully support HTTP URL char set in timeseries path
@@ -222,6 +232,7 @@
 * [ISSUE-3089] Make it possible for storage groups to have name with hyphen
 
 ## Miscellaneous changes
+
 * [GITHUB-3346] upgrade netty and claim exclusion for enforcer check
 * [IOTDB-1259] upgrade libthrift from 0.12.0/0.13.0 to 0.14.1
 * Uncomment the less used configurations
@@ -230,10 +241,11 @@
 # Apache IoTDB 0.12.0
 
 ## New Features
+
 * [IOTDB-68] New shared-nothing cluster
 * [IOTDB-507] Add zeppelin-interpreter module
 * [IOTDB-825] Aggregation by natural month
-* [IOTDB-890] support SDT lossy compression 
+* [IOTDB-890] support SDT lossy compression
 * [IOTDB-944] Support UDTF (User-defined Timeseries Generating Function)
 * [IOTDB-965] Add timeout parameter for query
 * [IOTDB-1077] Add insertOneDeviceRecords API in java session
@@ -247,11 +259,12 @@
 * [PR-2605] Add level merge to "merge" command
 
 ## Incompatible changes
+
 * [IOTDB-1081] New TsFile Format
 * [ISSUE-2730] Add the number of unseq merge times in TsFile name.
 
-
 ## Miscellaneous changes
+
 * [IOTDB-868] Change mlog from txt to bin
 * [IOTDB-1069] Restrict the flushing memtable number to avoid OOM when mem_control is disabled
 * [IOTDB-1104] Refactor the error handling process of query exceptions
@@ -264,6 +277,7 @@
 * [PR-2967] Log memory usage information in SystemInfo for better diagnosis
 
 ## Bug Fixes
+
 * [IOTDB-1049] Fix NullpointerException and a delete bug in Last query
 * [IOTDB-1050] Fix Count timeserise column name is wrong
 * [IOTDB-1068] Fix Time series metadata cache bug
@@ -290,10 +304,11 @@
 # Apache IoTDB 0.11.4
 
 ## Bug Fixes
+
 * IOTDB-1303 Disable group by without aggregation function in select clause
-* IOTDB-1306 Fix insertion blocked caused the deadlock in memory control module 
+* IOTDB-1306 Fix insertion blocked caused the deadlock in memory control module
 * IOTDB-1308 Fix users with READ_TIMESERIES permission cannot execute group by fill queries
-* IOTDB-1344 Fix cannot create timeseries caused by the timeseries count doesn't reset when deleting storage group 
+* IOTDB-1344 Fix cannot create timeseries caused by the timeseries count doesn't reset when deleting storage group
 * IOTDB-1384 Some value will disappear while using group by query
 * IOTDB-1398 Do not select unseq files when there are uncompacted old unseq files
 * ISSUE-3316 Fix query result with the same time range is inconsistent in group by query
@@ -302,16 +317,19 @@
 * Fix overlapped data should be consumed first exception when query
 
 ## Improvements
+
 * IOTDB-1356 Separate unseq_file_num_in_each_level from selecting candidate file in unseq compaction
 * IOTDB-1412 Unclear exception message thrown when executing empty InsertTabletPlan
 * continuous compaction in level compaction strategy when no tsfile is to be closed
 
 ## New Features
+
 * support brackets with number in timeseries path
 
 # Apache IoTDB 0.11.3
 
 ## Bug Fixes
+
 * ISSUE-2505 ignore PathNotExistException in recover and change recover error to warn
 * IOTDB-1119 Fix C++ SessionDataSet bug when reading value buffer
 * Fix SessionPool does not recycle session and can not offer new Session due to RunTimeException
@@ -343,6 +361,7 @@
 * Fix high CPU usage during the compaction process
 
 ## Improvements
+
 * IOTDB-1140 optimize regular data encoding
 * Add more log for better tracing
 * Add backgroup exec for cli -e function
@@ -350,12 +369,13 @@
 * Change last cache log to debug level
 
 ## New Features
-* Add explain sql support
 
+* Add explain sql support
 
 # Apache IoTDB 0.11.2
 
 ## Bug Fixes
+
 * IOTDB-1049 Fix Nullpointer exception and a delete bug in Last query
 * IOTDB-1060 Support full deletion for delete statement without where clause
 * IOTDB-1068 Fix Time series metadata cache bug
@@ -377,6 +397,7 @@
 # Apache IoTDB 0.11.1
 
 ## Bug Fixes
+
 * IOTDB-990 cli parameter maxPRC shouldn't to be set zero
 * IOTDB-993 Fix tlog bug
 * IOTDB-994 Fix can not get last_value while doing the aggregation query along with first_value
@@ -464,7 +485,7 @@
 * IOTDB-963 Redo deleteStorageGroupPlan failed when recovering
 * IOTDB-967 Fix xxx does not have the child node xxx Bug in count timeseries
 * IOTDB-970 Restrict log file number and size
-* IOTDB-971 More precise error messages of slimit and soffset 
+* IOTDB-971 More precise error messages of slimit and soffset
 * IOTDB-975 when series does not exist in TsFile, reading wrong ChunkMetadataList
 
 # Apache IoTDB (incubating) 0.10.1
@@ -479,20 +500,19 @@
 * Query result is not correct when some unsequence data exists
 * Change the default fetch size to 10000 in session
 * [IOTDB-798] fix a set rowLimit and rowOffset bug
-* [IOTDB-800] Add a new config type for those parameters which could not be modified any more after the first start 
+* [IOTDB-800] Add a new config type for those parameters which could not be modified any more after the first start
 * [IOTDB-802] Improve "group by" query performance
-* [IOTDB-799] remove log visualizer tool from v0.10 
-* fix license-binary  
-* [IOTDB-805] Fix BufferUnderflowException when querying TsFile stored in HDFS 
+* [IOTDB-799] remove log visualizer tool from v0.10
+* fix license-binary
+* [IOTDB-805] Fix BufferUnderflowException when querying TsFile stored in HDFS
 * python session client ver-0.10.0
-* [IOTDB-808] fix bug in selfCheck() truncate 
-* fix doc of MeasurementSchema in Tablet 
+* [IOTDB-808] fix bug in selfCheck() truncate
+* fix doc of MeasurementSchema in Tablet
 * [IOTDB-811] fix upgrading mlog many times when upgrading system.properties crashed
 * Improve IoTDB restart process
 * remove jol-core dependency which is introduced by hive-serde 2.8.4
 * remove org.json dependency because of license compatibility
 * [ISSUE-1551] fix set historical version when loading additional tsfile
-
 
 # Apache IoTDB (incubating) 0.10.0
 
@@ -514,7 +534,8 @@
 * IOTDB-396 Support new query clause: disable align, e.g., select * from root disable align
 * IOTDB-447 Support querying non-existing measurement and constant measurement
 * IOTDB-448 Add IN operation, e.g., where time in (1,2,3)
-* IOTDB-456 Support GroupByFill Query, e.g., select last_value(s1) from root.sg.d1 GROUP BY ([1, 10), 2ms) FILL(int32[previousUntilLast])
+* IOTDB-456 Support GroupByFill Query, e.g., select last_value(s1) from root.sg.d1 GROUP BY ([1, 10), 2ms) FILL(
+  int32[previousUntilLast])
 * IOTDB-467 The CLI displays query results in a batch manner
 * IOTDB-497 Support Apache Flink Connector with IoTDB
 * IOTDB-558 add text support for grafana
@@ -542,10 +563,9 @@
 * IOTDB-708 add config for inferring data type from string value
 * IOTDB-715 Support previous time range in previousuntillast
 * IOTDB-719 add avg_series_point_number_threshold in config
-* IOTDB-731 Continue write inside InsertPlan 
+* IOTDB-731 Continue write inside InsertPlan
 * IOTDB-734 Add Support for NaN in Double / Floats in SQL Syntax.
-* IOTDB-744 Support upsert alias 
-
+* IOTDB-744 Support upsert alias
 
 ## Incompatible changes
 
@@ -556,7 +576,8 @@
 * IOTDB-506 upgrade the rpc protocol to v2 to reject clients or servers that version < 0.10
 * IOTDB-587 TsFile is upgraded to version 2
 * IOTDB-593 add metaOffset in TsFileMetadata
-* IOTDB-597 Rename methods in Session: insertBatch to insertTablet, insertInBatch to insertRecords, insert to insertRecord
+* IOTDB-597 Rename methods in Session: insertBatch to insertTablet, insertInBatch to insertRecords, insert to
+  insertRecord
 * RPC is incompatible, you can not use client-v0.9 to connect with server-v0.10
 * TsFile format is incompatible, will be upgraded when starting 0.10
 * Refine exception code in native api
@@ -575,11 +596,11 @@
 * IOTDB-628 rename client to cli
 * IOTDB-621 Add Check isNull in Field for querying using session
 * IOTDB-632 Performance improve for PreviousFill/LinearFill
-* IOTDB-695 Accelerate the count timeseries query 
-* IOTDB-707 Optimize TsFileResource memory usage  
+* IOTDB-695 Accelerate the count timeseries query
+* IOTDB-707 Optimize TsFileResource memory usage
 * IOTDB-730 continue write in MQTT when some events are failed
-* IOTDB-729 shutdown uncessary threadpool 
-* IOTDB-733 Enable setting for mqtt max length 
+* IOTDB-729 shutdown uncessary threadpool
+* IOTDB-733 Enable setting for mqtt max length
 * IOTDB-732 Upgrade fastjson version to 1.2.70
 * Allow "count timeseries" without a prefix path
 * Add max backup log file number
@@ -589,12 +610,11 @@
 * Add metaquery in python example
 * Set inferType of MQTT InsertPlan to true
 
-
-
 ## Bug Fixes
 
 * IOTDB-125 Potential Concurrency bug while deleting and inserting happen together
-* IOTDB-185 fix start-client failed on WinOS if there is blank space in the file path; let start-server.bat suport jdk12,13 etc
+* IOTDB-185 fix start-client failed on WinOS if there is blank space in the file path; let start-server.bat suport
+  jdk12,13 etc
 * IOTDB-304 Fix bug of incomplete HDFS URI
 * IOTDB-341 Fix data type bug in grafana
 * IOTDB-346 Fix a bug of renaming tsfile in loading function
@@ -618,8 +638,8 @@
 * IOTDB-692 merge behaves incorrectly
 * IOTDB-712 Meet BufferUnderflowException and can not recover
 * IOTDB-718 Fix wrong time precision of NOW()
-* IOTDB-735 Fix Concurrent error for MNode when creating time series automatically 
-* IOTDB-738 Fix measurements has blank 
+* IOTDB-735 Fix Concurrent error for MNode when creating time series automatically
+* IOTDB-738 Fix measurements has blank
 
 * fix concurrent auto create schema conflict bug
 * fix meet incompatible file error in restart
@@ -629,10 +649,10 @@
 * Fix batch execution bug, the following sqls will all fail after one error sql
 * Fix recover endTime set bug
 
-
 # Apache IoTDB (incubating) 0.9.3
 
 ## Bug Fixes
+
 - IOTDB-531 Fix that JDBC URL does not support domain issue
 - IOTDB-563 Fix pentaho cannot be downloaded because of spring.io address
 - IOTDB-608 Skip error Mlog
@@ -640,32 +660,34 @@
 - IOTDB-636 Fix Grafana connector does not use correct time unit
 
 ## Miscellaneous changes
+
 - IOTDB-528 Modify grafana group by
 - IOTDB-635 Add workaround when doing Aggregation over boolean Series
 - Remove docs of Load External Tsfile
 - Add Grafana IoTDB Bridge Artifact to distribution in tools/grafana folder
 
-
 # Apache IoTDB (incubating) 0.9.2
 
 ## Bug Fixes
+
 - IOTDB-553 Fix Return Empty ResultSet when queried series doesn't exist
 - IOTDB-575 add default jmx user and password; fix issues that jmx can't be accessed remotely
 - IOTDB-584 Fix InitializerError when recovering files on HDFS
 - Fix batch insert once an illegal sql occurs all the sqls after that will not succeed
-- Fix concurrent modification exception when iterator TsFileResourceList 
-- Fix some HDFS config issues 
+- Fix concurrent modification exception when iterator TsFileResourceList
+- Fix some HDFS config issues
 - Fix runtime exception not be catched and sync schema pos was nullpointer bug in DataTransferManager
 - Fix python rpc grammar mistakes
 - Fix upgrade ConcurrentModificationException
 
 ## Miscellaneous changes
+
 - IOTDB-332 support Chinese characters in path
-- IOTDB-316 add AVG function to 4-SQL Reference.md and modify style 
+- IOTDB-316 add AVG function to 4-SQL Reference.md and modify style
 - improve start-server.bat by using quotes to protect against empty entries
 - Add Chinese documents for chapter 4.2
 - change download-maven-plugin to 1.3.0
-- add session pool 
+- add session pool
 - add insertInBatch in Session
 - add insertInBatch to SessionPool
 - modify 0.9 docs to fit website
@@ -709,7 +731,7 @@
 * IOTDB-188 Delete storage group
 * IOTDB-193 Create schema automatically when inserting
 * IOTDB-198 Add sync module (Sync TsFiles between IoTDB instances)
-* IOTDB-199 Add a log visualization tool 
+* IOTDB-199 Add a log visualization tool
 * IOTDB-203 Add "group by device" function for narrow table display
 * IOTDB-205 Support storage-group-level Time To Live (TTL)
 * IOTDB-208 Add Bloom filter in TsFile
@@ -718,7 +740,7 @@
 * IOTDB-239 Add interface for showing devices
 * IOTDB-241 Add query and non query interface in session
 * IOTDB-249 Enable lowercase in create_timeseries sql
-* IOTDB-253 Support time expression 
+* IOTDB-253 Support time expression
 * IOTDB-259 Level query of path
 * IOTDB-282 Add "show version"
 * IOTDB-294 Online upgrade from 0.8.0 to 0.9.0
@@ -727,15 +749,17 @@
 * Generate cpp, go, and python thrift files under service-rpc
 * Display cache hit rate through jconsole
 * Support inserting data that time < 0
-* Add interface (Delete timeseries) in session 
+* Add interface (Delete timeseries) in session
 * Add a tool to print tsfileResources (each device's start and end time)
 * Support watermark feature
 * Add micro and nano timestamp precision
 
 ## Incompatible changes
 
-* RPC is incompatible, you can not use client-0.8.0 to connect with server-0.9.0 or use client-0.9.0 to connect with server-0.8.0.
-* Server is backward compatible, server-0.9.0 could run on data folder of 0.8.0. The data file will be upgraded background.
+* RPC is incompatible, you can not use client-0.8.0 to connect with server-0.9.0 or use client-0.9.0 to connect with
+  server-0.8.0.
+* Server is backward compatible, server-0.9.0 could run on data folder of 0.8.0. The data file will be upgraded
+  background.
 * Change map key in TsDigest from String to enum data type
 
 ## Miscellaneous changes
@@ -751,7 +775,8 @@
 * IOTDB-221 Add a python client example
 * IOTDB-233 keep metadata plan clear
 * IOTDB-251 Improve TSQueryDataSet structure in RPC
-* IOTDB-257 Makes the client stop fetch when dataSize equals maxPrintRowCount and change client fetchSize less than maxPrintRowCount
+* IOTDB-257 Makes the client stop fetch when dataSize equals maxPrintRowCount and change client fetchSize less than
+  maxPrintRowCount
 * IOTDB-258 Add documents for Query History Visualization Tool and Shared Storage Architecture
 * IOTDB-265 Re-adjust the threshold size of memtable
 * IOTDB-267 Reduce IO operations in deserializing chunk header
@@ -763,7 +788,7 @@
 * IOTDB-295 Refactor db.exception
 * Reconstruct Antlr3 grammar to improve performance
 * Tooling for release
-* Modified Decoder and SequenceReader to support old version of TsFile 
+* Modified Decoder and SequenceReader to support old version of TsFile
 * Remove jdk constrain of jdk8 and 11
 * Modify print function in AbstractClient
 * Avoid second execution of parseSQLToPhysicalPlan in executeStatement
@@ -774,7 +799,8 @@
 
 ## Bug Fixes
 
-* IOTDB-168&169 Fix a bug in export-csv tool and fix compatibility of timestamp formats in exportCsv, client display and sql
+* IOTDB-168&169 Fix a bug in export-csv tool and fix compatibility of timestamp formats in exportCsv, client display and
+  sql
 * IOTDB-174 Fix querying timeseries interface cannot make a query by the specified path prefix
 * IOTDB-195 Using String.getBytes(utf-9).length to replace string.length() in ChunkGroupMetadata for supporting Chinese
 * IOTDB-211 Use "%IOTDB_HOME%\lib\*" to refers to all .jar files in the directory in start-server.bat
@@ -793,11 +819,11 @@
 
 # Apache IoTDB (incubating) 0.8.2
 
- This is a bug-fix version of 0.8.1 
+This is a bug-fix version of 0.8.1
 
--  IOTDB-264 lack checking datatype before writing WAL 
--  IOTDB-317 Fix "flush + wrong aggregation" causes failed query in v0.8.x 
--  NOTICE and LICENSE file update 
+- IOTDB-264 lack checking datatype before writing WAL
+- IOTDB-317 Fix "flush + wrong aggregation" causes failed query in v0.8.x
+- NOTICE and LICENSE file update
 
 # Apache IoTDB (incubating) 0.8.1
 
@@ -809,7 +835,6 @@ This is a bug-fix version of 0.8.0
 * IOTDB-242 fix mvn integration-test failed because the files in the target folder changes
 * Abnormal publishing of sequence and unsequence data folders in DirectoryManager
 * Fix a bug in TimeRange's intersects function
-
 
 # Apache IoTDB (incubating) 0.8.0
 
@@ -887,7 +912,8 @@ If you use the previous unofficial version 0.7.0. It is incompatible with 0.8.0.
 
 * IOTDB-20 Need to support UPDATE
 * IOTDB-124 Lost timeseries info after restart IoTDB
-* IOTDB-125 [potential] a concurrency conflict may occur when a delete command and insertion command appears concurrently
+* IOTDB-125 [potential] a concurrency conflict may occur when a delete command and insertion command appears
+  concurrently
 * IOTDB-126 IoTDB will not be closed immediately after run 'stop-server.sh' script
 * IOTDB-127 Chinese version documents problems
 
