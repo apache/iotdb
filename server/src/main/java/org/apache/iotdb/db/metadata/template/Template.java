@@ -45,6 +45,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -225,6 +226,7 @@ public class Template {
           directNodes.put(leafNode.getName(), leafNode);
         } else {
           commonPar = (IEntityMNode) constructEntityPath(alignedPaths[0]);
+          commonPar.setAligned(true);
           leafNode =
               MeasurementMNode.getMeasurementMNode(
                   commonPar, measurementNames.get(i), schemas[i], "");
@@ -399,6 +401,10 @@ public class Template {
 
   public IMNode getDirectNode(String nodeName) {
     return directNodes.getOrDefault(nodeName, null);
+  }
+
+  public Collection<IMNode> getDirectNodes() {
+    return directNodes.values();
   }
 
   // endregion

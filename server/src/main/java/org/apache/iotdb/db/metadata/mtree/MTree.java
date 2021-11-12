@@ -960,7 +960,8 @@ public class MTree implements Serializable {
         new MeasurementCollector<List<PartialPath>>(root, pathPattern, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            MeasurementPath path = node.getMeasurementPath();
+            // MeasurementPath path = node.getMeasurementPath();
+            MeasurementPath path = new MeasurementPath(getPivotFullPath(node));
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
@@ -1021,13 +1022,15 @@ public class MTree implements Serializable {
             IMeasurementSchema measurementSchema = node.getSchema();
             String[] tsRow = new String[7];
             tsRow[0] = node.getAlias();
-            tsRow[1] = getBelongedStorageGroupPath(node).getFullPath();
+            // tsRow[1] = getBelongedStorageGroupPath(node).getFullPath();
+            tsRow[1] = getStorageGroupNodeInTraversePath().getFullPath();
             tsRow[2] = measurementSchema.getType().toString();
             tsRow[3] = measurementSchema.getEncodingType().toString();
             tsRow[4] = measurementSchema.getCompressor().toString();
             tsRow[5] = String.valueOf(node.getOffset());
             tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
-            Pair<PartialPath, String[]> temp = new Pair<>(node.getPartialPath(), tsRow);
+            // Pair<PartialPath, String[]> temp = new Pair<>(node.getPartialPath(), tsRow);
+            Pair<PartialPath, String[]> temp = new Pair<>(new PartialPath(getPivotFullPath(node)), tsRow);
             result.add(temp);
           }
         };

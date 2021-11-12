@@ -186,6 +186,89 @@ public class InsertRowPlanTest {
     Assert.assertEquals(plan1, plan2);
   }
 
+  @Test
+  public void testInsertRowPlanWithSchemaTemplateFormer()
+      throws QueryProcessException, MetadataException, InterruptedException,
+      QueryFilterOptimizationException, StorageEngineException, IOException {
+    List<List<String>> measurementList = new ArrayList<>();
+    List<String> v1 = new ArrayList<>();
+    v1.add("vector.s1");
+    v1.add("vector.s2");
+    v1.add("vector.s3");
+    measurementList.add(v1);
+    List<String> v2 = new ArrayList<>();
+    v2.add("vector2.s4");
+    v2.add("vector2.s5");
+    measurementList.add(v2);
+    measurementList.add(Collections.singletonList("s6"));
+
+    List<List<TSDataType>> dataTypesList = new ArrayList<>();
+    List<TSDataType> d1 = new ArrayList<>();
+    d1.add(TSDataType.DOUBLE);
+    d1.add(TSDataType.FLOAT);
+    d1.add(TSDataType.INT64);
+    dataTypesList.add(d1);
+    List<TSDataType> d2 = new ArrayList<>();
+    d2.add(TSDataType.INT32);
+    d2.add(TSDataType.BOOLEAN);
+    dataTypesList.add(d2);
+    dataTypesList.add(Collections.singletonList(TSDataType.TEXT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    List<TSEncoding> e1 = new ArrayList<>();
+    e1.add(TSEncoding.PLAIN);
+    e1.add(TSEncoding.PLAIN);
+    e1.add(TSEncoding.PLAIN);
+    encodingList.add(e1);
+    List<TSEncoding> e2 = new ArrayList<>();
+    e2.add(TSEncoding.PLAIN);
+    e2.add(TSEncoding.PLAIN);
+    encodingList.add(e2);
+    encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
+
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      List<CompressionType> compressorList = new ArrayList<>();
+      for (int j = 0; j < 3; j++) {
+        compressorList.add(CompressionType.SNAPPY);
+      }
+      compressionTypes.add(compressorList);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("vector");
+    schemaNames.add("vector2");
+    schemaNames.add("s6");
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypesList,
+            encodingList,
+            compressionTypes);
+
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
+
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+
+    InsertRowPlan rowPlan = getInsertAlignedRowPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insert(rowPlan);
+
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector.s1");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(1, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(3, record.getFields().size());
+    }
+  }
+
   private InsertRowPlan getInsertRowPlan() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
