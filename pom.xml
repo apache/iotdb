@@ -729,7 +729,7 @@
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>openapi/target/generated-sources/java</sourceDirectory>
+                        <sourceDirectory>openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>
                         <sourceDirectory>spark-tsfile/src/main/scala</sourceDirectory>
                     </sourceDirectories>
