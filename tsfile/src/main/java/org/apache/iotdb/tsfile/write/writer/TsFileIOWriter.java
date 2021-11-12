@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -40,20 +50,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 /**
  * TsFileIOWriter is used to construct metadata and write data stored in memory to output stream.
@@ -78,7 +76,7 @@ public class TsFileIOWriter {
   // current flushed Chunk
   private ChunkMetadata currentChunkMetadata;
   // current flushed ChunkGroup
-  protected List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+  protected List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
   // all flushed ChunkGroups
   protected List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
 
@@ -256,7 +254,7 @@ public class TsFileIOWriter {
     Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      List<ChunkMetadata> chunkMetadatas = chunkGroupMetadata.getChunkMetadataList();
+      List<IChunkMetadata> chunkMetadatas = chunkGroupMetadata.getChunkMetadataList();
       for (IChunkMetadata chunkMetadata : chunkMetadatas) {
         Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
         chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
@@ -369,8 +367,8 @@ public class TsFileIOWriter {
   }
 
   // device -> ChunkMetadataList
-  public Map<String, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
-    Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
+  public Map<String, List<IChunkMetadata>> getDeviceChunkMetadataMap() {
+    Map<String, List<IChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       deviceChunkMetadataMap
@@ -427,7 +425,7 @@ public class TsFileIOWriter {
       ChunkGroupMetadata chunkGroupMetaData = chunkGroupMetaDataIterator.next();
       String deviceId = chunkGroupMetaData.getDevice();
       int chunkNum = chunkGroupMetaData.getChunkMetadataList().size();
-      Iterator<ChunkMetadata> chunkMetaDataIterator =
+      Iterator<IChunkMetadata> chunkMetaDataIterator =
           chunkGroupMetaData.getChunkMetadataList().iterator();
       while (chunkMetaDataIterator.hasNext()) {
         IChunkMetadata chunkMetaData = chunkMetaDataIterator.next();

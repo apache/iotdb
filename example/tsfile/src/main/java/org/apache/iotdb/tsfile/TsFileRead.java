@@ -54,7 +54,7 @@ public class TsFileRead {
   public static void main(String[] args) throws IOException {
 
     // file path
-    String path = "C:\\IOTDB\\sourceCode\\choubenson\\iotdb\\alignedTablet.tsfile";
+    String path = "C:\\IOTDB\\sourceCode\\choubenson\\iotdb\\alignedRecord.tsfile";
 
     // create reader and get the readTsFile interface
     try (TsFileSequenceReader reader = new TsFileSequenceReader(path);
@@ -62,7 +62,7 @@ public class TsFileRead {
 
       // use these paths(all measurements) for all the queries
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path(DEVICE1, ""));
+      // paths.add(new Path(DEVICE1, ""));
       paths.add(new Path(DEVICE1, "s1"));
       paths.add(new Path(DEVICE1, "s2"));
       paths.add(new Path(DEVICE1, "s3"));
@@ -79,7 +79,7 @@ public class TsFileRead {
 
       // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
       IExpression valueFilter =
-          new SingleSeriesExpression(new Path(DEVICE1, "s3"), ValueFilter.ltEq(20L));
+          new SingleSeriesExpression(new Path(DEVICE1, "s3"), ValueFilter.eq(14L));
       queryAndPrint(paths, readTsFile, valueFilter);
 
       // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8
@@ -87,7 +87,7 @@ public class TsFileRead {
           BinaryExpression.and(
               new GlobalTimeExpression(TimeFilter.gtEq(4L)),
               new GlobalTimeExpression(TimeFilter.ltEq(10L)));
-      valueFilter = new SingleSeriesExpression(new Path(DEVICE1, "s3"), ValueFilter.gtEq(20L));
+      valueFilter = new SingleSeriesExpression(new Path(DEVICE1, "s3"), ValueFilter.eq(17L));
       IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
       queryAndPrint(paths, readTsFile, finalFilter);
     }

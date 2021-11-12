@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.tsfile;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -26,7 +31,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -36,12 +41,6 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
 public class TsFileSequenceRead {
@@ -180,12 +179,12 @@ public class TsFileSequenceRead {
       }
       System.out.println("[Metadata]");
       for (String device : reader.getAllDevices()) {
-        Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
+        Map<String, List<IChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
         System.out.printf(
             "\t[Device]Device %s, Number of Measurements %d%n", device, seriesMetaData.size());
-        for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
+        for (Map.Entry<String, List<IChunkMetadata>> serie : seriesMetaData.entrySet()) {
           System.out.println("\t\tMeasurement:" + serie.getKey());
-          for (ChunkMetadata chunkMetadata : serie.getValue()) {
+          for (IChunkMetadata chunkMetadata : serie.getValue()) {
             System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
           }
         }

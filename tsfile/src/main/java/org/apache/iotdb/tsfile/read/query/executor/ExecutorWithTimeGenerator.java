@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read.query.executor;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -31,12 +37,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TsFileTimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
 
 public class ExecutorWithTimeGenerator implements QueryExecutor {
 
@@ -78,7 +78,15 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
       List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(selectedPath);
       if (chunkMetadataList.size() != 0) {
-        dataTypes.add(chunkMetadataList.get(0).getDataType());
+        if (chunkMetadataList.get(0).getDataType() != TSDataType.VECTOR) {
+          dataTypes.add(chunkMetadataList.get(0).getDataType());
+        } else {
+          dataTypes.add(
+              ((AlignedChunkMetadata) chunkMetadataList.get(0))
+                  .getValueChunkMetadataList()
+                  .get(0)
+                  .getDataType());
+        }
         if (cachedValue) {
           readersOfSelectedSeries.add(null);
           continue;

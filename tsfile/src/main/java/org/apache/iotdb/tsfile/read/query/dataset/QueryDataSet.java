@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public abstract class QueryDataSet {
 
@@ -131,6 +134,38 @@ public abstract class QueryDataSet {
       alreadyReturnedRowNum++;
     }
     return nextWithoutConstraint();
+  }
+
+  /**
+   * This method is only used for aligned timeseries which has only one value measurement.
+   *
+   * @param alignedBatch
+   * @param field
+   */
+  protected void putAlignedValueToField(BatchData alignedBatch, Field field) {
+    TsPrimitiveType obj = (alignedBatch.getVector())[0];
+    switch (obj.getDataType()) {
+      case BOOLEAN:
+        field.setBoolV(obj.getBoolean());
+        break;
+      case INT32:
+        field.setIntV(obj.getInt());
+        break;
+      case INT64:
+        field.setLongV(obj.getLong());
+        break;
+      case FLOAT:
+        field.setFloatV(obj.getFloat());
+        break;
+      case DOUBLE:
+        field.setDoubleV(obj.getDouble());
+        break;
+      case TEXT:
+        field.setBinaryV(obj.getBinary());
+        break;
+      default:
+        throw new UnSupportedDataTypeException("UnSupported" + obj.getDataType());
+    }
   }
 
   public void setFetchSize(int fetchSize) {

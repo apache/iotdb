@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.tsfile.write.writer;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -29,19 +38,8 @@ import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * This writer is for opening and recover a TsFile
@@ -68,7 +66,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private long maxPlanIndex = Long.MIN_VALUE;
 
   /** all chunk group metadata which have been serialized on disk. */
-  private final Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
+  private final Map<String, Map<String, List<IChunkMetadata>>> metadatasForQuery = new HashMap<>();
 
   /**
    * @param file a given tsfile path you want to (continue to) write
@@ -220,7 +218,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return chunkMetadataList;
   }
 
-  public Map<String, Map<String, List<ChunkMetadata>>> getMetadatasForQuery() {
+  public Map<String, Map<String, List<IChunkMetadata>>> getMetadatasForQuery() {
     return metadatasForQuery;
   }
 
@@ -232,10 +230,10 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     List<ChunkGroupMetadata> newlyFlushedMetadataList = getAppendedRowMetadata();
     if (!newlyFlushedMetadataList.isEmpty()) {
       for (ChunkGroupMetadata chunkGroupMetadata : newlyFlushedMetadataList) {
-        List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
+        List<IChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
 
         String device = chunkGroupMetadata.getDevice();
-        for (ChunkMetadata chunkMetaData : rowMetaDataList) {
+        for (IChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!metadatasForQuery.containsKey(device)) {
             metadatasForQuery.put(device, new HashMap<>());

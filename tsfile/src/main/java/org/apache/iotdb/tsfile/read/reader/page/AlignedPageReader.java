@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,11 +32,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 public class AlignedPageReader implements IPageReader {
 
@@ -78,7 +77,8 @@ public class AlignedPageReader implements IPageReader {
 
     // if the vector contains more than on sub sensor, the BatchData's DataType is Vector
     List<TsPrimitiveType[]> valueBatchList = new ArrayList<>(valueCount);
-    for (ValuePageReader valuePageReader : valuePageReaderList) {
+    for (ValuePageReader valuePageReader :
+        valuePageReaderList) { // Todo:bug,有两个Page，却只显示一个PageReader
       valueBatchList.add(
           valuePageReader == null ? null : valuePageReader.nextValueBatch(timeBatch));
     }
@@ -97,7 +97,8 @@ public class AlignedPageReader implements IPageReader {
       // if all the sub sensors' value are null in current time
       // or current row is not satisfied with the filter, just discard it
       // TODO fix value filter v[0].getValue()
-      if (!isNull && (filter == null || filter.satisfy(timeBatch[i], v[0].getValue()))) {
+      if (!isNull
+          && (filter == null || filter.satisfy(timeBatch[i], v[0].getValue()))) { // Todo:bug
         pageData.putVector(timeBatch[i], v);
       }
     }

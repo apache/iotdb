@@ -46,7 +46,9 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
       return ((Long) value) >= statistics.getStartTime()
           && ((Long) value) <= statistics.getEndTime();
     } else {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+      if (statistics.getType() == TSDataType.TEXT
+          || statistics.getType() == TSDataType.BOOLEAN
+          || statistics.getType() == TSDataType.VECTOR) {
         return true;
       }
       return value.compareTo((T) statistics.getMinValue()) >= 0
@@ -55,9 +57,12 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
-  public boolean satisfy(long time, Object value) {
+  public boolean satisfy(long time, Object value) { // Todo:bug
     Object v = filterType == FilterType.TIME_FILTER ? time : value;
+    boolean r = this.value.equals(v);
+    boolean r1 = this.value == v;
     return this.value.equals(v);
+    // return this.value == v;
   }
 
   @Override

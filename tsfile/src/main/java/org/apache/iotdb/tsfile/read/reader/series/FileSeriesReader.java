@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.reader.series;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -47,8 +48,12 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
       this.chunkReader = new ChunkReader(chunk, filter);
     } else {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
-      Chunk timeChunk = alignedChunkMetadata.getTimeChunk();
-      List<Chunk> valueChunkList = alignedChunkMetadata.getValueChunkList();
+      Chunk timeChunk =
+          chunkLoader.loadChunk((ChunkMetadata) (alignedChunkMetadata.getTimeChunkMetadata()));
+      List<Chunk> valueChunkList = new ArrayList<>();
+      for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+        valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));
+      }
       this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, filter);
     }
   }

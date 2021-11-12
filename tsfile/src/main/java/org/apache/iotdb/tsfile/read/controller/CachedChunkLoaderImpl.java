@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -27,14 +28,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-import java.io.IOException;
-
 /** Read one Chunk and cache it into a LRUCache, only used in tsfile module. */
 public class CachedChunkLoaderImpl implements IChunkLoader {
 
   private static final int DEFAULT_CHUNK_CACHE_SIZE = 1000;
   private TsFileSequenceReader reader;
-  private LRUCache<ChunkMetadata, Chunk> chunkCache;
+  private LRUCache<IChunkMetadata, Chunk> chunkCache;
 
   public CachedChunkLoaderImpl(TsFileSequenceReader fileSequenceReader) {
     this(fileSequenceReader, DEFAULT_CHUNK_CACHE_SIZE);
@@ -51,10 +50,10 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
     this.reader = fileSequenceReader;
 
     chunkCache =
-        new LRUCache<ChunkMetadata, Chunk>(cacheSize) {
+        new LRUCache<IChunkMetadata, Chunk>(cacheSize) {
 
           @Override
-          public Chunk loadObjectByKey(ChunkMetadata metaData) throws IOException {
+          public Chunk loadObjectByKey(IChunkMetadata metaData) throws IOException {
             return reader.readMemChunk(metaData);
           }
         };
@@ -77,7 +76,8 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+  public IChunkReader getChunkReader(
+      IChunkMetadata chunkMetaData, Filter timeFilter) // Todo:bug,若是对齐序列
       throws IOException {
     chunkMetaData.setFilePath(reader.getFileName());
     Chunk chunk = chunkCache.get((ChunkMetadata) chunkMetaData);

@@ -19,26 +19,25 @@
 
 package org.apache.iotdb.tsfile.read;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.utils.FileGenerator;
-import org.apache.iotdb.tsfile.utils.Pair;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.utils.FileGenerator;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 public class TsFileSequenceReaderTest {
 
@@ -107,16 +106,16 @@ public class TsFileSequenceReaderTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
 
     // test for exist device "d2"
-    Map<String, List<ChunkMetadata>> chunkMetadataMap = reader.readChunkMetadataInDevice("d2");
+    Map<String, List<IChunkMetadata>> chunkMetadataMap = reader.readChunkMetadataInDevice("d2");
     int[] res = new int[] {20, 75, 100, 13};
 
     Assert.assertEquals(4, chunkMetadataMap.size());
     for (int i = 0; i < chunkMetadataMap.size(); i++) {
       int id = i + 1;
-      List<ChunkMetadata> metadataList = chunkMetadataMap.get("s" + id);
+      List<IChunkMetadata> metadataList = chunkMetadataMap.get("s" + id);
       int numOfPoints = 0;
-      for (ChunkMetadata metadata : metadataList) {
-        numOfPoints += metadata.getNumOfPoints();
+      for (IChunkMetadata metadata : metadataList) {
+        numOfPoints += ((ChunkMetadata) metadata).getNumOfPoints();
       }
       Assert.assertEquals(res[i], numOfPoints);
     }

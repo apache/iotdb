@@ -25,9 +25,9 @@ public class ChunkGroupMetadata {
 
   private String device;
 
-  private List<ChunkMetadata> chunkMetadataList;
+  private List<IChunkMetadata> chunkMetadataList;
 
-  public ChunkGroupMetadata(String device, List<ChunkMetadata> chunkMetadataList) {
+  public ChunkGroupMetadata(String device, List<IChunkMetadata> chunkMetadataList) {
     this.device = device;
     this.chunkMetadataList = chunkMetadataList;
   }
@@ -36,7 +36,7 @@ public class ChunkGroupMetadata {
     return device;
   }
 
-  public List<ChunkMetadata> getChunkMetadataList() {
+  public List<IChunkMetadata> getChunkMetadataList() {
     return chunkMetadataList;
   }
 }

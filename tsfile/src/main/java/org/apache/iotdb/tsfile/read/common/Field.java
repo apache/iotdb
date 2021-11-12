@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.exception.NullFieldException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
  * Field is component of one {@code RowRecord} which stores a value in specific data type. The value
@@ -200,28 +201,63 @@ public class Field {
       return null;
     }
     Field field = new Field(dataType);
-    switch (dataType) {
-      case INT32:
-        field.setIntV((int) value);
-        break;
-      case INT64:
-        field.setLongV((long) value);
-        break;
-      case FLOAT:
-        field.setFloatV((float) value);
-        break;
-      case DOUBLE:
-        field.setDoubleV((double) value);
-        break;
-      case BOOLEAN:
-        field.setBoolV((boolean) value);
-        break;
-      case TEXT:
-        field.setBinaryV((Binary) value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(dataType.toString());
+    if (value instanceof TsPrimitiveType[]) { // aligned timeseries
+      putAlignedValueIntoField(((TsPrimitiveType[]) value)[0], field);
+    } else {
+      switch (dataType) {
+        case INT32:
+          field.setIntV((int) value);
+          break;
+        case INT64:
+          field.setLongV((long) value);
+          break;
+        case FLOAT:
+          field.setFloatV((float) value);
+          break;
+        case DOUBLE:
+          field.setDoubleV((double) value);
+          break;
+        case BOOLEAN:
+          field.setBoolV((boolean) value);
+          break;
+        case TEXT:
+          field.setBinaryV((Binary) value);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(dataType.toString());
+      }
     }
     return field;
+  }
+
+  /**
+   * This method is only used for aligned timeseries which has only one value measurement.
+   *
+   * @param value
+   * @param field
+   */
+  private static void putAlignedValueIntoField(TsPrimitiveType value, Field field) {
+    switch (value.getDataType()) {
+      case BOOLEAN:
+        field.setBoolV(value.getBoolean());
+        break;
+      case INT32:
+        field.setIntV(value.getInt());
+        break;
+      case INT64:
+        field.setLongV(value.getLong());
+        break;
+      case FLOAT:
+        field.setFloatV(value.getFloat());
+        break;
+      case DOUBLE:
+        field.setDoubleV(value.getDouble());
+        break;
+      case TEXT:
+        field.setBinaryV(value.getBinary());
+        break;
+      default:
+        throw new UnSupportedDataTypeException("UnSupported" + value.getDataType());
+    }
   }
 }

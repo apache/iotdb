@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -28,10 +31,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 public class DiskAlignedChunkLoader implements IChunkLoader {
 
   private final boolean debug;
@@ -41,7 +40,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public Chunk loadChunk(ChunkMetadata chunkMetaData) {
+  public Chunk loadChunk(IChunkMetadata chunkMetaData) {
     throw new UnsupportedOperationException();
   }
 

@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.tsfile;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -29,11 +33,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class TsFileWriteAlignedWithTSRecord {
 
@@ -56,7 +55,7 @@ public class TsFileWriteAlignedWithTSRecord {
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
       writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAligned(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 1000000, 0, 0);
+      writeAligned(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 100000, 0, 0);
     } catch (WriteProcessException e) {
       e.printStackTrace();
     }
