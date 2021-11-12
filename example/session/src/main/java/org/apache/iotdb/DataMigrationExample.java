@@ -98,9 +98,9 @@ public class DataMigrationExample {
         if (!currentDevice.equals("") || seriesNumInOneTask > 300) {
           count++;
           Future future =
-            executorService.submit(
-                new LoadThread(
-                    count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
+              executorService.submit(
+                  new LoadThread(
+                      count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
           futureList.add(future);
           seriesNumInOneTask = 0;
         }
@@ -111,7 +111,6 @@ public class DataMigrationExample {
       }
       measurementsInCurrentDevice.add(currentPath.getMeasurement());
       dataTypesInCurrentDevice.add(TSDataType.valueOf(schemaIter.getString("dataType")));
-
     }
     readerPool.closeResultSet(schemaDataSet);
 
@@ -148,7 +147,7 @@ public class DataMigrationExample {
         schemaList.add(new UnaryMeasurementSchema(measurements.get(i), dataTypes.get(i)));
         measurementsString.append(measurements.get(i));
         if (i != measurements.size() - 1) {
-           measurementsString.append(", ");
+          measurementsString.append(", ");
         }
       }
       tablet = new Tablet(device, schemaList, 300000);
