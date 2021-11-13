@@ -71,6 +71,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
    *   <li><b>No compaction log file exists</b>: do nothing
    * </ol>
    */
+  @Override
   public void doCompaction() {
     // read log -> Set<Device> -> doCompaction -> clear
     try {

@@ -130,6 +130,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#read()} */
+  @Override
   public int read() throws IOException {
     synchronized (lock) {
       ensureOpen();
@@ -179,6 +180,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#read(char[], int, int)} */
+  @Override
   public int read(char cbuf[], int off, int len) throws IOException {
     synchronized (lock) {
       ensureOpen();
@@ -272,6 +274,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#skip(long)} */
+  @Override
   public long skip(long n) throws IOException {
     if (n < 0L) {
       throw new IllegalArgumentException("skip value is negative");
@@ -303,6 +306,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#ready()} */
+  @Override
   public boolean ready() throws IOException {
     synchronized (lock) {
       ensureOpen();
@@ -328,11 +332,13 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#markSupported()} */
+  @Override
   public boolean markSupported() {
     return true;
   }
 
   /** {@link BufferedReader#mark(int)} */
+  @Override
   public void mark(int readAheadLimit) throws IOException {
     if (readAheadLimit < 0) {
       throw new IllegalArgumentException("Read-ahead limit < 0");
@@ -346,6 +352,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#reset()} */
+  @Override
   public void reset() throws IOException {
     synchronized (lock) {
       ensureOpen();
@@ -357,6 +364,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#close()} */
+  @Override
   public void close() throws IOException {
     synchronized (lock) {
       if (in == null) return;

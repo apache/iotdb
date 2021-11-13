@@ -142,6 +142,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     this.indexes = indexes;
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
