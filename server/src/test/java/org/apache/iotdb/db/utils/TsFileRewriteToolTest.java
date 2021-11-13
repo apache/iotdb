@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -38,7 +45,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -49,19 +56,10 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class TsFileRewriteToolTest {
 
@@ -334,7 +332,7 @@ public class TsFileRewriteToolTest {
       String tsFilePath, int index, HashMap<String, List<String>> deviceSensorsMap)
       throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
 
       int totalSensorCount = 0;
@@ -438,7 +436,7 @@ public class TsFileRewriteToolTest {
   public void queryAndCheckTsFile(String tsFilePath, int index, String device, String sensor)
       throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path(device, sensor));
 

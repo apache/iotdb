@@ -40,7 +40,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public Chunk loadChunk(IChunkMetadata chunkMetaData) {
+  public Chunk loadChunk(ChunkMetadata chunkMetaData) {
     throw new UnsupportedOperationException();
   }
 

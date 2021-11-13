@@ -39,8 +39,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -211,12 +211,12 @@ public class RestorableTsFileIOWriterTest {
     writer.close();
     rWriter.close();
 
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(file.getPath()));
+    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(file.getPath()));
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1", "s1"));
     pathList.add(new Path("d1", "s2"));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    QueryDataSet dataSet = tsFileReader.query(queryExpression);
     RowRecord record = dataSet.next();
     assertEquals(1, record.getTimestamp());
     assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
@@ -225,7 +225,7 @@ public class RestorableTsFileIOWriterTest {
     assertEquals(2, record.getTimestamp());
     assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
     assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001);
-    readOnlyTsFile.close();
+    tsFileReader.close();
     assertFalse(dataSet.hasNext());
   }
 

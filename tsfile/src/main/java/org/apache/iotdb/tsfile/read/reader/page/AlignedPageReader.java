@@ -77,8 +77,11 @@ public class AlignedPageReader implements IPageReader {
 
     // if the vector contains more than on sub sensor, the BatchData's DataType is Vector
     List<TsPrimitiveType[]> valueBatchList = new ArrayList<>(valueCount);
-    for (ValuePageReader valuePageReader :
-        valuePageReaderList) { // Todo:bug,有两个Page，却只显示一个PageReader
+    // Todo:bug,有两个Page，却只显示一个PageReader
+    for (ValuePageReader valuePageReader : valuePageReaderList) {
+      if (valuePageReader.getPageHeader().getUncompressedSize() == 0) { // Empty Page
+        return BatchDataFactory.createBatchData(TSDataType.VECTOR);
+      }
       valueBatchList.add(
           valuePageReader == null ? null : valuePageReader.nextValueBatch(timeBatch));
     }
@@ -97,8 +100,7 @@ public class AlignedPageReader implements IPageReader {
       // if all the sub sensors' value are null in current time
       // or current row is not satisfied with the filter, just discard it
       // TODO fix value filter v[0].getValue()
-      if (!isNull
-          && (filter == null || filter.satisfy(timeBatch[i], v[0].getValue()))) { // Todo:bug
+      if (!isNull && (filter == null || filter.satisfy(timeBatch[i], v[0].getValue()))) {
         pageData.putVector(timeBatch[i], v);
       }
     }

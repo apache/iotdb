@@ -19,9 +19,19 @@
 
 package org.apache.iotdb.flink.tsfile;
 
+import static org.apache.iotdb.flink.util.TsFileWriteUtil.DEFAULT_TEMPLATE;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.tuple.Tuple7;
+import org.apache.flink.types.Row;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -29,19 +39,7 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
-import org.apache.flink.api.java.DataSet;
-import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.tuple.Tuple7;
-import org.apache.flink.types.Row;
 import org.junit.Before;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.apache.iotdb.flink.util.TsFileWriteUtil.DEFAULT_TEMPLATE;
 
 /** Base class for TsFileOutputFormat tests. */
 public abstract class RowTsFileOutputFormatTestBase extends RowTsFileConnectorTestBase {
@@ -106,7 +104,7 @@ public abstract class RowTsFileOutputFormatTestBase extends RowTsFileConnectorTe
   protected String[] readTsFile(String tsFilePath, List<Path> paths) throws IOException {
     QueryExpression expression = QueryExpression.create(paths, null);
     TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-    ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    TsFileReader readTsFile = new TsFileReader(reader);
     QueryDataSet queryDataSet = readTsFile.query(expression);
     List<String> result = new ArrayList<>();
     while (queryDataSet.hasNext()) {

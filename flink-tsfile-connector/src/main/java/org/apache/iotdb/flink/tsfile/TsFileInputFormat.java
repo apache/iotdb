@@ -19,17 +19,12 @@
 
 package org.apache.iotdb.flink.tsfile;
 
-import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Paths;
+import java.util.Optional;
+import javax.annotation.Nullable;
 import org.apache.flink.api.common.io.FileInputFormat;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
@@ -39,14 +34,16 @@ import org.apache.flink.core.fs.FileInputSplit;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.util.HadoopUtils;
 import org.apache.flink.util.FlinkRuntimeException;
-
-import javax.annotation.Nullable;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.Paths;
-import java.util.Optional;
+import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.read.TsFileReader;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 /**
  * Input format that reads TsFiles. Users need to provide a {@link RowRecordParser} used to parse
@@ -61,7 +58,7 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
   @Nullable private final TSFileConfig config;
 
   private transient org.apache.hadoop.conf.Configuration hadoopConf = null;
-  private transient ReadOnlyTsFile readTsFile = null;
+  private transient TsFileReader readTsFile = null;
   private transient QueryDataSet queryDataSet = null;
 
   public TsFileInputFormat(
@@ -112,7 +109,7 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
       throw new FlinkRuntimeException(e);
     }
     try (TsFileSequenceReader reader = new TsFileSequenceReader(in)) {
-      readTsFile = new ReadOnlyTsFile(reader);
+      readTsFile = new TsFileReader(reader);
       queryDataSet =
           readTsFile.query(
               // The query method call will change the content of the param query expression,

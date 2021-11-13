@@ -19,13 +19,24 @@
 
 package org.apache.iotdb.tsfile.write;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -37,23 +48,10 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class TsFileWriterTest {
   TsFileWriter writer = null;
@@ -325,14 +323,14 @@ public class TsFileWriterTest {
   private void readNothing() {
     // using TsFileReader for test
     try {
-      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(fileName));
+      TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(fileName));
       QueryDataSet dataSet =
-          readOnlyTsFile.query(
+          tsFileReader.query(
               QueryExpression.create()
                   .addSelectedPath(new Path("d1", "s1"))
                   .addSelectedPath(new Path("d1", "s2")));
       assertFalse(dataSet.hasNext());
-      readOnlyTsFile.close();
+      tsFileReader.close();
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -345,9 +343,9 @@ public class TsFileWriterTest {
 
   private void readOneRow(int s2Value) {
     try {
-      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(fileName));
+      TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(fileName));
       QueryDataSet dataSet =
-          readOnlyTsFile.query(
+          tsFileReader.query(
               QueryExpression.create()
                   .addSelectedPath(new Path("d1", "s1"))
                   .addSelectedPath(new Path("d1", "s2"))
@@ -359,7 +357,7 @@ public class TsFileWriterTest {
         assertEquals(5.0f, result.getFields().get(0).getFloatV(), 0.00001);
         assertEquals(s2Value, result.getFields().get(1).getIntV());
       }
-      readOnlyTsFile.close();
+      tsFileReader.close();
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

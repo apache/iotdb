@@ -326,8 +326,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceMetadata;
   }
 
-  public TimeseriesMetadata readTimeseriesMetadata(Path path, boolean ignoreNotExists)
-      throws IOException { // Todo:bug,若是对齐序列
+  public ITimeSeriesMetadata readTimeseriesMetadata(Path path, boolean ignoreNotExists)
+      throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
@@ -340,13 +340,17 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
+    TimeseriesMetadata firstTimeseriesMetadata = null;
+    // Todo:为何要加这个判断？此时metadataIndexNode肯定是泽嵩树的第一个节点，即设备节点
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
       try {
+        // next layer MeasurementNode of the specific DeviceNode
         metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
       } catch (BufferOverflowException e) {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
+      firstTimeseriesMetadata = tryToGetFirstTimeseriesMetadata(metadataIndexNode);
       metadataIndexPair =
           getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
     }
@@ -367,7 +371,17 @@ public class TsFileSequenceReader implements AutoCloseable {
     // return null if path does not exist in the TsFile
     int searchResult =
         binarySearchInTimeseriesMetadataList(timeseriesMetadataList, path.getMeasurement());
-    return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
+    if (searchResult >= 0) {
+      if (firstTimeseriesMetadata != null) {
+        List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
+        valueTimeseriesMetadataList.add(timeseriesMetadataList.get(searchResult));
+        return new AlignedTimeSeriesMetadata(firstTimeseriesMetadata, valueTimeseriesMetadataList);
+      } else {
+        return timeseriesMetadataList.get(searchResult);
+      }
+    } else {
+      return null;
+    }
   }
 
   /* Find the leaf node that contains path, return all the sensors in that leaf node which are also in allSensors set */
@@ -575,7 +589,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (timeseriesMetadataMap.isEmpty()) {
       return new HashMap<>();
     }
-    Map<String, List<IChunkMetadata>> seriesMetadata = new HashMap<>();
+    Map<String, List<IChunkMetadata>> seriesMetadata = new LinkedHashMap<>();
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap) {
       seriesMetadata.put(
           timeseriesMetadata.getMeasurementId(),
@@ -1236,16 +1250,14 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * get ChunkMetaDatas of given path, and throw exception if path not exists
+   * get IChunkMetaDatas of given path, and throw exception if path not exists
    *
    * @param path timeseries path
    * @return List of ChunkMetaData
    */
-  public List<IChunkMetadata> getChunkMetadataList(
-      Path path, boolean ignoreNotExists) // Todo:bug,若是对齐序列
+  public List<IChunkMetadata> getChunkMetadataList(Path path, boolean ignoreNotExists)
       throws IOException {
-    TimeseriesMetadata timeseriesMetaData =
-        readTimeseriesMetadata(path, ignoreNotExists); // Todo:bug,若是对齐序列
+    ITimeSeriesMetadata timeseriesMetaData = readTimeseriesMetadata(path, ignoreNotExists);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }
@@ -1259,15 +1271,20 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * get ChunkMetaDatas in given TimeseriesMetaData
+   * get IChunkMetaDatas in given ITimeseriesMetaData
    *
-   * @return List of ChunkMetaData
+   * @return List of IChunkMetaData
    */
-  public List<IChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
-      throws IOException {
-    return timeseriesMetaData.getChunkMetadataList().stream()
-        .map(chunkMetadata -> (ChunkMetadata) chunkMetadata)
-        .collect(Collectors.toList());
+  public List<IChunkMetadata> readChunkMetaDataList(ITimeSeriesMetadata timeseriesMetaData) {
+    if (timeseriesMetaData instanceof AlignedTimeSeriesMetadata) {
+      return new ArrayList<>(
+          ((AlignedTimeSeriesMetadata) timeseriesMetaData).getChunkMetadataList());
+    } else {
+      return ((TimeseriesMetadata) timeseriesMetaData)
+          .getChunkMetadataList().stream()
+              .map(chunkMetadata -> (ChunkMetadata) chunkMetadata)
+              .collect(Collectors.toList());
+    }
   }
 
   /**

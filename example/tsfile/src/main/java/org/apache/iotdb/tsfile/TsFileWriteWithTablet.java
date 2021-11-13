@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.tsfile;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -29,14 +33,8 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /** An example of writing data with Tablet to TsFile */
 public class TsFileWriteWithTablet {
@@ -45,7 +43,7 @@ public class TsFileWriteWithTablet {
 
   public static void main(String[] args) {
     try {
-      String path = "Tablet.tsfile";
+      String path = "valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists() && !f.delete()) {
         throw new RuntimeException("can not delete " + f.getAbsolutePath());

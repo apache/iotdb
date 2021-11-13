@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -34,12 +39,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
 
 public class AlignedChunkReader implements IChunkReader {
 
@@ -168,7 +167,8 @@ public class AlignedChunkReader implements IChunkReader {
     List<Decoder> valueDecoderList = new ArrayList<>();
     boolean exist = false;
     for (int i = 0; i < valuePageHeader.size(); i++) {
-      if (valuePageHeader.get(i) == null) {
+      if (valuePageHeader.get(i) == null
+          || valuePageHeader.get(i).getUncompressedSize() == 0) { // Empty Page
         valuePageHeaderList.add(null);
         valuePageDataList.add(null);
         valueDataTypeList.add(null);
@@ -228,6 +228,11 @@ public class AlignedChunkReader implements IChunkReader {
       throws IOException {
     pageInfo.pageHeader = pageHeader;
     pageInfo.dataType = chunkHeader.getDataType();
+    if (pageHeader.getUncompressedSize() == 0) {
+      pageInfo.pageData = null;
+      pageInfo.decoder = null;
+      return;
+    }
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
 
@@ -251,9 +256,9 @@ public class AlignedChunkReader implements IChunkReader {
       throw new IOException(
           "Uncompress error! uncompress size: "
               + pageHeader.getUncompressedSize()
-              + "compressed size: "
+              + " compressed size: "
               + pageHeader.getCompressedSize()
-              + "page header: "
+              + " page header: "
               + pageHeader
               + e.getMessage());
     }

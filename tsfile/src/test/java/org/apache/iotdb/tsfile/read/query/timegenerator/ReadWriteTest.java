@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
+import java.io.File;
+import java.io.IOException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -42,14 +44,10 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
 
 public class ReadWriteTest {
 
@@ -88,8 +86,8 @@ public class ReadWriteTest {
             .setExpression(finalExpression);
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath)) {
-      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-      QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+      TsFileReader tsFileReader = new TsFileReader(fileReader);
+      QueryDataSet dataSet = tsFileReader.query(queryExpression);
       int i = 0;
       String[] expected =
           new String[] {"1\t1.2\t20", "3\t1.4\t21", "4\t1.2\t20", "6\t7.2\t10", "7\t6.2\t20"};

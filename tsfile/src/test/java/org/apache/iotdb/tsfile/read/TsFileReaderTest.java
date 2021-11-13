@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -43,20 +47,14 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-
-public class ReadOnlyTsFileTest {
+public class TsFileReaderTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
   private TsFileSequenceReader fileReader;
-  private ReadOnlyTsFile tsFile;
+  private TsFileReader tsFile;
 
   @Test
   public void multiPagesTest() throws IOException, WriteProcessException {
@@ -95,11 +93,11 @@ public class ReadOnlyTsFileTest {
     tsFileWriter.flushAllChunkGroups();
     tsFileWriter.close();
 
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(filePath));
+    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath));
 
     SingleSeriesExpression filter = new SingleSeriesExpression(path, ValueFilter.eq(8000001));
     QueryExpression queryExpression = QueryExpression.create(Arrays.asList(path), filter);
-    QueryDataSet query = readOnlyTsFile.query(queryExpression);
+    QueryDataSet query = tsFileReader.query(queryExpression);
 
     int i = 0;
     Assert.assertTrue(query.hasNext());
@@ -115,7 +113,7 @@ public class ReadOnlyTsFileTest {
       }
     }
 
-    readOnlyTsFile.close();
+    tsFileReader.close();
     file.delete();
   }
 
@@ -125,7 +123,7 @@ public class ReadOnlyTsFileTest {
     int rowCount = 1000;
     TsFileGeneratorForTest.generateFile(rowCount, 16 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
-    tsFile = new ReadOnlyTsFile(fileReader);
+    tsFile = new TsFileReader(fileReader);
     queryTest(rowCount);
     tsFile.close();
     TsFileGeneratorForTest.after();
@@ -198,7 +196,7 @@ public class ReadOnlyTsFileTest {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForTest.generateFile(minRowCount, maxRowCount, 16 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
-    tsFile = new ReadOnlyTsFile(fileReader);
+    tsFile = new TsFileReader(fileReader);
     queryTest2();
     queryNonExistPathTest();
     tsFile.close();

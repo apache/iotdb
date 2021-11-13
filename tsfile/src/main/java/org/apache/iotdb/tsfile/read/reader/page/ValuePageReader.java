@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
+import java.nio.ByteBuffer;
+import java.util.List;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -30,9 +32,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import java.nio.ByteBuffer;
-import java.util.List;
 
 public class ValuePageReader {
 
@@ -192,6 +191,10 @@ public class ValuePageReader {
       }
     }
     return valueBatch;
+  }
+
+  public PageHeader getPageHeader() {
+    return pageHeader;
   }
 
   public Statistics getStatistics() {

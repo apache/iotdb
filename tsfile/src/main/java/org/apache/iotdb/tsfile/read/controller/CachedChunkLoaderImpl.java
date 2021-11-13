@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -33,7 +34,7 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
 
   private static final int DEFAULT_CHUNK_CACHE_SIZE = 1000;
   private TsFileSequenceReader reader;
-  private LRUCache<IChunkMetadata, Chunk> chunkCache;
+  private LRUCache<IChunkMetadata, Chunk> chunkCache; // Todo:aligned
 
   public CachedChunkLoaderImpl(TsFileSequenceReader fileSequenceReader) {
     this(fileSequenceReader, DEFAULT_CHUNK_CACHE_SIZE);
@@ -80,13 +81,17 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
       IChunkMetadata chunkMetaData, Filter timeFilter) // Todo:bug,若是对齐序列
       throws IOException {
     chunkMetaData.setFilePath(reader.getFileName());
-    Chunk chunk = chunkCache.get((ChunkMetadata) chunkMetaData);
-    return new ChunkReader(
-        new Chunk(
-            chunk.getHeader(),
-            chunk.getData().duplicate(),
-            chunkMetaData.getDeleteIntervalList(),
-            chunkMetaData.getStatistics()),
-        timeFilter);
+    if (chunkMetaData instanceof AlignedChunkMetadata) {
+
+    } else {
+      Chunk chunk = chunkCache.get((ChunkMetadata) chunkMetaData);
+      return new ChunkReader(
+          new Chunk(
+              chunk.getHeader(),
+              chunk.getData().duplicate(),
+              chunkMetaData.getDeleteIntervalList(),
+              chunkMetaData.getStatistics()),
+          timeFilter);
+    }
   }
 }

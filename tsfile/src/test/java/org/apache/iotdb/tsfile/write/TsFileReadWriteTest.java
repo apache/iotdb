@@ -18,11 +18,19 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -37,19 +45,9 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class TsFileReadWriteTest {
 
@@ -177,7 +175,7 @@ public class TsFileReadWriteTest {
 
     // read example : no filter
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
-    ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    TsFileReader readTsFile = new TsFileReader(reader);
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("device_1", "sensor_2"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
@@ -222,7 +220,7 @@ public class TsFileReadWriteTest {
 
   private void readData(ReadDataPointProxy proxy) throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
-    ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    TsFileReader readTsFile = new TsFileReader(reader);
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("device_1", "sensor_1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);

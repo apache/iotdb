@@ -19,6 +19,19 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -41,7 +54,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -55,25 +68,10 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public class SeqTsFileRecoverTest {
 
@@ -424,7 +422,7 @@ public class SeqTsFileRecoverTest {
       assertEquals(19, resource.getEndTime("root.sg.device" + i));
     }
 
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));
+    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(tsF.getPath()));
     List<Path> pathList = new ArrayList<>();
     for (int j = 0; j < 10; j++) {
       for (int k = 0; k < 10; k++) {
@@ -432,7 +430,7 @@ public class SeqTsFileRecoverTest {
       }
     }
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    QueryDataSet dataSet = tsFileReader.query(queryExpression);
     for (int i = 0; i < 20; i++) {
       RowRecord record = dataSet.next();
       assertEquals(i, record.getTimestamp());
@@ -447,7 +445,7 @@ public class SeqTsFileRecoverTest {
     pathList.add(new Path("root.sg.device99", "sensor1"));
     pathList.add(new Path("root.sg.device99", "sensor4"));
     queryExpression = QueryExpression.create(pathList, null);
-    dataSet = readOnlyTsFile.query(queryExpression);
+    dataSet = tsFileReader.query(queryExpression);
     Assert.assertTrue(dataSet.hasNext());
     RowRecord record = dataSet.next();
     Assert.assertEquals("2\t0\tnull", record.toString());
@@ -455,7 +453,7 @@ public class SeqTsFileRecoverTest {
     record = dataSet.next();
     Assert.assertEquals("100\tnull\t0", record.toString());
 
-    readOnlyTsFile.close();
+    tsFileReader.close();
   }
 
   @Test
@@ -493,7 +491,7 @@ public class SeqTsFileRecoverTest {
       assertEquals(19, resource.getEndTime("root.sg.device" + i));
     }
 
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));
+    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(tsF.getPath()));
     List<Path> pathList = new ArrayList<>();
     for (int j = 0; j < 10; j++) {
       for (int k = 0; k < 10; k++) {
@@ -501,7 +499,7 @@ public class SeqTsFileRecoverTest {
       }
     }
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    QueryDataSet dataSet = tsFileReader.query(queryExpression);
     for (int i = 0; i < 20; i++) {
       RowRecord record = dataSet.next();
       assertEquals(i, record.getTimestamp());
@@ -516,7 +514,7 @@ public class SeqTsFileRecoverTest {
     pathList.add(new Path("root.sg.device99", "sensor1"));
     pathList.add(new Path("root.sg.device99", "sensor4"));
     queryExpression = QueryExpression.create(pathList, null);
-    dataSet = readOnlyTsFile.query(queryExpression);
+    dataSet = tsFileReader.query(queryExpression);
     Assert.assertTrue(dataSet.hasNext());
     RowRecord record = dataSet.next();
     Assert.assertEquals("2\t0\tnull", record.toString());
@@ -524,7 +522,7 @@ public class SeqTsFileRecoverTest {
     record = dataSet.next();
     Assert.assertEquals("100\tnull\t0", record.toString());
 
-    readOnlyTsFile.close();
+    tsFileReader.close();
   }
 
   @Test
