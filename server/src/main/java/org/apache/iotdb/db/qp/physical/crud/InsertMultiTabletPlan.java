@@ -129,6 +129,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     return result;
   }
 
+  @Override
   public List<PartialPath> getPrefixPaths() {
     if (prefixPaths != null) {
       return prefixPaths;
@@ -165,6 +166,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     return insertTabletPlanList.size();
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
