@@ -1,25 +1,43 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
-import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -28,94 +46,40 @@ import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDataSet {
-
-  private final Map<TSDataType, IFill> fillTypes;
-  private final List<PartialPath> deduplicatedPaths;
-  private final List<String> aggregations;
-  private final Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
-
-  // the extra previous means first not null value before startTime
-  // used to fill result before the first not null data
-  private Object[] extraPreviousValues;
-  private long[] extraPreviousTimes;
-
-  // the previous value for each time series, which means
-  // first not null value GEQ curStartTime in order asc
-  // second not null value GEQ curStartTime in order desc
-  private Object[] previousValues;
-  private long[] previousTimes;
-
-  // the next value for each time series, which means
-  // first not null value LEQ curStartTime in order desc
-  // second not null value LEQ curStartTime in order asc
-  private Object[] nextValues;
-  private long[] nextTimes;
-
-  // the extra next means first not null value after endTime
-  // used to fill result after the last not null data
-  private Object[] extraNextValues;
-  private long[] extraNextTimes;
-
-  // the result datatype for each time series
-  private TSDataType[] resultDataType;
+public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet {
 
   // the next query time range of each path
-  private long[] queryStartTimes;
-  private long[] queryEndTimes;
-  private boolean[] hasCachedQueryInterval;
-
-  // the next query time range of each path
-  private final List<TimeGenerator> timestampGenerators;
+  private List<TimeGenerator> timestampGenerators;
   private List<TimeGenerator> extraPreviousGenerators;
   private List<TimeGenerator> extraNextGenerators;
+
+  // data reader lists
+  private List<IReaderByTimestamp> allDataReaderList;
   private List<IReaderByTimestamp> extraPreviousDataReaderList;
   private List<IReaderByTimestamp> extraNextDataReaderList;
 
-  /** cached timestamp for next group by partition. */
+  // cached timestamp for next group by partition
   private long lastTimestamp;
+  private List<LinkedList<Long>> cachedTimestamps;
 
-  private final List<LinkedList<Long>> cachedTimestamps;
+  private final int timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
 
   /** constructor. */
   public GroupByFillWithValueFilterDataSet(
       QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws StorageEngineException, QueryProcessException {
     super(context, groupByTimeFillPlan);
-    this.aggregations = groupByTimeFillPlan.getDeduplicatedAggregations();
-    this.fillTypes = groupByTimeFillPlan.getFillType();
 
-    this.deduplicatedPaths = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      PartialPath path = (PartialPath) paths.get(i);
-      if (!deduplicatedPaths.contains(path)) {
-        deduplicatedPaths.add(path);
-        resultIndexes.put(path, new ArrayList<>());
-      }
-      resultIndexes.get(path).add(i);
-    }
+    initPathGenerators(context, groupByTimeFillPlan);
 
-    this.timestampGenerators = new ArrayList<>();
-    this.cachedTimestamps = new ArrayList<>();
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      timestampGenerators.add(getTimeGenerator(context, groupByTimeFillPlan));
-      cachedTimestamps.add(new LinkedList<>());
-    }
-
-    initArrays();
-    initCachedTimesAndValues();
     initExtraGenerators(context, groupByTimeFillPlan);
     if (extraPreviousGenerators != null) {
       initExtraArrays(extraPreviousValues, extraPreviousTimes, true, extraPreviousGenerators);
@@ -123,67 +87,50 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
     if (extraNextGenerators != null) {
       initExtraArrays(extraNextValues, extraNextTimes, false, extraNextGenerators);
     }
+
+    initCachedTimesAndValues();
   }
 
-  private void initArrays() {
-    extraPreviousValues = new Object[aggregations.size()];
-    extraPreviousTimes = new long[aggregations.size()];
-    previousValues = new Object[aggregations.size()];
-    previousTimes = new long[aggregations.size()];
-    extraNextValues = new Object[aggregations.size()];
-    extraNextTimes = new long[aggregations.size()];
-    nextValues = new Object[aggregations.size()];
-    nextTimes = new long[aggregations.size()];
-    Arrays.fill(extraPreviousValues, null);
-    Arrays.fill(extraPreviousTimes, Long.MIN_VALUE);
-    Arrays.fill(previousValues, null);
-    Arrays.fill(previousTimes, Long.MIN_VALUE);
-    Arrays.fill(extraNextValues, null);
-    Arrays.fill(extraNextTimes, Long.MAX_VALUE);
-    Arrays.fill(nextValues, null);
-    Arrays.fill(nextTimes, Long.MAX_VALUE);
+  private void initPathGenerators(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    this.timestampGenerators = new ArrayList<>();
+    this.cachedTimestamps = new ArrayList<>();
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      timestampGenerators.add(getTimeGenerator(context, groupByTimeFillPlan));
+      cachedTimestamps.add(new LinkedList<>());
+    }
 
-    queryStartTimes = new long[deduplicatedPaths.size()];
-    queryEndTimes = new long[deduplicatedPaths.size()];
-    hasCachedQueryInterval = new boolean[deduplicatedPaths.size()];
-    resultDataType = new TSDataType[aggregations.size()];
-    Arrays.fill(queryStartTimes, curStartTime);
-    Arrays.fill(queryEndTimes, curEndTime);
-    Arrays.fill(hasCachedQueryInterval, true);
-    for (PartialPath deduplicatedPath : deduplicatedPaths) {
-      List<Integer> indexes = resultIndexes.get(deduplicatedPath);
-      for (int index : indexes) {
-        switch (aggregations.get(index)) {
-          case "avg":
-          case "sum":
-            resultDataType[index] = TSDataType.DOUBLE;
-            break;
-          case "count":
-          case "max_time":
-          case "min_time":
-            resultDataType[index] = TSDataType.INT64;
-            break;
-          case "first_value":
-          case "last_value":
-          case "max_value":
-          case "min_value":
-            resultDataType[index] = dataTypes.get(index);
-            break;
-        }
+    this.allDataReaderList = new ArrayList<>();
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance()
+            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+    try {
+      for (int i = 0; i < paths.size(); i++) {
+        PartialPath path = (PartialPath) paths.get(i);
+        allDataReaderList.add(
+            getReaderByTime(path, groupByTimeFillPlan, dataTypes.get(i), context));
       }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
   }
 
-  /* Cache the previous and next query data before group by fill query */
-  private void initCachedTimesAndValues() throws QueryProcessException {
-    for (int pathId = 0; pathId < deduplicatedPaths.size(); pathId++) {
-      try {
-        pathSlide(pathId);
-        pathSlide(pathId);
-      } catch (IOException e) {
-        throw new QueryProcessException(e.getMessage());
-      }
-    }
+  private TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
+      throws StorageEngineException {
+    return new ServerTimeGenerator(context, queryPlan);
+  }
+
+  private IReaderByTimestamp getReaderByTime(
+      PartialPath path, RawDataQueryPlan queryPlan, TSDataType dataType, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
+    return new SeriesReaderByTimestamp(
+        path,
+        queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        dataType,
+        context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null),
+        null,
+        ascending);
   }
 
   private void replaceGroupByFilter(IExpression expression, Filter timeFilter)
@@ -211,6 +158,18 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
     } else {
       throw new QueryProcessException("unknown expression type, can't replace group by filter");
     }
+  }
+
+  // get new expression that can query extra range
+  private IExpression getNewExpression(GroupByTimeFillPlan groupByTimeFillPlan, Filter timeFilter)
+      throws QueryProcessException {
+    IExpression newExpression = groupByTimeFillPlan.getExpression().clone();
+    try {
+      replaceGroupByFilter(newExpression, timeFilter);
+    } catch (IllegalPathException ignore) {
+      // ignored
+    }
+    return newExpression;
   }
 
   /* Init extra path executors to query data outside the original group by query */
@@ -248,12 +207,7 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
       }
 
       Filter timeFilter = new GroupByFilter(interval, slidingStep, extraStartTime, startTime);
-      IExpression newExpression = groupByTimeFillPlan.getExpression().clone();
-      try {
-        replaceGroupByFilter(newExpression, timeFilter);
-      } catch (IllegalPathException ignore) {
-        // ignored
-      }
+      IExpression newExpression = getNewExpression(groupByTimeFillPlan, timeFilter);
       groupByTimeFillPlan.setExpression(newExpression);
       for (int i = 0; i < deduplicatedPaths.size(); i++) {
         extraPreviousGenerators.add(getTimeGenerator(context, groupByTimeFillPlan));
@@ -267,12 +221,7 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
 
       Filter timeFilter =
           new GroupByFilter(interval, slidingStep, lastTimeRange.left, maxQueryEndTime);
-      IExpression newExpression = groupByTimeFillPlan.getExpression().clone();
-      try {
-        replaceGroupByFilter(newExpression, timeFilter);
-      } catch (IllegalPathException ignore) {
-        // ignored
-      }
+      IExpression newExpression = getNewExpression(groupByTimeFillPlan, timeFilter);
       groupByTimeFillPlan.setExpression(newExpression);
       for (int i = 0; i < deduplicatedPaths.size(); i++) {
         extraNextGenerators.add(getTimeGenerator(context, groupByTimeFillPlan));
@@ -288,47 +237,13 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
         extraPreviousDataReaderList.add(
-            getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+            getReaderByTime(path, groupByTimeFillPlan, dataTypes.get(i), context));
         extraNextDataReaderList.add(
-            getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+            getReaderByTime(path, groupByTimeFillPlan, dataTypes.get(i), context));
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
-  }
-
-  /* check if specified path has next extra range */
-  private boolean pathHasExtra(int pathId, boolean isExtraPrevious, long extraStartTime) {
-    List<Integer> Indexes = resultIndexes.get(deduplicatedPaths.get(pathId));
-    for (int resultIndex : Indexes) {
-      if (isExtraPrevious && extraPreviousValues[resultIndex] != null) {
-        continue;
-      } else if (!isExtraPrevious && extraNextValues[resultIndex] != null) {
-        continue;
-      }
-
-      IFill fill = fillTypes.get(resultDataType[resultIndex]);
-      if (fill == null) {
-        continue;
-      }
-      if (fill instanceof PreviousFill && isExtraPrevious) {
-        if (fill.getQueryStartTime() <= extraStartTime) {
-          return true;
-        }
-      } else if (fill instanceof LinearFill) {
-        if (isExtraPrevious) {
-          if (fill.getQueryStartTime() <= extraStartTime) {
-            return true;
-          }
-        } else {
-          if (extraStartTime < fill.getQueryEndTime()) {
-            return true;
-          }
-        }
-      }
-    }
-
-    return false;
   }
 
   private void initExtraArrays(
@@ -351,7 +266,7 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
       extraTimeRange = getNextTimeRange(extraTimeRange.left, !isExtraPrevious, false);
       try {
         while (pathHasExtra(pathId, isExtraPrevious, extraTimeRange.left)) {
-          AggregateResult[] aggregateResults =
+          List<AggregateResult> aggregateResults =
               calcResult(
                   pathId,
                   extraTimeRange,
@@ -362,9 +277,9 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
           if (!resultIsNull(aggregateResults)) {
             // we check extra time range in single path together,
             // thus the extra result will be cached together
-            for (int i = 0; i < aggregateResults.length; i++) {
+            for (int i = 0; i < aggregateResults.size(); i++) {
               if (extraValues[Indexes.get(i)] == null) {
-                extraValues[Indexes.get(i)] = aggregateResults[i].getResult();
+                extraValues[Indexes.get(i)] = aggregateResults.get(i).getResult();
                 extraTimes[Indexes.get(i)] = extraTimeRange.left;
               }
             }
@@ -375,16 +290,6 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
       } catch (IOException e) {
         throw new QueryProcessException(e.getMessage());
       }
-    }
-  }
-
-  /* If result is null or CountAggrResult is 0, then result is NULL */
-  private boolean resultIsNull(AggregateResult[] aggregateResults) {
-    AggregateResult result = aggregateResults[0];
-    if (result.getResult() == null) {
-      return true;
-    } else {
-      return result instanceof CountAggrResult && (long) result.getResult() == 0;
     }
   }
 
@@ -422,7 +327,7 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
     return timeArrayLength;
   }
 
-  private AggregateResult[] calcResult(
+  private List<AggregateResult> calcResult(
       int pathId,
       Pair<Long, Long> timeRange,
       TimeGenerator timeGenerator,
@@ -431,12 +336,12 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
       boolean isAscending)
       throws IOException {
     List<Integer> resultIndex = resultIndexes.get(deduplicatedPaths.get(pathId));
-    AggregateResult[] aggregateResults = new AggregateResult[resultIndex.size()];
+    List<AggregateResult> aggregateResults = new ArrayList<>();
 
-    for (int i = 0; i < resultIndex.size(); i++) {
-      aggregateResults[i] =
+    for (int index : resultIndex) {
+      aggregateResults.add(
           AggregateResultFactory.getAggrResultByName(
-              aggregations.get(resultIndex.get(i)), dataTypes.get(resultIndex.get(i)), ascending);
+              aggregations.get(index), dataTypes.get(index), ascending));
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
@@ -471,8 +376,10 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
 
       // cal result using timestamp array
       for (int i = 0; i < resultIndex.size(); i++) {
-        aggregateResults[i].updateResultUsingTimestamps(
-            timestampArray, timeArrayLength, dataReaderList.get(resultIndex.get(i)));
+        aggregateResults
+            .get(i)
+            .updateResultUsingTimestamps(
+                timestampArray, timeArrayLength, dataReaderList.get(resultIndex.get(i)));
       }
 
       timeArrayLength = 0;
@@ -486,35 +393,23 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
     if (timeArrayLength > 0) {
       // cal result using timestamp array
       for (int i = 0; i < resultIndex.size(); i++) {
-        aggregateResults[i].updateResultUsingTimestamps(
-            timestampArray, timeArrayLength, dataReaderList.get(resultIndex.get(i)));
+        aggregateResults
+            .get(i)
+            .updateResultUsingTimestamps(
+                timestampArray, timeArrayLength, dataReaderList.get(resultIndex.get(i)));
       }
     }
     return aggregateResults;
   }
 
-  private void pathGetNext(int pathId) throws IOException {
+  @Override
+  protected void pathGetNext(int pathId) throws IOException {
     List<Integer> resultIndex = resultIndexes.get(deduplicatedPaths.get(pathId));
 
-    // Slide value and time
-    if (ascending) {
-      for (int resultId : resultIndex) {
-        previousValues[resultId] = nextValues[resultId];
-        previousTimes[resultId] = nextTimes[resultId];
-        nextValues[resultId] = null;
-        nextTimes[resultId] = Long.MAX_VALUE;
-      }
-    } else {
-      for (int resultId : resultIndex) {
-        nextValues[resultId] = previousValues[resultId];
-        nextTimes[resultId] = previousTimes[resultId];
-        previousValues[resultId] = null;
-        previousTimes[resultId] = Long.MIN_VALUE;
-      }
-    }
+    cacheSlideNext(resultIndex);
 
     // get second not null aggregate results
-    AggregateResult[] aggregateResults;
+    List<AggregateResult> aggregateResults;
     aggregateResults =
         calcResult(
             pathId,
@@ -522,7 +417,7 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
             timestampGenerators.get(pathId),
             cachedTimestamps.get(pathId),
             allDataReaderList,
-            groupByTimePlan.isAscending());
+            ascending);
     hasCachedQueryInterval[pathId] = false;
     while (resultIsNull(aggregateResults) && pathHasNext(pathId)) {
       aggregateResults =
@@ -532,184 +427,12 @@ public class GroupByFillWithValueFilterDataSet extends GroupByWithValueFilterDat
               timestampGenerators.get(pathId),
               cachedTimestamps.get(pathId),
               allDataReaderList,
-              groupByTimePlan.isAscending());
+              ascending);
       hasCachedQueryInterval[pathId] = false;
     }
 
-    if (resultIsNull(aggregateResults)) {
-      pathSlide(pathId);
-    } else {
-      for (int i = 0; i < aggregateResults.length; i++) {
-        int Index = resultIndex.get(i);
-        if (ascending) {
-          nextValues[Index] = aggregateResults[i].getResult();
-          nextTimes[Index] = queryStartTimes[pathId];
-        } else {
-          previousValues[Index] = aggregateResults[i].getResult();
-          previousTimes[Index] = queryStartTimes[pathId];
-        }
-      }
-    }
+    cacheFillNext(pathId, aggregateResults, resultIndex);
 
     hasCachedQueryInterval[pathId] = false;
-  }
-
-  private boolean pathHasNext(int pathId) {
-    // has cached
-    if (hasCachedQueryInterval[pathId]) {
-      return true;
-    }
-
-    // find the next aggregation interval
-    Pair<Long, Long> nextTimeRange = getNextTimeRange(queryStartTimes[pathId], ascending, true);
-    if (nextTimeRange == null) {
-      return false;
-    }
-    queryStartTimes[pathId] = nextTimeRange.left;
-    queryEndTimes[pathId] = nextTimeRange.right;
-
-    hasCachedQueryInterval[pathId] = true;
-    return true;
-  }
-
-  private void pathSlide(int pathId) throws IOException {
-    if (pathHasNext(pathId)) {
-      pathGetNext(pathId);
-    } else {
-      List<Integer> resultIndex = resultIndexes.get(deduplicatedPaths.get(pathId));
-      if (ascending) {
-        for (int Index : resultIndex) {
-          nextValues[Index] = extraNextValues[Index];
-          nextTimes[Index] = extraNextTimes[Index];
-        }
-      } else {
-        for (int Index : resultIndex) {
-          previousValues[Index] = extraPreviousValues[Index];
-          previousTimes[Index] = extraPreviousTimes[Index];
-        }
-      }
-    }
-  }
-
-  private void fillRecord(
-      int resultId, RowRecord record, Pair<Long, Object> beforePair, Pair<Long, Object> afterPair)
-      throws IOException {
-    // Don't fill count aggregation
-    if (Objects.equals(aggregations.get(resultId), "count")) {
-      record.addField((long) 0, TSDataType.INT64);
-      return;
-    }
-
-    IFill fill = fillTypes.get(resultDataType[resultId]);
-    if (fill == null) {
-      record.addField(null);
-      return;
-    }
-
-    if (fill instanceof PreviousFill) {
-      if (beforePair.right != null
-          && (fill.getBeforeRange() == -1
-              || fill.insideBeforeRange(beforePair.left, record.getTimestamp()))
-          && ((!((PreviousFill) fill).isUntilLast())
-              || (afterPair.right != null && afterPair.left < endTime))) {
-        record.addField(beforePair.right, resultDataType[resultId]);
-      } else {
-        record.addField(null);
-      }
-    } else if (fill instanceof LinearFill) {
-      LinearFill linearFill = new LinearFill();
-      if (beforePair.right != null
-          && afterPair.right != null
-          && (fill.getBeforeRange() == -1
-              || fill.insideBeforeRange(beforePair.left, record.getTimestamp()))
-          && (fill.getAfterRange() == -1
-              || fill.insideAfterRange(afterPair.left, record.getTimestamp()))) {
-        try {
-          TimeValuePair filledPair =
-              linearFill.averageWithTimeAndDataType(
-                  new TimeValuePair(
-                      beforePair.left,
-                      TsPrimitiveType.getByType(resultDataType[resultId], beforePair.right)),
-                  new TimeValuePair(
-                      afterPair.left,
-                      TsPrimitiveType.getByType(resultDataType[resultId], afterPair.right)),
-                  curStartTime,
-                  resultDataType[resultId]);
-          record.addField(filledPair.getValue().getValue(), resultDataType[resultId]);
-        } catch (UnSupportedFillTypeException e) {
-          record.addField(null);
-          throw new IOException(e);
-        }
-      } else {
-        record.addField(null);
-      }
-    } else if (fill instanceof ValueFill) {
-      try {
-        TimeValuePair filledPair = fill.getFillResult();
-        record.addField(filledPair.getValue().getValue(), resultDataType[resultId]);
-      } catch (QueryProcessException | StorageEngineException e) {
-        throw new IOException(e);
-      }
-    }
-  }
-
-  @Override
-  public RowRecord nextWithoutConstraint() throws IOException {
-    if (!hasCachedTimeInterval) {
-      throw new IOException(
-          "need to call hasNext() before calling next() "
-              + "in GroupByFillWithValueFilterDataSet.");
-    }
-    hasCachedTimeInterval = false;
-    RowRecord record = new RowRecord(curStartTime);
-
-    boolean[] pathNeedSlide = new boolean[previousTimes.length];
-    Arrays.fill(pathNeedSlide, false);
-    for (int resultId = 0; resultId < previousTimes.length; resultId++) {
-      if (previousTimes[resultId] == curStartTime) {
-        record.addField(previousValues[resultId], resultDataType[resultId]);
-        if (!ascending) {
-          pathNeedSlide[resultId] = true;
-        }
-      } else if (nextTimes[resultId] == curStartTime) {
-        record.addField(nextValues[resultId], resultDataType[resultId]);
-        if (ascending) {
-          pathNeedSlide[resultId] = true;
-        }
-      } else if (previousTimes[resultId] < curStartTime && curStartTime < nextTimes[resultId]) {
-        fillRecord(
-            resultId,
-            record,
-            new Pair<>(previousTimes[resultId], previousValues[resultId]),
-            new Pair<>(nextTimes[resultId], nextValues[resultId]));
-      } else if (curStartTime < previousTimes[resultId]) {
-        fillRecord(
-            resultId,
-            record,
-            new Pair<>(extraPreviousTimes[resultId], extraPreviousValues[resultId]),
-            new Pair<>(previousTimes[resultId], previousValues[resultId]));
-      } else if (nextTimes[resultId] < curStartTime) {
-        fillRecord(
-            resultId,
-            record,
-            new Pair<>(nextTimes[resultId], nextValues[resultId]),
-            new Pair<>(extraNextTimes[resultId], extraNextValues[resultId]));
-      }
-    }
-
-    // Slide paths
-    // the aggregation results of one path are either all null or all not null,
-    // thus slide all results together
-    for (int pathId = 0; pathId < deduplicatedPaths.size(); pathId++) {
-      List<Integer> resultIndex = resultIndexes.get(deduplicatedPaths.get(pathId));
-      if (pathNeedSlide[resultIndex.get(0)]) {
-        pathSlide(pathId);
-      }
-    }
-
-    if (!leftCRightO) {
-      record.setTimestamp(curEndTime - 1);
-    }
-    return record;
   }
 }
