@@ -407,6 +407,6 @@ public abstract class GroupByFillEngineDataSet extends GroupByEngineDataSet {
 
   @Override
   public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
-    return null;
+    throw new IOException("Group by fill doesn't support peek next");
   }
 }
