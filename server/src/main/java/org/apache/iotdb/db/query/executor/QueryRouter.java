@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
@@ -263,11 +264,8 @@ public class QueryRouter implements IQueryRouter {
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       dataSet = new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
     } else {
-      // dataSet = new GroupByFillWithValueFilterDataSet(context, groupByFillPlan);
-      throw new QueryProcessException("Group by fill doesn't support valueFilter yet.");
+      dataSet = new GroupByFillWithValueFilterDataSet(context, groupByFillPlan);
     }
-
-    // TODO: support group by level in group by fill
 
     return dataSet;
   }
