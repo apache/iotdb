@@ -198,7 +198,7 @@ public class InOperator extends FunctionOperator {
 
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(
         Path path, Set<T> values, boolean not) {
-      if (path.equals("time")) {
+      if ("time".equals(path)) {
         return new GlobalTimeExpression(TimeFilter.in((Set<Long>) values, not));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.in(values, not));

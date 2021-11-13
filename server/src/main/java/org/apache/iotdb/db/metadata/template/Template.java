@@ -228,7 +228,7 @@ public class Template {
       }
       for (int i = 0; i <= measurementNames.size() - 1; i++) {
         // find the parent and add nodes to template
-        if (prefix.equals("")) {
+        if ("".equals(prefix)) {
           leafNode =
               MeasurementMNode.getMeasurementMNode(null, measurementNames.get(i), schemas[i], null);
           directNodes.put(leafNode.getName(), leafNode);
@@ -319,7 +319,7 @@ public class Template {
   }
 
   public List<String> getMeasurementsUnderPath(String path) throws MetadataException {
-    if (path.equals("")) {
+    if ("".equals(path)) {
       return getAllMeasurementsPaths();
     }
     List<String> res = new ArrayList<>();

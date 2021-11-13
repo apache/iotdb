@@ -1912,7 +1912,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** function for parsing datetime literal. */
   public long parseDateFormat(String timestampStr) throws SQLParserException {
-    if (timestampStr == null || timestampStr.trim().equals("")) {
+    if (timestampStr == null || "".equals(timestampStr.trim())) {
       throw new SQLParserException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
@@ -1931,7 +1931,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   public long parseDateFormat(String timestampStr, long currentTime) throws SQLParserException {
-    if (timestampStr == null || timestampStr.trim().equals("")) {
+    if (timestampStr == null || "".equals(timestampStr.trim())) {
       throw new SQLParserException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
@@ -1961,7 +1961,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     long time;
     time = parseDateFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if (ctx.getChild(i).getText().equals("+")) {
+      if ("+".equals(ctx.getChild(i).getText())) {
         time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       } else {
         time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
@@ -1974,7 +1974,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     long time;
     time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if (ctx.getChild(i).getText().equals("+")) {
+      if ("+".equals(ctx.getChild(i).getText())) {
         time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       } else {
         time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());

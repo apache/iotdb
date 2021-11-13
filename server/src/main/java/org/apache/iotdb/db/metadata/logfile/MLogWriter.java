@@ -256,7 +256,7 @@ public class MLogWriter implements AutoCloseable {
       case "2":
         return new MeasurementMNodePlan(
             words[1],
-            words[2].equals("") ? null : words[2],
+            "".equals(words[2]) ? null : words[2],
             Long.parseLong(words[words.length - 2]),
             Integer.parseInt(words[words.length - 1]),
             new UnaryMeasurementSchema(

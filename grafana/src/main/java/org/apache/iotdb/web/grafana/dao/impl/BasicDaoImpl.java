@@ -148,7 +148,7 @@ public class BasicDaoImpl implements BasicDao {
     String columnName = "root." + s;
 
     String intervalLocal = getInterval(hours);
-    if (!intervalLocal.equals("")) {
+    if (!"".equals(intervalLocal)) {
       sql =
           String.format(
               "SELECT "

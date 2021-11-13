@@ -241,7 +241,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
         alignedEncodings.get(prefix).add(encoding);
         alignedCompressions.get(prefix).add(compressionType);
       } else {
-        if (prefix.equals("")) {
+        if ("".equals(prefix)) {
           measurements.add(Collections.singletonList(measurementName));
         } else {
           measurements.add(
@@ -260,7 +260,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
       List<CompressionType> thisCompressors = new ArrayList<>();
 
       for (int i = 0; i < alignedPrefix.get(prefix).size(); i++) {
-        if (prefix.equals("")) {
+        if ("".equals(prefix)) {
           thisMeasurements.add(alignedPrefix.get(prefix).get(i));
         } else {
           thisMeasurements.add(

@@ -247,7 +247,7 @@ public class UDTFCast implements UDTF {
         }
         return;
       case BOOLEAN:
-        collector.putBoolean(time, !(stringValue.equals("false") || stringValue.equals("")));
+        collector.putBoolean(time, !("false".equals(stringValue) || "".equals(stringValue)));
         return;
       case TEXT:
         collector.putBinary(time, value);

@@ -123,9 +123,9 @@ public class DatabaseConnectController {
 
         JsonObject obj = new JsonObject();
         obj.addProperty("target", target);
-        if (type.equals("table")) {
+        if ("table".equals(type)) {
           setJsonTable(obj, target, timeRange);
-        } else if (type.equals("timeserie")) {
+        } else if ("timeserie".equals(type)) {
           setJsonTimeseries(obj, target, timeRange);
         }
         result.add(obj);

@@ -44,7 +44,7 @@ public class TypeInferenceUtils {
   private TypeInferenceUtils() {}
 
   static boolean isNumber(String s) {
-    if (s == null || s.equals("NaN")) {
+    if (s == null || "NaN".equals(s)) {
       return false;
     }
     try {

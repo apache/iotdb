@@ -164,7 +164,7 @@ public class MetricsPage {
                 + status
                 + "</td>"
                 + "<td>"
-                + ((errMsg == null || errMsg.equals("")) ? "== Parsed Physical Plan ==" : errMsg)
+                + ((errMsg == null || "".equals(errMsg)) ? "== Parsed Physical Plan ==" : errMsg)
                 + "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
                 + "<div class=\"stacktrace-details collapsed\">"
                 + "<pre>"
