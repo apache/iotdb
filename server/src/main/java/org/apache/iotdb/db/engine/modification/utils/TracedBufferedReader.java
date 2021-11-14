@@ -66,7 +66,9 @@ public class TracedBufferedReader extends Reader {
    */
   public TracedBufferedReader(Reader in, int sz) {
     super(in);
-    if (sz <= 0) throw new IllegalArgumentException("Buffer size <= 0");
+    if (sz <= 0) {
+      throw new IllegalArgumentException("Buffer size <= 0");
+    }
     this.in = in;
     cb = new char[sz];
     nextChar = nChars = 0;
@@ -83,7 +85,9 @@ public class TracedBufferedReader extends Reader {
 
   /** Checks to make sure that the stream has not been closed */
   private void ensureOpen() throws IOException {
-    if (in == null) throw new IOException("Stream closed");
+    if (in == null) {
+      throw new IOException("Stream closed");
+    }
   }
 
   /** {@link BufferedReader#fill()} */
@@ -130,13 +134,16 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#read()} */
+  @Override
   public int read() throws IOException {
     synchronized (lock) {
       ensureOpen();
       for (; ; ) {
         if (nextChar >= nChars) {
           fill();
-          if (nextChar >= nChars) return -1;
+          if (nextChar >= nChars) {
+            return -1;
+          }
         }
         if (skipLF) {
           skipLF = false;
@@ -163,13 +170,19 @@ public class TracedBufferedReader extends Reader {
       }
       fill();
     }
-    if (nextChar >= nChars) return -1;
+    if (nextChar >= nChars) {
+      return -1;
+    }
     if (skipLF) {
       skipLF = false;
       if (cb[nextChar] == '\n') {
         nextChar++;
-        if (nextChar >= nChars) fill();
-        if (nextChar >= nChars) return -1;
+        if (nextChar >= nChars) {
+          fill();
+        }
+        if (nextChar >= nChars) {
+          return -1;
+        }
       }
     }
     int n = Math.min(len, nChars - nextChar);
@@ -179,6 +192,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#read(char[], int, int)} */
+  @Override
   public int read(char cbuf[], int off, int len) throws IOException {
     synchronized (lock) {
       ensureOpen();
@@ -193,10 +207,14 @@ public class TracedBufferedReader extends Reader {
       }
 
       int n = read1(cbuf, off, len);
-      if (n <= 0) return n;
+      if (n <= 0) {
+        return n;
+      }
       while ((n < len) && in.ready()) {
         int n1 = read1(cbuf, off + n, len - n);
-        if (n1 <= 0) break;
+        if (n1 <= 0) {
+          break;
+        }
         n += n1;
       }
       return n;
@@ -215,18 +233,25 @@ public class TracedBufferedReader extends Reader {
       bufferLoop:
       for (; ; ) {
 
-        if (nextChar >= nChars) fill();
+        if (nextChar >= nChars) {
+          fill();
+        }
         if (nextChar >= nChars) {
           /* EOF */
-          if (s != null && s.length() > 0) return s.toString();
-          else return null;
+          if (s != null && s.length() > 0) {
+            return s.toString();
+          } else {
+            return null;
+          }
         }
         boolean eol = false;
         char c = 0;
         int i;
 
         /* Skip a leftover '\n', if necessary */
-        if (omitLF && (cb[nextChar] == '\n')) nextChar++;
+        if (omitLF && (cb[nextChar] == '\n')) {
+          nextChar++;
+        }
         skipLF = false;
         omitLF = false;
 
@@ -260,7 +285,9 @@ public class TracedBufferedReader extends Reader {
           return str;
         }
 
-        if (s == null) s = new StringBuilder(defaultExpectedLineLength);
+        if (s == null) {
+          s = new StringBuilder(defaultExpectedLineLength);
+        }
         s.append(cb, startChar, i - startChar);
       }
     }
@@ -272,6 +299,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#skip(long)} */
+  @Override
   public long skip(long n) throws IOException {
     if (n < 0L) {
       throw new IllegalArgumentException("skip value is negative");
@@ -280,8 +308,13 @@ public class TracedBufferedReader extends Reader {
       ensureOpen();
       long r = n;
       while (r > 0) {
-        if (nextChar >= nChars) fill();
-        if (nextChar >= nChars) /* EOF */ break;
+        if (nextChar >= nChars) {
+          fill();
+        }
+        if (nextChar >= nChars) {
+          /* EOF */
+          break;
+        }
         if (skipLF) {
           skipLF = false;
           if (cb[nextChar] == '\n') {
@@ -303,6 +336,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#ready()} */
+  @Override
   public boolean ready() throws IOException {
     synchronized (lock) {
       ensureOpen();
@@ -319,7 +353,9 @@ public class TracedBufferedReader extends Reader {
           fill();
         }
         if (nextChar < nChars) {
-          if (cb[nextChar] == '\n') nextChar++;
+          if (cb[nextChar] == '\n') {
+            nextChar++;
+          }
           skipLF = false;
         }
       }
@@ -328,11 +364,13 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#markSupported()} */
+  @Override
   public boolean markSupported() {
     return true;
   }
 
   /** {@link BufferedReader#mark(int)} */
+  @Override
   public void mark(int readAheadLimit) throws IOException {
     if (readAheadLimit < 0) {
       throw new IllegalArgumentException("Read-ahead limit < 0");
@@ -346,20 +384,25 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#reset()} */
+  @Override
   public void reset() throws IOException {
     synchronized (lock) {
       ensureOpen();
-      if (markedChar < 0)
+      if (markedChar < 0) {
         throw new IOException((markedChar == INVALIDATED) ? "Mark invalid" : "Stream not marked");
+      }
       nextChar = markedChar;
       skipLF = markedSkipLF;
     }
   }
 
   /** {@link BufferedReader#close()} */
+  @Override
   public void close() throws IOException {
     synchronized (lock) {
-      if (in == null) return;
+      if (in == null) {
+        return;
+      }
       try {
         in.close();
       } finally {

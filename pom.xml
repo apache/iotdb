@@ -88,6 +88,7 @@
         <module>jdbc</module>
         <module>session</module>
         <module>cli</module>
+        <module>openapi</module>
         <module>server</module>
         <module>example</module>
         <module>grafana</module>
@@ -126,7 +127,7 @@
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
         <thrift.version>0.14.1</thrift.version>
         <airline.version>0.8</airline.version>
-        <jackson.version>2.11.0</jackson.version>
+        <jackson.version>2.10.0</jackson.version>
         <antlr4.version>4.8-1</antlr4.version>
         <common.cli.version>1.3.1</common.cli.version>
         <common.codec.version>1.13</common.codec.version>
@@ -161,6 +162,10 @@
         <spotless.version>2.4.2</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
         <httpcore.version>4.4.13</httpcore.version>
+        <!-- for REST service -->
+        <swagger.core.version>1.5.18</swagger.core.version>
+        <servlet.api.version>2.5</servlet.api.version>
+        <openapi.generator.version>5.0.0</openapi.generator.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -395,7 +400,7 @@
             <dependency>
                 <groupId>org.javassist</groupId>
                 <artifactId>javassist</artifactId>
-                <version>3.24.0-GA</version>
+                <version>3.24.1-GA</version>
             </dependency>
             <dependency>
                 <groupId>org.mockito</groupId>
@@ -724,6 +729,7 @@
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>
                         <sourceDirectory>spark-tsfile/src/main/scala</sourceDirectory>
                     </sourceDirectories>
