@@ -109,8 +109,8 @@ public class CreateSchemaTemplateOperator extends Operator {
     this.compressors = compressors;
   }
 
-  public void addCompressor(List<CompressionType> compressor) {
-    this.compressors.add(compressor);
+  public void addCompressor(List<CompressionType> compressors) {
+    this.compressors.add(compressors);
   }
 
   @Override

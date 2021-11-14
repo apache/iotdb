@@ -56,6 +56,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
   }
 
   @Test
+  @Ignore
   public void testCreateAlignedTimeseries() throws Exception {
     String[] timeSeriesArray =
         new String[] {

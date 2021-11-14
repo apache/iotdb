@@ -214,14 +214,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new CreateAlignedTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     createAlignedTimeSeriesOperator.setPrefixPath(parseFullPath(ctx.fullPath()));
     parseAlignedMeasurements(ctx.alignedMeasurements(), createAlignedTimeSeriesOperator);
-    CompressionType compressor;
-    if (ctx.globalCompressorClause() != null) {
-      compressor =
-          CompressionType.valueOf(ctx.globalCompressorClause().compressor.getText().toUpperCase());
-    } else {
-      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    }
-    createAlignedTimeSeriesOperator.setCompressor(compressor);
     return createAlignedTimeSeriesOperator;
   }
 
@@ -285,22 +277,23 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       throw new SQLParserException("create aligned timeseries: alias is not supported yet.");
     }
 
-    final String dataType = ctx.dataType.getText().toUpperCase();
-    final TSDataType tsDataType = TSDataType.valueOf(dataType);
-    createAlignedTimeSeriesOperator.addDataType(tsDataType);
+    String dataTypeString = ctx.dataType.getText().toUpperCase();
+    TSDataType dataType = TSDataType.valueOf(dataTypeString);
+    createAlignedTimeSeriesOperator.addDataType(dataType);
 
-    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
-    TSEncoding encoding = ioTDBDescriptor.getDefaultEncodingByType(tsDataType);
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
     if (Objects.nonNull(ctx.encoding)) {
       String encodingString = ctx.encoding.getText().toUpperCase();
       encoding = TSEncoding.valueOf(encodingString);
     }
     createAlignedTimeSeriesOperator.addEncoding(encoding);
 
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     if (ctx.compressor != null) {
-      throw new SQLParserException(
-          "create aligned timeseries: the compressor for aligned timeseries should be defined globally.");
+      String compressorString = ctx.compressor.getText().toUpperCase();
+      compressor = CompressionType.valueOf(compressorString);
     }
+    createAlignedTimeSeriesOperator.addCompressor(compressor);
 
     if (ctx.propertyClause(0) != null) {
       throw new SQLParserException("create aligned timeseries: property is not supported yet.");
@@ -335,33 +328,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
-    CompressionType compressor;
+    List<CompressionType> compressors = new ArrayList<>();
     if (ctx instanceof IoTDBSqlParser.AlignedTemplateMeasurementContext) {
       // aligned measurement
-      schemaName = ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).alignedDevice.getText();
       List<IoTDBSqlParser.NodeNameWithoutWildcardContext> measurementList =
           ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).nodeNameWithoutWildcard();
       List<IoTDBSqlParser.AttributeClausesContext> attributeList =
           ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).attributeClauses();
+      schemaName = measurementList.get(0).getText();
       for (int i = 0; i < attributeList.size(); i++) {
         measurements.add(measurementList.get(i + 1).getText());
-        parseAttributeClause(attributeList.get(i), dataTypes, encodings);
-        if (attributeList.get(i).compressor != null) {
-          throw new SQLParserException(
-              "the compressor for aligned Measurements should be defined globally.");
-        }
-      }
-      if (((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).globalCompressorClause()
-          != null) {
-        compressor =
-            CompressionType.valueOf(
-                ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx)
-                    .globalCompressorClause()
-                    .compressor
-                    .getText()
-                    .toUpperCase());
-      } else {
-        compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+        parseAttributeClause(attributeList.get(i), dataTypes, encodings, compressors);
       }
     } else {
       // non-aligned template measurement
@@ -373,46 +350,42 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       parseAttributeClause(
           ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).attributeClauses(),
           dataTypes,
-          encodings);
-      if (((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).attributeClauses().compressor
-          != null) {
-        compressor =
-            CompressionType.valueOf(
-                ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx)
-                    .attributeClauses()
-                    .compressor
-                    .getText()
-                    .toUpperCase());
-      } else {
-        compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-      }
+          encodings,
+          compressors);
     }
     createSchemaTemplateOperator.addSchemaName(schemaName);
     createSchemaTemplateOperator.addMeasurements(measurements);
     createSchemaTemplateOperator.addDataTypes(dataTypes);
     createSchemaTemplateOperator.addEncodings(encodings);
-    createSchemaTemplateOperator.addCompressor(new ArrayList<>(Collections.singleton(compressor)));
+    createSchemaTemplateOperator.addCompressor(compressors);
   }
 
   void parseAttributeClause(
       IoTDBSqlParser.AttributeClausesContext ctx,
       List<TSDataType> dataTypes,
-      List<TSEncoding> encodings) {
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors) {
     if (ctx.alias() != null) {
       throw new SQLParserException("schema template: alias is not supported yet.");
     }
 
-    final String dataType = ctx.dataType.getText().toUpperCase();
-    final TSDataType tsDataType = TSDataType.valueOf(dataType);
-    dataTypes.add(tsDataType);
+    String dataTypeString = ctx.dataType.getText().toUpperCase();
+    TSDataType dataType = TSDataType.valueOf(dataTypeString);
+    dataTypes.add(dataType);
 
-    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
-    TSEncoding encoding = ioTDBDescriptor.getDefaultEncodingByType(tsDataType);
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
     if (Objects.nonNull(ctx.encoding)) {
       String encodingString = ctx.encoding.getText().toUpperCase();
       encoding = TSEncoding.valueOf(encodingString);
     }
     encodings.add(encoding);
+
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    if (ctx.compressor != null) {
+      String compressorString = ctx.compressor.getText().toUpperCase();
+      compressor = CompressionType.valueOf(compressorString);
+    }
+    compressors.add(compressor);
 
     if (ctx.propertyClause(0) != null) {
       throw new SQLParserException("schema template: property is not supported yet.");

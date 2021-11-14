@@ -78,7 +78,7 @@ createStorageGroup
 
 // Create Timeseries
 createTimeseries
-    : CREATE ALIGNED TIMESERIES fullPath alignedMeasurements globalCompressorClause? #createAlignedTimeseries
+    : CREATE ALIGNED TIMESERIES fullPath alignedMeasurements? #createAlignedTimeseries
     | CREATE TIMESERIES fullPath attributeClauses  #createNonAlignedTimeseries
     ;
 
@@ -95,9 +95,8 @@ createSchemaTemplate
 
 templateMeasurementClause
     : nodeNameWithoutWildcard attributeClauses #nonAlignedTemplateMeasurement
-    | alignedDevice=nodeNameWithoutWildcard
-    LR_BRACKET nodeNameWithoutWildcard attributeClauses (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
-    globalCompressorClause? #alignedTemplateMeasurement
+    | alignedDevice=nodeNameWithoutWildcard LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
     ;
 
 // Create Timeseries Of Schema Template
@@ -856,10 +855,6 @@ propertyValue
 
 attributeClause
     : ATTRIBUTES LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
-    ;
-
-globalCompressorClause
-    : (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE
     ;
 
 // Limit & Offset Clause

@@ -37,7 +37,7 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
   private List<String> measurements = new ArrayList<>();
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
-  private CompressionType compressor;
+  private List<CompressionType> compressors = new ArrayList<>();
   private List<String> aliasList = null;
 
   public CreateAlignedTimeSeriesOperator(int tokenIntType) {
@@ -89,12 +89,16 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
     this.encodings.add(encoding);
   }
 
-  public CompressionType getCompressor() {
-    return compressor;
+  public List<CompressionType> getCompressors() {
+    return compressors;
   }
 
-  public void setCompressor(CompressionType compressor) {
-    this.compressor = compressor;
+  public void setCompressors(List<CompressionType> compressors) {
+    this.compressors = compressors;
+  }
+
+  public void addCompressor(CompressionType compression) {
+    this.compressors.add(compression);
   }
 
   public List<String> getAliasList() {
@@ -117,7 +121,9 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
       throw new SQLParserException(
           "the measurement under an aligned device is not allowed to have the same measurement name");
     }
+
+    // TODO: remove "get(0)" after refactoring CreateAlignedTimeSeriesPlan
     return new CreateAlignedTimeSeriesPlan(
-        prefixPath, measurements, dataTypes, encodings, compressor, aliasList);
+        prefixPath, measurements, dataTypes, encodings, compressors.get(0), aliasList);
   }
 }
