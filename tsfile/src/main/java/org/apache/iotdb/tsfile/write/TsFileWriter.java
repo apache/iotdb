@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -61,7 +61,7 @@ public class TsFileWriter implements AutoCloseable {
   private final int pageSize;
   private long recordCount = 0;
 
-  private Map<String, IChunkGroupWriter> groupWriters = new HashMap<>();
+  private Map<String, IChunkGroupWriter> groupWriters = new LinkedHashMap<>();
 
   /** min value of threshold of data points num check. */
   private long recordCountForNextMemCheck = 100;
