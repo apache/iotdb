@@ -218,6 +218,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
     }
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }

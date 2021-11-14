@@ -975,6 +975,7 @@ public class MManagerBasicTest {
         "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
+  @SuppressWarnings("Duplicates")
   private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));

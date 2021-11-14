@@ -523,11 +523,6 @@ public class StorageEngine implements IService {
         if (virtualStorageGroupManager == null) {
           virtualStorageGroupManager = new VirtualStorageGroupManager();
           processorMap.put(storageGroupMNode.getPartialPath(), virtualStorageGroupManager);
-        } else {
-          // not finished recover, refuse the request
-          throw new StorageGroupNotReadyException(
-              storageGroupMNode.getFullPath(),
-              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
     }

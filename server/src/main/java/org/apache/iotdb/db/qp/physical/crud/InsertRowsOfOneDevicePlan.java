@@ -239,6 +239,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     return isExecuted[i];
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
