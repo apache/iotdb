@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -53,7 +54,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
 
   private MultDataSourceInfo sourceInfo;
 
-  private Map<String, Queue<BatchData>> cachedBatchs;
+  private Map<String, Queue<BatchData>> cachedBatchs = new LinkedHashMap<>();
 
   private AtomicReference<Map<String, ByteBuffer>> fetchResult = new AtomicReference<>();
   private GenericHandler<Map<String, ByteBuffer>> handler;
@@ -70,7 +71,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     this.currentBatchDatas = Maps.newHashMap();
     this.batchStrategy = new DefaultBatchStrategy();
 
-    this.cachedBatchs = Maps.newHashMap();
+    this.cachedBatchs = Maps.newLinkedHashMap();
     this.pathToDataType = Maps.newHashMap();
     for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
       String fullPath = sourceInfo.getPartialPaths().get(i).getExactFullPath();
