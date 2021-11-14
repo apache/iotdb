@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,6 +51,8 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
   TSDataType[][] dataTypes;
   TSEncoding[][] encodings;
   CompressionType[][] compressors;
+  // constant to help resolve serialized sequence
+  private static final int NEW_PLAN = -1;
 
   public CreateSchemaTemplatePlan() {
     super(false, OperatorType.CREATE_SCHEMA_TEMPLATE);
@@ -285,6 +288,10 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, buffer);
 
+    // write NEW_PLAN as flag to note that there is no schemaNames and new nested list for
+    // compressors
+    ReadWriteIOUtils.write(NEW_PLAN, buffer);
+
     // measurements
     ReadWriteIOUtils.write(measurements.length, buffer);
     for (String[] measurementList : measurements) {
@@ -327,10 +334,24 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
   @Override
   @SuppressWarnings("Duplicates")
   public void deserialize(ByteBuffer buffer) {
+    boolean isFormerSerialized;
     name = ReadWriteIOUtils.readString(buffer);
 
-    // measurements
     int size = ReadWriteIOUtils.readInt(buffer);
+
+    if (size == NEW_PLAN) {
+      isFormerSerialized = false;
+    } else {
+      // deserialize schemaNames
+      isFormerSerialized = true;
+      schemaNames = new String[size];
+      for (int i = 0; i < size; i++) {
+        schemaNames[i] = ReadWriteIOUtils.readString(buffer);
+      }
+    }
+
+    // measurements
+    size = ReadWriteIOUtils.readInt(buffer);
     measurements = new String[size][];
     for (int i = 0; i < size; i++) {
       int listSize = ReadWriteIOUtils.readInt(buffer);
@@ -364,12 +385,27 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
 
     // compressor
     size = ReadWriteIOUtils.readInt(buffer);
-    compressors = new CompressionType[size][];
-    for (int i = 0; i < size; i++) {
-      int listSize = ReadWriteIOUtils.readInt(buffer);
-      compressors[i] = new CompressionType[listSize];
-      for (int j = 0; j < listSize; j++) {
-        compressors[i][j] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
+    if (!isFormerSerialized) {
+      // there is a nested list, where each measurement may has different compressor
+      compressors = new CompressionType[size][];
+      for (int i = 0; i < size; i++) {
+        int listSize = ReadWriteIOUtils.readInt(buffer);
+        compressors[i] = new CompressionType[listSize];
+        for (int j = 0; j < listSize; j++) {
+          compressors[i][j] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
+        }
+      }
+    } else {
+      // a flat list where aligned measurements have same compressor, serialize as a nested list
+      compressors = new CompressionType[size][];
+      for (int i = 0; i < size; i++) {
+        int listSize = measurements[i].length;
+        compressors[i] = new CompressionType[listSize];
+        CompressionType alignedCompressionType =
+            CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
+        for (int j = 0; j < listSize; j++) {
+          compressors[i][j] = alignedCompressionType;
+        }
       }
     }
 
@@ -381,6 +417,10 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
     stream.writeByte((byte) PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, stream);
+
+    // write NEW_PLAN as flag to note that there is no schemaNames and new nested list for
+    // compressors
+    ReadWriteIOUtils.write(NEW_PLAN, stream);
 
     // measurements
     ReadWriteIOUtils.write(measurements.length, stream);
@@ -416,6 +456,55 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
       for (CompressionType compressionType : compressorList) {
         ReadWriteIOUtils.write(compressionType.ordinal(), stream);
       }
+    }
+
+    stream.writeLong(index);
+  }
+
+  // added and modified for test adaptation of CreateSchemaTemplate serialization.
+  @TestOnly
+  public void formerSerialize(DataOutputStream stream) throws IOException {
+    stream.writeByte((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
+
+    ReadWriteIOUtils.write(name, stream);
+
+    // schema names
+    ReadWriteIOUtils.write(schemaNames.length, stream);
+    for (String schemaName : schemaNames) {
+      ReadWriteIOUtils.write(schemaName, stream);
+    }
+
+    // measurements
+    ReadWriteIOUtils.write(measurements.length, stream);
+    for (String[] measurementList : measurements) {
+      ReadWriteIOUtils.write(measurementList.length, stream);
+      for (String measurement : measurementList) {
+        ReadWriteIOUtils.write(measurement, stream);
+      }
+    }
+
+    // datatype
+    ReadWriteIOUtils.write(dataTypes.length, stream);
+    for (TSDataType[] dataTypesList : dataTypes) {
+      ReadWriteIOUtils.write(dataTypesList.length, stream);
+      for (TSDataType dataType : dataTypesList) {
+        ReadWriteIOUtils.write(dataType.ordinal(), stream);
+      }
+    }
+
+    // encoding
+    ReadWriteIOUtils.write(encodings.length, stream);
+    for (TSEncoding[] encodingList : encodings) {
+      ReadWriteIOUtils.write(encodingList.length, stream);
+      for (TSEncoding encoding : encodingList) {
+        ReadWriteIOUtils.write(encoding.ordinal(), stream);
+      }
+    }
+
+    // compressor
+    ReadWriteIOUtils.write(compressors.length, stream);
+    for (CompressionType[] compressionType : compressors) {
+      ReadWriteIOUtils.write(compressionType[0].ordinal(), stream);
     }
 
     stream.writeLong(index);

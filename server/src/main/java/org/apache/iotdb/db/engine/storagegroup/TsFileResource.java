@@ -921,7 +921,9 @@ public class TsFileResource {
   public long degradeTimeIndex() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
     // if current timeIndex is FileTimeIndex, no need to degrade
-    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
+    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) {
+      return 0;
+    }
     // get the minimum startTime
     long startTime = timeIndex.getMinStartTime();
     // get the maximum endTime

@@ -71,8 +71,9 @@ public class TemplateManager {
     }
 
     for (List<String> measurements : plan.getMeasurements()) {
-      for (String measurement : measurements)
+      for (String measurement : measurements) {
         MetaFormatUtils.checkTimeseries(new PartialPath(measurement));
+      }
     }
 
     Template template = new Template(plan);

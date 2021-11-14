@@ -30,5 +30,6 @@ public class EmptyOutputStream extends OutputStream {
   @Override
   public void write(byte b[], int off, int len) throws IOException {}
 
+  @Override
   public void write(byte b[]) throws IOException {}
 }
