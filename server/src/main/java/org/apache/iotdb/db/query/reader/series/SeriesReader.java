@@ -348,8 +348,9 @@ public class SeriesReader {
         }
       }
     }
-    if (valueFilter != null && firstChunkMetadata != null
-            && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
+    if (valueFilter != null
+        && firstChunkMetadata != null
+        && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
       skipCurrentChunk();
     }
     return firstChunkMetadata != null;
@@ -685,6 +686,11 @@ public class SeriesReader {
        */
       if (valueFilter != null) {
         firstPageReader.setFilter(valueFilter);
+      }
+      if (valueFilter != null
+              && !valueFilter.satisfy(currentPageStatistics())) {
+        skipCurrentPage();
+        return null;
       }
       BatchData batchData = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
       firstPageReader = null;
