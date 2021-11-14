@@ -119,12 +119,12 @@ Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT 
 
 * 创建对齐时间序列语句
 ```
-CREATE ALIGNED TIMESERIES <FullPath> alignedMeasurements globalCompressorClause?
+CREATE ALIGNED TIMESERIES <FullPath> alignedMeasurements
 alignedMeasurements
     : LR_BRACKET nodeNameWithoutWildcard attributeClauses
     (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
     ;
-Eg: CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(lat FLOAT ENCODING=GORILLA, lon FLOAT ENCODING=GORILLA) COMPRESSOR=SNAPPY
+Eg: CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(lat FLOAT ENCODING=GORILLA, lon FLOAT ENCODING=GORILLA COMPRESSOR=SNAPPY)
 Note: It is not supported to set different compression for a group of aligned timeseries.
 Note: It is not currently supported to set an alias, tag, and attribute for aligned timeseries.
 ```
@@ -134,15 +134,14 @@ Note: It is not currently supported to set an alias, tag, and attribute for alig
 CREATE SCHEMA TEMPLATE <TemplateName> LR_BRACKET <TemplateMeasurementClause> (COMMA plateMeasurementClause>)* RR_BRACKET
 templateMeasurementClause
     : nodeNameWithoutWildcard attributeClauses #nonAlignedTemplateMeasurement
-    | alignedDevice=nodeNameWithoutWildcard
-    LR_BRACKET nodeNameWithoutWildcard attributeClauses (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
-    globalCompressorClause? #alignedTemplateMeasurement
+    | alignedDevice=nodeNameWithoutWildcard LR_BRACKET nodeNameWithoutWildcard attributeClauses 
+    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET #alignedTemplateMeasurement
     ;
 Eg: CREATE SCHEMA TEMPLATE temp1(
         s1 INT32 encoding=Gorilla, compression=SNAPPY,
         vector1(
             s1 INT32 encoding=Gorilla,
-            s2 FLOAT encoding=RLE) compression=SNAPPY
+            s2 FLOAT encoding=RLE, compression=SNAPPY)
     )
 ```
 
