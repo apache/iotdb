@@ -52,4 +52,4 @@ jobs:
         shell: bash
         run: |
           cd client-csharp && mkdir -p target/iotdb && unzip -o -q ../server/target/iotdb-server-*.zip -d target/iotdb && docker-compose -f samples/Apache.IoTDB.Samples/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
-          cd client-csharp && rm -rf target && docker-compose -f samples/Apache.IoTDB.Samples/docker-compose.yml down
+          rm -rf target && docker-compose -f samples/Apache.IoTDB.Samples/docker-compose.yml down
