@@ -39,7 +39,9 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
@@ -145,6 +147,9 @@ public class FileLoaderUtils {
           && !filter.satisfyStartEndTime(
               timeSeriesMetadata.getStatistics().getStartTime(),
               timeSeriesMetadata.getStatistics().getEndTime())) {
+        return null;
+      }
+      if (filter != null && !filter.satisfy(timeSeriesMetadata.getStatistics())) {
         return null;
       }
     }

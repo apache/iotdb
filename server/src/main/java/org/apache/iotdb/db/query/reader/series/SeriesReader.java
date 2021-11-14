@@ -348,7 +348,10 @@ public class SeriesReader {
         }
       }
     }
-
+    if (valueFilter != null && firstChunkMetadata != null
+            && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
+      skipCurrentChunk();
+    }
     return firstChunkMetadata != null;
   }
 
