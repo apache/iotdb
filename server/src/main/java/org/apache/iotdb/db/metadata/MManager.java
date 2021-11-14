@@ -1721,7 +1721,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    PartialPath devicePath = plan.getPrefixPath();
+    PartialPath devicePath = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -1733,7 +1733,7 @@ public class MManager {
       throw new MetadataException(
           String.format(
               "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-              plan.getPrefixPath()));
+              plan.getDeviceId()));
     }
 
     // 2. get schema of each measurement
@@ -1801,7 +1801,7 @@ public class MManager {
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
       InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
-    PartialPath devicePath = plan.getPrefixPath();
+    PartialPath devicePath = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
     String measurement = measurementList[loc];
     IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);

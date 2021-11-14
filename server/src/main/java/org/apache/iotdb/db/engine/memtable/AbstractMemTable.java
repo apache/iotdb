@@ -145,7 +145,7 @@ public abstract class AbstractMemTable implements IMemTable {
               measurementMNodes[i].getSchema().getType(), values[i], disableMemControl);
 
       write(
-          insertRowPlan.getPrefixPath().getFullPath(),
+          insertRowPlan.getDeviceId().getFullPath(),
           measurementMNodes[i].getSchema(),
           insertRowPlan.getTime(),
           values[i]);
@@ -181,7 +181,7 @@ public abstract class AbstractMemTable implements IMemTable {
             compressionType);
     memSize += MemUtils.getAlignedRecordSize(types, insertRowPlan.getValues(), disableMemControl);
     writeAlignedRow(
-        insertRowPlan.getPrefixPath().getFullPath(),
+        insertRowPlan.getDeviceId().getFullPath(),
         vectorSchema,
         insertRowPlan.getTime(),
         insertRowPlan.getValues());
@@ -243,7 +243,7 @@ public abstract class AbstractMemTable implements IMemTable {
       }
       IWritableMemChunk memSeries =
           createMemChunkIfNotExistAndGet(
-              insertTabletPlan.getPrefixPath().getFullPath(),
+              insertTabletPlan.getDeviceId().getFullPath(),
               insertTabletPlan.getMeasurementMNodes()[i].getSchema());
       memSeries.write(
           insertTabletPlan.getTimes(),
@@ -280,7 +280,7 @@ public abstract class AbstractMemTable implements IMemTable {
             compressionType);
     IWritableMemChunk memSeries =
         createAlignedMemChunkIfNotExistAndGet(
-            insertTabletPlan.getPrefixPath().getFullPath(), vectorSchema);
+            insertTabletPlan.getDeviceId().getFullPath(), vectorSchema);
     memSeries.writeAlignedValues(
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),

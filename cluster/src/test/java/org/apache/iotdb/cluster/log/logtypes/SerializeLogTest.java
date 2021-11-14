@@ -52,7 +52,7 @@ public class SerializeLogTest {
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setPrefixPath(new PartialPath("root.d1"));
+    plan.setDeviceId(new PartialPath("root.d1"));
     plan.setMeasurements(new String[] {"s1", "s2", "s3"});
     plan.setNeedInferType(true);
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);

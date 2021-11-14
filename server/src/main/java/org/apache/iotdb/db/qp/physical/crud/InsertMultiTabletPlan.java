@@ -136,7 +136,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     }
     prefixPaths = new ArrayList<>(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      prefixPaths.add(insertTabletPlan.getPrefixPath());
+      prefixPaths.add(insertTabletPlan.getDeviceId());
     }
     return prefixPaths;
   }
@@ -195,7 +195,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertTabletPlanList.get(0).getPrefixPath();
+    return insertTabletPlanList.get(0).getDeviceId();
   }
 
   public InsertTabletPlan getInsertTabletPlan(int index) {

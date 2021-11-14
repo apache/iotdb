@@ -578,7 +578,7 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getPrefixPath());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
     try {
       storageGroupProcessor.insert(insertRowPlan);
@@ -586,7 +586,7 @@ public class StorageEngine implements IService {
         try {
           updateMonitorStatistics(
               processorMap.get(
-                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getPrefixPath())),
+                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDeviceId())),
               insertRowPlan);
         } catch (MetadataException e) {
           logger.error("failed to record status", e);
@@ -607,7 +607,7 @@ public class StorageEngine implements IService {
       }
     }
     StorageGroupProcessor storageGroupProcessor =
-        getProcessor(insertRowsOfOneDevicePlan.getPrefixPath());
+        getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
@@ -631,12 +631,12 @@ public class StorageEngine implements IService {
     }
     StorageGroupProcessor storageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(insertTabletPlan.getPrefixPath());
+      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
               "Get StorageGroupProcessor of device %s " + "failed",
-              insertTabletPlan.getPrefixPath()),
+              insertTabletPlan.getDeviceId()),
           e);
     }
 
@@ -646,7 +646,7 @@ public class StorageEngine implements IService {
       try {
         updateMonitorStatistics(
             processorMap.get(
-                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getPrefixPath())),
+                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDeviceId())),
             insertTabletPlan);
       } catch (MetadataException e) {
         logger.error("failed to record status", e);

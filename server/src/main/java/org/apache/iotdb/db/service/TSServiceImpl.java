@@ -1531,7 +1531,7 @@ public class TSServiceImpl implements TSIService.Iface {
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
-        plan.setPrefixPath(new PartialPath(req.getPrefixPaths().get(i)));
+        plan.setDeviceId(new PartialPath(req.getPrefixPaths().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1669,7 +1669,7 @@ public class TSServiceImpl implements TSIService.Iface {
           req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setPrefixPath(new PartialPath(req.getPrefixPath()));
+      plan.setDeviceId(new PartialPath(req.getPrefixPath()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);

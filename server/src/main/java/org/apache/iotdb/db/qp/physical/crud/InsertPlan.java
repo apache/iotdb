@@ -32,7 +32,7 @@ import java.util.List;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
-  protected PartialPath prefixPath;
+  protected PartialPath deviceId;
   protected boolean isAligned;
   protected String[] measurements;
   // get from client
@@ -50,12 +50,12 @@ public abstract class InsertPlan extends PhysicalPlan {
     super.canBeSplit = false;
   }
 
-  public PartialPath getPrefixPath() {
-    return prefixPath;
+  public PartialPath getDeviceId() {
+    return deviceId;
   }
 
-  public void setPrefixPath(PartialPath prefixPath) {
-    this.prefixPath = prefixPath;
+  public void setDeviceId(PartialPath deviceId) {
+    this.deviceId = deviceId;
   }
 
   public String[] getMeasurements() {
@@ -186,7 +186,7 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
-    if (prefixPath == null) {
+    if (deviceId == null) {
       throw new QueryProcessException("DeviceId is null");
     }
     if (measurements == null) {

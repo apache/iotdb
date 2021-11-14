@@ -60,10 +60,12 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * VectorPartialPath represents a vector's fullPath. It not only contains the full path of vector's
- * own name, but also has subSensorsList which contain all the fullPath of vector's sub sensors.
- * e.g. VectorPartialPath1(root.sg1.d1.vector1, [root.sg1.d1.vector1.s1, root.sg1.d1.vector1.s2])
- * VectorPartialPath2(root.sg1.d1.vector2, [root.sg1.d1.vector2.s1, root.sg1.d1.vector2.s2])
+ * VectorPartialPath represents many fullPaths of aligned timeseries.
+ * In the AlignedPath, the nodes in PartialPath is deviceId
+ * e.g.
+ * VectorPartialPath
+ *    nodes=root.sg1.alignedD1
+ *    measurementList=[s1, s2]
  */
 public class AlignedPath extends PartialPath {
 
@@ -134,10 +136,6 @@ public class AlignedPath extends PartialPath {
     this.measurementList = measurementList;
   }
 
-  public void addMeasurement(String measurement) {
-    this.measurementList.add(measurement);
-  }
-
   public void addMeasurement(List<String> measurements) {
     this.measurementList.addAll(measurements);
   }
@@ -152,14 +150,6 @@ public class AlignedPath extends PartialPath {
       schemaList = new ArrayList<>();
     }
     schemaList.add(measurementPath.getMeasurementSchema());
-  }
-
-  public void addMeasurement(List<String> measurementList, List<IMeasurementSchema> schemaList) {
-    this.measurementList.addAll(measurementList);
-    if (this.schemaList == null) {
-      this.schemaList = new ArrayList<>();
-    }
-    this.schemaList.addAll(schemaList);
   }
 
   public List<IMeasurementSchema> getSchemaList() {
@@ -349,7 +339,7 @@ public class AlignedPath extends PartialPath {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
-    // check If Memtable Contains this path
+    // check If memtable contains this path
     if (!memTableMap.containsKey(getDevice())) {
       return null;
     }

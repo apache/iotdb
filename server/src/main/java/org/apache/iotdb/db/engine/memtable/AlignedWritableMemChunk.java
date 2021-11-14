@@ -160,7 +160,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     List<TSEncoding> encodingsInInsertPlan = vectorSchema.getSubMeasurementsTSEncodingList();
     for (int i = 0; i < measurementIdsInInsertPlan.size(); i++) {
       if (!containsMeasurement(measurementIdsInInsertPlan.get(i))) {
-        this.schema.addSubMeasurement(
+        this.schema.addMeasurement(
             measurementIdsInInsertPlan.get(i),
             dataTypesInInsertPlan.get(i),
             encodingsInInsertPlan.get(i));
