@@ -219,8 +219,12 @@ abstract class BaseApplier implements LogApplier {
           pullTimeseriesSchema(plan, dataGroupMember.getHeader());
           plan.recoverFromFailure();
           getQueryExecutor().processNonQuery(plan);
-        } else throw e;
-      } else throw e;
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
