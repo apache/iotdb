@@ -24,8 +24,8 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -67,7 +67,7 @@ public class TemplateTest {
 
   @Test
   public void testTemplate() throws MetadataException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
+    CreateSchemaTemplatePlan plan = getCreateTemplatePlan();
 
     MManager manager = IoTDB.metaManager;
     manager.createSchemaTemplate(plan);
@@ -113,7 +113,7 @@ public class TemplateTest {
 
   @Test
   public void testTemplateInnerTree() {
-    CreateTemplatePlan plan = getTreeTemplatePlan();
+    CreateSchemaTemplatePlan plan = getTreeTemplatePlan();
     Template template;
     MManager manager = IoTDB.metaManager;
 
@@ -161,16 +161,16 @@ public class TemplateTest {
 
   @Test
   public void testCreateSchemaTemplateSerialization() throws IOException {
-    CreateTemplatePlan plan = getTreeTemplatePlan();
+    CreateSchemaTemplatePlan plan = getTreeTemplatePlan();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(baos);
     plan.serialize(dos);
     byte[] byteArray = baos.toByteArray();
     ByteBuffer buffer = ByteBuffer.wrap(byteArray);
 
-    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_TEMPLATE.ordinal(), buffer.get());
+    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal(), buffer.get());
 
-    CreateTemplatePlan deserializedPlan = new CreateTemplatePlan();
+    CreateSchemaTemplatePlan deserializedPlan = new CreateSchemaTemplatePlan();
     deserializedPlan.deserialize(buffer);
 
     assertEquals(
@@ -179,7 +179,7 @@ public class TemplateTest {
     assertEquals(plan.getName(), deserializedPlan.getName());
   }
 
-  private CreateTemplatePlan getTreeTemplatePlan() {
+  private CreateSchemaTemplatePlan getTreeTemplatePlan() {
     /**
      * Construct a template like: create schema template treeTemplate ( (d1.s1 INT32 GORILLA
      * SNAPPY), (s2 INT32 GORILLA SNAPPY), (GPS.x FLOAT RLE SNAPPY), (GPS.y FLOAT RLE SNAPPY), )with
@@ -207,11 +207,11 @@ public class TemplateTest {
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
-    return new CreateTemplatePlan(
+    return new CreateSchemaTemplatePlan(
         "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
-  private CreateTemplatePlan getCreateTemplatePlan() {
+  private CreateSchemaTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     List<String> measurements = new ArrayList<>();
@@ -248,7 +248,7 @@ public class TemplateTest {
     schemaNames.add("s21");
     schemaNames.add("vector");
 
-    return new CreateTemplatePlan(
+    return new CreateSchemaTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }

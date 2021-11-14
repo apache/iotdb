@@ -464,7 +464,7 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
   // added and modified for test adaptation of CreateSchemaTemplate serialization.
   @TestOnly
   public void formerSerialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, stream);
 

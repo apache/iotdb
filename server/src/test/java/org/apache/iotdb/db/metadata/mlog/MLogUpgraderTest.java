@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
 import org.apache.iotdb.db.metadata.logfile.MLogUpgrader;
 import org.apache.iotdb.db.metadata.tag.TagLogFile;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -114,16 +114,16 @@ public class MLogUpgraderTest {
 
   @Test
   public void testCreateSchemaTemplateSerializationAdaptation() throws IOException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
+    CreateSchemaTemplatePlan plan = getCreateTemplatePlan();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(baos);
     plan.formerSerialize(dos);
     byte[] byteArray = baos.toByteArray();
     ByteBuffer buffer = ByteBuffer.wrap(byteArray);
 
-    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_TEMPLATE.ordinal(), buffer.get());
+    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal(), buffer.get());
 
-    CreateTemplatePlan deserializedPlan = new CreateTemplatePlan();
+    CreateSchemaTemplatePlan deserializedPlan = new CreateSchemaTemplatePlan();
     deserializedPlan.deserialize(buffer);
 
     assertEquals(plan.getCompressors().size(), deserializedPlan.getCompressors().size());
@@ -133,7 +133,7 @@ public class MLogUpgraderTest {
   }
 
   @SuppressWarnings("Duplicates")
-  private CreateTemplatePlan getCreateTemplatePlan() {
+  private CreateSchemaTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     List<String> measurements = new ArrayList<>();
@@ -170,7 +170,7 @@ public class MLogUpgraderTest {
     schemaNames.add("s21");
     schemaNames.add("vector");
 
-    return new CreateTemplatePlan(
+    return new CreateSchemaTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }
