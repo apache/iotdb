@@ -987,7 +987,7 @@ public class MetaGroupMemberTest extends BaseMember {
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp =
             readerFactory.getReaderByTimestamp(
-                new PartialPath(TestUtils.getTestSeries(i, 0)),
+                new MeasurementPath(TestUtils.getTestSeries(i, 0), TSDataType.DOUBLE),
                 deviceMeasurements,
                 TSDataType.DOUBLE,
                 context,
@@ -1049,7 +1049,7 @@ public class MetaGroupMemberTest extends BaseMember {
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader =
             readerFactory.getSeriesReader(
-                new PartialPath(TestUtils.getTestSeries(i, 0)),
+                new MeasurementPath(TestUtils.getTestSeries(i, 0), TSDataType.DOUBLE),
                 deviceMeasurements,
                 TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),

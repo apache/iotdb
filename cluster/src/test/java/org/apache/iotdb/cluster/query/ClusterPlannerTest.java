@@ -51,6 +51,5 @@ public class ClusterPlannerTest extends BaseQueryTest {
     String sql = String.format("SELECT s0 FROM %s", String.join(",", sgs));
     RawDataQueryPlan plan = (RawDataQueryPlan) parser.parseSQLToPhysicalPlan(sql);
     assertEquals(pathList, plan.getDeduplicatedPaths());
-    assertEquals(dataTypes, plan.getDeduplicatedDataTypes());
   }
 }

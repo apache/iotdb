@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
@@ -65,6 +66,11 @@ public class MeasurementPath extends PartialPath {
     super(measurementPath);
   }
 
+  public MeasurementPath(String measurementPath, TSDataType type) throws IllegalPathException {
+    super(measurementPath);
+    this.measurementSchema = new UnaryMeasurementSchema(getMeasurement(), type);
+  }
+
   public MeasurementPath(PartialPath measurementPath, IMeasurementSchema measurementSchema) {
     super(measurementPath.getNodes());
     this.measurementSchema = measurementSchema;
@@ -82,6 +88,10 @@ public class MeasurementPath extends PartialPath {
 
   public TSDataType getSeriesType() {
     return getMeasurementSchema().getType();
+  }
+
+  public byte getSeriesTypeInByte() {
+    return getMeasurementSchema().getTypeInByte();
   }
 
   public void setMeasurementSchema(IMeasurementSchema measurementSchema) {
