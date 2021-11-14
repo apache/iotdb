@@ -73,9 +73,22 @@ public class AlignedTimeseriesSessionExample {
     //    insertTabletWithAlignedTimeseriesMethod2();
     //    insertNullableTabletWithAlignedTimeseries();
     //    insertTabletsWithAlignedTimeseries();
-    selectTest();
     session.executeNonQueryStatement("flush");
     selectTest();
+    selectWithValueFilterTest();
+    session.executeNonQueryStatement("delete from root.sg_1.d1.s1 where time <= 5");
+    System.out.println("execute sql delete from root.sg_1.d1.s1 where time <= 5");
+    selectTest();
+    selectWithValueFilterTest();
+    session.executeNonQueryStatement("delete from root.sg_1.d1.s2 where time <= 3");
+    System.out.println("execute sql delete from root.sg_1.d1.s2 where time <= 3");
+
+    selectTest();
+    selectWithValueFilterTest();
+    session.executeNonQueryStatement("delete from root.sg_1.d1.s1 where time <= 10");
+    System.out.println("execute sql delete from root.sg_1.d1.s1 where time <= 10");
+    selectTest();
+    selectWithValueFilterTest();
 
     //    selectWithValueFilterTest();
     //    selectWithGroupByTest();
@@ -120,7 +133,8 @@ public class AlignedTimeseriesSessionExample {
   private static void selectWithValueFilterTest()
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet =
-        session.executeQueryStatement("select s1 from root.sg_1.d1.vector where s1 > 0");
+        session.executeQueryStatement("select s1 from root.sg_1.d1 where s1 > 3 and time < 9");
+    System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
@@ -128,7 +142,7 @@ public class AlignedTimeseriesSessionExample {
     dataSet.closeOperationHandle();
     dataSet =
         session.executeQueryStatement(
-            "select * from root.sg_1.d1.vector where time > 50 and s1 > 0 and s2 > 10000");
+            "select * from root.sg_1.d1 where time < 8 and s1 > 3 and s2 > 5");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -399,8 +413,8 @@ public class AlignedTimeseriesSessionExample {
 
     for (long time = 0; time < 10; time++) {
       List<Object> values = new ArrayList<>();
-      values.add(1L);
-      values.add(2);
+      values.add(time);
+      values.add((int) time);
       session.insertAlignedRecord(
           ROOT_SG1_D1_VECTOR1, time, multiMeasurementComponents, types, values);
     }

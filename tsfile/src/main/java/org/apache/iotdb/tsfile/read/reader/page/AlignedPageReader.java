@@ -84,6 +84,8 @@ public class AlignedPageReader implements IPageReader {
     }
     BatchData pageData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
     boolean isNull;
+    // save the first not null value of each row
+    Object firstNotNullObject = null;
     for (int i = 0; i < timeBatch.length; i++) {
       // used to record whether the sub sensors are all null in current time
       isNull = true;
@@ -92,12 +94,14 @@ public class AlignedPageReader implements IPageReader {
         v[j] = valueBatchList.get(j) == null ? null : valueBatchList.get(j)[i];
         if (v[j] != null) {
           isNull = false;
+          firstNotNullObject = v[j].getValue();
         }
       }
       // if all the sub sensors' value are null in current time
       // or current row is not satisfied with the filter, just discard it
-      // TODO fix value filter v[0].getValue()
-      if (!isNull && (filter == null || filter.satisfy(timeBatch[i], v[0].getValue()))) {
+      // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will only
+      // accept AlignedPath with only one sub sensor
+      if (!isNull && (filter == null || filter.satisfy(timeBatch[i], firstNotNullObject))) {
         pageData.putVector(timeBatch[i], v);
       }
     }
@@ -106,7 +110,9 @@ public class AlignedPageReader implements IPageReader {
 
   public void setDeleteIntervalList(List<List<TimeRange>> list) {
     for (int i = 0; i < valueCount; i++) {
-      valuePageReaderList.get(i).setDeleteIntervalList(list.get(i));
+      if (valuePageReaderList.get(i) != null) {
+        valuePageReaderList.get(i).setDeleteIntervalList(list.get(i));
+      }
     }
   }
 

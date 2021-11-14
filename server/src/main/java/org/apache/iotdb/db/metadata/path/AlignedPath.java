@@ -401,4 +401,9 @@ public class AlignedPath extends PartialPath {
     chunkMetadataList.removeIf(context::chunkNotSatisfy);
     return new ArrayList<>(chunkMetadataList);
   }
+
+  @Override
+  public int getColumnNum() {
+    return measurementList.size();
+  }
 }
