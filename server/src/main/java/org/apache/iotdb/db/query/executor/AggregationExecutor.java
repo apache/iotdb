@@ -698,8 +698,7 @@ public class AggregationExecutor {
    * @param aggregateResultList aggregate result list
    */
   private QueryDataSet constructDataSet(
-      List<AggregateResult> aggregateResultList, AggregationPlan plan)
-      throws QueryProcessException {
+      List<AggregateResult> aggregateResultList, AggregationPlan plan) {
     SingleDataSet dataSet;
     RowRecord record = new RowRecord(0);
 

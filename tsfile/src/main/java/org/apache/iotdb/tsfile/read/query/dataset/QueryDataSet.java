@@ -100,8 +100,10 @@ public abstract class QueryDataSet {
     this.dataTypes = dataTypes;
     this.ascending = ascending;
     this.columnNum = 0;
-    for (Path p : paths) {
-      columnNum += p.getColumnNum();
+    if (paths != null) {
+      for (Path p : paths) {
+        columnNum += p.getColumnNum();
+      }
     }
   }
 
