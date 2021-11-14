@@ -48,6 +48,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -76,7 +77,8 @@ public class SlotPartitionTable implements PartitionTable {
 
   // The following fields are used for determining which node a data item belongs to.
   // the slots held by each node
-  private Map<RaftNode, List<Integer>> nodeSlotMap = new ConcurrentHashMap<>();
+  private Map<RaftNode, List<Integer>> nodeSlotMap =
+      Collections.synchronizedMap(new LinkedHashMap());
   // each slot is managed by whom
   private RaftNode[] slotNodes = new RaftNode[ClusterConstant.SLOT_NUM];
   // the nodes that each slot belongs to before a new node is added, used for the new node to
