@@ -1,0 +1,55 @@
+# This workflow is just for checking whether modifications works for the Csharp client.
+
+name: Csharp Client
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+    paths-ignore:
+      - 'docs/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+
+jobs:
+  unix:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        java: [ 11 ]
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          submodules: recursive
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Compile IoTDB Server
+        run: mvn -B package -Dmaven.test.skip=true  -am -pl server
+      - name: Integration test
+        shell: bash
+        run: |
+          cd client-csharp && mkdir -p target/iotdb && unzip -o -q ../server/target/iotdb-server-*.zip -d target/iotdb && docker-compose -f samples/Apache.IoTDB.Samples/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
+          cd client-csharp && rm -rf target && docker-compose -f samples/Apache.IoTDB.Samples/docker-compose.yml down
