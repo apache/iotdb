@@ -1,3 +1,6 @@
 [submodule "iotdb-client-go"]
 	path = client-go
 	url = git@github.com:apache/iotdb-client-go.git
+[submodule "client-csharp"]
+	path = client-csharp
+	url = https://github.com/lausannel/Apache-IoTDB-Client-CSharp
