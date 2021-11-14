@@ -33,6 +33,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashSet;
 
 import static org.junit.Assert.assertNotNull;
@@ -53,8 +54,8 @@ public class ClusterReaderFactoryTest extends BaseQueryTest {
           (SeriesRawDataBatchReader)
               readerFactory.getSeriesBatchReader(
                   pathList.get(0),
-                  new HashSet<>(),
-                  dataTypes.get(0),
+                  new HashSet<>(Collections.singletonList(pathList.get(0).getMeasurement())),
+                  pathList.get(0).getSeriesType(),
                   null,
                   null,
                   context,
@@ -67,8 +68,8 @@ public class ClusterReaderFactoryTest extends BaseQueryTest {
           (SeriesRawDataBatchReader)
               readerFactory.getSeriesBatchReader(
                   pathList.get(0),
-                  new HashSet<>(),
-                  dataTypes.get(0),
+                  new HashSet<>(Collections.singletonList(pathList.get(0).getMeasurement())),
+                  pathList.get(0).getSeriesType(),
                   null,
                   null,
                   context,

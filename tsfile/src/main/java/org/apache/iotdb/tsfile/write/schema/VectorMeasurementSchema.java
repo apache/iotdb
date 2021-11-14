@@ -134,6 +134,11 @@ public class VectorMeasurementSchema
   }
 
   @Override
+  public byte getTypeInByte() {
+    return ((byte) 6);
+  }
+
+  @Override
   public void setType(TSDataType dataType) {
     throw new UnsupportedOperationException("unsupported method for VectorMeasurementSchema");
   }
