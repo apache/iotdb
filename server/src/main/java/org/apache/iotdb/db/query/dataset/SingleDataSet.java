@@ -33,6 +33,10 @@ public class SingleDataSet extends QueryDataSet {
 
   public SingleDataSet(List<PartialPath> paths, List<TSDataType> dataTypes) {
     super(new ArrayList<>(paths), dataTypes);
+    // SingleDataSet's column number is different from other datasets
+    // TODO I don't know whether it's right or not in AlignedPath, remember to check here while
+    // adapting SingleDataSet query for new vector
+    super.columnNum = dataTypes.size();
   }
 
   public void setRecord(RowRecord record) {

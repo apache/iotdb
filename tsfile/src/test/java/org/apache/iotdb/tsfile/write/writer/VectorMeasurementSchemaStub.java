@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -110,12 +109,6 @@ public class VectorMeasurementSchemaStub extends VectorMeasurementSchema {
   @Override
   public int serializeTo(OutputStream outputStream) {
     return 0;
-  }
-
-  @Override
-  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, String deviceId) {
-    return null;
   }
 
   @Override

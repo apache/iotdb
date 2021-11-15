@@ -51,6 +51,8 @@ public abstract class QueryDataSet {
   /** Only if all columns are null, we don't need that row */
   protected boolean withoutAllNull;
 
+  protected int columnNum;
+
   /** For redirect query. Need keep consistent with EndPoint in rpc.thrift. */
   public static class EndPoint {
     private String ip = null;
@@ -100,6 +102,12 @@ public abstract class QueryDataSet {
     this.paths = paths;
     this.dataTypes = dataTypes;
     this.ascending = ascending;
+    this.columnNum = 0;
+    if (paths != null) {
+      for (Path p : paths) {
+        columnNum += p.getColumnNum();
+      }
+    }
   }
 
   public boolean hasNext() throws IOException {
@@ -232,5 +240,9 @@ public abstract class QueryDataSet {
 
   public void decreaseAlreadyReturnedRowNum() {
     alreadyReturnedRowNum--;
+  }
+
+  public int getColumnNum() {
+    return columnNum;
   }
 }

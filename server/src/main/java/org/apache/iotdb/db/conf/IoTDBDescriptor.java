@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -376,7 +377,7 @@ public class IoTDBDescriptor {
       conf.setMaxOpenFileNumInCrossSpaceCompaction(
           Integer.parseInt(
               properties.getProperty(
-                  "max_open_file_num_in_each_unseq_compaction",
+                  "max_open_file_num_in_cross_space_compaction",
                   Integer.toString(conf.getMaxOpenFileNumInCrossSpaceCompaction()))));
 
       conf.setQueryTimeoutThreshold(
@@ -816,6 +817,9 @@ public class IoTDBDescriptor {
 
       // set tsfile-format config
       loadTsFileProps(properties);
+
+      // make RPCTransportFactory taking effect.
+      RpcTransportFactory.reInit();
 
       // UDF
       loadUDFProps(properties);

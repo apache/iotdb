@@ -22,12 +22,12 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class MemChunkMetadataLoader implements IChunkMetadataLoader {
@@ -47,7 +47,20 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
 
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
-    List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+    // There is no need to apply modifications to these, because we already do that while generating
+    // it in TSP
+    List<IChunkMetadata> chunkMetadataList = resource.getChunkMetadataList();
+
+    // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
+    // very cheap.
+    chunkMetadataList.forEach(
+        chunkMetadata -> {
+          if (chunkMetadata.needSetChunkLoader()) {
+            chunkMetadata.setFilePath(resource.getTsFilePath());
+            chunkMetadata.setClosed(resource.isClosed());
+            chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
+          }
+        });
 
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {
@@ -71,10 +84,5 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
       metadata.setVersion(resource.getVersion());
     }
     return chunkMetadataList;
-  }
-
-  @Override
-  public boolean isMemChunkMetadataLoader() {
-    return true;
   }
 }

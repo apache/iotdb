@@ -106,9 +106,9 @@ public class RawDataQueryExecutor {
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
     try {
-      for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
-        PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
-        TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
+      List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
+      for (PartialPath path : paths) {
+        TSDataType dataType = path.getSeriesType();
 
         QueryDataSource queryDataSource =
             QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);

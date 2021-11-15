@@ -102,7 +102,7 @@ public class PublishHandler extends AbstractInterceptHandler {
 
       boolean status = false;
       try {
-        plan.setPrefixPath(new PartialPath(event.getDevice()));
+        plan.setDeviceId(new PartialPath(event.getDevice()));
         status = executeNonQuery(plan);
       } catch (Exception e) {
         LOG.warn(

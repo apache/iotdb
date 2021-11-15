@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -175,15 +175,16 @@ public class LastQueryExecutor {
             QueryResourceManager.getInstance()
                 .getQueryDataSource(nonCachedPaths.get(i), context, null);
         LastPointReader lastReader =
-            new LastPointReader(
-                nonCachedPaths.get(i),
-                nonCachedDataTypes.get(i),
-                deviceMeasurementsMap.getOrDefault(
-                    nonCachedPaths.get(i).getDevice(), new HashSet<>()),
-                context,
-                dataSource,
-                Long.MAX_VALUE,
-                null);
+            nonCachedPaths
+                .get(i)
+                .createLastPointReader(
+                    nonCachedDataTypes.get(i),
+                    deviceMeasurementsMap.getOrDefault(
+                        nonCachedPaths.get(i).getDevice(), new HashSet<>()),
+                    context,
+                    dataSource,
+                    Long.MAX_VALUE,
+                    null);
         readerList.add(lastReader);
       }
     } finally {
@@ -230,13 +231,17 @@ public class LastQueryExecutor {
       restDataType.addAll(dataTypes);
       for (int i = 0; i < seriesPaths.size(); i++) {
         resultContainer.add(new Pair<>(false, null));
+        PartialPath p = ((MeasurementPath) seriesPaths.get(i)).transformToExactPath();
+        restPaths.add(p);
+        restDataType.add(dataTypes.get(i));
       }
     }
     for (int i = 0; i < cacheAccessors.size(); i++) {
       TimeValuePair tvPair = cacheAccessors.get(i).read();
       if (tvPair == null) {
         resultContainer.add(new Pair<>(false, null));
-        restPaths.add(seriesPaths.get(i));
+        PartialPath p = ((MeasurementPath) seriesPaths.get(i)).transformToExactPath();
+        restPaths.add(p);
         restDataType.add(dataTypes.get(i));
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
@@ -260,15 +265,12 @@ public class LastQueryExecutor {
   }
 
   private static class LastCacheAccessor {
-    private PartialPath path;
+
+    private final MeasurementPath path;
     private IMeasurementMNode node;
 
     LastCacheAccessor(PartialPath seriesPath) {
-      if (seriesPath instanceof AlignedPath) {
-        this.path = seriesPath.concatNode(((AlignedPath) seriesPath).getMeasurement(0));
-      } else {
-        this.path = seriesPath;
-      }
+      this.path = (MeasurementPath) seriesPath;
     }
 
     public TimeValuePair read() {

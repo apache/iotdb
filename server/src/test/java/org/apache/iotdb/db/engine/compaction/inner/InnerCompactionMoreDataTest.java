@@ -25,12 +25,13 @@ import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -200,7 +201,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
 
   // test file compaction larger than 1024 sensor
   @Test
-  public void testSensorWithTwoOrThreeNode() throws IllegalPathException, IOException {
+  public void testSensorWithTwoOrThreeNode() throws MetadataException, IOException {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
@@ -208,8 +209,8 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
       // wait
     }
     QueryContext context = new QueryContext();
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[2688].getMeasurementId());

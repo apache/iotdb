@@ -19,12 +19,20 @@
 
 package org.apache.iotdb.tsfile.utils;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
 import java.io.File;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 public class FilePathUtils {
 
-  private static final String PATH_SPLIT_STRING = File.separator.equals("\\") ? "\\\\" : "/";
+  private static final String PATH_SPLIT_STRING =
+      TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs() == FSType.LOCAL
+              && File.separator.equals("\\")
+          ? "\\\\"
+          : "/";
   public static final String FILE_NAME_SEPARATOR = "-";
 
   private FilePathUtils() {
@@ -102,6 +110,24 @@ public class FilePathUtils {
     return Long.parseLong(names[1]);
   }
 
+  /**
+   * @return a long array whose length is 2, the first long value is tsfile version, second long
+   *     value is compaction version, high 32 bit is in-space compaction count, low 32 bit is
+   *     cross-space compaction count
+   */
+  private static long[] splitAndGetVersionArray(String tsFileName) {
+    String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
+    long[] versionArray = new long[2];
+    if (names.length != 4) {
+      return versionArray;
+    }
+    versionArray[0] = Long.parseLong(names[1]);
+    versionArray[1] =
+        (Long.parseLong(names[2]) << 32)
+            | Long.parseLong(names[3].substring(0, names[3].length() - TSFILE_SUFFIX.length()));
+    return versionArray;
+  }
+
   public static Pair<String, Long> getLogicalSgNameAndTimePartitionIdPair(
       String tsFileAbsolutePath) {
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
@@ -110,7 +136,12 @@ public class FilePathUtils {
         Long.parseLong(pathSegments[pathSegments.length - 2]));
   }
 
-  public static Pair<String, Long> getTsFilePrefixPathAndTsFileVersionPair(
+  /**
+   * pair.left tsFilePrefixPath, like data/data/sequence/root.sg1/0/0 pair.right is a long array
+   * whose length is 2 pair.right[0] is tsfile version pair.right[1] is compaction version, high 32
+   * bit is compaction level, low 32 bit is merge count
+   */
+  public static Pair<String, long[]> getTsFilePrefixPathAndTsFileVersionPair(
       String tsFileAbsolutePath) {
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
     int pathLength = pathSegments.length;
@@ -120,6 +151,6 @@ public class FilePathUtils {
             + pathSegments[pathLength - 3]
             + File.separator
             + pathSegments[pathLength - 2],
-        splitAndGetTsFileVersion(pathSegments[pathLength - 1]));
+        splitAndGetVersionArray(pathSegments[pathLength - 1]));
   }
 }

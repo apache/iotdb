@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +43,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -54,15 +52,6 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   private CMManager getCMManager() {
     return ((CMManager) IoTDB.metaManager);
-  }
-
-  @Override
-  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (PartialPath path : paths) {
-      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
-    }
-    return dataTypes;
   }
 
   @Override

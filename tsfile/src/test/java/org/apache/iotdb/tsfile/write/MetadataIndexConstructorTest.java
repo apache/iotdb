@@ -161,37 +161,26 @@ public class MetadataIndexConstructorTest {
     test(devices, vectorMeasurement, singleMeasurement);
   }
 
-  /** Example 5: 1 entities with 2 vectors, 9 measurements for each vector */
+  /** Example 5: 1 entities with 1 vector containing 9 measurements */
   @Test
-  public void vectorIndexTest1() {
+  public void vectorIndexTest() {
     String[] devices = {"d0"};
-    int[][] vectorMeasurement = {{9, 9}};
-    test(devices, vectorMeasurement, null);
-  }
-
-  /** Example 6: 1 entities with 2 vectors, 15 measurements for each vector */
-  @Test
-  public void vectorIndexTest2() {
-    String[] devices = {"d0"};
-    int[][] vectorMeasurement = {{15, 15}};
+    int[][] vectorMeasurement = {{9}};
     test(devices, vectorMeasurement, null);
   }
 
   /**
-   * Example 7: 2 entities, measurements of entities are shown in the following table
+   * Example 6: 2 entities, measurements of entities are shown in the following table
    *
-   * <p>d0.s0~s4 | d0.v0.(s0~s8) | d0.z0~z3 d1.s0~s14 | d1.v0.(s0~s3)
+   * <p>d0.s0~s4 | d0.z0~z3 | d1.v0.(s0~s3)
    */
   @Test
   public void compositeIndexTest() {
     String[] devices = {"d0", "d1"};
-    int[][] vectorMeasurement = {{9}, {4}};
+    int[][] vectorMeasurement = {{}, {4}};
     String[][] singleMeasurement = {
       {"s0", "s1", "s2", "s3", "s4", "z0", "z1", "z2", "z3"},
-      {
-        "s00", "s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12",
-        "s13", "s14"
-      }
+      {}
     };
     test(devices, vectorMeasurement, singleMeasurement);
   }
@@ -316,7 +305,6 @@ public class MetadataIndexConstructorTest {
           endOffset = node.getChildren().get(i + 1).getOffset();
         }
         if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
-          // 把每个叶子节点的第一个加进来
           measurements.get(deviceIndex).add(metadataIndexEntry.getName());
         } else if (node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) {
           MetadataIndexNode subNode =

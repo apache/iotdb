@@ -58,9 +58,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
           IOException, MetadataException, InterruptedException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setPaths(pathList);
-    queryPlan.setDataTypes(dataTypes);
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 

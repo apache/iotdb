@@ -57,6 +57,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -240,12 +241,12 @@ public class TsFileProcessor {
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
-        insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
+        insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
+          insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
     tsFileResource.updatePlanIndexes(insertRowPlan.getIndex());
   }
@@ -322,13 +323,13 @@ public class TsFileProcessor {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
     tsFileResource.updateStartTime(
-        insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[start]);
+        insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
 
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
@@ -340,7 +341,7 @@ public class TsFileProcessor {
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
-    String deviceId = insertRowPlan.getPrefixPath().getFullPath();
+    String deviceId = insertRowPlan.getDeviceId().getFullPath();
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
@@ -378,7 +379,7 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     AlignedWritableMemChunk vectorMemChunk = null;
-    String deviceId = insertRowPlan.getPrefixPath().getFullPath();
+    String deviceId = insertRowPlan.getDeviceId().getFullPath();
     if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
       // ChunkMetadataIncrement
       chunkMetadataIncrement +=
@@ -425,7 +426,7 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getPrefixPath().getFullPath();
+    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
 
     for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -451,7 +452,7 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getPrefixPath().getFullPath();
+    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
 
     updateAlignedMemCost(
         insertTabletPlan.getDataTypes(),
@@ -1298,10 +1299,13 @@ public class TsFileProcessor {
         }
       }
 
+      List<IChunkMetadata> chunkMetadataList =
+          fullPath.getVisibleMetadataListFromWriter(writer, tsFileResource, context);
+
       // get in memory data
-      if (!readOnlyMemChunks.isEmpty()) {
+      if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
         tsfileResourcesForQuery.add(
-            fullPath.createTsFileResource(readOnlyMemChunks, tsFileResource));
+            fullPath.createTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error(

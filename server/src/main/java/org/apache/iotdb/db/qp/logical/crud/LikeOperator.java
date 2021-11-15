@@ -96,8 +96,7 @@ public class LikeOperator extends FunctionOperator {
 
   @Override
   public LikeOperator copy() {
-    LikeOperator ret =
-        new LikeOperator(this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
+    LikeOperator ret = new LikeOperator(this.filterType, singlePath.clone(), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
