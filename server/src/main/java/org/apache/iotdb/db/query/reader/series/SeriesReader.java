@@ -687,8 +687,7 @@ public class SeriesReader {
       if (valueFilter != null) {
         firstPageReader.setFilter(valueFilter);
       }
-      if (valueFilter != null
-              && !valueFilter.satisfy(currentPageStatistics())) {
+      if (valueFilter != null && !valueFilter.satisfy(currentPageStatistics())) {
         skipCurrentPage();
         return null;
       }

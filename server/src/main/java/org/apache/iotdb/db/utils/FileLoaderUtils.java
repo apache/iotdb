@@ -147,8 +147,7 @@ public class FileLoaderUtils {
               timeSeriesMetadata.getStatistics().getEndTime())) {
         return null;
       }
-      if (filter != null
-              && !filter.satisfy(timeSeriesMetadata.getStatistics())) {
+      if (filter != null && !filter.satisfy(timeSeriesMetadata.getStatistics())) {
         return null;
       }
     }

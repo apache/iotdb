@@ -171,12 +171,12 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   private boolean readChunkData() throws IOException {
     while (seriesReader.hasNextChunk()) {
-      if (seriesReader.valueFilter != null && !seriesReader.isChunkOverlapped()) {
+      /*if (seriesReader.valueFilter != null && !seriesReader.isChunkOverlapped()) {
         if (!seriesReader.valueFilter.satisfy(seriesReader.currentChunkStatistics())) {
           seriesReader.skipCurrentChunk();
           continue;
         }
-      }
+      }*/
       if (readPageData()) {
         return true;
       }
