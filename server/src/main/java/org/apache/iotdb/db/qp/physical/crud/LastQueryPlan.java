@@ -50,7 +50,6 @@ public class LastQueryPlan extends RawDataQueryPlan {
       String column = resultColumns.get(i).getResultColumnName();
       if (!columnForReaderSet.contains(column)) {
         addDeduplicatedPaths(paths.get(i));
-        addDeduplicatedDataTypes(dataTypes.get(i));
         deduplicatedResultColumns.add(resultColumns.get(i));
         columnForReaderSet.add(column);
       }

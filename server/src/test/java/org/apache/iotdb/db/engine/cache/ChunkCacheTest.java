@@ -124,8 +124,8 @@ public class ChunkCacheTest {
     Assert.assertEquals(chunk1.getHeader(), chunk2.getHeader());
     Assert.assertEquals(chunk1.getData(), chunk2.getData());
 
-    chunkMetadataKey.setFilePath(null);
     try {
+      chunkMetadataKey.setFilePath(null);
       chunkCache.get(chunkMetadataKey);
       fail();
     } catch (NullPointerException e) {

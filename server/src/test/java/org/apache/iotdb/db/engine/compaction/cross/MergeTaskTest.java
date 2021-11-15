@@ -28,9 +28,11 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -87,8 +89,8 @@ public class MergeTaskTest extends MergeTest {
             1,
             MERGE_TEST_SG);
     mergeTask.call();
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -198,8 +200,8 @@ public class MergeTaskTest extends MergeTest {
             MERGE_TEST_SG);
     mergeTask.call();
 
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[9].getMeasurementId());
@@ -241,8 +243,8 @@ public class MergeTaskTest extends MergeTest {
             MERGE_TEST_SG);
     mergeTask.call();
 
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -280,8 +282,8 @@ public class MergeTaskTest extends MergeTest {
             MERGE_TEST_SG);
     mergeTask.call();
 
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -323,8 +325,8 @@ public class MergeTaskTest extends MergeTest {
             MERGE_TEST_SG);
     mergeTask.call();
 
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -362,8 +364,8 @@ public class MergeTaskTest extends MergeTest {
             MERGE_TEST_SG);
     mergeTask.call();
 
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -426,8 +428,8 @@ public class MergeTaskTest extends MergeTest {
             MERGE_TEST_SG);
     mergeTask.call();
 
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
@@ -475,8 +477,8 @@ public class MergeTaskTest extends MergeTest {
             MERGE_TEST_SG);
     mergeTask.call();
 
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());

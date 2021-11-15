@@ -22,12 +22,12 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
@@ -45,13 +45,24 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
     this.timeFilter = timeFilter;
   }
 
-  // TODO current implementation is same as MemChunkMetadataLoader, I think we need to move the
-  // processing of modification for ReadOnlyMemChunk from TSP to this class
-  // There is no need to set IChunkLoader for it, because the MemChunkLoader has already been set
-  // while creating ReadOnlyMemChunk
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
-    List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+
+    // There is no need to apply modifications to these, because we already do that while generating
+    // it in TSP
+    List<IChunkMetadata> chunkMetadataList = resource.getChunkMetadataList();
+
+    chunkMetadataList.forEach(
+        chunkMetadata -> {
+          if (chunkMetadata.needSetChunkLoader()) {
+            chunkMetadata.setFilePath(resource.getTsFilePath());
+            chunkMetadata.setClosed(resource.isClosed());
+            chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
+          }
+        });
+
+    // There is no need to set IChunkLoader for it, because the MemChunkLoader has already been set
+    // while creating ReadOnlyMemChunk
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {
       for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
@@ -74,10 +85,5 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       metadata.setVersion(resource.getVersion());
     }
     return chunkMetadataList;
-  }
-
-  @Override
-  public boolean isMemChunkMetadataLoader() {
-    return true;
   }
 }

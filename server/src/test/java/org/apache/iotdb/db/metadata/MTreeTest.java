@@ -150,7 +150,7 @@ public class MTreeTest {
           Collections.emptyMap(),
           null);
     } catch (MetadataException e) {
-      Assert.assertEquals(String.format("%s is not a legal path", "aa.bb"), e.getMessage());
+      Assert.assertEquals(String.format("%s is not a legal path", "aa.bb.cc"), e.getMessage());
     }
   }
 

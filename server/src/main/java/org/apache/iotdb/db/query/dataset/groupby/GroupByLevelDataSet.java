@@ -79,6 +79,10 @@ public class GroupByLevelDataSet extends QueryDataSet {
         }
       }
     }
+    // group by level's column number is different from other datasets
+    // TODO I don't know whether it's right or not in AlignedPath, remember to check here while
+    // adapting GroupByLevel query for new vector
+    super.columnNum = dataTypes.size();
   }
 
   @Override

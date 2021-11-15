@@ -19,18 +19,19 @@
 
 package org.apache.iotdb.cluster.query.last;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -57,7 +58,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class ClusterLastQueryExecutor extends LastQueryExecutor {
@@ -66,7 +66,8 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
   private MetaGroupMember metaGroupMember;
 
   private static ExecutorService lastQueryPool =
-      Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+      IoTDBThreadPoolFactory.newFixedThreadPool(
+          Runtime.getRuntime().availableProcessors(), "ClusterLastQuery");
 
   public ClusterLastQueryExecutor(LastQueryPlan lastQueryPlan, MetaGroupMember metaGroupMember) {
     super(lastQueryPlan);
@@ -178,7 +179,6 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws QueryProcessException, StorageEngineException, IOException {
       if (group.contains(metaGroupMember.getThisNode())) {
-        ClusterQueryUtils.checkPathExistence(seriesPaths);
         return calculateSeriesLastLocally(group, seriesPaths, context);
       } else {
         return calculateSeriesLastRemotely(group, seriesPaths, context);
@@ -223,7 +223,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
             results.add(new Pair<>(true, pair));
           }
           return results;
-        } catch (TException e) {
+        } catch (IOException | TException e) {
           logger.warn("Query last of {} from {} errored", group, seriesPaths, e);
           return Collections.emptyList();
         } catch (InterruptedException e) {
@@ -236,17 +236,15 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     }
 
     private ByteBuffer lastAsync(Node node, QueryContext context)
-        throws TException, InterruptedException {
+        throws IOException, TException, InterruptedException {
       ByteBuffer buffer;
-      AsyncDataClient asyncDataClient;
-      try {
-        asyncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      } catch (IOException e) {
+      AsyncDataClient asyncDataClient =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      if (asyncDataClient == null) {
         return null;
       }
+
       buffer =
           SyncClientAdaptor.last(
               asyncDataClient,
@@ -258,26 +256,31 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       return buffer;
     }
 
-    private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
+    private ByteBuffer lastSync(Node node, QueryContext context) throws IOException, TException {
       ByteBuffer res;
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        try {
-          res =
-              syncDataClient.last(
-                  new LastQueryRequest(
-                      PartialPath.toStringList(seriesPaths),
-                      dataTypeOrdinals,
-                      context.getQueryId(),
-                      queryPlan.getDeviceToMeasurements(),
-                      group.getHeader(),
-                      syncDataClient.getNode()));
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        res =
+            syncDataClient.last(
+                new LastQueryRequest(
+                    PartialPath.toStringList(seriesPaths),
+                    dataTypeOrdinals,
+                    context.getQueryId(),
+                    queryPlan.getDeviceToMeasurements(),
+                    group.getHeader(),
+                    syncDataClient.getNode()));
+      } catch (IOException | TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        if (syncDataClient != null) {
+          syncDataClient.close();
+        }
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
       return res;

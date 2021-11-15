@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -52,10 +52,9 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(
-        Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
-    plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
+        Collections.singletonList(
+            new MeasurementPath(TestUtils.getTestSeries(0, 10), TSDataType.DOUBLE)));
     plan.setPaths(plan.getDeduplicatedPaths());
-    plan.setDataTypes(plan.getDeduplicatedDataTypes());
     long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     Map<TSDataType, IFill> tsDataTypeIFillMap =
         Collections.singletonMap(
@@ -93,10 +92,9 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(
-        Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
-    plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
+        Collections.singletonList(
+            new MeasurementPath(TestUtils.getTestSeries(0, 10), TSDataType.DOUBLE)));
     plan.setPaths(plan.getDeduplicatedPaths());
-    plan.setDataTypes(plan.getDeduplicatedDataTypes());
     long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     Map<TSDataType, IFill> tsDataTypeIFillMap =
         Collections.singletonMap(
@@ -135,10 +133,9 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(
-        Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
-    plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
+        Collections.singletonList(
+            new MeasurementPath(TestUtils.getTestSeries(0, 10), TSDataType.DOUBLE)));
     plan.setPaths(plan.getDeduplicatedPaths());
-    plan.setDataTypes(plan.getDeduplicatedDataTypes());
     double fillValue = 1.0D;
     Map<TSDataType, IFill> tsDataTypeIFillMap =
         Collections.singletonMap(

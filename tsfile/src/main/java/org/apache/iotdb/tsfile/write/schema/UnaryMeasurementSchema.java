@@ -21,20 +21,17 @@ package org.apache.iotdb.tsfile.write.schema;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -207,6 +204,11 @@ public class UnaryMeasurementSchema
   }
 
   @Override
+  public byte getTypeInByte() {
+    return type;
+  }
+
+  @Override
   public TSEncoding getTimeTSEncoding() {
     return TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
   }
@@ -288,12 +290,6 @@ public class UnaryMeasurementSchema
     }
 
     return byteLen;
-  }
-
-  @Override
-  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, String deviceId) {
-    return new ArrayList<>(writer.getVisibleMetadataList(deviceId, measurementId, getType()));
   }
 
   /** function for serializing data to byte buffer. */

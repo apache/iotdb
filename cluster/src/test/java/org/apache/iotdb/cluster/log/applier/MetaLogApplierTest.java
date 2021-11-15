@@ -88,7 +88,7 @@ public class MetaLogApplierTest extends IoTDBTest {
     Node node = new Node("localhost", 1111, 0, 2222, Constants.RPC_PORT, "localhost");
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     applier.apply(log);
 
     assertTrue(nodes.contains(node));
@@ -100,7 +100,7 @@ public class MetaLogApplierTest extends IoTDBTest {
 
     Node node = testMetaGroupMember.getThisNode();
     RemoveNodeLog log = new RemoveNodeLog();
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setRemovedNode(node);
     applier.apply(log);
 

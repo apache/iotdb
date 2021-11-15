@@ -114,9 +114,4 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
     return chunkMetadataList;
   }
-
-  @Override
-  public boolean isMemChunkMetadataLoader() {
-    return false;
-  }
 }

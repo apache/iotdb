@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.cluster.query.fill;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.QueryTimeOutException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -59,9 +60,11 @@ public class ClusterPreviousFill extends PreviousFill {
   private static final Logger logger = LoggerFactory.getLogger(ClusterPreviousFill.class);
   private MetaGroupMember metaGroupMember;
   private TimeValuePair fillResult;
+  private static final String PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT =
+      "{}: Cannot perform previous fill of {} to {}";
 
   ClusterPreviousFill(PreviousFill fill, MetaGroupMember metaGroupMember) {
-    super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange());
+    super(fill.getDataType(), fill.getQueryStartTime(), fill.getBeforeRange());
     this.metaGroupMember = metaGroupMember;
   }
 
@@ -120,7 +123,7 @@ public class ClusterPreviousFill extends PreviousFill {
     }
     CountDownLatch latch = new CountDownLatch(partitionGroups.size());
     PreviousFillHandler handler = new PreviousFillHandler(latch);
-
+    // TODO: create a thread pool for each query calling.
     ExecutorService fillService = Executors.newFixedThreadPool(partitionGroups.size());
     PreviousFillArguments arguments =
         new PreviousFillArguments(path, dataType, queryTime, beforeRange, deviceMeasurements);
@@ -130,7 +133,8 @@ public class ClusterPreviousFill extends PreviousFill {
     }
     fillService.shutdown();
     try {
-      fillService.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+      fillService.awaitTermination(
+          ClusterConstant.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for fill pool to stop", e);
@@ -215,26 +219,16 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteAsyncPreviousFill(
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    AsyncDataClient asyncDataClient;
     try {
-      asyncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      AsyncDataClient asyncDataClient =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
     } catch (IOException e) {
       logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
-      return null;
-    }
-
-    try {
-      byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
     } catch (Exception e) {
       logger.error(
-          "{}: Cannot perform previous fill of {} to {}",
-          metaGroupMember,
-          arguments.getPath(),
-          node,
-          e);
+          PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT, metaGroupMember, arguments.getPath(), node, e);
     }
     return byteBuffer;
   }
@@ -242,24 +236,33 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteSyncPreviousFill(
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    try (SyncDataClient syncDataClient =
-        metaGroupMember
-            .getClientProvider()
-            .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-      try {
-        byteBuffer = syncDataClient.previousFill(request);
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        syncDataClient.getInputProtocol().getTransport().close();
-        throw e;
-      }
-    } catch (Exception e) {
+    SyncDataClient syncDataClient = null;
+    try {
+      syncDataClient =
+          ClusterIoTDB.getInstance()
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      byteBuffer = syncDataClient.previousFill(request);
+
+    } catch (TException e) {
+      // the connection may be broken, close it to avoid it being reused
+      syncDataClient.close();
       logger.error(
-          "{}: Cannot perform previous fill of {} to {}",
+          PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT,
           metaGroupMember.getName(),
           arguments.getPath(),
           node,
           e);
+    } catch (Exception e) {
+      logger.error(
+          PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT,
+          metaGroupMember.getName(),
+          arguments.getPath(),
+          node,
+          e);
+    } finally {
+      if (syncDataClient != null) {
+        syncDataClient.returnSelf();
+      }
     }
     return byteBuffer;
   }
