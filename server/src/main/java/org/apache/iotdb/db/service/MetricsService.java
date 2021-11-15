@@ -18,53 +18,93 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.metrics.server.MetricsSystem;
-import org.apache.iotdb.db.metrics.server.ServerArgument;
-import org.apache.iotdb.db.metrics.ui.MetricsWebUI;
+import org.apache.iotdb.metrics.CompositeReporter;
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.Reporter;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
-import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.ServiceLoader;
 
 public class MetricsService implements MetricsServiceMBean, IService {
-
   private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
+  private static final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
-  private Server server;
-  private ExecutorService executorService;
+  private static MetricManager metricManager;
+
+  private static CompositeReporter compositeReporter;
 
   private MetricsService() {}
 
-  public static MetricsService getInstance() {
-    return MetricsServiceHolder.INSTANCE;
+  public static void loadManager() {
+    logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
+    ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
+    int size = 0;
+    for (MetricManager mf : metricManagers) {
+      size++;
+      if (mf.getClass()
+          .getName()
+          .toLowerCase()
+          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+        metricManager = mf;
+        break;
+      }
+    }
+
+    // if no more implementations, we use nothingManager.
+    if (size == 0 || metricManager == null) {
+      metricManager = new DoNothingMetricManager();
+    } else if (size > 1) {
+      logger.warn(
+          "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
+    }
   }
 
-  @Override
-  public ServiceType getID() {
-    return ServiceType.METRICS_SERVICE;
+  public static void loadReporter() {
+    logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
+    compositeReporter = new CompositeReporter();
+
+    ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
+    for (Reporter reporter : reporters) {
+      if (metricConfig.getMetricReporterList() != null
+          && metricConfig.getMetricReporterList().contains(reporter.getReporterType())
+          && reporter
+              .getClass()
+              .getName()
+              .toLowerCase()
+              .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+        reporter.setMetricManager(metricManager);
+        compositeReporter.addReporter(reporter);
+      }
+    }
   }
 
-  @Override
-  public int getMetricsPort() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.getMetricsPort();
+  /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
+  public void start(ReporterType reporter) {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.start(reporter);
+  }
+
+  /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
+  public void stop(ReporterType reporter) {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.stop(reporter);
   }
 
   @Override
@@ -85,94 +125,51 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   @Override
-  public synchronized void startService() {
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
-      return;
-    }
-    logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    executorService = IoTDBThreadPoolFactory.newSingleThreadExecutor("Deprecated-Metric-Monitor");
-    int port = getMetricsPort();
-    MetricsSystem metricsSystem = new MetricsSystem(new ServerArgument(port));
-    MetricsWebUI metricsWebUI = new MetricsWebUI(metricsSystem.getMetricRegistry());
-    metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
-    metricsWebUI.initialize();
-    server = metricsWebUI.getServer(port);
-    server.setStopTimeout(10000);
-    metricsSystem.start();
-    try {
-      executorService.execute(new MetricsServiceThread(server));
-      logger.info(
-          "{}: start {} successfully, listening on ip {} port {}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          this.getID().getName(),
-          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
-    } catch (NullPointerException e) {
-      // issue IOTDB-415, we need to stop the service.
-      logger.error(
-          "{}: start {} failed, listening on ip {} port {}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          this.getID().getName(),
-          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
-      stopService();
-    }
+  /** Start all reporter. if is disabled, do nothing */
+  public void startService() {
+    logger.info("Init metric service");
+    // load manager
+    loadManager();
+    // load reporter
+    loadReporter();
+    // do some init work
+    metricManager.init();
+    // start reporter
+    compositeReporter.startAll();
   }
 
   @Override
-  public void restartService() {
+  public void restartService() throws StartupException {
     stopService();
     startService();
   }
 
   @Override
+  /** Stop metric service. if is disabled, do nothing */
   public void stopService() {
-    logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    try {
-      if (server != null) {
-        server.stop();
-        server = null;
-      }
-      if (executorService != null) {
-        executorService.shutdown();
-        if (!executorService.awaitTermination(3000, TimeUnit.MILLISECONDS)) {
-          executorService.shutdownNow();
-        }
-        executorService = null;
-      }
-    } catch (InterruptedException e) {
-      logger.warn("MetricsService can not be closed in {} ms", 3000);
-      Thread.currentThread().interrupt();
-    } catch (Exception e) {
-      logger.error(
-          "{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
-      executorService.shutdownNow();
-    }
-    checkAndWaitPortIsClosed();
-    logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    compositeReporter.stopAll();
   }
 
-  private void checkAndWaitPortIsClosed() {
-    SocketAddress socketAddress = new InetSocketAddress("localhost", getMetricsPort());
-    @SuppressWarnings("squid:S2095")
-    Socket socket = new Socket();
-    int timeout = 1;
-    int count = 10000; // 10 seconds
-    while (count > 0) {
-      try {
-        socket.connect(socketAddress, timeout);
-        count--;
-      } catch (IOException e) {
-        return;
-      } finally {
-        try {
-          socket.close();
-        } catch (IOException e) {
-          // do nothing
-        }
-      }
-    }
-    logger.error("Port {} can not be closed.", getMetricsPort());
+  /** Enable some predefined metric, now support jvm */
+  public void enablePredefinedMetric(PredefinedMetric metric) {
+    metricManager.enablePredefinedMetric(metric);
+  }
+
+  public MetricManager getMetricManager() {
+    return metricManager;
+  }
+
+  public boolean isEnable() {
+    return metricConfig.getEnableMetric();
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.METRICS_SERVICE;
+  }
+
+  public static MetricsService getInstance() {
+    return MetricsServiceHolder.INSTANCE;
   }
 
   private static class MetricsServiceHolder {
@@ -180,31 +177,5 @@ public class MetricsService implements MetricsServiceMBean, IService {
     private static final MetricsService INSTANCE = new MetricsService();
 
     private MetricsServiceHolder() {}
-  }
-
-  private class MetricsServiceThread extends WrappedRunnable {
-
-    private Server server;
-
-    public MetricsServiceThread(Server server) {
-      this.server = server;
-    }
-
-    @Override
-    public void runMayThrow() {
-      try {
-        Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
-        server.start();
-        server.join();
-      } catch (
-          @SuppressWarnings("squid:S2142")
-          InterruptedException e1) {
-        // we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
-        logger.error(e1.getMessage(), e1);
-      } catch (Exception e) {
-        logger.error(
-            "{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
-      }
-    }
   }
 }
