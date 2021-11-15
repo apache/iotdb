@@ -307,7 +307,7 @@ public class TestUtils {
     // data for raw data query and aggregation
     // 10 devices (storage groups)
     for (int j = 0; j < 10; j++) {
-      insertPlan.setPrefixPath(new PartialPath(getTestSg(j)));
+      insertPlan.setDeviceId(new PartialPath(getTestSg(j)));
       String[] measurements = new String[10];
       IMeasurementMNode[] mNodes = new IMeasurementMNode[10];
       // 10 series each device, all double
@@ -360,7 +360,7 @@ public class TestUtils {
     }
 
     // data for fill
-    insertPlan.setPrefixPath(new PartialPath(getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(getTestSg(0)));
     String[] measurements = new String[] {getTestMeasurement(10)};
     IMeasurementMNode[] schemas = new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(10)};
     insertPlan.setMeasurements(measurements);

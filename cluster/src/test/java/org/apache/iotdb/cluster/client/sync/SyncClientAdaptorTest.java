@@ -245,11 +245,11 @@ public class SyncClientAdaptorTest {
               List<String> path,
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-            List<List<String>> pathString = new ArrayList<>();
-            for (String s : path) {
-              pathString.add(Collections.singletonList(s));
+            List<Byte> dataTypes = new ArrayList<>();
+            for (int i = 0; i < path.size(); i++) {
+              dataTypes.add(TSDataType.DOUBLE.serialize());
             }
-            resultHandler.onComplete(new GetAllPathsResult(pathString));
+            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes));
           }
 
           @Override
@@ -395,10 +395,10 @@ public class SyncClientAdaptorTest {
         paths.subList(0, paths.size() / 2),
         SyncClientAdaptor.getUnregisteredMeasurements(
             dataClient, TestUtils.getRaftNode(0, 0), paths));
-    List<String> result = new ArrayList<>();
-    SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getRaftNode(0, 0), paths, false)
-        .paths
-        .forEach(p -> result.add(p.get(0)));
+    List<String> result =
+        new ArrayList<>(
+            SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getRaftNode(0, 0), paths, false)
+                .paths);
     assertEquals(paths, result);
     assertEquals(
         paths.size(),

@@ -681,8 +681,10 @@ public class AggregationExecutor {
                 timeArray, timeArrayLength, entry.getKey());
           } else {
             Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
-            for (Integer i : entry.getValue()) {
-              aggregateResultList[i].updateResultUsingValues(timeArray, timeArrayLength, values);
+            if (values != null) {
+              for (Integer i : entry.getValue()) {
+                aggregateResultList[i].updateResultUsingValues(timeArray, timeArrayLength, values);
+              }
             }
           }
         }
@@ -696,8 +698,7 @@ public class AggregationExecutor {
    * @param aggregateResultList aggregate result list
    */
   private QueryDataSet constructDataSet(
-      List<AggregateResult> aggregateResultList, AggregationPlan plan)
-      throws QueryProcessException {
+      List<AggregateResult> aggregateResultList, AggregationPlan plan) {
     SingleDataSet dataSet;
     RowRecord record = new RowRecord(0);
 

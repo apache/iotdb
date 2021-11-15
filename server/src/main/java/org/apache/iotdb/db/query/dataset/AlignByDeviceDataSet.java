@@ -79,7 +79,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   public AlignByDeviceDataSet(
       AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter) {
     super(null, alignByDevicePlan.getDataTypes());
-
+    // align by device's column number is different from other datasets
+    // TODO I don't know whether it's right or not in AlignedPath, remember to check here while
+    // adapting AlignByDevice query for new vector
+    super.columnNum = alignByDevicePlan.getDataTypes().size();
     this.measurements = alignByDevicePlan.getMeasurements();
     this.devices = alignByDevicePlan.getDevices();
     this.measurementInfoMap = alignByDevicePlan.getMeasurementInfoMap();

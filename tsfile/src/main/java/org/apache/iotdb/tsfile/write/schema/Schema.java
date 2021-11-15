@@ -36,7 +36,7 @@ public class Schema implements Serializable {
    * Path (devicePath) -> measurementSchema By default, use the LinkedHashMap to store the order of
    * insertion
    */
-  private Map<Path, MeasurementGroup> registeredTimeseries;
+  private final Map<Path, MeasurementGroup> registeredTimeseries;
 
   /** template name -> (measurement -> MeasurementSchema) */
   private Map<String, MeasurementGroup> schemaTemplates;
@@ -68,20 +68,14 @@ public class Schema implements Serializable {
     this.schemaTemplates.put(templateName, measurementGroup);
   }
 
-  /**
-   * If template does not exist, an nonAligned timeseries is created by default
-   *
-   * @param templateName
-   * @param descriptor
-   */
+  /** If template does not exist, an nonAligned timeseries is created by default */
   public void extendTemplate(String templateName, UnaryMeasurementSchema descriptor) {
     if (schemaTemplates == null) {
       schemaTemplates = new HashMap<>();
     }
     MeasurementGroup measurementGroup =
         this.schemaTemplates.getOrDefault(
-            templateName,
-            new MeasurementGroup(false, new HashMap<String, UnaryMeasurementSchema>()));
+            templateName, new MeasurementGroup(false, new HashMap<>()));
     measurementGroup.getMeasurementSchemaMap().put(descriptor.getMeasurementId(), descriptor);
     this.schemaTemplates.put(templateName, measurementGroup);
   }

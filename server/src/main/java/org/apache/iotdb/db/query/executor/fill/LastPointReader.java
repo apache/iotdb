@@ -44,14 +44,14 @@ import java.util.Set;
 public class LastPointReader {
 
   // if it is a common path, it will be MeasurementPath
-  // if it is a sub sensor of an aligned device, it will be AlignedPath with only one sub sensor
+  // if it is a measurement of an aligned device, it will be AlignedPath with only one measurement
   private final PartialPath seriesPath;
   long queryTime;
   TSDataType dataType;
   private final QueryContext context;
 
-  // measurements of the same device as "seriesPath"
-  private final Set<String> deviceMeasurements;
+  // measurements of the same device in seriesPath
+  private final Set<String> measurements;
 
   private final Filter timeFilter;
 
@@ -64,7 +64,7 @@ public class LastPointReader {
   public LastPointReader(
       PartialPath seriesPath,
       TSDataType dataType,
-      Set<String> deviceMeasurements,
+      Set<String> measurements,
       QueryContext context,
       QueryDataSource dataSource,
       long queryTime,
@@ -74,8 +74,8 @@ public class LastPointReader {
     this.dataSource = dataSource;
     this.context = context;
     this.queryTime = queryTime;
-    this.deviceMeasurements = deviceMeasurements;
-    deviceMeasurements.add(seriesPath.getMeasurement());
+    this.measurements = measurements;
+    measurements.add(seriesPath.getMeasurement());
     this.timeFilter = timeFilter;
   }
 
@@ -107,7 +107,7 @@ public class LastPointReader {
       TsFileResource resource = seqFileResource.get(index);
       ITimeSeriesMetadata timeseriesMetadata;
       timeseriesMetadata =
-          loadTimeSeriesMetadata(resource, seriesPath, context, timeFilter, deviceMeasurements);
+          loadTimeSeriesMetadata(resource, seriesPath, context, timeFilter, measurements);
       if (timeseriesMetadata != null) {
         if (!timeseriesMetadata.isModified()
             && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
@@ -151,7 +151,7 @@ public class LastPointReader {
         && (lBoundTime <= unseqFileResource.peek().getEndTime(seriesPath.getDevice()))) {
       ITimeSeriesMetadata timeseriesMetadata =
           loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
+              unseqFileResource.poll(), seriesPath, context, timeFilter, measurements);
 
       if (timeseriesMetadata == null
           || (!timeseriesMetadata.isModified()

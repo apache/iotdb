@@ -597,7 +597,7 @@ public class MetaGroupMemberTest extends BaseMember {
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -951,7 +951,7 @@ public class MetaGroupMemberTest extends BaseMember {
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
-      insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(i)));
+      insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
       IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
@@ -987,7 +987,7 @@ public class MetaGroupMemberTest extends BaseMember {
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp =
             readerFactory.getReaderByTimestamp(
-                new PartialPath(TestUtils.getTestSeries(i, 0)),
+                new MeasurementPath(TestUtils.getTestSeries(i, 0), TSDataType.DOUBLE),
                 deviceMeasurements,
                 TSDataType.DOUBLE,
                 context,
@@ -1017,7 +1017,7 @@ public class MetaGroupMemberTest extends BaseMember {
     ClusterConstant.setReadOperationTimeoutMS(1000);
 
     for (int i = 0; i < 10; i++) {
-      insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(i)));
+      insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
       IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
@@ -1049,7 +1049,7 @@ public class MetaGroupMemberTest extends BaseMember {
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader =
             readerFactory.getSeriesReader(
-                new PartialPath(TestUtils.getTestSeries(i, 0)),
+                new MeasurementPath(TestUtils.getTestSeries(i, 0), TSDataType.DOUBLE),
                 deviceMeasurements,
                 TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),

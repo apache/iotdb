@@ -35,6 +35,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -119,8 +120,6 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.THREAD_POOL_SIZE;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPool;
-import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getAssembledPathFromRequest;
-import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStrListForRequest;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -409,10 +408,10 @@ public class CMManager extends MManager {
       throws MetadataException, IOException {
     IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[plan.getMeasurements().length];
     int nonExistSchemaIndex =
-        getMNodesLocally(plan.getPrefixPath(), plan.getMeasurements(), measurementMNodes);
+        getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
     if (nonExistSchemaIndex == -1) {
       plan.setMeasurementMNodes(measurementMNodes);
-      return new InternalMNode(null, plan.getPrefixPath().getDevice());
+      return new InternalMNode(null, plan.getDeviceId().getDevice());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
@@ -496,7 +495,7 @@ public class CMManager extends MManager {
       storageGroups.addAll(getStorageGroups(getValidStorageGroups((BatchPlan) plan)));
     } else if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
       storageGroups.addAll(
-          getStorageGroups(Collections.singletonList(((InsertPlan) plan).getPrefixPath())));
+          getStorageGroups(Collections.singletonList(((InsertPlan) plan).getDeviceId())));
     } else if (plan instanceof CreateTimeSeriesPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath())));
@@ -617,7 +616,7 @@ public class CMManager extends MManager {
       if (!success) {
         logger.error(
             "create timeseries for device={} failed, plan={}",
-            insertTabletPlan.getPrefixPath(),
+            insertTabletPlan.getDeviceId(),
             insertTabletPlan);
       }
     }
@@ -633,7 +632,7 @@ public class CMManager extends MManager {
       if (!success) {
         logger.error(
             "create timeseries for device={} failed, plan={}",
-            insertRowPlan.getPrefixPath(),
+            insertRowPlan.getDeviceId(),
             insertRowPlan);
       }
     }
@@ -649,7 +648,7 @@ public class CMManager extends MManager {
       if (!success) {
         logger.error(
             "create timeseries for device={} failed, plan={}",
-            insertRowPlan.getPrefixPath(),
+            insertRowPlan.getDeviceId(),
             insertRowPlan);
       }
     }
@@ -677,7 +676,7 @@ public class CMManager extends MManager {
     }
 
     List<String> seriesList = new ArrayList<>();
-    PartialPath deviceId = insertPlan.getPrefixPath();
+    PartialPath deviceId = insertPlan.getDeviceId();
     PartialPath storageGroupName;
     try {
       storageGroupName =
@@ -731,7 +730,7 @@ public class CMManager extends MManager {
 
     CreateAlignedTimeSeriesPlan plan =
         new CreateAlignedTimeSeriesPlan(
-            insertPlan.getPrefixPath(),
+            insertPlan.getDeviceId(),
             measurements,
             dataTypes,
             encodings,
@@ -1057,17 +1056,17 @@ public class CMManager extends MManager {
     if (result != null) {
       // paths may be empty, implying that the group does not contain matched paths, so we do not
       // need to query other nodes in the group
-      List<MeasurementPath> partialPaths = new ArrayList<>();
+      List<MeasurementPath> measurementPaths = new ArrayList<>();
       for (int i = 0; i < result.paths.size(); i++) {
-        // todo check this transform
         MeasurementPath matchedPath =
-            (MeasurementPath) getAssembledPathFromRequest(result.paths.get(i));
-        partialPaths.add(matchedPath);
+            ClusterQueryUtils.getAssembledPathFromRequest(
+                result.getPaths().get(i), result.getDataTypes().get(i));
+        measurementPaths.add(matchedPath);
         if (withAlias && matchedPath != null) {
           matchedPath.setMeasurementAlias(result.aliasList.get(i));
         }
       }
-      return partialPaths;
+      return measurementPaths;
     } else {
       // a null implies a network failure, so we have to query other nodes in the group
       return null;
@@ -1671,14 +1670,16 @@ public class CMManager extends MManager {
 
   public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias)
       throws MetadataException {
-    List<List<String>> retPaths = new ArrayList<>();
+    List<String> retPaths = new ArrayList<>();
+    List<Byte> dataTypes = new ArrayList<>();
     List<String> alias = withAlias ? new ArrayList<>() : null;
 
     for (String path : paths) {
       List<MeasurementPath> allTimeseriesPathWithAlias =
           super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
-      for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
-        retPaths.add(getPathStrListForRequest(timeseriesPathWithAlias));
+      for (MeasurementPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
+        retPaths.add(timeseriesPathWithAlias.getFullPath());
+        dataTypes.add(timeseriesPathWithAlias.getSeriesTypeInByte());
         if (withAlias) {
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());
         }
@@ -1687,6 +1688,7 @@ public class CMManager extends MManager {
 
     GetAllPathsResult getAllPathsResult = new GetAllPathsResult();
     getAllPathsResult.setPaths(retPaths);
+    getAllPathsResult.setDataTypes(dataTypes);
     getAllPathsResult.setAliasList(alias);
     return getAllPathsResult;
   }

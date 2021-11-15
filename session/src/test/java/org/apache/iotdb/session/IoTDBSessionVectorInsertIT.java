@@ -275,12 +275,11 @@ public class IoTDBSessionVectorInsertIT {
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(0), rowIndex, row * 10 + 1L);
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(1), rowIndex, (int) (row * 10 + 2));
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, row * 10 + 1L);
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (int) (row * 10 + 2));
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertAlignedTablet(tablet, true);
         tablet.reset();
       }
       timestamp++;

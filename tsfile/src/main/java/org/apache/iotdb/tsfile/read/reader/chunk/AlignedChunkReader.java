@@ -126,7 +126,7 @@ public class AlignedChunkReader implements IChunkReader {
         }
       }
       // if the current page satisfies
-      if (exits && pageSatisfied(timePageHeader)) {
+      if (exits && timePageSatisfied(timePageHeader)) {
         AlignedPageReader alignedPageReader =
             constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
         if (alignedPageReader != null) {
@@ -138,8 +138,11 @@ public class AlignedChunkReader implements IChunkReader {
     }
   }
 
-  private boolean pageSatisfied(PageHeader pageHeader) {
-    return filter == null || filter.satisfy(pageHeader.getStatistics());
+  /** used for time page filter */
+  private boolean timePageSatisfied(PageHeader timePageHeader) {
+    long startTime = timePageHeader.getStatistics().getStartTime();
+    long endTime = timePageHeader.getStatistics().getEndTime();
+    return filter == null || filter.satisfyStartEndTime(startTime, endTime);
   }
 
   /** used for value page filter */
