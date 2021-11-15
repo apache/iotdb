@@ -872,7 +872,7 @@ public class MManagerBasicTest {
 
     Set<String> allSchema = new HashSet<>();
     for (IMeasurementSchema schema : node.getSchemaTemplate().getSchemaMap().values()) {
-      allSchema.add("root.sg1.d1" +TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
+      allSchema.add("root.sg1.d1" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
     }
     for (MeasurementPath measurementPath :
         manager.getMeasurementPaths(new PartialPath("root.sg1.d1.**"))) {
@@ -1127,9 +1127,7 @@ public class MManagerBasicTest {
       manager.createTimeseries(createTimeSeriesPlan2);
       fail();
     } catch (Exception e) {
-      assertEquals(
-          "Path [root.sg1.d1.s11] conflicts with template [template1].",
-          e.getMessage());
+      assertEquals("Path [root.sg1.d1.s11] conflicts with template [template1].", e.getMessage());
     }
   }
 
@@ -1439,7 +1437,8 @@ public class MManagerBasicTest {
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(new PartialPath("root.tree.**.s1"), false, null, null, 0, 0, false);
-    List<ShowTimeSeriesResult> result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    List<ShowTimeSeriesResult> result =
+        manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     assertEquals(1, result.size());
   }
 

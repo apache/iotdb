@@ -189,7 +189,7 @@ public class InsertRowPlanTest {
   @Test
   public void testInsertRowPlanWithSchemaTemplateFormer()
       throws QueryProcessException, MetadataException, InterruptedException,
-      QueryFilterOptimizationException, StorageEngineException, IOException {
+          QueryFilterOptimizationException, StorageEngineException, IOException {
     List<List<String>> measurementList = new ArrayList<>();
     List<String> v1 = new ArrayList<>();
     v1.add("vector.s1");

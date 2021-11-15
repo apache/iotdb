@@ -23,12 +23,10 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -258,7 +256,6 @@ public abstract class Traverser {
     this.isPrefixMatch = isPrefixMatch;
   }
 
-
   /**
    * @param currentNode the node need to get the full path of
    * @return full path from traverse start node to the current node
@@ -277,7 +274,8 @@ public abstract class Traverser {
     return new PartialPath(builder.toString());
   }
 
-  protected MeasurementPath getPivotMeasurementPathInTraverse(IMeasurementMNode currentNode) throws MetadataException {
+  protected MeasurementPath getPivotMeasurementPathInTraverse(IMeasurementMNode currentNode)
+      throws MetadataException {
     IMNode par = traverseContext.peek();
     if (!(par instanceof IEntityMNode)) {
       throw new MetadataException("Measurement not under entity: " + currentNode.getName());
@@ -293,14 +291,13 @@ public abstract class Traverser {
       builder.append(TsFileConstant.PATH_SEPARATOR);
     }
     builder.append(currentNode.getName());
-    MeasurementPath retPath = new MeasurementPath(new PartialPath(builder.toString()), currentNode.getSchema());
+    MeasurementPath retPath =
+        new MeasurementPath(new PartialPath(builder.toString()), currentNode.getSchema());
     retPath.setUnderAlignedEntity(((IEntityMNode) par).isAligned());
     return retPath;
   }
 
-  /**
-   * @return the storage group node in the traverse path
-   */
+  /** @return the storage group node in the traverse path */
   protected IMNode getStorageGroupNodeInTraversePath() {
     Iterator<IMNode> nodes = traverseContext.iterator();
     while (nodes.hasNext()) {

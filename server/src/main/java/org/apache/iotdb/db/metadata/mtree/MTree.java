@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
-import com.sun.org.apache.xml.internal.dtm.ref.sax2dtm.SAX2DTM2;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -66,7 +65,6 @@ import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -81,7 +79,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.jvm.hotspot.oops.InstanceClassLoaderKlass;
 
 import java.io.File;
 import java.io.IOException;
@@ -357,8 +354,10 @@ public class MTree implements Serializable {
 
       // even template not in use, measurement path shall not be conflict with MTree
       if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
-        throw new MetadataException(String.format("Path [%s] conflicts with template [%s].",
-            path.getFullPath(), upperTemplate.getName()));
+        throw new MetadataException(
+            String.format(
+                "Path [%s] conflicts with template [%s].",
+                path.getFullPath(), upperTemplate.getName()));
       }
 
       if (!cur.hasChild(childName)) {
@@ -380,8 +379,10 @@ public class MTree implements Serializable {
     }
 
     if (upperTemplate != null && upperTemplate.getDirectNode(path.getMeasurement()) != null) {
-      throw new MetadataException(String.format("Path [%s] conflicts with template [%s].",
-          path.getFullPath(), upperTemplate.getName()));
+      throw new MetadataException(
+          String.format(
+              "Path [%s] conflicts with template [%s].",
+              path.getFullPath(), upperTemplate.getName()));
     }
 
     MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
@@ -533,9 +534,9 @@ public class MTree implements Serializable {
     }
 
     if (checkPathWithinTemplate(path)) {
-      throw new MetadataException("Cannot delete a timeseries inside a template: " + path.toString());
+      throw new MetadataException(
+          "Cannot delete a timeseries inside a template: " + path.toString());
     }
-
 
     IMeasurementMNode deletedNode = getMeasurementMNode(path);
     IEntityMNode parent = deletedNode.getParent();
@@ -899,7 +900,7 @@ public class MTree implements Serializable {
     EntityCollector<Set<PartialPath>> collector =
         new EntityCollector<Set<PartialPath>>(root, pathPattern) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException{
+          protected void collectEntity(IEntityMNode node) throws MetadataException {
             result.add(getPivotPartialPath(node));
           }
         };
@@ -1106,7 +1107,7 @@ public class MTree implements Serializable {
     MeasurementCollector<List<IMeasurementSchema>> collector =
         new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException{
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             IMeasurementSchema nodeSchema = node.getSchema();
             timeseriesSchemas.add(
                 new TimeseriesSchema(
@@ -1278,7 +1279,9 @@ public class MTree implements Serializable {
       }
       IMNode next = cur.getChild(nodes[i]);
       if (next == null) {
-        if (upperTemplate == null || !cur.isUseTemplate() || upperTemplate.getDirectNode(nodes[i]) == null) {
+        if (upperTemplate == null
+            || !cur.isUseTemplate()
+            || upperTemplate.getDirectNode(nodes[i]) == null) {
           throw new PathNotExistException(path.getFullPath(), true);
         }
         next = upperTemplate.getDirectNode(nodes[i]);
@@ -1315,7 +1318,9 @@ public class MTree implements Serializable {
           throw new StorageGroupNotSetException(path.getFullPath());
         }
 
-        if (upperTemplate == null || !cur.isUseTemplate() || upperTemplate.getDirectNode(nodes[i]) == null){
+        if (upperTemplate == null
+            || !cur.isUseTemplate()
+            || upperTemplate.getDirectNode(nodes[i]) == null) {
           throw new PathNotExistException(path.getFullPath());
         }
 
@@ -1401,6 +1406,7 @@ public class MTree implements Serializable {
   /**
    * Check whether a measurement exists in MTree within a template, IGNORING whether set using.
    * Mounted Node is where MTree bridges to Template.
+   *
    * @param measurementPath a path from root to measurement, to avoid ambiguity.
    * @return mounted Node if exists, null if not.
    */
@@ -1414,7 +1420,8 @@ public class MTree implements Serializable {
 
     for (int i = 1; i < pathNodes.length; i++) {
       if (upperTemplate != null) {
-        String suffixPathNodes = new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).getFullPath();
+        String suffixPathNodes =
+            new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).getFullPath();
         // a thorough seek by using schemaMap
         if (upperTemplate.hasSchema(suffixPathNodes)) {
           return cur;
@@ -1465,22 +1472,23 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Check route 1:
-   * If template has no direct measurement, just pass the check.
+   * Check route 1: If template has no direct measurement, just pass the check.
    *
-   * Check route 2:
-   * If template has direct measurement and mounted node is Internal, it should be set to Entity.
+   * <p>Check route 2: If template has direct measurement and mounted node is Internal, it should be
+   * set to Entity.
    *
-   * Check route 3:
-   * If template has direct measurement and mounted node is Entity,
+   * <p>Check route 3: If template has direct measurement and mounted node is Entity,
    *
-   * route 3.1: mounted node has no measurement child, then its alignment will be set as the template.
+   * <p>route 3.1: mounted node has no measurement child, then its alignment will be set as the
+   * template.
    *
-   * route 3.2: mounted node has measurement child,
-   * then alignment of it and template should be identical, otherwise cast a exception.
+   * <p>route 3.2: mounted node has measurement child, then alignment of it and template should be
+   * identical, otherwise cast a exception.
+   *
    * @return return the node competent to be mounted.
    */
-  public IMNode checkTemplateAlignmentWithMountedNode(IMNode mountedNode, Template template) throws MetadataException {
+  public IMNode checkTemplateAlignmentWithMountedNode(IMNode mountedNode, Template template)
+      throws MetadataException {
     boolean hasDirectMeasurement = false;
     for (IMNode child : template.getDirectNodes()) {
       if (child.isMeasurement()) {
@@ -1493,10 +1501,12 @@ public class MTree implements Serializable {
       } else {
         for (IMNode child : mountedNode.getChildren().values()) {
           if (child.isMeasurement()) {
-            if (template.getAlignedPrefixSet().contains("") != mountedNode.getAsEntityMNode().isAligned()) {
-              throw new MetadataException("Template and mounted node has different alignment: "
-                  + template.getName()
-                  + mountedNode.getFullPath());
+            if (template.getAlignedPrefixSet().contains("")
+                != mountedNode.getAsEntityMNode().isAligned()) {
+              throw new MetadataException(
+                  "Template and mounted node has different alignment: "
+                      + template.getName()
+                      + mountedNode.getFullPath());
             } else {
               return mountedNode;
             }
@@ -1541,6 +1551,7 @@ public class MTree implements Serializable {
 
   /**
    * Note that template and MTree cannot have overlap paths.
+   *
    * @return true iff path corresponding to a measurement inside a template, whether using or not.
    */
   public boolean checkPathWithinTemplate(PartialPath path) {
@@ -1551,7 +1562,7 @@ public class MTree implements Serializable {
     boolean isInTemplate = false;
     IMNode cur = root;
     Template upperTemplate = cur.getUpperTemplate();
-    for (int i = 1 ; i < pathNodes.length; i++) {
+    for (int i = 1; i < pathNodes.length; i++) {
       if (cur.hasChild(pathNodes[i])) {
         cur = cur.getChild(pathNodes[i]);
         if (cur.isMeasurement()) {
@@ -1559,8 +1570,9 @@ public class MTree implements Serializable {
         }
         upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       } else {
-        if (upperTemplate != null && upperTemplate.getDirectNode(pathNodes[i]) !=null) {
-          String suffixPath = new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).toString();
+        if (upperTemplate != null && upperTemplate.getDirectNode(pathNodes[i]) != null) {
+          String suffixPath =
+              new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).toString();
           return upperTemplate.hasSchema(suffixPath);
         }
         return false;

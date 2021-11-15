@@ -146,7 +146,6 @@ public class Template {
     return schemaMap.get(measurementId);
   }
 
-
   // region construct template tree
   /** Construct aligned measurements, checks prefix equality, path duplication and conflict */
   private void constructTemplateTree(String[] alignedPaths, IMeasurementSchema[] schemas)

@@ -1921,10 +1921,11 @@ public class MManager {
   }
 
   /**
-   * Before to insert, set using template if template accessed.
-   * Better performance if refactored with getDeviceNodeWithAutoCreate
+   * Before to insert, set using template if template accessed. Better performance if refactored
+   * with getDeviceNodeWithAutoCreate
    */
-  private void activateTemplateBeforeAccess(PartialPath deviceId, String[] measurements) throws MetadataException {
+  private void activateTemplateBeforeAccess(PartialPath deviceId, String[] measurements)
+      throws MetadataException {
     StringBuilder builder = new StringBuilder(deviceId.getFullPath());
     if (builder.length() != 0) {
       builder.append(TsFileConstant.PATH_SEPARATOR);

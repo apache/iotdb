@@ -55,8 +55,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static com.sun.tools.internal.xjc.reader.Ring.add;
-
 public class InsertTabletPlanTest {
 
   private final Planner processor = new Planner();
@@ -293,7 +291,7 @@ public class InsertTabletPlanTest {
   @Test
   public void testInsertTabletPlanWithSchemaTemplateAndAutoCreateSchema()
       throws QueryProcessException, MetadataException, InterruptedException,
-      QueryFilterOptimizationException, StorageEngineException, IOException {
+          QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
     IoTDB.metaManager.createSchemaTemplate(plan);
@@ -333,12 +331,10 @@ public class InsertTabletPlanTest {
     }
   }
 
-
-
   @Test
   public void testInsertTabletPlanWithSchemaTemplate()
       throws QueryProcessException, MetadataException, InterruptedException,
-      QueryFilterOptimizationException, StorageEngineException, IOException {
+          QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
     IoTDB.metaManager.createSchemaTemplate(plan);
@@ -407,7 +403,7 @@ public class InsertTabletPlanTest {
       c1.add(CompressionType.SNAPPY);
     }
     List<CompressionType> c2 = new ArrayList<>();
-    for (int i = 0; i < 2 ; i++) {
+    for (int i = 0; i < 2; i++) {
       c2.add(CompressionType.SNAPPY);
     }
     compressionTypes.add(c1);
