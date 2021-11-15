@@ -1223,7 +1223,7 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       Map<Path, IMeasurementSchema> knownSchemas,
       int sgLevel)
-      throws QueryProcessException, MetadataException, IOException {
+      throws MetadataException {
     if (chunkGroupMetadataList.isEmpty()) {
       return;
     }

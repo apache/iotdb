@@ -87,7 +87,8 @@ public class Template {
             MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
         String thisPrefix =
             joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length - 1));
-        isAlign = plan.getAlignedPrefix() != null && plan.getAlignedPrefix().contains(thisPrefix);
+        isAlign =
+            plan.getAlignedDeviceId() != null && plan.getAlignedDeviceId().contains(thisPrefix);
       }
 
       // vector, aligned measurements
