@@ -46,7 +46,9 @@ public class NotEq<T extends Comparable<T>> extends UnaryFilter<T> {
       return !(((Long) value) == statistics.getStartTime()
           && (Long) value == statistics.getEndTime());
     } else {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+      if (statistics.getType() == TSDataType.TEXT
+          || statistics.getType() == TSDataType.BOOLEAN
+          || statistics.getType() == TSDataType.VECTOR) {
         return true;
       }
       return !(value.compareTo((T) statistics.getMinValue()) == 0
