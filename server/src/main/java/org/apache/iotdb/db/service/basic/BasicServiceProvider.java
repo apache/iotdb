@@ -87,6 +87,48 @@ public class BasicServiceProvider {
     executor = new PlanExecutor();
   }
 
+  /**
+   * Check whether current user has logged in.
+   *
+   * @return true: If logged in; false: If not logged in
+   */
+  protected boolean checkLogin(long sessionId) {
+    boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
+    if (!isLoggedIn) {
+      LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
+    } else {
+      SessionTimeoutManager.getInstance().refresh(sessionId);
+    }
+    return isLoggedIn;
+  }
+
+  protected boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
+      throws AuthException {
+    String targetUser = null;
+    if (plan instanceof AuthorPlan) {
+      targetUser = ((AuthorPlan) plan).getUserName();
+    }
+    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+  }
+
+  protected TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
+    List<PartialPath> paths = plan.getPaths();
+    try {
+      if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION_ERROR,
+            "No permissions for this operation " + plan.getOperatorType());
+      }
+    } catch (AuthException e) {
+      LOGGER.warn("meet error while checking authorization.", e);
+      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+    return null;
+  }
+
   protected BasicOpenSessionResp openSession(
       String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
       throws TException {
@@ -184,48 +226,6 @@ public class BasicServiceProvider {
       return onNPEOrUnexpectedException(
           e, OperationType.CLOSE_OPERATION, TSStatusCode.CLOSE_OPERATION_ERROR);
     }
-  }
-
-  /**
-   * Check whether current user has logged in.
-   *
-   * @return true: If logged in; false: If not logged in
-   */
-  protected boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
-    if (!isLoggedIn) {
-      LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
-    } else {
-      SessionTimeoutManager.getInstance().refresh(sessionId);
-    }
-    return isLoggedIn;
-  }
-
-  protected boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
-      throws AuthException {
-    String targetUser = null;
-    if (plan instanceof AuthorPlan) {
-      targetUser = ((AuthorPlan) plan).getUserName();
-    }
-    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
-  }
-
-  protected TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
-    List<PartialPath> paths = plan.getPaths();
-    try {
-      if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
-        return RpcUtils.getStatus(
-            TSStatusCode.NO_PERMISSION_ERROR,
-            "No permissions for this operation " + plan.getOperatorType());
-      }
-    } catch (AuthException e) {
-      LOGGER.warn("meet error while checking authorization.", e);
-      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
-    } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
-    }
-    return null;
   }
 
   protected QueryContext genQueryContext(
