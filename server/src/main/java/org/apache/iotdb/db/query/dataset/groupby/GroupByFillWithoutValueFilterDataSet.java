@@ -100,7 +100,6 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       throws QueryProcessException, StorageEngineException {
     super(context, groupByTimeFillPlan);
     this.aggregations = groupByTimeFillPlan.getDeduplicatedAggregations();
-
     this.deduplicatedPaths = new ArrayList<>();
     for (Path path : paths) {
       PartialPath partialPath = (PartialPath) path;
@@ -108,7 +107,11 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
         deduplicatedPaths.add(partialPath);
       }
     }
+  }
 
+  public void init(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    initGroupBy(context, groupByTimeFillPlan);
     initArrays();
     initExtraExecutors(context, groupByTimeFillPlan);
     if (extraPreviousExecutors != null) {

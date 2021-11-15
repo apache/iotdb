@@ -74,7 +74,7 @@ public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
 
       ClusterGroupByNoVFilterDataSet dataSet =
           new ClusterGroupByNoVFilterDataSet(queryContext, groupByPlan, testMetaMember);
-
+      dataSet.initGroupBy(queryContext, groupByPlan);
       Object[][] answers =
           new Object[][] {
             new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
