@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -34,7 +33,7 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
 
   private static final int DEFAULT_CHUNK_CACHE_SIZE = 1000;
   private TsFileSequenceReader reader;
-  private LRUCache<IChunkMetadata, Chunk> chunkCache; // Todo:aligned
+  private LRUCache<ChunkMetadata, Chunk> chunkCache;
 
   public CachedChunkLoaderImpl(TsFileSequenceReader fileSequenceReader) {
     this(fileSequenceReader, DEFAULT_CHUNK_CACHE_SIZE);
@@ -51,10 +50,10 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
     this.reader = fileSequenceReader;
 
     chunkCache =
-        new LRUCache<IChunkMetadata, Chunk>(cacheSize) {
+        new LRUCache<ChunkMetadata, Chunk>(cacheSize) {
 
           @Override
-          public Chunk loadObjectByKey(IChunkMetadata metaData) throws IOException {
+          public Chunk loadObjectByKey(ChunkMetadata metaData) throws IOException {
             return reader.readMemChunk(metaData);
           }
         };
@@ -77,21 +76,16 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(
-      IChunkMetadata chunkMetaData, Filter timeFilter) // Todo:bug,若是对齐序列
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
       throws IOException {
     chunkMetaData.setFilePath(reader.getFileName());
-    if (chunkMetaData instanceof AlignedChunkMetadata) {
-
-    } else {
-      Chunk chunk = chunkCache.get((ChunkMetadata) chunkMetaData);
-      return new ChunkReader(
-          new Chunk(
-              chunk.getHeader(),
-              chunk.getData().duplicate(),
-              chunkMetaData.getDeleteIntervalList(),
-              chunkMetaData.getStatistics()),
-          timeFilter);
-    }
+    Chunk chunk = chunkCache.get((ChunkMetadata) chunkMetaData);
+    return new ChunkReader(
+        new Chunk(
+            chunk.getHeader(),
+            chunk.getData().duplicate(),
+            chunkMetaData.getDeleteIntervalList(),
+            chunkMetaData.getStatistics()),
+        timeFilter);
   }
 }

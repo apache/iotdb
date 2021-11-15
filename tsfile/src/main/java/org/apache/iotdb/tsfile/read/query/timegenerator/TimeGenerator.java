@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -29,11 +33,6 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 /**
  * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree
@@ -101,7 +100,10 @@ public abstract class TimeGenerator {
 
     if (expression.getType() == ExpressionType.SERIES) {
       SingleSeriesExpression singleSeriesExp = (SingleSeriesExpression) expression;
-      IBatchReader seriesReader = generateNewBatchReader(singleSeriesExp);
+      IBatchReader seriesReader =
+          generateNewBatchReader(
+              singleSeriesExp); // Todo:bug
+                                // //这个是针对expression里数值过滤器里的序列的FileseriesReader,他可能不是此次查询的目标序列
       Path path = singleSeriesExp.getSeriesPath();
 
       // put the current reader to valueCache

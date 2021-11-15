@@ -53,7 +53,8 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "alignedTablet.tsfile";
+    String filename =
+        "C:\\IOTDB\\sourceCode\\choubenson\\iotdb\\tsfile\\target\\testTsFile\\root.sg2\\0\\0\\1636954557890-0-0-0.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }

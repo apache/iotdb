@@ -186,7 +186,8 @@ public class TsFileExecutor implements QueryExecutor {
           seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, null);
         } else {
           seriesReader =
-              new FileSeriesReader(chunkLoader, chunkMetadataList, timeExpression.getFilter());
+              new FileSeriesReader(
+                  chunkLoader, chunkMetadataList, timeExpression.getFilter()); // Todo:bug，若
         }
         if (chunkMetadataList.get(0).getDataType() != TSDataType.VECTOR) {
           dataTypes.add(chunkMetadataList.get(0).getDataType());

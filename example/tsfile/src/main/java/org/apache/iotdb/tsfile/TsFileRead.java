@@ -63,10 +63,10 @@ public class TsFileRead {
 
       // use these paths(all measurements) for all the queries
       ArrayList<Path> paths = new ArrayList<>();
-      // paths.add(new Path(DEVICE1, ""));
       paths.add(new Path(DEVICE1, "s1"));
       paths.add(new Path(DEVICE1, "s2"));
       paths.add(new Path(DEVICE1, "s3"));
+      paths.add(new Path("root.sg.d2", "s1"));
 
       // no filter, should select 1 2 3 4 6 7 8
       queryAndPrint(paths, readTsFile, null);
@@ -74,14 +74,13 @@ public class TsFileRead {
       // time filter : 4 <= time <= 10, should select 4 6 7 8
       IExpression timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(920000L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(920050L)));
+              new GlobalTimeExpression(TimeFilter.gtEq(29990L)),
+              new GlobalTimeExpression(TimeFilter.ltEq(30009L)));
       queryAndPrint(paths, readTsFile, timeFilter);
 
       // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
       IExpression valueFilter =
-          new SingleSeriesExpression(
-              new Path(DEVICE1, "s3"), ValueFilter.eq(new Binary("testString:")));
+          new SingleSeriesExpression(new Path("root.sg.d2", "s2"), ValueFilter.eq(new Long(3)));
       queryAndPrint(paths, readTsFile, valueFilter);
 
       // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8

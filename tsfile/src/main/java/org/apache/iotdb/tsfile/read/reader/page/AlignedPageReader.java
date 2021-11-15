@@ -77,7 +77,6 @@ public class AlignedPageReader implements IPageReader {
 
     // if the vector contains more than on sub sensor, the BatchData's DataType is Vector
     List<TsPrimitiveType[]> valueBatchList = new ArrayList<>(valueCount);
-    // Todo:bug,有两个Page，却只显示一个PageReader
     for (ValuePageReader valuePageReader : valuePageReaderList) {
       if (valuePageReader.getPageHeader().getUncompressedSize() == 0) { // Empty Page
         return BatchDataFactory.createBatchData(TSDataType.VECTOR);

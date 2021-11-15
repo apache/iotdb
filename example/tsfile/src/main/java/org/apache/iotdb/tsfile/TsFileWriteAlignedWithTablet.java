@@ -118,10 +118,10 @@ public class TsFileWriteAlignedWithTablet {
     Tablet tablet = new Tablet("root.sg.d2", measurementSchemas);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
-    int rowNum = 100000;
+    int rowNum = 30020;
     int sensorNum = measurementSchemas.size();
     long timestamp = 1;
-    long value = 10000000L;
+    long value = 0L;
     for (int r = 0; r < rowNum; r++, value++) {
       int row = tablet.rowSize++;
       timestamps[row] = timestamp++;

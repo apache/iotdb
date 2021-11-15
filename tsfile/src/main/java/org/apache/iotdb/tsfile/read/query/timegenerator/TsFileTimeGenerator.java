@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
+import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
@@ -25,9 +27,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-
-import java.io.IOException;
-import java.util.List;
 
 public class TsFileTimeGenerator extends TimeGenerator {
 
@@ -47,7 +46,8 @@ public class TsFileTimeGenerator extends TimeGenerator {
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {
     List<IChunkMetadata> chunkMetadataList =
-        metadataQuerier.getChunkMetaDataList(expression.getSeriesPath());
+        metadataQuerier.getChunkMetaDataList(
+            expression.getSeriesPath()); // Todo:bug,若expression里的filter是与本次查询的序列无关的
     return new FileSeriesReader(chunkLoader, chunkMetadataList, expression.getFilter());
   }
 

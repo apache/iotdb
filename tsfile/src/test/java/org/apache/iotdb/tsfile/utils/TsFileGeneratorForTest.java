@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Scanner;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
@@ -29,20 +37,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.TsFileWriteApiTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.Assert;
 import org.junit.Ignore;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.Scanner;
 
 @Ignore
 public class TsFileGeneratorForTest {
@@ -50,6 +51,7 @@ public class TsFileGeneratorForTest {
   public static final long START_TIMESTAMP = 1480562618000L;
   private static String inputDataFile;
   public static String outputDataFile = getTestTsFilePath("root.sg1", 0, 0, 0);
+  public static String alignedOutputDataFile = getTestTsFilePath("root.sg2", 0, 0, 0);
   private static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
@@ -276,5 +278,50 @@ public class TsFileGeneratorForTest {
             + tsFileVersion
             + "-0-0.tsfile";
     return filePath.concat(fileName);
+  }
+
+  public static void generateAlignedTsFile(int rowCount, int chunkGroupSize, int pageSize) {
+    File file = fsFactory.getFile(alignedOutputDataFile);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+    file.getParentFile().mkdirs();
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
+      // register align timeseries
+      List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      alignedMeasurementSchemas.add(
+          new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(
+          new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(
+          new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(
+          new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
+      tsFileWriter.registerAlignedTimeseries(new Path("d1"), alignedMeasurementSchemas);
+
+      // register nonAlign timeseries
+      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      tsFileWriter.registerTimeseries(new Path("d2"), measurementSchemas);
+
+      TsFileWriteApiTest.writeWithTsRecord(
+          tsFileWriter, "d1", alignedMeasurementSchemas, rowCount, 0, 0, true);
+      TsFileWriteApiTest.writeWithTsRecord(
+          tsFileWriter, "d2", measurementSchemas, rowCount, 0, 0, false);
+
+    } catch (IOException | WriteProcessException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void closeAlignedTsFile() {
+    File file = fsFactory.getFile(alignedOutputDataFile);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
   }
 }
