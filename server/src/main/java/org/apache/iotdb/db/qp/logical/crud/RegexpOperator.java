@@ -105,9 +105,15 @@ public class RegexpOperator extends FunctionOperator {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     RegexpOperator that = (RegexpOperator) o;
     return Objects.equals(value, that.value);
   }

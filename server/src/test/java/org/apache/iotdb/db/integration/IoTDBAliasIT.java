@@ -53,7 +53,13 @@ public class IoTDBAliasIT {
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(100, 11.1, 20.2, 80.0)",
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(200, 20.2, 21.8, 81.0)",
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(300, 45.3, 23.4, 82.0)",
-        "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(400, 73.4, 26.3, 83.0)"
+        "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(400, 73.4, 26.3, 83.0)",
+        "SET STORAGE GROUP TO root.sg1",
+        "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (0, -1, 1)",
+        "INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (1, -2, 2)",
+        "INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (2, -3, 3)"
       };
 
   private static final String TIMESTAMP_STR = "Time";
@@ -333,6 +339,47 @@ public class IoTDBAliasIT {
     } catch (Exception e) {
       fail(e.getMessage());
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void UDFAliasTest() throws ClassNotFoundException {
+
+    String[] expect = {
+      "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
+      "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
+      "Time,-root.sg1.d1.s1,-root.sg1.d1.s1,a,sin(cos(tan(root.sg1.d1.s1))),cos(root.sg1.d1.s2),b,cos(root.sg1.d1.s2),"
+    };
+    String[] sqls = {
+      "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1 WHERE time >= 1509466140000",
+      "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1",
+      "select -s1, -s1, sin(cos(tan(s1))) as a, sin(cos(tan(s1))), cos(s2), top_k(s1 + s1, 'k'='1') as b, cos(s2) from root.sg1.d1"
+    };
+    int count = 2;
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      for (int index = 0; index < count; index++) {
+
+        boolean hasResult = statement.execute(sqls[index]);
+        assertTrue(hasResult);
+        try (ResultSet resultSet = statement.getResultSet()) {
+
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          StringBuilder header = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            header.append(resultSetMetaData.getColumnName(i)).append(",");
+          }
+          Assert.assertEquals(expect[index], header.toString());
+        }
+      }
+
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 }

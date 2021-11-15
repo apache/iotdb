@@ -47,5 +47,6 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
     this.taskFactory = taskFactory;
   }
 
+  @Override
   public abstract boolean selectAndSubmit();
 }
