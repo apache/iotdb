@@ -43,7 +43,7 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
-import org.apache.iotdb.db.service.basic.count.QueryFrequency;
+import org.apache.iotdb.db.service.basic.count.QueryFrequencyRecorder;
 import org.apache.iotdb.db.service.basic.dto.BasicOpenSessionResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -63,34 +63,30 @@ import java.util.List;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
 public class BasicServiceProvider {
-  // main logger
+
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicServiceProvider.class);
-  // Used to record user operation information
   protected static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
-  // Used for SQL execution
-  protected static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW_SQL");
+  protected static final Logger SLOW_SQL_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
 
-  private static final String INFO_NOT_LOGIN = "{}: Not login. ";
+  protected static final TSProtocolVersion CURRENT_RPC_VERSION =
+      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+
+  protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   protected final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
   protected final SessionManager sessionManager = SessionManager.getInstance();
   protected final TracingManager tracingManager = TracingManager.getInstance();
-
-  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected final QueryFrequencyRecorder queryFrequencyRecorder;
 
   protected Planner processor;
   protected IPlanExecutor executor;
 
-  protected QueryFrequency queryFrequency;
-
-  public static final TSProtocolVersion CURRENT_RPC_VERSION =
-      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-
   public BasicServiceProvider() throws QueryProcessException {
+    queryFrequencyRecorder = new QueryFrequencyRecorder(CONFIG);
     processor = new Planner();
     executor = new PlanExecutor();
-    queryFrequency = new QueryFrequency(config);
   }
 
   protected BasicOpenSessionResp openSession(
@@ -136,7 +132,6 @@ public class BasicServiceProvider {
           openSessionResp.getMessage(),
           username);
     } else {
-
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
 
@@ -201,7 +196,7 @@ public class BasicServiceProvider {
   protected boolean checkLogin(long sessionId) {
     boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
     if (!isLoggedIn) {
-      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
     } else {
       SessionTimeoutManager.getInstance().refresh(sessionId);
     }

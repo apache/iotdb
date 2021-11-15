@@ -28,7 +28,9 @@ import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.QueryInBatchStatementException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -151,7 +153,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.*;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNonQueryException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.tryCatchQueryException;
 
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl extends BasicServiceProvider implements TSIService.Iface {
@@ -162,7 +168,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   private static final String INFO_INTERRUPT_ERROR =
       "Current Thread interrupted when dealing with request {}";
 
-  private static final int MAX_SIZE = config.getQueryCacheSizeInMetric();
+  private static final int MAX_SIZE = CONFIG.getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
 
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
@@ -551,7 +557,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.statementId,
               physicalPlan,
               req.fetchSize,
-              config.getQueryTimeoutThreshold(),
+              CONFIG.getQueryTimeoutThreshold(),
               req.sessionId,
               req.isEnableRedirectQuery(),
               req.isJdbcQuery())
@@ -583,7 +589,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.statementId,
               physicalPlan,
               req.fetchSize,
-              config.getQueryTimeoutThreshold(),
+              CONFIG.getQueryTimeoutThreshold(),
               req.sessionId,
               req.isEnableRedirectQuery(),
               req.isJdbcQuery())
@@ -617,7 +623,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       throws QueryProcessException, SQLException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           TException, AuthException {
-    queryFrequency.incrementAndGet();
+    queryFrequencyRecorder.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
 
@@ -717,7 +723,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         tracingManager.setSeriesPathNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
       }
 
-      if (config.isEnableMetricService()) {
+      if (CONFIG.isEnableMetricService()) {
         long endTime = System.currentTimeMillis();
         SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, queryStartTime, endTime);
         synchronized (sqlArgumentList) {
@@ -744,7 +750,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
       long costTime = System.currentTimeMillis() - queryStartTime;
-      if (costTime >= config.getSlowQueryThreshold()) {
+      if (costTime >= CONFIG.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
       }
     }
@@ -934,7 +940,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
     final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
 
-    queryFrequency.incrementAndGet();
+    queryFrequencyRecorder.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute select into: {}", sessionManager.getCurrSessionId(), statement);
     if (physicalPlan instanceof QueryPlan && ((QueryPlan) physicalPlan).isEnableTracing()) {
@@ -963,7 +969,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       sessionManager.releaseQueryResourceNoExceptions(queryId);
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
       long costTime = System.currentTimeMillis() - startTime;
-      if (costTime >= config.getSlowQueryThreshold()) {
+      if (costTime >= CONFIG.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
       }
     }
@@ -1082,13 +1088,13 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     }
 
     WatermarkEncoder encoder = null;
-    if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
-      if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
-        encoder = new GroupedLSBWatermarkEncoder(config);
+    if (CONFIG.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
+      if (CONFIG.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
+        encoder = new GroupedLSBWatermarkEncoder(CONFIG);
       } else {
         throw new UnSupportedDataTypeException(
             String.format(
-                "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+                "Watermark method is not supported yet: %s", CONFIG.getWatermarkMethodName()));
       }
     }
     return encoder;

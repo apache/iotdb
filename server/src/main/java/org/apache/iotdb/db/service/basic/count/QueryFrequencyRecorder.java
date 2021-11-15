@@ -28,20 +28,19 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class QueryFrequency {
+public class QueryFrequencyRecorder {
 
-  // Record query count
   private static final Logger QUERY_FREQUENCY_LOGGER = LoggerFactory.getLogger("QUERY_FREQUENCY");
-  private static final AtomicInteger queryCount = new AtomicInteger(0);
+  private static final AtomicInteger QUERY_COUNT = new AtomicInteger(0);
 
-  public QueryFrequency(IoTDBConfig config) {
+  public QueryFrequencyRecorder(IoTDBConfig config) {
     ScheduledExecutorService timedQuerySqlCountThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedQuerySqlCount");
     timedQuerySqlCountThread.scheduleAtFixedRate(
         () -> {
-          if (queryCount.get() != 0) {
+          if (QUERY_COUNT.get() != 0) {
             QUERY_FREQUENCY_LOGGER.info(
-                "Query count in current 1 minute {} ", queryCount.getAndSet(0));
+                "Query count in current 1 minute {} ", QUERY_COUNT.getAndSet(0));
           }
         },
         config.getFrequencyIntervalInMinute(),
@@ -50,6 +49,6 @@ public class QueryFrequency {
   }
 
   public void incrementAndGet() {
-    queryCount.incrementAndGet();
+    QUERY_COUNT.incrementAndGet();
   }
 }
