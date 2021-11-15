@@ -4,85 +4,75 @@
 
 package org.apache.iotdb.cluster.client.async;
 
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient.FactoryAsync;
-import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.client.BaseClientTest;
+import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TNonblockingSocket;
-import org.junit.After;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class AsyncMetaClientTest {
+public class AsyncMetaClientTest extends BaseClientTest {
 
   private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-  private boolean isAsyncServer;
+  private TProtocolFactory protocolFactory;
 
   @Before
   public void setUp() {
-    isAsyncServer = config.isUseAsyncServer();
     config.setUseAsyncServer(true);
-  }
-
-  @After
-  public void tearDown() {
-    config.setUseAsyncServer(isAsyncServer);
+    protocolFactory =
+        config.isRpcThriftCompressionEnabled()
+            ? new TCompactProtocol.Factory()
+            : new TBinaryProtocol.Factory();
   }
 
   @Test
-  public void test() throws IOException, TException {
-    AsyncClientPool asyncClientPool = new AsyncClientPool(new FactoryAsync(new Factory()));
-    AsyncMetaClient client;
-    Node node = TestUtils.getNode(0);
-    client =
-        new AsyncMetaClient(
-            new Factory(),
-            new TAsyncClientManager(),
-            new TNonblockingSocket(
-                node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()));
-    assertTrue(client.isReady());
+  public void testMetaClient() throws Exception {
 
-    client = (AsyncMetaClient) asyncClientPool.getClient(TestUtils.getNode(0));
+    AsyncMetaClient.AsyncMetaClientFactory factory =
+        new AsyncMetaClient.AsyncMetaClientFactory(protocolFactory, ClientCategory.META);
 
-    assertEquals(TestUtils.getNode(0), client.getNode());
-
-    client.matchTerm(
-        0,
-        0,
-        TestUtils.getNode(0),
-        new AsyncMethodCallback<Boolean>() {
-          @Override
-          public void onComplete(Boolean aBoolean) {
-            // do nothing
-          }
-
-          @Override
-          public void onError(Exception e) {
-            // do nothing
-          }
-        });
-    assertFalse(client.isReady());
-
-    client.onError(new Exception());
-    assertNull(client.getCurrMethod());
-    assertTrue(client.isReady());
+    AsyncMetaClient metaClient = factory.makeObject(defaultNode).getObject();
 
     assertEquals(
-        "MetaClient{node=ClusterNode{ internalIp='192.168.0.0', metaPort=9003, nodeIdentifier=0, dataPort=40010, clientPort=6667, clientIp='0.0.0.0'}}",
-        client.toString());
+        "AsyncMetaClient{node=Node(internalIp:localhost, metaPort:9003, nodeIdentifier:0, "
+            + "dataPort:40010, clientPort:0, clientIp:localhost),port=9003}",
+        metaClient.toString());
+    assertCheck(metaClient);
+  }
+
+  @Test
+  public void testMetaHeartbeatClient() throws Exception {
+    AsyncMetaClient.AsyncMetaClientFactory factory =
+        new AsyncMetaClient.AsyncMetaClientFactory(protocolFactory, ClientCategory.META_HEARTBEAT);
+
+    AsyncMetaClient metaClient = factory.makeObject(defaultNode).getObject();
+
+    assertEquals(
+        "AsyncMetaHeartbeatClient{node=Node(internalIp:localhost, metaPort:9003, nodeIdentifier:0, "
+            + "dataPort:40010, clientPort:0, clientIp:localhost),port=9004}",
+        metaClient.toString());
+    assertCheck(metaClient);
+  }
+
+  private void assertCheck(AsyncMetaClient dataClient) {
+    Assert.assertNotNull(dataClient);
+    assertTrue(dataClient.isReady());
+    assertTrue(dataClient.isValid());
+    Assert.assertEquals(dataClient.getNode(), defaultNode);
+
+    dataClient.setTimeout(ClusterConstant.getConnectionTimeoutInMS());
+    Assert.assertEquals(dataClient.getTimeout(), ClusterConstant.getConnectionTimeoutInMS());
+
+    dataClient.close();
+    Assert.assertNull(dataClient.getCurrMethod());
   }
 }

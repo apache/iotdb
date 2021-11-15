@@ -73,7 +73,7 @@ Statistics currentChunkStatistics();
 // 跳过当前 Chunk
 void skipCurrentChunk();
 
-// 判断当前Chunk是否还有下一个 Page
+// 判断当前 Chunk 是否还有下一个 Page
 boolean hasNextPage() throws IOException;
 
 // 判断能否使用当前 Page 的统计信息
@@ -130,23 +130,16 @@ while (aggregateReader.hasNextChunk()) {
 #### 主要方法
 
 ``` 
-// 得到给定时间戳的值，如果不存在返回 null（要求传入的 timestamp 是递增的）
-Object getValueInTimestamp(long timestamp) throws IOException;
-
 // 给定一批递增时间戳的值，返回一批结果（减少方法调用次数）
-Object[] getValuesInTimestamps(long[] timestamps) throws IOException;
+Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException;
 ```
 
 #### 一般使用流程
 
-该接口在带值过滤的查询中被使用，TimeGenerator生成时间戳后，使用该接口获得该时间戳对应的value
+该接口在带值过滤的查询中被使用，TimeGenerator 生成时间戳后，使用该接口获得该时间戳对应的 value
 
 ```
-Object value = readerByTimestamp.getValueInTimestamp(timestamp);
-
-or
-
-Object[] values = readerByTimestamp.getValueInTimestamp(timestamps);
+Object[] values = readerByTimestamp.getValueInTimestamp(timestamps, length);
 ```
 
 ## 具体实现类
@@ -165,7 +158,7 @@ Object[] values = readerByTimestamp.getValueInTimestamp(timestamps);
 
 设计原则是能用粒度大的就不用粒度小的。
 
-首先介绍一下SeriesReader里的几个重要字段
+首先介绍一下 SeriesReader 里的几个重要字段
 
 ```
 
@@ -173,7 +166,7 @@ Object[] values = readerByTimestamp.getValueInTimestamp(timestamps);
  * 文件层
  */
 private final List<TsFileResource> seqFileResource;
-	顺序文件列表，因为顺序文件本身就保证有序，且时间戳互不重叠，只需使用List进行存储
+	顺序文件列表，因为顺序文件本身就保证有序，且时间戳互不重叠，只需使用 List 进行存储
 	
 private final PriorityQueue<TsFileResource> unseqFileResource;
 	乱序文件列表，因为乱序文件互相之间不保证顺序性，且可能有重叠，为了保证顺序，使用优先队列进行存储
@@ -213,17 +206,17 @@ private PriorityMergeReader mergeReader;
  * 相交数据点产出结果的缓存
  */ 
 private boolean hasCachedNextOverlappedPage;
-	是否缓存了下一个batch
+	是否缓存了下一个 batch
 	
 private BatchData cachedBatchData;
-	缓存的下一个batch的引用
+	缓存的下一个 batch 的引用
 ```
 	 
-下面介绍一下SeriesReader里的重要方法
+下面介绍一下 SeriesReader 里的重要方法
 
 #### hasNextChunk()
 
-* 主要功能：判断该时间序列还有没有下一个chunk。
+* 主要功能：判断该时间序列还有没有下一个 chunk。
 
 * 约束：在调用这个方法前，需要保证 `SeriesReader` 内已经没有 page 和 数据点 层级的数据了，也就是之前解开的 chunk 都消耗完了。
 
@@ -271,7 +264,7 @@ private BatchData cachedBatchData;
 
 #### skipCurrentPage()
 
-跳过当前Page。只需要将 `firstPageReader` 置为 null。
+跳过当前 Page。只需要将 `firstPageReader` 置为 null。
 
 #### nextPage()
 
@@ -290,7 +283,7 @@ private BatchData cachedBatchData;
 	否则，先调用 `tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader()` 方法，将 `cachedPageReaders` 中所有与 `firstPageReader` 有重叠的放进 `mergeReader` 里。`mergeReader` 里维护了一个 `currentLargestEndTime` 变量，每次添加进新的 Reader 时被更新，用以记录当前添加进 `mergeReader` 的 page 的最大结束时间。	
 	然后先从`mergeReader`里取出当前最大的结束时间，作为第一批数据的结束时间，记为`currentPageEndTime`。接着去遍历`mergeReader`，直到当前的时间戳大于`currentPageEndTime`。
 	
-	每从 mergeReader 移出一个点前，我们先要判断是否有与当前时间戳重叠的file或者chunk或者page（这里之所以还要再做一次判断，是因为，比如当前page是1-30，和他直接相交的page是20-50，还有一个page是40-60，每取一个点判断一次是想把40-60解开），如果有，解开相应的file或者chunk或者page，并将其放入`mergeReader`。完成重叠的判断后，从`mergeReader`中取出相应数据。
+	每从 mergeReader 移出一个点前，我们先要判断是否有与当前时间戳重叠的 file 或者 chunk 或者 page（这里之所以还要再做一次判断，是因为，比如当前 page 是 1-30，和他直接相交的 page 是 20-50，还有一个 page 是 40-60，每取一个点判断一次是想把 40-60 解开），如果有，解开相应的 file 或者 chunk 或者 page，并将其放入`mergeReader`。完成重叠的判断后，从`mergeReader`中取出相应数据。
 
 	完成迭代后将获得数据缓存在 `cachedBatchData` 中，并将 `hasCachedNextOverlappedPage` 置为 `true`。
 
@@ -319,10 +312,18 @@ if (readPageData()) {
 }
 
 /*
- * 如果有 chunk，并且有 page，返回 page
+ * 如果 SeriesReader 里还有 chunk，返回 chunk
  */
-while (seriesReader.hasNextChunk()) {
-  if (readPageData()) {
+if (readChunkData()) {
+  hasCachedBatchData = true;
+  return true;
+}
+
+/*
+ * 如果有 File，并且有 chunk，返回 chunk
+ */
+while (seriesReader.hasNextFile()) {
+  if (readChunkData()) {
     hasCachedBatchData = true;
     return true;
   }
@@ -349,7 +350,14 @@ if (readPageData(timestamp)) {
 /*
  * 判断下一个 chunk 有没有当前所查时间，能跳过就跳过
  */
-while (seriesReader.hasNextChunk()) {
+if (readChunkData(timestamp)) {
+  return true;
+}
+
+/*
+ * 判断下一个 File 有没有当前所查时间，能跳过就跳过
+ */
+while (seriesReader.hasNextFile()) {
   Statistics statistics = seriesReader.currentChunkStatistics();
   if (!satisfyTimeFilter(statistics)) {
     seriesReader.skipCurrentChunk();
@@ -358,7 +366,7 @@ while (seriesReader.hasNextChunk()) {
   /*
    * chunk 不能跳过，继续到 chunk 里检查 page
    */
-  if (readPageData(timestamp)) {
+  if (readChunkData(timestamp)) {
     return true;
   }
 }
@@ -375,10 +383,10 @@ return false;
 
 设计思想：可以用统计信息的条件是当前 chunk 不重叠，并且满足过滤条件。
 
-先调用`SeriesReader`的`currentChunkStatistics()`方法，获得当前chunk的统计信息，再调用`SeriesReader`的`isChunkOverlapped()`方法判断当前chunk是否重叠，如果当前chunk不重叠，且其统计信息满足过滤条件，则返回`true`，否则返回`false`。
+先调用`SeriesReader`的`currentChunkStatistics()`方法，获得当前 chunk 的统计信息，再调用`SeriesReader`的`isChunkOverlapped()`方法判断当前 chunk 是否重叠，如果当前 chunk 不重叠，且其统计信息满足过滤条件，则返回`true`，否则返回`false`。
 
 #### canUseCurrentPageStatistics()
 
 设计思想：可以用统计信息的条件是当前 page 不重叠，并且满足过滤条件。
 
-先调用`SeriesReader`的 `currentPageStatistics()` 方法，获得当前page的统计信息，再调用`SeriesReader` 的 `isPageOverlapped()` 方法判断当前 page 是否重叠，如果当前page不重叠，且其统计信息满足过滤条件，则返回`true`，否则返回`false`。
+先调用`SeriesReader`的 `currentPageStatistics()` 方法，获得当前 page 的统计信息，再调用`SeriesReader` 的 `isPageOverlapped()` 方法判断当前 page 是否重叠，如果当前 page 不重叠，且其统计信息满足过滤条件，则返回`true`，否则返回`false`。

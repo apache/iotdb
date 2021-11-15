@@ -29,7 +29,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
+import java.io.Serializable;
 
 public class TestHelper {
 
@@ -47,12 +49,13 @@ public class TestHelper {
     return metaDataIndex;
   }
 
-  public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
-    return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
+  public static UnaryMeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
+    return new UnaryMeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
 
   public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {
-    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    Statistics<? extends Serializable> statistics =
+        Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(measurementuid);
@@ -65,7 +68,8 @@ public class TestHelper {
   }
 
   public static PageHeader createTestPageHeader() {
-    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    Statistics<? extends Serializable> statistics =
+        Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
     return new PageHeader(
         PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE, statistics);

@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
@@ -57,18 +58,13 @@ public class SnapshotCatchUpTaskTest {
 
   private List<Log> receivedLogs = new ArrayList<>();
   private Snapshot receivedSnapshot;
-  private Node header = new Node();
+  private RaftNode header = new RaftNode(new Node(), 0);
   private boolean testLeadershipFlag;
   private boolean prevUseAsyncServer;
   private boolean noConnection = false;
 
   private RaftMember sender =
       new TestMetaGroupMember() {
-
-        @Override
-        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-          return getAsyncClient(node);
-        }
 
         @Override
         public AsyncClient getAsyncClient(Node node) {
@@ -114,7 +110,7 @@ public class SnapshotCatchUpTaskTest {
         }
 
         @Override
-        public Node getHeader() {
+        public RaftNode getHeader() {
           return header;
         }
       };
@@ -164,7 +160,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     task.call();
 
     assertEquals(logList, receivedLogs);
@@ -184,7 +180,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     task.call();
 
     assertTrue(receivedLogs.isEmpty());
@@ -207,7 +203,7 @@ public class SnapshotCatchUpTaskTest {
       Snapshot snapshot = new TestSnapshot(9989);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+      SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
       task.call();
 
       assertEquals(logList, receivedLogs);
@@ -225,7 +221,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     try {
       task.call();
       fail("Expected LeaderUnknownException");
@@ -243,7 +239,7 @@ public class SnapshotCatchUpTaskTest {
               + "nodeIdentifier:6, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.7, metaPort:9003, "
               + "nodeIdentifier:7, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.8, metaPort:9003, "
               + "nodeIdentifier:8, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.9, metaPort:9003, "
-              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)]",
+              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)], id = 0",
           e.getMessage());
     }
 
@@ -258,7 +254,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.ELECTOR);
-    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     try {
       task.call();
       fail("Expected LeaderUnknownException");
@@ -276,7 +272,7 @@ public class SnapshotCatchUpTaskTest {
               + "nodeIdentifier:6, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.7, metaPort:9003, "
               + "nodeIdentifier:7, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.8, metaPort:9003, "
               + "nodeIdentifier:8, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.9, metaPort:9003, "
-              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)]",
+              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)], id = 0",
           e.getMessage());
     }
 

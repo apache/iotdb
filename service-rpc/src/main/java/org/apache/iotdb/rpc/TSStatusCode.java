@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.rpc;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public enum TSStatusCode {
   SUCCESS_STATUS(200),
   STILL_EXECUTING_STATUS(201),
@@ -50,6 +53,10 @@ public enum TSStatusCode {
   DUPLICATED_TEMPLATE(320),
   UNDEFINED_TEMPLATE(321),
   STORAGE_GROUP_NOT_EXIST(322),
+  CONTINUOUS_QUERY_ERROR(323),
+  NO_TEMPLATE_ON_MNODE(324),
+  DIFFERENT_TEMPLATE(325),
+  TEMPLATE_IS_IN_USE(326),
 
   EXECUTE_STATEMENT_ERROR(400),
   SQL_PARSE_ERROR(401),
@@ -91,9 +98,21 @@ public enum TSStatusCode {
   NODE_READ_ONLY(704),
   CONSISTENCY_FAILURE(705),
   NO_CONNECTION(706),
-  NEED_REDIRECTION(707);
+  NEED_REDIRECTION(707),
+  PARSE_LOG_ERROR(708),
+
+  // configuration
+  CONFIG_ERROR(800);
 
   private int statusCode;
+
+  private static final Map<Integer, TSStatusCode> CODE_MAP = new HashMap<>();
+
+  static {
+    for (TSStatusCode value : TSStatusCode.values()) {
+      CODE_MAP.put(value.getStatusCode(), value);
+    }
+  }
 
   TSStatusCode(int statusCode) {
     this.statusCode = statusCode;
@@ -101,5 +120,14 @@ public enum TSStatusCode {
 
   public int getStatusCode() {
     return statusCode;
+  }
+
+  public static TSStatusCode representOf(int statusCode) {
+    return CODE_MAP.get(statusCode);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("%s(%d)", name(), getStatusCode());
   }
 }

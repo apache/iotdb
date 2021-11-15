@@ -24,7 +24,7 @@
 
 Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
 
-```
+```sql
 IoTDB> FLUSH 
 IoTDB> FLUSH root.ln
 IoTDB> FLUSH root.sg1,root.sg2
@@ -37,7 +37,7 @@ Execute Level Compaction and unsequence Compaction task. Currently IoTDB support
 * `MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed very fast by rewriting the overlapped Chunks only, while there is some redundant data on the disk eventually.
 * `FULL MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed slow due to it takes more time to rewrite all data in overlapped files. However, there won't be any redundant data on the disk eventually.
 
-```
+```sql
 IoTDB> MERGE
 IoTDB> FULL MERGE
 ```
@@ -46,49 +46,66 @@ IoTDB> FULL MERGE
 
 Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
 
-```
+```sql
 IoTDB> CLEAR CACHE
+```
+
+
+## SET STSTEM TO READONLY / WRITABLE
+
+Manually set IoTDB system to read-only or writable mode.
+
+```sql
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
 ```
 
 ## SCHEMA SNAPSHOT
 
 To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file.
 
-```
+```sql
 IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```
 
 
-## Kill Query
+## Timeout
 
-When using IoTDB, you may encounter the following situations: you have entered a query statement, but can not get the result for a long time, as this query contains too much data or some other reasons, and have to wait until the query ends.
-Since version 0.12, IoTDB has provided two solutions for queries with long execution time: query timeout and query abort.
+IoTDB supports session and query level timeout.
+
+### Session timeout
+
+Session timeout controls when idle sessions are closed. An idle session is one that had not initiated any query or non-query operations for a period of time.
+
+Session timeout is disabled by default and can be set using the `session_timeout_threshold` parameter in IoTDB configuration file.
 
 ### Query timeout
 
 For queries that take too long to execute, IoTDB will forcibly interrupt the query and throw a timeout exception, as shown in the figure: 
 
-```
+```sql
 IoTDB> select * from root;
 Msg: 701 Current query is time out, please check your statement or modify timeout parameter.
 ```
 
-The default timeout of the system is 60000 ms，which can be customized in the configuration file through the `query_timeout_threshold` parameter.
+The default timeout of a query is 60000 ms，which can be customized in the configuration file through the `query_timeout_threshold` parameter.
 
 If you use JDBC or Session, we also support setting a timeout for a single query（Unit: ms）：
 
-```
-E.g. ((IoTDBStatement) statement).executeQuery(String sql, long timeoutInMS)
-E.g. session.executeQueryStatement(String sql, long timeout)
+```java
+((IoTDBStatement) statement).executeQuery(String sql, long timeoutInMS)
+session.executeQueryStatement(String sql, long timeout)
 ```
 
-If the timeout parameter is not configured or with value 0, the default timeout time will be used.
+
+> If the timeout parameter is not configured or with a negative number, the default timeout time will be used. 
+> If value 0 is used, timeout function will be disabled.
 
 ### Query abort
 
 In addition to waiting for the query to time out passively, IoTDB also supports stopping the query actively:
 
-```
+```sql
 KILL QUERY <queryId>
 ```
 

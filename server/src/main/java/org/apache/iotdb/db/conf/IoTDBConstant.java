@@ -31,12 +31,18 @@ public class IoTDBConstant {
       IoTDBConstant.class.getPackage().getImplementationVersion() != null
           ? IoTDBConstant.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
+  public static final String MAJOR_VERSION =
+      VERSION.equals("UNKNOWN")
+          ? "UNKNOWN"
+          : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
+  public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
+  public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
   public static final String JMX_TYPE = "type";
 
   public static final long GB = 1024 * 1024 * 1024L;
@@ -93,6 +99,12 @@ public class IoTDBConstant {
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
 
+  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
+  public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
+  public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
+
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
@@ -109,7 +121,8 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
-  public static final String PATH_WILDCARD = "*";
+  public static final String ONE_LEVEL_PATH_WILDCARD = "*";
+  public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
 
   // sdt parameters

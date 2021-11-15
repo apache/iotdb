@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -31,6 +32,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
@@ -44,6 +49,7 @@ public class PartialPath extends Path implements Comparable<Path> {
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   protected String measurementAlias = "";
 
+  public PartialPath() {}
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
    * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
@@ -122,36 +128,73 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   /**
-   * Construct a new PartialPath by resetting the prefix nodes to prefixPath
+   * Construct a new PartialPath by resetting the prefix nodes with prefixPath. If the prefix nodes
+   * contains **, then the prefixPath will be set before **. For example, give this = root.**.d and
+   * prefixPath = root.a.sg, then the result will be root.a.sg.**.d
    *
    * @param prefixPath the prefix path used to replace current nodes
    * @return A new PartialPath with altered prefix
    */
   public PartialPath alterPrefixPath(PartialPath prefixPath) {
-    String[] newNodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
-    System.arraycopy(prefixPath.getNodes(), 0, newNodes, 0, prefixPath.getNodeLength());
+    int newLength = Math.max(nodes.length, prefixPath.getNodeLength());
+    int startIndex = Math.min(nodes.length, prefixPath.getNodeLength());
+    for (int i = 0; i < startIndex; i++) {
+      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        newLength += startIndex - i;
+        startIndex = i;
+        break;
+      }
+    }
+    String[] newNodes = Arrays.copyOf(prefixPath.getNodes(), newLength);
+    System.arraycopy(
+        nodes, startIndex, newNodes, prefixPath.getNodeLength(), nodes.length - startIndex);
     return new PartialPath(newNodes);
   }
 
   /**
-   * Test if this PartialPath matches a full path. rPath is supposed to be a full timeseries path
-   * without wildcards. e.g. "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not
-   * match "root.sg.device" and "root.sg.vehicle.s1"
+   * Test if this PartialPath matches a full path. This partialPath acts as a full path pattern.
+   * rPath is supposed to be a full timeseries path without wildcards. e.g. "root.sg.device.*"
+   * matches path "root.sg.device.s1" whereas it does not match "root.sg.device" and
+   * "root.sg.vehicle.s1"
    *
    * @param rPath a plain full path of a timeseries
    * @return true if a successful match, otherwise return false
    */
   public boolean matchFullPath(PartialPath rPath) {
-    String[] rNodes = rPath.getNodes();
-    if (rNodes.length < nodes.length) {
+    return matchFullPath(rPath.getNodes(), 0, 0, false);
+  }
+
+  private boolean matchFullPath(
+      String[] pathNodes, int pathIndex, int patternIndex, boolean multiLevelWild) {
+    if (pathIndex == pathNodes.length && patternIndex == nodes.length) {
+      return true;
+    } else if (patternIndex == nodes.length && multiLevelWild) {
+      return matchFullPath(pathNodes, pathIndex + 1, patternIndex, true);
+    } else if (pathIndex >= pathNodes.length || patternIndex >= nodes.length) {
       return false;
     }
-    for (int i = 0; i < nodes.length; i++) {
-      if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
-        return false;
+
+    String pathNode = pathNodes[pathIndex];
+    String patternNode = nodes[patternIndex];
+    boolean isMatch = false;
+    if (patternNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, true);
+    } else {
+      if (patternNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
+        if (Pattern.matches(patternNode.replace("*", ".*"), pathNode)) {
+          isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
+        }
+      } else {
+        if (patternNode.equals(pathNode)) {
+          isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
+        }
+      }
+
+      if (!isMatch && multiLevelWild) {
+        isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex, true);
       }
     }
-    return true;
+    return isMatch;
   }
 
   @Override
@@ -166,6 +209,15 @@ public class PartialPath extends Path implements Comparable<Path> {
       fullPath = s.toString();
       return fullPath;
     }
+  }
+
+  public PartialPath copy() {
+    PartialPath result = new PartialPath();
+    result.nodes = nodes;
+    result.fullPath = fullPath;
+    result.device = device;
+    result.measurementAlias = measurementAlias;
+    return result;
   }
 
   @Override
@@ -303,14 +355,7 @@ public class PartialPath extends Path implements Comparable<Path> {
    * If the partialPath is VectorPartialPath and it has only one sub sensor, return the sub sensor's
    * full path. Otherwise, return the partialPath's fullPath
    */
-  public static String getExactFullPath(PartialPath partialPath) {
-    String fullPath = partialPath.getFullPath();
-    if (partialPath instanceof VectorPartialPath) {
-      VectorPartialPath vectorPartialPath = (VectorPartialPath) partialPath;
-      if (vectorPartialPath.getSubSensorsPathList().size() == 1) {
-        fullPath = vectorPartialPath.getSubSensorsPathList().get(0).getFullPath();
-      }
-    }
-    return fullPath;
+  public String getExactFullPath() {
+    return getFullPath();
   }
 }

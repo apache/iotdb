@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -129,13 +128,9 @@ public class IoTDBFillIT {
   private static final String STATUS_STR_2 = "root.ln.wf01.wt02.status";
   private static final String HARDWARE_STR = "root.ln.wf01.wt01.hardware";
 
-  boolean prevEnableUnseqCompaction;
-
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    prevEnableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -144,7 +139,6 @@ public class IoTDBFillIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
   }
 
   @Test
@@ -304,6 +298,70 @@ public class IoTDBFillIT {
         }
       } finally {
         resultSet.close();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void valueFillTest() {
+    String res = "7,7.0,true,7";
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select temperature,status, hardware "
+                  + "from root.ln.wf01.wt01 where time = 7 "
+                  + "Fill(int32[7], double[7], boolean[true])");
+
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TEMPERATURE_STR_1)
+                + ","
+                + resultSet.getString(STATUS_STR_1)
+                + ","
+                + resultSet.getString(HARDWARE_STR);
+        Assert.assertEquals(res, ans);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void valueFillNonNullTest() {
+    String res = "1,1.1,false,11";
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT temperature, status, hardware"
+                  + " FROM root.ln.wf01.wt01"
+                  + " WHERE time = 1 FILL(int32[7], double[7], boolean[true])");
+
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TEMPERATURE_STR_1)
+                + ","
+                + resultSet.getString(STATUS_STR_1)
+                + ","
+                + resultSet.getString(HARDWARE_STR);
+        Assert.assertEquals(res, ans);
       }
     } catch (Exception e) {
       e.printStackTrace();

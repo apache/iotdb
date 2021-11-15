@@ -47,6 +47,7 @@ jobs:
           brew install bison
           echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile
           source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
+          brew install openssl
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
@@ -76,13 +77,14 @@ jobs:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Install Boost and Win_Flex_Bison
+      - name: Install Win_Flex_Bison
         run: mkdir D:\a\cpp ; `
           Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
-          Invoke-WebRequest https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.zip -OutFile D:\a\cpp\boost_1_72_0.zip ; `
-          Expand-Archive D:\a\cpp\boost_1_72_0.zip -DestinationPath D:\a\cpp ; `
-          cd D:\a\cpp\boost_1_72_0 ; `
+      - name: Download Boost
+        run: choco install boost-msvc-14.2
+      - name: Install Boost
+        run: cd C:\local\boost_1_74_0 ; `
           .\bootstrap.bat ; `
           .\b2.exe
       - name: Install OpenSSL
@@ -92,4 +94,4 @@ jobs:
         run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe  && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
       - name: Test with Maven
         shell: bash
-        run: source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/d/a/cpp/boost_1_72_0 -Dboost.library.dir=/d/a/cpp/boost_1_72_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am
+        run: source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/c/local/boost_1_74_0 -Dboost.library.dir=/c/local/boost_1_74_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am

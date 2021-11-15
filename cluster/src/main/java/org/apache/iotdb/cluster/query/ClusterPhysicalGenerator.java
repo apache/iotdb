@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurati
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,8 +43,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
@@ -57,25 +56,21 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
-      List<PartialPath> paths, String aggregation) throws MetadataException {
-    return getCMManager().getSeriesTypesByPaths(paths, aggregation);
-  }
-
-  @Override
   public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return getCMManager().getSeriesTypesByPaths(paths, null).left;
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (PartialPath path : paths) {
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
+    }
+    return dataTypes;
   }
 
   @Override
-  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
-      throws MetadataException {
-    return getCMManager().getSeriesSchemas(paths);
+  public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
+    return getCMManager().groupVectorPaths(paths);
   }
 
   @Override
-  public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
-      throws QueryProcessException {
+  public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     // update storage groups before parsing query plans
     if (operator instanceof QueryOperator) {
       try {
@@ -84,7 +79,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
         throw new QueryProcessException(e);
       }
     }
-    return super.transformToPhysicalPlan(operator, fetchSize);
+    return super.transformToPhysicalPlan(operator);
   }
 
   @Override

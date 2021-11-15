@@ -29,16 +29,13 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurati
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
-import java.util.Map;
 
 /** Used to convert logical operator to physical plan */
 public class PhysicalGenerator {
 
-  public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
-      throws QueryProcessException {
+  public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     PhysicalPlan physicalPlan = operator.generatePhysicalPlan(this);
     physicalPlan.setDebug(operator.isDebug());
     return physicalPlan;
@@ -57,33 +54,11 @@ public class PhysicalGenerator {
     }
   }
 
-  /**
-   * get types for path list
-   *
-   * @return pair.left is the type of column in result set, pair.right is the real type of the
-   *     measurement
-   */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
-      List<PartialPath> paths, String aggregation) throws MetadataException {
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, (String) null);
-    // if the aggregation function is null, the type of column in result set
-    // is equal to the real type of the measurement
-    if (aggregation == null) {
-      return new Pair<>(measurementDataTypes, measurementDataTypes);
-    } else {
-      // if the aggregation function is not null,
-      // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregation);
-      return new Pair<>(columnDataTypes, measurementDataTypes);
-    }
-  }
-
   public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
     return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
-  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
-      throws MetadataException {
-    return IoTDB.metaManager.getSeriesSchemas(paths);
+  public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
+    return IoTDB.metaManager.groupVectorPaths(paths);
   }
 }

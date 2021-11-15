@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -44,16 +45,18 @@ public class VectorChunkWriterImpl implements IChunkWriter {
             schema.getTimeTSEncoding(),
             schema.getTimeEncoder());
 
-    List<String> valueMeasurementIdList = schema.getValueMeasurementIdList();
-    List<TSDataType> valueTSDataTypeList = schema.getValueTSDataTypeList();
-    List<TSEncoding> valueTSEncodingList = schema.getValueTSEncodingList();
-    List<Encoder> valueEncoderList = schema.getValueEncoderList();
+    List<String> valueMeasurementIdList = schema.getSubMeasurementsList();
+    List<TSDataType> valueTSDataTypeList = schema.getSubMeasurementsTSDataTypeList();
+    List<TSEncoding> valueTSEncodingList = schema.getSubMeasurementsTSEncodingList();
+    List<Encoder> valueEncoderList = schema.getSubMeasurementsEncoderList();
 
     valueChunkWriterList = new ArrayList<>(valueMeasurementIdList.size());
     for (int i = 0; i < valueMeasurementIdList.size(); i++) {
       valueChunkWriterList.add(
           new ValueChunkWriter(
-              valueMeasurementIdList.get(i),
+              schema.getMeasurementId()
+                  + TsFileConstant.PATH_SEPARATOR
+                  + valueMeasurementIdList.get(i),
               schema.getCompressor(),
               valueTSDataTypeList.get(i),
               valueTSEncodingList.get(i),
@@ -165,8 +168,7 @@ public class VectorChunkWriterImpl implements IChunkWriter {
     return estimateMaxSeriesMemSize;
   }
 
-  @Override
-  public long getCurrentChunkSize() {
+  public long getSerializedChunkSize() {
     long currentChunkSize = timeChunkWriter.getCurrentChunkSize();
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       currentChunkSize += valueChunkWriter.getCurrentChunkSize();

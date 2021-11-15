@@ -31,7 +31,7 @@ Apache IoTDB 始于清华大学软件学院。IoTDB 是一个用于管理大量�
 * [The Design of Apache IoTDB distributed framework](http://ndbc2019.sdu.edu.cn/info/1002/1044.htm), Tianan Li, Jianmin Wang, Xiangdong Huang, Yi Xu, Dongfang Mao, Jun Yuan. NDBC 2019
 * [Dual-PISA: An index for aggregation operations on time series data](https://www.sciencedirect.com/science/article/pii/S0306437918305489), Jialin Qiao, Xiangdong Huang, Jianmin Wang, Raymond K Wong. IS 2020
 
-## Benchmark工具
+## Benchmark 工具
 
 我们还研发了面向时间序列数据库的 Benchmark 工具： 
 

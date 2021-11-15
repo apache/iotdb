@@ -48,6 +48,23 @@ Alternatively, manually download the .zip file and unpack it into grafana plugin
 * `/var/lib/grafana/plugins` (Linux)
 * `/usr/local/var/lib/grafana/plugins`(Mac)
 
+Then you need to restart grafana server, then you can use browser to visit grafana.
+
+If you see "SimpleJson" in "Type" of "Add data source" pages, then it is install successfully.
+
+Or, if you meet following errors:
+
+```
+Unsigned plugins were found during plugin initialization. Grafana Labs cannot guarantee the integrity of these plugins. We recommend only using signed plugins.
+The following plugins are disabled and not shown in the list below:
+```
+
+Please try to find config file of grafana(eg. customer.ini in windows, and /etc/grafana/grafana.ini in linux), then add following configuration:
+
+```
+allow_loading_unsigned_plugins = "grafana-simple-json-datasource"
+```
+
 #### Start Grafana
 If Unix is used, Grafana will start automatically after installing, or you can run `sudo service grafana-server start` command. See more information [here](http://docs.grafana.org/installation/debian/).
 

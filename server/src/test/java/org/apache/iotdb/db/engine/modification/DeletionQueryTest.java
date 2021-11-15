@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -60,8 +59,6 @@ public class DeletionQueryTest {
   private TSEncoding encoding = TSEncoding.PLAIN;
   private QueryRouter router = new QueryRouter();
 
-  private int prevUnseqLevelNum = 0;
-
   static {
     for (int i = 0; i < 10; i++) {
       measurements[i] = "m" + i;
@@ -70,8 +67,6 @@ public class DeletionQueryTest {
 
   @Before
   public void setup() throws MetadataException {
-    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
@@ -87,13 +82,6 @@ public class DeletionQueryTest {
   @After
   public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
-  }
-
-  private void insertToStorageEngine(TSRecord record)
-      throws StorageEngineException, IllegalPathException {
-    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    StorageEngine.getInstance().insert(insertRowPlan);
   }
 
   @Test
@@ -108,10 +96,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
@@ -147,9 +139,12 @@ public class DeletionQueryTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 40, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 30, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 40, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
@@ -196,10 +191,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
@@ -246,9 +245,12 @@ public class DeletionQueryTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 40, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 30, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 40, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
@@ -284,10 +286,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -299,11 +305,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 250, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 250, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 230, -1);
     StorageEngine.getInstance()
-        .delete(new PartialPath(processorName, measurements[5]), 230, 250, -1);
+        .delete(new PartialPath(processorName, measurements[3]), 0, 250, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 250, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 230, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 230, 250, -1, null);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -315,10 +324,14 @@ public class DeletionQueryTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 

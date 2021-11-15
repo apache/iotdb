@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import org.apache.iotdb.cluster.client.DataClientProvider;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.ClusterIoTDB;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.ClientManager;
+import org.apache.iotdb.cluster.client.ClientManager.Type;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
@@ -28,6 +30,7 @@ import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
@@ -41,10 +44,11 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -57,7 +61,6 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 
@@ -75,7 +78,7 @@ public class BaseMember {
 
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
-  protected Map<Node, DataGroupMember> dataGroupMemberMap;
+  protected Map<RaftNode, DataGroupMember> dataGroupMemberMap;
   private Map<Node, MetaGroupMember> metaGroupMemberMap;
   PartitionGroup allNodes;
   protected MetaGroupMember testMetaMember;
@@ -94,26 +97,33 @@ public class BaseMember {
 
   private int syncLeaderMaxWait;
   private long heartBeatInterval;
+  private long electionTimeout;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() throws Exception, QueryProcessException {
     prevUseAsyncApplier = ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(false);
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     preLogBufferSize = ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(4096);
+    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(409600);
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     prevEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     RaftMember.setWaitLeaderTimeMs(10);
 
-    syncLeaderMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
-    heartBeatInterval = RaftServer.getHeartBeatIntervalMs();
+    syncLeaderMaxWait = ClusterConstant.getSyncLeaderMaxWaitMs();
+    heartBeatInterval = ClusterConstant.getHeartbeatIntervalMs();
+    electionTimeout = ClusterConstant.getElectionTimeoutMs();
 
-    RaftServer.setSyncLeaderMaxWaitMs(100);
-    RaftServer.setHeartBeatIntervalMs(100);
+    ClusterConstant.setSyncLeaderMaxWaitMs(100);
+    ClusterConstant.setHeartbeatIntervalMs(100);
+    ClusterConstant.setElectionTimeoutMs(1000);
+
+    electionTimeout = ClusterConstant.getElectionTimeoutMs();
+
+    ClusterConstant.setElectionTimeoutMs(1000);
 
     allNodes = new PartitionGroup();
     for (int i = 0; i < 100; i += 10) {
@@ -190,17 +200,22 @@ public class BaseMember {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(prevUseAsyncApplier);
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(prevEnableWAL);
 
-    RaftServer.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
-    RaftServer.setHeartBeatIntervalMs(heartBeatInterval);
+    ClusterConstant.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
+    ClusterConstant.setHeartbeatIntervalMs(heartBeatInterval);
+    ClusterConstant.setElectionTimeoutMs(electionTimeout);
   }
 
   DataGroupMember getDataGroupMember(Node node) {
+    return getDataGroupMember(new RaftNode(node, 0));
+  }
+
+  DataGroupMember getDataGroupMember(RaftNode node) {
     return dataGroupMemberMap.computeIfAbsent(node, this::newDataGroupMember);
   }
 
-  private DataGroupMember newDataGroupMember(Node node) {
+  private DataGroupMember newDataGroupMember(RaftNode raftNode) {
     DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+        new TestDataGroupMember(raftNode.getNode(), partitionTable.getHeaderGroup(raftNode)) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
@@ -222,25 +237,17 @@ public class BaseMember {
           }
 
           @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            try {
-              return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException e) {
-              return null;
-            }
-          }
-
-          @Override
           public AsyncClient getSendLogAsyncClient(Node node) {
             return getAsyncClient(node);
           }
         };
-    newMember.setThisNode(node);
+    newMember.setThisNode(raftNode.getNode());
     newMember.setMetaGroupMember(testMetaMember);
-    newMember.setLeader(node);
+    newMember.setLeader(raftNode.getNode());
     newMember.setCharacter(NodeCharacter.LEADER);
     newMember.setLogManager(
-        getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), newMember));
+        getLogManager(
+            partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(0), 0)), newMember));
 
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;
@@ -251,7 +258,7 @@ public class BaseMember {
     return new TestPartitionedLogManager(
         new DataLogApplier(testMetaMember, dataGroupMember),
         testMetaMember.getPartitionTable(),
-        partitionGroup.getHeader(),
+        partitionGroup.getHeader().getNode(),
         FileSnapshot.Factory.INSTANCE) {
       @Override
       public void takeSnapshot() {}
@@ -267,19 +274,19 @@ public class BaseMember {
         new TestMetaGroupMember() {
 
           @Override
-          public DataGroupMember getLocalDataMember(Node header, Object request) {
+          public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
             return getDataGroupMember(header);
           }
 
           @Override
-          public DataGroupMember getLocalDataMember(Node header) {
+          public DataGroupMember getLocalDataMember(RaftNode header) {
             return getDataGroupMember(header);
           }
 
           @Override
           public AsyncClient getAsyncClient(Node node) {
             try {
-              return new TestAsyncMetaClient(null, null, node, null) {
+              return new TestAsyncMetaClient(null, null, node) {
                 @Override
                 public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
                   new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
@@ -303,13 +310,16 @@ public class BaseMember {
     ret.setLeader(node);
     ret.setCharacter(NodeCharacter.LEADER);
     ret.setAppendLogThreadPool(testThreadPool);
-    ret.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-            return new TestAsyncDataClient(node, dataGroupMemberMap);
-          }
-        });
+    // TODO fixme : restore normal provider
+    ClusterIoTDB.getInstance()
+        .setClientManager(
+            new ClientManager(true, Type.RequestForwardClient) {
+              @Override
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
+                return new TestAsyncDataClient(node, dataGroupMemberMap);
+              }
+            });
     return ret;
   }
 }

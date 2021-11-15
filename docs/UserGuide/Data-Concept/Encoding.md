@@ -33,7 +33,7 @@ Second-order differential encoding is more suitable for encoding monotonically i
 
 * RLE
 
-Run-length encoding is suitable for storing sequence with continuous integer values, and is not recommended for sequence data with most of the time different values.
+Run-length encoding is suitable for storing sequence with continuous values, and is not recommended for sequence data with most of the time different values.
 
 Run-length encoding can also be used to encode floating-point numbers, while it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER) when creating time series. It is more suitable to store sequence data where floating-point values appear continuously, monotonously increasing or decreasing, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
 
@@ -47,12 +47,6 @@ Currently, there are two versions of GORILLA encoding implementation, it is reco
 
 Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using GORILLA to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
 
-* REGULAR
-
-Regular data encoding is more suitable for time encoding regular sequence increasing data (e.g. the timeseries with the same time elapsed between each data point), in which case it's better than TS_2DIFF.
-
-Regular data encoding method is not suitable for the data with fluctuations (irregular data), and TS_2DIFF is recommended to deal with it.
-
 * DICTIONARY
 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
@@ -60,7 +54,9 @@ DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinali
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-<center> **The correspondence between the data type and its supported encodings**
+<center> 
+
+**The correspondence between the data type and its supported encodings**
 
 |Data Type	|Supported Encoding|
 |:---:|:---:|

@@ -173,10 +173,10 @@ Registering a trigger can be carried out as follows:
    CREATE TRIGGER alert-listener-sg1d1s1
    AFTER INSERT
    ON root.sg1.d1.s1
-   AS "org.apache.iotdb.db.engine.trigger.example.AlertListener"
+   AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
    WITH (
-     "lo" = "0", 
-     "hi" = "100.0"
+     'lo' = '0', 
+     'hi' = '100.0'
    )
    ```
 
@@ -699,12 +699,12 @@ package org.apache.iotdb.trigger;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
-import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
-import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
-import org.apache.iotdb.db.sink.local.LocalIoTDBConfiguration;
-import org.apache.iotdb.db.sink.local.LocalIoTDBEvent;
-import org.apache.iotdb.db.sink.local.LocalIoTDBHandler;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBEvent;
+import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -786,7 +786,7 @@ public class TriggerExample implements Trigger {
   private void openSinkHandlers() throws Exception {
     localIoTDBHandler.open(
         new LocalIoTDBConfiguration(
-            TARGET_DEVICE, new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
+            TARGET_DEVICE, new String[]{"local"}, new TSDataType[]{TSDataType.DOUBLE}));
     mqttHandler.open(
         new MQTTConfiguration(
             "127.0.0.1",
@@ -794,7 +794,7 @@ public class TriggerExample implements Trigger {
             "root",
             "root",
             new PartialPath(TARGET_DEVICE),
-            new String[] {"remote"}));
+            new String[]{"remote"}));
   }
 
   private void closeSinkHandlers() throws Exception {
@@ -833,10 +833,10 @@ You can try this trigger by following the steps below:
   CREATE TRIGGER window-avg-alerter
   AFTER INSERT
   ON root.sg1.d1.s1
-  AS "org.apache.iotdb.trigger.TriggerExample"
+  AS 'org.apache.iotdb.trigger.TriggerExample'
   WITH (
-    "lo" = "0",
-    "hi" = "10.0"
+    'lo' = '0',
+    'hi' = '10.0'
   )
   ```
 

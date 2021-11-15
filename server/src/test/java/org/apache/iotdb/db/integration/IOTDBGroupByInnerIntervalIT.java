@@ -228,7 +228,7 @@ public class IOTDBGroupByInnerIntervalIT {
 
   @Test
   public void countSumAvgInnerIntervalTestWithTimeFilter() {
-    String retArray = "1,0,0.0,null";
+    String retArray = "1,0,null,null";
     double[][] retArray1 = {
       {6.0, 3.0, 23.1, 7.7},
       {11.0, 3.0, 36.6, 12.2},

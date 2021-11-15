@@ -50,13 +50,14 @@ import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -161,6 +162,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
     this.tsFileInput = input;
+    this.file = input.getFilePath();
     try {
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
@@ -647,7 +649,10 @@ public class TsFileSequenceReader implements AutoCloseable {
             .computeIfAbsent(deviceId, k -> new ArrayList<>())
             .addAll(timeseriesMetadataList);
       } else {
-        deviceId = metadataIndex.getName();
+        // deviceId should be determined by LEAF_DEVICE node
+        if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+          deviceId = metadataIndex.getName();
+        }
         MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         int metadataIndexListSize = metadataIndexNode.getChildren().size();
         for (int i = 0; i < metadataIndexListSize; i++) {
@@ -888,6 +893,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     tsFileInput.position(tsFileInput.position() + header.getCompressedSize());
   }
 
+  public ByteBuffer readCompressedPage(PageHeader header) throws IOException {
+    return readData(-1, header.getCompressedSize());
+  }
+
   public ByteBuffer readPage(PageHeader header, CompressionType type) throws IOException {
     ByteBuffer buffer = readData(-1, header.getCompressedSize());
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
@@ -1046,14 +1055,15 @@ public class TsFileSequenceReader implements AutoCloseable {
             ChunkHeader chunkHeader = this.readChunkHeader(marker);
             measurementID = chunkHeader.getMeasurementID();
             IMeasurementSchema measurementSchema =
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     measurementID,
                     chunkHeader.getDataType(),
                     chunkHeader.getEncodingType(),
                     chunkHeader.getCompressionType());
             measurementSchemaList.add(measurementSchema);
             dataType = chunkHeader.getDataType();
-            Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
+            Statistics<? extends Serializable> chunkStatistics =
+                Statistics.getStatsByType(dataType);
             int dataSize = chunkHeader.getDataSize();
             if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
               while (dataSize > 0) {
@@ -1264,6 +1274,18 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
     }
     return res;
+  }
+
+  /**
+   * get metadata index node
+   *
+   * @param startOffset start read offset
+   * @param endOffset end read offset
+   * @return MetadataIndexNode
+   */
+  public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset)
+      throws IOException {
+    return MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
   }
 
   /**

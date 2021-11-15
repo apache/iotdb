@@ -36,6 +36,7 @@ public enum ServiceType {
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
   SYNC_SERVICE("SYNC ServerService", ""),
   UPGRADE_SERVICE("UPGRADE DataService", ""),
+  SETTLE_SERVICE("SETTLE DataService", ""),
   MERGE_SERVICE("Merge Manager", "Merge Manager"),
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
@@ -53,9 +54,18 @@ public enum ServiceType {
       "Flush ServerService", generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),
   CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor"),
   SYSTEMINFO_SERVICE("MemTable Monitor Service", "MemTable, Monitor"),
-
+  CONTINUOUS_QUERY_SERVICE("Continuous Query Service", "Continuous Query Service"),
   CLUSTER_INFO_SERVICE("Cluster Monitor Service (thrift-based)", "Cluster Monitor-Thrift"),
-  ;
+  CLUSTER_RPC_SERVICE("Cluster RPC Service", "ClusterRPCService"),
+  CLUSTER_META_RPC_SERVICE("Cluster Meta RPC Service", "ClusterMetaRPCService"),
+  CLUSTER_META_HEART_BEAT_RPC_SERVICE(
+      "Cluster Meta Heartbeat RPC Service", "ClusterMetaHeartbeatRPCService"),
+  CLUSTER_DATA_RPC_SERVICE("Cluster Data RPC Service", "ClusterDataRPCService"),
+  CLUSTER_DATA_HEART_BEAT_RPC_SERVICE(
+      "Cluster Data Heartbeat RPC Service", "ClusterDataHeartbeatRPCService"),
+  CLUSTER_META_ENGINE("Cluster Meta Engine", "ClusterMetaEngine"),
+  CLUSTER_DATA_ENGINE("Cluster Data Engine", "ClusterDataEngine"),
+  REST_SERVICE("REST Service", "REST Service");
 
   private final String name;
   private final String jmxName;

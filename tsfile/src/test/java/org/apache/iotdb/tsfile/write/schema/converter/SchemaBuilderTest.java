@@ -24,8 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Test;
 
@@ -45,11 +45,11 @@ public class SchemaBuilderTest {
     Schema schema = new Schema();
     schema.registerTimeseries(
         new Path("d1", "s4"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     schema.registerTimeseries(
         new Path("d1", "s5"),
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 
     Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
@@ -71,13 +71,13 @@ public class SchemaBuilderTest {
     Map<String, IMeasurementSchema> template = new HashMap<>();
     template.put(
         "s4",
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     template.put(
         "s5",
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
-    schema.registerDeviceTemplate("template1", template);
+    schema.registerSchemaTemplate("template1", template);
     schema.registerDevice("d1", "template1");
 
     Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
@@ -99,17 +99,17 @@ public class SchemaBuilderTest {
     Map<String, IMeasurementSchema> template = new HashMap<>();
     template.put(
         "s4",
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     template.put(
         "s5",
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
-    schema.registerDeviceTemplate("template1", template);
+    schema.registerSchemaTemplate("template1", template);
 
     schema.extendTemplate(
         "template1",
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s6", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY, props));
 
     schema.registerDevice("d1", "template1");

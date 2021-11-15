@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
@@ -91,7 +91,7 @@ public class TriggerRegistrationService implements IService {
   public synchronized void register(CreateTriggerPlan plan)
       throws TriggerManagementException, TriggerExecutionException {
     checkIfRegistered(plan);
-    MeasurementMNode measurementMNode = tryGetMeasurementMNode(plan);
+    IMeasurementMNode measurementMNode = tryGetMeasurementMNode(plan);
     tryAppendRegistrationLog(plan);
     doRegister(plan, measurementMNode);
   }
@@ -116,14 +116,12 @@ public class TriggerRegistrationService implements IService {
                 information.getClassName()));
   }
 
-  private MeasurementMNode tryGetMeasurementMNode(CreateTriggerPlan plan)
+  private IMeasurementMNode tryGetMeasurementMNode(CreateTriggerPlan plan)
       throws TriggerManagementException {
     try {
-      return (MeasurementMNode) IoTDB.metaManager.getNodeByPath(plan.getFullPath());
+      return IoTDB.metaManager.getMeasurementMNode(plan.getFullPath());
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
-    } catch (ClassCastException e) {
-      throw new TriggerManagementException("Triggers can only be registered on MeasurementMNode.");
     }
   }
 
@@ -138,7 +136,7 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  private void doRegister(CreateTriggerPlan plan, MeasurementMNode measurementMNode)
+  private void doRegister(CreateTriggerPlan plan, IMeasurementMNode measurementMNode)
       throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationInformation information = new TriggerRegistrationInformation(plan);
     TriggerClassLoader classLoader =

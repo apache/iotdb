@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.sink;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
-import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
-import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -85,7 +85,7 @@ public class MQTTSinkTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from root"));
+      Assert.assertTrue(statement.execute("select * from root.**"));
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -148,7 +148,7 @@ public class MQTTSinkTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from root"));
+      Assert.assertTrue(statement.execute("select * from root.**"));
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();

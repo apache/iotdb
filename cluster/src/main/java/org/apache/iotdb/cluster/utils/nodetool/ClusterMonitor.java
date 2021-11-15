@@ -18,14 +18,19 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
-import org.apache.iotdb.cluster.ClusterMain;
+import org.apache.iotdb.cluster.ClusterIoTDB;
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -33,14 +38,19 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.BUILDING_CLUSTER_INFO;
+import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.META_LEADER_UNKNOWN_INFO;
 
 public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
@@ -66,9 +76,72 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
+  public List<Pair<Node, NodeCharacter>> getMetaGroup() {
+    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupMember();
+    if (metaMember == null || metaMember.getPartitionTable() == null) {
+      return null;
+    }
+    List<Pair<Node, NodeCharacter>> res = new ArrayList<>();
+    Node leader = metaMember.getLeader();
+    List<Node> nodes = metaMember.getPartitionTable().getAllNodes();
+    for (Node node : nodes) {
+      if (node.equals(leader)) {
+        res.add(new Pair<>(node, NodeCharacter.LEADER));
+      } else {
+        res.add(new Pair<>(node, NodeCharacter.FOLLOWER));
+      }
+    }
+    return res;
+  }
+
   public List<Node> getRing() {
-    PartitionTable partitionTable = getPartitionTable();
-    return partitionTable != null ? partitionTable.getAllNodes() : null;
+    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupMember();
+    if (metaMember == null || metaMember.getPartitionTable() == null) {
+      return null;
+    }
+    return metaMember.getPartitionTable().getAllNodes();
+  }
+
+  @Override
+  public List<Pair<Node, NodeCharacter>> getDataGroup(int raftId) throws Exception {
+    MetaGroupMember metaMember = ClusterIoTDB.getInstance().getMetaGroupMember();
+    if (metaMember == null || metaMember.getPartitionTable() == null) {
+      return null;
+    }
+    RaftNode raftNode = new RaftNode(metaMember.getThisNode(), raftId);
+    DataGroupMember dataMember =
+        ClusterIoTDB.getInstance()
+            .getDataGroupEngine()
+            .getHeaderGroupMap()
+            .getOrDefault(raftNode, null);
+    if (dataMember == null) {
+      throw new Exception(String.format("Partition whose header is %s doesn't exist.", raftNode));
+    }
+    List<Pair<Node, NodeCharacter>> res = new ArrayList<>();
+    for (Node node : dataMember.getAllNodes()) {
+      if (node.equals(metaMember.getThisNode())) {
+        res.add(new Pair<>(node, NodeCharacter.LEADER));
+      } else {
+        res.add(new Pair<>(node, NodeCharacter.FOLLOWER));
+      }
+    }
+    return res;
+  }
+
+  @Override
+  public Map<PartitionGroup, Integer> getSlotNumInDataMigration() throws Exception {
+    MetaGroupMember member = ClusterIoTDB.getInstance().getMetaGroupMember();
+    if (member == null || member.getPartitionTable() == null) {
+      throw new Exception(BUILDING_CLUSTER_INFO);
+    }
+    if (member.getCharacter() != NodeCharacter.LEADER) {
+      if (member.getLeader() == null || member.getLeader().equals(ClusterConstant.EMPTY_NODE)) {
+        throw new Exception(META_LEADER_UNKNOWN_INFO);
+      } else {
+        throw new Exception(NodeToolCmd.redirectToQueryMetaLeader(member.getLeader()));
+      }
+    }
+    return member.collectAllPartitionMigrationStatus();
   }
 
   @Override
@@ -81,7 +154,6 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     try {
       return partitionTable.partitionByPathRangeTime(new PartialPath(path), startTime, endTime);
     } catch (MetadataException e) {
-      LOGGER.error("The storage group of path {} doesn't exist.", path, e);
       return new MultiKeyMap<>();
     }
   }
@@ -95,24 +167,8 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     try {
       return partitionTable.partitionByPathTime(new PartialPath(path), 0);
     } catch (MetadataException e) {
-      LOGGER.error("The storage group of path {} doesn't exist.", path, e);
       return new PartitionGroup();
     }
-  }
-
-  @Override
-  public Map<PartitionGroup, Integer> getSlotNumOfCurNode() {
-    PartitionTable partitionTable = getPartitionTable();
-    if (partitionTable == null || partitionTable.getLocalGroups() == null) {
-      return null;
-    }
-    List<PartitionGroup> localGroups = partitionTable.getLocalGroups();
-    Map<Node, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
-    Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
-    for (PartitionGroup group : localGroups) {
-      raftGroupMapSlotNum.put(group, nodeSlotMap.get(group.getHeader()).size());
-    }
-    return raftGroupMapSlotNum;
   }
 
   @Override
@@ -122,34 +178,32 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     List<Node> allNodes = partitionTable.getAllNodes();
-    Map<Node, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
+    Map<RaftNode, List<Integer>> nodeSlotMap =
+        ((SlotPartitionTable) partitionTable).getAllNodeSlots();
     Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
     for (Node header : allNodes) {
-      raftGroupMapSlotNum.put(
-          partitionTable.getHeaderGroup(header), nodeSlotMap.get(header).size());
+      for (int raftId = 0;
+          raftId < ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
+          raftId++) {
+        RaftNode raftNode = new RaftNode(header, raftId);
+        raftGroupMapSlotNum.put(
+            partitionTable.getHeaderGroup(raftNode), nodeSlotMap.get(raftNode).size());
+      }
     }
     return raftGroupMapSlotNum;
   }
 
   @Override
-  public Map<Node, Boolean> getAllNodeStatus() {
-    MetaGroupMember metaGroupMember = getMetaGroupMember();
+  public Map<Node, Integer> getAllNodeStatus() {
+    MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
     if (metaGroupMember == null) {
       return null;
     }
     return metaGroupMember.getAllNodeStatus();
   }
 
-  private MetaGroupMember getMetaGroupMember() {
-    MetaClusterServer metaClusterServer = ClusterMain.getMetaServer();
-    if (metaClusterServer == null) {
-      return null;
-    }
-    return metaClusterServer.getMember();
-  }
-
   private PartitionTable getPartitionTable() {
-    MetaGroupMember metaGroupMember = getMetaGroupMember();
+    MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
     if (metaGroupMember == null) {
       return null;
     }

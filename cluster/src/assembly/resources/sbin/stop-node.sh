@@ -19,14 +19,14 @@
 #
 
 
-PIDS=$(ps ax | grep -i 'ClusterMain' | grep java | grep -v grep | awk '{print $1}')
+PIDS=$(ps ax | grep -i 'ClusterIoTDB' | grep java | grep -v grep | awk '{print $1}')
 sig=0
-for evry_pid in ${PIDS}
+for every_pid in ${PIDS}
 do
-  cwd_path=$(ls -l /proc/$evry_pid | grep "cwd ->" | grep -v grep | awk '{print $NF}')
+  cwd_path=$(ls -l /proc/$every_pid | grep "cwd ->" | grep -v grep | awk '{print $NF}')
   pwd_path=$(/bin/pwd)
   if [[ $pwd_path =~ $cwd_path ]]; then
-    kill -s TERM $evry_pid
+    kill -s TERM $every_pid
     echo "close IoTDB"
     sig=1
   fi

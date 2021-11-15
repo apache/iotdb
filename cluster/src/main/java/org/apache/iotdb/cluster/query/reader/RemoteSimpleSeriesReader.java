@@ -20,10 +20,9 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -125,9 +124,9 @@ public class RemoteSimpleSeriesReader implements IPointReader {
       fetchResult.set(null);
       try {
         sourceInfo
-            .getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
+            .getCurAsyncClient(ClusterConstant.getReadOperationTimeoutMS())
             .fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
-        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+        fetchResult.wait(ClusterConstant.getReadOperationTimeoutMS());
       } catch (TException e) {
         // try other node
         if (!sourceInfo.switchNode(false, lastTimestamp)) {
@@ -146,9 +145,10 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   private ByteBuffer fetchResultSync() throws IOException {
     SyncDataClient curSyncClient = null;
     try {
-      curSyncClient = sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
+      curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
       return curSyncClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId());
     } catch (TException e) {
+      curSyncClient.close();
       // try other node
       if (!sourceInfo.switchNode(false, lastTimestamp)) {
         return null;
@@ -156,7 +156,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
       return fetchResultSync();
     } finally {
       if (curSyncClient != null) {
-        ClientUtils.putBackSyncClient(curSyncClient);
+        curSyncClient.returnSelf();
       }
     }
   }

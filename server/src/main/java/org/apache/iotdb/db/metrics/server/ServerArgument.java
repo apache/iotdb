@@ -181,11 +181,7 @@ public class ServerArgument {
   private int getCpuRateForLinux() {
     try {
       long[] c0 = readLinuxCpu();
-      try {
-        Thread.sleep(CPUTIME);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
+      Thread.sleep(CPUTIME);
       long[] c1 = readLinuxCpu();
       if (c0 != null && c1 != null) {
         long idleCpuTime = c1[0] - c0[0];
@@ -197,10 +193,12 @@ public class ServerArgument {
       } else {
         return 0;
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       logger.error("Get CPU Ratio failed", e);
-      return 0;
     }
+    return 0;
   }
 
   /** cpu ratio for windows */
@@ -211,11 +209,7 @@ public class ServerArgument {
               + "\\system32\\wbem\\wmic.exe process get Caption,CommandLine,"
               + "KernelModeTime,ReadOperationCount,ThreadCount,UserModeTime,WriteOperationCount";
       long[] c0 = readWinCpu(Runtime.getRuntime().exec(procCmd));
-      try {
-        Thread.sleep(CPUTIME);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
+      Thread.sleep(CPUTIME);
       long[] c1 = readWinCpu(Runtime.getRuntime().exec(procCmd));
       if (c0 != null && c1 != null) {
         long idletime = c1[0] - c0[0];
@@ -227,10 +221,12 @@ public class ServerArgument {
       } else {
         return 0;
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       logger.error("Get CPU Ratio failed", e);
-      return 0;
     }
+    return 0;
   }
 
   /** read cpu info(windows) */

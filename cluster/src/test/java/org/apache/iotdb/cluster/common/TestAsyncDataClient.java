@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.common;
 
+import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -31,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.BaseMember;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
@@ -43,6 +45,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -57,11 +60,11 @@ import java.util.Map;
 public class TestAsyncDataClient extends AsyncDataClient {
 
   private PlanExecutor planExecutor;
-  private Map<Node, DataGroupMember> dataGroupMemberMap;
+  private Map<RaftNode, DataGroupMember> dataGroupMemberMap;
 
-  public TestAsyncDataClient(Node node, Map<Node, DataGroupMember> dataGroupMemberMap)
+  public TestAsyncDataClient(Node node, Map<RaftNode, DataGroupMember> dataGroupMemberMap)
       throws IOException {
-    super(null, null, node, null);
+    super(null, null, node, ClientCategory.DATA);
     this.dataGroupMemberMap = dataGroupMemberMap;
     try {
       this.planExecutor = new PlanExecutor();
@@ -72,7 +75,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void fetchSingleSeries(
-      Node header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () ->
                 new DataAsyncService(dataGroupMemberMap.get(header))
@@ -82,7 +85,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void fetchMultSeries(
-      Node header,
+      RaftNode header,
       long readerId,
       List<String> paths,
       AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler) {
@@ -135,7 +138,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void fetchSingleSeriesByTimestamps(
-      Node header,
+      RaftNode header,
       long readerId,
       List<Long> timestamps,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
@@ -148,7 +151,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void getAllPaths(
-      Node header,
+      RaftNode header,
       List<String> paths,
       boolean withAlias,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
@@ -166,7 +169,9 @@ public class TestAsyncDataClient extends AsyncDataClient {
             () -> {
               try {
                 PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-                planExecutor.processNonQuery(plan);
+                if (!(plan instanceof LogPlan)) {
+                  planExecutor.processNonQuery(plan);
+                }
                 resultHandler.onComplete(StatusUtils.OK);
               } catch (IOException
                   | QueryProcessException
@@ -252,7 +257,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void getGroupByResult(
-      Node header,
+      RaftNode header,
       long executorId,
       long startTime,
       long endTime,
@@ -271,6 +276,17 @@ public class TestAsyncDataClient extends AsyncDataClient {
             () ->
                 new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .previousFill(request, resultHandler))
+        .start();
+  }
+
+  @Override
+  public void getAllMeasurementSchema(
+      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
+    new Thread(
+            () -> {
+              new DataAsyncService(dataGroupMemberMap.get(header))
+                  .getAllMeasurementSchema(header, planBinary, resultHandler);
+            })
         .start();
   }
 }

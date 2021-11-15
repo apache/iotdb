@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,7 +39,7 @@ public abstract class InsertPlan extends PhysicalPlan {
   // get from client
   protected TSDataType[] dataTypes;
   // get from MManager
-  protected MeasurementMNode[] measurementMNodes;
+  protected IMeasurementMNode[] measurementMNodes;
 
   // record the failed measurements, their reasons, and positions in "measurements"
   List<String> failedMeasurements;
@@ -83,11 +83,11 @@ public abstract class InsertPlan extends PhysicalPlan {
     this.dataTypes = dataTypes;
   }
 
-  public MeasurementMNode[] getMeasurementMNodes() {
+  public IMeasurementMNode[] getMeasurementMNodes() {
     return measurementMNodes;
   }
 
-  public void setMeasurementMNodes(MeasurementMNode[] mNodes) {
+  public void setMeasurementMNodes(IMeasurementMNode[] mNodes) {
     this.measurementMNodes = mNodes;
   }
 
@@ -153,6 +153,9 @@ public abstract class InsertPlan extends PhysicalPlan {
    * @return the plan itself, with measurements replaced with the previously failed ones.
    */
   public InsertPlan getPlanFromFailed() {
+    if (isAligned && originalPrefixPath != null) {
+      prefixPath = originalPrefixPath;
+    }
     if (failedMeasurements == null) {
       return null;
     }
@@ -166,8 +169,8 @@ public abstract class InsertPlan extends PhysicalPlan {
       }
     }
     if (measurementMNodes != null) {
-      MeasurementMNode[] temp = measurementMNodes.clone();
-      measurementMNodes = new MeasurementMNode[failedIndices.size()];
+      IMeasurementMNode[] temp = measurementMNodes.clone();
+      measurementMNodes = new IMeasurementMNode[failedIndices.size()];
       for (int i = 0; i < failedIndices.size(); i++) {
         measurementMNodes[i] = temp[failedIndices.get(i)];
       }

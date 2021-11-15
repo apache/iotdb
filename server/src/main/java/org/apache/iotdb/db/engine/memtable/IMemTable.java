@@ -46,6 +46,10 @@ public interface IMemTable {
 
   void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
 
+  /**
+   * write data in the range [start, end). Null value in each column values will be replaced by the
+   * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
+   */
   void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /** @return the number of points */
@@ -56,6 +60,9 @@ public interface IMemTable {
 
   /** only used when mem control enabled */
   void addTVListRamCost(long cost);
+
+  /** only used when mem control enabled */
+  void releaseTVListRamCost(long cost);
 
   /** only used when mem control enabled */
   long getTVListsRamCost();
@@ -79,7 +86,9 @@ public interface IMemTable {
   void insert(InsertRowPlan insertRowPlan);
 
   /**
-   * insert tablet into this memtable
+   * insert tablet into this memtable. The rows to be inserted are in the range [start, end). Null
+   * value in each column values will be replaced by the subsequent non-null value, e.g., {1, null,
+   * 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletPlan insertTabletPlan
    * @param start included
@@ -92,7 +101,7 @@ public interface IMemTable {
       String deviceId,
       String measurement,
       IMeasurementSchema schema,
-      long timeLowerBound,
+      long ttlLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
 
@@ -137,7 +146,12 @@ public interface IMemTable {
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);
 
+  /** only used when mem control enabled */
+  void releaseTextDataSize(long textDataDecrement);
+
   long getMaxPlanIndex();
 
   long getMinPlanIndex();
+
+  long getCreatedTime();
 }

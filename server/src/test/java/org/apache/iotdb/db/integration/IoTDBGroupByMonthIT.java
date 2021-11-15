@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBConnection;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -34,6 +33,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.TimeZone;
 
 import static org.apache.iotdb.db.constant.TestConstant.sum;
@@ -46,9 +47,6 @@ public class IoTDBGroupByMonthIT {
 
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     df.setTimeZone(TimeZone.getTimeZone("GMT+00:00"));
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -58,9 +56,6 @@ public class IoTDBGroupByMonthIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   /**
@@ -81,6 +76,7 @@ public class IoTDBGroupByMonthIT {
         "02/28/2021:00:00:00", "1.0"
       };
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
@@ -121,6 +117,7 @@ public class IoTDBGroupByMonthIT {
         "02/28/2021:00:00:00", "1.0"
       };
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
@@ -153,6 +150,7 @@ public class IoTDBGroupByMonthIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
@@ -186,6 +184,7 @@ public class IoTDBGroupByMonthIT {
         "02/28/2021:00:00:00", "31.0"
       };
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 GROUP BY ([1612051200000, 1617148800000), 1mo)");
@@ -231,18 +230,25 @@ public class IoTDBGroupByMonthIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 GROUP BY ([now() - 1mo, now()), 1d)");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
+      List<String> times = new ArrayList<>();
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
-          if (ans.equals("0.0")) {
+          times.add(resultSet.getString("Time"));
+          if (ans == null) {
             cnt++;
           }
+        }
+        if (cnt < 28 || cnt > 31) {
+          System.out.println("cnt: " + cnt);
+          System.out.println(times);
         }
         Assert.assertTrue(cnt >= 28);
         Assert.assertTrue(cnt <= 31);

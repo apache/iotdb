@@ -120,12 +120,12 @@ public class SimpleSnapshot extends Snapshot {
   public static final SnapshotInstaller<SimpleSnapshot> DEFAULT_INSTALLER =
       new SnapshotInstaller<SimpleSnapshot>() {
         @Override
-        public void install(SimpleSnapshot snapshot, int slot) {
+        public void install(SimpleSnapshot snapshot, int slot, boolean isDataMigration) {
           // default installer does nothing
         }
 
         @Override
-        public void install(Map<Integer, SimpleSnapshot> snapshotMap) {
+        public void install(Map<Integer, SimpleSnapshot> snapshotMap, boolean isDataMigration) {
           // default installer does nothing
         }
       };

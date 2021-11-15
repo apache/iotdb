@@ -30,6 +30,7 @@
     <artifactId>iotdb-website</artifactId>
     <properties>
         <frontend-maven-plugin.version>1.9.1</frontend-maven-plugin.version>
+        <scm-branch>asf-site</scm-branch>
     </properties>
     <distributionManagement>
         <site>
@@ -57,7 +58,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-existing-site</id>
@@ -295,56 +296,6 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <!-- copy single files, and move UserGuide of master into tmp folder -->
-                    <plugin>
-                        <groupId>com.coderplus.maven.plugins</groupId>
-                        <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
-                        <executions>
-                            <execution>
-                                <id>copy-package-json</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <configuration>
-                                    <fileSets>
-                                        <fileSet>
-                                            <sourceFile>${basedir}/src/main/package.json</sourceFile>
-                                            <destinationFile>${project.build.directory}/vue-source/package.json</destinationFile>
-                                        </fileSet>
-                                        <fileSet>
-                                            <sourceFile>${basedir}/src/main/deploy.js</sourceFile>
-                                            <destinationFile>${project.build.directory}/vue-source/deploy.js</destinationFile>
-                                        </fileSet>
-                                    </fileSets>
-                                </configuration>
-                            </execution>
-                            <!-- remove files if `existing` folder exist-->
-                            <execution>
-                                <id>clean-stale-master-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/UserGuide/Master</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/Master</destinationFile>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>clean-stale-master-zh-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/zh/UserGuide/Master</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/zh/Master</destinationFile>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
                     <!--install node and npm， then run `npm install` and `npm run build`-->
                     <plugin>
                         <groupId>com.github.eirslett</groupId>
@@ -391,6 +342,75 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- copy single files, and move UserGuide of master into tmp folder -->
+                    <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-package-json</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/package.json</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/package.json</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/deploy.js</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/deploy.js</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/.asf.yaml</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/src/.vuepress/dist/.asf.yaml</destinationFile>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                            <!-- remove files if `existing` folder exist-->
+                            <execution>
+                                <id>clean-stale-master-doc</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>rename</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceFile>${project.build.directory}/existing/UserGuide/Master</sourceFile>
+                                    <destinationFile>${project.build.directory}/existing/Master</destinationFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>clean-stale-master-zh-doc</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>rename</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceFile>${project.build.directory}/existing/zh/UserGuide/Master</sourceFile>
+                                    <destinationFile>${project.build.directory}/existing/zh/Master</destinationFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-asf-yaml</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/.asf.yaml</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/src/.vuepress/dist/.asf.yaml</destinationFile>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-scm-publish-plugin</artifactId>
@@ -398,7 +418,7 @@
                             <!-- mono-module doesn't require site:stage -->
                             <content>${project.build.directory}/vue-source/src/.vuepress/dist</content>
                             <!-- branch where to deploy -->
-                            <scmBranch>asf-site</scmBranch>
+                            <scmBranch>${scm-branch}</scmBranch>
                         </configuration>
                     </plugin>
                     <!--<plugin>
@@ -429,7 +449,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.12-docs</id>
@@ -439,6 +459,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.12.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.12.x.zip</outputFileName>
                                 </configuration>
@@ -484,7 +506,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.12-doc</id>
@@ -521,7 +543,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.11-docs</id>
@@ -531,6 +553,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.11.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.11.x.zip</outputFileName>
                                 </configuration>
@@ -576,7 +600,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.11-doc</id>
@@ -613,7 +637,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.10-docs</id>
@@ -623,6 +647,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.10.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.10.x.zip</outputFileName>
                                 </configuration>
@@ -668,7 +694,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.10-doc</id>
@@ -705,7 +731,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.9-docs</id>
@@ -715,6 +741,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.9.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.9.x.zip</outputFileName>
                                 </configuration>
@@ -760,7 +788,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.9-doc</id>
@@ -797,7 +825,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.8-docs</id>
@@ -807,6 +835,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.8.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.8.x.zip</outputFileName>
                                 </configuration>
@@ -852,7 +882,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>clean-stale-0.8-doc</id>

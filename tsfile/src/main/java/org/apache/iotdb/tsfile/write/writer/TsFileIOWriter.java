@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -166,6 +167,16 @@ public class TsFileIOWriter {
   }
 
   /**
+   * For TsFileReWriteTool / UpgradeTool. Use this method to determine if needs to start a
+   * ChunkGroup.
+   *
+   * @return isWritingChunkGroup
+   */
+  public boolean isWritingChunkGroup() {
+    return currentChunkGroupDeviceId != null;
+  }
+
+  /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
    * @param measurementId - measurementId of this time series
@@ -181,7 +192,7 @@ public class TsFileIOWriter {
       CompressionType compressionCodecName,
       TSDataType tsDataType,
       TSEncoding encodingType,
-      Statistics<?> statistics,
+      Statistics<? extends Serializable> statistics,
       int dataSize,
       int numOfPages,
       int mask)
@@ -318,6 +329,9 @@ public class TsFileIOWriter {
   /**
    * Flush TsFileMetadata, including ChunkMetadataList and TimeseriesMetaData
    *
+   * @param chunkMetadataListMap chunkMetadata that Path.mask == 0
+   * @param vectorToPathsMap Map Path to chunkMataList, Key is Path(timeColumn) and Value is it's
+   *     sub chunkMetadataListMap
    * @return MetadataIndexEntry list in TsFileMetadata
    */
   private MetadataIndexNode flushMetadataIndex(
@@ -337,6 +351,13 @@ public class TsFileIOWriter {
     return MetadataIndexConstructor.constructMetadataIndex(deviceTimeseriesMetadataMap, out);
   }
 
+  /**
+   * Flush one chunkMetadata
+   *
+   * @param path Path of chunk
+   * @param chunkMetadataList List of chunkMetadata about path(previous param)
+   * @param vectorToPathsMap Key is Path(timeColumn) and Value is it's sub chunkMetadataListMap
+   */
   private void flushOneChunkMetadata(
       Path path,
       List<IChunkMetadata> chunkMetadataList,
@@ -376,11 +397,11 @@ public class TsFileIOWriter {
       // chunkMetadata is time column of a vector series
       if (chunkMetadata.isTimeColumn()) {
         Map<Path, List<IChunkMetadata>> vectorMap = vectorToPathsMap.get(path);
-
         for (Map.Entry<Path, List<IChunkMetadata>> entry : vectorMap.entrySet()) {
           flushOneChunkMetadata(entry.getKey(), entry.getValue(), vectorToPathsMap);
         }
       }
+      break;
     }
   }
 

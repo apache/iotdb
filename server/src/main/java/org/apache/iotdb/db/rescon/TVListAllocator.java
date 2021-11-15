@@ -40,10 +40,14 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
-  private static final TVListAllocator INSTANCE = new TVListAllocator();
-
   public static TVListAllocator getInstance() {
-    return INSTANCE;
+    return InstanceHolder.INSTANCE;
+  }
+
+  private static class InstanceHolder {
+    private static final TVListAllocator INSTANCE = new TVListAllocator();
+
+    private InstanceHolder() {}
   }
 
   public synchronized TVList allocate(TSDataType dataType) {
@@ -84,7 +88,7 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
   @Override
   public void start() throws StartupException {
     try {
-      JMXService.registerMBean(INSTANCE, mbeanName);
+      JMXService.registerMBean(InstanceHolder.INSTANCE, mbeanName);
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }

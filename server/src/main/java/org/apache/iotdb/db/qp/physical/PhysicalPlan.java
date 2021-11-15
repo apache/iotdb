@@ -23,40 +23,54 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -112,6 +126,10 @@ public abstract class PhysicalPlan {
     return isQuery;
   }
 
+  public boolean isSelectInto() {
+    return false;
+  }
+
   public Operator.OperatorType getOperatorType() {
     return operatorType;
   }
@@ -134,6 +152,22 @@ public abstract class PhysicalPlan {
 
   public void setDebug(boolean debug) {
     this.debug = debug;
+  }
+
+  /**
+   * Calculate size after serialization.
+   *
+   * @return size
+   * @throws IOException
+   */
+  public int getSerializedSize() throws IOException {
+    try {
+      DataOutputStream dataOutputStream = new DataOutputStream(new EmptyOutputStream());
+      serialize(dataOutputStream);
+      return dataOutputStream.size();
+    } catch (UnsupportedOperationException e) {
+      throw e;
+    }
   }
 
   /**
@@ -162,7 +196,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -215,7 +249,14 @@ public abstract class PhysicalPlan {
   }
 
   public void setLoginUserName(String loginUserName) {
-    this.loginUserName = loginUserName;
+    if (this instanceof AuthorPlan) {
+      this.loginUserName = loginUserName;
+    }
+  }
+
+  /** Used to check whether a user has the permission to execute the plan with these paths. */
+  public List<PartialPath> getAuthPaths() {
+    return getPaths();
   }
 
   public static class Factory {
@@ -344,6 +385,9 @@ public abstract class PhysicalPlan {
         case BATCH_INSERT_ROWS:
           plan = new InsertRowsPlan();
           break;
+        case BATCH_INSERT_ONE_DEVICE:
+          plan = new InsertRowsOfOneDevicePlan();
+          break;
         case CREATE_TRIGGER:
           plan = new CreateTriggerPlan();
           break;
@@ -356,17 +400,53 @@ public abstract class PhysicalPlan {
         case STOP_TRIGGER:
           plan = new StopTriggerPlan();
           break;
+        case CLUSTER_LOG:
+          plan = new LogPlan();
+          break;
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
-        case SET_DEVICE_TEMPLATE:
-          plan = new SetDeviceTemplatePlan();
+        case APPEND_TEMPLATE:
+          plan = new AppendTemplatePlan();
           break;
-        case SET_USING_DEVICE_TEMPLATE:
-          plan = new SetUsingDeviceTemplatePlan();
+        case PRUNE_TEMPLATE:
+          plan = new PruneTemplatePlan();
+          break;
+        case SET_SCHEMA_TEMPLATE:
+          plan = new SetSchemaTemplatePlan();
+          break;
+        case SET_USING_SCHEMA_TEMPLATE:
+          plan = new SetUsingSchemaTemplatePlan();
           break;
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
+          break;
+        case CREATE_CONTINUOUS_QUERY:
+          plan = new CreateContinuousQueryPlan();
+          break;
+        case DROP_CONTINUOUS_QUERY:
+          plan = new DropContinuousQueryPlan();
+          break;
+        case MERGE:
+          plan = new MergePlan();
+          break;
+        case CREATE_SNAPSHOT:
+          plan = new CreateSnapshotPlan();
+          break;
+        case CLEARCACHE:
+          plan = new ClearCachePlan();
+          break;
+        case CREATE_FUNCTION:
+          plan = new CreateFunctionPlan();
+          break;
+        case DROP_FUNCTION:
+          plan = new DropFunctionPlan();
+          break;
+        case SELECT_INTO:
+          plan = new SelectIntoPlan();
+          break;
+        case SET_SYSTEM_MODE:
+          plan = new SetSystemModePlan();
           break;
         default:
           throw new IOException("unrecognized log type " + type);
@@ -376,13 +456,13 @@ public abstract class PhysicalPlan {
     }
   }
 
+  /** If you want to add new PhysicalPlanType, you must add it in the last. */
   public enum PhysicalPlanType {
     INSERT,
     DELETE,
     BATCHINSERT,
     SET_STORAGE_GROUP,
     CREATE_TIMESERIES,
-    CREATE_ALIGNED_TIMESERIES,
     TTL,
     GRANT_WATERMARK_EMBEDDING,
     REVOKE_WATERMARK_EMBEDDING,
@@ -416,13 +496,28 @@ public abstract class PhysicalPlan {
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
     CREATE_TEMPLATE,
-    SET_DEVICE_TEMPLATE,
-    SET_USING_DEVICE_TEMPLATE,
+    SET_SCHEMA_TEMPLATE,
+    SET_USING_SCHEMA_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
+    CREATE_ALIGNED_TIMESERIES,
+    CLUSTER_LOG,
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,
-    STOP_TRIGGER
+    STOP_TRIGGER,
+    CREATE_CONTINUOUS_QUERY,
+    DROP_CONTINUOUS_QUERY,
+    SHOW_CONTINUOUS_QUERIES,
+    MERGE,
+    CREATE_SNAPSHOT,
+    CLEARCACHE,
+    CREATE_FUNCTION,
+    DROP_FUNCTION,
+    SELECT_INTO,
+    SET_SYSTEM_MODE,
+    UNSET_SCHEMA_TEMPLATE,
+    APPEND_TEMPLATE,
+    PRUNE_TEMPLATE
   }
 
   public long getIndex() {

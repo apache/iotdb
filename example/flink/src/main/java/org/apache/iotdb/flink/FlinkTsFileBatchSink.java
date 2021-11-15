@@ -23,8 +23,8 @@ import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -64,11 +64,14 @@ public class FlinkTsFileBatchSink {
     RowTypeInfo rowTypeInfo = new RowTypeInfo(typeInformations, filedNames);
     Schema schema = new Schema();
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE,
+        new UnaryMeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE,
+        new UnaryMeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE,
+        new UnaryMeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     RowTSRecordConverter converter = new RowTSRecordConverter(rowTypeInfo);
     TSRecordOutputFormat<Row> outputFormat = new TSRecordOutputFormat<>(schema, converter);
 

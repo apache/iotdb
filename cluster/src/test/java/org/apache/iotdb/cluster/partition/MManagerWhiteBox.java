@@ -20,7 +20,7 @@ package org.apache.iotdb.cluster.partition;
 
 import org.apache.iotdb.db.metadata.MManager;
 
-import org.mockito.internal.util.reflection.Whitebox;
+import org.powermock.reflect.Whitebox;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
@@ -35,7 +35,7 @@ public class MManagerWhiteBox {
       MManager manager = constructor.newInstance();
       new File(logFilePath).getParentFile().mkdirs();
       Whitebox.setInternalState(manager, "logFilePath", logFilePath);
-      manager.init();
+      manager.initForMultiMManagerTest();
       return manager;
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
       e.printStackTrace();

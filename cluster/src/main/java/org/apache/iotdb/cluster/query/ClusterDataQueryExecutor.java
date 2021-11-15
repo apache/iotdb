@@ -129,7 +129,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
       PartialPath partialPath = queryPlan.getDeduplicatedPaths().get(i);
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
-      String fullPath = PartialPath.getExactFullPath(partialPath);
+      String fullPath = partialPath.getExactFullPath();
       AssignPathManagedMergeReader assignPathManagedMergeReader =
           new AssignPathManagedMergeReader(fullPath, dataType);
       for (AbstractMultPointReader multPointReader : multPointReaders) {
@@ -196,7 +196,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       PartialPath path, Set<String> deviceMeasurements, TSDataType dataType, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(
-        path, deviceMeasurements, dataType, context, queryPlan.isAscending());
+        path, deviceMeasurements, dataType, context, queryPlan.isAscending(), null);
   }
 
   @Override
@@ -286,7 +286,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
                       dataType,
                       context,
                       dataGroupMember,
-                      queryPlan.isAscending());
+                      queryPlan.isAscending(),
+                      null);
 
               if (readerByTimestamp != null) {
                 this.hasLocalReader = true;
@@ -302,7 +303,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
                       null,
                       context,
                       dataGroupMember,
-                      queryPlan.isAscending());
+                      queryPlan.isAscending(),
+                      null);
 
               if (pointReader.hasNextTimeValuePair()) {
                 this.hasLocalReader = true;
@@ -315,8 +317,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
           } else if (endPoint == null) {
             endPoint =
                 new QueryDataSet.EndPoint(
-                    partitionGroup.getHeader().getClientIp(),
-                    partitionGroup.getHeader().getClientPort());
+                    partitionGroup.getHeader().getNode().getClientIp(),
+                    partitionGroup.getHeader().getNode().getClientPort());
           }
         }
       } catch (Exception e) {
