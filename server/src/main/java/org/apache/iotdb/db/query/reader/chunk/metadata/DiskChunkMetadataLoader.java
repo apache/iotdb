@@ -54,48 +54,11 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   @Override
-  public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata) {
+  public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
 
     List<IChunkMetadata> chunkMetadataList =
-        ((TimeseriesMetadata) timeseriesMetadata).getChunkMetadataList();
+        ((TimeseriesMetadata) timeSeriesMetadata).getChunkMetadataList();
 
-    setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
-
-    /*
-     * remove not satisfied ChunkMetaData
-     */
-    chunkMetadataList.removeIf(
-        chunkMetaData ->
-            (filter != null
-                    && !filter.satisfyStartEndTime(
-                        chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-                || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-
-    // For chunkMetadata from old TsFile, do not set version
-    for (IChunkMetadata metadata : chunkMetadataList) {
-      if (!metadata.isFromOldTsFile()) {
-        metadata.setVersion(resource.getVersion());
-      }
-    }
-
-    if (context.isDebug()) {
-      DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
-      chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
-    }
-
-    return chunkMetadataList;
-  }
-
-  @Override
-  public boolean isMemChunkMetadataLoader() {
-    return false;
-  }
-
-  public static void setDiskChunkLoader(
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource resource,
-      PartialPath seriesPath,
-      QueryContext context) {
     List<Modification> pathModifications =
         context.getPathModifications(resource.getModFile(), seriesPath);
 
@@ -126,5 +89,29 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
             chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
           }
         });
+
+    /*
+     * remove not satisfied ChunkMetaData
+     */
+    chunkMetadataList.removeIf(
+        chunkMetaData ->
+            (filter != null
+                    && !filter.satisfyStartEndTime(
+                        chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
+                || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+
+    // For chunkMetadata from old TsFile, do not set version
+    for (IChunkMetadata metadata : chunkMetadataList) {
+      if (!metadata.isFromOldTsFile()) {
+        metadata.setVersion(resource.getVersion());
+      }
+    }
+
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
+      chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+    }
+
+    return chunkMetadataList;
   }
 }

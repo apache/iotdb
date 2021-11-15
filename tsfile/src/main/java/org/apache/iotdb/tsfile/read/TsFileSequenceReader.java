@@ -162,6 +162,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
     this.tsFileInput = input;
+    this.file = input.getFilePath();
     try {
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
@@ -863,11 +864,11 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public ByteBuffer readPage(PageHeader header, CompressionType type) throws IOException {
     ByteBuffer buffer = readData(-1, header.getCompressedSize());
-    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
-    ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
-    if (type == CompressionType.UNCOMPRESSED) {
+    if (header.getUncompressedSize() == 0 || type == CompressionType.UNCOMPRESSED) {
       return buffer;
     } // FIXME if the buffer is not array-implemented.
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
+    ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
     unCompressor.uncompress(
         buffer.array(), buffer.position(), buffer.remaining(), uncompressedBuffer.array(), 0);
     return uncompressedBuffer;

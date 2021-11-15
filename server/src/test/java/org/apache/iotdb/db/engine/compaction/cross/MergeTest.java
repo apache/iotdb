@@ -181,8 +181,7 @@ abstract class MergeTest {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
       for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.registerTimeseries(
-            new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {

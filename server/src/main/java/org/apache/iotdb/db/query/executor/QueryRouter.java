@@ -32,7 +32,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
@@ -83,6 +83,9 @@ public class QueryRouter implements IQueryRouter {
     }
     queryPlan.setExpression(optimizedExpression);
 
+    // group the vector partial paths for raw query after optimize the expression
+    // because path in expressions should not be grouped
+    queryPlan.transformToVector();
     RawDataQueryExecutor rawDataQueryExecutor = getRawDataQueryExecutor(queryPlan);
 
     if (!queryPlan.isAlignByTime()) {
@@ -101,9 +104,6 @@ public class QueryRouter implements IQueryRouter {
         return new EmptyDataSet();
       }
     }
-
-    // Currently, we only group the vector partial paths for raw query without value filter
-    queryPlan.transformToVector();
     return rawDataQueryExecutor.executeWithoutValueFilter(context);
   }
 
@@ -159,6 +159,22 @@ public class QueryRouter implements IQueryRouter {
     return new AggregationExecutor(context, aggregationPlan);
   }
 
+  private IExpression getOptimizeExpression(GroupByTimePlan groupByTimePlan)
+      throws QueryFilterOptimizationException, QueryProcessException {
+    IExpression expression = groupByTimePlan.getExpression();
+    List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
+    GlobalTimeExpression timeExpression = getTimeExpression(groupByTimePlan);
+
+    if (expression == null) {
+      expression = timeExpression;
+    } else {
+      expression = BinaryExpression.and(expression, timeExpression);
+    }
+
+    // optimize expression to an executable one
+    return ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(selectedSeries));
+  }
+
   @Override
   public QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
@@ -173,19 +189,7 @@ public class QueryRouter implements IQueryRouter {
     }
 
     GroupByEngineDataSet dataSet = null;
-    IExpression expression = groupByTimePlan.getExpression();
-    List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
-    GlobalTimeExpression timeExpression = getTimeExpression(groupByTimePlan);
-
-    if (expression == null) {
-      expression = timeExpression;
-    } else {
-      expression = BinaryExpression.and(expression, timeExpression);
-    }
-
-    // optimize expression to an executable one
-    IExpression optimizedExpression =
-        ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(selectedSeries));
+    IExpression optimizedExpression = getOptimizeExpression(groupByTimePlan);
     groupByTimePlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
@@ -250,17 +254,22 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
-    GroupByEngineDataSet groupByEngineDataSet =
-        (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
-    return new GroupByFillDataSet(
-        groupByFillPlan.getDeduplicatedPaths(),
-        groupByFillPlan.getDeduplicatedDataTypes(),
-        groupByEngineDataSet,
-        groupByFillPlan.getFillType(),
-        context,
-        groupByFillPlan);
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
+
+    GroupByEngineDataSet dataSet;
+    IExpression optimizedExpression = getOptimizeExpression(groupByFillPlan);
+    groupByFillPlan.setExpression(optimizedExpression);
+
+    if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+      dataSet = new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+    } else {
+      // dataSet = new GroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      throw new QueryProcessException("Group by fill doesn't support valueFilter yet.");
+    }
+
+    // TODO: support group by level in group by fill
+
+    return dataSet;
   }
 
   @Override

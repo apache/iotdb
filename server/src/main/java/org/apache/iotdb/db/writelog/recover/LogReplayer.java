@@ -168,8 +168,8 @@ public class LogReplayer {
       }
       String deviceId =
           plan.isAligned()
-              ? plan.getPrefixPath().getDevicePath().getFullPath()
-              : plan.getPrefixPath().getFullPath();
+              ? plan.getDeviceId().getDevicePath().getFullPath()
+              : plan.getDeviceId().getFullPath();
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = currentTsFileResource.getEndTime(deviceId);
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
@@ -186,7 +186,7 @@ public class LogReplayer {
     }
     IMeasurementMNode[] mNodes;
     try {
-      mNodes = IoTDB.metaManager.getMeasurementMNodes(plan.getPrefixPath(), plan.getMeasurements());
+      mNodes = IoTDB.metaManager.getMeasurementMNodes(plan.getDeviceId(), plan.getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -208,7 +208,7 @@ public class LogReplayer {
         tPlan.markFailedMeasurementInsertion(
             i,
             new PathNotExistException(
-                tPlan.getPrefixPath().getFullPath()
+                tPlan.getDeviceId().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
       } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {

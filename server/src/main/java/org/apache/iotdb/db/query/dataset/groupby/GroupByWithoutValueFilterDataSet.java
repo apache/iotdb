@@ -54,7 +54,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private static final Logger logger =
       LoggerFactory.getLogger(GroupByWithoutValueFilterDataSet.class);
 
-  private Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
+  protected Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
 
   /**
    * path -> result index for each aggregation
@@ -65,7 +65,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    *
    * <p>s1 -> 0, 2 s2 -> 1
    */
-  private Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
+  protected Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
 
   public GroupByWithoutValueFilterDataSet() {}
 

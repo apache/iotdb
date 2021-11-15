@@ -20,14 +20,18 @@ package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -37,9 +41,12 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,8 +66,14 @@ public class MeasurementPath extends PartialPath {
     super(measurementPath);
   }
 
-  public MeasurementPath(PartialPath measurementPath) {
+  public MeasurementPath(String measurementPath, TSDataType type) throws IllegalPathException {
+    super(measurementPath);
+    this.measurementSchema = new UnaryMeasurementSchema(getMeasurement(), type);
+  }
+
+  public MeasurementPath(PartialPath measurementPath, IMeasurementSchema measurementSchema) {
     super(measurementPath.getNodes());
+    this.measurementSchema = measurementSchema;
   }
 
   public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)
@@ -75,6 +88,10 @@ public class MeasurementPath extends PartialPath {
 
   public TSDataType getSeriesType() {
     return getMeasurementSchema().getType();
+  }
+
+  public byte getSeriesTypeInByte() {
+    return getMeasurementSchema().getTypeInByte();
   }
 
   public void setMeasurementSchema(IMeasurementSchema measurementSchema) {
@@ -115,6 +132,26 @@ public class MeasurementPath extends PartialPath {
     result.device = device;
     result.measurementAlias = measurementAlias;
     return result;
+  }
+
+  /**
+   * if isUnderAlignedEntity is true, return an AlignedPath with only one sub sensor otherwise,
+   * return itself
+   */
+  public PartialPath transformToExactPath() {
+    return isUnderAlignedEntity ? new AlignedPath(this) : this;
+  }
+
+  @Override
+  public LastPointReader createLastPointReader(
+      TSDataType dataType,
+      Set<String> deviceMeasurements,
+      QueryContext context,
+      QueryDataSource dataSource,
+      long queryTime,
+      Filter timeFilter) {
+    return new LastPointReader(
+        this, dataType, deviceMeasurements, context, dataSource, queryTime, timeFilter);
   }
 
   public SeriesReader createSeriesReader(
@@ -223,5 +260,32 @@ public class MeasurementPath extends PartialPath {
         measurementSchema.getProps(),
         curSize,
         deletionList);
+  }
+
+  @Override
+  public MeasurementPath clone() {
+    MeasurementPath newMeasurementPath = null;
+    try {
+      newMeasurementPath =
+          new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
+    return newMeasurementPath;
+  }
+
+  @Override
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+    ModificationFile modificationFile = tsFileResource.getModFile();
+    List<Modification> modifications = context.getPathModifications(modificationFile, this);
+
+    List<IChunkMetadata> chunkMetadataList =
+        new ArrayList<>(
+            writer.getVisibleMetadataList(getDevice(), getMeasurement(), getSeriesType()));
+
+    QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
+    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    return chunkMetadataList;
   }
 }

@@ -73,7 +73,6 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -359,37 +358,40 @@ public class PhysicalPlanTest {
     }
   }
 
-  @Test
-  public void testGroupByFill2() {
-    String sqlStr =
-        "select last_value(s1) "
-            + " from root.vehicle.d1 "
-            + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
-    try {
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-      if (!plan.isQuery()) {
-        fail();
-      }
-      if (!(plan instanceof GroupByTimeFillPlan)) {
-        fail();
-      }
-      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
-      assertEquals(3L, groupByFillPlan.getInterval());
-      assertEquals(3L, groupByFillPlan.getSlidingStep());
-      assertEquals(8L, groupByFillPlan.getStartTime());
-      assertEquals(737L, groupByFillPlan.getEndTime());
-      assertEquals(TSDataType.values().length, groupByFillPlan.getFillType().size());
-      for (TSDataType tsDataType : TSDataType.values()) {
-        assertTrue(groupByFillPlan.getFillType().containsKey(tsDataType));
-        assertTrue(groupByFillPlan.getFillType().get(tsDataType) instanceof PreviousFill);
-        PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(tsDataType);
-        assertTrue(previousFill.isUntilLast());
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
+  // TODO: @CRZbulabula
+  //  support VECTOR in group by fill
+  //  @Test
+  //  public void testGroupByFill2() {
+  //    String sqlStr =
+  //        "select last_value(s1) "
+  //            + " from root.vehicle.d1 "
+  //            + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
+  //    try {
+  //      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+  //      if (!plan.isQuery()) {
+  //        fail();
+  //      }
+  //      if (!(plan instanceof GroupByTimeFillPlan)) {
+  //        fail();
+  //      }
+  //      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
+  //      assertEquals(3L, groupByFillPlan.getInterval());
+  //      assertEquals(3L, groupByFillPlan.getSlidingStep());
+  //      assertEquals(8L, groupByFillPlan.getStartTime());
+  //      assertEquals(737L, groupByFillPlan.getEndTime());
+  //      assertEquals(TSDataType.values().length, groupByFillPlan.getFillType().size());
+  //      for (TSDataType tsDataType : TSDataType.values()) {
+  //        assertTrue(groupByFillPlan.getFillType().containsKey(tsDataType));
+  //        assertTrue(groupByFillPlan.getFillType().get(tsDataType) instanceof PreviousFill);
+  //        PreviousFill previousFill = (PreviousFill)
+  // groupByFillPlan.getFillType().get(tsDataType);
+  //        assertTrue(previousFill.isUntilLast());
+  //      }
+  //    } catch (Exception e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
 
   @Test
   public void testGroupByFill3() {
@@ -434,12 +436,12 @@ public class PhysicalPlanTest {
     String sqlStr =
         "select last_value(d1.s1), last_value(d2.s1)"
             + " from root.vehicle "
-            + "group by([8,737), 3ms) fill(int32[linear])";
+            + "group by([8,737), 3ms) fill(boolean[linear])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
     } catch (SQLParserException e) {
-      assertEquals("group by fill doesn't support linear fill", e.getMessage());
+      assertEquals("type BOOLEAN cannot use linear fill function", e.getMessage());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -451,12 +453,12 @@ public class PhysicalPlanTest {
     String sqlStr =
         "select last_value(d1.s1), count(d2.s1)"
             + " from root.vehicle "
-            + "group by([8,737), 3ms) fill(int32[previous])";
+            + "group by([8,737), 3ms) fill(text[linear])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
-    } catch (QueryProcessException e) {
-      assertEquals("Group By Fill only support last_value function", e.getMessage());
+    } catch (SQLParserException e) {
+      assertEquals("type TEXT cannot use linear fill function", e.getMessage());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -465,23 +467,6 @@ public class PhysicalPlanTest {
 
   @Test
   public void testGroupByFill6() {
-    String sqlStr =
-        "select count(s1)"
-            + "from root.vehicle.d1 "
-            + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
-    try {
-      processor.parseSQLToPhysicalPlan(sqlStr);
-      fail();
-    } catch (ParseCancellationException e) {
-      assertTrue(e.getMessage().contains("mismatched input 'fill'"));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  @Test
-  public void testGroupByFill7() {
     String sqlStr =
         "select last_value(d1.s1), last_value(d2.s1)"
             + " from root.vehicle "
@@ -1091,7 +1076,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testLastPlanDataTypes() throws QueryProcessException {
+  public void testLastPlanDataTypes() throws QueryProcessException, MetadataException {
     String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
     String sqlStr2 = "SELECT last s1 FROM root.vehicle.d2, root.vehicle.d3, root.vehicle.d4";
 

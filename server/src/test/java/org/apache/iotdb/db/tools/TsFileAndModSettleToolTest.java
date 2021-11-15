@@ -210,7 +210,7 @@ public class TsFileAndModSettleToolTest {
           String device = entry.getKey();
           for (String sensor : entry.getValue()) {
             tsFileWriter.registerTimeseries(
-                new Path(device, sensor),
+                new Path(device),
                 new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
           }
         }

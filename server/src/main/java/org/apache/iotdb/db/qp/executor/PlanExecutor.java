@@ -65,6 +65,7 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -78,6 +79,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -363,6 +365,10 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case CREATE_TEMPLATE:
         return createSchemaTemplate((CreateTemplatePlan) plan);
+      case APPEND_TEMPLATE:
+        return appendSchemaTemplate((AppendTemplatePlan) plan);
+      case PRUNE_TEMPLATE:
+        return pruneSchemaTemplate((PruneTemplatePlan) plan);
       case SET_SCHEMA_TEMPLATE:
         return setSchemaTemplate((SetSchemaTemplatePlan) plan);
       case UNSET_SCHEMA_TEMPLATE:
@@ -384,6 +390,24 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.createSchemaTemplate(createTemplatePlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean appendSchemaTemplate(AppendTemplatePlan plan) throws QueryProcessException {
+    try {
+      IoTDB.metaManager.appendSchemaTemplate(plan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean pruneSchemaTemplate(PruneTemplatePlan plan) throws QueryProcessException {
+    try {
+      IoTDB.metaManager.pruneSchemaTemplate(plan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -1199,7 +1223,7 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       Map<Path, IMeasurementSchema> knownSchemas,
       int sgLevel)
-      throws QueryProcessException, MetadataException, IOException {
+      throws MetadataException {
     if (chunkGroupMetadataList.isEmpty()) {
       return;
     }

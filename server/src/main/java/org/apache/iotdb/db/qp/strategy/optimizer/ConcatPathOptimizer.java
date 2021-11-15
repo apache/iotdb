@@ -164,14 +164,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     FunctionOperator functionOperator = (FunctionOperator) operator;
     PartialPath filterPath = functionOperator.getSinglePath();
-    // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath)
-        || filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+    List<PartialPath> concatPaths = new ArrayList<>();
+    if (SQLConstant.isReservedPath(filterPath)) {
+      // do nothing in the case of "where time > 5"
       filterPaths.add(filterPath);
       return operator;
+    } else if (filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+      // do nothing in the case of "where root.d1.s1 > 5"
+      concatPaths.add(filterPath);
+    } else {
+      fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
     }
-    List<PartialPath> concatPaths = new ArrayList<>();
-    fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
+
     List<PartialPath> noStarPaths = removeWildcardsInConcatPaths(concatPaths);
     filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {

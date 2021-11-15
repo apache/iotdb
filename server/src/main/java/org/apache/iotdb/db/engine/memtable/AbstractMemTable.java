@@ -146,7 +146,7 @@ public abstract class AbstractMemTable implements IMemTable {
         MemUtils.getRecordSize(
             schemaList, values, disableMemControl);
     write(
-        insertRowPlan.getPrefixPath().getFullPath(),
+        insertRowPlan.getDeviceId().getFullPath(),
         schemaList,
         insertRowPlan.getTime(),
         values);
@@ -168,7 +168,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     memSize += MemUtils.getAlignedRecordSize(schemaList, insertRowPlan.getValues(), disableMemControl);
     writeAlignedRow(
-        insertRowPlan.getPrefixPath().getFullPath(),
+        insertRowPlan.getDeviceId().getFullPath(),
         schemaList,
         insertRowPlan.getTime(),
         insertRowPlan.getValues());
@@ -234,7 +234,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(
-            insertTabletPlan.getPrefixPath().getFullPath(), schemaList);
+            insertTabletPlan.getDeviceId().getFullPath(), schemaList);
     memChunkGroup.writeValues(
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
@@ -256,7 +256,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(
-            insertTabletPlan.getPrefixPath().getFullPath(), schemaList);
+            insertTabletPlan.getDeviceId().getFullPath(), schemaList);
     memChunkGroup.writeValues(
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),

@@ -26,7 +26,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -82,7 +82,7 @@ public class AlignedSeriesReader extends SeriesReader {
   }
 
   @Override
-  protected ITimeSeriesMetadata loadTimeSeriesMetadata(
+  protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context,

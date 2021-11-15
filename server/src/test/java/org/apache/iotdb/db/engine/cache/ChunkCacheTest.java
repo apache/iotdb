@@ -49,7 +49,9 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertTrue;
@@ -122,8 +124,8 @@ public class ChunkCacheTest {
     Assert.assertEquals(chunk1.getHeader(), chunk2.getHeader());
     Assert.assertEquals(chunk1.getData(), chunk2.getData());
 
-    chunkMetadataKey.setFilePath(null);
     try {
+      chunkMetadataKey.setFilePath(null);
       chunkCache.get(chunkMetadataKey);
       fail();
     } catch (NullPointerException e) {
@@ -187,8 +189,7 @@ public class ChunkCacheTest {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
       for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.registerTimeseries(
-            new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {

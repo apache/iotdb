@@ -45,7 +45,7 @@ public class MemTableTestUtils {
 
   static {
     schema.registerTimeseries(
-        new Path(deviceId0, measurementId0),
+        new Path(deviceId0),
         new UnaryMeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 

@@ -19,7 +19,7 @@
 #
 
 
-PIDS=$(ps ax | grep -i 'ClusterMain' | grep java | grep -v grep | awk '{print $1}')
+PIDS=$(ps ax | grep -i 'ClusterIoTDB' | grep java | grep -v grep | awk '{print $1}')
 sig=0
 for every_pid in ${PIDS}
 do

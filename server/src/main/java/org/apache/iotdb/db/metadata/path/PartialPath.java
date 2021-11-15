@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -38,6 +39,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +60,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
  * module
  */
-public class PartialPath extends Path implements Comparable<Path> {
+public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
 
@@ -310,8 +312,8 @@ public class PartialPath extends Path implements Comparable<Path> {
     throw new MetadataException("This path doesn't represent a measurement");
   }
 
-  public TSDataType getSeriesType() throws MetadataException {
-    throw new MetadataException("This path doesn't represent a measurement");
+  public TSDataType getSeriesType() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("This path doesn't represent a measurement");
   }
 
   @Override
@@ -373,6 +375,16 @@ public class PartialPath extends Path implements Comparable<Path> {
     return ret;
   }
 
+  public LastPointReader createLastPointReader(
+      TSDataType dataType,
+      Set<String> deviceMeasurements,
+      QueryContext context,
+      QueryDataSource dataSource,
+      long queryTime,
+      Filter timeFilter) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
   public SeriesReader createSeriesReader(
       Set<String> allSensors,
       TSDataType dataType,
@@ -405,6 +417,7 @@ public class PartialPath extends Path implements Comparable<Path> {
       throws IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
+
   /**
    * get the ReadOnlyMemChunk from the given MemTable.
    *
@@ -413,6 +426,16 @@ public class PartialPath extends Path implements Comparable<Path> {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       Map<String, IWritableMemChunkGroup> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  @Override
+  public PartialPath clone() {
+    return new PartialPath(this.getNodes().clone());
+  }
+
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
 }

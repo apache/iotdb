@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -47,7 +48,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testNoTimeFilter()
       throws QueryProcessException, IOException, IllegalPathException, StorageEngineException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
@@ -82,7 +83,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testTimeFilter()
       throws QueryProcessException, IOException, IllegalPathException, StorageEngineException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));

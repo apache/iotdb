@@ -156,9 +156,9 @@ public class RestorableTsFileIOWriterTest {
   public void testOnlyOneChunkHeaderAndSomePage() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -170,9 +170,9 @@ public class RestorableTsFileIOWriterTest {
     writer.flushAllChunkGroups();
     long pos1 = writer.getIOWriter().getPos();
     writer.registerTimeseries(
-        new Path("d2", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d2"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d2", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -194,9 +194,9 @@ public class RestorableTsFileIOWriterTest {
   public void testOnlyOneChunkGroup() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -235,9 +235,9 @@ public class RestorableTsFileIOWriterTest {
   public void testOnlyOneChunkGroupAndOneMarker() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -267,13 +267,13 @@ public class RestorableTsFileIOWriterTest {
   public void testTwoChunkGroupAndMore() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d2", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d2"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d2", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -315,13 +315,13 @@ public class RestorableTsFileIOWriterTest {
   public void testNoSeperatorMask() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d2", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d2"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d2", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -363,13 +363,13 @@ public class RestorableTsFileIOWriterTest {
   public void testHavingSomeFileMetadata() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d2", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d2"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d2", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -412,9 +412,9 @@ public class RestorableTsFileIOWriterTest {
   public void testOpenCompleteFile() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -445,9 +445,9 @@ public class RestorableTsFileIOWriterTest {
   public void testAppendDataOnCompletedFile() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))

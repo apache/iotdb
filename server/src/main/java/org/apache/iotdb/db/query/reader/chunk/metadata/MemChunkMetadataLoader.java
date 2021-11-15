@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
@@ -31,10 +32,10 @@ import java.util.List;
 
 public class MemChunkMetadataLoader implements IChunkMetadataLoader {
 
-  private TsFileResource resource;
-  private PartialPath seriesPath;
-  private QueryContext context;
-  private Filter timeFilter;
+  private final TsFileResource resource;
+  private final PartialPath seriesPath;
+  private final QueryContext context;
+  private final Filter timeFilter;
 
   public MemChunkMetadataLoader(
       TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
@@ -45,10 +46,21 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   @Override
-  public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata) {
+  public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
+    // There is no need to apply modifications to these, because we already do that while generating
+    // it in TSP
     List<IChunkMetadata> chunkMetadataList = resource.getChunkMetadataList();
 
-    DiskChunkMetadataLoader.setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
+    // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
+    // very cheap.
+    chunkMetadataList.forEach(
+        chunkMetadata -> {
+          if (chunkMetadata.needSetChunkLoader()) {
+            chunkMetadata.setFilePath(resource.getTsFilePath());
+            chunkMetadata.setClosed(resource.isClosed());
+            chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
+          }
+        });
 
     List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {
@@ -72,10 +84,5 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
       metadata.setVersion(resource.getVersion());
     }
     return chunkMetadataList;
-  }
-
-  @Override
-  public boolean isMemChunkMetadataLoader() {
-    return true;
   }
 }

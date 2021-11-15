@@ -32,7 +32,6 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -49,7 +48,6 @@ import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
@@ -243,12 +241,12 @@ public class TsFileProcessor {
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
-        insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
+        insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
+          insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
     tsFileResource.updatePlanIndexes(insertRowPlan.getIndex());
   }
@@ -325,13 +323,13 @@ public class TsFileProcessor {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
     tsFileResource.updateStartTime(
-        insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[start]);
+        insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
 
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
@@ -343,7 +341,7 @@ public class TsFileProcessor {
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
-    String deviceId = insertRowPlan.getPrefixPath().getFullPath();
+    String deviceId = insertRowPlan.getDeviceId().getFullPath();
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
@@ -381,7 +379,7 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     AlignedWritableMemChunk vectorMemChunk = null;
-    String deviceId = insertRowPlan.getPrefixPath().getFullPath();
+    String deviceId = insertRowPlan.getDeviceId().getFullPath();
     if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
       // ChunkMetadataIncrement
       chunkMetadataIncrement +=
@@ -428,7 +426,7 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getPrefixPath().getFullPath();
+    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
 
     for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -454,7 +452,7 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getPrefixPath().getFullPath();
+    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
 
     updateAlignedMemCost(
         insertTabletPlan.getDataTypes(),
@@ -1301,16 +1299,8 @@ public class TsFileProcessor {
         }
       }
 
-      ModificationFile modificationFile = tsFileResource.getModFile();
-      List<Modification> modifications = context.getPathModifications(modificationFile, fullPath);
-
       List<IChunkMetadata> chunkMetadataList =
-          fullPath
-              .getMeasurementSchema()
-              .getVisibleMetadataListFromWriter(writer, fullPath.getDevice());
-
-      QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
-      chunkMetadataList.removeIf(context::chunkNotSatisfy);
+          fullPath.getVisibleMetadataListFromWriter(writer, tsFileResource, context);
 
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {

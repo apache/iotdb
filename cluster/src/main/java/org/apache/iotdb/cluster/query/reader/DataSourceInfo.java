@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -58,7 +58,6 @@ public class DataSourceInfo {
   private TSDataType dataType;
   private SingleSeriesQueryRequest request;
   private RemoteQueryContext context;
-  private MetaGroupMember metaGroupMember;
   private List<Node> nodes;
   private int curPos;
   private boolean isNoData = false;
@@ -69,14 +68,12 @@ public class DataSourceInfo {
       TSDataType dataType,
       SingleSeriesQueryRequest request,
       RemoteQueryContext context,
-      MetaGroupMember metaGroupMember,
       List<Node> nodes) {
     this.readerId = -1;
     this.partitionGroup = group;
     this.dataType = dataType;
     this.request = request;
     this.context = context;
-    this.metaGroupMember = metaGroupMember;
     this.nodes = nodes;
     // set to the last node so after nextDataClient() is called it will scan from the first node
     this.curPos = nodes.size() - 1;
@@ -98,8 +95,6 @@ public class DataSourceInfo {
         if (newReaderId != null) {
           logger.debug("get a readerId {} for {} from {}", newReaderId, request.path, node);
           if (newReaderId != -1) {
-            // register the node so the remote resources can be released
-            context.registerRemoteNode(node, partitionGroup.getHeader());
             this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
@@ -112,11 +107,14 @@ public class DataSourceInfo {
             return false;
           }
         }
-      } catch (TException | IOException e) {
-        logger.error("Cannot query {} from {}", this.request.path, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Cannot query {} from {}", this.request.path, node, e);
+      } catch (Exception e) {
+        logger.error("Cannot query {} from {}", this.request.path, node, e);
+      } finally {
+        // register the node so the remote resources can be released
+        context.registerRemoteNode(node, partitionGroup.getHeader());
       }
       nextNodePos = (nextNodePos + 1) % this.nodes.size();
       if (nextNodePos == this.curPos) {
@@ -131,7 +129,7 @@ public class DataSourceInfo {
   }
 
   private Long getReaderId(Node node, boolean byTimestamp, long timestamp)
-      throws TException, InterruptedException, IOException {
+      throws InterruptedException, TException, IOException {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return applyForReaderIdAsync(node, byTimestamp, timestamp);
     }
@@ -139,12 +137,11 @@ public class DataSourceInfo {
   }
 
   private Long applyForReaderIdAsync(Node node, boolean byTimestamp, long timestamp)
-      throws TException, InterruptedException, IOException {
-    AsyncDataClient client =
-        this.metaGroupMember
-            .getClientProvider()
-            .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      throws IOException, TException, InterruptedException {
     Long newReaderId;
+    AsyncDataClient client =
+        ClusterIoTDB.getInstance()
+            .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
     if (byTimestamp) {
       newReaderId = SyncClientAdaptor.querySingleSeriesByTimestamp(client, request);
     } else {
@@ -154,35 +151,39 @@ public class DataSourceInfo {
   }
 
   private Long applyForReaderIdSync(Node node, boolean byTimestamp, long timestamp)
-      throws TException {
+      throws IOException, TException {
 
     Long newReaderId;
-    try (SyncDataClient client =
-        this.metaGroupMember
-            .getClientProvider()
-            .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-      try {
-        if (byTimestamp) {
-          newReaderId = client.querySingleSeriesByTimestamp(request);
+    SyncDataClient client = null;
+    try {
+      client =
+          ClusterIoTDB.getInstance()
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      if (byTimestamp) {
+        newReaderId = client.querySingleSeriesByTimestamp(request);
+      } else {
+        Filter newFilter;
+        // add timestamp to as a timeFilter to skip the data which has been read
+        if (request.isSetTimeFilterBytes()) {
+          Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
+          newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
         } else {
-          Filter newFilter;
-          // add timestamp to as a timeFilter to skip the data which has been read
-          if (request.isSetTimeFilterBytes()) {
-            Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
-            newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
-          } else {
-            newFilter = TimeFilter.gt(timestamp);
-          }
-          request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
-          newReaderId = client.querySingleSeries(request);
+          newFilter = TimeFilter.gt(timestamp);
         }
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        client.getInputProtocol().getTransport().close();
-        throw e;
+        request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
+        newReaderId = client.querySingleSeries(request);
       }
       return newReaderId;
+    } catch (IOException | TException e) {
+      // the connection may be broken, close it to avoid it being reused
+      if (client != null) {
+        client.close();
+      }
+      throw e;
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
     }
   }
 
@@ -205,13 +206,13 @@ public class DataSourceInfo {
   AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
-        : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getAsyncDataClient(this.curSource, timeout);
   }
 
-  SyncDataClient getCurSyncClient(int timeout) throws TException {
+  SyncDataClient getCurSyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
-        : metaGroupMember.getClientProvider().getSyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {

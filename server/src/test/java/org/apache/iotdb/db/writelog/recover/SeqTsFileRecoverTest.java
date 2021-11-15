@@ -48,10 +48,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -135,13 +135,14 @@ public class SeqTsFileRecoverTest {
     }
 
     Schema schema = new Schema();
-    Map<String, IMeasurementSchema> template = new HashMap<>();
+    Map<String, UnaryMeasurementSchema> template = new HashMap<>();
     for (int i = 0; i < 10; i++) {
       template.put(
           "sensor" + i,
           new UnaryMeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
     }
-    schema.registerSchemaTemplate("template1", template);
+    MeasurementGroup group = new MeasurementGroup(false, template);
+    schema.registerSchemaTemplate("template1", group);
     for (int i = 0; i < 10; i++) {
       schema.registerDevice("root.sg.device" + i, "template1");
     }
@@ -217,10 +218,11 @@ public class SeqTsFileRecoverTest {
     }
 
     Schema schema = new Schema();
-    Map<String, IMeasurementSchema> template = new HashMap<>();
+    Map<String, UnaryMeasurementSchema> template = new HashMap<>();
     template.put(
         "sensor1", new UnaryMeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerSchemaTemplate("template1", template);
+    MeasurementGroup group = new MeasurementGroup(false, template);
+    schema.registerSchemaTemplate("template1", group);
     for (int i = 0; i < 4; i++) {
       schema.registerDevice("root.sg.device" + i, "template1");
     }
