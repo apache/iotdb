@@ -39,7 +39,7 @@ import java.util.List;
 
 public class TsFileWriteAlignedWithTablet {
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriteAlignedWithTablet.class);
-  private static String deviceId = "root.sg.d1";
+  private static final String deviceId = "root.sg.d1";
 
   public static void main(String[] args) throws IOException {
     File f = FSFactoryProducer.getFSFactory().getFile("alignedTablet.tsfile");
@@ -64,7 +64,7 @@ public class TsFileWriteAlignedWithTablet {
 
       writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("write Tablet failed", e);
     }
   }
 
