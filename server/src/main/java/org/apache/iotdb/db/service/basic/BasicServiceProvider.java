@@ -43,8 +43,6 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
-import org.apache.iotdb.db.service.basic.count.QueryFrequencyRecorder;
-import org.apache.iotdb.db.service.basic.dto.BasicOpenSessionResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -203,6 +201,15 @@ public class BasicServiceProvider {
     return isLoggedIn;
   }
 
+  protected boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
+      throws AuthException {
+    String targetUser = null;
+    if (plan instanceof AuthorPlan) {
+      targetUser = ((AuthorPlan) plan).getUserName();
+    }
+    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+  }
+
   protected TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     List<PartialPath> paths = plan.getPaths();
     try {
@@ -250,13 +257,9 @@ public class BasicServiceProvider {
     return executor.processNonQuery(plan);
   }
 
-  protected boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
-      throws AuthException {
-    String targetUser = null;
-    if (plan instanceof AuthorPlan) {
-      targetUser = ((AuthorPlan) plan).getUserName();
-    }
-    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+  /** release single operation resource */
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+    sessionManager.releaseQueryResource(queryId);
   }
 
   private boolean checkCompatibility(TSProtocolVersion version) {

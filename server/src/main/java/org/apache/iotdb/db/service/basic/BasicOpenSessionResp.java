@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service.basic.dto;
+package org.apache.iotdb.db.service.basic;
 
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
