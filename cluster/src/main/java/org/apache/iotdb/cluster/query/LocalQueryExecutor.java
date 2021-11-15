@@ -897,6 +897,10 @@ public class LocalQueryExecutor {
     return resultBuffers;
   }
 
+  /**
+   * returns a non-nul ByteBuffer as the thrift response, which not allows null objects. If the
+   * ByteBuffer data equals <0, null>, it means that the NextNotNullValue is null.
+   */
   public ByteBuffer peekNextNotNullValue(long executorId, long startTime, long endTime)
       throws ReaderNotFoundException, IOException {
     GroupByExecutor executor = queryManager.getGroupByExecutor(executorId);
@@ -904,6 +908,9 @@ public class LocalQueryExecutor {
       throw new ReaderNotFoundException(executorId);
     }
     Pair<Long, Object> pair = executor.peekNextNotNullValue(startTime, endTime);
+    if (pair == null) {
+      pair = new Pair<>(0L, null);
+    }
     ByteBuffer resultBuffer;
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {

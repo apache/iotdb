@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
@@ -27,6 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -36,9 +39,11 @@ public class PreviousFillHandler implements AsyncMethodCallback<ByteBuffer> {
   private static final long MAX_WAIT_MIN = 3;
   private CountDownLatch latch;
   private TimeValuePair result = new TimeValuePair(Long.MIN_VALUE, null);
+  private List<Exception> exceptions;
 
   public PreviousFillHandler(CountDownLatch latch) {
     this.latch = latch;
+    this.exceptions = new ArrayList<>();
   }
 
   @Override
@@ -62,19 +67,34 @@ public class PreviousFillHandler implements AsyncMethodCallback<ByteBuffer> {
   @Override
   public synchronized void onError(Exception exception) {
     logger.error("Cannot get previous fill result", exception);
+    this.exceptions.add(exception);
     latch.countDown();
   }
 
-  public TimeValuePair getResult() {
+  public TimeValuePair getResult() throws QueryProcessException {
+    if (!exceptions.isEmpty()) {
+      QueryProcessException e =
+          new QueryProcessException(
+              "Exception happened when performing previous fill. "
+                  + "See the suppressed exceptions for causes.");
+      for (Exception exception : exceptions) {
+        e.addSuppressed(exception);
+      }
+      throw e;
+    }
+
     try {
       if (!latch.await(MAX_WAIT_MIN, TimeUnit.MINUTES)) {
         logger.warn(
             "Not all nodes returned previous fill result when timed out, remaining {}",
             latch.getCount());
+        throw new QueryProcessException(
+            "Failed to get the previous fill result since "
+                + latch.getCount()
+                + " nodes didn't respond");
       }
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for the result of previous fill");
+      throw new QueryProcessException(e.getMessage());
     }
     return result;
   }
