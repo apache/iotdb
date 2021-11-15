@@ -106,9 +106,15 @@ public class LikeOperator extends FunctionOperator {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     LikeOperator that = (LikeOperator) o;
     return Objects.equals(value, that.value);
   }

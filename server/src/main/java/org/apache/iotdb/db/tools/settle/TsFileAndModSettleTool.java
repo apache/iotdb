@@ -350,7 +350,9 @@ public class TsFileAndModSettleTool {
         }
       }
       // if the newPartition folder is empty, then it will be deleted
-      if (newPartitionDir.exists()) newPartitionDir.delete();
+      if (newPartitionDir.exists()) {
+        newPartitionDir.delete();
+      }
     }
   }
 

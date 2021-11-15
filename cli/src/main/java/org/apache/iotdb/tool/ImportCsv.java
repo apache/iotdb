@@ -7,7 +7,9 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.o
+ 
+ rg/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -541,7 +543,9 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      if ("Time".equals(headerName) || "Device".equals(headerName)) continue;
+      if ("Time".equals(headerName) || "Device".equals(headerName)) {
+        continue;
+      }
       Matcher matcher = pattern.matcher(headerName);
       String type;
       if (matcher.find()) {
@@ -652,9 +656,11 @@ public class ImportCsv extends AbstractCsvTool {
    * @return
    */
   private static TSDataType typeInfer(String value) {
-    if (value.contains("\"")) return TEXT;
-    else if ("true".equals(value) || "false".equals(value)) return BOOLEAN;
-    else if (!value.contains(".")) {
+    if (value.contains("\"")) {
+      return TEXT;
+    } else if ("true".equals(value) || "false".equals(value)) {
+      return BOOLEAN;
+    } else if (!value.contains(".")) {
       try {
         Integer.valueOf(value);
         return INT32;
@@ -667,9 +673,11 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
     } else {
-      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length())
+      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length()) {
         return FLOAT;
-      else return DOUBLE;
+      } else {
+        return DOUBLE;
+      }
     }
   }
 

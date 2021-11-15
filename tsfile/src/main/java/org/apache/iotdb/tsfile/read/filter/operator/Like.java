@@ -61,7 +61,9 @@ public class Like<T extends Comparable<T>> implements Filter {
       patternStrBuild.append("^");
       for (int i = 0; i < unescapeValue.length(); i++) {
         String ch = String.valueOf(unescapeValue.charAt(i));
-        if (specialRegexStr.contains(ch)) ch = "\\" + unescapeValue.charAt(i);
+        if (specialRegexStr.contains(ch)) {
+          ch = "\\" + unescapeValue.charAt(i);
+        }
         if ((i == 0)
             || (i > 0 && !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1))))
             || (i >= 2
@@ -151,7 +153,9 @@ public class Like<T extends Comparable<T>> implements Filter {
           if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
             out = out + ch;
           }
-          if ("\\".equals(nextChar)) i++;
+          if ("\\".equals(nextChar)) {
+            i++;
+          }
         }
       } else {
         out = out + ch;

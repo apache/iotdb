@@ -129,7 +129,9 @@ public class LocalTextModificationAccessor
   }
 
   private static String encodeModification(Modification mod) {
-    if (mod instanceof Deletion) return encodeDeletion((Deletion) mod);
+    if (mod instanceof Deletion) {
+      return encodeDeletion((Deletion) mod);
+    }
     return null;
   }
 
