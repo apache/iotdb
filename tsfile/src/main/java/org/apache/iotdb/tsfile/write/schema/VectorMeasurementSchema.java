@@ -78,8 +78,7 @@ public class VectorMeasurementSchema
     this.compressor = compressionType.serialize();
   }
 
-  public VectorMeasurementSchema(
-      String deviceId, String[] subMeasurements, TSDataType[] types) {
+  public VectorMeasurementSchema(String deviceId, String[] subMeasurements, TSDataType[] types) {
     this.deviceId = deviceId;
     this.measurementsToIndexMap = new HashMap<>();
     for (int i = 0; i < subMeasurements.length; i++) {
@@ -101,10 +100,7 @@ public class VectorMeasurementSchema
   }
 
   public VectorMeasurementSchema(
-      String deviceId,
-      String[] subMeasurements,
-      TSDataType[] types,
-      TSEncoding[] encodings) {
+      String deviceId, String[] subMeasurements, TSDataType[] types, TSEncoding[] encodings) {
     this(
         deviceId,
         subMeasurements,

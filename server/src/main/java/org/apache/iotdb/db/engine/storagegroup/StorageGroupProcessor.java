@@ -978,8 +978,7 @@ public class StorageGroupProcessor {
       long lastFlushTime =
           partitionLatestFlushedTimeForEachDevice
               .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
-              .computeIfAbsent(
-                  insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
+              .computeIfAbsent(insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
       while (loc < insertTabletPlan.getRowCount()) {
@@ -1108,8 +1107,7 @@ public class StorageGroupProcessor {
             < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice
           .get(timePartitionId)
-          .put(
-              insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          .put(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable

@@ -635,8 +635,7 @@ public class StorageEngine implements IService {
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
-              "Get StorageGroupProcessor of device %s " + "failed",
-              insertTabletPlan.getDeviceId()),
+              "Get StorageGroupProcessor of device %s " + "failed", insertTabletPlan.getDeviceId()),
           e);
     }
 

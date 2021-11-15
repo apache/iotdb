@@ -233,9 +233,7 @@ public class InsertRowPlan extends InsertPlan {
                 i,
                 new QueryProcessException(
                     new PathNotExistException(
-                        deviceId.getFullPath()
-                            + IoTDBConstant.PATH_SEPARATOR
-                            + measurements[i])));
+                        deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
           } else {
             throw new QueryProcessException(
                 new PathNotExistException(
