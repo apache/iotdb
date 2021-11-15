@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.tsfile;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -32,8 +28,14 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TsFileWriteAlignedWithTablet {
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriteAlignedWithTablet.class);
@@ -59,12 +61,6 @@ public class TsFileWriteAlignedWithTablet {
       writeMeasurementScheams.add(measurementSchemas.get(1));
       writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 15000, 0, 0);
 
-      // example 1
-      writeMeasurementScheams.clear();
-      writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 15000, 15000, 0);
-
       writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {
       e.printStackTrace();
@@ -89,7 +85,7 @@ public class TsFileWriteAlignedWithTablet {
       timestamps[row] = startTime++;
       for (int i = 0; i < sensorNum; i++) {
         Binary[] textSensor = (Binary[]) values[i];
-        textSensor[row] = new Binary("testStringtestStringtngtestStringtestStringtestString");
+        textSensor[row] = new Binary("test");
       }
       // write
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -118,7 +114,7 @@ public class TsFileWriteAlignedWithTablet {
     Tablet tablet = new Tablet("root.sg.d2", measurementSchemas);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
-    int rowNum = 30020;
+    int rowNum = 100000;
     int sensorNum = measurementSchemas.size();
     long timestamp = 1;
     long value = 0L;

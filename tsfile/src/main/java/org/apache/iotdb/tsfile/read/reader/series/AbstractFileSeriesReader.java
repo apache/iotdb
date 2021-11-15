@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.tsfile.read.reader.series;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+
+import java.io.IOException;
+import java.util.List;
 
 /** Series reader is used to query one series of one tsfile. */
 public abstract class AbstractFileSeriesReader implements IBatchReader {

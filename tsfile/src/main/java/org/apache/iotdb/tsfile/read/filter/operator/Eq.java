@@ -57,7 +57,7 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
-  public boolean satisfy(long time, Object value) { // Todo:bug,若是String，则会有bug
+  public boolean satisfy(long time, Object value) {
     Object v = filterType == FilterType.TIME_FILTER ? time : value;
     return this.value.equals(v);
   }

@@ -18,29 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -76,8 +53,33 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class TsFileSequenceReader implements AutoCloseable {
 
@@ -342,7 +344,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
     TimeseriesMetadata firstTimeseriesMetadata = null;
-    // Todo:为何要加这个判断？此时metadataIndexNode肯定是泽嵩树的第一个节点，即设备节点
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
       try {
         // next layer MeasurementNode of the specific DeviceNode
@@ -449,7 +450,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     Set<String> measurementsHadFound = new HashSet<>();
     // the content of next Layer MeasurementNode of the specific device's DeviceNode
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    Pair<MetadataIndexEntry, Long> measurementMetadataIndexPair = metadataIndexPair; // Todo:这么移动正确吗
+    Pair<MetadataIndexEntry, Long> measurementMetadataIndexPair = metadataIndexPair;
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
 
     // next layer MeasurementNode of the specific DeviceNode
@@ -460,7 +461,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
       throw e;
     }
-    // 获取到DeviceNode下的第一个传感器节点(可能中间或者叶子)后，就要读取其下的第一个TimeseriesMetadata
+    // Get the first timeseriesMetadata of the device
     TimeseriesMetadata firstTimeseriesMetadata =
         tryToGetFirstTimeseriesMetadata(measurementMetadataIndexNode);
 
@@ -650,31 +651,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     return null;
   }
-
-  /**
-   * @param buffer
-   * @param type
-   * @return
-   * @throws IOException
-   */
-  //  private boolean getFirstTimeseriesMetadata(ByteBuffer buffer,MetadataIndexNodeType type)
-  // throws IOException {
-  //    if (type.equals(MetadataIndexNodeType.LEAF_MEASUREMENT))
-  // {//若是叶子节点，则buffer存放的是TimeseriesMetadata节点内容
-  //     // ByteBuffer buffer = readData(metadataIndexNode.getChildren().get(0).getOffset(),
-  // metadataIndexNode.getEndOffset());
-  //      TimeseriesMetadata firstTimeseriesMetadata=
-  // TimeseriesMetadata.deserializeFrom(buffer,false);
-  //      return firstTimeseriesMetadata.getMeasurementId().equals("");
-  //    } else if (type.equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) {
-  // //若是中间传感器节点，则buffer里存放的是该节点里指向下一层传感器节点
-  //      MetadataIndexNode leafMeasurementNode = MetadataIndexNode.deserializeFrom(buffer);
-  //      long endOffset = leafMeasurementNode.getEndOffset();
-  //      if (i != metadataIndexListSize - 1) {
-  //        endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
-  //      }
-  //    }
-  //  }
 
   /**
    * Traverse the metadata index from MetadataIndexEntry to get TimeseriesMetadatas
@@ -917,7 +893,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param metaData -given chunk meta data
    * @return -chunk
    */
-  public Chunk readMemChunk(IChunkMetadata metaData) throws IOException { // Todo:bug,若是对齐序列
+  public Chunk readMemChunk(IChunkMetadata metaData) throws IOException {
     int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize);
     ByteBuffer buffer =

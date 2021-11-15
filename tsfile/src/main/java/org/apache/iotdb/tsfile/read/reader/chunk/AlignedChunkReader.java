@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -39,6 +34,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 public class AlignedChunkReader implements IChunkReader {
 
@@ -231,7 +232,7 @@ public class AlignedChunkReader implements IChunkReader {
       throws IOException {
     pageInfo.pageHeader = pageHeader;
     pageInfo.dataType = chunkHeader.getDataType();
-    if (pageHeader.getUncompressedSize() == 0) {
+    if (pageHeader.getUncompressedSize() == 0) { // Empty Page
       pageInfo.pageData = null;
       pageInfo.decoder = null;
       return;

@@ -236,7 +236,7 @@ public class Field {
    * @param value
    * @param field
    */
-  private static void putAlignedValueIntoField(TsPrimitiveType value, Field field) {
+  public static void putAlignedValueIntoField(TsPrimitiveType value, Field field) {
     switch (value.getDataType()) {
       case BOOLEAN:
         field.setBoolV(value.getBoolean());

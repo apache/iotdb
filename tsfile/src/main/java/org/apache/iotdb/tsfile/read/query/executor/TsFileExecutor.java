@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -42,6 +38,11 @@ import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class TsFileExecutor implements QueryExecutor {
 
@@ -186,8 +187,7 @@ public class TsFileExecutor implements QueryExecutor {
           seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, null);
         } else {
           seriesReader =
-              new FileSeriesReader(
-                  chunkLoader, chunkMetadataList, timeExpression.getFilter()); // Todo:bug，若
+              new FileSeriesReader(chunkLoader, chunkMetadataList, timeExpression.getFilter());
         }
         if (chunkMetadataList.get(0).getDataType() != TSDataType.VECTOR) {
           dataTypes.add(chunkMetadataList.get(0).getDataType());

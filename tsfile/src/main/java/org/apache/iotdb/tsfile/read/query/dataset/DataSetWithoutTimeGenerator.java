@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Set;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -31,6 +25,13 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
 
 /** multi-way merging data set, no need to use TimeGenerator. */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {
@@ -172,7 +173,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         field.setBinaryV(col.getBinary());
         break;
       case VECTOR:
-        putAlignedValueToField(col, field);
+        Field.putAlignedValueIntoField((col.getVector())[0], field);
         break;
       default:
         throw new UnSupportedDataTypeException("UnSupported" + col.getDataType());

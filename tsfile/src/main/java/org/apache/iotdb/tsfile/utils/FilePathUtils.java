@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.tsfile.utils;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+
+import java.io.File;
+
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class FilePathUtils {
 
@@ -95,7 +96,7 @@ public class FilePathUtils {
     if (tsFileAbsolutePath == null) return null;
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
     int pathLength = pathSegments.length;
-    return pathSegments[pathLength - 4] // Todo:bug,文件路径必须大于4层
+    return pathSegments[pathLength - 4]
         + File.separator
         + pathSegments[pathLength - 3]
         + File.separator
