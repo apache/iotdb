@@ -194,8 +194,10 @@ public class QueryRouter implements IQueryRouter {
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       dataSet = getGroupByWithoutValueFilterDataSet(context, groupByTimePlan);
+      ((GroupByWithoutValueFilterDataSet) dataSet).initGroupBy(context, groupByTimePlan);
     } else {
       dataSet = getGroupByWithValueFilterDataSet(context, groupByTimePlan);
+      ((GroupByWithValueFilterDataSet) dataSet).initGroupBy(context, groupByTimePlan);
     }
 
     // we support group by level for count operation
@@ -241,6 +243,12 @@ public class QueryRouter implements IQueryRouter {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
+  protected GroupByFillWithoutValueFilterDataSet getGroupByFillWithoutValueFilterDataSet(
+      QueryContext context, GroupByTimeFillPlan groupByFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    return new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+  }
+
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
@@ -256,14 +264,16 @@ public class QueryRouter implements IQueryRouter {
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
 
-    GroupByEngineDataSet dataSet;
+    GroupByFillWithoutValueFilterDataSet dataSet;
     IExpression optimizedExpression = getOptimizeExpression(groupByFillPlan);
     groupByFillPlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      dataSet = new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+      dataSet = getGroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+      dataSet.init(context, groupByFillPlan);
     } else {
-      // dataSet = new GroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      // dataSet = getGroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      // dataSet.init(context, groupByFillPlan);
       throw new QueryProcessException("Group by fill doesn't support valueFilter yet.");
     }
 
