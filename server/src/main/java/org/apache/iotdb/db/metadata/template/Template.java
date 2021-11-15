@@ -79,9 +79,11 @@ public class Template {
       IMeasurementSchema curSchema;
       int size = plan.getMeasurements().get(i).size();
       if (size > 1) {
+        //
         isAlign = true;
       } else {
-        // Patch for align designation ambiguity when creating from serialization
+        // If sublist of measurements has only one item,
+        // but it share prefix with other aligned sublist, it will be aligned too
         String[] thisMeasurement =
             MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
         String thisPrefix =
@@ -133,45 +135,14 @@ public class Template {
     return schemaMap;
   }
 
-  public boolean hasSchema(String measurementId) {
-    return schemaMap.containsKey(measurementId);
+  public boolean hasSchema(String suffixPath) {
+    return schemaMap.containsKey(suffixPath);
   }
 
   public IMeasurementSchema getSchema(String measurementId) {
     return schemaMap.get(measurementId);
   }
 
-  public List<IMeasurementMNode> getMeasurementMNode() {
-    Set<IMeasurementSchema> deduplicateSchema = new HashSet<>();
-    List<IMeasurementMNode> res = new ArrayList<>();
-
-    for (IMeasurementSchema measurementSchema : schemaMap.values()) {
-      if (deduplicateSchema.add(measurementSchema)) {
-        IMeasurementMNode measurementMNode = null;
-        if (measurementSchema instanceof UnaryMeasurementSchema) {
-          measurementMNode =
-              MeasurementMNode.getMeasurementMNode(
-                  null, measurementSchema.getMeasurementId(), measurementSchema, null);
-
-        } else if (measurementSchema instanceof VectorMeasurementSchema) {
-          measurementMNode =
-              MeasurementMNode.getMeasurementMNode(
-                  null,
-                  getMeasurementNodeName(measurementSchema.getMeasurementId()),
-                  measurementSchema,
-                  null);
-        }
-
-        res.add(measurementMNode);
-      }
-    }
-
-    return res;
-  }
-
-  public String getMeasurementNodeName(String measurementName) {
-    return schemaMap.get(measurementName).getMeasurementId();
-  }
 
   // region construct template tree
   /** Construct aligned measurements, checks prefix equality, path duplication and conflict */
@@ -226,7 +197,7 @@ public class Template {
           directNodes.put(leafNode.getName(), leafNode);
         } else {
           commonPar = (IEntityMNode) constructEntityPath(alignedPaths[0]);
-          commonPar.setAligned(true);
+          commonPar.getAsEntityMNode().setAligned(true);
           leafNode =
               MeasurementMNode.getMeasurementMNode(
                   commonPar, measurementNames.get(i), schemas[i], "");
@@ -285,6 +256,10 @@ public class Template {
 
   public List<String> getAllAlignedPrefix() {
     return Arrays.asList(alignedPrefix.toArray(new String[0]));
+  }
+
+  public Set<String> getAlignedPrefixSet() {
+    return alignedPrefix;
   }
 
   public List<String> getAlignedMeasurements(String prefix) throws IllegalPathException {

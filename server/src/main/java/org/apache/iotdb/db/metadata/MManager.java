@@ -87,6 +87,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1725,7 +1726,8 @@ public class MManager {
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
-    // 1. get device node
+    // 1. get device node, set using template if accessed.
+    activateTemplateBeforeAccess(devicePath, measurementList);
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
 
     // check insert non-aligned InsertPlan for aligned timeseries
@@ -1806,7 +1808,7 @@ public class MManager {
     String measurement = measurementList[loc];
     IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);
     if (measurementMNode == null) {
-      measurementMNode = findTemplate(deviceMNode, measurement);
+      measurementMNode = findMeasurementInTemplate(deviceMNode, measurement);
     }
     if (measurementMNode == null) {
       if (!config.isAutoCreateSchemaEnabled()) {
@@ -1873,7 +1875,7 @@ public class MManager {
     return dataType;
   }
 
-  private IMeasurementMNode findTemplate(IMNode deviceMNode, String measurement)
+  private IMeasurementMNode findMeasurementInTemplate(IMNode deviceMNode, String measurement)
       throws MetadataException {
     Template curTemplate = deviceMNode.getUpperTemplate();
     if (curTemplate != null) {
@@ -1916,6 +1918,25 @@ public class MManager {
         dataTypes,
         encodings,
         TSFileDescriptor.getInstance().getConfig().getCompressor());
+  }
+
+  /**
+   * Before to insert, set using template if template accessed.
+   * Better performance if refactored with getDeviceNodeWithAutoCreate
+   */
+  private void activateTemplateBeforeAccess(PartialPath deviceId, String[] measurements) throws MetadataException {
+    StringBuilder builder = new StringBuilder(deviceId.getFullPath());
+    if (builder.length() != 0) {
+      builder.append(TsFileConstant.PATH_SEPARATOR);
+    }
+    for (String measurement : measurements) {
+      builder.append(measurement);
+      IMNode mountedNode = mtree.getTemplateMountedNode(new PartialPath(builder.toString()));
+      if (mountedNode != null && !mountedNode.isUseTemplate()) {
+        setUsingSchemaTemplate(mountedNode);
+      }
+      builder.delete(builder.length() - measurement.length(), builder.length());
+    }
   }
   // endregion
 
@@ -1996,6 +2017,9 @@ public class MManager {
       IMNode node = getDeviceNodeWithAutoCreate(path);
 
       templateManager.checkIsTemplateAndMNodeCompatible(template, node);
+
+      // node might be replaced when check with alignment
+      node = mtree.checkTemplateAlignmentWithMountedNode(node, template);
 
       node.setSchemaTemplate(template);
 

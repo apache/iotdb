@@ -297,7 +297,7 @@ public class InsertTabletPlanTest {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
     IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp"));
+    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
@@ -342,7 +342,7 @@ public class InsertTabletPlanTest {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
     IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp"));
+    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
 
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
@@ -367,15 +367,15 @@ public class InsertTabletPlanTest {
   private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     List<String> v1 = new ArrayList<>();
-    v1.add("s1");
-    v1.add("s2");
-    v1.add("s3");
+    v1.add("vector.s1");
+    v1.add("vector.s2");
+    v1.add("vector.s3");
     measurementList.add(v1);
     List<String> v2 = new ArrayList<>();
-    v2.add("s4");
-    v2.add("s5");
+    v2.add("vector2.s4");
+    v2.add("vector2.s5");
     measurementList.add(v2);
-    measurementList.add(Collections.singletonList("s6"));
+    measurementList.add(Collections.singletonList("vector3.s6"));
 
     List<List<TSDataType>> dataTypesList = new ArrayList<>();
     List<TSDataType> d1 = new ArrayList<>();

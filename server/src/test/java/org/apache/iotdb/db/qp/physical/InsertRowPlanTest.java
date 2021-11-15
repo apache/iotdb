@@ -260,7 +260,7 @@ public class InsertRowPlanTest {
     executor.insert(rowPlan);
 
     QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector.s1");
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select s1 from root.isp.d1.vector");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {

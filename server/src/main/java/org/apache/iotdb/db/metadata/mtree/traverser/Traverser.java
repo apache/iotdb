@@ -20,8 +20,11 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -260,7 +263,7 @@ public abstract class Traverser {
    * @param currentNode the node need to get the full path of
    * @return full path from traverse start node to the current node
    */
-  protected String getPivotFullPath(IMNode currentNode) {
+  protected PartialPath getPivotPartialPath(IMNode currentNode) throws IllegalPathException {
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
     StringBuilder builder = new StringBuilder(nodes.next().getName());
     while (nodes.hasNext()) {
@@ -271,7 +274,28 @@ public abstract class Traverser {
       builder.append(TsFileConstant.PATH_SEPARATOR);
     }
     builder.append(currentNode.getName());
-    return builder.toString();
+    return new PartialPath(builder.toString());
+  }
+
+  protected MeasurementPath getPivotMeasurementPathInTraverse(IMeasurementMNode currentNode) throws MetadataException {
+    IMNode par = traverseContext.peek();
+    if (!(par instanceof IEntityMNode)) {
+      throw new MetadataException("Measurement not under entity: " + currentNode.getName());
+    }
+
+    Iterator<IMNode> nodes = traverseContext.descendingIterator();
+    StringBuilder builder = new StringBuilder(nodes.next().getName());
+    while (nodes.hasNext()) {
+      builder.append(TsFileConstant.PATH_SEPARATOR);
+      builder.append(nodes.next().getName());
+    }
+    if (builder.length() != 0) {
+      builder.append(TsFileConstant.PATH_SEPARATOR);
+    }
+    builder.append(currentNode.getName());
+    MeasurementPath retPath = new MeasurementPath(new PartialPath(builder.toString()), currentNode.getSchema());
+    retPath.setUnderAlignedEntity(((IEntityMNode) par).isAligned());
+    return retPath;
   }
 
   /**

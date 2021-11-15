@@ -1127,7 +1127,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.sg1.d1.s11 ( which is incompatible with template )] already exist",
+          "Path [root.sg1.d1.s11] conflicts with template [template1].",
           e.getMessage());
     }
   }
@@ -1387,7 +1387,6 @@ public class MManagerBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      // TODO: To adapt MTree for tree structured template
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
 
