@@ -73,7 +73,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     this.cachedBatchs = Maps.newHashMap();
     this.pathToDataType = Maps.newHashMap();
     for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
-      String fullPath = sourceInfo.getPartialPaths().get(i).getExactFullPath();
+      String fullPath = sourceInfo.getPartialPaths().get(i).getFullPath();
       this.cachedBatchs.put(fullPath, new ConcurrentLinkedQueue<>());
       this.pathToDataType.put(fullPath, sourceInfo.getDataTypes().get(i));
     }

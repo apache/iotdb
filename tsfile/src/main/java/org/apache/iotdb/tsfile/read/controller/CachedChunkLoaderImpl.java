@@ -20,8 +20,12 @@ package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 
@@ -70,5 +74,19 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
   @Override
   public void close() throws IOException {
     reader.close();
+  }
+
+  @Override
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+      throws IOException {
+    chunkMetaData.setFilePath(reader.getFileName());
+    Chunk chunk = chunkCache.get((ChunkMetadata) chunkMetaData);
+    return new ChunkReader(
+        new Chunk(
+            chunk.getHeader(),
+            chunk.getData().duplicate(),
+            chunkMetaData.getDeleteIntervalList(),
+            chunkMetaData.getStatistics()),
+        timeFilter);
   }
 }

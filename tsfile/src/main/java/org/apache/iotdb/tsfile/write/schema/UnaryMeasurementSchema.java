@@ -204,6 +204,11 @@ public class UnaryMeasurementSchema
   }
 
   @Override
+  public byte getTypeInByte() {
+    return type;
+  }
+
+  @Override
   public TSEncoding getTimeTSEncoding() {
     return TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
   }

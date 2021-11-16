@@ -165,4 +165,9 @@ public class Path implements Serializable, Comparable<Path> {
   public Path clone() {
     return new Path(fullPath);
   }
+
+  /** return the column contained by this path */
+  public int getColumnNum() {
+    return 1;
+  }
 }

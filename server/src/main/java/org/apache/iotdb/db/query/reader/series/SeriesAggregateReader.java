@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,8 +45,7 @@ public class SeriesAggregateReader implements IAggregateReader {
       TsFileFilter fileFilter,
       boolean ascending) {
     this.seriesReader =
-        new SeriesReader(
-            seriesPath,
+        seriesPath.createSeriesReader(
             allSensors,
             dataType,
             context,

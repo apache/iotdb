@@ -1281,10 +1281,13 @@ public class IoTDBDescriptor {
                   + queryMemoryAllocateProportion);
         }
       }
-
-      conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
     }
+
+    conf.setMaxQueryDeduplicatedPathNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

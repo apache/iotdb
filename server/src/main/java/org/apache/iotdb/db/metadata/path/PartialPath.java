@@ -16,22 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.path;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -41,15 +59,14 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
  * module
  */
-public class PartialPath extends Path implements Comparable<Path> {
+public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
 
   protected String[] nodes;
-  // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
-  protected String measurementAlias = "";
 
   public PartialPath() {}
+
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
    * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
@@ -99,7 +116,7 @@ public class PartialPath extends Path implements Comparable<Path> {
    *
    * @param otherNodes nodes
    */
-  void concatPath(String[] otherNodes) {
+  public void concatPath(String[] otherNodes) {
     int len = nodes.length;
     this.nodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
     System.arraycopy(otherNodes, 0, nodes, len, otherNodes.length);
@@ -199,16 +216,14 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   @Override
   public String getFullPath() {
-    if (fullPath != null) {
-      return fullPath;
-    } else {
+    if (fullPath == null) {
       StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR).append(nodes[i]);
       }
       fullPath = s.toString();
-      return fullPath;
     }
+    return fullPath;
   }
 
   public PartialPath copy() {
@@ -216,7 +231,6 @@ public class PartialPath extends Path implements Comparable<Path> {
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
-    result.measurementAlias = measurementAlias;
     return result;
   }
 
@@ -275,21 +289,30 @@ public class PartialPath extends Path implements Comparable<Path> {
     }
   }
 
+  // todo remove measurement related interface after invoker using MeasurementPath explicitly
   public String getMeasurementAlias() {
-    return measurementAlias;
+    throw new RuntimeException("Only MeasurementPath support alias");
   }
 
   public void setMeasurementAlias(String measurementAlias) {
-    this.measurementAlias = measurementAlias;
+    throw new RuntimeException("Only MeasurementPath support alias");
   }
 
   public boolean isMeasurementAliasExists() {
-    return measurementAlias != null && !measurementAlias.isEmpty();
+    return false;
   }
 
   @Override
   public String getFullPathWithAlias() {
-    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
+    throw new RuntimeException("Only MeasurementPath support alias");
+  }
+
+  public IMeasurementSchema getMeasurementSchema() throws MetadataException {
+    throw new MetadataException("This path doesn't represent a measurement");
+  }
+
+  public TSDataType getSeriesType() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("This path doesn't represent a measurement");
   }
 
   @Override
@@ -351,11 +374,67 @@ public class PartialPath extends Path implements Comparable<Path> {
     return ret;
   }
 
+  public LastPointReader createLastPointReader(
+      TSDataType dataType,
+      Set<String> deviceMeasurements,
+      QueryContext context,
+      QueryDataSource dataSource,
+      long queryTime,
+      Filter timeFilter) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  public SeriesReader createSeriesReader(
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  @TestOnly
+  public SeriesReader createSeriesReader(
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  public TsFileResource createTsFileResource(
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<IChunkMetadata> chunkMetadataList,
+      TsFileResource originTsFileResource)
+      throws IOException {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
   /**
-   * If the partialPath is VectorPartialPath and it has only one sub sensor, return the sub sensor's
-   * full path. Otherwise, return the partialPath's fullPath
+   * get the ReadOnlyMemChunk from the given MemTable.
+   *
+   * @return ReadOnlyMemChunk
    */
-  public String getExactFullPath() {
-    return getFullPath();
+  public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
+      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      throws QueryProcessException, IOException {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  @Override
+  public PartialPath clone() {
+    return new PartialPath(this.getNodes().clone());
+  }
+
+  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
   }
 }

@@ -39,6 +39,8 @@ public interface IMeasurementSchema {
 
   TSDataType getType();
 
+  byte getTypeInByte();
+
   void setType(TSDataType dataType);
 
   TSEncoding getTimeTSEncoding();
