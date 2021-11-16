@@ -260,7 +260,7 @@ public abstract class Traverser {
    * @param currentNode the node need to get the full path of
    * @return full path from traverse start node to the current node
    */
-  protected PartialPath getPivotPartialPath(IMNode currentNode) throws IllegalPathException {
+  protected PartialPath getCurrentPartialPath(IMNode currentNode) throws IllegalPathException {
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
     StringBuilder builder = new StringBuilder(nodes.next().getName());
     while (nodes.hasNext()) {
@@ -274,7 +274,7 @@ public abstract class Traverser {
     return new PartialPath(builder.toString());
   }
 
-  protected MeasurementPath getPivotMeasurementPathInTraverse(IMeasurementMNode currentNode)
+  protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode)
       throws MetadataException {
     IMNode par = traverseContext.peek();
     if (!(par instanceof IEntityMNode)) {

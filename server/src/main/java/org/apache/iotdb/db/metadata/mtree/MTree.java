@@ -901,7 +901,7 @@ public class MTree implements Serializable {
         new EntityCollector<Set<PartialPath>>(root, pathPattern) {
           @Override
           protected void collectEntity(IEntityMNode node) throws MetadataException {
-            result.add(getPivotPartialPath(node));
+            result.add(getCurrentPartialPath(node));
           }
         };
     collector.setPrefixMatch(isPrefixMatch);
@@ -916,7 +916,7 @@ public class MTree implements Serializable {
             root, plan.getPath(), plan.getLimit(), plan.getOffset()) {
           @Override
           protected void collectEntity(IEntityMNode node) throws MetadataException {
-            PartialPath device = getPivotPartialPath(node);
+            PartialPath device = getCurrentPartialPath(node);
             if (plan.hasSgCol()) {
               res.add(
                   new ShowDevicesResult(
@@ -936,7 +936,7 @@ public class MTree implements Serializable {
         new MeasurementCollector<Set<PartialPath>>(root, timeseries) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            result.add(getPivotPartialPath(node).getDevicePath());
+            result.add(getCurrentPartialPath(node).getDevicePath());
           }
         };
     collector.traverse();
@@ -969,7 +969,7 @@ public class MTree implements Serializable {
         new MeasurementCollector<List<PartialPath>>(root, pathPattern, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            MeasurementPath path = getPivotMeasurementPathInTraverse(node);
+            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
@@ -1036,7 +1036,7 @@ public class MTree implements Serializable {
             tsRow[4] = measurementSchema.getCompressor().toString();
             tsRow[5] = String.valueOf(node.getOffset());
             tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
-            Pair<PartialPath, String[]> temp = new Pair<>(getPivotPartialPath(node), tsRow);
+            Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
             result.add(temp);
           }
         };
@@ -1069,7 +1069,7 @@ public class MTree implements Serializable {
         new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            result.put(getPivotPartialPath(node), node.getSchema());
+            result.put(getCurrentPartialPath(node), node.getSchema());
           }
         };
     collector.setPrefixMatch(true);
@@ -1111,7 +1111,7 @@ public class MTree implements Serializable {
             IMeasurementSchema nodeSchema = node.getSchema();
             timeseriesSchemas.add(
                 new TimeseriesSchema(
-                    getPivotPartialPath(node).getFullPath(),
+                    getCurrentPartialPath(node).getFullPath(),
                     nodeSchema.getType(),
                     nodeSchema.getEncodingType(),
                     nodeSchema.getCompressor()));
@@ -1142,7 +1142,7 @@ public class MTree implements Serializable {
             @Override
             protected void transferToResult(IMNode node) {
               try {
-                resultSet.add(getPivotPartialPath(node).getFullPath());
+                resultSet.add(getCurrentPartialPath(node).getFullPath());
               } catch (IllegalPathException e) {
                 logger.error(e.getMessage());
               }
@@ -1193,7 +1193,7 @@ public class MTree implements Serializable {
           @Override
           protected void transferToResult(IMNode node) {
             try {
-              resultSet.add(getPivotPartialPath(node));
+              resultSet.add(getCurrentPartialPath(node));
             } catch (MetadataException e) {
               logger.error(e.getMessage());
             }

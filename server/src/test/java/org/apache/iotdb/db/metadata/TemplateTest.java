@@ -185,8 +185,6 @@ public class TemplateTest {
      * Construct a template like: create schema template treeTemplate ( (d1.s1 INT32 GORILLA
      * SNAPPY), (s2 INT32 GORILLA SNAPPY), (GPS.x FLOAT RLE SNAPPY), (GPS.y FLOAT RLE SNAPPY), )with
      * aligned (GPS)
-     *
-     * <p>Check aligned path whether with same prefix? Construct tree
      */
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("d1.s1"));

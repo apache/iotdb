@@ -81,7 +81,6 @@ public class Template {
       IMeasurementSchema curSchema;
       int size = plan.getMeasurements().get(i).size();
       if (size > 1) {
-        //
         isAlign = true;
       } else {
         // If sublist of measurements has only one item,
