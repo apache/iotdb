@@ -90,7 +90,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
     getGroupByExecutors(pathExecutors, context, groupByTimeFillPlan, timeFilter, ascending);
   }
 
-  private GroupByExecutor getGroupByExecutor(
+  protected GroupByExecutor getGroupByExecutor(
       PartialPath path,
       Set<String> allSensors,
       TSDataType dataType,

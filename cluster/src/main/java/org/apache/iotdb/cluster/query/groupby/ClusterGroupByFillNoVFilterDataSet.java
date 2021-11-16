@@ -40,8 +40,7 @@ public class ClusterGroupByFillNoVFilterDataSet extends GroupByFillWithoutValueF
   public ClusterGroupByFillNoVFilterDataSet(
       QueryContext context,
       GroupByTimeFillPlan groupByTimeFillPlan,
-      MetaGroupMember metaGroupMember)
-      throws QueryProcessException, StorageEngineException {
+      MetaGroupMember metaGroupMember) {
     super(context, groupByTimeFillPlan);
     this.metaGroupMember = metaGroupMember;
   }
@@ -53,7 +52,6 @@ public class ClusterGroupByFillNoVFilterDataSet extends GroupByFillWithoutValueF
       TSDataType dataType,
       QueryContext context,
       Filter timeFilter,
-      TsFileFilter fileFilter,
       boolean ascending) {
     return new MergeGroupByExecutor(
         path, deviceMeasurements, dataType, context, timeFilter, metaGroupMember, ascending);
