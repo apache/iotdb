@@ -223,12 +223,7 @@ public class InnerSeqCompactionTest {
             SizeTieredCompactionLogger sizeTieredCompactionLogger =
                 new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
-                targetTsFileResource,
-                sourceResources,
-                COMPACTION_TEST_SG,
-                sizeTieredCompactionLogger,
-                new HashSet<>(),
-                true);
+                targetTsFileResource, sourceResources, COMPACTION_TEST_SG, true);
             SizeTieredCompactionTask.combineModsInCompaction(sourceResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
@@ -454,12 +449,7 @@ public class InnerSeqCompactionTest {
             SizeTieredCompactionLogger sizeTieredCompactionLogger =
                 new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
-                targetTsFileResource,
-                toMergeResources,
-                COMPACTION_TEST_SG,
-                sizeTieredCompactionLogger,
-                new HashSet<>(),
-                true);
+                targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
             SizeTieredCompactionTask.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
@@ -736,12 +726,7 @@ public class InnerSeqCompactionTest {
             SizeTieredCompactionLogger sizeTieredCompactionLogger =
                 new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
-                targetTsFileResource,
-                toMergeResources,
-                COMPACTION_TEST_SG,
-                sizeTieredCompactionLogger,
-                new HashSet<>(),
-                true);
+                targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
             SizeTieredCompactionTask.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
