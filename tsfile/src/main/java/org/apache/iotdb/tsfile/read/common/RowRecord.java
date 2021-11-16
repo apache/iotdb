@@ -25,7 +25,7 @@ import java.util.List;
 
 public class RowRecord {
 
-  private final long timestamp;
+  private long timestamp;
   private final List<Field> fields;
   /** if any column is null, this field should be set to true; otherwise false */
   private boolean hasNullField = false;
@@ -77,6 +77,10 @@ public class RowRecord {
       sb.append(f);
     }
     return sb.toString();
+  }
+
+  public void setTimestamp(long timestamp) {
+    this.timestamp = timestamp;
   }
 
   public long getTimestamp() {

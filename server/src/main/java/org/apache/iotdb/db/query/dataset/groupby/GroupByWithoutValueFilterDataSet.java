@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -54,7 +54,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private static final Logger logger =
       LoggerFactory.getLogger(GroupByWithoutValueFilterDataSet.class);
 
-  private Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
+  protected Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
 
   /**
    * path -> result index for each aggregation
@@ -65,7 +65,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    *
    * <p>s1 -> 0, 2 s2 -> 1
    */
-  private Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
+  protected Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
 
   public GroupByWithoutValueFilterDataSet() {}
 
@@ -73,11 +73,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     super(context, groupByTimePlan);
-
-    initGroupBy(context, groupByTimePlan);
   }
 
-  protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
+  /** init reader and aggregate function. This method should be called once after initializing */
+  public void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     IExpression expression = groupByTimePlan.getExpression();
 

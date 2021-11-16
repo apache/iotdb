@@ -25,6 +25,9 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -265,7 +268,7 @@ public class MManagerBasicTest {
           compressionType,
           Collections.emptyMap());
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
+          new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -282,34 +285,18 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
 
-    try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
-    } catch (MetadataException e) {
-      assertEquals(
-          e.getMessage(),
-          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.s2]");
-    }
-
-    try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
-    } catch (MetadataException e) {
-      assertEquals(
-          e.getMessage(),
-          "No matched timeseries or aligned timeseries for Path [root.laptop.d1.vector.*]");
-    }
-
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
+    manager.deleteTimeseries(new PartialPath("root.laptop.d1.aligned_device.*"));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
 
     try {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
@@ -322,7 +309,7 @@ public class MManagerBasicTest {
 
     try {
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
+          new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s0", "s2", "s4"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -337,10 +324,10 @@ public class MManagerBasicTest {
     }
 
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s4")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
   }
 
   @Test
@@ -546,7 +533,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     try {
-      assertTrue(manager.getFlatMeasurementPaths(new PartialPath("root")).isEmpty());
+      assertTrue(manager.getMeasurementPaths(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(
@@ -881,20 +868,24 @@ public class MManagerBasicTest {
     UnaryMeasurementSchema s11 =
         new UnaryMeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     assertNotNull(node.getSchemaTemplate());
-    assertEquals(node.getSchemaTemplate().getSchemaMap().get("s11"), s11);
 
     Set<IMeasurementSchema> allSchema =
         new HashSet<>(node.getSchemaTemplate().getSchemaMap().values());
-    for (IMeasurementSchema schema :
-        manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1"))) {
-      allSchema.remove(schema);
+    for (MeasurementPath measurementPath :
+        manager.getMeasurementPaths(new PartialPath("root.sg1.d1.*"))) {
+      allSchema.remove(measurementPath.getMeasurementSchema());
     }
 
     assertTrue(allSchema.isEmpty());
 
     IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
+    IMeasurementMNode mNode2 =
+        manager.getMeasurementMNode(new PartialPath("root.sg1.d1.vector.s2"));
     assertNotNull(mNode);
     assertEquals(mNode.getSchema(), s11);
+    assertNotNull(mNode2);
+    assertEquals(
+        mNode2.getSchema(), manager.getTemplate("template1").getSchemaMap().get("vector.s2"));
 
     try {
       manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
@@ -904,12 +895,94 @@ public class MManagerBasicTest {
     }
   }
 
+  @Test
+  public void testTemplateInnerTree() {
+    CreateTemplatePlan plan = getTreeTemplatePlan();
+    Template template;
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.createSchemaTemplate(plan);
+      template = manager.getTemplate("treeTemplate");
+      assertEquals(4, template.getMeasurementsCount());
+      assertEquals("d1", template.getPathNodeInTemplate("d1").getName());
+      assertNull(template.getPathNodeInTemplate("notExists"));
+      assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
+
+      String[] alignedMeasurements = {"to.be.prefix.s1", "to.be.prefix.s2"};
+      TSDataType[] dataTypes = {TSDataType.INT32, TSDataType.INT32};
+      TSEncoding[] encodings = {TSEncoding.RLE, TSEncoding.RLE};
+      CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
+      template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
+
+      assertEquals("[GPS, to.be.prefix]", template.getAllAlignedPrefix().toString());
+      assertEquals("[s1, s2]", template.getAlignedMeasurements("to.be.prefix").toString());
+
+      template.deleteAlignedPrefix("to.be.prefix");
+
+      assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
+      assertEquals(null, template.getDirectNode("prefix"));
+      assertEquals("to", template.getDirectNode("to").getName());
+
+      try {
+        template.deleteMeasurements("a.single");
+        fail();
+      } catch (IllegalPathException e) {
+        assertEquals("a.single is not a legal path, because Path does not exist", e.getMessage());
+      }
+      assertEquals(
+          "[d1.s1, GPS.x, to.be.prefix.s2, GPS.y, to.be.prefix.s1, s2]",
+          template.getAllMeasurementsPaths().toString());
+
+      template.deleteSeriesCascade("to");
+
+      assertEquals("[d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
+
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private CreateTemplatePlan getTreeTemplatePlan() {
+    /**
+     * Construct a template like: create schema template treeTemplate ( (d1.s1 INT32 GORILLA
+     * SNAPPY), (s2 INT32 GORILLA SNAPPY), (GPS.x FLOAT RLE SNAPPY), (GPS.y FLOAT RLE SNAPPY), )with
+     * aligned (GPS)
+     *
+     * <p>Check aligned path whether with same prefix? Construct tree
+     */
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("d1.s1"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Arrays.asList("GPS.x", "GPS.y"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
+    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
+    encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
+
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+
+    return new CreateTemplatePlan(
+        "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
+  }
+
+  @SuppressWarnings("Duplicates")
   private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
+
     List<String> measurements = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      measurements.add("s" + i);
+      measurements.add("vector.s" + i);
     }
     measurementList.add(measurements);
 
@@ -929,13 +1002,16 @@ public class MManagerBasicTest {
     }
     encodingList.add(encodings);
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 11; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    List<CompressionType> compressorList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      compressorList.add(CompressionType.SNAPPY);
     }
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(compressorList);
 
     List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s11");
+    schemaNames.add("s21");
     schemaNames.add("vector");
 
     return new CreateTemplatePlan(
@@ -960,9 +1036,9 @@ public class MManagerBasicTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+      compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     }
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s1");
@@ -1035,7 +1111,7 @@ public class MManagerBasicTest {
 
     CreateTimeSeriesPlan createTimeSeriesPlan2 =
         new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.vector.s1"),
+            new PartialPath("root.sg1.d1.s11"),
             TSDataType.INT32,
             TSEncoding.PLAIN,
             CompressionType.GZIP,
@@ -1049,7 +1125,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.sg1.d1.vector.s1 ( which is incompatible with template )] already exist",
+          "Path [root.sg1.d1.s11 ( which is incompatible with template )] already exist",
           e.getMessage());
     }
   }
@@ -1087,27 +1163,6 @@ public class MManagerBasicTest {
     }
 
     manager.deleteTimeseries(new PartialPath("root.sg1.d1.s11"));
-
-    CreateTimeSeriesPlan createTimeSeriesPlan2 =
-        new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.vector.s1"),
-            TSDataType.INT32,
-            TSEncoding.PLAIN,
-            CompressionType.GZIP,
-            null,
-            null,
-            null,
-            null);
-    manager.createTimeseries(createTimeSeriesPlan2);
-
-    try {
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
-      fail();
-    } catch (MetadataException e) {
-      assertEquals(
-          "Schema name vector in template has conflict with node's child root.sg1.d1.vector",
-          e.getMessage());
-    }
   }
 
   @Test
@@ -1136,29 +1191,32 @@ public class MManagerBasicTest {
     }
     encodingList.add(encodings);
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 11; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    List<CompressionType> compressionTypeList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      compressionTypeList.add(CompressionType.SNAPPY);
     }
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(compressionTypeList);
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");
-    schemaNames.add("test_vector");
+    schemaNames.add("test_aligned_device");
 
     CreateTemplatePlan plan1 =
         new CreateTemplatePlan(
             "template1",
-            new ArrayList<>(schemaNames),
-            new ArrayList<>(measurementList),
-            new ArrayList<>(dataTypeList),
-            new ArrayList<>(encodingList),
-            new ArrayList<>(compressionTypes));
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
 
     measurementList.add(Collections.singletonList("s12"));
     schemaNames.add("s12");
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
 
     CreateTemplatePlan plan2 =
         new CreateTemplatePlan(
@@ -1172,6 +1230,7 @@ public class MManagerBasicTest {
     measurementList.get(1).add("s13");
     dataTypeList.get(1).add(TSDataType.INT64);
     encodingList.get(1).add(TSEncoding.RLE);
+    compressionTypes.get(1).add(CompressionType.SNAPPY);
 
     SetSchemaTemplatePlan setPlan1 = new SetSchemaTemplatePlan("template1", "root.sg1");
     SetSchemaTemplatePlan setPlan2 = new SetSchemaTemplatePlan("template2", "root.sg2.d1");
@@ -1229,16 +1288,6 @@ public class MManagerBasicTest {
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
-      manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
-          Arrays.asList("s1", "s2", "s3"),
-          Arrays.asList(
-              TSDataType.valueOf("INT32"),
-              TSDataType.valueOf("FLOAT"),
-              TSDataType.valueOf("INT32")),
-          Arrays.asList(
-              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
 
       // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
@@ -1248,47 +1297,9 @@ public class MManagerBasicTest {
           manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
-
-      // show timeseries
-      //      showTimeSeriesPlan =
-      //          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
-      //      result = manager.showTimeseries(showTimeSeriesPlan,
-      // EnvironmentUtils.TEST_QUERY_CONTEXT);
-      //      assertEquals(4, result.size());
-
-      // show timeseries root.laptop.d1.vector
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector.*"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(3, result.size());
-      for (int i = 0; i < result.size(); i++) {
-        assertEquals("root.laptop.d1.vector.s" + (i + 1), result.get(i).getName());
-      }
-
-      // show timeseries root.laptop.d1.vector.s1
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(1, result.size());
-      assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-
-    // show timeseries root.laptop.d1.(s0,s1)
-    try {
-      ShowTimeSeriesPlan showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    } catch (MetadataException e) {
-      assertEquals(
-          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
-          e.getMessage());
     }
   }
 
@@ -1296,36 +1307,24 @@ public class MManagerBasicTest {
   public void testShowTimeseriesWithTemplate() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
-    List<String> measurements = new ArrayList<>();
-    for (int i = 1; i <= 3; i++) {
-      measurements.add("s" + i);
-    }
-    measurementList.add(measurements);
+    measurementList.add(Collections.singletonList("s1"));
 
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
     dataTypeList.add(Collections.singletonList(TSDataType.INT32));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32);
-    dataTypes.add(TSDataType.FLOAT);
-    dataTypes.add(TSDataType.INT32);
-    dataTypeList.add(dataTypes);
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (int i = 1; i <= 3; i++) {
-      encodings.add(TSEncoding.RLE);
-    }
-    encodingList.add(encodings);
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      compressionTypes.add(compressionType);
+      compressionTypes.add(Collections.singletonList(compressionType));
     }
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s0");
-    schemaNames.add("vector");
+    schemaNames.add("s1");
 
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
@@ -1354,27 +1353,17 @@ public class MManagerBasicTest {
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
-      // show timeseries root.laptop.d1.vector.s1
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(1, result.size());
-      assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
-
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(new PartialPath("root.**"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertEquals(4, result.size());
+      assertEquals(2, result.size());
       Set<String> set = new HashSet<>();
-      for (int i = 1; i < result.size(); i++) {
-        set.add("root.laptop.d1.vector.s" + i);
-      }
       set.add("root.laptop.d1.s0");
+      set.add("root.laptop.d1.s1");
 
-      for (int i = 0; i < result.size(); i++) {
-        set.remove(result.get(i).getName());
+      for (ShowTimeSeriesResult showTimeSeriesResult : result) {
+        set.remove(showTimeSeriesResult.getName());
       }
 
       assertTrue(set.isEmpty());
@@ -1410,9 +1399,9 @@ public class MManagerBasicTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      compressionTypes.add(compressionType);
+      compressionTypes.add(Collections.singletonList(compressionType));
     }
 
     List<String> schemaNames = new ArrayList<>();
@@ -1476,9 +1465,9 @@ public class MManagerBasicTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      compressionTypes.add(compressionType);
+      compressionTypes.add(Collections.singletonList(compressionType));
     }
 
     List<String> schemaNames = new ArrayList<>();
@@ -1623,7 +1612,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
+          new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("FLOAT"),
@@ -1645,7 +1634,7 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1.vector"),
+              new PartialPath("root.laptop.d1.aligned_device"),
               time,
               new String[] {"s1", "s2", "s3"},
               dataTypes,
@@ -1656,8 +1645,7 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
-      assertEquals(3, manager.getAllTimeseriesFlatCount(node.getPartialPath().concatNode("**")));
+      assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertNull(insertRowPlan.getMeasurementMNodes()[2]);
@@ -1675,7 +1663,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.vector"),
+          new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("FLOAT"),
@@ -1697,7 +1685,7 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1.vector"),
+              new PartialPath("root.laptop.d1.aligned_device"),
               time,
               new String[] {"s1", "s2", "s3"},
               dataTypes,
@@ -1711,7 +1699,7 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.assertEquals(
-          "Path [root.laptop.d1.vector] is an aligned timeseries, please set InsertPlan.isAligned() = true",
+          "Timeseries under path [root.laptop.d1.aligned_device] is aligned , please set InsertPlan.isAligned() = true",
           e.getMessage());
     }
   }
@@ -1759,13 +1747,13 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1.vector.s1"),
+          new PartialPath("root.laptop.d1.aligned_device.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1.vector.s2"),
+          new PartialPath("root.laptop.d1.aligned_device.s2"),
           TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"),
           compressionType,
@@ -1781,7 +1769,7 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1.vector"),
+              new PartialPath("root.laptop.d1.aligned_device"),
               time,
               new String[] {"s1", "s2"},
               dataTypes,
@@ -1795,7 +1783,7 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.assertEquals(
-          "Path [root.laptop.d1.vector] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
+          "Timeseries under path [root.laptop.d1.aligned_device] is not aligned , please set InsertPlan.isAligned() = false",
           e.getMessage());
     }
   }
@@ -1941,8 +1929,8 @@ public class MManagerBasicTest {
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    compressionTypes.add(compressionType);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(compressionType));
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add(schemaName);

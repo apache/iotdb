@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -79,6 +79,10 @@ public class GroupByLevelDataSet extends QueryDataSet {
         }
       }
     }
+    // group by level's column number is different from other datasets
+    // TODO I don't know whether it's right or not in AlignedPath, remember to check here while
+    // adapting GroupByLevel query for new vector
+    super.columnNum = dataTypes.size();
   }
 
   @Override

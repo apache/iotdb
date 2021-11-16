@@ -24,14 +24,15 @@ import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -44,6 +45,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -51,27 +53,34 @@ import java.util.Set;
 
 public class TsFileIOWriterTest {
 
-  private static String tsfile = TestConstant.BASE_OUTPUT_PATH.concat("tsfileIOWriterTest.tsfile");
-  private static String deviceId = "device1";
-  private static int chunkGroupNum = 2;
+  private static final String FILE_PATH =
+      TestConstant.BASE_OUTPUT_PATH.concat("TsFileIOWriterTest.tsfile");
+  private static final String DEVICE_1 = "device1";
+  private static final String DEVICE_2 = "device2";
+  private static final String SENSOR_1 = "sensor1";
+
+  private static final int CHUNK_GROUP_NUM = 2;
 
   @Before
   public void before() throws IOException {
-    TsFileIOWriter writer = new TsFileIOWriter(new File(tsfile));
+    TsFileIOWriter writer = new TsFileIOWriter(new File(FILE_PATH));
 
     // file schema
-    UnaryMeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema("sensor01");
+    UnaryMeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema(SENSOR_1);
     VectorMeasurementSchema vectorMeasurementSchema =
         new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64});
+            "", new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT64});
+    List<UnaryMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    MeasurementGroup group = new MeasurementGroup(true, schemas);
+
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId, "sensor01"), measurementSchema);
-    schema.registerTimeseries(new Path(deviceId, "vector"), vectorMeasurementSchema);
+    schema.registerTimeseries(new Path(DEVICE_1), measurementSchema);
+    schema.registerMeasurementGroup(new Path(DEVICE_2), group);
 
-    writeChunkGroup(writer, measurementSchema, vectorMeasurementSchema, chunkGroupNum);
-
+    writeChunkGroup(writer, measurementSchema);
+    writeVectorChunkGroup(writer, vectorMeasurementSchema);
     writer.setMinPlanIndex(100);
     writer.setMaxPlanIndex(10000);
     writer.writePlanIndices();
@@ -81,7 +90,7 @@ public class TsFileIOWriterTest {
 
   @After
   public void after() {
-    File file = new File(tsfile);
+    File file = new File(FILE_PATH);
     if (file.exists()) {
       file.delete();
     }
@@ -89,7 +98,7 @@ public class TsFileIOWriterTest {
 
   @Test
   public void endFileTest() throws IOException {
-    TsFileSequenceReader reader = new TsFileSequenceReader(tsfile);
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
 
     // magic_string
     Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readHeadMagic());
@@ -100,32 +109,39 @@ public class TsFileIOWriterTest {
 
     ChunkHeader header;
     ChunkGroupHeader chunkGroupHeader;
-    for (int i = 0; i < chunkGroupNum; i++) {
+    for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
       // chunk group header
       Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
       chunkGroupHeader = reader.readChunkGroupHeader();
-      Assert.assertEquals(deviceId, chunkGroupHeader.getDeviceID());
+      Assert.assertEquals(DEVICE_1, chunkGroupHeader.getDeviceID());
       // ordinary chunk header
       Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, reader.readMarker());
       header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
-      Assert.assertEquals(TimeSeriesMetadataTest.measurementUID, header.getMeasurementID());
+      Assert.assertEquals(SENSOR_1, header.getMeasurementID());
+    }
+
+    for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
+      // chunk group header
+      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
+      chunkGroupHeader = reader.readChunkGroupHeader();
+      Assert.assertEquals(DEVICE_2, chunkGroupHeader.getDeviceID());
       // vector chunk header (time)
       Assert.assertEquals(
           MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK,
           reader.readMarker());
       header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
-      Assert.assertEquals("vector", header.getMeasurementID());
+      Assert.assertEquals("", header.getMeasurementID());
       // vector chunk header (values)
       Assert.assertEquals(
           MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK,
           reader.readMarker());
       header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
-      Assert.assertEquals("vector.s1", header.getMeasurementID());
+      Assert.assertEquals("s1", header.getMeasurementID());
       Assert.assertEquals(
           MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK,
           reader.readMarker());
       header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
-      Assert.assertEquals("vector.s2", header.getMeasurementID());
+      Assert.assertEquals("s2", header.getMeasurementID());
     }
 
     Assert.assertEquals(MetaMarker.OPERATION_INDEX_RANGE, reader.readMarker());
@@ -143,27 +159,22 @@ public class TsFileIOWriterTest {
         deviceTimeseriesMetadataMap.entrySet()) {
       for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
         String seriesPath = entry.getKey() + "." + timeseriesMetadata.getMeasurementId();
-        Assert.assertTrue(!pathSet.contains(seriesPath));
+        Assert.assertFalse(pathSet.contains(seriesPath));
         pathSet.add(seriesPath);
       }
     }
 
     // FileMetaData
     TsFileMetadata metaData = reader.readFileMetadata();
-    Assert.assertEquals(1, metaData.getMetadataIndex().getChildren().size());
+    Assert.assertEquals(2, metaData.getMetadataIndex().getChildren().size());
   }
 
-  private void writeChunkGroup(
-      TsFileIOWriter writer,
-      UnaryMeasurementSchema measurementSchema,
-      VectorMeasurementSchema vectorMeasurementSchema,
-      int groupNum)
+  private void writeChunkGroup(TsFileIOWriter writer, UnaryMeasurementSchema measurementSchema)
       throws IOException {
-    for (int i = 0; i < groupNum; i++) {
+    for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
       // chunk group
-      writer.startChunkGroup(deviceId);
-      // ordinary chunk
-      // chunk statistics
+      writer.startChunkGroup(DEVICE_1);
+      // ordinary chunk, chunk statistics
       Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
       statistics.updateStats(0L, 0L);
       writer.startFlushChunk(
@@ -176,14 +187,22 @@ public class TsFileIOWriterTest {
           0,
           0);
       writer.endCurrentChunk();
+      writer.endChunkGroup();
+    }
+  }
+
+  private void writeVectorChunkGroup(
+      TsFileIOWriter writer, VectorMeasurementSchema vectorMeasurementSchema) throws IOException {
+    for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
+      // chunk group
+      writer.startChunkGroup(DEVICE_2);
       // vector chunk (time)
-      Statistics vectorStatistics = Statistics.getStatsByType(vectorMeasurementSchema.getType());
       writer.startFlushChunk(
           vectorMeasurementSchema.getMeasurementId(),
           vectorMeasurementSchema.getCompressor(),
           vectorMeasurementSchema.getType(),
           vectorMeasurementSchema.getTimeTSEncoding(),
-          vectorStatistics,
+          Statistics.getStatsByType(vectorMeasurementSchema.getType()),
           0,
           0,
           TsFileConstant.TIME_COLUMN_MASK);
@@ -195,9 +214,7 @@ public class TsFileIOWriterTest {
                 vectorMeasurementSchema.getSubMeasurementsTSDataTypeList().get(j));
         subStatistics.updateStats(0L, 0L);
         writer.startFlushChunk(
-            vectorMeasurementSchema.getMeasurementId()
-                + "."
-                + vectorMeasurementSchema.getSubMeasurementsList().get(j),
+            vectorMeasurementSchema.getSubMeasurementsList().get(j),
             vectorMeasurementSchema.getCompressor(),
             vectorMeasurementSchema.getSubMeasurementsTSDataTypeList().get(j),
             vectorMeasurementSchema.getSubMeasurementsTSEncodingList().get(j),

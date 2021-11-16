@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -142,6 +142,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     this.indexes = indexes;
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }

@@ -21,12 +21,13 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -176,35 +177,33 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithoutFilterTest()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
 
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
-    dataTypes.add(TSDataType.INT32);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
-    dataTypes.add(TSDataType.INT64);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
-    dataTypes.add(TSDataType.FLOAT);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
-    dataTypes.add(TSDataType.TEXT);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
-    dataTypes.add(TSDataType.BOOLEAN);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
     pathList.add(
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
-    dataTypes.add(TSDataType.INT32);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     pathList.add(
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
-    dataTypes.add(TSDataType.INT64);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -218,24 +217,22 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithTimeFilterTest()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
-    dataTypes.add(TSDataType.INT32);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     pathList.add(
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
-    dataTypes.add(TSDataType.INT32);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     pathList.add(
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
-    dataTypes.add(TSDataType.INT64);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
 
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(TimeFilter.gtEq(800L));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setExpression(globalTimeExpression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
@@ -253,40 +250,39 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithValueFilterTest()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     // select * from root.** where root.vehicle.d0.s0 >=14
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
-    dataTypes.add(TSDataType.INT32);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
-    dataTypes.add(TSDataType.INT64);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
-    dataTypes.add(TSDataType.FLOAT);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
-    dataTypes.add(TSDataType.TEXT);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
-    dataTypes.add(TSDataType.BOOLEAN);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
     pathList.add(
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
-    dataTypes.add(TSDataType.INT32);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     pathList.add(
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
-    dataTypes.add(TSDataType.INT64);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
 
     Path queryPath =
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     SingleSeriesExpression singleSeriesExpression =
         new SingleSeriesExpression(queryPath, ValueFilter.gtEq(14));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setExpression(singleSeriesExpression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
@@ -301,7 +297,7 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readIncorrectTimeFilterTest()
-      throws IllegalPathException, QueryProcessException, StorageEngineException, IOException {
+      throws MetadataException, QueryProcessException, StorageEngineException, IOException {
 
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
@@ -320,7 +316,6 @@ public class IoTDBSequenceDataQueryIT {
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(andFilter);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setExpression(globalTimeExpression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);

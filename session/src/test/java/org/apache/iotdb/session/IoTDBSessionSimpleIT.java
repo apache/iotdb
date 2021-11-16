@@ -23,8 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -41,8 +41,8 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -383,13 +383,11 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.TEXT}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
 
-    Tablet tablet = new Tablet("root.sg1.d1.vector", schemaList);
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
@@ -397,20 +395,14 @@ public class IoTDBSessionSimpleIT {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(0),
-          rowIndex,
-          new SecureRandom().nextLong());
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(1),
-          rowIndex,
-          new SecureRandom().nextInt());
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(2), rowIndex, new Binary("test"));
+          schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextLong());
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
+      tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new Binary("test"));
       timestamp++;
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
+      session.insertAlignedTablet(tablet);
       tablet.reset();
     }
 
@@ -1057,6 +1049,81 @@ public class IoTDBSessionSimpleIT {
                       "root..sg")));
     }
 
+    session.close();
+  }
+
+  @Test
+  public void testConversionFunction()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // connect
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    // prepare data
+    String deviceId = "root.sg.d1";
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
+    for (int i = 0; i <= 4; i++) {
+      times.add((long) i * 2);
+      measurementsList.add(Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6"));
+      typesList.add(
+          Arrays.asList(
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.BOOLEAN,
+              TSDataType.TEXT));
+      valuesList.add(
+          Arrays.asList(
+              i,
+              (long) i + 1,
+              (float) i,
+              (double) i * 2,
+              new boolean[] {true, false}[i % 2],
+              String.valueOf(i)));
+    }
+    // insert data
+    session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList);
+
+    // excepted
+    String[] targetTypes = {"INT64", "INT32", "DOUBLE", "FLOAT", "TEXT", "BOOLEAN"};
+    String[] excepted = {
+      "0\t0\t1\t0.0\t0.0\ttrue\ttrue",
+      "2\t1\t2\t1.0\t2.0\tfalse\ttrue",
+      "4\t2\t3\t2.0\t4.0\ttrue\ttrue",
+      "6\t3\t4\t3.0\t6.0\tfalse\ttrue",
+      "8\t4\t5\t4.0\t8.0\ttrue\ttrue"
+    };
+
+    // query
+    String[] casts = new String[targetTypes.length];
+    StringBuffer buffer = new StringBuffer();
+    buffer.append("select ");
+    for (int i = 0; i < targetTypes.length; i++) {
+      casts[i] = String.format("cast(s%s, 'type'='%s')", i + 1, targetTypes[i]);
+    }
+    buffer.append(StringUtils.join(casts, ","));
+    buffer.append(" from root.sg.d1");
+    String sql = buffer.toString();
+    SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+
+    // compare types
+    List<String> columnTypes = sessionDataSet.getColumnTypes();
+    columnTypes.remove(0);
+    for (int i = 0; i < columnTypes.size(); i++) {
+      assertEquals(targetTypes[i], columnTypes.get(i));
+    }
+
+    // compare results
+    int index = 0;
+    while (sessionDataSet.hasNext()) {
+      RowRecord next = sessionDataSet.next();
+      assertEquals(excepted[index], next.toString());
+      index++;
+    }
     session.close();
   }
 

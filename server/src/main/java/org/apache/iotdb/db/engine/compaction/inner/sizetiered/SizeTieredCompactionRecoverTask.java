@@ -72,9 +72,12 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
    *   <li><b>No compaction log file exists</b>: do nothing
    * </ol>
    */
+  @Override
   public void doCompaction() {
     // read log -> Set<Device> -> doCompaction -> clear
     try {
+      LOGGER.info(
+          "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
       if (compactionLogFile.exists()) {
         LOGGER.info(
             "{}-{} [Compaction][Recover] compaction log file {} exists, start to recover it",
@@ -108,6 +111,10 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
 
         RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
         if (writer.hasCrashed()) {
+          LOGGER.info(
+              "{} [Compaction][Recover] target file {} crash, start to delete it",
+              fullStorageGroupName,
+              targetFile);
           // the target tsfile is crashed, it is not completed
           writer.close();
           LOGGER.info(
