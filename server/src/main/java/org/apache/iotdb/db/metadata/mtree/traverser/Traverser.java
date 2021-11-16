@@ -145,27 +145,28 @@ public abstract class Traverser {
 
   protected void processMultiLevelWildcard(IMNode node, int idx, int level)
       throws MetadataException {
+    traverseContext.push(node);
     for (IMNode child : node.getChildren().values()) {
-      traverseContext.push(node);
       traverse(child, idx + 1, level + 1);
-      traverseContext.pop();
     }
+    traverseContext.pop();
 
     if (!isMeasurementTraverser || !node.isUseTemplate()) {
       return;
     }
 
     Template upperTemplate = node.getUpperTemplate();
+    traverseContext.push(node);
     for (IMNode child : upperTemplate.getDirectNodes()) {
-      traverseContext.push(node);
       traverse(child, idx + 1, level + 1);
-      traverseContext.pop();
     }
+    traverseContext.pop();
   }
 
   protected void processOneLevelWildcard(IMNode node, int idx, int level) throws MetadataException {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
+    traverseContext.push(node);
     for (IMNode child : node.getChildren().values()) {
       if (child.isMeasurement()) {
         String alias = child.getAsMeasurementMNode().getAlias();
@@ -178,16 +179,16 @@ public abstract class Traverser {
           continue;
         }
       }
-      traverseContext.push(node);
       traverse(child, idx + 1, level + 1);
-      traverseContext.pop();
     }
+    traverseContext.pop();
+
     if (multiLevelWildcard) {
+      traverseContext.push(node);
       for (IMNode child : node.getChildren().values()) {
-        traverseContext.push(node);
         traverse(child, idx, level + 1);
-        traverseContext.pop();
       }
+      traverseContext.pop();
     }
 
     if (!isMeasurementTraverser || !node.isUseTemplate()) {
@@ -195,20 +196,22 @@ public abstract class Traverser {
     }
 
     Template upperTemplate = node.getUpperTemplate();
+
+    traverseContext.push(node);
     for (IMNode child : upperTemplate.getDirectNodes()) {
       if (!Pattern.matches(targetNameRegex, child.getName())) {
         continue;
       }
-      traverseContext.push(node);
       traverse(child, idx + 1, level + 1);
-      traverseContext.pop();
     }
+    traverseContext.pop();
+
     if (multiLevelWildcard) {
+      traverseContext.push(node);
       for (IMNode child : upperTemplate.getDirectNodes()) {
-        traverseContext.push(node);
         traverse(child, idx, level + 1);
-        traverseContext.pop();
       }
+      traverseContext.pop();
     }
   }
 
@@ -223,11 +226,11 @@ public abstract class Traverser {
       traverseContext.pop();
     }
     if (multiLevelWildcard) {
+      traverseContext.push(node);
       for (IMNode child : node.getChildren().values()) {
-        traverseContext.push(node);
         traverse(child, idx, level + 1);
-        traverseContext.pop();
       }
+      traverseContext.pop();
     }
 
     if (!isMeasurementTraverser || !node.isUseTemplate()) {
@@ -244,11 +247,11 @@ public abstract class Traverser {
     }
 
     if (multiLevelWildcard) {
+      traverseContext.push(node);
       for (IMNode child : upperTemplate.getDirectNodes()) {
-        traverseContext.push(node);
         traverse(child, idx, level + 1);
-        traverseContext.pop();
       }
+      traverseContext.pop();
     }
   }
 
@@ -277,9 +280,6 @@ public abstract class Traverser {
   protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode)
       throws MetadataException {
     IMNode par = traverseContext.peek();
-    if (!(par instanceof IEntityMNode)) {
-      throw new MetadataException("Measurement not under entity: " + currentNode.getName());
-    }
 
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
     StringBuilder builder = new StringBuilder(nodes.next().getName());
@@ -293,7 +293,7 @@ public abstract class Traverser {
     builder.append(currentNode.getName());
     MeasurementPath retPath =
         new MeasurementPath(new PartialPath(builder.toString()), currentNode.getSchema());
-    retPath.setUnderAlignedEntity(((IEntityMNode) par).isAligned());
+    retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
     return retPath;
   }
 

@@ -1722,12 +1722,30 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
+    // devicePath is a logical path which is parent of measurement, whether in template or not
     PartialPath devicePath = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node, set using template if accessed.
-    activateTemplateBeforeAccess(devicePath, measurementList);
+
+    int indexRecord = -1;
+    // check every measurement path
+    for (String measurementId : measurementList) {
+      PartialPath fullPath = devicePath.concatNode(measurementId);
+      int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
+      if (index != fullPath.getNodeLength() - 1) {
+        // this measurement is in template, need to assure mounted node exists and set using template.
+        if (index != indexRecord) {
+          // Without allowing overlap of template and MTree, this block run only once
+          String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
+          IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+          setUsingSchemaTemplate(mountedNode);
+          indexRecord = index;
+        }
+      }
+    }
+    // get logical device node, may be in template. will be multiple if overlap is allowed.
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
 
     // check insert non-aligned InsertPlan for aligned timeseries
@@ -1920,25 +1938,6 @@ public class MManager {
         TSFileDescriptor.getInstance().getConfig().getCompressor());
   }
 
-  /**
-   * Before to insert, set using template if template accessed. Better performance if refactored
-   * with getDeviceNodeWithAutoCreate
-   */
-  private void activateTemplateBeforeAccess(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    StringBuilder builder = new StringBuilder(deviceId.getFullPath());
-    if (builder.length() != 0) {
-      builder.append(TsFileConstant.PATH_SEPARATOR);
-    }
-    for (String measurement : measurements) {
-      builder.append(measurement);
-      IMNode mountedNode = mtree.getTemplateMountedNode(new PartialPath(builder.toString()));
-      if (mountedNode != null && !mountedNode.isUseTemplate()) {
-        setUsingSchemaTemplate(mountedNode);
-      }
-      builder.delete(builder.length() - measurement.length(), builder.length());
-    }
-  }
   // endregion
 
   // region Interfaces and Implementation for Template operations

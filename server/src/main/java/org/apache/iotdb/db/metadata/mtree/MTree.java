@@ -533,7 +533,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    if (checkPathWithinTemplate(path)) {
+    if (isPathExistsWithinTemplate(path)) {
       throw new MetadataException(
           "Cannot delete a timeseries inside a template: " + path.toString());
     }
@@ -1403,42 +1403,6 @@ public class MTree implements Serializable {
     }
   }
 
-  /**
-   * Check whether a measurement exists in MTree within a template, IGNORING whether set using.
-   * Mounted Node is where MTree bridges to Template.
-   *
-   * @param measurementPath a path from root to measurement, to avoid ambiguity.
-   * @return mounted Node if exists, null if not.
-   */
-  public IMNode getTemplateMountedNode(PartialPath measurementPath) throws IllegalPathException {
-    IMNode cur = root;
-    String[] pathNodes = measurementPath.getNodes();
-    Template upperTemplate = cur.getUpperTemplate();
-    if (!cur.getName().equals(pathNodes[0])) {
-      throw new IllegalPathException(measurementPath.getFullPath(), "Not a legal root path.");
-    }
-
-    for (int i = 1; i < pathNodes.length; i++) {
-      if (upperTemplate != null) {
-        String suffixPathNodes =
-            new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).getFullPath();
-        // a thorough seek by using schemaMap
-        if (upperTemplate.hasSchema(suffixPathNodes)) {
-          return cur;
-        }
-      }
-
-      if (cur.hasChild(pathNodes[i])) {
-        cur = cur.getChild(pathNodes[i]);
-        upperTemplate = cur.getUpperTemplate() != null ? cur.getUpperTemplate() : upperTemplate;
-      } else {
-        // no matched child in MTree or template
-        return null;
-      }
-    }
-    // measurement in MTree
-    return null;
-  }
   // endregion
 
   // region Interfaces and Implementation for Template check
@@ -1551,15 +1515,13 @@ public class MTree implements Serializable {
 
   /**
    * Note that template and MTree cannot have overlap paths.
-   *
    * @return true iff path corresponding to a measurement inside a template, whether using or not.
    */
-  public boolean checkPathWithinTemplate(PartialPath path) {
+  public boolean isPathExistsWithinTemplate(PartialPath path) {
     if (path.getNodes().length < 2) {
       return false;
     }
     String[] pathNodes = path.getNodes();
-    boolean isInTemplate = false;
     IMNode cur = root;
     Template upperTemplate = cur.getUpperTemplate();
     for (int i = 1; i < pathNodes.length; i++) {
@@ -1569,17 +1531,67 @@ public class MTree implements Serializable {
           return false;
         }
         upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
-      } else {
-        if (upperTemplate != null && upperTemplate.getDirectNode(pathNodes[i]) != null) {
-          String suffixPath =
-              new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).toString();
-          return upperTemplate.hasSchema(suffixPath);
+      } else if (upperTemplate != null) {
+        String suffixPath =
+            new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).toString();
+        if (upperTemplate.hasSchema(suffixPath)) {
+          return true;
+        } else {
+          // has template, but not match
+          return false;
         }
+      } else {
+        // no child and no template
         return false;
       }
     }
     return false;
   }
+
+  /**
+   * Check measurement path and return the mounted node index on path. The node could have not created yet.
+   * The result is used for getDeviceNodeWithAutoCreate, which return corresponding IMNode on MTree.
+   * @return index on full path of the node which matches all measurements path with its upperTemplate.
+   */
+  public int getMountedNodeIndexOnMeasurementPath(PartialPath measurementPath) throws MetadataException{
+    String[] fullPathNodes = measurementPath.getNodes();
+    IMNode cur = root;
+    Template upperTemplate = cur.getSchemaTemplate();
+
+    if (!cur.getName().equals(fullPathNodes[0])) {
+      throw new IllegalPathException(measurementPath.toString());
+    }
+
+    for (int index = 1; index < fullPathNodes.length; index++) {
+      upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
+      if (!cur.hasChild(fullPathNodes[index])) {
+        if (upperTemplate != null) {
+          String suffixPath = new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length)).toString();
+
+          // if suffix matches template, then fullPathNodes[index-1] should be the node to use template on MTree
+          if (upperTemplate.hasSchema(suffixPath)) {
+            return index - 1;
+          }
+
+          // overlap with template, cast exception for now
+          if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
+            throw new PathNotExistException(String.format(
+                "Path [%s] overlaps but not matches template [%s] under node [%s]",
+                measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]));
+          }
+        } else {
+          // no matched child, no template, need to create device node as logical device path
+          return fullPathNodes.length - 1;
+        }
+      } else {
+        // has child on MTree
+        cur = cur.getChild(fullPathNodes[index]);
+      }
+    }
+    // all nodes on path exist in MTree, device node should be the penultimate one
+    return fullPathNodes.length - 1;
+  }
+
 
   // endregion
 
