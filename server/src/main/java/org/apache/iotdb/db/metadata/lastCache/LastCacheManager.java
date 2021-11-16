@@ -236,7 +236,7 @@ public class LastCacheManager {
                 null);
         last = lastReader.readLastPoint();
         if (CACHE_ENABLED && last != null && last.getValue() != null) {
-          updateLastCache(node.getPartialPath(), last, false, Long.MIN_VALUE, node);
+          updateLastCache(node, last, false, Long.MIN_VALUE);
         }
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
