@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -263,7 +263,7 @@ public class TsFileRewriteToolTest {
           String device = entry.getKey();
           for (String sensor : entry.getValue()) {
             tsFileWriter.registerTimeseries(
-                new Path(device, sensor),
+                new Path(device),
                 new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
           }
         }
@@ -304,7 +304,7 @@ public class TsFileRewriteToolTest {
           String device = entry.getKey();
           for (String sensor : entry.getValue()) {
             tsFileWriter.registerTimeseries(
-                new Path(device, sensor),
+                new Path(device),
                 new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
           }
         }
@@ -378,8 +378,7 @@ public class TsFileRewriteToolTest {
       // add measurements into file schema
       try {
         tsFileWriter.registerTimeseries(
-            new Path(device, sensor),
-            new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+            new Path(device), new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
       } catch (WriteProcessException e) {
         Assert.fail(e.getMessage());
       }

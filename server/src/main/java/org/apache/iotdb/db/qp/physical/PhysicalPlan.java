@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
@@ -118,7 +118,7 @@ public abstract class PhysicalPlan {
     return "abstract plan";
   }
 
-  public abstract List<PartialPath> getPaths();
+  public abstract List<? extends PartialPath> getPaths();
 
   public void setPaths(List<PartialPath> paths) {}
 
@@ -255,7 +255,7 @@ public abstract class PhysicalPlan {
   }
 
   /** Used to check whether a user has the permission to execute the plan with these paths. */
-  public List<PartialPath> getAuthPaths() {
+  public List<? extends PartialPath> getAuthPaths() {
     return getPaths();
   }
 

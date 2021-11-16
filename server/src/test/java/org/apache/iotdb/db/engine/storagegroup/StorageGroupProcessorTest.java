@@ -35,9 +35,10 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -122,25 +123,25 @@ public class StorageGroupProcessorTest {
       processor.insert(new InsertRowPlan(record));
     }
 
+    PartialPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
+            new UnaryMeasurementSchema(
+                measurementId,
+                TSDataType.INT32,
+                TSEncoding.RLE,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()));
+
     processor.delete(new PartialPath(deviceId, measurementId), 0, 15L, -1, null);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.query(
-          deviceId,
-          measurementId,
-          new UnaryMeasurementSchema(
-              measurementId,
-              TSDataType.INT32,
-              TSEncoding.RLE,
-              CompressionType.UNCOMPRESSED,
-              Collections.emptyMap()),
-          EnvironmentUtils.TEST_QUERY_CONTEXT,
-          tsfileResourcesForQuery);
+      tsfileProcessor.query(fullPath, EnvironmentUtils.TEST_QUERY_CONTEXT, tsfileResourcesForQuery);
     }
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
-    Assert.assertEquals(0, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     long time = 16;
     for (ReadOnlyMemChunk memChunk : memChunks) {

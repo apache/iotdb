@@ -135,7 +135,7 @@ public class PartitionUtils {
 
   public static InsertTabletPlan copy(
       InsertTabletPlan plan, long[] times, Object[] values, BitMap[] bitMaps) {
-    InsertTabletPlan newPlan = new InsertTabletPlan(plan.getPrefixPath(), plan.getMeasurements());
+    InsertTabletPlan newPlan = new InsertTabletPlan(plan.getDeviceId(), plan.getMeasurements());
     newPlan.setDataTypes(plan.getDataTypes());
     // according to TSServiceImpl.insertBatch(), only the deviceId, measurements, dataTypes,
     // times, columns, and rowCount are need to be maintained.

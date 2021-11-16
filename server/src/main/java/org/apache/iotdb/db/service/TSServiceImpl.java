@@ -34,7 +34,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -57,7 +58,6 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -254,8 +254,16 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     return resp.setStatus(status);
   }
 
-  protected List<PartialPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getFlatMeasurementPaths(path);
+  private String getMetadataInString() {
+    return IoTDB.metaManager.getMetadataInString();
+  }
+
+  protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getMeasurementPaths(path);
+  }
+
+  protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getSeriesType(path);
   }
 
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
@@ -815,7 +823,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       BitSet aliasList)
       throws TException, MetadataException {
     List<ResultColumn> resultColumns = plan.getResultColumns();
-    List<PartialPath> paths = plan.getPaths();
+    List<MeasurementPath> paths = plan.getPaths();
     List<TSDataType> seriesTypes = new ArrayList<>();
     switch (plan.getOperatorType()) {
       case QUERY:
@@ -835,7 +843,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           } else {
             respColumns.add(resultColumns.get(i).getResultColumnName());
           }
-          seriesTypes.add(getSeriesTypeByPath(paths.get(i)));
+          seriesTypes.add(paths.get(i).getSeriesType());
         }
         break;
       case AGGREGATION:
@@ -854,7 +862,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         break;
       case UDTF:
         seriesTypes = new ArrayList<>();
-        UDTFPlan udtfPlan = (UDTFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(resultColumns.get(i).getResultColumnName());
           seriesTypes.add(resultColumns.get(i).getDataType());
@@ -1348,7 +1355,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
-        plan.setPrefixPath(new PartialPath(req.getPrefixPaths().get(i)));
+        plan.setDeviceId(new PartialPath(req.getPrefixPaths().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1486,7 +1493,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setPrefixPath(new PartialPath(req.getPrefixPath()));
+      plan.setDeviceId(new PartialPath(req.getPrefixPath()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -2030,10 +2037,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (Exception e) {
       return onNonQueryException(e, OperationType.EXECUTE_NON_QUERY_PLAN);
     }
-  }
-
-  protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return SchemaUtils.getSeriesTypeByPath(path);
   }
 
   private TSStatus getNotLoggedInStatus() {

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -29,11 +30,11 @@ public interface IMeasurementMNode extends IMNode {
   @Override
   IEntityMNode getParent();
 
+  MeasurementPath getMeasurementPath();
+
   IMeasurementSchema getSchema();
 
   TSDataType getDataType(String measurementId);
-
-  int getMeasurementCount();
 
   String getAlias();
 
@@ -50,12 +51,4 @@ public interface IMeasurementMNode extends IMNode {
   ILastCacheContainer getLastCacheContainer();
 
   void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
-
-  boolean isUnaryMeasurement();
-
-  boolean isMultiMeasurement();
-
-  UnaryMeasurementMNode getAsUnaryMeasurementMNode();
-
-  MultiMeasurementMNode getAsMultiMeasurementMNode();
 }

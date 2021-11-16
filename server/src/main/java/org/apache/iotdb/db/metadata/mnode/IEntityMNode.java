@@ -37,6 +37,10 @@ public interface IEntityMNode extends IMNode {
 
   void setUseTemplate(boolean useTemplate);
 
+  boolean isAligned();
+
+  void setAligned(boolean isAligned);
+
   ILastCacheContainer getLastCacheContainer(String measurementId);
 
   Map<String, ILastCacheContainer> getTemplateLastCaches();
