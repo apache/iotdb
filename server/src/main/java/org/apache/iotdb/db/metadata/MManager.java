@@ -587,7 +587,7 @@ public class MManager {
           prefixPath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
 
       // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.removeObject(prefixPath.getDevicePath());
+      mNodeCache.removeObject(prefixPath);
 
       // update statistics and schemaDataTypeNumMap
       totalSeriesNumber.addAndGet(measurements.size());

@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -880,11 +879,9 @@ public abstract class Cases {
         "root.sg5.d1.v1", times, multiMeasurementComponentsList, typeList, valueList);
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.FLOAT}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
 
     Tablet tablet = new Tablet("root.sg6.d1.v1", schemaList);
     tablet.setAligned(true);
@@ -892,31 +889,25 @@ public abstract class Cases {
     for (long row = 1; row <= 3; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, row);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(0), rowIndex, 1L);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(1), rowIndex, 2);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(2), rowIndex, 3.0f);
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, 1L);
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, 2);
+      tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, 3.0f);
     }
     session.insertTablet(tablet, true);
     tablet.reset();
 
     List<IMeasurementSchema> schemaList1 = new ArrayList<>();
-    schemaList1.add(
-        new VectorMeasurementSchema(
-            "vector6",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.FLOAT}));
+    schemaList1.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList1.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList1.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
     List<IMeasurementSchema> schemaList2 = new ArrayList<>();
-    schemaList2.add(
-        new VectorMeasurementSchema(
-            "vector7",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.FLOAT}));
+    schemaList2.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList2.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList2.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
     List<IMeasurementSchema> schemaList3 = new ArrayList<>();
-    schemaList3.add(
-        new VectorMeasurementSchema(
-            "vector8",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.FLOAT}));
+    schemaList3.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList3.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList3.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
 
     Tablet tablet1 = new Tablet("root.sg7.d1.v1", schemaList1, 100);
     Tablet tablet2 = new Tablet("root.sg8.d1.v1", schemaList2, 100);
@@ -930,7 +921,6 @@ public abstract class Cases {
     tabletMap.put("root.sg8.d1.v1", tablet2);
     tabletMap.put("root.sg9.d1.v1", tablet3);
 
-    // Method 1 to add tablet data
     for (long row = 1; row <= 3; row++) {
       int row1 = tablet1.rowSize++;
       int row2 = tablet2.rowSize++;
@@ -939,9 +929,9 @@ public abstract class Cases {
       tablet2.addTimestamp(row2, row);
       tablet3.addTimestamp(row3, row);
       for (int i = 0; i < 3; i++) {
-        tablet1.addValue(schemaList1.get(0).getSubMeasurementsList().get(i), row1, values.get(i));
-        tablet2.addValue(schemaList2.get(0).getSubMeasurementsList().get(i), row2, values.get(i));
-        tablet3.addValue(schemaList3.get(0).getSubMeasurementsList().get(i), row3, values.get(i));
+        tablet1.addValue(schemaList1.get(i).getMeasurementId(), row1, values.get(i));
+        tablet2.addValue(schemaList2.get(i).getMeasurementId(), row2, values.get(i));
+        tablet3.addValue(schemaList3.get(i).getMeasurementId(), row3, values.get(i));
       }
     }
     session.insertTablets(tabletMap, true);

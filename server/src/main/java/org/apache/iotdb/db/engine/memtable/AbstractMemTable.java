@@ -172,6 +172,9 @@ public abstract class AbstractMemTable implements IMemTable {
       encodings.add(schema.getEncodingType());
       compressionType = schema.getCompressor();
     }
+    if (measurements.isEmpty()) {
+      return;
+    }
     VectorMeasurementSchema vectorSchema =
         new VectorMeasurementSchema(
             AlignedPath.VECTOR_PLACEHOLDER,
@@ -270,6 +273,9 @@ public abstract class AbstractMemTable implements IMemTable {
       types.add(schema.getType());
       encodings.add(schema.getEncodingType());
       compressionType = schema.getCompressor();
+    }
+    if (measurements.isEmpty()) {
+      return;
     }
     VectorMeasurementSchema vectorSchema =
         new VectorMeasurementSchema(
