@@ -145,25 +145,36 @@ Time,root.test.t1.str,root.test.t2.str,root.test.t2.int
 通过时间对齐，并且header中包含数据类型的数据。
 
 ```sql
-Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)1970-01-01T08:00:00.001+08:00,"123hello world","123\,abc",1001970-01-01T08:00:00.002+08:00,"123",,
+Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)
+1970-01-01T08:00:00.001+08:00,"123hello world","123\,abc",100
+1970-01-01T08:00:00.002+08:00,"123",,
 ```
 
 通过设备对齐，并且header中不包含数据类型的数据。
 
 ```sql
-Time,Device,str,int1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+Time,Device,str,int
+1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
+1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
+1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
 通过设备对齐，并且header中包含数据类型的数据。
 
 ```sql
-Time,Device,str(TEXT),int(INT32)1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+Time,Device,str(TEXT),int(INT32)
+1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
+1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
+1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
 ### 运行方法
 
 ```shell
-# Unix/OS X>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]# Windows>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+# Unix/OS X
+>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+# Windows
+>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
 ```
 
 参数:
@@ -179,7 +190,14 @@ Time,Device,str(TEXT),int(INT32)1970-01-01T08:00:00.001+08:00,root.test.t1,"123h
 ### Example
 
 ```sh
-# Unix/OS X>tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed# or>tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed# Windows>tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv# or>tools/import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
+# Unix/OS X
+>tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# or
+>tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# Windows
+>tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
+# or
+>tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
 ```
 
 ### 注意

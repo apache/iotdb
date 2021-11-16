@@ -145,25 +145,36 @@ Time,root.test.t1.str,root.test.t2.str,root.test.t2.int
 The data aligned by time, and headers with data type.
 
 ```sql
-Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)1970-01-01T08:00:00.001+08:00,"123hello world","123\,abc",1001970-01-01T08:00:00.002+08:00,"123",,
+Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)
+1970-01-01T08:00:00.001+08:00,"123hello world","123\,abc",100
+1970-01-01T08:00:00.002+08:00,"123",,
 ```
 
 The data aligned by device, and headers without data type.
 
 ```sql
-Time,Device,str,int1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+Time,Device,str,int
+1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
+1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
+1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
 The data aligned by device,  and headers with data type.
 
 ```sql
-Time,Device,str(TEXT),int(INT32)1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+Time,Device,str(TEXT),int(INT32)
+1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
+1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
+1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
 ### Syntax
 
 ```shell
-# Unix/OS X> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]# Windows> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+# Unix/OS X
+> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+# Windows
+> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
 ```
 
 Description:
@@ -179,7 +190,14 @@ Description:
 ### Example
 
 ```sh
-# Unix/OS X> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed# or> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed# Windows> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv# or> tools/import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
+# Unix/OS X
+> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# or
+> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# Windows
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
 ```
 
 ### Note
