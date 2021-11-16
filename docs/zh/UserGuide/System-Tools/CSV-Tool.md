@@ -187,7 +187,7 @@ Time,Device,str(TEXT),int(INT32)
   - 指定一个目录来存放保存失败的行的文件，如果你没有指定这个参数，失败的文件将会被保存到源数据的目录中，然后文件名是源文件名加上`.failed`的后缀。
   - example: `-fd ./failed/`
 
-### Example
+### 运行示例
 
 ```sh
 # Unix/OS X
