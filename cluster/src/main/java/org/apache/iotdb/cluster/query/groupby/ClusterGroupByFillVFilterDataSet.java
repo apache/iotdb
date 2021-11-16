@@ -14,12 +14,12 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
-public class ClusterGroupByFillWithValueFilterDataSet extends GroupByFillWithValueFilterDataSet {
+public class ClusterGroupByFillVFilterDataSet extends GroupByFillWithValueFilterDataSet {
 
-  private MetaGroupMember metaGroupMember;
-  private ClusterReaderFactory readerFactory;
+  private final MetaGroupMember metaGroupMember;
+  private final ClusterReaderFactory readerFactory;
 
-  public ClusterGroupByFillWithValueFilterDataSet(
+  public ClusterGroupByFillVFilterDataSet(
       QueryContext context,
       GroupByTimeFillPlan groupByTimeFillPlan,
       MetaGroupMember metaGroupMember)

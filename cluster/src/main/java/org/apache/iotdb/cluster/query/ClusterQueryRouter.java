@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.query.aggregate.ClusterAggregateExecutor;
 import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
-import org.apache.iotdb.cluster.query.groupby.ClusterGroupByFillWithValueFilterDataSet;
+import org.apache.iotdb.cluster.query.groupby.ClusterGroupByFillVFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByVFilterDataSet;
 import org.apache.iotdb.cluster.query.last.ClusterLastQueryExecutor;
@@ -84,7 +84,7 @@ public class ClusterQueryRouter extends QueryRouter {
   protected GroupByFillWithValueFilterDataSet getGroupByFillWithValueFilterDataSet(
       QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws QueryProcessException, StorageEngineException {
-    return new ClusterGroupByFillWithValueFilterDataSet(
+    return new ClusterGroupByFillVFilterDataSet(
         context, groupByTimeFillPlan, metaGroupMember);
   }
 

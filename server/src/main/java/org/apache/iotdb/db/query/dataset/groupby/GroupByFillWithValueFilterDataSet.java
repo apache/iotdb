@@ -78,9 +78,9 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
       throws StorageEngineException, QueryProcessException {
     super(context, groupByTimeFillPlan);
 
-    initPathGenerators(context, groupByTimeFillPlan);
+    initReadersByTimestamp(context, groupByTimeFillPlan);
 
-    initExtraGenerators(context, groupByTimeFillPlan);
+    initExtraReadersByTimestamp(context, groupByTimeFillPlan);
     if (extraPreviousGenerators != null) {
       initExtraArrays(extraPreviousValues, extraPreviousTimes, true, extraPreviousGenerators);
     }
@@ -91,7 +91,7 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
     initCachedTimesAndValues();
   }
 
-  private void initPathGenerators(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+  private void initReadersByTimestamp(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws QueryProcessException, StorageEngineException {
     this.timestampGenerators = new ArrayList<>();
     this.cachedTimestamps = new ArrayList<>();
@@ -173,7 +173,7 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
   }
 
   /* Init extra path executors to query data outside the original group by query */
-  private void initExtraGenerators(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+  private void initExtraReadersByTimestamp(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws StorageEngineException, QueryProcessException {
     long minQueryStartTime = Long.MAX_VALUE;
     long maxQueryEndTime = Long.MIN_VALUE;
