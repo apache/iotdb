@@ -65,8 +65,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -503,11 +503,11 @@ public class CMManager extends MManager {
       storageGroups.addAll(
           getStorageGroups(
               Collections.singletonList(((CreateAlignedTimeSeriesPlan) plan).getPrefixPath())));
-    } else if (plan instanceof SetSchemaTemplatePlan) {
+    } else if (plan instanceof SetTemplatePlan) {
       storageGroups.addAll(
           getStorageGroups(
               Collections.singletonList(
-                  new PartialPath(((SetSchemaTemplatePlan) plan).getPrefixPath()))));
+                  new PartialPath(((SetTemplatePlan) plan).getPrefixPath()))));
     } else {
       storageGroups.addAll(getStorageGroups(plan.getPaths()));
     }

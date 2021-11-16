@@ -51,6 +51,7 @@ import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.logical.sys.ActivateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -60,8 +61,8 @@ import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateAlignedTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateSchemaTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
@@ -79,11 +80,10 @@ import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetSchemaTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetUsingSchemaTemplateOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.SettleOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
@@ -101,7 +101,7 @@ import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnsetSchemaTemplateOperator;
+import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
@@ -311,19 +311,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   // Create Schema Template
   @Override
   public Operator visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
-    CreateSchemaTemplateOperator createSchemaTemplateOperator =
-        new CreateSchemaTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_CREATE);
-    createSchemaTemplateOperator.setName(ctx.templateName.getText());
+    CreateTemplateOperator createTemplateOperator =
+        new CreateTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_CREATE);
+    createTemplateOperator.setName(ctx.templateName.getText());
     for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
         ctx.templateMeasurementClause()) {
-      parseTemplateMeasurementClause(templateClauseContext, createSchemaTemplateOperator);
+      parseTemplateMeasurementClause(templateClauseContext, createTemplateOperator);
     }
-    return createSchemaTemplateOperator;
+    return createTemplateOperator;
   }
 
   private void parseTemplateMeasurementClause(
       IoTDBSqlParser.TemplateMeasurementClauseContext ctx,
-      CreateSchemaTemplateOperator createSchemaTemplateOperator) {
+      CreateTemplateOperator createTemplateOperator) {
     String schemaName;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -353,11 +353,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           encodings,
           compressors);
     }
-    createSchemaTemplateOperator.addSchemaName(schemaName);
-    createSchemaTemplateOperator.addMeasurements(measurements);
-    createSchemaTemplateOperator.addDataTypes(dataTypes);
-    createSchemaTemplateOperator.addEncodings(encodings);
-    createSchemaTemplateOperator.addCompressor(compressors);
+    createTemplateOperator.addSchemaName(schemaName);
+    createTemplateOperator.addMeasurements(measurements);
+    createTemplateOperator.addDataTypes(dataTypes);
+    createTemplateOperator.addEncodings(encodings);
+    createTemplateOperator.addCompressor(compressors);
   }
 
   void parseAttributeClause(
@@ -405,8 +405,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitCreateTimeseriesOfSchemaTemplate(
       IoTDBSqlParser.CreateTimeseriesOfSchemaTemplateContext ctx) {
-    SetUsingSchemaTemplateOperator operator =
-        new SetUsingSchemaTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SET_USING);
+    ActivateTemplateOperator operator =
+        new ActivateTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_ACTIVATE);
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
     return operator;
   }
@@ -749,8 +749,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   // Set Schema Template
   @Override
   public Operator visitSetSchemaTemplate(IoTDBSqlParser.SetSchemaTemplateContext ctx) {
-    SetSchemaTemplateOperator operator =
-        new SetSchemaTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SET);
+    SetTemplateOperator operator = new SetTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SET);
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
     operator.setTemplateName(ctx.templateName.getText());
     return operator;
@@ -760,8 +759,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitUnsetSchemaTemplate(IoTDBSqlParser.UnsetSchemaTemplateContext ctx) {
-    UnsetSchemaTemplateOperator operator =
-        new UnsetSchemaTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_UNSET);
+    UnsetTemplateOperator operator =
+        new UnsetTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_UNSET);
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
     operator.setTemplateName(ctx.templateName.getText());
     return operator;

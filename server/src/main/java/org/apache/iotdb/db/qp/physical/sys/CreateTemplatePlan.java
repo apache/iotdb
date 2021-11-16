@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class CreateSchemaTemplatePlan extends PhysicalPlan {
+public class CreateTemplatePlan extends PhysicalPlan {
 
   String name;
   Set<String> alignedDeviceId;
@@ -54,11 +54,11 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
   // constant to help resolve serialized sequence
   private static final int NEW_PLAN = -1;
 
-  public CreateSchemaTemplatePlan() {
-    super(false, OperatorType.CREATE_SCHEMA_TEMPLATE);
+  public CreateTemplatePlan() {
+    super(false, OperatorType.CREATE_TEMPLATE);
   }
 
-  public CreateSchemaTemplatePlan(
+  public CreateTemplatePlan(
       String name,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
@@ -66,7 +66,7 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
       List<List<CompressionType>> compressors) {
     // New constructor for tree-structured template where aligned measurements get individual
     // compressors
-    super(false, OperatorType.CREATE_SCHEMA_TEMPLATE);
+    super(false, OperatorType.CREATE_TEMPLATE);
 
     this.name = name;
     schemaNames = null;
@@ -104,7 +104,7 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
     this.alignedDeviceId = new HashSet<>();
   }
 
-  public CreateSchemaTemplatePlan(
+  public CreateTemplatePlan(
       String name,
       List<String> schemaNames,
       List<List<String>> measurements,
@@ -116,7 +116,7 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
     this.schemaNames = schemaNames.toArray(new String[0]);
   }
 
-  private CreateSchemaTemplatePlan(
+  private CreateTemplatePlan(
       String name,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
@@ -128,13 +128,13 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
     this.alignedDeviceId = alignedDeviceId;
   }
 
-  public CreateSchemaTemplatePlan(
+  public CreateTemplatePlan(
       String name,
       String[][] measurements,
       TSDataType[][] dataTypes,
       TSEncoding[][] encodings,
       CompressionType[][] compressors) {
-    super(false, OperatorType.CREATE_SCHEMA_TEMPLATE);
+    super(false, OperatorType.CREATE_TEMPLATE);
     this.name = name;
     this.schemaNames = null;
     this.measurements = measurements;
@@ -195,8 +195,7 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
     return ret;
   }
 
-  public static CreateSchemaTemplatePlan deserializeFromReq(ByteBuffer buffer)
-      throws MetadataException {
+  public static CreateTemplatePlan deserializeFromReq(ByteBuffer buffer) throws MetadataException {
     Map<String, List<String>> alignedPrefix = new HashMap<>();
     Map<String, List<TSDataType>> alignedDataTypes = new HashMap<>();
     Map<String, List<TSEncoding>> alignedEncodings = new HashMap<>();
@@ -277,7 +276,7 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
       compressors.add(thisCompressors);
     }
 
-    return new CreateSchemaTemplatePlan(
+    return new CreateTemplatePlan(
         templateName, measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
   }
 

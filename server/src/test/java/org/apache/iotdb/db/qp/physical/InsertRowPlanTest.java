@@ -29,8 +29,8 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -138,8 +138,8 @@ public class InsertRowPlanTest {
       schemaNames.add("s" + i);
     }
 
-    CreateSchemaTemplatePlan plan =
-        new CreateSchemaTemplatePlan(
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
             "template1",
             schemaNames,
             measurementList,
@@ -148,7 +148,7 @@ public class InsertRowPlanTest {
             compressionTypes);
 
     IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 

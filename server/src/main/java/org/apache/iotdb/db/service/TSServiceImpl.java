@@ -58,16 +58,16 @@ import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.tracing.TracingConstant;
@@ -1893,11 +1893,11 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             req.getCompressors());
       }
 
-      CreateSchemaTemplatePlan plan;
+      CreateTemplatePlan plan;
       if (req.getMeasurements().size() == 0) {
         // Construct plan from serialized request
         ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
-        plan = CreateSchemaTemplatePlan.deserializeFromReq(buffer);
+        plan = CreateTemplatePlan.deserializeFromReq(buffer);
       } else {
         int size = req.getMeasurementsSize();
         String[][] measurements = new String[size][];
@@ -1920,7 +1920,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         }
 
         plan =
-            new CreateSchemaTemplatePlan(
+            new CreateTemplatePlan(
                 req.getName(), measurements, dataTypes, encodings, compressionTypes);
       }
       TSStatus status = checkAuthority(plan, req.getSessionId());
@@ -2009,7 +2009,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           req.getPrefixPath());
     }
 
-    SetSchemaTemplatePlan plan = new SetSchemaTemplatePlan(req.templateName, req.prefixPath);
+    SetTemplatePlan plan = new SetTemplatePlan(req.templateName, req.prefixPath);
     TSStatus status = checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
@@ -2028,7 +2028,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           req.getTemplateName());
     }
 
-    UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(req.prefixPath, req.templateName);
+    UnsetTemplatePlan plan = new UnsetTemplatePlan(req.prefixPath, req.templateName);
     TSStatus status = checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }

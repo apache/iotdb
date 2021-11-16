@@ -15,24 +15,25 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class SetUsingSchemaTemplateOperator extends Operator {
+public class UnsetTemplateOperator extends Operator {
 
-  private PartialPath prefixPath;
+  PartialPath prefixPath;
+  String templateName;
 
-  public SetUsingSchemaTemplateOperator(int tokenIntType) {
+  public UnsetTemplateOperator(int tokenIntType) {
     super(tokenIntType);
-    operatorType = OperatorType.SET_USING_SCHEMA_TEMPLATE;
+    operatorType = OperatorType.UNSET_TEMPLATE;
   }
 
   public PartialPath getPrefixPath() {
@@ -43,9 +44,17 @@ public class SetUsingSchemaTemplateOperator extends Operator {
     this.prefixPath = prefixPath;
   }
 
+  public String getTemplateName() {
+    return templateName;
+  }
+
+  public void setTemplateName(String templateName) {
+    this.templateName = templateName;
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new SetUsingSchemaTemplatePlan(prefixPath);
+    return new UnsetTemplatePlan(prefixPath.toString(), templateName);
   }
 }

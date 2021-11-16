@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -69,7 +69,7 @@ public class Template {
    *
    * @param plan createTemplatePlan
    */
-  public Template(CreateSchemaTemplatePlan plan) throws IllegalPathException {
+  public Template(CreateTemplatePlan plan) throws IllegalPathException {
     boolean isAlign;
     schemaMap = new HashMap<>();
     name = plan.getName();

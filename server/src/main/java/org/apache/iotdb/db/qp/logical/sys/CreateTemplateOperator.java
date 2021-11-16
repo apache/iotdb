@@ -22,7 +22,7 @@ package org.apache.iotdb.db.qp.logical.sys;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CreateSchemaTemplateOperator extends Operator {
+public class CreateTemplateOperator extends Operator {
 
   String name;
   List<String> schemaNames = new ArrayList<>();
@@ -40,9 +40,9 @@ public class CreateSchemaTemplateOperator extends Operator {
   List<List<TSEncoding>> encodings = new ArrayList<>();
   List<List<CompressionType>> compressors = new ArrayList<>();
 
-  public CreateSchemaTemplateOperator(int tokenIntType) {
+  public CreateTemplateOperator(int tokenIntType) {
     super(tokenIntType);
-    operatorType = OperatorType.CREATE_SCHEMA_TEMPLATE;
+    operatorType = OperatorType.CREATE_TEMPLATE;
   }
 
   public String getName() {
@@ -116,7 +116,7 @@ public class CreateSchemaTemplateOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new CreateSchemaTemplatePlan(
+    return new CreateTemplatePlan(
         name, schemaNames, measurements, dataTypes, encodings, compressors);
   }
 }

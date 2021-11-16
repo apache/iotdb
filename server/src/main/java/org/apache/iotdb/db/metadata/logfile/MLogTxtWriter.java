@@ -20,17 +20,17 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -320,7 +320,7 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void setTemplate(SetSchemaTemplatePlan plan) throws IOException {
+  public void setTemplate(SetTemplatePlan plan) throws IOException {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_TEMPLATE));
     buf.append(",");
     buf.append(plan.getTemplateName());
@@ -332,7 +332,7 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void setUsingTemplate(SetUsingSchemaTemplatePlan plan) throws IOException {
+  public void setUsingTemplate(ActivateTemplatePlan plan) throws IOException {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_USING_TEMPLATE));
     buf.append(",");
     buf.append(plan.getPrefixPath());
@@ -342,7 +342,7 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void createSchemaTemplate(CreateSchemaTemplatePlan plan) throws IOException {
+  public void createSchemaTemplate(CreateTemplatePlan plan) throws IOException {
     // CreateTemplatePlan txt Log be like:
     // OperationType,templateName[,measurementPath,isAlign,dataType,encoding,compressor]
     StringBuilder buf = new StringBuilder();

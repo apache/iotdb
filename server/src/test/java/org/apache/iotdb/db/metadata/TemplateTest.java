@@ -26,8 +26,8 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -69,16 +69,15 @@ public class TemplateTest {
 
   @Test
   public void testTemplate() throws MetadataException {
-    CreateSchemaTemplatePlan plan = getCreateTemplatePlan();
+    CreateTemplatePlan plan = getCreateTemplatePlan();
 
     MManager manager = IoTDB.metaManager;
     manager.createSchemaTemplate(plan);
 
     // set device template
-    SetSchemaTemplatePlan setSchemaTemplatePlan =
-        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
+    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setSchemaTemplate(setSchemaTemplatePlan);
+    manager.setSchemaTemplate(setTemplatePlan);
 
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node = manager.setUsingSchemaTemplate(node);
@@ -114,7 +113,7 @@ public class TemplateTest {
 
   @Test
   public void testTemplateInnerTree() {
-    CreateSchemaTemplatePlan plan = getTreeTemplatePlan();
+    CreateTemplatePlan plan = getTreeTemplatePlan();
     Template template;
     MManager manager = IoTDB.metaManager;
 
@@ -162,7 +161,7 @@ public class TemplateTest {
 
   @Test
   public void testCreateSchemaTemplateSerialization() throws IOException {
-    CreateSchemaTemplatePlan plan = getTreeTemplatePlan();
+    CreateTemplatePlan plan = getTreeTemplatePlan();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(baos);
     plan.serialize(dos);
@@ -171,7 +170,7 @@ public class TemplateTest {
 
     assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal(), buffer.get());
 
-    CreateSchemaTemplatePlan deserializedPlan = new CreateSchemaTemplatePlan();
+    CreateTemplatePlan deserializedPlan = new CreateTemplatePlan();
     deserializedPlan.deserialize(buffer);
 
     assertEquals(
@@ -180,7 +179,7 @@ public class TemplateTest {
     assertEquals(plan.getName(), deserializedPlan.getName());
   }
 
-  private CreateSchemaTemplatePlan getTreeTemplatePlan() {
+  private CreateTemplatePlan getTreeTemplatePlan() {
     /**
      * Construct a template like: create schema template treeTemplate ( (d1.s1 INT32 GORILLA
      * SNAPPY), (s2 INT32 GORILLA SNAPPY), (GPS.x FLOAT RLE SNAPPY), (GPS.y FLOAT RLE SNAPPY), )with
@@ -208,11 +207,11 @@ public class TemplateTest {
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
-    return new CreateSchemaTemplatePlan(
+    return new CreateTemplatePlan(
         "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
-  private CreateSchemaTemplatePlan getCreateTemplatePlan() {
+  private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     List<String> measurements = new ArrayList<>();
@@ -249,7 +248,7 @@ public class TemplateTest {
     schemaNames.add("s21");
     schemaNames.add("vector");
 
-    return new CreateSchemaTemplatePlan(
+    return new CreateTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }

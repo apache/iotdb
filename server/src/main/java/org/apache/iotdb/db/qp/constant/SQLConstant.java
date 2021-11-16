@@ -187,7 +187,7 @@ public class SQLConstant {
 
   public static final int TOK_SCHEMA_TEMPLATE_CREATE = 112;
   public static final int TOK_SCHEMA_TEMPLATE_SET = 113;
-  public static final int TOK_SCHEMA_TEMPLATE_SET_USING = 114;
+  public static final int TOK_SCHEMA_TEMPLATE_ACTIVATE = 114;
   public static final int TOK_SCHEMA_TEMPLATE_UNSET = 115;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -265,7 +265,7 @@ public class SQLConstant {
 
     tokenNames.put(TOK_SCHEMA_TEMPLATE_CREATE, "TOK_SCHEMA_TEMPLATE_CREATE");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_SET, "TOK_SCHEMA_TEMPLATE_SET");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_SET, "TOK_SCHEMA_TEMPLATE_SET_USING");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_ACTIVATE, "TOK_SCHEMA_TEMPLATE_ACTIVATE");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET");
   }
 

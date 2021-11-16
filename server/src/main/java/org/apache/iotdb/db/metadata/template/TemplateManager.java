@@ -26,7 +26,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -62,7 +62,7 @@ public class TemplateManager {
 
   private TemplateManager() {}
 
-  public void createSchemaTemplate(CreateSchemaTemplatePlan plan) throws MetadataException {
+  public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     // check schema and measurement name before create template
     if (plan.getSchemaNames() != null) {
       for (String schemaNames : plan.getSchemaNames()) {

@@ -23,25 +23,17 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class UnsetSchemaTemplateOperator extends Operator {
+public class SetTemplateOperator extends Operator {
 
-  PartialPath prefixPath;
   String templateName;
+  PartialPath prefixPath;
 
-  public UnsetSchemaTemplateOperator(int tokenIntType) {
+  public SetTemplateOperator(int tokenIntType) {
     super(tokenIntType);
-    operatorType = OperatorType.UNSET_SCHEMA_TEMPLATE;
-  }
-
-  public PartialPath getPrefixPath() {
-    return prefixPath;
-  }
-
-  public void setPrefixPath(PartialPath prefixPath) {
-    this.prefixPath = prefixPath;
+    operatorType = OperatorType.SET_TEMPLATE;
   }
 
   public String getTemplateName() {
@@ -52,9 +44,17 @@ public class UnsetSchemaTemplateOperator extends Operator {
     this.templateName = templateName;
   }
 
+  public PartialPath getPrefixPath() {
+    return prefixPath;
+  }
+
+  public void setPrefixPath(PartialPath prefixPath) {
+    this.prefixPath = prefixPath;
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new UnsetSchemaTemplatePlan(prefixPath.toString(), templateName);
+    return new SetTemplatePlan(templateName, prefixPath.toString());
   }
 }

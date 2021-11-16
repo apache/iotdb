@@ -36,7 +36,7 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
-import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.junit.After;
@@ -111,7 +111,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
         roleMap.put(roleName, role);
       }
 
-      CreateSchemaTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
+      CreateTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
 
       for (int i = 0; i < 10; i++) {
         String templateName = "template_" + i;
@@ -175,7 +175,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       roleMap.put(roleName, role);
     }
 
-    CreateSchemaTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
+    CreateTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
 
     for (int i = 0; i < 10; i++) {
       String templateName = "template_" + i;
