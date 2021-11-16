@@ -162,6 +162,9 @@ public abstract class AbstractMemTable implements IMemTable {
       schemaList.add(schema);
       dataTypes.add(schema.getType());
     }
+    if (schemaList.isEmpty()) {
+      return;
+    }
     memSize +=
         MemUtils.getAlignedRecordsSize(dataTypes, insertRowPlan.getValues(), disableMemControl);
     writeAlignedRow(
@@ -251,6 +254,9 @@ public abstract class AbstractMemTable implements IMemTable {
       }
       IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
       schemaList.add(schema);
+    }
+    if (schemaList.isEmpty()) {
+      return;
     }
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(

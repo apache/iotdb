@@ -1585,35 +1585,19 @@ public class Session {
     } else {
       sortTablet(tablet);
     }
+    request.addToPrefixPaths(tablet.prefixPath);
+    List<String> measurements = new ArrayList<>();
+    List<Integer> dataTypes = new ArrayList<>();
 
     if (tablet.isAligned()) {
-      if (tablet.getSchemas().size() > 1) {
-        throw new BatchExecutionException("One tablet should only contain one aligned timeseries!");
-      }
       request.setIsAligned(true);
-      IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
-      request.addToPrefixPaths(tablet.prefixPath);
-      int measurementsSize = measurementSchema.getSubMeasurementsList().size();
-      List<String> measurements = new ArrayList<>();
-      List<Integer> dataTypes = new ArrayList<>();
-      for (int i = 0; i < measurementsSize; i++) {
-        measurements.add(measurementSchema.getSubMeasurementsList().get(i));
-        dataTypes.add(measurementSchema.getSubMeasurementsTSDataTypeList().get(i).ordinal());
-      }
-      request.addToMeasurementsList(measurements);
-      request.addToTypesList(dataTypes);
-      request.setIsAligned(true);
-    } else {
-      request.addToPrefixPaths(tablet.prefixPath);
-      List<String> measurements = new ArrayList<>();
-      List<Integer> dataTypes = new ArrayList<>();
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        measurements.add(measurementSchema.getMeasurementId());
-        dataTypes.add(measurementSchema.getType().ordinal());
-      }
-      request.addToMeasurementsList(measurements);
-      request.addToTypesList(dataTypes);
     }
+    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      measurements.add(measurementSchema.getMeasurementId());
+      dataTypes.add(measurementSchema.getType().ordinal());
+    }
+    request.addToMeasurementsList(measurements);
+    request.addToTypesList(dataTypes);
     request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
     request.addToValuesList(SessionUtils.getValueBuffer(tablet));
     request.addToSizeList(tablet.rowSize);
