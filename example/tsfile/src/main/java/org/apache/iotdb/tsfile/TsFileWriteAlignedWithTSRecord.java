@@ -56,7 +56,7 @@ public class TsFileWriteAlignedWithTSRecord {
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
       writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAligned(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 100000, 0, 0);
+      writeAligned(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 1000000, 0, 0);
     } catch (WriteProcessException e) {
       e.printStackTrace();
     }

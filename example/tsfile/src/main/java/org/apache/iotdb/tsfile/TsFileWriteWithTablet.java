@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,9 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * An example of writing data with Tablet to TsFile
- */
+/** An example of writing data with Tablet to TsFile */
 public class TsFileWriteWithTablet {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTablet.class);
@@ -73,13 +72,13 @@ public class TsFileWriteWithTablet {
   }
 
   private static void writeWithTablet(
-          TsFileWriter tsFileWriter,
-          String deviceId,
-          List<IMeasurementSchema> schemas,
-          long rowNum,
-          long startTime,
-          long startValue)
-          throws IOException, WriteProcessException {
+      TsFileWriter tsFileWriter,
+      String deviceId,
+      List<IMeasurementSchema> schemas,
+      long rowNum,
+      long startTime,
+      long startValue)
+      throws IOException, WriteProcessException {
     Tablet tablet = new Tablet(deviceId, schemas);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;

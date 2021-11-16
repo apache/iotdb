@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
@@ -34,11 +33,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
+public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
-  /**
-   * used for old version tsfile
-   */
+  /** used for old version tsfile */
   private long startOffsetOfChunkMetaDataList;
   /**
    * 0 means this time series has only one chunk, no need to save the statistic again in chunk
@@ -75,16 +72,15 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
 
   private ArrayList<IChunkMetadata> chunkMetadataList;
 
-  public TimeseriesMetadata() {
-  }
+  public TimeseriesMetadata() {}
 
   public TimeseriesMetadata(
-          byte timeSeriesMetadataType,
-          int chunkMetaDataListDataSize,
-          String measurementId,
-          TSDataType dataType,
-          Statistics<? extends Serializable> statistics,
-          PublicBAOS chunkMetadataListBuffer) {
+      byte timeSeriesMetadataType,
+      int chunkMetaDataListDataSize,
+      String measurementId,
+      TSDataType dataType,
+      Statistics<? extends Serializable> statistics,
+      PublicBAOS chunkMetadataListBuffer) {
     this.timeSeriesMetadataType = timeSeriesMetadataType;
     this.chunkMetaDataListDataSize = chunkMetaDataListDataSize;
     this.measurementId = measurementId;
@@ -117,7 +113,7 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
       timeseriesMetaData.chunkMetadataList = new ArrayList<>();
       while (byteBuffer.hasRemaining()) {
         timeseriesMetaData.chunkMetadataList.add(
-                ChunkMetadata.deserializeFrom(byteBuffer, timeseriesMetaData));
+            ChunkMetadata.deserializeFrom(byteBuffer, timeseriesMetaData));
       }
       // minimize the storage of an ArrayList instance.
       timeseriesMetaData.chunkMetadataList.trimToSize();
@@ -139,7 +135,7 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
     byteLen += ReadWriteIOUtils.writeVar(measurementId, outputStream);
     byteLen += ReadWriteIOUtils.write(dataType, outputStream);
     byteLen +=
-            ReadWriteForEncodingUtils.writeUnsignedVarInt(chunkMetaDataListDataSize, outputStream);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(chunkMetaDataListDataSize, outputStream);
     byteLen += statistics.serialize(outputStream);
     chunkMetadataListBuffer.writeTo(outputStream);
     byteLen += chunkMetadataListBuffer.size();
@@ -223,16 +219,6 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   }
 
   @Override
-  public void setRamSize(long size) {
-    this.ramSize = size;
-  }
-
-  @Override
-  public long getRamSize() {
-    return ramSize;
-  }
-
-  @Override
   public void setSeq(boolean seq) {
     isSeq = seq;
   }
@@ -255,25 +241,25 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   @Override
   public String toString() {
     return "TimeseriesMetadata{"
-            + "startOffsetOfChunkMetaDataList="
-            + startOffsetOfChunkMetaDataList
-            + ", timeSeriesMetadataType="
-            + timeSeriesMetadataType
-            + ", chunkMetaDataListDataSize="
-            + chunkMetaDataListDataSize
-            + ", measurementId='"
-            + measurementId
-            + '\''
-            + ", dataType="
-            + dataType
-            + ", statistics="
-            + statistics
-            + ", modified="
-            + modified
-            + ", isSeq="
-            + isSeq
-            + ", chunkMetadataList="
-            + chunkMetadataList
-            + '}';
+        + "startOffsetOfChunkMetaDataList="
+        + startOffsetOfChunkMetaDataList
+        + ", timeSeriesMetadataType="
+        + timeSeriesMetadataType
+        + ", chunkMetaDataListDataSize="
+        + chunkMetaDataListDataSize
+        + ", measurementId='"
+        + measurementId
+        + '\''
+        + ", dataType="
+        + dataType
+        + ", statistics="
+        + statistics
+        + ", modified="
+        + modified
+        + ", isSeq="
+        + isSeq
+        + ", chunkMetadataList="
+        + chunkMetadataList
+        + '}';
   }
 }

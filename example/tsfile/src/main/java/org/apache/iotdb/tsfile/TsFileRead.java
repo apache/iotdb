@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,7 +40,7 @@ import java.util.ArrayList;
  */
 public class TsFileRead {
 
-  private static final String DEVICE1 = "root.sg.d1";
+  private static final String DEVICE1 = "device_1";
 
   private static void queryAndPrint(
       ArrayList<Path> paths, TsFileReader readTsFile, IExpression statement) throws IOException {
@@ -55,8 +54,8 @@ public class TsFileRead {
 
   public static void main(String[] args) throws IOException {
 
-    // file path, the number of levels of the directory must be greater than 3
-    String path = "alignedTablet.tsfile";
+    // file path
+    String path = "test.tsfile";
 
     // create reader and get the readTsFile interface
     try (TsFileSequenceReader reader = new TsFileSequenceReader(path);
@@ -64,9 +63,9 @@ public class TsFileRead {
 
       // use these paths(all measurements) for all the queries
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path(DEVICE1, "s1"));
-      paths.add(new Path(DEVICE1, "s2"));
-      paths.add(new Path(DEVICE1, "s3"));
+      paths.add(new Path(DEVICE1, "sensor_1"));
+      paths.add(new Path(DEVICE1, "sensor_2"));
+      paths.add(new Path(DEVICE1, "sensor_3"));
 
       // no filter, should select 1 2 3 4 6 7 8
       queryAndPrint(paths, readTsFile, null);
@@ -74,22 +73,22 @@ public class TsFileRead {
       // time filter : 4 <= time <= 10, should select 4 6 7 8
       IExpression timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(29990L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(30009L)));
+              new GlobalTimeExpression(TimeFilter.gtEq(4L)),
+              new GlobalTimeExpression(TimeFilter.ltEq(10L)));
       queryAndPrint(paths, readTsFile, timeFilter);
 
       // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
       IExpression valueFilter =
-          new SingleSeriesExpression(new Path(DEVICE1, "s1"), ValueFilter.eq(new Long(3)));
+          new SingleSeriesExpression(new Path(DEVICE1, "sensor_2"), ValueFilter.ltEq(20L));
       queryAndPrint(paths, readTsFile, valueFilter);
 
       // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8
       timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(1L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(100L)));
+              new GlobalTimeExpression(TimeFilter.gtEq(4L)),
+              new GlobalTimeExpression(TimeFilter.ltEq(10L)));
       valueFilter =
-          new SingleSeriesExpression(new Path(DEVICE1, "s1"), ValueFilter.eq(new Binary("test")));
+          new SingleSeriesExpression(new Path(DEVICE1, "sensor_3"), ValueFilter.gtEq(20L));
       IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
       queryAndPrint(paths, readTsFile, finalFilter);
     }

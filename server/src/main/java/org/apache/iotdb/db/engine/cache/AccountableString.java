@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.tsfile.common.cache.Accountable;
-
 import java.util.Objects;
 
-public class AccountableString implements Accountable {
+public class AccountableString {
 
   private final String string;
   private long ramSize;
@@ -33,16 +31,6 @@ public class AccountableString implements Accountable {
 
   public String getString() {
     return string;
-  }
-
-  @Override
-  public void setRamSize(long size) {
-    this.ramSize = size;
-  }
-
-  @Override
-  public long getRamSize() {
-    return ramSize;
   }
 
   @Override

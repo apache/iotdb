@@ -59,7 +59,8 @@ public class TsFileWriteAlignedWithTablet {
       // example 1
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 15000, 0, 0);
+      writeMeasurementScheams.add(measurementSchemas.get(2));
+      writeAlignedWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 200000, 0, 0);
 
       writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {
@@ -114,10 +115,10 @@ public class TsFileWriteAlignedWithTablet {
     Tablet tablet = new Tablet("root.sg.d2", measurementSchemas);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
-    int rowNum = 100000;
+    int rowNum = 100;
     int sensorNum = measurementSchemas.size();
     long timestamp = 1;
-    long value = 0L;
+    long value = 1000000L;
     for (int r = 0; r < rowNum; r++, value++) {
       int row = tablet.rowSize++;
       timestamps[row] = timestamp++;

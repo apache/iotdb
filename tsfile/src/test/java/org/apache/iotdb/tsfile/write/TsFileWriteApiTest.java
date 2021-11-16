@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 
 public class TsFileWriteApiTest {
   private File f = FSFactoryProducer.getFSFactory().getFile("TsFileWriteTest.tsfile");
-  private String deviceId = "root.sg2.d1";
+  private String deviceId = "root.sg.d1";
   private List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
   private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
 

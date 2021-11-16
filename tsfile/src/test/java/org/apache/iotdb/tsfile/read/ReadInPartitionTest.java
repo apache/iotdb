@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -76,22 +77,22 @@ public class ReadInPartitionTest {
       // get a series of [startTime, endTime] of d1.s6 from the chunkGroupMetaData of
       // d1
       d1s6timeRangeList.add(
-              new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+          new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
       long[] startEndOffsets = new long[2];
       startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
       startEndOffsets[1] =
-              chunkMetaData.getOffsetOfChunkHeader()
-                      + chunkMetaData.getMeasurementUid().getBytes().length
-                      + Long.BYTES
-                      + Short.BYTES
-                      + chunkMetaData.getStatistics().getSerializedSize();
+          chunkMetaData.getOffsetOfChunkHeader()
+              + chunkMetaData.getMeasurementUid().getBytes().length
+              + Long.BYTES
+              + Short.BYTES
+              + chunkMetaData.getStatistics().getSerializedSize();
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
 
     List<ChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2", "s1"));
     for (ChunkMetadata chunkMetaData : d2s1List) {
       d2s1timeRangeList.add(
-              new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+          new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
     }
   }
 
@@ -125,10 +126,10 @@ public class ReadInPartitionTest {
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
     QueryDataSet queryDataSet =
-            roTsFile.query(
-                    queryExpression,
-                    d1chunkGroupMetaDataOffsetList.get(0)[0],
-                    d1chunkGroupMetaDataOffsetList.get(0)[1]);
+        roTsFile.query(
+            queryExpression,
+            d1chunkGroupMetaDataOffsetList.get(0)[0],
+            d1chunkGroupMetaDataOffsetList.get(0)[1]);
     // get the transformed expression
     IExpression transformedExpression = queryExpression.getExpression();
 
@@ -137,9 +138,9 @@ public class ReadInPartitionTest {
 
     IExpression expectedTimeExpression = d1s6timeRangeList.get(0).getExpression();
     String expected =
-            ExpressionOptimizer.getInstance()
-                    .optimize(expectedTimeExpression, queryExpression.getSelectedSeries())
-                    .toString();
+        ExpressionOptimizer.getInstance()
+            .optimize(expectedTimeExpression, queryExpression.getSelectedSeries())
+            .toString();
     Assert.assertEquals(expected, transformedExpression.toString());
 
     // test the equivalence of the query result:
@@ -161,10 +162,10 @@ public class ReadInPartitionTest {
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 
     QueryDataSet queryDataSet =
-            roTsFile.query(
-                    queryExpression,
-                    d1chunkGroupMetaDataOffsetList.get(0)[0],
-                    d1chunkGroupMetaDataOffsetList.get(0)[1]);
+        roTsFile.query(
+            queryExpression,
+            d1chunkGroupMetaDataOffsetList.get(0)[0],
+            d1chunkGroupMetaDataOffsetList.get(0)[1]);
     // get the transformed expression
     IExpression transformedExpression = queryExpression.getExpression();
 
@@ -172,11 +173,11 @@ public class ReadInPartitionTest {
     Assert.assertEquals(ExpressionType.GLOBAL_TIME, transformedExpression.getType());
 
     IExpression expectedTimeExpression =
-            BinaryExpression.and(expression, d1s6timeRangeList.get(0).getExpression());
+        BinaryExpression.and(expression, d1s6timeRangeList.get(0).getExpression());
     String expected =
-            ExpressionOptimizer.getInstance()
-                    .optimize(expectedTimeExpression, queryExpression.getSelectedSeries())
-                    .toString();
+        ExpressionOptimizer.getInstance()
+            .optimize(expectedTimeExpression, queryExpression.getSelectedSeries())
+            .toString();
     Assert.assertEquals(expected, transformedExpression.toString());
 
     // test the equivalence of the query result:
@@ -199,10 +200,10 @@ public class ReadInPartitionTest {
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 
     QueryDataSet queryDataSet =
-            roTsFile.query(
-                    queryExpression,
-                    d1chunkGroupMetaDataOffsetList.get(0)[0],
-                    d1chunkGroupMetaDataOffsetList.get(0)[1]);
+        roTsFile.query(
+            queryExpression,
+            d1chunkGroupMetaDataOffsetList.get(0)[0],
+            d1chunkGroupMetaDataOffsetList.get(0)[1]);
     // get the transformed expression
     IExpression transformedExpression = queryExpression.getExpression();
 
@@ -210,11 +211,11 @@ public class ReadInPartitionTest {
     Assert.assertEquals(ExpressionType.SERIES, transformedExpression.getType());
 
     IExpression expectedTimeExpression =
-            BinaryExpression.and(expression, d1s6timeRangeList.get(0).getExpression());
+        BinaryExpression.and(expression, d1s6timeRangeList.get(0).getExpression());
     String expected =
-            ExpressionOptimizer.getInstance()
-                    .optimize(expectedTimeExpression, queryExpression.getSelectedSeries())
-                    .toString();
+        ExpressionOptimizer.getInstance()
+            .optimize(expectedTimeExpression, queryExpression.getSelectedSeries())
+            .toString();
     Assert.assertEquals(expected, transformedExpression.toString());
 
     // test the equivalence of the query result:

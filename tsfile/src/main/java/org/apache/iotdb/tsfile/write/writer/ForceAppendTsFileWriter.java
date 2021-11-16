@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +59,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
       // this tsfile is not complete
       if (!reader.isComplete()) {
         throw new TsFileNotCompleteException(
-                "File " + file.getPath() + " is not a complete TsFile");
+            "File " + file.getPath() + " is not a complete TsFile");
       }
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
       // truncate metadata and marker
