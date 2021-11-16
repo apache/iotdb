@@ -92,7 +92,13 @@ public abstract class AbstractMemTable implements IMemTable {
   private IWritableMemChunkGroup createMemChunkGroupIfNotExistAndGet(
       String deviceId, List<IMeasurementSchema> schemaList) {
     IWritableMemChunkGroup memChunkGroup =
-        memTableMap.computeIfAbsent(deviceId, k -> new WritableMemChunkGroup(schemaList));
+        memTableMap.computeIfAbsent(
+            deviceId,
+            k -> {
+              seriesNumber++;
+              totalPointsNumThreshold += avgSeriesPointNumThreshold;
+              return new WritableMemChunkGroup(schemaList);
+            });
     for (IMeasurementSchema schema : schemaList) {
       if (!memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
@@ -105,7 +111,13 @@ public abstract class AbstractMemTable implements IMemTable {
   private IWritableMemChunkGroup createAlignedMemChunkGroupIfNotExistAndGet(
       String deviceId, List<IMeasurementSchema> schemaList) {
     IWritableMemChunkGroup memChunkGroup =
-        memTableMap.computeIfAbsent(deviceId, k -> new AlignedWritableMemChunkGroup(schemaList));
+        memTableMap.computeIfAbsent(
+            deviceId,
+            k -> {
+              seriesNumber++;
+              totalPointsNumThreshold += avgSeriesPointNumThreshold;
+              return new AlignedWritableMemChunkGroup(schemaList);
+            });
     for (IMeasurementSchema schema : schemaList) {
       if (!memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
@@ -123,7 +135,7 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
-      if (insertRowPlan.getMeasurements()[i] == null) {
+      if (values[i] == null) {
         continue;
       }
       IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
@@ -143,7 +155,7 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
-      if (insertRowPlan.getMeasurements()[i] == null) {
+      if (insertRowPlan.getValues()[i] == null) {
         continue;
       }
       IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
@@ -210,7 +222,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
-    updatePlanIndexes(insertTabletPlan.getIndex());
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
@@ -220,7 +231,7 @@ public abstract class AbstractMemTable implements IMemTable {
       schemaList.add(schema);
     }
     IWritableMemChunkGroup memChunkGroup =
-        createAlignedMemChunkGroupIfNotExistAndGet(
+        createMemChunkGroupIfNotExistAndGet(
             insertTabletPlan.getDeviceId().getFullPath(), schemaList);
     memChunkGroup.writeValues(
         insertTabletPlan.getTimes(),
@@ -231,8 +242,8 @@ public abstract class AbstractMemTable implements IMemTable {
         end);
   }
 
+  @Override
   public void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end) {
-    updatePlanIndexes(insertTabletPlan.getIndex());
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {

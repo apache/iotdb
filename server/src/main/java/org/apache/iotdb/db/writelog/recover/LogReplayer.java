@@ -195,10 +195,19 @@ public class LogReplayer {
     // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
-      recoverMemTable.insert((InsertRowPlan) plan);
+      if (plan.isAligned()) {
+        recoverMemTable.insertAlignedRow((InsertRowPlan) plan);
+      } else {
+        recoverMemTable.insert((InsertRowPlan) plan);
+      }
     } else {
-      recoverMemTable.insertTablet(
-          (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      if (plan.isAligned()) {
+        recoverMemTable.insertAlignedTablet(
+            (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      } else {
+        recoverMemTable.insertTablet(
+            (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      }
     }
   }
 

@@ -26,9 +26,21 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    for (int i = 0; i < schemaList.size(); i++) {
-      IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
-      memChunk.write(times, columns[i], bitMaps[i], schemaList.get(i).getType(), start, end);
+    int emptyColumnCount = 0;
+    for (int i = 0; i < columns.length; i++) {
+      if (columns[i] == null) {
+        emptyColumnCount++;
+        continue;
+      }
+      IWritableMemChunk memChunk =
+          createMemChunkIfNotExistAndGet(schemaList.get(i - emptyColumnCount));
+      memChunk.write(
+          times,
+          columns[i],
+          bitMaps == null ? null : bitMaps[i],
+          schemaList.get(i - emptyColumnCount).getType(),
+          start,
+          end);
     }
   }
 
@@ -63,8 +75,14 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    for (int i = 0; i < schemaList.size(); i++) {
-      IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
+    int emptyColumnCount = 0;
+    for (int i = 0; i < objectValue.length; i++) {
+      if (objectValue[i] == null) {
+        emptyColumnCount++;
+        continue;
+      }
+      IWritableMemChunk memChunk =
+          createMemChunkIfNotExistAndGet(schemaList.get(i - emptyColumnCount));
       memChunk.write(insertTime, objectValue[i]);
     }
   }
