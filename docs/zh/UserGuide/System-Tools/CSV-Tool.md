@@ -19,7 +19,7 @@
 
 -->
 
-## CSV Tool
+# CSV Tool
 
 CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoTDB 导出到 CSV 文件。
 
@@ -38,22 +38,22 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 参数:
 
 * `-datatype`:
-    - true (默认): 在CSV文件的header中时间序列的后面打印出对应的数据类型。例如：`Time, root.sg1.d1.s1(INT32), root.sg1.d1.s2(INT64)`.
-    - false: 只在CSV的header中打印出时间序列的名字, `Time, root.sg1.d1.s1 , root.sg1.d1.s2`
+  - true (默认): 在CSV文件的header中时间序列的后面打印出对应的数据类型。例如：`Time, root.sg1.d1.s1(INT32), root.sg1.d1.s2(INT64)`.
+  - false: 只在CSV的header中打印出时间序列的名字, `Time, root.sg1.d1.s1 , root.sg1.d1.s2`
 * `-q <query command>`:
-    - 在命令中直接指定想要执行的查询语句。
-    - 例如: `select * from root limit 100`, or `select * from root limit 100 align by device`
+  - 在命令中直接指定想要执行的查询语句。
+  - 例如: `select * from root limit 100`, or `select * from root limit 100 align by device`
 * `-s <sql file>`:
-    - 指定一个SQL文件，里面包含一条或多条SQL语句。如果一个SQL文件中包含多条SQL语句，SQL语句之间应该用换行符进行分割。每一条SQL语句对应一个输出的CSV文件。
+  - 指定一个SQL文件，里面包含一条或多条SQL语句。如果一个SQL文件中包含多条SQL语句，SQL语句之间应该用换行符进行分割。每一条SQL语句对应一个输出的CSV文件。
 * `-td <directory>`:
-    - 为导出的CSV文件指定输出路径。
+  - 为导出的CSV文件指定输出路径。
 * `-tf <time-format>`:
-    - 指定一个你想要得到的时间格式。时间格式必须遵守[ISO 8601](https://calendars.wikia.org/wiki/ISO_8601)标准。如果说你想要以时间戳来保存时间，那就设置为`-tf timestamp`。
-    - 例如: `-tf yyyy-MM-dd\ HH:mm:ss` or `-tf timestamp`
+  - 指定一个你想要得到的时间格式。时间格式必须遵守[ISO 8601](https://calendars.wikia.org/wiki/ISO_8601)标准。如果说你想要以时间戳来保存时间，那就设置为`-tf timestamp`。
+  - 例如: `-tf yyyy-MM-dd\ HH:mm:ss` or `-tf timestamp`
 
 除此之外，如果你没有使用`-s`和`-q`参数，在导出脚本被启动之后你需要按照程序提示输入查询语句，不同的查询结果会被保存到不同的CSV文件中。
 
-#### 运行示例
+### 运行示例
 
 ```shell
 # Unix/OS X
@@ -109,15 +109,15 @@ Time,Device,hardware(TEXT),status(BOOLEAN)
 
 布尔类型的数据用`true`或者`false`来表示，此处没有用双引号括起来。文本数据需要使用双引号括起来。
 
-#### 注意
+### 注意
 
 注意，如果导出字段存在如下特殊字符:
 
 1. `,`: 需要在字符前加`\`来进行转义。
 
-### 使用import-csv.sh
+## 使用import-csv.sh
 
-#### 创建元数据 (可选)
+### 创建元数据 (可选)
 
 ```sql
 SET STORAGE GROUP TO root.fit.d1;
@@ -168,42 +168,43 @@ Time,Device,str(TEXT),int(INT32)
 1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
-#### 运行方法
+### 运行方法
 
 ```shell
-# Unix/OS X>
-tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
-
-# Windows>
-tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+# Unix/OS X
+>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+# Windows
+>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
 ```
 
 参数:
 
 * `-f`:
-    - 指定你想要导入的数据。
-    - 例如: `-f filename.csv`
+  - 指定你想要导入的数据，这里可以指定文件或者文件夹。如果指定的是文件夹，将会把文件夹中所有的后缀为txt与csv的文件进行批量导入。
+  - 例如: `-f filename.csv`
 
 * `-fd`:
-    - 指定一个目录来存放保存失败的行的文件，如果你没有指定这个参数，失败的文件将会被保存到源数据的目录中，然后文件名是源文件名加上`.failed`的后缀。
-    - example: `-fd ./failed/`
+  - 指定一个目录来存放保存失败的行的文件，如果你没有指定这个参数，失败的文件将会被保存到源数据的目录中，然后文件名是源文件名加上`.failed`的后缀。
+  - example: `-fd ./failed/`
 
-#### 运行示例
+### 运行示例
 
 ```sh
-# Unix/OS X>
-tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
-# or>
-tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
-# Windows>
-tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
-# or>
-tools/import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
+# Unix/OS X
+>tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# or
+>tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# Windows
+>tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
+# or
+>tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
 ```
 
-#### 注意
+### 注意
 
 注意，在导入数据前，需要特殊处理下列的字符：
 
 1. `,` :如果text类型的字段中包含`,`那么需要用`\`来进行转义。
 2. 你可以导入像`yyyy-MM-dd'T'HH:mm:ss`， `yyy-MM-dd HH:mm:ss`， 或者 `yyyy-MM-dd'T'HH:mm:ss.SSSZ`格式的时间。
+3. 单个CSV或者txt文件最好不要超过2GB。如果超过2GB可以将文件分割成小文件，然后用`-f`参数来指定存放小文件的文件夹的方式进行批量导入。
+4. `Time`这一列应该放在第一列。

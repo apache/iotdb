@@ -41,10 +41,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class TsFileWriteApiTest {
-  private File f = FSFactoryProducer.getFSFactory().getFile("TsFileWriteTest.tsfile");
-  private String deviceId = "root.sg.d1";
-  private List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
-  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final File f = FSFactoryProducer.getFSFactory().getFile("TsFileWriteTest.tsfile");
+  private final String deviceId = "root.sg.d1";
+  private final List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+  private final List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   @Before
   public void setUp() {
@@ -130,7 +130,6 @@ public class TsFileWriteApiTest {
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
       writeWithTsRecord(tsFileWriter, deviceId, writeMeasurementScheams, 20, 10000, 50, true);
-
     } catch (WriteProcessException | IOException e) {
       e.printStackTrace();
     }

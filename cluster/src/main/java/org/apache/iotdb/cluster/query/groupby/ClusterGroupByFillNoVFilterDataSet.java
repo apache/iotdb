@@ -16,35 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.cluster.query.groupby;
 
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.util.ArrayList;
 import java.util.Set;
 
-@SuppressWarnings("common-java:DuplicatedBlocks")
-public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDataSet {
+/** the cluster implementation of GroupByFillWithoutValueFilterDataSet */
+public class ClusterGroupByFillNoVFilterDataSet extends GroupByFillWithoutValueFilterDataSet {
 
   private MetaGroupMember metaGroupMember;
 
-  public ClusterGroupByNoVFilterDataSet(
-      QueryContext context, GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember) {
-    initQueryDataSetFields(
-        new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
-        groupByPlan.getDeduplicatedDataTypes(),
-        groupByPlan.isAscending());
-    initGroupByEngineDataSetFields(context, groupByPlan);
-
+  public ClusterGroupByFillNoVFilterDataSet(
+      QueryContext context,
+      GroupByTimeFillPlan groupByTimeFillPlan,
+      MetaGroupMember metaGroupMember)
+      throws QueryProcessException, StorageEngineException {
+    super(context, groupByTimeFillPlan);
     this.metaGroupMember = metaGroupMember;
   }
 

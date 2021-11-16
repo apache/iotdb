@@ -237,9 +237,9 @@ public class AlignedChunkReader implements IChunkReader {
       pageInfo.decoder = null;
       return;
     }
+
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
-
     // doesn't has a complete page body
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
@@ -260,9 +260,9 @@ public class AlignedChunkReader implements IChunkReader {
       throw new IOException(
           "Uncompress error! uncompress size: "
               + pageHeader.getUncompressedSize()
-              + " compressed size: "
+              + "compressed size: "
               + pageHeader.getCompressedSize()
-              + " page header: "
+              + "page header: "
               + pageHeader
               + e.getMessage());
     }

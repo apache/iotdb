@@ -241,7 +241,7 @@ public class TsFileReaderTest {
 
   @Test
   public void queryWithoutFilter() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 100 * 1024, 1000);
+    TsFileGeneratorForTest.generateAlignedTsFile(10, 100 * 1024, 1000);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -389,7 +389,8 @@ public class TsFileReaderTest {
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     long rowCount = 0;
     while (queryDataSet.hasNext()) {
-      // System.out.println(queryDataSet.next());
+      //System.out.println(queryDataSet.next());
+      queryDataSet.next();
       rowCount++;
     }
     Assert.assertNotEquals(0, rowCount);
