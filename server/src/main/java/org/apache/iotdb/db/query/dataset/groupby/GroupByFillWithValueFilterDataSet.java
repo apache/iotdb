@@ -74,10 +74,12 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
 
   /** constructor. */
   public GroupByFillWithValueFilterDataSet(
-      QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan) {
     super(context, groupByTimeFillPlan);
+  }
 
+  public void init(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException, StorageEngineException {
     initReadersByTimestamp(context, groupByTimeFillPlan);
 
     initExtraReadersByTimestamp(context, groupByTimeFillPlan);
@@ -173,7 +175,8 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
   }
 
   /* Init extra path executors to query data outside the original group by query */
-  private void initExtraReadersByTimestamp(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+  private void initExtraReadersByTimestamp(
+      QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws StorageEngineException, QueryProcessException {
     long minQueryStartTime = Long.MAX_VALUE;
     long maxQueryEndTime = Long.MIN_VALUE;
