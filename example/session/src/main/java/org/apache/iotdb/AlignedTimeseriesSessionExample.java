@@ -42,7 +42,7 @@ import java.util.Map;
 public class AlignedTimeseriesSessionExample {
 
   private static Session session;
-  private static final String ROOT_SG1_D1_VECTOR1 = "root.sg_1.d1";
+  private static final String ROOT_SG1_D1 = "root.sg_1.d1";
   private static final String ROOT_SG1_D1_VECTOR2 = "root.sg_1.d1.vector2";
   private static final String ROOT_SG1_D1_VECTOR3 = "root.sg_1.d1.vector3";
   private static final String ROOT_SG2_D1_VECTOR4 = "root.sg_2.d1.vector4";
@@ -76,19 +76,27 @@ public class AlignedTimeseriesSessionExample {
     session.executeNonQueryStatement("flush");
     selectTest();
     selectWithValueFilterTest();
+    selectWithLastTest();
+    selectWithLastTestWithoutValueFilter();
     session.executeNonQueryStatement("delete from root.sg_1.d1.s1 where time <= 5");
     System.out.println("execute sql delete from root.sg_1.d1.s1 where time <= 5");
     selectTest();
     selectWithValueFilterTest();
+    selectWithLastTest();
+    selectWithLastTestWithoutValueFilter();
     session.executeNonQueryStatement("delete from root.sg_1.d1.s2 where time <= 3");
     System.out.println("execute sql delete from root.sg_1.d1.s2 where time <= 3");
 
     selectTest();
     selectWithValueFilterTest();
+    selectWithLastTest();
+    selectWithLastTestWithoutValueFilter();
     session.executeNonQueryStatement("delete from root.sg_1.d1.s1 where time <= 10");
     System.out.println("execute sql delete from root.sg_1.d1.s1 where time <= 10");
     selectTest();
     selectWithValueFilterTest();
+    selectWithLastTest();
+    selectWithLastTestWithoutValueFilter();
 
     //    selectWithValueFilterTest();
     //    selectWithGroupByTest();
@@ -153,15 +161,14 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithAggregationTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet =
-        session.executeQueryStatement("select count(s1) from root.sg_1.d1.vector");
+    SessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
 
     dataSet.closeOperationHandle();
-    dataSet = session.executeQueryStatement("select count(*) from root.sg_1.d1.vector");
+    dataSet = session.executeQueryStatement("select count(*) from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -204,20 +211,45 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithLastTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet =
-        session.executeQueryStatement("select last s1 from root.sg_1.d1.vector");
+    SessionDataSet dataSet = session.executeQueryStatement("select last s1 from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
 
     dataSet.closeOperationHandle();
-    dataSet = session.executeQueryStatement("select last * from root.sg_1.d1.vector");
+    dataSet = session.executeQueryStatement("select last * from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
 
+    dataSet.closeOperationHandle();
+  }
+
+  private static void selectWithLastTestWithoutValueFilter()
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select last s1 from root.sg_1.d1 where time >= 5");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+
+    dataSet = session.executeQueryStatement("select last * from root.sg_1.d1 where time >= 5");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+    dataSet.closeOperationHandle();
+
+    dataSet = session.executeQueryStatement("select last * from root.sg_1.d1 where time >= 20");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
     dataSet.closeOperationHandle();
   }
 
@@ -235,7 +267,7 @@ public class AlignedTimeseriesSessionExample {
       encodings.add(TSEncoding.RLE);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1_VECTOR1,
+        ROOT_SG1_D1,
         multiMeasurementComponents,
         dataTypes,
         encodings,
@@ -290,7 +322,7 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
     tablet.setAligned(true);
     long timestamp = 1;
 
@@ -404,6 +436,7 @@ public class AlignedTimeseriesSessionExample {
 
   private static void insertAlignedRecord()
       throws IoTDBConnectionException, StatementExecutionException {
+    // first file we have both sensots' data
     List<String> multiMeasurementComponents = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     multiMeasurementComponents.add("s1");
@@ -415,8 +448,18 @@ public class AlignedTimeseriesSessionExample {
       List<Object> values = new ArrayList<>();
       values.add(time);
       values.add((int) time);
-      session.insertAlignedRecord(
-          ROOT_SG1_D1_VECTOR1, time, multiMeasurementComponents, types, values);
+      session.insertAlignedRecord(ROOT_SG1_D1, time, multiMeasurementComponents, types, values);
+    }
+    session.executeNonQueryStatement("flush");
+    // second file we only have s1's data
+    multiMeasurementComponents.clear();
+    types.clear();
+    multiMeasurementComponents.add("s1");
+    types.add(TSDataType.INT64);
+    for (long time = 10; time < 20; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(time);
+      session.insertAlignedRecord(ROOT_SG1_D1, time, multiMeasurementComponents, types, values);
     }
   }
 
