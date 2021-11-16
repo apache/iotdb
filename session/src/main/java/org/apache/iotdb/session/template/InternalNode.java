@@ -35,14 +35,17 @@ public class InternalNode extends TemplateNode {
 
   @Override
   public void addChild(TemplateNode node) throws StatementExecutionException {
-    if (children.containsKey(node.getName()))
+    if (children.containsKey(node.getName())) {
       throw new StatementExecutionException("Duplicated child of node in template.");
+    }
     this.children.put(node.getName(), node);
   }
 
   @Override
   public void deleteChild(TemplateNode node) {
-    if (children.containsKey(node.getName())) children.remove(node.getName());
+    if (children.containsKey(node.getName())) {
+      children.remove(node.getName());
+    }
   }
 
   public Map<String, TemplateNode> getChildren() {

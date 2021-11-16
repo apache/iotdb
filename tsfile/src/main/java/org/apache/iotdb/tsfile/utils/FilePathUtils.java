@@ -93,7 +93,9 @@ public class FilePathUtils {
   }
 
   public static String getTsFilePrefixPath(String tsFileAbsolutePath) {
-    if (tsFileAbsolutePath == null) return null;
+    if (tsFileAbsolutePath == null) {
+      return null;
+    }
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
     int pathLength = pathSegments.length;
     return pathSegments[pathLength - 4]

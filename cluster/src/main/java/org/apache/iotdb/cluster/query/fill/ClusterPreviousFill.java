@@ -80,14 +80,11 @@ public class ClusterPreviousFill extends PreviousFill {
       TSDataType dataType,
       long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context) {
-    try {
-      fillResult =
-          performPreviousFill(
-              path, dataType, queryTime, getBeforeRange(), deviceMeasurements, context);
-    } catch (StorageEngineException e) {
-      logger.error("Failed to configure previous fill for Path {}", path, e);
-    }
+      QueryContext context)
+      throws QueryProcessException, StorageEngineException {
+    fillResult =
+        performPreviousFill(
+            path, dataType, queryTime, getBeforeRange(), deviceMeasurements, context);
   }
 
   @Override
@@ -102,7 +99,7 @@ public class ClusterPreviousFill extends PreviousFill {
       long beforeRange,
       Set<String> deviceMeasurements,
       QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -133,11 +130,14 @@ public class ClusterPreviousFill extends PreviousFill {
     }
     fillService.shutdown();
     try {
-      fillService.awaitTermination(
-          ClusterConstant.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+      boolean terminated =
+          fillService.awaitTermination(
+              ClusterConstant.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+      if (!terminated) {
+        logger.warn("Executor service termination timed out");
+      }
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for fill pool to stop", e);
+      throw new QueryProcessException(e.getMessage());
     }
     return handler.getResult();
   }
