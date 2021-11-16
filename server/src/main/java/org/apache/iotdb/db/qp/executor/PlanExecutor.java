@@ -1472,7 +1472,9 @@ public class PlanExecutor implements IPlanExecutor {
       // check whether types are match
       getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
-      StorageEngine.getInstance().insert(insertRowPlan);
+      if (insertRowPlan.getFailedMeasurementNumber() < insertRowPlan.getMeasurements().length) {
+        StorageEngine.getInstance().insert(insertRowPlan);
+      }
       if (insertRowPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertRowPlan);
       }
