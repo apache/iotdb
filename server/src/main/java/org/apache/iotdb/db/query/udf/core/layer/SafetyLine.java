@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.core.layer;
 
+import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
+
+/** Tells the {@link ElasticSerializableTVList} if it is safe to remove a cache block. */
 public class SafetyLine {
 
   public static final int INITIAL_PILE_POSITION = -1;

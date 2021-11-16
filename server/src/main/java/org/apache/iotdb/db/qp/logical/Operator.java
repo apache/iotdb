@@ -173,6 +173,10 @@ public abstract class Operator {
     SHOW_CONTINUOUS_QUERIES,
     SET_SYSTEM_MODE,
 
-    SETTLE
+    SETTLE,
+
+    UNSET_SCHEMA_TEMPLATE,
+    PRUNE_TEMPLATE,
+    APPEND_TEMPLATE
   }
 }

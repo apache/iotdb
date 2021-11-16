@@ -87,6 +87,13 @@ public class PartialPathTest {
 
     Assert.assertEquals("root.sg2.d1.s1", p2.getFullPath());
     Assert.assertEquals("root.sg2.d1.d2.s3", p3.getFullPath());
+
+    PartialPath p4 = new PartialPath("root.**.d.s");
+    PartialPath p5 = p4.alterPrefixPath(new PartialPath("root.sg"));
+    Assert.assertEquals("root.sg.**.d.s", p5.getFullPath());
+    PartialPath p6 = new PartialPath("root.a.**.d.s");
+    PartialPath p7 = p5.alterPrefixPath(new PartialPath("root.b.sg"));
+    Assert.assertEquals("root.b.sg.**.d.s", p7.getFullPath());
   }
 
   @Test

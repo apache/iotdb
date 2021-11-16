@@ -118,7 +118,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
       // 3. use values in results to fill row record
       for (int j = 0; j < cachedTimeCnt; j++) {
-        if (results[j] == null) {
+        if (results == null || results[j] == null) {
           rowRecords[j].addField(null);
         } else {
           hasField[j] = true;
@@ -199,7 +199,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
       // 3. use values in results to fill row record
       for (int j = 0; j < cachedTimeCnt; j++) {
-        if (results[j] != null) {
+        if (results != null && results[j] != null) {
           hasField[j] = true;
           rowsInObject[j][i] = results[j];
         }

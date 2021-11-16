@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -82,6 +83,7 @@ public class FunctionExpression extends Expression {
     expressions = new ArrayList<>();
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+    isConstantOperandCache = true;
   }
 
   public FunctionExpression(
@@ -91,6 +93,7 @@ public class FunctionExpression extends Expression {
     this.expressions = expressions;
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+    isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
   }
 
   @Override
@@ -99,8 +102,19 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public boolean isConstantOperandInternal() {
+    return isConstantOperandCache;
+  }
+
+  @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return !isAggregationFunctionExpression;
+  }
+
+  public boolean isCountStar() {
+    return getPaths().size() == 1
+        && paths.get(0).getTailNode().equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        && functionName.equals(IoTDBConstant.COLUMN_COUNT);
   }
 
   public void addAttribute(String key, String value) {
@@ -108,6 +122,7 @@ public class FunctionExpression extends Expression {
   }
 
   public void addExpression(Expression expression) {
+    isConstantOperandCache = isConstantOperandCache && expression.isConstantOperand();
     expressions.add(expression);
   }
 
@@ -291,7 +306,7 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return functionName + "(" + getParametersString() + ")";
   }
 
@@ -304,7 +319,7 @@ public class FunctionExpression extends Expression {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2'
    */
-  public String getParametersString() {
+  private String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {

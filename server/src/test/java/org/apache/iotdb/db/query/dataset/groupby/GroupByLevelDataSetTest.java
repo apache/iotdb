@@ -31,7 +31,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class GroupByLevelDataSetTest {
   private IPlanExecutor queryExecutor = new PlanExecutor();
@@ -44,7 +45,7 @@ public class GroupByLevelDataSetTest {
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.\"s3.xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "insert into root.vehicle.d0(timestamp,s0) values(10,100)",
     "insert into root.vehicle.d0(timestamp,s0,s1) values(12,101,'102')",
     "insert into root.vehicle.d0(timestamp,s1) values(19,'103')",
@@ -79,7 +80,7 @@ public class GroupByLevelDataSetTest {
     "insert into root.test.d0(timestamp,s0,s1) values(700,1307,'1038')",
     "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
     "insert into root.test.d0(timestamp,s3) values(10,'100')",
-    "insert into root.test.d1(timestamp, \"s3.xy\") values(10, 'text')"
+    "insert into root.test.d1(timestamp, \"s3+xy\") values(10, 'text')"
   };
 
   static {
@@ -142,7 +143,7 @@ public class GroupByLevelDataSetTest {
     queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
-                "select count(\"s3.xy\") from root.test.* group by level=2");
+                "select count(\"s3+xy\") from root.test.* group by level=2");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());

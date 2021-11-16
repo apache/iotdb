@@ -31,7 +31,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class GroupByTimeDataSetTest {
 
@@ -44,7 +45,7 @@ public class GroupByTimeDataSetTest {
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.\"s3.xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "insert into root.vehicle.d0(timestamp,s0) values(10,100)",
     "insert into root.vehicle.d0(timestamp,s0,s1) values(12,101,'102')",
     "insert into root.vehicle.d0(timestamp,s1) values(19,'103')",
@@ -78,7 +79,7 @@ public class GroupByTimeDataSetTest {
     "insert into root.test.d0(timestamp,s0) values(1900,1316)",
     "insert into root.test.d0(timestamp,s0,s1) values(700,1307,'1038')",
     "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
-    "insert into root.test.d1(timestamp, \"s3.xy\") values(10, 'text')"
+    "insert into root.test.d1(timestamp, \"s3+xy\") values(10, 'text')"
   };
 
   static {
@@ -171,7 +172,7 @@ public class GroupByTimeDataSetTest {
     queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
-                "select count(\"s3.xy\") from root.test.* group by ([0,20), 3ms, 10ms), level=2");
+                "select count(\"s3+xy\") from root.test.* group by ([0,20), 3ms, 10ms), level=2");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());

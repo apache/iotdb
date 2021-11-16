@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
@@ -67,14 +68,14 @@ public class DataLogApplier extends BaseApplier {
 
     try {
       if (log instanceof AddNodeLog) {
-        metaGroupMember
-            .getDataClusterServer()
+        ClusterIoTDB.getInstance()
+            .getDataGroupEngine()
             .preAddNodeForDataGroup((AddNodeLog) log, dataGroupMember);
         dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(
             ((AddNodeLog) log).getMetaLogIndex());
       } else if (log instanceof RemoveNodeLog) {
-        metaGroupMember
-            .getDataClusterServer()
+        ClusterIoTDB.getInstance()
+            .getDataGroupEngine()
             .preRemoveNodeForDataGroup((RemoveNodeLog) log, dataGroupMember);
         dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(
             ((RemoveNodeLog) log).getMetaLogIndex());

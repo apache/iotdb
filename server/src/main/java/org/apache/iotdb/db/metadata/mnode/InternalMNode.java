@@ -104,6 +104,7 @@ public class InternalMNode extends MNode {
    * @param child child's node
    * @return return the MNode already added
    */
+  @Override
   public IMNode addChild(IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
@@ -210,19 +211,6 @@ public class InternalMNode extends MNode {
   @Override
   public void setSchemaTemplate(Template schemaTemplate) {
     this.schemaTemplate = schemaTemplate;
-  }
-
-  /** get the count of all MeasurementMNode whose ancestor is current node */
-  @Override
-  public int getMeasurementMNodeCount() {
-    if (children == null) {
-      return 0;
-    }
-    int measurementMNodeCount = 0;
-    for (IMNode child : children.values()) {
-      measurementMNodeCount += child.getMeasurementMNodeCount();
-    }
-    return measurementMNodeCount;
   }
 
   @Override

@@ -33,14 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.ShutdownException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -361,6 +354,9 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      virtualStorageGroupManager.stopCompactionSchedulerPool();
+    }
     syncCloseAllProcessor();
     stopTimedService(ttlCheckThread, "TTlCheckThread");
     stopTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
@@ -390,6 +386,9 @@ public class StorageEngine implements IService {
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
+      for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+        virtualStorageGroupManager.stopCompactionSchedulerPool();
+      }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);

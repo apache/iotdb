@@ -151,11 +151,6 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "cluster_info_public_port", Integer.toString(config.getClusterInfoRpcPort()))));
 
-    config.setMaxConcurrentClientNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
-
     config.setMultiRaftFactor(
         Integer.parseInt(
             properties.getProperty(
@@ -383,17 +378,12 @@ public class ClusterDescriptor {
 
   /**
    * This method is for setting hot modified properties of the cluster. Currently, we support
-   * max_concurrent_client_num, connection_timeout_ms, max_resolved_log_size
+   * connection_timeout_ms, max_resolved_log_size
    *
    * @param properties
    * @throws QueryProcessException
    */
   public void loadHotModifiedProps(Properties properties) {
-
-    config.setMaxConcurrentClientNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
 
     config.setConnectionTimeoutInMS(
         Integer.parseInt(

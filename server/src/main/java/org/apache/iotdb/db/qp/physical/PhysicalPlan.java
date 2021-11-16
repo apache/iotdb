@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
@@ -68,6 +70,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -152,6 +155,22 @@ public abstract class PhysicalPlan {
   }
 
   /**
+   * Calculate size after serialization.
+   *
+   * @return size
+   * @throws IOException
+   */
+  public int getSerializedSize() throws IOException {
+    try {
+      DataOutputStream dataOutputStream = new DataOutputStream(new EmptyOutputStream());
+      serialize(dataOutputStream);
+      return dataOutputStream.size();
+    } catch (UnsupportedOperationException e) {
+      throw e;
+    }
+  }
+
+  /**
    * Serialize the plan into the given buffer. All necessary fields will be serialized.
    *
    * @param stream
@@ -233,6 +252,11 @@ public abstract class PhysicalPlan {
     if (this instanceof AuthorPlan) {
       this.loginUserName = loginUserName;
     }
+  }
+
+  /** Used to check whether a user has the permission to execute the plan with these paths. */
+  public List<PartialPath> getAuthPaths() {
+    return getPaths();
   }
 
   public static class Factory {
@@ -382,6 +406,12 @@ public abstract class PhysicalPlan {
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
+        case APPEND_TEMPLATE:
+          plan = new AppendTemplatePlan();
+          break;
+        case PRUNE_TEMPLATE:
+          plan = new PruneTemplatePlan();
+          break;
         case SET_SCHEMA_TEMPLATE:
           plan = new SetSchemaTemplatePlan();
           break;
@@ -484,7 +514,10 @@ public abstract class PhysicalPlan {
     CREATE_FUNCTION,
     DROP_FUNCTION,
     SELECT_INTO,
-    SET_SYSTEM_MODE
+    SET_SYSTEM_MODE,
+    UNSET_SCHEMA_TEMPLATE,
+    APPEND_TEMPLATE,
+    PRUNE_TEMPLATE
   }
 
   public long getIndex() {

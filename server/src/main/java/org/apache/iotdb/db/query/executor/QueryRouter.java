@@ -32,8 +32,8 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -120,7 +121,7 @@ public class QueryRouter implements IQueryRouter {
           "paths:"
               + aggregationPlan.getPaths()
               + " level:"
-              + aggregationPlan.getLevel()
+              + Arrays.toString(aggregationPlan.getLevels())
               + " duplicatePaths:"
               + aggregationPlan.getDeduplicatedPaths()
               + " deduplicatePaths:"
@@ -158,16 +159,8 @@ public class QueryRouter implements IQueryRouter {
     return new AggregationExecutor(context, aggregationPlan);
   }
 
-  @Override
-  public QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
-
-    if (logger.isDebugEnabled()) {
-      logger.debug("paths:" + groupByTimePlan.getPaths() + " level:" + groupByTimePlan.getLevel());
-    }
-
-    GroupByEngineDataSet dataSet = null;
+  private IExpression getOptimizeExpression(GroupByTimePlan groupByTimePlan)
+      throws QueryFilterOptimizationException, QueryProcessException {
     IExpression expression = groupByTimePlan.getExpression();
     List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
     GlobalTimeExpression timeExpression = getTimeExpression(groupByTimePlan);
@@ -179,21 +172,39 @@ public class QueryRouter implements IQueryRouter {
     }
 
     // optimize expression to an executable one
-    IExpression optimizedExpression =
-        ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(selectedSeries));
+    return ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(selectedSeries));
+  }
+
+  @Override
+  public QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
+          IOException {
+
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "paths:"
+              + groupByTimePlan.getPaths()
+              + " level:"
+              + Arrays.toString(groupByTimePlan.getLevels()));
+    }
+
+    GroupByEngineDataSet dataSet = null;
+    IExpression optimizedExpression = getOptimizeExpression(groupByTimePlan);
     groupByTimePlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       dataSet = getGroupByWithoutValueFilterDataSet(context, groupByTimePlan);
+      ((GroupByWithoutValueFilterDataSet) dataSet).initGroupBy(context, groupByTimePlan);
     } else {
       dataSet = getGroupByWithValueFilterDataSet(context, groupByTimePlan);
+      ((GroupByWithValueFilterDataSet) dataSet).initGroupBy(context, groupByTimePlan);
     }
 
     // we support group by level for count operation
     // details at https://issues.apache.org/jira/browse/IOTDB-622
     // and UserGuide/Operation Manual/DML
-    if (groupByTimePlan.getLevel() >= 0) {
-      return groupByLevelWithoutTimeIntervalDataSet(context, groupByTimePlan, dataSet);
+    if (groupByTimePlan.isGroupByLevel()) {
+      return new GroupByLevelDataSet(groupByTimePlan, dataSet);
     }
     return dataSet;
   }
@@ -232,10 +243,10 @@ public class QueryRouter implements IQueryRouter {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
-  protected GroupByTimeDataSet groupByLevelWithoutTimeIntervalDataSet(
-      QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-      throws QueryProcessException, IOException {
-    return new GroupByTimeDataSet(context, plan, dataSet);
+  protected GroupByFillWithoutValueFilterDataSet getGroupByFillWithoutValueFilterDataSet(
+      QueryContext context, GroupByTimeFillPlan groupByFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    return new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
   }
 
   @Override
@@ -251,17 +262,24 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
-    GroupByEngineDataSet groupByEngineDataSet =
-        (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
-    return new GroupByFillDataSet(
-        groupByFillPlan.getDeduplicatedPaths(),
-        groupByFillPlan.getDeduplicatedDataTypes(),
-        groupByEngineDataSet,
-        groupByFillPlan.getFillType(),
-        context,
-        groupByFillPlan);
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
+
+    GroupByFillWithoutValueFilterDataSet dataSet;
+    IExpression optimizedExpression = getOptimizeExpression(groupByFillPlan);
+    groupByFillPlan.setExpression(optimizedExpression);
+
+    if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+      dataSet = getGroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+      dataSet.init(context, groupByFillPlan);
+    } else {
+      // dataSet = getGroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      // dataSet.init(context, groupByFillPlan);
+      throw new QueryProcessException("Group by fill doesn't support valueFilter yet.");
+    }
+
+    // TODO: support group by level in group by fill
+
+    return dataSet;
   }
 
   @Override

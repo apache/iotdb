@@ -128,14 +128,26 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   /**
-   * Construct a new PartialPath by resetting the prefix nodes to prefixPath
+   * Construct a new PartialPath by resetting the prefix nodes with prefixPath. If the prefix nodes
+   * contains **, then the prefixPath will be set before **. For example, give this = root.**.d and
+   * prefixPath = root.a.sg, then the result will be root.a.sg.**.d
    *
    * @param prefixPath the prefix path used to replace current nodes
    * @return A new PartialPath with altered prefix
    */
   public PartialPath alterPrefixPath(PartialPath prefixPath) {
-    String[] newNodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
-    System.arraycopy(prefixPath.getNodes(), 0, newNodes, 0, prefixPath.getNodeLength());
+    int newLength = Math.max(nodes.length, prefixPath.getNodeLength());
+    int startIndex = Math.min(nodes.length, prefixPath.getNodeLength());
+    for (int i = 0; i < startIndex; i++) {
+      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        newLength += startIndex - i;
+        startIndex = i;
+        break;
+      }
+    }
+    String[] newNodes = Arrays.copyOf(prefixPath.getNodes(), newLength);
+    System.arraycopy(
+        nodes, startIndex, newNodes, prefixPath.getNodeLength(), nodes.length - startIndex);
     return new PartialPath(newNodes);
   }
 

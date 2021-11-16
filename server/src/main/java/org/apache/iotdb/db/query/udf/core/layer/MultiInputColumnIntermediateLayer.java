@@ -64,6 +64,9 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
     timeHeap = new TimeSelector(layerPointReaders.length << 1, true);
     for (LayerPointReader reader : layerPointReaders) {
+      if (reader.isConstantPointReader()) {
+        continue;
+      }
       if (reader.next()) {
         timeHeap.add(reader.currentTime());
       }
@@ -91,7 +94,8 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     try {
       for (int i = 0; i < rowLength; ++i) {
         LayerPointReader reader = layerPointReaders[i];
-        if (!reader.next() || reader.currentTime() != minTime) {
+        if (!reader.next()
+            || (!reader.isConstantPointReader() && reader.currentTime() != minTime)) {
           continue;
         }
 
@@ -119,7 +123,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         }
         reader.readyForNext();
 
-        if (reader.next()) {
+        if (!(reader.isConstantPointReader()) && reader.next()) {
           timeHeap.add(reader.currentTime());
         }
       }

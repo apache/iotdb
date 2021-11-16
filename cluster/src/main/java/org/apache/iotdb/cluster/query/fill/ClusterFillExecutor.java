@@ -58,7 +58,8 @@ public class ClusterFillExecutor extends FillQueryExecutor {
       TSDataType dataType,
       long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context) {
+      QueryContext context)
+      throws QueryProcessException, StorageEngineException {
     if (fill instanceof LinearFill) {
       IFill clusterFill = new ClusterLinearFill((LinearFill) fill, metaGroupMember);
       clusterFill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
@@ -91,7 +92,7 @@ public class ClusterFillExecutor extends FillQueryExecutor {
               null);
 
       Object[] results = reader.getValuesInTimestamps(new long[] {queryTime}, 1);
-      if (results[0] != null) {
+      if (results != null && results[0] != null) {
         ret.add(new TimeValuePair(queryTime, TsPrimitiveType.getByType(dataType, results[0])));
       } else {
         ret.add(null);

@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -51,13 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -538,7 +533,8 @@ public class IoTDBSessionSimpleIT {
     try {
       session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
     } catch (BatchExecutionException e) {
-      assertEquals("Path [root.sg1.d1.t6] does not exist;", e.getMessage());
+      assertEquals(
+          "No matched timeseries or aligned timeseries for Path [root.sg1.d1.t6];", e.getMessage());
     }
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
@@ -1056,6 +1052,81 @@ public class IoTDBSessionSimpleIT {
                       "root..sg")));
     }
 
+    session.close();
+  }
+
+  @Test
+  public void testConversionFunction()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // connect
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    // prepare data
+    String deviceId = "root.sg.d1";
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
+    for (int i = 0; i <= 4; i++) {
+      times.add((long) i * 2);
+      measurementsList.add(Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6"));
+      typesList.add(
+          Arrays.asList(
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.BOOLEAN,
+              TSDataType.TEXT));
+      valuesList.add(
+          Arrays.asList(
+              i,
+              (long) i + 1,
+              (float) i,
+              (double) i * 2,
+              new boolean[] {true, false}[i % 2],
+              String.valueOf(i)));
+    }
+    // insert data
+    session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList);
+
+    // excepted
+    String[] targetTypes = {"INT64", "INT32", "DOUBLE", "FLOAT", "TEXT", "BOOLEAN"};
+    String[] excepted = {
+      "0\t0\t1\t0.0\t0.0\ttrue\ttrue",
+      "2\t1\t2\t1.0\t2.0\tfalse\ttrue",
+      "4\t2\t3\t2.0\t4.0\ttrue\ttrue",
+      "6\t3\t4\t3.0\t6.0\tfalse\ttrue",
+      "8\t4\t5\t4.0\t8.0\ttrue\ttrue"
+    };
+
+    // query
+    String[] casts = new String[targetTypes.length];
+    StringBuffer buffer = new StringBuffer();
+    buffer.append("select ");
+    for (int i = 0; i < targetTypes.length; i++) {
+      casts[i] = String.format("cast(s%s, 'type'='%s')", i + 1, targetTypes[i]);
+    }
+    buffer.append(StringUtils.join(casts, ","));
+    buffer.append(" from root.sg.d1");
+    String sql = buffer.toString();
+    SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+
+    // compare types
+    List<String> columnTypes = sessionDataSet.getColumnTypes();
+    columnTypes.remove(0);
+    for (int i = 0; i < columnTypes.size(); i++) {
+      assertEquals(targetTypes[i], columnTypes.get(i));
+    }
+
+    // compare results
+    int index = 0;
+    while (sessionDataSet.hasNext()) {
+      RowRecord next = sessionDataSet.next();
+      assertEquals(excepted[index], next.toString());
+      index++;
+    }
     session.close();
   }
 

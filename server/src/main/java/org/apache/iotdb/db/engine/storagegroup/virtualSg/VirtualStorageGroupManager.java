@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -45,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/** Each storage group that set by users corresponds to a StorageGroupManager */
 public class VirtualStorageGroupManager {
 
   /** logger of this class */
@@ -163,11 +165,8 @@ public class VirtualStorageGroupManager {
         }
       } else {
         // not finished recover, refuse the request
-        throw new StorageEngineException(
-            String.format(
-                "the virtual storage group %s[%d] may not ready now, please wait and retry later",
-                storageGroupMNode.getFullPath(), loc),
-            TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+        throw new StorageGroupNotReadyException(
+            storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
 
@@ -459,6 +458,14 @@ public class VirtualStorageGroupManager {
   /** only for test */
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
+  }
+
+  public void stopCompactionSchedulerPool() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.getTimedCompactionScheduleTask().shutdown();
+      }
+    }
   }
 
   public void setSettling(boolean settling) {

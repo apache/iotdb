@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.metadata;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -31,7 +33,6 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -117,6 +118,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.THREAD_POOL_SIZE;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPool;
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getAssembledPathFromRequest;
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStrListForRequest;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -171,11 +174,11 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
+  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     cacheLock.writeLock().lock();
-    mRemoteMetaCache.removeItem(prefixPath);
+    mRemoteMetaCache.removeItem(pathPattern);
     cacheLock.writeLock().unlock();
-    return super.deleteTimeseries(prefixPath);
+    return super.deleteTimeseries(pathPattern);
   }
 
   @Override
@@ -229,18 +232,16 @@ public class CMManager extends MManager {
             MeasurementMNode.getMeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
-          for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
+          for (String subMeasurement : measurementSchema.getSubMeasurementsList()) {
             cacheMeta(
-                ((VectorPartialPath) fullPath).getPathWithSubSensor(i), measurementMNode, false);
+                new VectorPartialPath(fullPath.getDevice(), subMeasurement),
+                measurementMNode,
+                false);
           }
-          cacheMeta(
-              new PartialPath(fullPath.getDevice(), measurementSchema.getMeasurementId()),
-              measurementMNode,
-              true);
         } else {
           cacheMeta(fullPath, measurementMNode, true);
         }
-        return measurementMNode.getDataType(fullPath.getMeasurement());
+        return measurementMNode.getDataType(measurement);
       } else {
         throw e;
       }
@@ -751,7 +752,7 @@ public class CMManager extends MManager {
       throws IllegalPathException {
     List<String> measurements = new ArrayList<>();
     for (String series : seriesList) {
-      measurements.addAll(MetaUtils.getMeasurementsInPartialPath(new PartialPath(series)));
+      measurements.add((new PartialPath(series)).getMeasurement());
     }
 
     List<TSDataType> dataTypes = new ArrayList<>(measurements.size());
@@ -891,8 +892,8 @@ public class CMManager extends MManager {
   private List<String> getUnregisteredSeriesListLocally(
       List<String> seriesList, PartitionGroup partitionGroup) throws CheckConsistencyException {
     DataGroupMember dataMember =
-        metaGroupMember
-            .getDataClusterServer()
+        ClusterIoTDB.getInstance()
+            .getDataGroupEngine()
             .getDataMember(partitionGroup.getHeader(), null, null);
     return dataMember.getLocalQueryExecutor().getUnregisteredTimeseries(seriesList);
   }
@@ -900,42 +901,9 @@ public class CMManager extends MManager {
   private List<String> getUnregisteredSeriesListRemotely(
       List<String> seriesList, PartitionGroup partitionGroup) {
     for (Node node : partitionGroup) {
+      List<String> result = null;
       try {
-        List<String> result;
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client =
-              metaGroupMember
-                  .getClientProvider()
-                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          result =
-              SyncClientAdaptor.getUnregisteredMeasurements(
-                  client, partitionGroup.getHeader(), seriesList);
-        } else {
-          try (SyncDataClient syncDataClient =
-              metaGroupMember
-                  .getClientProvider()
-                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-            try {
-              result =
-                  syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
-            } catch (TException e) {
-              // the connection may be broken, close it to avoid it being reused
-              syncDataClient.getInputProtocol().getTransport().close();
-              throw e;
-            }
-          }
-        }
-        if (result != null) {
-          return result;
-        }
-      } catch (TException | IOException e) {
-        logger.error(
-            "{}: cannot getting unregistered {} and other {} paths from {}",
-            metaGroupMember.getName(),
-            seriesList.get(0),
-            seriesList.get(seriesList.size() - 1),
-            node,
-            e);
+        result = getUnregisteredSeriesListRemotelyForOneNode(node, seriesList, partitionGroup);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error(
@@ -945,9 +913,51 @@ public class CMManager extends MManager {
             seriesList.get(seriesList.size() - 1),
             node,
             e);
+      } catch (Exception e) {
+        logger.error(
+            "{}: cannot getting unregistered {} and other {} paths from {}",
+            metaGroupMember.getName(),
+            seriesList.get(0),
+            seriesList.get(seriesList.size() - 1),
+            node,
+            e);
+      }
+      if (result != null) {
+        return result;
       }
     }
     return Collections.emptyList();
+  }
+
+  private List<String> getUnregisteredSeriesListRemotelyForOneNode(
+      Node node, List<String> seriesList, PartitionGroup partitionGroup)
+      throws IOException, TException, InterruptedException {
+    List<String> result;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      result =
+          SyncClientAdaptor.getUnregisteredMeasurements(
+              client, partitionGroup.getHeader(), seriesList);
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        result = syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
+        }
+      }
+    }
+    return result;
   }
 
   /**
@@ -974,7 +984,7 @@ public class CMManager extends MManager {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     // split the paths by the data group they belong to
-    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
+    Map<PartitionGroup, List<String>> remoteGroupPathMap = new HashMap<>();
     for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
       String storageGroupName = sgPathEntry.getKey();
       PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
@@ -1000,14 +1010,15 @@ public class CMManager extends MManager {
         result.addAll(allTimeseriesName);
       } else {
         // batch the queries of the same group to reduce communication
-        groupPathMap
+        remoteGroupPathMap
             .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
             .add(pathUnderSG.getFullPath());
       }
     }
 
     // query each data group separately
-    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
+    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry :
+        remoteGroupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
       result.addAll(getMatchedPaths(partitionGroup, pathsToQuery, withAlias));
@@ -1019,9 +1030,9 @@ public class CMManager extends MManager {
   private List<PartialPath> getMatchedPathsLocally(PartialPath partialPath, boolean withAlias)
       throws MetadataException {
     if (!withAlias) {
-      return getAllTimeseriesPath(partialPath);
+      return getFlatMeasurementPaths(partialPath);
     } else {
-      return super.getAllTimeseriesPathWithAlias(partialPath, -1, -1).left;
+      return super.getFlatMeasurementPathsWithAlias(partialPath, -1, -1).left;
     }
   }
 
@@ -1066,21 +1077,23 @@ public class CMManager extends MManager {
     GetAllPathsResult result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       result = SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, withAlias);
     } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        try {
-          result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }
@@ -1090,14 +1103,10 @@ public class CMManager extends MManager {
       // need to query other nodes in the group
       List<PartialPath> partialPaths = new ArrayList<>();
       for (int i = 0; i < result.paths.size(); i++) {
-        try {
-          PartialPath partialPath = new PartialPath(result.paths.get(i));
-          if (withAlias) {
-            partialPath.setMeasurementAlias(result.aliasList.get(i));
-          }
-          partialPaths.add(partialPath);
-        } catch (IllegalPathException e) {
-          // ignore
+        PartialPath matchedPath = getAssembledPathFromRequest(result.paths.get(i));
+        partialPaths.add(matchedPath);
+        if (withAlias && matchedPath != null) {
+          matchedPath.setMeasurementAlias(result.aliasList.get(i));
         }
       }
       return partialPaths;
@@ -1199,21 +1208,25 @@ public class CMManager extends MManager {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
     } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
           paths = syncDataClient.getAllDevices(header, pathsToQuery);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
+          syncDataClient.close();
           throw e;
+        }
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }
@@ -1222,7 +1235,7 @@ public class CMManager extends MManager {
 
   /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
   @Override
-  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
+  public Pair<List<PartialPath>, Integer> getFlatMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     Map<String, String> sgPathMap = groupPathByStorageGroup(pathPattern);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);
@@ -1268,6 +1281,9 @@ public class CMManager extends MManager {
       List<PartialPath> originalPaths) {
     ConcurrentSkipListSet<PartialPath> fullPaths = new ConcurrentSkipListSet<>();
     ConcurrentSkipListSet<PartialPath> nonExistPaths = new ConcurrentSkipListSet<>();
+    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
+    // function call.
+    // BUT is it suitable to create a thread pool for each calling??
     ExecutorService getAllPathsService =
         Executors.newFixedThreadPool(metaGroupMember.getPartitionTable().getGlobalGroups().size());
     for (PartialPath pathStr : originalPaths) {
@@ -1289,27 +1305,12 @@ public class CMManager extends MManager {
     getAllPathsService.shutdown();
     try {
       getAllPathsService.awaitTermination(
-          RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+          ClusterConstant.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
     }
     return new Pair<>(new ArrayList<>(fullPaths), new ArrayList<>(nonExistPaths));
-  }
-
-  /**
-   * Get the local paths that match any path in "paths". The result is not deduplicated.
-   *
-   * @param paths paths potentially contain wildcards
-   */
-  public List<String> getAllPaths(List<String> paths) throws MetadataException {
-    List<String> ret = new ArrayList<>();
-    for (String path : paths) {
-      getAllTimeseriesPath(new PartialPath(path)).stream()
-          .map(PartialPath::getFullPath)
-          .forEach(ret::add);
-    }
-    return ret;
   }
 
   /**
@@ -1595,10 +1596,8 @@ public class CMManager extends MManager {
         if (resultBinary != null) {
           break;
         }
-      } catch (IOException e) {
+      } catch (IOException | TException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
-      } catch (TException e) {
-        logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
@@ -1626,10 +1625,8 @@ public class CMManager extends MManager {
         if (resultBinary != null) {
           break;
         }
-      } catch (IOException e) {
+      } catch (IOException | TException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
-      } catch (TException e) {
-        logger.error("Error occurs when getting devices schemas in node {}.", node, e);
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting devices schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
@@ -1653,17 +1650,16 @@ public class CMManager extends MManager {
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), plan);
     } else {
+      SyncDataClient syncDataClient = null;
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-          SyncDataClient syncDataClient =
-              metaGroupMember
-                  .getClientProvider()
-                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
           plan.serialize(dataOutputStream);
           resultBinary =
@@ -1671,8 +1667,12 @@ public class CMManager extends MManager {
                   group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
+          syncDataClient.close();
           throw e;
+        }
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }
@@ -1684,26 +1684,27 @@ public class CMManager extends MManager {
     ByteBuffer resultBinary;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
     } else {
+      SyncDataClient syncDataClient = null;
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-          SyncDataClient syncDataClient =
-              metaGroupMember
-                  .getClientProvider()
-                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        try {
-          plan.serialize(dataOutputStream);
-          resultBinary =
-              syncDataClient.getDevices(
-                  group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        plan.serialize(dataOutputStream);
+        resultBinary =
+            syncDataClient.getDevices(
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }
@@ -1712,23 +1713,18 @@ public class CMManager extends MManager {
 
   public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias)
       throws MetadataException {
-    List<String> retPaths = new ArrayList<>();
-    List<String> alias = null;
-    if (withAlias) {
-      alias = new ArrayList<>();
-    }
+    List<List<String>> retPaths = new ArrayList<>();
+    List<String> alias = withAlias ? new ArrayList<>() : null;
 
-    if (withAlias) {
-      for (String path : paths) {
-        List<PartialPath> allTimeseriesPathWithAlias =
-            super.getAllTimeseriesPathWithAlias(new PartialPath(path), -1, -1).left;
-        for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
-          retPaths.add(timeseriesPathWithAlias.getFullPath());
+    for (String path : paths) {
+      List<PartialPath> allTimeseriesPathWithAlias =
+          super.getFlatMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
+      for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
+        retPaths.add(getPathStrListForRequest(timeseriesPathWithAlias));
+        if (withAlias) {
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());
         }
       }
-    } else {
-      retPaths = getAllPaths(paths);
     }
 
     GetAllPathsResult getAllPathsResult = new GetAllPathsResult();

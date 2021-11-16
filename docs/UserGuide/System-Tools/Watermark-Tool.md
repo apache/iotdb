@@ -54,7 +54,7 @@ A newly created user doesn't use watermark by default. So the query result is th
 ```
 .\start-cli.bat -u root -pw root
 create user Alice 1234
-grant user Alice privileges 'READ_TIMESERIES' on root.vehicle
+grant user Alice privileges READ_TIMESERIES on root.vehicle
 exit
 
 .\start-cli.bat -u Alice -pw 1234

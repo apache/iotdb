@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
@@ -44,7 +46,6 @@ import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
@@ -52,7 +53,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -90,6 +90,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getPathStrListForRequest;
 
 @SuppressWarnings("java:S107")
 public class ClusterReaderFactory {
@@ -211,12 +213,7 @@ public class ClusterReaderFactory {
     List<Node> reorderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     DataSourceInfo dataSourceInfo =
         new DataSourceInfo(
-            partitionGroup,
-            dataType,
-            request,
-            (RemoteQueryContext) context,
-            metaGroupMember,
-            reorderedNodes);
+            partitionGroup, dataType, request, (RemoteQueryContext) context, reorderedNodes);
 
     // try building a reader from one of the nodes
     boolean hasClient = dataSourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
@@ -242,9 +239,6 @@ public class ClusterReaderFactory {
    * @param valueFilter value filter
    * @param context query context
    * @param ascending asc or aesc
-   * @return
-   * @throws StorageEngineException
-   * @throws EmptyIntervalException
    */
   public List<AbstractMultPointReader> getMultSeriesReader(
       List<PartialPath> paths,
@@ -607,13 +601,7 @@ public class ClusterReaderFactory {
 
     MultDataSourceInfo dataSourceInfo =
         new MultDataSourceInfo(
-            partitionGroup,
-            paths,
-            dataType,
-            request,
-            (RemoteQueryContext) context,
-            metaGroupMember,
-            orderedNodes);
+            partitionGroup, paths, dataType, request, (RemoteQueryContext) context, orderedNodes);
 
     boolean hasClient = dataSourceInfo.hasNextDataClient(Long.MIN_VALUE);
     if (hasClient) {
@@ -668,12 +656,7 @@ public class ClusterReaderFactory {
 
     DataSourceInfo dataSourceInfo =
         new DataSourceInfo(
-            partitionGroup,
-            dataType,
-            request,
-            (RemoteQueryContext) context,
-            metaGroupMember,
-            orderedNodes);
+            partitionGroup, dataType, request, (RemoteQueryContext) context, orderedNodes);
 
     boolean hasClient = dataSourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
     if (hasClient) {
@@ -704,23 +687,8 @@ public class ClusterReaderFactory {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
 
-    List<String> fullPaths = Lists.newArrayList();
-    paths.forEach(
-        path -> {
-          if (path instanceof VectorPartialPath) {
-            StringBuilder builder = new StringBuilder(path.getFullPath());
-            List<String> subSensorsList = ((VectorPartialPath) path).getSubSensorsList();
-            for (String subSensor : subSensorsList) {
-              builder.append(":");
-              builder.append(path.getFullPath());
-              builder.append(".");
-              builder.append(subSensor);
-            }
-            fullPaths.add(builder.toString());
-          } else {
-            fullPaths.add(path.getFullPath());
-          }
-        });
+    List<List<String>> fullPaths = Lists.newArrayList();
+    paths.forEach(path -> fullPaths.add(getPathStrListForRequest(path)));
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
     dataTypes.forEach(dataType -> dataTypeOrdinals.add(dataType.ordinal()));
@@ -752,7 +720,7 @@ public class ClusterReaderFactory {
     if (valueFilter != null) {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
-    request.setPath(path.getFullPath());
+    request.setPath(ClusterQueryUtils.getPathStrListForRequest(path));
     request.setHeader(partitionGroup.getHeader());
     request.setQueryId(context.getQueryId());
     request.setRequester(metaGroupMember.getThisNode());
@@ -915,8 +883,7 @@ public class ClusterReaderFactory {
               node);
           // create a remote executor with the return id
           RemoteGroupByExecutor remoteGroupByExecutor =
-              new RemoteGroupByExecutor(
-                  executorId, metaGroupMember, node, partitionGroup.getHeader());
+              new RemoteGroupByExecutor(executorId, node, partitionGroup.getHeader());
           for (Integer aggregationType : aggregationTypes) {
             remoteGroupByExecutor.addAggregateResult(
                 AggregateResultFactory.getAggrResultByType(
@@ -945,21 +912,23 @@ public class ClusterReaderFactory {
     Long executorId;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        try {
-          executorId = syncDataClient.getGroupByExecutor(request);
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        executorId = syncDataClient.getGroupByExecutor(request);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }

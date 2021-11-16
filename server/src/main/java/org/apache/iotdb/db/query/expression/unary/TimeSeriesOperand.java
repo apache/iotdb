@@ -56,6 +56,11 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
+  public boolean isConstantOperandInternal() {
+    return false;
+  }
+
+  @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     for (PartialPath prefixPath : prefixPaths) {
       resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
@@ -99,7 +104,7 @@ public class TimeSeriesOperand extends Expression {
       float memoryBudgetInMB = memoryAssigner.assign();
 
       LayerPointReader parentLayerPointReader =
-          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path.getFullPath()));
+          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path));
       expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
       expressionIntermediateLayerMap.put(
@@ -115,7 +120,7 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getExactFullPath();
   }
 }

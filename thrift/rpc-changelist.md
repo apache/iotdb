@@ -21,7 +21,7 @@
 
 # 0.12.x(version-1) -> 0.13.x(version-SNAPSHOT)
 
-Last Updated on 2021.10.14 by Minghui Liu.
+Last Updated on 2021.11.8 by Xin Zhao.
 
 ## 1. Delete Old
 
@@ -30,14 +30,16 @@ Last Updated on 2021.10.14 by Minghui Liu.
 
 ## 2. Add New
 
-| Latest Changes    | Related Committers     |
-| ----------------- | ---------------------- |
-| Add TSTracingInfo | Minghui Liu            | 
+| Latest Changes                                               | Related Committers |
+| ------------------------------------------------------------ | ------------------ |
+| Add TSTracingInfo                                            | Minghui Liu        |
+| Add structs and interfaces to append, prune, query and unset Schema Template (detail: TSAppendSchemaTemplateReq, TSPruneSchemaTemplateReq, TSQueryTemplateReq, TSQueryTemplateResp, TSUnsetSchemaTemplateReq, appendSchemaTemplate, pruneSchemaTemplate, querySchemaTemplate, unsetSchemaTemplate), and serializedTemplate in TSCreateSchemaTemplateReq | Xin Zhao           |
 
 ## 3. Update
 
-| Latest Changes                                               | Related Committers     |
-| ------------------------------------------------------------ | ---------------------- |
+| Latest Changes                                               | Related Committers |
+| ------------------------------------------------------------ | ------------------ |
+| Change schemaNames from required to optional in TSCreateSchemaTemplateReq | Xin Zhao           |
 
 
 # 0.11.x(version-2) -> 0.12.x(version-1)
