@@ -20,11 +20,10 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +58,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
       // this tsfile is not complete
       if (!reader.isComplete()) {
         throw new TsFileNotCompleteException(
-            "File " + file.getPath() + " is not a complete TsFile");
+                "File " + file.getPath() + " is not a complete TsFile");
       }
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
       // truncate metadata and marker
@@ -68,7 +67,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
       canWrite = true;
       List<String> devices = reader.getAllDevices();
       for (String device : devices) {
-        List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+        List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
         reader.readChunkMetadataInDevice(device).values().forEach(chunkMetadataList::addAll);
         ChunkGroupMetadata chunkGroupMetadata = new ChunkGroupMetadata(device, chunkMetadataList);
         chunkGroupMetadataList.add(chunkGroupMetadata);

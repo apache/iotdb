@@ -19,11 +19,7 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
@@ -31,16 +27,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
@@ -118,7 +106,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
           tsFileReader.readTimeseriesMetadata(selectedDevice, selectedMeasurements);
       for (ITimeSeriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
         List<IChunkMetadata> chunkMetadataList =
-            tsFileReader.readChunkMetaDataList(timeseriesMetadata);
+            tsFileReader.readIChunkMetaDataList(timeseriesMetadata);
         String measurementId;
         if (timeseriesMetadata instanceof AlignedTimeSeriesMetadata) {
           measurementId =
@@ -149,7 +137,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   }
 
   private List<IChunkMetadata> loadChunkMetadata(Path path) throws IOException {
-    return tsFileReader.getChunkMetadataList(path);
+    return tsFileReader.getIChunkMetadataList(path);
   }
 
   @Override
@@ -179,10 +167,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
 
       // measurement -> ChunkMetadata list
-      Map<String, List<IChunkMetadata>> seriesMetadatas =
+      Map<String, List<ChunkMetadata>> seriesMetadatas =
           tsFileReader.readChunkMetadataInDevice(selectedDevice);
 
-      for (Entry<String, List<IChunkMetadata>> seriesMetadata : seriesMetadatas.entrySet()) {
+      for (Entry<String, List<ChunkMetadata>> seriesMetadata : seriesMetadatas.entrySet()) {
 
         if (!selectedMeasurements.contains(seriesMetadata.getKey())) {
           continue;

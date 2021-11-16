@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,35 +46,35 @@ public class IMetadataQuerierByFileImplTest {
   public void before() throws IOException {
     TsFileGeneratorForTest.generateFile(10000, 1024, 100);
     reader = new TsFileSequenceReader(FILE_PATH);
-    List<IChunkMetadata> d1s6List = reader.getChunkMetadataList(new Path("d1", "s6"));
-    for (IChunkMetadata chunkMetaData : d1s6List) {
+    List<ChunkMetadata> d1s6List = reader.getChunkMetadataList(new Path("d1", "s6"));
+    for (ChunkMetadata chunkMetaData : d1s6List) {
       // get a series of [startTime, endTime] of d1.s6 from the chunkGroupMetaData of
       // d1
       d1s6timeRangeList.add(
-          new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+              new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
       long[] startEndOffsets = new long[2];
       startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
       startEndOffsets[1] =
-          chunkMetaData.getOffsetOfChunkHeader()
-              + chunkMetaData.getMeasurementUid().getBytes().length
-              + Long.BYTES
-              + Short.BYTES
-              + chunkMetaData.getStatistics().getSerializedSize();
+              chunkMetaData.getOffsetOfChunkHeader()
+                      + chunkMetaData.getMeasurementUid().getBytes().length
+                      + Long.BYTES
+                      + Short.BYTES
+                      + chunkMetaData.getStatistics().getSerializedSize();
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
 
-    List<IChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2", "s1"));
+    List<ChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2", "s1"));
     for (IChunkMetadata chunkMetaData : d2s1List) {
       d2s1timeRangeList.add(
-          new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+              new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
       long[] startEndOffsets = new long[2];
       startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
       startEndOffsets[1] =
-          chunkMetaData.getOffsetOfChunkHeader()
-              + chunkMetaData.getMeasurementUid().getBytes().length
-              + Long.BYTES
-              + Short.BYTES
-              + chunkMetaData.getStatistics().getSerializedSize();
+              chunkMetaData.getOffsetOfChunkHeader()
+                      + chunkMetaData.getMeasurementUid().getBytes().length
+                      + Long.BYTES
+                      + Short.BYTES
+                      + chunkMetaData.getStatistics().getSerializedSize();
       d2chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
   }
@@ -94,7 +94,7 @@ public class IMetadataQuerierByFileImplTest {
     paths.add(new Path("d2", "s1"));
 
     ArrayList<TimeRange> resTimeRanges =
-        new ArrayList<>(metadataQuerierByFile.convertSpace2TimePartition(paths, 0L, 0L));
+            new ArrayList<>(metadataQuerierByFile.convertSpace2TimePartition(paths, 0L, 0L));
 
     Assert.assertEquals(0, resTimeRanges.size());
   }
@@ -110,9 +110,9 @@ public class IMetadataQuerierByFileImplTest {
     long spacePartitionStartPos = d1chunkGroupMetaDataOffsetList.get(0)[0];
     long spacePartitionEndPos = d1chunkGroupMetaDataOffsetList.get(1)[1];
     ArrayList<TimeRange> resTimeRanges =
-        new ArrayList<>(
-            metadataQuerierByFile.convertSpace2TimePartition(
-                paths, spacePartitionStartPos, spacePartitionEndPos));
+            new ArrayList<>(
+                    metadataQuerierByFile.convertSpace2TimePartition(
+                            paths, spacePartitionStartPos, spacePartitionEndPos));
 
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     unionCandidates.add(d1s6timeRangeList.get(0));
@@ -135,9 +135,9 @@ public class IMetadataQuerierByFileImplTest {
     ArrayList<TimeRange> inCandidates = new ArrayList<>();
     ArrayList<TimeRange> beforeCandidates = new ArrayList<>();
     ArrayList<TimeRange> resTimeRanges =
-        new ArrayList<>(
-            metadataQuerierByFile.convertSpace2TimePartition(
-                paths, spacePartitionStartPos, spacePartitionEndPos));
+            new ArrayList<>(
+                    metadataQuerierByFile.convertSpace2TimePartition(
+                            paths, spacePartitionStartPos, spacePartitionEndPos));
     inCandidates.add(d2s1timeRangeList.get(0));
     beforeCandidates.add(d1s6timeRangeList.get(0));
     ArrayList<TimeRange> expectedRanges = new ArrayList<>();

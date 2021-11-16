@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,23 +44,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
+/**
+ * This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries.
+ */
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
   private static boolean printDetail = false;
 
   @SuppressWarnings({
-    "squid:S3776",
-    "squid:S106"
+          "squid:S3776",
+          "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "alignedTablet.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       System.out.println(
-          "file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
+              "file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
       System.out.println("file magic head: " + reader.readHeadMagic());
       System.out.println("file magic tail: " + reader.readTailMagic());
       System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
@@ -87,11 +90,11 @@ public class TsFileSequenceRead {
             ChunkHeader header = reader.readChunkHeader(marker);
             System.out.println("\tMeasurement: " + header.getMeasurementID());
             Decoder defaultTimeDecoder =
-                Decoder.getDecoderByType(
-                    TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                    TSDataType.INT64);
+                    Decoder.getDecoderByType(
+                            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                            TSDataType.INT64);
             Decoder valueDecoder =
-                Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
+                    Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
             int dataSize = header.getDataSize();
             pageIndex = 0;
             if (header.getDataType() == TSDataType.VECTOR) {
@@ -100,21 +103,21 @@ public class TsFileSequenceRead {
             while (dataSize > 0) {
               valueDecoder.reset();
               System.out.println(
-                  "\t\t[Page" + pageIndex + "]\n \t\tPage head position: " + reader.position());
+                      "\t\t[Page" + pageIndex + "]\n \t\tPage head position: " + reader.position());
               PageHeader pageHeader =
-                  reader.readPageHeader(
-                      header.getDataType(),
-                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+                      reader.readPageHeader(
+                              header.getDataType(),
+                              (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
               System.out.println("\t\tPage data position: " + reader.position());
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               System.out.println(
-                  "\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
+                      "\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
               System.out.println(
-                  "\t\tCompressed page data size: " + pageHeader.getCompressedSize());
+                      "\t\tCompressed page data size: " + pageHeader.getCompressedSize());
               if ((header.getChunkType() & (byte) TsFileConstant.TIME_COLUMN_MASK)
-                  == (byte) TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
+                      == (byte) TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
                 TimePageReader timePageReader =
-                    new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
+                        new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
                 timeBatch.add(timePageReader.getNextTimeBatch());
                 System.out.println("\t\tpoints in the page: " + timeBatch.get(pageIndex).length);
                 if (printDetail) {
@@ -123,11 +126,11 @@ public class TsFileSequenceRead {
                   }
                 }
               } else if ((header.getChunkType() & (byte) TsFileConstant.VALUE_COLUMN_MASK)
-                  == (byte) TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
+                      == (byte) TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
                 ValuePageReader valuePageReader =
-                    new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
+                        new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
                 TsPrimitiveType[] valueBatch =
-                    valuePageReader.nextValueBatch(timeBatch.get(pageIndex));
+                        valuePageReader.nextValueBatch(timeBatch.get(pageIndex));
                 if (valueBatch.length == 0) {
                   System.out.println("\t\t-- Empty Page ");
                 } else {
@@ -140,8 +143,8 @@ public class TsFileSequenceRead {
                 }
               } else { // NonAligned Chunk
                 PageReader pageReader =
-                    new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                        new PageReader(
+                                pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
                 BatchData batchData = pageReader.getAllSatisfiedPageData();
                 if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
                   System.out.println("\t\tpoints in the page: " + pageHeader.getNumOfValues());
@@ -151,10 +154,10 @@ public class TsFileSequenceRead {
                 if (printDetail) {
                   while (batchData.hasCurrent()) {
                     System.out.println(
-                        "\t\t\ttime, value: "
-                            + batchData.currentTime()
-                            + ", "
-                            + batchData.currentValue());
+                            "\t\t\ttime, value: "
+                                    + batchData.currentTime()
+                                    + ", "
+                                    + batchData.currentValue());
                     batchData.next();
                   }
                 }
@@ -180,10 +183,10 @@ public class TsFileSequenceRead {
       }
       System.out.println("[Metadata]");
       for (String device : reader.getAllDevices()) {
-        Map<String, List<IChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
+        Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
         System.out.printf(
-            "\t[Device]Device %s, Number of Measurements %d%n", device, seriesMetaData.size());
-        for (Map.Entry<String, List<IChunkMetadata>> serie : seriesMetaData.entrySet()) {
+                "\t[Device]Device %s, Number of Measurements %d%n", device, seriesMetaData.size());
+        for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
           System.out.println("\t\tMeasurement:" + serie.getKey());
           for (IChunkMetadata chunkMetadata : serie.getValue()) {
             System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());

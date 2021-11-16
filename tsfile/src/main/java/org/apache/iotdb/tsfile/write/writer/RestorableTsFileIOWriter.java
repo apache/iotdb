@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +66,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private long minPlanIndex = Long.MAX_VALUE;
   private long maxPlanIndex = Long.MIN_VALUE;
 
-  /** all chunk group metadata which have been serialized on disk. */
+  /**
+   * all chunk group metadata which have been serialized on disk.
+   */
   private final Map<String, Map<String, List<IChunkMetadata>>> metadatasForQuery = new HashMap<>();
 
   /**
@@ -102,7 +103,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         } else if (truncatedSize == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
           throw new NotCompatibleTsFileException(
-              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+                  String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else {
           crashed = true;
           canWrite = true;
@@ -141,7 +142,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         } else if (truncatedSize == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
           throw new NotCompatibleTsFileException(
-              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+                  String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else {
           crashed = true;
           canWrite = true;
@@ -164,7 +165,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @return a writable RestorableTsFileIOWriter
    */
   public static RestorableTsFileIOWriter getWriterForAppendingDataOnCompletedTsFile(File file)
-      throws IOException {
+          throws IOException {
     long position = file.length();
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
@@ -178,7 +179,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     if (position != file.length()) {
       // if the file is complete, we will remove all file metadatas
       try (FileChannel channel =
-          FileChannel.open(Paths.get(file.getAbsolutePath()), StandardOpenOption.WRITE)) {
+                   FileChannel.open(Paths.get(file.getAbsolutePath()), StandardOpenOption.WRITE)) {
         channel.truncate(position - 1); // remove the last marker.
       }
     }
@@ -198,16 +199,16 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    *
    * <p>get chunks' metadata from memory.
    *
-   * @param deviceId the device id
+   * @param deviceId      the device id
    * @param measurementId the measurement id
-   * @param dataType the value type
+   * @param dataType      the value type
    * @return chunks' metadata
    */
   public List<ChunkMetadata> getVisibleMetadataList(
-      String deviceId, String measurementId, TSDataType dataType) {
+          String deviceId, String measurementId, TSDataType dataType) {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     if (metadatasForQuery.containsKey(deviceId)
-        && metadatasForQuery.get(deviceId).containsKey(measurementId)) {
+            && metadatasForQuery.get(deviceId).containsKey(measurementId)) {
       for (IChunkMetadata chunkMetaData : metadatasForQuery.get(deviceId).get(measurementId)) {
         // filter: if a device'measurement is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
@@ -232,7 +233,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     List<ChunkGroupMetadata> newlyFlushedMetadataList = getAppendedRowMetadata();
     if (!newlyFlushedMetadataList.isEmpty()) {
       for (ChunkGroupMetadata chunkGroupMetadata : newlyFlushedMetadataList) {
-        List<IChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
+        List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
 
         String device = chunkGroupMetadata.getDevice();
         for (IChunkMetadata chunkMetaData : rowMetaDataList) {
@@ -263,8 +264,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     List<ChunkGroupMetadata> append = new ArrayList<>();
     if (lastFlushedChunkGroupIndex < chunkGroupMetadataList.size()) {
       append.addAll(
-          chunkGroupMetadataList.subList(
-              lastFlushedChunkGroupIndex, chunkGroupMetadataList.size()));
+              chunkGroupMetadataList.subList(
+                      lastFlushedChunkGroupIndex, chunkGroupMetadataList.size()));
       lastFlushedChunkGroupIndex = chunkGroupMetadataList.size();
     }
     return append;
