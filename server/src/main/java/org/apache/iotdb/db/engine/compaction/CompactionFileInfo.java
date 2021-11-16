@@ -113,6 +113,19 @@ public class CompactionFileInfo {
         filename);
   }
 
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof CompactionFileInfo)) {
+      return false;
+    }
+    CompactionFileInfo otherInfo = (CompactionFileInfo) other;
+    return otherInfo.sequence == this.sequence
+        && otherInfo.logicalStorageGroupName.equals(this.logicalStorageGroupName)
+        && otherInfo.virtualStorageGroupId.equals(this.virtualStorageGroupId)
+        && otherInfo.timePartitionId.equals(this.timePartitionId)
+        && otherInfo.filename.equals(this.filename);
+  }
+
   /**
    * This method find the File object of current file by searching it in every data directory. If
    * the file is not found, it will return null.
